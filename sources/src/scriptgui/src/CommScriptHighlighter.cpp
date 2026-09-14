@@ -1,4 +1,5 @@
 #include "CommScriptHighlighter.hpp"
+
 #include "uSharedScriptRegex.hpp"
 
 #include <QList>
@@ -11,15 +12,15 @@ class QTextDocument;
 // Colours shared with the base (STRING/yellow, DEF_NAME/purple, DEF_OP/pink,
 // VAR/cyan, and all typed-token prefix letters) are defined in
 // ScriptHighlighterBase.cpp and not repeated here.
-static constexpr auto C_SEND       = "#ff5555";   // red    — > direction
-static constexpr auto C_RECV       = "#50fa7b";   // green  — < direction
-static constexpr auto C_DELAY_PFX  = "#ffb86c";   // amber  — ! prefix
-static constexpr auto C_DELAY_NUM  = "#bd93f9";   // purple — delay / numeric literals
-static constexpr auto C_DELAY_UNIT = "#8be9fd";   // cyan   — sec / ms / us
-static constexpr auto C_STRING     = "#f1fa8c";   // yellow — "..." (plain strings)
-static constexpr auto C_PRINT      = "#a5b4fc";   // periwinkle — @ print directive
-                                                   // (same family as core script's PRINT
-                                                   //  native function - both are log statements)
+static constexpr auto C_SEND       = "#ff5555"; // red    — > direction
+static constexpr auto C_RECV       = "#50fa7b"; // green  — < direction
+static constexpr auto C_DELAY_PFX  = "#ffb86c"; // amber  — ! prefix
+static constexpr auto C_DELAY_NUM  = "#bd93f9"; // purple — delay / numeric literals
+static constexpr auto C_DELAY_UNIT = "#8be9fd"; // cyan   — sec / ms / us
+static constexpr auto C_STRING     = "#f1fa8c"; // yellow — "..." (plain strings)
+static constexpr auto C_PRINT      = "#a5b4fc"; // periwinkle — @ print directive
+                                                // (same family as core script's PRINT
+                                                //  native function - both are log statements)
 // C_SEPARATOR is declared in ScriptHighlighterBase.hpp (shared by | here and
 // by ~ / and REPEAT's comma in ScriptHighlighter); C_XTRA_PARAM is defined
 // in ScriptHighlighterBase.cpp
@@ -60,15 +61,15 @@ CommScriptHighlighter::CommScriptHighlighter(QTextDocument *parent)
     //  script's PRINT native function - both are log statements)
     //  Block comment delimiters (--- / !--) are caught in highlightBlock
     //  before rules run, so ! here only matches the delay prefix.
-    addRule(R"(^\s*(>))",       fmt(C_SEND,      true), 1);
-    addRule(R"(^\s*(<))",       fmt(C_RECV,      true), 1);
+    addRule(R"(^\s*(>))", fmt(C_SEND, true), 1);
+    addRule(R"(^\s*(<))", fmt(C_RECV, true), 1);
     addRule(R"(^\s*(!)(?!--))", fmt(C_DELAY_PFX, true), 1);
-    addRule(R"(^\s*(@))",       fmt(C_PRINT,     true), 1);
+    addRule(R"(^\s*(@))", fmt(C_PRINT, true), 1);
 
     // ── 6. Delay value and unit ───────────────────────────────────────────
     //  number → purple  ·  unit → cyan  (warm › cool progression: amber ! → purple N → cyan unit)
     //  Units recognised: sec  ms  us
-    addRule(R"(^\s*!\s*(\d+))",   fmt(C_DELAY_NUM),  1);
+    addRule(R"(^\s*!\s*(\d+))", fmt(C_DELAY_NUM), 1);
     addRule(QString("\\b" SCRIPT_RX_TIME_UNITS "\\b"), fmt(C_DELAY_UNIT));
 
     // ── 7. Typed-token decorators  H/X/R/T/L/S/F'…'  — from base ────────

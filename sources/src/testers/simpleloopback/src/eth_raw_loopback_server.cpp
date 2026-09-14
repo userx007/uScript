@@ -53,153 +53,145 @@
 //     recvfrom() call returns.
 
 #include <algorithm>
+#include <arpa/inet.h>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <string>
-
-#include <arpa/inet.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <net/if.h>
 #include <signal.h>
+#include <string>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-namespace
+namespace {
+constexpr size_t FRAME_BUF_SIZE = 65536; // generous; covers jumbo frames too
+constexpr size_t ETH_HDR_LEN    = 14;    // dst(6) + src(6) + ethertype(2)
+constexpr size_t MAC_LEN        = 6;
+// Ethernet payloads can run into the tens of KB (jumbo frames) — unlike
+// a CAN frame's 8 bytes, printing every byte would flood the terminal.
+// Cap the console dump and note how much was left out, same idea as
+// CommDumpModel's preview truncation in the GUI.
+constexpr size_t DUMP_MAX_BYTES = 64;
+
+volatile sig_atomic_t g_stop    = 0;
+
+void on_signal(int /*sig*/)
 {
-    constexpr size_t FRAME_BUF_SIZE = 65536; // generous; covers jumbo frames too
-    constexpr size_t ETH_HDR_LEN    = 14;    // dst(6) + src(6) + ethertype(2)
-    constexpr size_t MAC_LEN        = 6;
-    // Ethernet payloads can run into the tens of KB (jumbo frames) — unlike
-    // a CAN frame's 8 bytes, printing every byte would flood the terminal.
-    // Cap the console dump and note how much was left out, same idea as
-    // CommDumpModel's preview truncation in the GUI.
-    constexpr size_t DUMP_MAX_BYTES = 64;
+    g_stop = 1;
+}
 
-    volatile sig_atomic_t g_stop = 0;
+std::string mac_to_string(const uint8_t *mac)
+{
+    char sz[18];
+    std::snprintf(sz, sizeof(sz), "%02x:%02x:%02x:%02x:%02x:%02x",
+                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    return std::string(sz);
+}
 
-    void on_signal(int /*sig*/)
-    {
-        g_stop = 1;
+bool mac_equal(const uint8_t *a, const uint8_t *b)
+{
+    return std::memcmp(a, b, MAC_LEN) == 0;
+}
+
+/** Print one Ethernet frame in a candump-like table row: DIR, SRC MAC,
+ *  DST MAC, ETHERTYPE, LEN, and a hex dump of the payload (the bytes
+ *  after the 14-byte header) — the raw-Ethernet analogue of
+ *  kvcan_loopback.c's print_frame(), with CAN's ID/DLC swapped out for
+ *  the fields that actually identify an Ethernet frame. Reads the
+ *  frame straight out of the wire buffer (`frame`/`frameLen`) rather
+ *  than taking the header fields as separate arguments, so the exact
+ *  same call works for both the as-received RX frame and the
+ *  address-swapped TX frame that gets echoed back — same as kvcan's
+ *  print_frame(prefix, &frame) being called before AND after the frame
+ *  is reused for the echoed reply.
+ */
+void print_frame(const char *prefix, const uint8_t *frame, size_t frameLen)
+{
+    if (frameLen < ETH_HDR_LEN) {
+        return; // caller already rejects runts before this would be called
     }
 
-    std::string mac_to_string(const uint8_t* mac)
-    {
-        char sz[18];
-        std::snprintf(sz, sizeof(sz), "%02x:%02x:%02x:%02x:%02x:%02x",
-                     mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        return std::string(sz);
+    const uint8_t *dst       = frame;
+    const uint8_t *src       = frame + MAC_LEN;
+    const uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t *>(frame + 2 * MAC_LEN));
+    const uint8_t *payload   = frame + ETH_HDR_LEN;
+    const size_t payloadLen  = frameLen - ETH_HDR_LEN;
+
+    std::printf("%-4s  %-17s  %-17s  0x%04x  %-6zu ",
+                prefix, mac_to_string(src).c_str(), mac_to_string(dst).c_str(),
+                ethertype, payloadLen);
+
+    const size_t shown = std::min(payloadLen, DUMP_MAX_BYTES);
+    for (size_t i = 0; i < shown; ++i) {
+        std::printf("%02X ", payload[i]);
     }
-
-    bool mac_equal(const uint8_t* a, const uint8_t* b)
-    {
-        return std::memcmp(a, b, MAC_LEN) == 0;
+    if (payloadLen > shown) {
+        std::printf("... (+%zu more bytes)", payloadLen - shown);
     }
+    std::printf("\n");
+    std::fflush(stdout);
+}
 
-    /** Print one Ethernet frame in a candump-like table row: DIR, SRC MAC,
-     *  DST MAC, ETHERTYPE, LEN, and a hex dump of the payload (the bytes
-     *  after the 14-byte header) — the raw-Ethernet analogue of
-     *  kvcan_loopback.c's print_frame(), with CAN's ID/DLC swapped out for
-     *  the fields that actually identify an Ethernet frame. Reads the
-     *  frame straight out of the wire buffer (`frame`/`frameLen`) rather
-     *  than taking the header fields as separate arguments, so the exact
-     *  same call works for both the as-received RX frame and the
-     *  address-swapped TX frame that gets echoed back — same as kvcan's
-     *  print_frame(prefix, &frame) being called before AND after the frame
-     *  is reused for the echoed reply.
-     */
-    void print_frame(const char* prefix, const uint8_t* frame, size_t frameLen)
-    {
-        if (frameLen < ETH_HDR_LEN)
-            return; // caller already rejects runts before this would be called
+// Look up an interface's index and MAC address via ioctl(). Returns
+// false on failure (e.g. unknown interface name, insufficient perms).
+bool resolve_interface(int fd, const std::string &ifname, int &ifindex, uint8_t ownMac[MAC_LEN])
+{
+    struct ifreq sIfr = {};
+    std::strncpy(sIfr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
 
-        const uint8_t* dst      = frame;
-        const uint8_t* src      = frame + MAC_LEN;
-        const uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t*>(frame + 2 * MAC_LEN));
-        const uint8_t* payload   = frame + ETH_HDR_LEN;
-        const size_t   payloadLen = frameLen - ETH_HDR_LEN;
-
-        std::printf("%-4s  %-17s  %-17s  0x%04x  %-6zu ",
-                    prefix, mac_to_string(src).c_str(), mac_to_string(dst).c_str(),
-                    ethertype, payloadLen);
-
-        const size_t shown = std::min(payloadLen, DUMP_MAX_BYTES);
-        for (size_t i = 0; i < shown; ++i)
-            std::printf("%02X ", payload[i]);
-        if (payloadLen > shown)
-            std::printf("... (+%zu more bytes)", payloadLen - shown);
-        std::printf("\n");
-        std::fflush(stdout);
+    if (::ioctl(fd, SIOCGIFINDEX, &sIfr) < 0) {
+        std::fprintf(stderr, "ioctl(SIOCGIFINDEX, %s) failed, errno=%d (%s)\n",
+                     ifname.c_str(), errno, std::strerror(errno));
+        return false;
     }
+    ifindex = sIfr.ifr_ifindex;
 
-    // Look up an interface's index and MAC address via ioctl(). Returns
-    // false on failure (e.g. unknown interface name, insufficient perms).
-    bool resolve_interface(int fd, const std::string& ifname, int& ifindex, uint8_t ownMac[MAC_LEN])
-    {
-        struct ifreq sIfr = {};
-        std::strncpy(sIfr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
-
-        if (::ioctl(fd, SIOCGIFINDEX, &sIfr) < 0)
-        {
-            std::fprintf(stderr, "ioctl(SIOCGIFINDEX, %s) failed, errno=%d (%s)\n",
-                         ifname.c_str(), errno, std::strerror(errno));
-            return false;
-        }
-        ifindex = sIfr.ifr_ifindex;
-
-        std::memset(&sIfr, 0, sizeof(sIfr));
-        std::strncpy(sIfr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
-        if (::ioctl(fd, SIOCGIFHWADDR, &sIfr) < 0)
-        {
-            std::fprintf(stderr, "ioctl(SIOCGIFHWADDR, %s) failed, errno=%d (%s)\n",
-                         ifname.c_str(), errno, std::strerror(errno));
-            return false;
-        }
-        std::memcpy(ownMac, sIfr.ifr_hwaddr.sa_data, MAC_LEN);
-        return true;
+    std::memset(&sIfr, 0, sizeof(sIfr));
+    std::strncpy(sIfr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
+    if (::ioctl(fd, SIOCGIFHWADDR, &sIfr) < 0) {
+        std::fprintf(stderr, "ioctl(SIOCGIFHWADDR, %s) failed, errno=%d (%s)\n",
+                     ifname.c_str(), errno, std::strerror(errno));
+        return false;
     }
+    std::memcpy(ownMac, sIfr.ifr_hwaddr.sa_data, MAC_LEN);
+    return true;
+}
 
-    bool enable_promiscuous(int fd, int ifindex)
-    {
-        struct packet_mreq sMreq = {};
-        sMreq.mr_ifindex = ifindex;
-        sMreq.mr_type    = PACKET_MR_PROMISC;
+bool enable_promiscuous(int fd, int ifindex)
+{
+    struct packet_mreq sMreq = {};
+    sMreq.mr_ifindex         = ifindex;
+    sMreq.mr_type            = PACKET_MR_PROMISC;
 
-        if (::setsockopt(fd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &sMreq, sizeof(sMreq)) < 0)
-        {
-            std::fprintf(stderr, "setsockopt(PACKET_ADD_MEMBERSHIP) failed, errno=%d (%s)\n",
-                         errno, std::strerror(errno));
-            return false;
-        }
-        return true;
+    if (::setsockopt(fd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &sMreq, sizeof(sMreq)) < 0) {
+        std::fprintf(stderr, "setsockopt(PACKET_ADD_MEMBERSHIP) failed, errno=%d (%s)\n",
+                     errno, std::strerror(errno));
+        return false;
     }
+    return true;
+}
 } // namespace
 
-
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-    if (argc < 2)
-    {
+    if (argc < 2) {
         std::fprintf(stderr, "Usage: %s <ifname> [ethertype_hex] [--promisc]\n", argv[0]);
         return 1;
     }
 
     const std::string strIfName = argv[1];
-    uint16_t          u16EtherTypeFilter = ETH_P_ALL; // capture everything by default
-    bool               bPromisc          = false;
+    uint16_t u16EtherTypeFilter = ETH_P_ALL; // capture everything by default
+    bool bPromisc               = false;
 
-    for (int i = 2; i < argc; ++i)
-    {
+    for (int i = 2; i < argc; ++i) {
         const std::string strArg = argv[i];
-        if (strArg == "--promisc")
-        {
+        if (strArg == "--promisc") {
             bPromisc = true;
-        }
-        else
-        {
+        } else {
             u16EtherTypeFilter = static_cast<uint16_t>(std::strtoul(strArg.c_str(), nullptr, 0));
         }
     }
@@ -208,8 +200,8 @@ int main(int argc, char** argv)
     // off so a blocking recvfrom() actually returns EINTR and g_stop gets
     // observed promptly instead of only after the next frame arrives.
     struct sigaction sSigAction = {};
-    sSigAction.sa_handler = on_signal;
-    sSigAction.sa_flags   = 0; // no SA_RESTART
+    sSigAction.sa_handler       = on_signal;
+    sSigAction.sa_flags         = 0; // no SA_RESTART
     ::sigemptyset(&sSigAction.sa_mask);
     ::sigaction(SIGINT, &sSigAction, nullptr);
     ::sigaction(SIGTERM, &sSigAction, nullptr);
@@ -218,63 +210,56 @@ int main(int argc, char** argv)
     // on both read and write — required since we rewrite the header
     // in-place to bounce the frame back to its sender.
     const int sockFd = ::socket(AF_PACKET, SOCK_RAW, htons(u16EtherTypeFilter));
-    if (sockFd < 0)
-    {
+    if (sockFd < 0) {
         std::fprintf(stderr, "socket(AF_PACKET, SOCK_RAW) failed, errno=%d (%s)\n"
-                     "(this usually means missing CAP_NET_RAW — try running as root, or:\n"
-                     " sudo setcap cap_net_raw+ep %s)\n",
+                             "(this usually means missing CAP_NET_RAW — try running as root, or:\n"
+                             " sudo setcap cap_net_raw+ep %s)\n",
                      errno, std::strerror(errno), argv[0]);
         return 1;
     }
 
-    int     ifindex = -1;
+    int ifindex             = -1;
     uint8_t ownMac[MAC_LEN] = {};
-    if (!resolve_interface(sockFd, strIfName, ifindex, ownMac))
-    {
+    if (!resolve_interface(sockFd, strIfName, ifindex, ownMac)) {
         ::close(sockFd);
         return 1;
     }
 
     struct sockaddr_ll sBindAddr = {};
-    sBindAddr.sll_family   = AF_PACKET;
-    sBindAddr.sll_protocol = htons(u16EtherTypeFilter);
-    sBindAddr.sll_ifindex  = ifindex;
+    sBindAddr.sll_family         = AF_PACKET;
+    sBindAddr.sll_protocol       = htons(u16EtherTypeFilter);
+    sBindAddr.sll_ifindex        = ifindex;
 
-    if (::bind(sockFd, reinterpret_cast<struct sockaddr*>(&sBindAddr), sizeof(sBindAddr)) < 0)
-    {
+    if (::bind(sockFd, reinterpret_cast<struct sockaddr *>(&sBindAddr), sizeof(sBindAddr)) < 0) {
         std::fprintf(stderr, "bind() to %s failed, errno=%d (%s)\n",
                      strIfName.c_str(), errno, std::strerror(errno));
         ::close(sockFd);
         return 1;
     }
 
-    if (bPromisc && !enable_promiscuous(sockFd, ifindex))
-    {
+    if (bPromisc && !enable_promiscuous(sockFd, ifindex)) {
         ::close(sockFd);
         return 1;
     }
 
     std::printf("eth_raw_loopback_server listening on %s (mac %s), ethertype=0x%04x%s (Ctrl+C to stop)\n",
-               strIfName.c_str(), mac_to_string(ownMac).c_str(), u16EtherTypeFilter,
-               bPromisc ? ", promiscuous" : "");
+                strIfName.c_str(), mac_to_string(ownMac).c_str(), u16EtherTypeFilter,
+                bPromisc ? ", promiscuous" : "");
     std::printf("%-4s  %-17s  %-17s  %-6s  %-6s  %s\n", "DIR", "SRC MAC", "DST MAC", "ETHTYPE", "LEN", "DATA");
     std::printf("--------------------------------------------------------------------------------\n");
 
     uint8_t buffer[FRAME_BUF_SIZE];
-    size_t  totalFrames = 0;
-    size_t  totalBytes  = 0;
+    size_t totalFrames = 0;
+    size_t totalBytes  = 0;
 
-    while (!g_stop)
-    {
+    while (!g_stop) {
         struct sockaddr_ll sSrcAddr = {};
-        socklen_t          szAddrLen = sizeof(sSrcAddr);
+        socklen_t szAddrLen         = sizeof(sSrcAddr);
 
-        const ssize_t n = ::recvfrom(sockFd, buffer, sizeof(buffer), 0,
-                                     reinterpret_cast<struct sockaddr*>(&sSrcAddr), &szAddrLen);
-        if (n < 0)
-        {
-            if (errno == EINTR)
-            {
+        const ssize_t n             = ::recvfrom(sockFd, buffer, sizeof(buffer), 0,
+                                                 reinterpret_cast<struct sockaddr *>(&sSrcAddr), &szAddrLen);
+        if (n < 0) {
+            if (errno == EINTR) {
                 continue;
             }
             std::fprintf(stderr, "recvfrom() failed, errno=%d (%s)\n", errno, std::strerror(errno));
@@ -284,27 +269,24 @@ int main(int argc, char** argv)
         // Frames the kernel hands us because we transmitted them ourselves
         // (PACKET_OUTGOING) must be ignored, or every echo would loop back
         // in as a "new" frame to echo again, forever.
-        if (sSrcAddr.sll_pkttype == PACKET_OUTGOING)
-        {
+        if (sSrcAddr.sll_pkttype == PACKET_OUTGOING) {
             continue;
         }
 
-        if (static_cast<size_t>(n) < ETH_HDR_LEN)
-        {
+        if (static_cast<size_t>(n) < ETH_HDR_LEN) {
             std::fprintf(stderr, "runt frame (%zd bytes), dropping\n", n);
             continue;
         }
 
-        uint8_t* pDst       = buffer;           // bytes 0..5
-        uint8_t* pSrc       = buffer + MAC_LEN;  // bytes 6..11
-        uint8_t  origSrc[MAC_LEN];
+        uint8_t *pDst = buffer;           // bytes 0..5
+        uint8_t *pSrc = buffer + MAC_LEN; // bytes 6..11
+        uint8_t origSrc[MAC_LEN];
         std::memcpy(origSrc, pSrc, MAC_LEN);
 
         // Defensive second check: skip anything that already carries our
         // own MAC as its source (covers edge cases the pkttype filter
         // might miss, e.g. some virtual interfaces).
-        if (mac_equal(origSrc, ownMac))
-        {
+        if (mac_equal(origSrc, ownMac)) {
             continue;
         }
 
@@ -318,30 +300,28 @@ int main(int argc, char** argv)
         std::memcpy(pSrc, ownMac, MAC_LEN);
 
         struct sockaddr_ll sDstAddr = sSrcAddr;
-        sDstAddr.sll_ifindex = ifindex;
-        sDstAddr.sll_halen   = MAC_LEN;
+        sDstAddr.sll_ifindex        = ifindex;
+        sDstAddr.sll_halen          = MAC_LEN;
         std::memcpy(sDstAddr.sll_addr, origSrc, MAC_LEN);
 
         const ssize_t sent = ::sendto(sockFd, buffer, szLen, 0,
-                                      reinterpret_cast<struct sockaddr*>(&sDstAddr), sizeof(sDstAddr));
-        if (sent < 0)
-        {
+                                      reinterpret_cast<struct sockaddr *>(&sDstAddr), sizeof(sDstAddr));
+        if (sent < 0) {
             std::fprintf(stderr, "sendto() failed, errno=%d (%s)\n", errno, std::strerror(errno));
             continue;
         }
-        if (static_cast<size_t>(sent) != szLen)
-        {
+        if (static_cast<size_t>(sent) != szLen) {
             std::fprintf(stderr, "short write echoing frame (%zd of %zu bytes)\n", sent, szLen);
         }
 
-        print_frame("TX", buffer, szLen);   // buffer now holds the swapped (echoed) header
+        print_frame("TX", buffer, szLen); // buffer now holds the swapped (echoed) header
 
         ++totalFrames;
         totalBytes += szLen;
     }
 
     std::printf("eth_raw_loopback_server shutting down (%zu frames / %zu bytes echoed)\n",
-               totalFrames, totalBytes);
+                totalFrames, totalBytes);
     ::close(sockFd);
     return 0;
 }

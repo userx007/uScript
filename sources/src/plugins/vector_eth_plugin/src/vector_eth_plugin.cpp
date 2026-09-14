@@ -1,15 +1,16 @@
-#include "uSharedConfig.hpp"
+#include "vector_eth_plugin.hpp"
+
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-#include "vector_eth_setup.hpp"
-#include "vector_eth_plugin.hpp"
-#include "uPluginSettings.hpp"
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
-#include "uHexlify.hpp"
-#include "uVectorEth.hpp"
 #include "uCommandExec.hpp"
+#include "uFile.hpp"
+#include "uHexlify.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+#include "uVectorEth.hpp"
+#include "vector_eth_setup.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -18,20 +19,18 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED VectorEthPlugin *pluginEntry()
 {
-    EXPORTED VectorEthPlugin* pluginEntry()
-    {
-        return new VectorEthPlugin();
-    }
+    return new VectorEthPlugin();
+}
 
-    EXPORTED void pluginExit( VectorEthPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(VectorEthPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -40,29 +39,27 @@ extern "C"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about the plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if plugin initialization fails.
-  *
-  * \note Usage example:
-  *       VECTOR_ETH.INFO
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about the plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if plugin initialization fails.
+ *
+ * \note Usage example:
+ *       VECTOR_ETH.INFO
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_INFO (const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_INFO(const std::string &args, std::stop_token st) const
 {
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -172,59 +169,54 @@ bool VectorEthPlugin::m_VECTOR_ETH_INFO (const std::string &args, std::stop_toke
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current VectorEth parameters at runtime.
-  *
-  * \note Any subset of parameters can be specified; omitted keys retain their current values.
-  *       The channel is not reopened by CONFIG - changes take effect on the next CMD or SCRIPT call.
-  *
-  * \param[in] args  see INFO's CONFIG section for the full key list
-  *
-  * \return true if parameters were updated successfully, false otherwise
-*/
+ * \brief CONFIG command implementation; overwrite the current VectorEth parameters at runtime.
+ *
+ * \note Any subset of parameters can be specified; omitted keys retain their current values.
+ *       The channel is not reopened by CONFIG - changes take effect on the next CMD or SCRIPT call.
+ *
+ * \param[in] args  see INFO's CONFIG section for the full key list
+ *
+ * \return true if parameters were updated successfully, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_CONFIG (const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_CONFIG(const std::string &args, std::stop_token st) const
 {
     return generic_eth_set_params<VectorEthPlugin>(this, args);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief FILTER command implementation; install a software RX acceptance filter
-  *        (source MAC and/or EtherType, enforced together).
-  *
-  * \note Usage example:
-  *       VECTOR_ETH.FILTER src=AA:BB:CC:DD:EE:FF
-  *       VECTOR_ETH.FILTER type=0x0800
-  *       VECTOR_ETH.FILTER src= type=
-  *
-  * \param[in] args  "[src=<mac>] [type=<ethertype>]", space- or comma-separated
-  *
-  * \return true on success, false on parse error
-*/
+ * \brief FILTER command implementation; install a software RX acceptance filter
+ *        (source MAC and/or EtherType, enforced together).
+ *
+ * \note Usage example:
+ *       VECTOR_ETH.FILTER src=AA:BB:CC:DD:EE:FF
+ *       VECTOR_ETH.FILTER type=0x0800
+ *       VECTOR_ETH.FILTER src= type=
+ *
+ * \param[in] args  "[src=<mac>] [type=<ethertype>]", space- or comma-separated
+ *
+ * \return true on success, false on parse error
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_FILTER (const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_FILTER(const std::string &args, std::stop_token st) const
 {
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
-    if (args.empty())
-    {
+    if (args.empty()) {
         m_rxFilterSrcMac.reset();
         m_rxFilterEtherType.reset();
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Filters cleared"));
         return true;
     }
 
-    if (false == m_ParseFilter(args, m_rxFilterSrcMac, m_rxFilterEtherType))
-    {
+    if (false == m_ParseFilter(args, m_rxFilterSrcMac, m_rxFilterEtherType)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(args));
         return false;
     }
@@ -236,21 +228,20 @@ bool VectorEthPlugin::m_VECTOR_ETH_FILTER (const std::string &args, std::stop_to
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation; execute a single send/receive operation over VectorEth.
-  *
-  * \note The VectorEth channel is opened for the duration of the call and closed automatically on
-  *       return (RAII).
-  *
-  * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CMD command implementation; execute a single send/receive operation over VectorEth.
+ *
+ * \note The VectorEth channel is opened for the duration of the call and closed automatically on
+ *       return (RAII).
+ *
+ * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_CMD (const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_CMD(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
@@ -263,23 +254,23 @@ bool VectorEthPlugin::m_VECTOR_ETH_CMD (const std::string &args, std::stop_token
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const VectorEth> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const VectorEth> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const VectorEth> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_read(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation; execute a multi-command script file over VectorEth.
-  *
-  * \param[in] args  filename [delay_ms]
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief SCRIPT command implementation; execute a multi-command script file over VectorEth.
+ *
+ * \param[in] args  filename [delay_ms]
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_SCRIPT (const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_SCRIPT(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
@@ -292,24 +283,24 @@ bool VectorEthPlugin::m_VECTOR_ETH_SCRIPT (const std::string &args, std::stop_to
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const VectorEth> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const VectorEth> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const VectorEth> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_read(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic VectorEth messages.
-  *
-  * \param[in] args  "time1 val1 [dst1], time2 val2 [dst2], ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic VectorEth messages.
+ *
+ * \param[in] args  "time1 val1 [dst1], time2 val2 [dst2], ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_CYCLIC (const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_CYCLIC(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
@@ -320,30 +311,27 @@ bool VectorEthPlugin::m_VECTOR_ETH_CYCLIC (const std::string &args, std::stop_to
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief DEVICES command implementation; list every channel currently visible to XL-API,
-  *        independent of Vector Hardware Config and of whether anything is currently open.
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success (even if zero channels are found), false on a malformed call
-*/
+ * \brief DEVICES command implementation; list every channel currently visible to XL-API,
+ *        independent of Vector Hardware Config and of whether anything is currently open.
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success (even if zero channels are found), false on a malformed call
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_DEVICES (const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_DEVICES(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -361,8 +349,7 @@ bool VectorEthPlugin::m_VECTOR_ETH_DEVICES (const std::string &args, std::stop_t
     LOG_SEP();
 
     uint32_t idx = 0;
-    for (const auto& ch : vChannels)
-    {
+    for (const auto &ch : vChannels) {
         char line[160];
         std::snprintf(line, sizeof(line), "%-4u %-31s %-11s %-5u %-5u %-10u %-6s %s",
                       idx++,
@@ -390,7 +377,7 @@ bool VectorEthPlugin::m_VECTOR_ETH_DEVICES (const std::string &args, std::stop_t
 //            PRIVATE INTERFACES IMPLEMENTATION                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-int VectorEthPlugin::ustring_icompare(const std::string& a, const char* b)
+int VectorEthPlugin::ustring_icompare(const std::string &a, const char *b)
 {
     std::string strUpperA(a);
     std::string strUpperB(b);
@@ -401,17 +388,16 @@ int VectorEthPlugin::ustring_icompare(const std::string& a, const char* b)
     return strUpperA.compare(strUpperB);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse FILTER's "[src=<mac>] [type=<ethertype>]" argument string - see
-  *        VectorEthPlugin::m_ParseFilter()'s doc comment on vector_eth_plugin.hpp for the full grammar.
-*/
+ * \brief Parse FILTER's "[src=<mac>] [type=<ethertype>]" argument string - see
+ *        VectorEthPlugin::m_ParseFilter()'s doc comment on vector_eth_plugin.hpp for the full grammar.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_ParseFilter(const std::string& strFilter,
-                                    std::optional<VectorEth::MacAddress>& outSrc,
-                                    std::optional<uint16_t>&              outType) const
+bool VectorEthPlugin::m_ParseFilter(const std::string &strFilter,
+                                    std::optional<VectorEth::MacAddress> &outSrc,
+                                    std::optional<uint16_t> &outType) const
 {
     std::vector<std::string> vstrTokens;
     ustring::tokenize(strFilter, ' ', vstrTokens);
@@ -422,8 +408,7 @@ bool VectorEthPlugin::m_ParseFilter(const std::string& strFilter,
         ustring::tokenize(strFilter, ',', vstrTokens);
     }
 
-    for (const auto& strToken : vstrTokens)
-    {
+    for (const auto &strToken : vstrTokens) {
         if (strToken.empty()) {
             continue;
         }
@@ -468,28 +453,27 @@ bool VectorEthPlugin::m_ParseFilter(const std::string& strFilter,
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Open the VectorEth channel with the current configuration parameters.
-  *
-  *        Configuration that must be known at open time (PHY config - see
-  *        VectorEth::PhyConfig) is applied via setters BEFORE open()/openDirect()
-  *        is called, since VectorEth (like Vector) reads its m_phyConfig at
-  *        channel-activation time - see uVectorEth.hpp's m_OpenWithMask_locked().
-  *        Addressing (dst MAC/EtherType/RX filters) has no such ordering
-  *        constraint but is applied the same way for consistency.
-  *
-  *        Returns nullptr if the channel could not be opened (already logged by the driver).
-*/
+ * \brief Open the VectorEth channel with the current configuration parameters.
+ *
+ *        Configuration that must be known at open time (PHY config - see
+ *        VectorEth::PhyConfig) is applied via setters BEFORE open()/openDirect()
+ *        is called, since VectorEth (like Vector) reads its m_phyConfig at
+ *        channel-activation time - see uVectorEth.hpp's m_OpenWithMask_locked().
+ *        Addressing (dst MAC/EtherType/RX filters) has no such ordering
+ *        constraint but is applied the same way for consistency.
+ *
+ *        Returns nullptr if the channel could not be opened (already logged by the driver).
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-std::shared_ptr<VectorEth> VectorEthPlugin::m_OpenAndConfigure (void) const
+std::shared_ptr<VectorEth> VectorEthPlugin::m_OpenAndConfigure(void) const
 {
     auto shpDriver = std::make_shared<VectorEth>();
 
     shpDriver->setIdentityLabel(isUsingDirectSelection() ? (m_strDeviceHw.empty() ? m_strDeviceName : m_strDeviceHw)
-                                                          : m_strAppName);
+                                                         : m_strAppName);
     shpDriver->setInstanceName(m_strInstanceName);
     shpDriver->setDefaultDestMac(m_destMac);
     shpDriver->setDefaultEtherType(m_u16EtherType);
@@ -508,7 +492,7 @@ std::shared_ptr<VectorEth> VectorEthPlugin::m_OpenAndConfigure (void) const
         sel.i32HwIndex      = m_bDeviceHwIndexSet ? static_cast<int32_t>(m_u32DeviceHwIndex) : -1;
         sel.i32HwChannel    = m_bDeviceHwChannelSet ? static_cast<int32_t>(m_u32DeviceHwChannel) : -1;
 
-        sts = shpDriver->openDirect(sel);
+        sts                 = shpDriver->openDirect(sel);
 
         if (sts != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;

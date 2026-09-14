@@ -3,16 +3,15 @@
 
 #include "uSharedScriptRegex.hpp"
 
-#include <string>
 #include <regex>
+#include <string>
 
-namespace usyntax
-{
+namespace usyntax {
 
 // validate a load plugin expression
 // Supports plain names (UART) and instanced names (UART:1, UART:2, …).
 // The instance suffix :N is a positive integer with no leading zeros.
-inline bool m_isLoadPlugin(const std::string& expression )
+inline bool m_isLoadPlugin(const std::string &expression)
 {
     static const std::regex pattern(
         "^LOAD_PLUGIN\\s+" SCRIPT_RX_PLUGIN_TYPE_NAME SCRIPT_RX_INSTANCE_SUFFIX
@@ -21,7 +20,7 @@ inline bool m_isLoadPlugin(const std::string& expression )
 }
 
 // validate a constant macro expression
-inline bool m_isConstantMacro(const std::string& expression )
+inline bool m_isConstantMacro(const std::string &expression)
 {
     static const std::regex pattern("^" SCRIPT_RX_IDENT "\\s*:=\\s*\\S.*$");
     return std::regex_match(expression, pattern);
@@ -29,7 +28,7 @@ inline bool m_isConstantMacro(const std::string& expression )
 
 // validate an array macro expression:  NAME [= elem1, elem2, ...
 // At least one element (non-empty content after [=) is required.
-inline bool m_isArrayMacro(const std::string& expression)
+inline bool m_isArrayMacro(const std::string &expression)
 {
     static const std::regex pattern("^" SCRIPT_RX_IDENT "\\s*\\[=\\s*\\S.*$");
     return std::regex_match(expression, pattern);
@@ -37,7 +36,7 @@ inline bool m_isArrayMacro(const std::string& expression)
 
 // validate a variable macro expression
 // Supports plain plugin names and instanced names (UART:1.READ).
-inline bool m_isVariableMacro(const std::string& expression )
+inline bool m_isVariableMacro(const std::string &expression)
 {
     static const std::regex pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX
@@ -49,7 +48,7 @@ inline bool m_isVariableMacro(const std::string& expression )
 // This form is recognised only when VARIABLE_MACRO does NOT match — i.e. the
 // right-hand side is not a PLUGIN.COMMAND pattern.  The value may be empty
 // (bare "name ?=") which initialises the macro to an empty string.
-inline bool m_isVarMacroInit(const std::string& expression)
+inline bool m_isVarMacroInit(const std::string &expression)
 {
     static const std::regex pattern("^" SCRIPT_RX_IDENT "\\s*\\?=(\\s.*)?$");
     return std::regex_match(expression, pattern);
@@ -67,7 +66,7 @@ inline bool m_isVarMacroInit(const std::string& expression)
 // Examples (after $macro expansion):
 //   out ?= FORMAT Hello world from Paris | I salute from %3 to the %1 with %0
 //   out ?= FORMAT $words | %2 %1 %0
-inline bool m_isFormatStmt(const std::string& expression)
+inline bool m_isFormatStmt(const std::string &expression)
 {
     // name ?= FORMAT <something> | <something>
     // Both sides of | must have at least one non-ws character.
@@ -90,7 +89,7 @@ inline bool m_isFormatStmt(const std::string& expression)
 //   result ?= MATH $x * $y + 1
 //   result ?= MATH sqrt($val) + pi
 //   result ?= MATH ($a + $b) / 2
-inline bool m_isMathStmt(const std::string& expression)
+inline bool m_isMathStmt(const std::string &expression)
 {
     static const std::regex pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*MATH\\s+\\S.*$");
@@ -117,23 +116,23 @@ inline bool m_isMathStmt(const std::string& expression)
 //   cfg ?= BITSTREAM 64:1:1 34:4:7 19:2:3
 //   cfg ?= BITSTREAM $off:$len:$val | REVERSE_BIT
 //   cfg ?= BYTESTREAM 0:8:0xAA 1:4:3 | REVERSE_BYTE
-inline bool m_isBitstreamStmt(const std::string& expression)
+inline bool m_isBitstreamStmt(const std::string &expression)
 {
     static const std::string tok =
         std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
-    static const std::string field  = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
-    static const std::regex  pattern(
+    static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
+    static const std::regex pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*BITSTREAM\\s+" + field +
         "(?:\\s+" + field + ")*(?:\\s*\\|\\s*(?:REVERSE_BIT|REVERSE_BYTE)\\s*)?$");
     return std::regex_match(expression, pattern);
 }
 
-inline bool m_isBytestreamStmt(const std::string& expression)
+inline bool m_isBytestreamStmt(const std::string &expression)
 {
     static const std::string tok =
         std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
-    static const std::string field  = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
-    static const std::regex  pattern(
+    static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
+    static const std::regex pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*BYTESTREAM\\s+" + field +
         "(?:\\s+" + field + ")*(?:\\s*\\|\\s*(?:REVERSE_BIT|REVERSE_BYTE)\\s*)?$");
     return std::regex_match(expression, pattern);
@@ -169,22 +168,22 @@ inline bool m_isBytestreamStmt(const std::string& expression)
 //   v ?= 1122334455667788 | BITSTREAMVAL 64:1
 //   v ?= $frame | BITSTREAMVAL $off:$len
 //   v ?= $frame | BYTESTREAMVAL 2:5:3
-inline bool m_isBitstreamValStmt(const std::string& expression)
+inline bool m_isBitstreamValStmt(const std::string &expression)
 {
     static const std::string tok =
         std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
     static const std::string field = tok + "\\s*:\\s*" + tok;
-    static const std::regex  pattern(
+    static const std::regex pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*\\S[^|]*\\|\\s*BITSTREAMVAL\\s+" + field + "\\s*$");
     return std::regex_match(expression, pattern);
 }
 
-inline bool m_isBytestreamValStmt(const std::string& expression)
+inline bool m_isBytestreamValStmt(const std::string &expression)
 {
     static const std::string tok =
         std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
     static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
-    static const std::regex  pattern(
+    static const std::regex pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*\\S[^|]*\\|\\s*BYTESTREAMVAL\\s+" + field + "\\s*$");
     return std::regex_match(expression, pattern);
 }
@@ -216,23 +215,23 @@ inline bool m_isBytestreamValStmt(const std::string& expression)
 //   v [= 1122334455667788 | BITSTREAMVAL 64:1
 //   v [= $frame | BITSTREAMVAL 64:1 34:4 19:2
 //   v [= $frame | BYTESTREAMVAL 0:7:8 1:7:8 2:7:8
-inline bool m_isBitstreamValArrayStmt(const std::string& expression)
+inline bool m_isBitstreamValArrayStmt(const std::string &expression)
 {
     static const std::string tok =
         std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
     static const std::string field = tok + "\\s*:\\s*" + tok;
-    static const std::regex  pattern(
+    static const std::regex pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\[=\\s*\\S[^|]*\\|\\s*BITSTREAMVAL\\s+" + field +
         "(?:\\s+" + field + ")*\\s*$");
     return std::regex_match(expression, pattern);
 }
 
-inline bool m_isBytestreamValArrayStmt(const std::string& expression)
+inline bool m_isBytestreamValArrayStmt(const std::string &expression)
 {
     static const std::string tok =
         std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
     static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
-    static const std::regex  pattern(
+    static const std::regex pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\[=\\s*\\S[^|]*\\|\\s*BYTESTREAMVAL\\s+" + field +
         "(?:\\s+" + field + ")*\\s*$");
     return std::regex_match(expression, pattern);
@@ -301,17 +300,18 @@ inline bool m_isBytestreamValArrayStmt(const std::string& expression)
 //   arr   ?= GENERATOR 200 ms 1,7,$x,$y,8,9 | SAWTOOTH
 //   arr   ?= GENERATOR 200 ms $array        | RANDOM             (array [= 1,7,9,$x,$y)
 //   lvl   ?= GENERATOR STOP
-inline bool m_isGeneratorStmt(const std::string& expression)
+inline bool m_isGeneratorStmt(const std::string &expression)
 {
     static const std::string tok       = std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
     static const std::string range     = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok + "(?:\\s*:\\s*" + tok + ")?";
     static const std::string arrayList = tok + "(?:\\s*,\\s*" + tok + ")*";
-    static const std::regex  pattern(
+    static const std::regex pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*GENERATOR\\s+"
         "(?:STOP"
-        "|[1-9][0-9]*\\s+" SCRIPT_RX_TIME_UNITS "\\s+(?:" + range + "|" + arrayList + ")" +
-          "\\s*\\|\\s*(?:LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)"
-          "(?:\\s*\\|\\s*HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?)?"
+        "|[1-9][0-9]*\\s+" SCRIPT_RX_TIME_UNITS "\\s+(?:" +
+        range + "|" + arrayList + ")" +
+        "\\s*\\|\\s*(?:LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)"
+        "(?:\\s*\\|\\s*HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?)?"
         ")\\s*$");
     return std::regex_match(expression, pattern);
 }
@@ -322,7 +322,7 @@ inline bool m_isGeneratorStmt(const std::string& expression)
 // least one generator to be running at that point in the script — enforced
 // at validation time by the same START/STOP pairing pass m_isGeneratorStmt's
 // STOP form uses (see ScriptValidator's generator-pairing validation).
-inline bool m_isGeneratorStopAll(const std::string& expression)
+inline bool m_isGeneratorStopAll(const std::string &expression)
 {
     static const std::regex pattern("^GENERATOR\\s+STOP\\s+ALL$");
     return std::regex_match(expression, pattern);
@@ -330,7 +330,7 @@ inline bool m_isGeneratorStopAll(const std::string& expression)
 
 // validate simple command
 // Supports plain plugin names (UART.SCRIPT) and instanced names (UART:1.SCRIPT).
-inline bool m_isCommand(const std::string& expression )
+inline bool m_isCommand(const std::string &expression)
 {
     static const std::regex pattern(
         "^" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.(" SCRIPT_RX_UPPER_IDENT ")\\s*.*$");
@@ -338,14 +338,14 @@ inline bool m_isCommand(const std::string& expression )
 }
 
 // validate "IF .. GOTO .." or "GOTO .." conditions
-inline bool m_isIfGoToCondition(const std::string& expression)
+inline bool m_isIfGoToCondition(const std::string &expression)
 {
     static const std::regex pattern("^(?:IF\\s+\\S(?:.*\\S)?\\s+)?GOTO\\s+" SCRIPT_RX_IDENT "$");
     return std::regex_match(expression, pattern);
 }
 
 // validate LABEL
-inline bool m_isLabel(const std::string& expression )
+inline bool m_isLabel(const std::string &expression)
 {
     static const std::regex pattern("^LABEL\\s+" SCRIPT_RX_IDENT "$");
     return std::regex_match(expression, pattern);
@@ -378,7 +378,7 @@ inline bool m_isLabel(const std::string& expression )
 //       i ?= REPEAT lbl 0, $cfgs.SIZE, 2
 // Exact numeric parsing/typing and range-count validation happens in the validator;
 // this pattern only enforces the lexical shape (1 to 3 comma-separated tokens).
-inline bool m_isRepeat(const std::string& expression)
+inline bool m_isRepeat(const std::string &expression)
 {
     // Number-or-macro token shared by <begin>/<end>/<step>.
     static const std::string strNumTok =
@@ -395,28 +395,28 @@ inline bool m_isRepeat(const std::string& expression)
 }
 
 // validate END_REPEAT <label>
-inline bool m_isEndRepeat(const std::string& expression)
+inline bool m_isEndRepeat(const std::string &expression)
 {
     static const std::regex pattern("^END_REPEAT\\s+" SCRIPT_RX_IDENT "$");
     return std::regex_match(expression, pattern);
 }
 
 // validate BREAK <loop-label>
-inline bool m_isBreak(const std::string& expression)
+inline bool m_isBreak(const std::string &expression)
 {
     static const std::regex pattern("^BREAK\\s+" SCRIPT_RX_IDENT "$");
     return std::regex_match(expression, pattern);
 }
 
 // validate CONTINUE <loop-label>
-inline bool m_isContinue(const std::string& expression)
+inline bool m_isContinue(const std::string &expression)
 {
     static const std::regex pattern("^CONTINUE\\s+" SCRIPT_RX_IDENT "$");
     return std::regex_match(expression, pattern);
 }
 
 // validate PRINT [text]
-inline bool m_isPrint(const std::string& expression)
+inline bool m_isPrint(const std::string &expression)
 {
     static const std::regex pattern(R"(^PRINT(\s.*)?$)");
     return std::regex_match(expression, pattern);
@@ -425,7 +425,7 @@ inline bool m_isPrint(const std::string& expression)
 // validate DELAY <value> <unit>
 // <value> : positive integer (>= 1)
 // <unit>  : us | ms | sec   (case-sensitive)
-inline bool m_isDelay(const std::string& expression)
+inline bool m_isDelay(const std::string &expression)
 {
     static const std::regex pattern("^DELAY\\s+[1-9][0-9]*\\s+" SCRIPT_RX_TIME_UNITS "$");
     return std::regex_match(expression, pattern);
@@ -434,13 +434,12 @@ inline bool m_isDelay(const std::string& expression)
 // validate BREAKPOINT [label]
 // A bare BREAKPOINT (no label) or BREAKPOINT followed by any text used
 // as a label.  The label may contain $macros — expanded at runtime.
-inline bool m_isBreakpoint(const std::string& expression)
+inline bool m_isBreakpoint(const std::string &expression)
 {
     static const std::regex pattern(R"(^BREAKPOINT(\s.*)?$)");
     return std::regex_match(expression, pattern);
 }
 
-}; //namespace usyntax
+}; // namespace usyntax
 
-
-#endif //U_SCRIPT_SYNTAX_HPP
+#endif // U_SCRIPT_SYNTAX_HPP

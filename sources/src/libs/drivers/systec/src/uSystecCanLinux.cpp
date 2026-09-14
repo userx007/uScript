@@ -1,51 +1,49 @@
 #include "uLogger.hpp"
 #include "uSystecCan.hpp"
 
-#include <errno.h>
-#include <net/if.h>              // if_nametoindex, ifreq
-#include <poll.h>
-#include <stdint.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <algorithm>
 #include <chrono>
 #include <compare>
 #include <cstring>
+#include <errno.h>
 #include <fstream>
+#include <linux/can.h>     // can_frame, CAN_RAW, CAN_MTU …
+#include <linux/can/raw.h> // SOL_CAN_RAW, CAN_RAW_FILTER
 #include <mutex>
+#include <net/if.h> // if_nametoindex, ifreq
+#include <poll.h>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #include <vector>
-#include <linux/can.h>           // can_frame, CAN_RAW, CAN_MTU …
-#include <linux/can/raw.h>       // SOL_CAN_RAW, CAN_RAW_FILTER
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "SYSTEC_DRV  |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "SYSTEC_DRV  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // OPEN / CLOSE
 // ============================================================================
 
-SYSTECCAN::Status SYSTECCAN::open(const std::string& strIface)
+SYSTECCAN::Status SYSTECCAN::open(const std::string &strIface)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (strIface.empty())
-    {
+    if (strIface.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Invalid parameter: empty interface name"));
         return Status::INVALID_PARAM;
@@ -53,8 +51,7 @@ SYSTECCAN::Status SYSTECCAN::open(const std::string& strIface)
 
     // Create a raw SocketCAN socket.
     m_iHandle = ::socket(PF_CAN, SOCK_RAW, CAN_RAW);
-    if (m_iHandle < 0)
-    {
+    if (m_iHandle < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("socket(PF_CAN) failed, errno:"); LOG_INT(err));
@@ -63,8 +60,7 @@ SYSTECCAN::Status SYSTECCAN::open(const std::string& strIface)
 
     // Resolve the interface name to an index.
     const unsigned int ifIdx = ::if_nametoindex(strIface.c_str());
-    if (ifIdx == 0)
-    {
+    if (ifIdx == 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("if_nametoindex("); LOG_STRING(strIface.c_str());
@@ -84,13 +80,12 @@ SYSTECCAN::Status SYSTECCAN::open(const std::string& strIface)
 
     // Bind the socket to the interface.
     struct sockaddr_can addr = {};
-    addr.can_family  = AF_CAN;
-    addr.can_ifindex = static_cast<int>(ifIdx);
+    addr.can_family          = AF_CAN;
+    addr.can_ifindex         = static_cast<int>(ifIdx);
 
     if (::bind(m_iHandle,
-               reinterpret_cast<struct sockaddr*>(&addr),
-               sizeof(addr)) < 0)
-    {
+               reinterpret_cast<struct sockaddr *>(&addr),
+               sizeof(addr)) < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("bind() failed for "); LOG_STRING(strIface.c_str());
@@ -119,8 +114,7 @@ SYSTECCAN::Status SYSTECCAN::open(const std::string& strIface)
     //   never send the reply.
     int recv_own = 0;
     if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS,
-                     &recv_own, sizeof(recv_own)) < 0)
-    {
+                     &recv_own, sizeof(recv_own)) < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("CAN_RAW_RECV_OWN_MSGS=0 failed, errno:"); LOG_INT(err));
@@ -138,13 +132,11 @@ SYSTECCAN::Status SYSTECCAN::open(const std::string& strIface)
     return Status::SUCCESS;
 }
 
-
 SYSTECCAN::Status SYSTECCAN::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (m_iHandle >= 0)
-    {
+    if (m_iHandle >= 0) {
         ::close(m_iHandle);
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("SYSTEC CAN socket closed, handle:"); LOG_INT(m_iHandle));
@@ -156,23 +148,20 @@ SYSTECCAN::Status SYSTECCAN::close()
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // FILTER CONFIGURATION
 // ============================================================================
 
-SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter>& filters)
+SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter> &filters)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (m_iHandle < 0)
-    {
+    if (m_iHandle < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_filters: socket not open"));
         return Status::PORT_ACCESS;
     }
 
-    if (filters.empty())
-    {
+    if (filters.empty()) {
         // Accept everything.
         //
         // A 0-length CAN_RAW_FILTER list does NOT mean "no filtering" in
@@ -186,12 +175,11 @@ SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter>& filters)
         // filter that matches every id: can_id = 0, can_mask = 0, because
         // (frame_id & 0) == (0 & 0) is always true.
         struct can_filter acceptAllFilter = {};
-        acceptAllFilter.can_id  = 0;
-        acceptAllFilter.can_mask = 0;
+        acceptAllFilter.can_id            = 0;
+        acceptAllFilter.can_mask          = 0;
 
         if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
-                         &acceptAllFilter, sizeof(acceptAllFilter)) < 0)
-        {
+                         &acceptAllFilter, sizeof(acceptAllFilter)) < 0) {
             const int err = errno;
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("setsockopt(CAN_RAW_FILTER, accept-all) failed, errno:");
@@ -207,18 +195,16 @@ SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter>& filters)
     // Convert to kernel struct can_filter array.
     std::vector<struct can_filter> kFilters;
     kFilters.reserve(filters.size());
-    for (const auto& f : filters)
-    {
+    for (const auto &f : filters) {
         struct can_filter kf = {};
-        kf.can_id   = f.can_id;
-        kf.can_mask = f.can_mask;
+        kf.can_id            = f.can_id;
+        kf.can_mask          = f.can_mask;
         kFilters.push_back(kf);
     }
 
     if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
                      kFilters.data(),
-                     static_cast<socklen_t>(kFilters.size() * sizeof(struct can_filter))) < 0)
-    {
+                     static_cast<socklen_t>(kFilters.size() * sizeof(struct can_filter))) < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("setsockopt(CAN_RAW_FILTER) failed, errno:"); LOG_INT(err));
@@ -234,7 +220,6 @@ SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter>& filters)
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // INTERNAL READ PRIMITIVE
 // Receives one classic CAN frame and copies its payload into buffer.
@@ -243,12 +228,11 @@ SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter>& filters)
 // ============================================================================
 
 SYSTECCAN::Status SYSTECCAN::timeout_read(uint32_t u32ReadTimeout,
-                              std::span<uint8_t> buffer,
-                              size_t& szBytesRead,
-                              std::stop_token stop_tok) const
+                                          std::span<uint8_t> buffer,
+                                          size_t &szBytesRead,
+                                          std::stop_token stop_tok) const
 {
-    if (buffer.empty())
-    {
+    if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_read: invalid parameter"));
         return Status::INVALID_PARAM;
     }
@@ -256,54 +240,47 @@ SYSTECCAN::Status SYSTECCAN::timeout_read(uint32_t u32ReadTimeout,
     szBytesRead = 0;
 
     struct pollfd sPollFd;
-    sPollFd.fd      = m_iHandle;
-    sPollFd.events  = POLLIN;
-    sPollFd.revents = 0;
+    sPollFd.fd                 = m_iHandle;
+    sPollFd.events             = POLLIN;
+    sPollFd.revents            = 0;
 
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite = (u32ReadTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+    const bool bInfinite       = (u32ReadTimeout == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    int iPollResult = 0;
-    while (true)
-    {
-        if (stop_tok.stop_requested())
-        {
+    int iPollResult            = 0;
+    while (true) {
+        if (stop_tok.stop_requested()) {
             return Status::READ_TIMEOUT;
         }
 
         int iSliceMs = kPollSliceMs;
-        if (!bInfinite)
-        {
+        if (!bInfinite) {
             const auto remaining = tDeadline - std::chrono::steady_clock::now();
-            if (remaining <= std::chrono::milliseconds(0))
-            {
+            if (remaining <= std::chrono::milliseconds(0)) {
                 return Status::READ_TIMEOUT;
             }
             iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                          std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         iPollResult = ::poll(&sPollFd, 1, iSliceMs);
-        if (iPollResult < 0)
-        {
+        if (iPollResult < 0) {
             const int err = errno;
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
             return Status::READ_ERROR;
         }
-        if (iPollResult > 0)
-        {
+        if (iPollResult > 0) {
             break;
         }
     }
 
     struct can_frame frame = {};
-    const ssize_t nbytes = ::read(m_iHandle, &frame, sizeof(frame));
+    const ssize_t nbytes   = ::read(m_iHandle, &frame, sizeof(frame));
 
-    if (nbytes != static_cast<ssize_t>(CAN_MTU))
-    {
+    if (nbytes != static_cast<ssize_t>(CAN_MTU)) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("read() returned "); LOG_INT(static_cast<int>(nbytes));
@@ -326,7 +303,6 @@ SYSTECCAN::Status SYSTECCAN::timeout_read(uint32_t u32ReadTimeout,
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // INTERNAL WRITE PRIMITIVE
 // Packs buffer into a classic CAN frame payload and transmits it.
@@ -335,27 +311,25 @@ SYSTECCAN::Status SYSTECCAN::timeout_read(uint32_t u32ReadTimeout,
 // ============================================================================
 
 SYSTECCAN::Status SYSTECCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
-                               std::span<const uint8_t> buffer,
-                               size_t& szBytesWritten,
-                               uint32_t u32TxId) const
+                                           std::span<const uint8_t> buffer,
+                                           size_t &szBytesWritten,
+                                           uint32_t u32TxId) const
 {
-    if (buffer.empty() || buffer.size() > CAN_DRV_MAX_DLEN)
-    {
+    if (buffer.empty() || buffer.size() > CAN_DRV_MAX_DLEN) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Invalid parameter: buffer empty or exceeds CAN_DRV_MAX_DLEN (8 — classic CAN only)"));
         return Status::INVALID_PARAM;
     }
 
-    szBytesWritten = 0;
+    szBytesWritten         = 0;
 
     struct can_frame frame = {};
-    frame.can_id  = u32TxId;
-    frame.can_dlc = static_cast<uint8_t>(buffer.size());
+    frame.can_id           = u32TxId;
+    frame.can_dlc          = static_cast<uint8_t>(buffer.size());
     std::memcpy(frame.data, buffer.data(), buffer.size());
 
     const ssize_t nbytes = ::write(m_iHandle, &frame, CAN_MTU);
-    if (nbytes != static_cast<ssize_t>(CAN_MTU))
-    {
+    if (nbytes != static_cast<ssize_t>(CAN_MTU)) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("write(can_frame) failed, errno:"); LOG_INT(err));
@@ -370,7 +344,6 @@ SYSTECCAN::Status SYSTECCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
 
     return Status::SUCCESS;
 }
-
 
 // ============================================================================
 // SYS TEC HARDWARE EXTRAS — plain sysfs file I/O, no socket required.
@@ -387,30 +360,28 @@ SYSTECCAN::Status SYSTECCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
 
 namespace {
 
-std::string sysfs_device_path(const std::string& strIface, const char* pszAttr)
+std::string sysfs_device_path(const std::string &strIface, const char *pszAttr)
 {
     return "/sys/class/net/" + strIface + "/device/" + pszAttr;
 }
 
-std::string sysfs_iface_path(const std::string& strIface, const char* pszAttr)
+std::string sysfs_iface_path(const std::string &strIface, const char *pszAttr)
 {
     return "/sys/class/net/" + strIface + "/" + pszAttr;
 }
 
 /** @brief Read a sysfs attribute file and parse it as an unsigned integer (0=auto base). */
-SYSTECCAN::Status sysfs_read_uint(const std::string& strPath, uint32_t& u32Out)
+SYSTECCAN::Status sysfs_read_uint(const std::string &strPath, uint32_t &u32Out)
 {
     std::ifstream file(strPath);
-    if (!file.is_open())
-    {
+    if (!file.is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs read: cannot open"); LOG_STRING(strPath.c_str()));
         return SYSTECCAN::Status::PORT_ACCESS;
     }
 
     unsigned long ulValue = 0;
     file >> ulValue;
-    if (file.fail())
-    {
+    if (file.fail()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs read: malformed value in"); LOG_STRING(strPath.c_str()));
         return SYSTECCAN::Status::READ_ERROR;
     }
@@ -420,19 +391,17 @@ SYSTECCAN::Status sysfs_read_uint(const std::string& strPath, uint32_t& u32Out)
 }
 
 /** @brief Write an unsigned integer (decimal) to a sysfs attribute file. */
-SYSTECCAN::Status sysfs_write_uint(const std::string& strPath, uint32_t u32Value)
+SYSTECCAN::Status sysfs_write_uint(const std::string &strPath, uint32_t u32Value)
 {
     std::ofstream file(strPath);
-    if (!file.is_open())
-    {
+    if (!file.is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs write: cannot open"); LOG_STRING(strPath.c_str()));
         return SYSTECCAN::Status::PORT_ACCESS;
     }
 
     file << u32Value;
     file.flush();
-    if (file.fail())
-    {
+    if (file.fail()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs write: failed for"); LOG_STRING(strPath.c_str()));
         return SYSTECCAN::Status::WRITE_ERROR;
     }
@@ -442,82 +411,78 @@ SYSTECCAN::Status sysfs_write_uint(const std::string& strPath, uint32_t u32Value
 
 } // anonymous namespace
 
-
-SYSTECCAN::Status SYSTECCAN::hw_get_devicenr(const std::string& strIface, uint32_t& u32DeviceNr)
+SYSTECCAN::Status SYSTECCAN::hw_get_devicenr(const std::string &strIface, uint32_t &u32DeviceNr)
 {
     return sysfs_read_uint(sysfs_device_path(strIface, "devicenr"), u32DeviceNr);
 }
 
-SYSTECCAN::Status SYSTECCAN::hw_set_devicenr(const std::string& strIface, uint32_t u32DeviceNr)
+SYSTECCAN::Status SYSTECCAN::hw_set_devicenr(const std::string &strIface, uint32_t u32DeviceNr)
 {
     // Kernel side validates 0-254 too (see systec_can_sysfs_set_devicenr());
     // checked here as well so the caller gets INVALID_PARAM rather than a
     // generic write failure.
-    if (u32DeviceNr > 254)
-    {
+    if (u32DeviceNr > 254) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("hw_set_devicenr: value out of range [0-254]"));
         return Status::INVALID_PARAM;
     }
     return sysfs_write_uint(sysfs_device_path(strIface, "devicenr"), u32DeviceNr);
 }
 
-SYSTECCAN::Status SYSTECCAN::hw_reset(const std::string& strIface)
+SYSTECCAN::Status SYSTECCAN::hw_reset(const std::string &strIface)
 {
     // Write-only trigger — any write causes systec_can.ko to issue
     // USBCAN_CMD_RESET_HW to the device (see systec_can_sysfs_set_reset()).
     return sysfs_write_uint(sysfs_device_path(strIface, "reset"), 1);
 }
 
-SYSTECCAN::Status SYSTECCAN::hw_get_dual_channel(const std::string& strIface, bool& bDualChannel)
+SYSTECCAN::Status SYSTECCAN::hw_get_dual_channel(const std::string &strIface, bool &bDualChannel)
 {
-    uint32_t u32Val = 0;
+    uint32_t u32Val      = 0;
     const Status eStatus = sysfs_read_uint(sysfs_device_path(strIface, "dual_channel"), u32Val);
-    if (eStatus == Status::SUCCESS)
-    {
+    if (eStatus == Status::SUCCESS) {
         bDualChannel = (u32Val != 0);
     }
     return eStatus;
 }
 
-SYSTECCAN::Status SYSTECCAN::hw_get_status_timeout(const std::string& strIface, uint32_t& u32TimeoutMs)
+SYSTECCAN::Status SYSTECCAN::hw_get_status_timeout(const std::string &strIface, uint32_t &u32TimeoutMs)
 {
     return sysfs_read_uint(sysfs_device_path(strIface, "status_timeout"), u32TimeoutMs);
 }
 
-SYSTECCAN::Status SYSTECCAN::hw_set_status_timeout(const std::string& strIface, uint32_t u32TimeoutMs)
+SYSTECCAN::Status SYSTECCAN::hw_set_status_timeout(const std::string &strIface, uint32_t u32TimeoutMs)
 {
     return sysfs_write_uint(sysfs_device_path(strIface, "status_timeout"), u32TimeoutMs);
 }
 
-SYSTECCAN::Status SYSTECCAN::hw_get_high_performance(const std::string& strIface, bool& bHighPerformance)
+SYSTECCAN::Status SYSTECCAN::hw_get_high_performance(const std::string &strIface, bool &bHighPerformance)
 {
-    uint32_t u32Val = 0;
+    uint32_t u32Val      = 0;
     const Status eStatus = sysfs_read_uint(sysfs_device_path(strIface, "high_performance"), u32Val);
-    if (eStatus == Status::SUCCESS)
-    {
+    if (eStatus == Status::SUCCESS) {
         bHighPerformance = (u32Val != 0);
     }
     return eStatus;
 }
 
-SYSTECCAN::Status SYSTECCAN::hw_set_high_performance(const std::string& strIface, bool bHighPerformance)
+SYSTECCAN::Status SYSTECCAN::hw_set_high_performance(const std::string &strIface, bool bHighPerformance)
 {
     return sysfs_write_uint(sysfs_device_path(strIface, "high_performance"), bHighPerformance ? 1u : 0u);
 }
 
-SYSTECCAN::Status SYSTECCAN::hw_get_channel(const std::string& strIface, uint32_t& u32ChanNo)
+SYSTECCAN::Status SYSTECCAN::hw_get_channel(const std::string &strIface, uint32_t &u32ChanNo)
 {
     return sysfs_read_uint(sysfs_iface_path(strIface, "channel"), u32ChanNo);
 }
 
-SYSTECCAN::Status SYSTECCAN::hw_get_tx_timeout_ms(const std::string& strIface, uint32_t& u32TimeoutMs)
+SYSTECCAN::Status SYSTECCAN::hw_get_tx_timeout_ms(const std::string &strIface, uint32_t &u32TimeoutMs)
 {
     // Dual-channel units only — systec_can_sysfs_show_tx_timeout_ms() returns
     // -ENOSYS (surfaced here as a read failure) on single-channel units.
     return sysfs_read_uint(sysfs_iface_path(strIface, "tx_timeout_ms"), u32TimeoutMs);
 }
 
-SYSTECCAN::Status SYSTECCAN::hw_set_tx_timeout_ms(const std::string& strIface, uint32_t u32TimeoutMs)
+SYSTECCAN::Status SYSTECCAN::hw_set_tx_timeout_ms(const std::string &strIface, uint32_t u32TimeoutMs)
 {
     return sysfs_write_uint(sysfs_iface_path(strIface, "tx_timeout_ms"), u32TimeoutMs);
 }

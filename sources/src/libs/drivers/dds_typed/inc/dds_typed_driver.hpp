@@ -61,19 +61,20 @@
 class DdsTypedDriver : public ICommDriver
 {
 public:
-    struct Config {
-        uint32_t domainId = 0;
-        uint32_t participantId = 0; // see DdsDriver::Config::participantId's doc comment — identical mapping
-        bool useIpv6 = false;
+    struct Config
+    {
+        uint32_t domainId        = 0;
+        uint32_t participantId   = 0; // see DdsDriver::Config::participantId's doc comment — identical mapping
+        bool useIpv6             = false;
         std::string ifaceAddress = "0.0.0.0";
         std::string multicastInterface;
         std::string spdpMulticastGroup;
-        std::string participantName = "uScript-DDS-Typed";
-        uint8_t  ttl = 1;
-        uint32_t spdpPeriodMs = 2000;
-        uint32_t leaseDurationSec = 20;
-        bool     reliable = false;
-        uint32_t historyDepth = 32;
+        std::string participantName     = "uScript-DDS-Typed";
+        uint8_t ttl                     = 1;
+        uint32_t spdpPeriodMs           = 2000;
+        uint32_t leaseDurationSec       = 20;
+        bool reliable                   = false;
+        uint32_t historyDepth           = 32;
         uint32_t fragmentThresholdBytes = 1300;
         std::string strInstanceName;
         // .so paths loaded automatically by open(), in order, before the
@@ -82,17 +83,20 @@ public:
         std::vector<std::string> preloadPluginPaths;
     };
 
-    struct DiscoveredParticipantView {
+    struct DiscoveredParticipantView
+    {
         std::string guidHex;
         std::string name;
-        double      ageSec = 0.0;
+        double ageSec = 0.0;
     };
-    struct DiscoveredEndpointView {
+
+    struct DiscoveredEndpointView
+    {
         std::string guidHex;
         std::string topic;
         std::string typeName;
-        bool        isWriter = false;
-        bool        reliable = false;
+        bool isWriter = false;
+        bool reliable = false;
     };
 
     explicit DdsTypedDriver(Config config);
@@ -105,18 +109,18 @@ public:
     bool is_open() const override;
     CommDetails describeConnection(std::string_view xtra_params = {}) const override;
     ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                         std::string_view xtra_params = {},
-                                         std::stop_token stop_tok = {}) const override;
+                                        std::string_view xtra_params = {},
+                                        std::stop_token stop_tok     = {}) const override;
     ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                                       const ICommDriver::ReadOptions& options,
-                                       std::string_view xtra_params = {},
-                                       std::stop_token stop_tok = {}) const override;
+                                      const ICommDriver::ReadOptions &options,
+                                      std::string_view xtra_params = {},
+                                      std::stop_token stop_tok     = {}) const override;
 
     /// Parses one DDS_TYPED.CMD argument line — see class doc comment's
     /// command surface. Matches CommScriptCommandInterpreter<DdsTypedDriver>'s
     /// SendFunc signature exactly, same as DdsDriver::send().
     ICommDriver::WriteResult send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                   std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+                                  std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     /// Blocks on the most recently SUBSCRIBEd topic's queue, fed by that
     /// topic's Cyclone reader listener via the loaded type's encode() —
@@ -125,8 +129,8 @@ public:
     /// stop_tok cancellation contract (condition_variable_any native wait
     /// for the infinite case, a 200ms-slice retry loop otherwise).
     ICommDriver::ReadResult receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params,
-                                     std::stop_token stop_tok = {}) const;
+                                    const ICommDriver::ReadOptions &options, std::string_view xtra_params,
+                                    std::stop_token stop_tok = {}) const;
 
     std::vector<DiscoveredParticipantView> listParticipants() const;
     std::vector<DiscoveredEndpointView> listEndpoints() const;
@@ -134,39 +138,42 @@ public:
 private:
     Config m_config;
 
-    using DdsEntity = int32_t; // see DdsDriver.hpp's identical rationale for not including <dds/dds.h> here
+    using DdsEntity                           = int32_t; // see DdsDriver.hpp's identical rationale for not including <dds/dds.h> here
     static constexpr DdsEntity kInvalidEntity = -1;
 
-    DdsEntity m_domain = kInvalidEntity;
-    DdsEntity m_participant = kInvalidEntity;
-    DdsEntity m_biParticipantReader = kInvalidEntity;
-    DdsEntity m_biPublicationReader = kInvalidEntity;
-    DdsEntity m_biSubscriptionReader = kInvalidEntity;
+    DdsEntity m_domain                        = kInvalidEntity;
+    DdsEntity m_participant                   = kInvalidEntity;
+    DdsEntity m_biParticipantReader           = kInvalidEntity;
+    DdsEntity m_biPublicationReader           = kInvalidEntity;
+    DdsEntity m_biSubscriptionReader          = kInvalidEntity;
 
     std::string m_strIdentityLabel;
     std::string m_guidHex;
 
     // Opaque here on purpose (this header never includes DdsTypePluginAbi.h
     // or <dds/dds.h>) — the .cpp casts back to `const DdsTypeEntry*`.
-    using OpaqueTypeEntry = const void*;
+    using OpaqueTypeEntry = const void *;
 
-    struct LocalWriter {
-        DdsEntity topic = kInvalidEntity;
-        DdsEntity writer = kInvalidEntity;
+    struct LocalWriter
+    {
+        DdsEntity topic           = kInvalidEntity;
+        DdsEntity writer          = kInvalidEntity;
         OpaqueTypeEntry typeEntry = nullptr;
     };
-    struct LocalReader {
-        DdsEntity topic = kInvalidEntity;
-        DdsEntity reader = kInvalidEntity;
+
+    struct LocalReader
+    {
+        DdsEntity topic           = kInvalidEntity;
+        DdsEntity reader          = kInvalidEntity;
         OpaqueTypeEntry typeEntry = nullptr;
         mutable std::mutex queueMutex;
         mutable std::condition_variable_any queueCv;
         std::deque<std::string> queue;
     };
 
-    mutable std::mutex m_mutex; // guards everything below — types/handles are populated only via LOAD, but PUBLISH/SUBSCRIBE/LIST all read them
-    mutable std::vector<void*> m_loadedHandles;                     // dlopen() handles — kept open for this driver's lifetime, see class doc comment on UNLOAD
-    mutable std::map<std::string, OpaqueTypeEntry> m_typesByTopic;   // topic name -> DdsTypeEntry*, across every loaded plugin
+    mutable std::mutex m_mutex;                                    // guards everything below — types/handles are populated only via LOAD, but PUBLISH/SUBSCRIBE/LIST all read them
+    mutable std::vector<void *> m_loadedHandles;                   // dlopen() handles — kept open for this driver's lifetime, see class doc comment on UNLOAD
+    mutable std::map<std::string, OpaqueTypeEntry> m_typesByTopic; // topic name -> DdsTypeEntry*, across every loaded plugin
     mutable std::map<std::string, LocalWriter> m_localWriters;
     mutable std::map<std::string, std::shared_ptr<LocalReader>> m_localReaders;
 
@@ -174,16 +181,16 @@ private:
     mutable std::string m_strActiveTopic;
 
     std::string m_BuildDomainConfigXml() const; // identical field mapping to DdsDriver's — see that .cpp
-    bool m_LoadPlugin(const std::string& path) const;
-    DdsEntity m_EnsureLocalWriter(const std::string& topic) const;
-    std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string& topic) const;
+    bool m_LoadPlugin(const std::string &path) const;
+    DdsEntity m_EnsureLocalWriter(const std::string &topic) const;
+    std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;
 
-    bool m_Publish(const std::string& topic, const std::string& text) const;
-    bool m_Subscribe(const std::string& topic) const;
-    bool m_Unsubscribe(const std::string& topic) const;
+    bool m_Publish(const std::string &topic, const std::string &text) const;
+    bool m_Subscribe(const std::string &topic) const;
+    bool m_Unsubscribe(const std::string &topic) const;
     std::string m_BuildListText() const;
 
-    static void m_OnReaderDataAvailable(DdsEntity reader, void* arg);
+    static void m_OnReaderDataAvailable(DdsEntity reader, void *arg);
 };
 
 #endif // DDS_TYPED_DRIVER_HPP

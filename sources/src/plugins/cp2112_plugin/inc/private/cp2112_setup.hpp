@@ -11,26 +11,25 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "CP2112_P    |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR         "CP2112_P    |"
+#define LOG_HDR        LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  INI FILE CONFIGURATION ITEMS                               //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define ARTEFACTS_PATH  "ARTEFACTS_PATH"
-#define DEVICE_INDEX    "DEVICE_INDEX"
-#define I2C_CLOCK       "I2C_CLOCK"
-#define I2C_ADDRESS     "I2C_ADDRESS"
-#define READ_TIMEOUT    "READ_TIMEOUT"   
-#define SCRIPT_DELAY    "SCRIPT_DELAY"   
+#define ARTEFACTS_PATH "ARTEFACTS_PATH"
+#define DEVICE_INDEX   "DEVICE_INDEX"
+#define I2C_CLOCK      "I2C_CLOCK"
+#define I2C_ADDRESS    "I2C_ADDRESS"
+#define READ_TIMEOUT   "READ_TIMEOUT"
+#define SCRIPT_DELAY   "SCRIPT_DELAY"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  CONFIGURATION INTERFACES                                   //
@@ -38,14 +37,14 @@
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief processing of the plugin specific settings.
-  *
-  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
-  * same setter surface the CONFIG command uses so an ini file
-  * and a runtime CONFIG command are always interpreted identically
-*/
+ * \brief processing of the plugin specific settings.
+ *
+ * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+ * same setter surface the CONFIG command uses so an ini file
+ * and a runtime CONFIG command are always interpreted identically
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool CP2112Plugin::m_LocalSetParams(const PluginDataSet* ps)
+bool CP2112Plugin::m_LocalSetParams(const PluginDataSet *ps)
 {
     // Runtime instance identity for the GUI comm-dump panel (e.g. "CP2112:1"); falls back to the fixed plugin name if the
     // interpreter didn't supply one.
@@ -58,11 +57,11 @@ bool CP2112Plugin::m_LocalSetParams(const PluginDataSet* ps)
 
     PluginSettingsBinder sSettings;
     sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
-    sSettings.Bind(DEVICE_INDEX,   m_sIniValues.u8DeviceIndex);
-    sSettings.Bind(I2C_CLOCK,      m_sIniValues.u32I2cClockHz);
-    sSettings.Bind(I2C_ADDRESS,    m_sIniValues.u8I2cAddress);
-    sSettings.Bind(READ_TIMEOUT,   m_sIniValues.u32ReadTimeout);
-    sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
+    sSettings.Bind(DEVICE_INDEX, m_sIniValues.u8DeviceIndex);
+    sSettings.Bind(I2C_CLOCK, m_sIniValues.u32I2cClockHz);
+    sSettings.Bind(I2C_ADDRESS, m_sIniValues.u8I2cAddress);
+    sSettings.Bind(READ_TIMEOUT, m_sIniValues.u32ReadTimeout);
+    sSettings.Bind(SCRIPT_DELAY, m_sIniValues.u32ScriptDelay);
 
     // accumulate mode: matches the original getX() lambdas ("ok &= ...")
     const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
@@ -82,17 +81,17 @@ bool CP2112Plugin::m_LocalSetParams(const PluginDataSet* ps)
  * \param[in] args    space-separated key=value pairs
  *                    (x=device_index  c=i2c_clock_hz  a=i2c_address  r=read_tout  sd=script_delay)
  * \return true if processing succeeded, false otherwise
-*/
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename T>
-bool generic_cp2112_set_params (const T *pOwner, const std::string &args)
+bool generic_cp2112_set_params(const T *pOwner, const std::string &args)
 {
     static constexpr KVSetterEntry<T> table[] = {
-        { .key = "x",  .boolSetter = &T::setDeviceIndex  },
-        { .key = "c",  .boolSetter = &T::setI2cClockHz   },
-        { .key = "a",  .boolSetter = &T::setI2cAddress   },
-        { .key = "r",  .boolSetter = &T::setReadTimeout  },
-        { .key = "sd", .boolSetter = &T::setScriptDelay  },
+        {.key = "x", .boolSetter = &T::setDeviceIndex},
+        {.key = "c", .boolSetter = &T::setI2cClockHz},
+        {.key = "a", .boolSetter = &T::setI2cAddress},
+        {.key = "r", .boolSetter = &T::setReadTimeout},
+        {.key = "sd", .boolSetter = &T::setScriptDelay},
     };
 
     return generic_setup_params(pOwner, args, table, LT_HDR);

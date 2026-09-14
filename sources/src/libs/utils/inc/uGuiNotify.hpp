@@ -63,11 +63,12 @@
  * reaches the QProcess pipe immediately.
  */
 
+#include "ICommDumpProtocol.hpp"
+
 #include <cstdio>
 #include <cstdlib>
-#include <string>
 #include <pthread.h>
-#include "ICommDumpProtocol.hpp"
+#include <string>
 
 // ---------------------------------------------------------------------------
 // Global mode flag
@@ -84,8 +85,8 @@
 //   falls back to the SCRIPT_GUI_MODE environment variable so it works
 //   correctly from any DSO.
 // ---------------------------------------------------------------------------
-inline bool g_gui_mode = false;  /**< true  → GUI front-end mode (structured stdout)
-                                      false → normal CLI mode (no change to behaviour) */
+inline bool g_gui_mode = false; /**< true  → GUI front-end mode (structured stdout)
+                                     false → normal CLI mode (no change to behaviour) */
 
 // ---------------------------------------------------------------------------
 // Per-thread comm-script thread ID
@@ -114,7 +115,7 @@ inline bool g_gui_mode = false;  /**< true  → GUI front-end mode (structured s
 
 namespace gui_tls_detail {
 
-inline pthread_key_t  g_tid_key;
+inline pthread_key_t g_tid_key;
 inline pthread_once_t g_tid_once = PTHREAD_ONCE_INIT;
 
 inline void make_tid_key() noexcept
@@ -135,7 +136,7 @@ inline void set_gui_comm_tid(int tid) noexcept
 {
     pthread_once(&gui_tls_detail::g_tid_once, gui_tls_detail::make_tid_key);
     pthread_setspecific(gui_tls_detail::g_tid_key,
-        reinterpret_cast<void*>(static_cast<std::intptr_t>(tid)));
+                        reinterpret_cast<void *>(static_cast<std::intptr_t>(tid)));
 }
 
 // ---------------------------------------------------------------------------
@@ -191,7 +192,7 @@ inline void gui_notify_exec_comm(int lineNo) noexcept
 // Notify: comm-script about to start (→ load file into w2)
 // Called from CommScriptClient::execute() before runScript(), real exec only.
 // ---------------------------------------------------------------------------
-inline void gui_notify_load_comm(const std::string& path) noexcept
+inline void gui_notify_load_comm(const std::string &path) noexcept
 {
     if (!gui_mode_active()) {
         return;
@@ -212,7 +213,6 @@ inline void gui_notify_clear_comm() noexcept
     std::printf("\nGUI:CLEAR_COMM\n");
     std::fflush(stdout);
 }
-
 
 // ---------------------------------------------------------------------------
 // Notify: interactive shell session starting (→ open terminal panel w4)
@@ -261,8 +261,9 @@ inline void gui_notify_shell_exit() noexcept
     // reverting onProcessOutput() to normal protocol-dispatch mode.
     char buf[64];
     while (std::fgets(buf, sizeof(buf), stdin)) {
-        if (std::strncmp(buf, "SHELL_DONE", 10) == 0)
+        if (std::strncmp(buf, "SHELL_DONE", 10) == 0) {
             break;
+        }
     }
 }
 
@@ -331,7 +332,7 @@ inline void gui_notify_error_comm(int lineNo) noexcept
 // The GUI opens a new tab labelled "<filename> #<tid>" with a ● live marker,
 // or reuses an existing finished tab for the same tid.
 // ---------------------------------------------------------------------------
-inline void gui_notify_load_comm_t(int tid, const std::string& path) noexcept
+inline void gui_notify_load_comm_t(int tid, const std::string &path) noexcept
 {
     if (!gui_mode_active()) {
         return;
@@ -396,18 +397,18 @@ inline void gui_notify_clear_comm_t(int tid) noexcept
 // Safe to call at high frequency: this is a no-op (single bool check) in
 // non-GUI mode, same as every other gui_notify_*() function.
 // ---------------------------------------------------------------------------
-inline void gui_notify_comm_dump(const std::string& pluginName,
-                                  const CommDetails& details,
-                                  CommDir dir,
-                                  const uint8_t* data,
-                                  uint32_t dataLen) noexcept
+inline void gui_notify_comm_dump(const std::string &pluginName,
+                                 const CommDetails &details,
+                                 CommDir dir,
+                                 const uint8_t *data,
+                                 uint32_t dataLen) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    const int64_t timestampUs = commdump_now_us();
+    const int64_t timestampUs         = commdump_now_us();
     const std::vector<uint8_t> packed = commdump_pack(timestampUs, pluginName, details, dir, data, dataLen);
-    const std::string b64 = commdump_base64_encode(packed);
+    const std::string b64             = commdump_base64_encode(packed);
     std::printf("\nGUI:COMM_DUMP:%s\n", b64.c_str());
     std::fflush(stdout);
 }

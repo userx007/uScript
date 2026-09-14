@@ -1,6 +1,7 @@
+#include "dspkspi_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
-#include "dspkspi_plugin.hpp"
 #include "dspkspi_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -15,10 +16,10 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 
@@ -26,54 +27,48 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED DSPKSPIPlugin *pluginEntry()
 {
-    EXPORTED DSPKSPIPlugin* pluginEntry()
-    {
-        return new DSPKSPIPlugin();
-    }
-
-    EXPORTED void pluginExit( DSPKSPIPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
-    }
+    return new DSPKSPIPlugin();
 }
 
+EXPORTED void pluginExit(DSPKSPIPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
+    }
+}
+}
 
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if the plugin initialization fails.
-  *
-  * \note Usage example:
-  *       DSPKSPI.INFO
-  *
-  * \param[in] args  empty string expected
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if the plugin initialization fails.
+ *
+ * \note Usage example:
+ *       DSPKSPI.INFO
+ *
+ * \param[in] args  empty string expected
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_DSPKSPI_INFO (const std::string &args, std::stop_token st) const
+bool DSPKSPIPlugin::m_DSPKSPI_INFO(const std::string &args, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -129,56 +124,53 @@ bool DSPKSPIPlugin::m_DSPKSPI_INFO (const std::string &args, std::stop_token st)
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current SPI/USB configuration.
-  *
-  * \note If an empty string is provided then the command doesn't change anything.
-  *
-  * \note Usage example:
-  *       DSPKSPI.CONFIG m=0 d=1 r=2000 w=2000 s=6
-  *       DSPKSPI.CONFIG vid=16C0 pid=05DF m=1 d=2
-  *
-  * \param[in] args  [vid=<hex>] [pid=<hex>] [m=<0-3>] [d=<0-3>] [r=<ms>] [w=<ms>] [s=<bytes>]
-  * \return true if processing succeeded, false otherwise
-*/
+ * \brief CONFIG command implementation; overwrite the current SPI/USB configuration.
+ *
+ * \note If an empty string is provided then the command doesn't change anything.
+ *
+ * \note Usage example:
+ *       DSPKSPI.CONFIG m=0 d=1 r=2000 w=2000 s=6
+ *       DSPKSPI.CONFIG vid=16C0 pid=05DF m=1 d=2
+ *
+ * \param[in] args  [vid=<hex>] [pid=<hex>] [m=<0-3>] [d=<0-3>] [r=<ms>] [w=<ms>] [s=<bytes>]
+ * \return true if processing succeeded, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_DSPKSPI_CONFIG (const std::string &args, std::stop_token st) const
+bool DSPKSPIPlugin::m_DSPKSPI_CONFIG(const std::string &args, std::stop_token st) const
 {
     return generic_spi_set_params<DSPKSPIPlugin>(this, args);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation.
-  *
-  * Opens an SPIBridge instance (RAII), applies the current mode/divider
-  * configuration, then dispatches the command through
-  * CommScriptCommandInterpreter – identical pattern to the UART plugin.
-  *
-  * Because SPIBridge::tout_read maps ReadMode::UntilToken to a
-  * full-duplex CMD_SPI_TRANSFER and ReadMode::Exact to CMD_SPI_READ,
-  * the generic interpreter works without modification.
-  * ReadMode::UntilDelimiter is rejected by SPIBridge with
-  * Status::INVALID_PARAM.
-  *
-  * \note Usage example:
-  *       DSPKSPI.CMD > H"AABBCCDD" | ok
-  *       DSPKSPI.CMD < "Please send!" | F"data.bin, 6"
-  *
-  * \param[in] args  direction + message tokens
-  * \return true on success, false otherwise
-*/
+ * \brief CMD command implementation.
+ *
+ * Opens an SPIBridge instance (RAII), applies the current mode/divider
+ * configuration, then dispatches the command through
+ * CommScriptCommandInterpreter – identical pattern to the UART plugin.
+ *
+ * Because SPIBridge::tout_read maps ReadMode::UntilToken to a
+ * full-duplex CMD_SPI_TRANSFER and ReadMode::Exact to CMD_SPI_READ,
+ * the generic interpreter works without modification.
+ * ReadMode::UntilDelimiter is rejected by SPIBridge with
+ * Status::INVALID_PARAM.
+ *
+ * \note Usage example:
+ *       DSPKSPI.CMD > H"AABBCCDD" | ok
+ *       DSPKSPI.CMD < "Please send!" | F"data.bin, 6"
+ *
+ * \param[in] args  direction + message tokens
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_DSPKSPI_CMD (const std::string &args, std::stop_token st) const
+bool DSPKSPIPlugin::m_DSPKSPI_CMD(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -205,20 +197,19 @@ bool DSPKSPIPlugin::m_DSPKSPI_CMD (const std::string &args, std::stop_token st) 
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation.
-  *
-  * \note Usage example:
-  *       DSPKSPI.SCRIPT scriptname [|delay]
-  *
-  * \param[in] args  filename<string> [delay<size_t>]
-  * \return true on success, false otherwise
-*/
+ * \brief SCRIPT command implementation.
+ *
+ * \note Usage example:
+ *       DSPKSPI.SCRIPT scriptname [|delay]
+ *
+ * \param[in] args  filename<string> [delay<size_t>]
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_DSPKSPI_SCRIPT (const std::string &args, std::stop_token st) const
+bool DSPKSPIPlugin::m_DSPKSPI_SCRIPT(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -245,28 +236,27 @@ bool DSPKSPIPlugin::m_DSPKSPI_SCRIPT (const std::string &args, std::stop_token s
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic DSPKSPI messages.
-  *
-  * \note The SPI bridge is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). DSPKSPI is a point-to-point bus with no addressable
-  *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
-  *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
-  *
-  * \note Usage example:
-  *       DSPKSPI.CYCLIC 100 AABBCCDD, 250 06
-  *       DSPKSPI.CYCLIC 100 AABBCCDD, 250 06 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic DSPKSPI messages.
+ *
+ * \note The SPI bridge is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). DSPKSPI is a point-to-point bus with no addressable
+ *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
+ *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+ *
+ * \note Usage example:
+ *       DSPKSPI.CYCLIC 100 AABBCCDD, 250 06
+ *       DSPKSPI.CYCLIC 100 AABBCCDD, 250 06 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_DSPKSPI_CYCLIC (const std::string &args, std::stop_token st) const
+bool DSPKSPIPlugin::m_DSPKSPI_CYCLIC(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
@@ -290,19 +280,17 @@ bool DSPKSPIPlugin::m_DSPKSPI_CYCLIC (const std::string &args, std::stop_token s
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //            PRIVATE INTERFACES IMPLEMENTATION                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief message sender – thin wrapper around ICommDriver::tout_write
-*/
+ * \brief message sender – thin wrapper around ICommDriver::tout_write
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver ) const
+bool DSPKSPIPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
 
@@ -316,52 +304,50 @@ bool DSPKSPIPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<c
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief message receiver – maps CommCommandReadType to ICommDriver::ReadOptions.
-  *
-  * SPI note: ReadMode::UntilDelimiter is not meaningful for SPI and SPIBridge
-  * returns Status::INVALID_PARAM.  If the script/command uses LINE mode the
-  * error will be reported through the standard log path below.
-*/
+ * \brief message receiver – maps CommCommandReadType to ICommDriver::ReadOptions.
+ *
+ * SPI note: ReadMode::UntilDelimiter is not meaningful for SPI and SPIBridge
+ * returns Status::INVALID_PARAM.  If the script/command uses LINE mode the
+ * error will be reported through the standard log path below.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
+bool DSPKSPIPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;
 
-    switch(readType)
-    {
-        case CommCommandReadType::LINE:
-            // Not supported on SPI – SPIBridge will return INVALID_PARAM.
-            // Mapped here for structural symmetry with the UART plugin;
-            // the error is surfaced through the result.status check below.
-            options.mode = ICommDriver::ReadMode::UntilDelimiter;
-            options.delimiter = '\n';
-            break;
+    switch (readType) {
+    case CommCommandReadType::LINE:
+        // Not supported on SPI – SPIBridge will return INVALID_PARAM.
+        // Mapped here for structural symmetry with the UART plugin;
+        // the error is surfaced through the result.status check below.
+        options.mode      = ICommDriver::ReadMode::UntilDelimiter;
+        options.delimiter = '\n';
+        break;
 
-        case CommCommandReadType::TOKEN_STRING:
-            [[fallthrough]];
-        case CommCommandReadType::TOKEN_HEXSTREAM:
-            // Full-duplex: token bytes are clocked on MOSI, MISO captured in buffer.
-            options.mode = ICommDriver::ReadMode::UntilToken;
-            options.token = dataSpan;
-            options.use_buffer = true;
-            break;
+    case CommCommandReadType::TOKEN_STRING:
+        [[fallthrough]];
+    case CommCommandReadType::TOKEN_HEXSTREAM:
+        // Full-duplex: token bytes are clocked on MOSI, MISO captured in buffer.
+        options.mode       = ICommDriver::ReadMode::UntilToken;
+        options.token      = dataSpan;
+        options.use_buffer = true;
+        break;
 
-        default:
-            // Exact: dummy 0x00 bytes on MOSI, capture MISO.
-            options.mode = ICommDriver::ReadMode::Exact;
-            break;
+    default:
+        // Exact: dummy 0x00 bytes on MOSI, capture MISO.
+        options.mode = ICommDriver::ReadMode::Exact;
+        break;
     }
 
     auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
 
     if (result.status == ICommDriver::Status::SUCCESS) {
-        szSize   = result.bytes_read;
-        bRetVal  = true;
+        szSize  = result.bytes_read;
+        bRetVal = true;
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:");
                   LOG_STRING(ICommDriver::to_string(result.status));

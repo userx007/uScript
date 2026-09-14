@@ -1,4 +1,5 @@
 #include "dds_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
 #include "private/dds_setup.hpp"
@@ -13,20 +14,18 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED DdsPlugin *pluginEntry()
 {
-    EXPORTED DdsPlugin* pluginEntry()
-    {
-        return new DdsPlugin();
-    }
+    return new DdsPlugin();
+}
 
-    EXPORTED void pluginExit(DdsPlugin *ptrPlugin)
-    {
-        if(nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(DdsPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -40,23 +39,23 @@ std::shared_ptr<DdsDriver> DdsPlugin::m_OpenDriver(void) const
     }
 
     DdsDriver::Config cfg;
-    cfg.domainId          = m_u32DomainId;
-    cfg.participantId     = m_u32ParticipantId;
-    cfg.useIpv6             = m_bUseIpv6;
-    cfg.ifaceAddress       = m_strIface;
-    cfg.multicastInterface = m_strMcastIface;
-    cfg.spdpMulticastGroup  = m_strSpdpMcastGroup;
-    cfg.participantName    = m_strParticipantName;
-    cfg.ttl                = m_u8Ttl;
-    cfg.spdpPeriodMs        = m_u32SpdpPeriodMs;
-    cfg.leaseDurationSec    = m_u32LeaseDurationSec;
-    cfg.reliable             = m_bReliable;
-    cfg.heartbeatPeriodMs    = m_u32HeartbeatPeriodMs;
-    cfg.historyDepth         = m_u32HistoryDepth;
+    cfg.domainId               = m_u32DomainId;
+    cfg.participantId          = m_u32ParticipantId;
+    cfg.useIpv6                = m_bUseIpv6;
+    cfg.ifaceAddress           = m_strIface;
+    cfg.multicastInterface     = m_strMcastIface;
+    cfg.spdpMulticastGroup     = m_strSpdpMcastGroup;
+    cfg.participantName        = m_strParticipantName;
+    cfg.ttl                    = m_u8Ttl;
+    cfg.spdpPeriodMs           = m_u32SpdpPeriodMs;
+    cfg.leaseDurationSec       = m_u32LeaseDurationSec;
+    cfg.reliable               = m_bReliable;
+    cfg.heartbeatPeriodMs      = m_u32HeartbeatPeriodMs;
+    cfg.historyDepth           = m_u32HistoryDepth;
     cfg.fragmentThresholdBytes = m_u32FragmentThresholdBytes;
-    cfg.strInstanceName     = m_strInstanceName;
+    cfg.strInstanceName        = m_strInstanceName;
 
-    auto driver = std::make_shared<DdsDriver>(cfg);
+    auto driver                = std::make_shared<DdsDriver>(cfg);
     if (!driver->open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("DdsDriver open failed — check DOMAIN/PARTICIPANT_ID aren't already bound by another process"));
         return nullptr;
@@ -70,9 +69,10 @@ std::shared_ptr<DdsDriver> DdsPlugin::m_OpenDriver(void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool DdsPlugin::m_DDS_INFO(const std::string& args, std::stop_token st) const
+bool DdsPlugin::m_DDS_INFO(const std::string &args, std::stop_token st) const
 {
-    (void)args; (void)st;
+    (void)args;
+    (void)st;
     resetData();
     std::ostringstream oss;
     oss << DDS_PLUGIN_NAME " v" << m_strVersion
@@ -162,18 +162,18 @@ bool DdsPlugin::m_DDS_INFO(const std::string& args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command: apply domain/participant/network/QoS settings at runtime, through the
-  *        same setters used by the ini-file loader in m_LocalSetParams() (see generic_dds_set_params()
-  *        above).
-  *
-  * \note A CONFIG changing DOMAIN/PARTICIPANT_ID/IFACE after the driver is already open would
-  *       silently leave stale sockets bound to the old ports - force a fresh open() next use
-  *       instead, same convention as "config changed, re-open on next CMD" everywhere else in
-  *       this codebase.
-*/
+ * \brief CONFIG command: apply domain/participant/network/QoS settings at runtime, through the
+ *        same setters used by the ini-file loader in m_LocalSetParams() (see generic_dds_set_params()
+ *        above).
+ *
+ * \note A CONFIG changing DOMAIN/PARTICIPANT_ID/IFACE after the driver is already open would
+ *       silently leave stale sockets bound to the old ports - force a fresh open() next use
+ *       instead, same convention as "config changed, re-open on next CMD" everywhere else in
+ *       this codebase.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DdsPlugin::m_DDS_CONFIG(const std::string& args, std::stop_token st) const
+bool DdsPlugin::m_DDS_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
@@ -191,7 +191,7 @@ bool DdsPlugin::m_DDS_CONFIG(const std::string& args, std::stop_token st) const
 // DDS.CMD see class doc comment (dds_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool DdsPlugin::m_DDS_CMD(const std::string& args, std::stop_token st) const
+bool DdsPlugin::m_DDS_CMD(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -203,7 +203,7 @@ bool DdsPlugin::m_DDS_CMD(const std::string& args, std::stop_token st) const
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->send(t, d, x, stop_tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsDriver> drv, std::string_view x, std::stop_token stop_tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const DdsDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->receive(t, b, o, x, stop_tok);
         },
         st);
@@ -213,7 +213,7 @@ bool DdsPlugin::m_DDS_CMD(const std::string& args, std::stop_token st) const
 // DDS.SCRIPT — see class doc comment (dds_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool DdsPlugin::m_DDS_SCRIPT(const std::string& args, std::stop_token st) const
+bool DdsPlugin::m_DDS_SCRIPT(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -225,7 +225,7 @@ bool DdsPlugin::m_DDS_SCRIPT(const std::string& args, std::stop_token st) const
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->send(t, d, x, stop_tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsDriver> drv, std::string_view x, std::stop_token stop_tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const DdsDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->receive(t, b, o, x, stop_tok);
         },
         st);
@@ -235,7 +235,7 @@ bool DdsPlugin::m_DDS_SCRIPT(const std::string& args, std::stop_token st) const
 // DDS.CYCLIC — see class doc comment (dds_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool DdsPlugin::m_DDS_CYCLIC(const std::string& args, std::stop_token st) const
+bool DdsPlugin::m_DDS_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -246,7 +246,7 @@ bool DdsPlugin::m_DDS_CYCLIC(const std::string& args, std::stop_token st) const
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->send(t, d, x, stop_tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsDriver> drv, std::string_view x, std::stop_token stop_tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const DdsDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->receive(t, b, o, x, stop_tok);
         });
 }

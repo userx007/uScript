@@ -4,24 +4,24 @@
 // pull them from the kernel uapi headers directly. This is what lets us ask
 // the CH341 for an arbitrary baud rate instead of being limited to the
 // fixed Bxxxxx speed_t enum used by classic UART drivers.
-#include <asm/termbits.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <stdint.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
+#include "uCh341.hpp"
+#include "uLogger.hpp"
+
 #include <algorithm>
+#include <asm/termbits.h>
 #include <chrono>
 #include <compare>
 #include <cstring>
+#include <errno.h>
+#include <fcntl.h>
 #include <mutex>
+#include <poll.h>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
-
-#include "uCh341.hpp"
-#include "uLogger.hpp"
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #ifndef TCGETS2
 #define TCGETS2 0x542A
@@ -33,23 +33,21 @@
 #define BOTHER 0010000
 #endif
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "CH341_DRV   |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "CH341_DRV   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
-
-CH341::Status CH341::open(const std::string& strDevice, uint32_t u32Speed)
+CH341::Status CH341::open(const std::string &strDevice, uint32_t u32Speed)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     if (strDevice.empty() || u32Speed == 0) {
@@ -61,7 +59,7 @@ CH341::Status CH341::open(const std::string& strDevice, uint32_t u32Speed)
     }
 
     int openFlags = O_RDWR | O_NOCTTY | O_CLOEXEC;
-    m_iHandle = ::open(strDevice.c_str(), openFlags);
+    m_iHandle     = ::open(strDevice.c_str(), openFlags);
 
     if (m_iHandle < 0) {
         int errnoRet = errno;
@@ -90,8 +88,6 @@ CH341::Status CH341::open(const std::string& strDevice, uint32_t u32Speed)
     return Status::SUCCESS;
 }
 
-
-
 CH341::Status CH341::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -103,9 +99,7 @@ CH341::Status CH341::close()
     return Status::SUCCESS;
 }
 
-
-
-CH341::Status CH341::purge(bool bInput, bool bOutput)  const
+CH341::Status CH341::purge(bool bInput, bool bOutput) const
 {
     // NOTE: we deliberately use the TCFLSH ioctl (rather than glibc's
     // tcflush()) because this translation unit uses the kernel termios2
@@ -133,9 +127,7 @@ CH341::Status CH341::purge(bool bInput, bool bOutput)  const
     return Status::SUCCESS;
 }
 
-
-
-CH341::Status CH341::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead,
+CH341::Status CH341::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t &szBytesRead,
                                   std::stop_token stop_tok) const
 {
     if (buffer.empty()) {
@@ -146,17 +138,17 @@ CH341::Status CH341::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> bu
     szBytesRead = 0;
 
     struct pollfd sPollFd;
-    sPollFd.fd = m_iHandle;
-    sPollFd.events = POLLIN;
-    sPollFd.revents = 0;
+    sPollFd.fd                 = m_iHandle;
+    sPollFd.events             = POLLIN;
+    sPollFd.revents            = 0;
 
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite = (u32ReadTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+    const bool bInfinite       = (u32ReadTimeout == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    int iPollResult = 0;
+    int iPollResult            = 0;
     while (true) {
         if (stop_tok.stop_requested()) {
             return Status::READ_TIMEOUT;
@@ -169,7 +161,7 @@ CH341::Status CH341::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> bu
                 return Status::READ_TIMEOUT;
             }
             iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                          std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         iPollResult = poll(&sPollFd, 1, iSliceMs);
@@ -194,9 +186,7 @@ CH341::Status CH341::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> bu
     return Status::SUCCESS;
 }
 
-
-
-CH341::Status CH341::timeout_write(uint32_t /*u32WriteTimeout*/, std::span<const uint8_t> buffer, size_t& szBytesWritten,
+CH341::Status CH341::timeout_write(uint32_t /*u32WriteTimeout*/, std::span<const uint8_t> buffer, size_t &szBytesWritten,
                                    std::stop_token /*stop_tok*/) const
 {
     if (buffer.empty()) {
@@ -217,8 +207,6 @@ CH341::Status CH341::timeout_write(uint32_t /*u32WriteTimeout*/, std::span<const
 
     return Status::SUCCESS;
 }
-
-
 
 /**
  * @brief Configure the line using termios2/BOTHER so an arbitrary baud rate
@@ -260,9 +248,7 @@ CH341::Status CH341::setup(uint32_t u32Speed) const
     return Status::SUCCESS;
 }
 
-
-
-CH341::Status CH341::get_modem_lines(unsigned int& u32Lines) const
+CH341::Status CH341::get_modem_lines(unsigned int &u32Lines) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     if (m_iHandle < 0) {
@@ -279,8 +265,6 @@ CH341::Status CH341::get_modem_lines(unsigned int& u32Lines) const
     return Status::SUCCESS;
 }
 
-
-
 CH341::Status CH341::set_dtr_rts(bool bDtr, bool bRts) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -288,11 +272,19 @@ CH341::Status CH341::set_dtr_rts(bool bDtr, bool bRts) const
         return Status::PORT_ACCESS;
     }
 
-    int iSet = 0;
+    int iSet   = 0;
     int iClear = 0;
 
-    if (bDtr) iSet |= TIOCM_DTR; else iClear |= TIOCM_DTR;
-    if (bRts) iSet |= TIOCM_RTS; else iClear |= TIOCM_RTS;
+    if (bDtr) {
+        iSet |= TIOCM_DTR;
+    } else {
+        iClear |= TIOCM_DTR;
+    }
+    if (bRts) {
+        iSet |= TIOCM_RTS;
+    } else {
+        iClear |= TIOCM_RTS;
+    }
 
     if (iSet && ioctl(m_iHandle, TIOCMBIS, &iSet) != 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("TIOCMBIS failed for handle:"); LOG_INT(m_iHandle));

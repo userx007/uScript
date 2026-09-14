@@ -13,19 +13,18 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <memory>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <utility>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define MODBUS_PLUGIN_VERSION   "1.0.0.0"
-#define MODBUS_PLUGIN_NAME      "MODBUS"
+#define MODBUS_PLUGIN_VERSION "1.0.0.0"
+#define MODBUS_PLUGIN_NAME    "MODBUS"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                                    //
@@ -115,16 +114,23 @@ public:
         , m_u32ReadTimeout(3000)
         , m_u32ReadBufferSize(4096)
     {
-        #define MODBUS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, \
-            PluginCommandEntry<ModbusPlugin>{&ModbusPlugin::m_MODBUS_##a, false} ));
+#define MODBUS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
+                                                                    PluginCommandEntry<ModbusPlugin>{&ModbusPlugin::m_MODBUS_##a, false}));
         MODBUS_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef  MODBUS_PLUGIN_CMD_RECORD
+#undef MODBUS_PLUGIN_CMD_RECORD
     }
 
     ~ModbusPlugin() = default;
 
-    bool isInitialized(void) const { return m_bIsInitialized; }
-    bool isEnabled(void) const { return m_bIsEnabled; }
+    bool isInitialized(void) const
+    {
+        return m_bIsInitialized;
+    }
+
+    bool isEnabled(void) const
+    {
+        return m_bIsEnabled;
+    }
 
     bool setParams(const PluginDataSet *psSetParams)
     {
@@ -141,11 +147,26 @@ public:
     {
         generic_getparams<ModbusPlugin>(this, psGetParams);
     }
-    const PluginCommandsMap<ModbusPlugin>* getMap(void) const { return &m_mapCmds; }
-    const std::string& getVersion(void) const { return m_strVersion; }
-    const std::string& getData(void) const { return m_strResultData; }
-    void resetData(void) const { m_strResultData.clear(); }
-    
+
+    const PluginCommandsMap<ModbusPlugin> *getMap(void) const
+    {
+        return &m_mapCmds;
+    }
+
+    const std::string &getVersion(void) const
+    {
+        return m_strVersion;
+    }
+
+    const std::string &getData(void) const
+    {
+        return m_strResultData;
+    }
+
+    void resetData(void) const
+    {
+        m_strResultData.clear();
+    }
 
     bool doInit(void *pvUserData)
     {
@@ -153,62 +174,77 @@ public:
         m_bIsInitialized = true;
         return true;
     }
-    bool doEnable(void) { m_bIsEnabled = true; return true; }
 
-    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+    bool doEnable(void)
+    {
+        m_bIsEnabled = true;
+        return true;
+    }
+
+    bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
     {
         return generic_dispatch<ModbusPlugin>(this, strCmd, strParams, st);
-    }    
+    }
 
     void doCleanup(void)
     {
         m_bIsInitialized = false;
-        m_bIsEnabled = false;
+        m_bIsEnabled     = false;
         m_strResultData.clear();
         m_pDriver.reset();
     }
-    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
-    bool isPrivileged(void) const { return m_bIsPrivileged; }
+
+    bool isFaultTolerant(void) const
+    {
+        return m_bIsFaultTolerant;
+    }
+
+    bool isPrivileged(void) const
+    {
+        return m_bIsPrivileged;
+    }
 
     /**
-      * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-    */
-    bool setRawResult (const std::string& strValue) const
+     * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+     */
+    bool setRawResult(const std::string &strValue) const
     {
         return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
     }
 
     /**
-      * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-    */
-    bool setCyclicCached (const std::string& strValue) const
+     * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+     */
+    bool setCyclicCached(const std::string &strValue) const
     {
         return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
 
-    bool setPort(const std::string& portStr) const
+    bool setPort(const std::string &portStr) const
     {
-         return numeric::str2uint16(portStr, m_u16Port);
+        return numeric::str2uint16(portStr, m_u16Port);
     }
 
     /**
-      * \brief CONFIG-command setter for the target host (see m_strHost)
-    */
-    bool setHost(const std::string& strValue) const
+     * \brief CONFIG-command setter for the target host (see m_strHost)
+     */
+    bool setHost(const std::string &strValue) const
     {
         m_strHost = strValue;
         return true;
     }
 
-    bool setReadTimeout(const std::string& timeoutStr) const
+    bool setReadTimeout(const std::string &timeoutStr) const
     {
         return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
     }
 
-    bool setReadBufferSize(const std::string& bufSizeStr) const
+    bool setReadBufferSize(const std::string &bufSizeStr) const
     {
         uint32_t sz = 0;
-        if (!numeric::str2uint32(bufSizeStr, sz)) return false;
+        if (!numeric::str2uint32(bufSizeStr, sz)) {
+            return false;
+        }
         if (sz == 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read buffer size:"); LOG_UINT32(sz));
             return false;
@@ -218,7 +254,6 @@ public:
     }
 
 private:
-
     // Factory used by both m_MODBUS_CMD() and m_MODBUS_SCRIPT() (passed as
     // ucmdexec::generic_cmd/generic_script's openFn): builds a
     // ModbusDriver::Config from the stored settings and returns the one
@@ -240,21 +275,21 @@ private:
     mutable std::string m_strResultData;
 
     /**
-      * \brief when true, CMD returns the raw received bytes as-is instead of
-      *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
-      *        settable via the ini file's RAW_RESULT key or the CONFIG command's
-      *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
-    */
+     * \brief when true, CMD returns the raw received bytes as-is instead of
+     *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+     *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+     *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+     */
     mutable bool m_bRawResult;
 
     /**
-      * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
-      *        command exactly once for the whole session; false re-resolves and re-validates
-      *        every due entry on every tick, needed to track a volatile ("?=") macro used as
-      *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
-      *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
-      *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
-    */
+     * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+     *        command exactly once for the whole session; false re-resolves and re-validates
+     *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+     *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+     *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+     *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+     */
     mutable bool m_bCyclicCached;
     bool m_bIsInitialized;
     bool m_bIsEnabled;
@@ -272,12 +307,12 @@ private:
     // and m_OpenDriver().
     mutable std::shared_ptr<ModbusDriver> m_pDriver;
 
-    /**
-      * \brief functions associated to the plugin commands
-    */
-    #define MODBUS_PLUGIN_CMD_RECORD(a)  bool m_MODBUS_##a ( const std::string& args, std::stop_token st ) const;
+/**
+ * \brief functions associated to the plugin commands
+ */
+#define MODBUS_PLUGIN_CMD_RECORD(a) bool m_MODBUS_##a(const std::string &args, std::stop_token st) const;
     MODBUS_PLUGIN_COMMANDS_CONFIG_TABLE
-    #undef  MODBUS_PLUGIN_CMD_RECORD
+#undef MODBUS_PLUGIN_CMD_RECORD
 };
 
 #endif // MODBUS_PLUGIN_HPP

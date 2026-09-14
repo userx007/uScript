@@ -6,27 +6,32 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
 #include <cerrno>
-#include <unistd.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <termios.h>
+#include <unistd.h>
 
-class TerminalRAII {
+class TerminalRAII
+{
 private:
     static struct termios original_config; // Defined inside the class
     bool initialized;
 
-    class ErrorLogger {
+    class ErrorLogger
+    {
     public:
-        static const char* getErrorMessage() {
+        static const char *getErrorMessage()
+        {
             return strerror(errno);
         }
     };
 
 public:
-    TerminalRAII() : initialized(false) {
+    TerminalRAII()
+        : initialized(false)
+    {
         if (!isatty(STDIN_FILENO)) {
             uSHELL_PRINTF("Not a valid terminal.\n");
             return;
@@ -37,7 +42,7 @@ public:
             tcgetattr(STDIN_FILENO, &config) == 0) {
 
             config.c_lflag &= ~(ICANON | ECHO);
-            config.c_cc[VMIN] = 1;
+            config.c_cc[VMIN]  = 1;
             config.c_cc[VTIME] = 0;
 
             if (tcsetattr(STDIN_FILENO, TCSANOW, &config) == -1) {
@@ -50,24 +55,27 @@ public:
         }
 
         setvbuf(stdin, nullptr, _IONBF, 0);
-        //clear();
+        // clear();
     }
 
-    ~TerminalRAII() {
+    ~TerminalRAII()
+    {
         if (initialized) {
             restoreTerminal();
         }
     }
 
 private:
-    static void restoreTerminal() {
+    static void restoreTerminal()
+    {
         if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_config) == -1) {
             uSHELL_PRINTF("Failed to restore terminal settings: %s\n", strerror(errno));
         }
     }
 
 public:
-    void clear() {
+    void clear()
+    {
         uSHELL_PRINTF("\033[H\033[J");
         fflush(stdout);
     }

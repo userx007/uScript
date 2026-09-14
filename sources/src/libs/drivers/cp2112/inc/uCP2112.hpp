@@ -4,12 +4,12 @@
 #include "CP2112Base.hpp"
 #include "ICommDriver.hpp"
 
-#include <stop_token>
 #include <cstdint>
 #include <cstdio>
 #include <span>
-#include <vector>
+#include <stop_token>
 #include <string>
+#include <vector>
 
 /**
  * @brief CP2112 I²C driver
@@ -24,116 +24,120 @@
  */
 class CP2112 : public CP2112Base, public ICommDriver
 {
-    public:
+public:
+    // Both CP2112Base and ICommDriver introduce a 'Status' name.
+    // Explicitly pull in the one canonical definition to remove ambiguity.
+    using Status                                  = ICommDriver::Status;
 
-        // Both CP2112Base and ICommDriver introduce a 'Status' name.
-        // Explicitly pull in the one canonical definition to remove ambiguity.
-        using Status = ICommDriver::Status;
+    static constexpr size_t MAX_I2C_WRITE_PAYLOAD = 61u;  ///< Bytes per HID write report
+    static constexpr size_t MAX_I2C_READ_LEN      = 512u; ///< Max bytes per read request
 
-        static constexpr size_t MAX_I2C_WRITE_PAYLOAD = 61u;  ///< Bytes per HID write report
-        static constexpr size_t MAX_I2C_READ_LEN      = 512u; ///< Max bytes per read request
+    CP2112()                                      = default;
 
-        CP2112() = default;
+    /**
+     * @brief Construct and immediately open the device
+     * @param u8I2CAddress     7-bit I²C slave address
+     * @param u32ClockHz       I²C clock in Hz (default 400 kHz)
+     * @param u8DeviceIndex    Zero-based index when multiple CP2112s are connected
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately —
+     *                         e.g. "CP2112 #0" or the adapter's serial number.
+     */
+    explicit CP2112(uint8_t u8I2CAddress,
+                    uint32_t u32ClockHz                 = 400000u,
+                    uint8_t u8DeviceIndex               = 0u,
+                    const std::string &strIdentityLabel = {})
+        : m_strIdentityLabel(strIdentityLabel)
+    {
+        this->open(u8I2CAddress, u32ClockHz, u8DeviceIndex);
+    }
 
-        /**
-         * @brief Construct and immediately open the device
-         * @param u8I2CAddress     7-bit I²C slave address
-         * @param u32ClockHz       I²C clock in Hz (default 400 kHz)
-         * @param u8DeviceIndex    Zero-based index when multiple CP2112s are connected
-         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-         *                         describeConnection()), supplied separately —
-         *                         e.g. "CP2112 #0" or the adapter's serial number.
-         */
-        explicit CP2112(uint8_t u8I2CAddress,
-                        uint32_t u32ClockHz    = 400000u,
-                        uint8_t  u8DeviceIndex = 0u,
-                        const std::string& strIdentityLabel = {})
-            : m_strIdentityLabel(strIdentityLabel)
-        {
-            this->open(u8I2CAddress, u32ClockHz, u8DeviceIndex);
-        }
+    ~CP2112() override
+    {
+        close();
+    }
 
-        ~CP2112() override { close(); }
+    /**
+     * @brief Open and configure the CP2112 for I²C use
+     * @param u8I2CAddress  7-bit I²C slave address
+     * @param u32ClockHz    I²C clock in Hz
+     * @param u8DeviceIndex Which CP2112 to open if multiple are present
+     */
+    Status open(uint8_t u8I2CAddress,
+                uint32_t u32ClockHz   = 400000u,
+                uint8_t u8DeviceIndex = 0u);
 
-        /**
-         * @brief Open and configure the CP2112 for I²C use
-         * @param u8I2CAddress  7-bit I²C slave address
-         * @param u32ClockHz    I²C clock in Hz
-         * @param u8DeviceIndex Which CP2112 to open if multiple are present
-         */
-        Status open(uint8_t u8I2CAddress,
-                    uint32_t u32ClockHz    = 400000u,
-                    uint8_t  u8DeviceIndex = 0u);
+    /** @copydoc CP2112Base::close — also cancels any in-flight I²C transfer */
+    Status close() override;
 
-        /** @copydoc CP2112Base::close — also cancels any in-flight I²C transfer */
-        Status close() override;
+    bool is_open() const override
+    {
+        return CP2112Base::is_open();
+    }
 
-        bool is_open() const override { return CP2112Base::is_open(); }
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     * No per-call address override is documented for this driver (unlike
+     * KI2C), so xtra_params is accepted but ignored — the label always
+     * reflects the address bound at open().
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        char label[k_labelSize];
+        std::snprintf(label, sizeof(label), "%s addr=0x%02X",
+                      m_strIdentityLabel.empty() ? "CP2112" : m_strIdentityLabel.c_str(),
+                      m_u8I2CAddress);
+        return commdump_details(CommFamily::I2C, label);
+    }
 
-        /**
-         * @brief Describe this connection for the GUI comm-dump panel.
-         * No per-call address override is documented for this driver (unlike
-         * KI2C), so xtra_params is accepted but ignored — the label always
-         * reflects the address bound at open().
-         */
-        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-        {
-            char label[k_labelSize];
-            std::snprintf(label, sizeof(label), "%s addr=0x%02X",
-                          m_strIdentityLabel.empty() ? "CP2112" : m_strIdentityLabel.c_str(),
-                          m_u8I2CAddress);
-            return commdump_details(CommFamily::I2C, label);
-        }
+    /**
+     * @brief Unified read  (Exact / UntilDelimiter / UntilToken)
+     * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
+     */
+    ReadResult tout_read(uint32_t u32ReadTimeout,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Unified read  (Exact / UntilDelimiter / UntilToken)
-         * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
-         */
-        ReadResult tout_read(uint32_t            u32ReadTimeout,
-                             std::span<uint8_t>  buffer,
-                             const ReadOptions&  options,
-                             std::string_view    xtra_params = {},
-                             std::stop_token stop_tok = {}) const override;
+    /**
+     * @brief Unified write — automatically chunks payloads > 61 bytes
+     * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
+     */
+    WriteResult tout_write(uint32_t u32WriteTimeout,
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Unified write — automatically chunks payloads > 61 bytes
-         * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
-         */
-        WriteResult tout_write(uint32_t                 u32WriteTimeout,
-                               std::span<const uint8_t> buffer,
-                               std::string_view         xtra_params = {},
-                               std::stop_token stop_tok = {}) const override;
+private:
+    uint8_t m_u8I2CAddress = 0x00u; ///< 7-bit I²C slave address
+    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 
-    private:
+    // ── I²C protocol helpers (implemented in uCP2112Common.cpp) ─────────
 
-        uint8_t  m_u8I2CAddress = 0x00u; ///< 7-bit I²C slave address
-        std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
+    Status configure_smbus(uint32_t u32ClockHz) const;
 
-        // ── I²C protocol helpers (implemented in uCP2112Common.cpp) ─────────
+    /**
+     * @brief Send data over I²C, chunking automatically at 61-byte boundaries
+     * @param bytesWritten  Accumulates successfully written bytes across all chunks
+     */
+    Status i2c_write(std::span<const uint8_t> data,
+                     uint32_t timeoutMs,
+                     size_t &bytesWritten,
+                     std::stop_token stop_tok = {}) const;
 
-        Status configure_smbus   (uint32_t u32ClockHz) const;
+    /** Send a single ≤61-byte chunk as one HID Data Write report */
+    Status i2c_write_chunk(std::span<const uint8_t> chunk,
+                           uint32_t timeoutMs,
+                           std::stop_token stop_tok = {}) const;
 
-        /**
-         * @brief Send data over I²C, chunking automatically at 61-byte boundaries
-         * @param bytesWritten  Accumulates successfully written bytes across all chunks
-         */
-        Status i2c_write         (std::span<const uint8_t> data,
-                                  uint32_t timeoutMs,
-                                  size_t& bytesWritten,
-                                  std::stop_token stop_tok = {}) const;
+    Status i2c_read(std::span<uint8_t> data,
+                    size_t &bytesRead,
+                    uint32_t timeoutMs,
+                    std::stop_token stop_tok = {}) const;
 
-        /** Send a single ≤61-byte chunk as one HID Data Write report */
-        Status i2c_write_chunk   (std::span<const uint8_t> chunk,
-                                  uint32_t timeoutMs,
-                                  std::stop_token stop_tok = {}) const;
-
-        Status i2c_read          (std::span<uint8_t> data,
-                                  size_t& bytesRead,
-                                  uint32_t timeoutMs,
-                                  std::stop_token stop_tok = {}) const;
-
-        Status poll_transfer_done(uint32_t timeoutMs, std::stop_token stop_tok = {}) const;
-        Status cancel_transfer   () const;
+    Status poll_transfer_done(uint32_t timeoutMs, std::stop_token stop_tok = {}) const;
+    Status cancel_transfer() const;
 };
 
 #endif // U_CP2112_DRIVER_H

@@ -13,8 +13,8 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <memory>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <utility>
@@ -26,9 +26,8 @@ struct PluginDataSet;
 //                          PLUGIN NAME / VERSION                              //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define PROFIBUS_PLUGIN_VERSION   "1.0.0.0"
-#define PROFIBUS_PLUGIN_NAME      "PROFIBUS"
-
+#define PROFIBUS_PLUGIN_VERSION "1.0.0.0"
+#define PROFIBUS_PLUGIN_NAME    "PROFIBUS"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                                    //
@@ -105,75 +104,145 @@ public:
         , m_bDefaultHighPriority(false)
         , m_u32ReadBufferSize(256)
     {
-        #define PROFIBUS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, \
-            PluginCommandEntry<ProfibusPlugin>{&ProfibusPlugin::m_PROFIBUS_##a, false} ));
+#define PROFIBUS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
+                                                                      PluginCommandEntry<ProfibusPlugin>{&ProfibusPlugin::m_PROFIBUS_##a, false}));
         PROFIBUS_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef  PROFIBUS_PLUGIN_CMD_RECORD
+#undef PROFIBUS_PLUGIN_CMD_RECORD
     }
 
     ~ProfibusPlugin() = default;
 
-    bool isInitialized(void) const { return m_bIsInitialized; }
-    bool isEnabled(void) const { return m_bIsEnabled; }
+    bool isInitialized(void) const
+    {
+        return m_bIsInitialized;
+    }
+
+    bool isEnabled(void) const
+    {
+        return m_bIsEnabled;
+    }
 
     bool setParams(const PluginDataSet *psSetParams);
     void getParams(PluginDataGet *psGetParams) const;
-    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st = {}) const;
-    const PluginCommandsMap<ProfibusPlugin>* getMap(void) const { return &m_mapCmds; }
-    const std::string& getVersion(void) const { return m_strVersion; }
-    const std::string& getData(void) const { return m_strResultData; }
+    bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st = {}) const;
+
+    const PluginCommandsMap<ProfibusPlugin> *getMap(void) const
+    {
+        return &m_mapCmds;
+    }
+
+    const std::string &getVersion(void) const
+    {
+        return m_strVersion;
+    }
+
+    const std::string &getData(void) const
+    {
+        return m_strResultData;
+    }
+
     void resetData(void) const
- { m_strResultData.clear(); }
-    
+    {
+        m_strResultData.clear();
+    }
+
     /**
-      * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-    */
-    bool setRawResult (const std::string& strValue) const
+     * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+     */
+    bool setRawResult(const std::string &strValue) const
     {
         return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
     }
 
     /**
-      * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-    */
-    bool setCyclicCached (const std::string& strValue) const
+     * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+     */
+    bool setCyclicCached(const std::string &strValue) const
     {
         return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
+
     bool doInit(void *pvUserData);
-    bool doEnable(void) { m_bIsEnabled = true; return true; }
+
+    bool doEnable(void)
+    {
+        m_bIsEnabled = true;
+        return true;
+    }
+
     void doCleanup(void);
-    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
-    bool isPrivileged(void) const { return m_bIsPrivileged; }
+
+    bool isFaultTolerant(void) const
+    {
+        return m_bIsFaultTolerant;
+    }
+
+    bool isPrivileged(void) const
+    {
+        return m_bIsPrivileged;
+    }
 
     // Getters/Setters
-    const std::string& getDevice(void) const { return m_strDevice; }
-    void setDevice(const std::string& device) const { m_strDevice = device; }
+    const std::string &getDevice(void) const
+    {
+        return m_strDevice;
+    }
 
-    uint32_t getBaud(void) const { return m_u32Baud; }
+    void setDevice(const std::string &device) const
+    {
+        m_strDevice = device;
+    }
+
+    uint32_t getBaud(void) const
+    {
+        return m_u32Baud;
+    }
+
     // Accepts only rates ProfibusDriver can actually reach through
     // UART::open() — see profibus_driver.hpp's "Known hardware/timing
     // limitations" for exactly which ones, and why the rest are rejected
     // outright here rather than silently mis-configured.
-    bool setBaud(const std::string& baudStr) const;
+    bool setBaud(const std::string &baudStr) const;
 
-    uint8_t getOwnAddress(void) const { return m_u8OwnAddress; }
+    uint8_t getOwnAddress(void) const
+    {
+        return m_u8OwnAddress;
+    }
+
     // Valid FDL station addresses are 0-125; 126 is reserved for
     // commissioning and 127 is the broadcast address — neither is a valid
     // address for this master's own identity.
-    bool setOwnAddress(const std::string& addrStr) const;
+    bool setOwnAddress(const std::string &addrStr) const;
 
-    uint32_t getResponseTimeout(void) const { return m_u32ResponseTimeout; }
-    bool setResponseTimeout(const std::string& timeoutStr) const { return numeric::str2uint32(timeoutStr, m_u32ResponseTimeout); }
+    uint32_t getResponseTimeout(void) const
+    {
+        return m_u32ResponseTimeout;
+    }
 
-    bool getDefaultHighPriority(void) const { return m_bDefaultHighPriority; }
-    bool setDefaultHighPriority(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bDefaultHighPriority); }
+    bool setResponseTimeout(const std::string &timeoutStr) const
+    {
+        return numeric::str2uint32(timeoutStr, m_u32ResponseTimeout);
+    }
 
-    uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
-    bool setReadBufferSize(const std::string& bufSizeStr) const;
+    bool getDefaultHighPriority(void) const
+    {
+        return m_bDefaultHighPriority;
+    }
+
+    bool setDefaultHighPriority(const std::string &strValue) const
+    {
+        BoolExprEvaluator e;
+        return e.evaluate(strValue, m_bDefaultHighPriority);
+    }
+
+    uint32_t getReadBufferSize(void) const
+    {
+        return m_u32ReadBufferSize;
+    }
+
+    bool setReadBufferSize(const std::string &bufSizeStr) const;
 
 private:
-
     // Factory used by both m_PROFIBUS_CMD() and m_PROFIBUS_SCRIPT() (passed
     // as ucmdexec::generic_cmd/generic_script's openFn): builds a
     // ProfibusDriver::Config from the stored settings and returns the one
@@ -195,21 +264,21 @@ private:
     mutable std::string m_strResultData;
 
     /**
-      * \brief when true, CMD returns the raw received bytes as-is instead of
-      *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
-      *        settable via the ini file's RAW_RESULT key or the CONFIG command's
-      *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
-    */
+     * \brief when true, CMD returns the raw received bytes as-is instead of
+     *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+     *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+     *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+     */
     mutable bool m_bRawResult;
 
     /**
-      * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
-      *        command exactly once for the whole session; false re-resolves and re-validates
-      *        every due entry on every tick, needed to track a volatile ("?=") macro used as
-      *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
-      *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
-      *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
-    */
+     * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+     *        command exactly once for the whole session; false re-resolves and re-validates
+     *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+     *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+     *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+     *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+     */
     mutable bool m_bCyclicCached;
     bool m_bIsInitialized;
     bool m_bIsEnabled;
@@ -230,12 +299,12 @@ private:
     // and m_OpenDriver().
     mutable std::shared_ptr<ProfibusDriver> m_pDriver;
 
-    /**
-      * \brief functions associated to the plugin commands
-    */
-    #define PROFIBUS_PLUGIN_CMD_RECORD(a)  bool m_PROFIBUS_##a ( const std::string& args, std::stop_token st ) const;
+/**
+ * \brief functions associated to the plugin commands
+ */
+#define PROFIBUS_PLUGIN_CMD_RECORD(a) bool m_PROFIBUS_##a(const std::string &args, std::stop_token st) const;
     PROFIBUS_PLUGIN_COMMANDS_CONFIG_TABLE
-    #undef  PROFIBUS_PLUGIN_CMD_RECORD
+#undef PROFIBUS_PLUGIN_CMD_RECORD
 };
 
 #endif // PROFIBUS_PLUGIN_HPP

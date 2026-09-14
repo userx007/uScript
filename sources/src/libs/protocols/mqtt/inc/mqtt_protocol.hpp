@@ -1,8 +1,8 @@
 #ifndef MQTT_PROTOCOL_HPP
 #define MQTT_PROTOCOL_HPP
 
-#include <stddef.h>
 #include <cstdint>
+#include <stddef.h>
 #include <string>
 #include <vector>
 
@@ -52,36 +52,48 @@ public:
     static constexpr uint8_t kPingResp    = 0xD0;
     static constexpr uint8_t kDisconnect  = 0xE0;
 
-    struct ConnectParams {
+    struct ConnectParams
+    {
         std::string clientId;
-        std::string username;   // empty => CONNECT carries no credentials at all
-        std::string password;   // ignored if username is empty (not a valid MQTT 3.1.1 combination)
-        std::string willTopic;  // empty => no Will Flag set; willPayload/willQos/willRetain then unused
+        std::string username;  // empty => CONNECT carries no credentials at all
+        std::string password;  // ignored if username is empty (not a valid MQTT 3.1.1 combination)
+        std::string willTopic; // empty => no Will Flag set; willPayload/willQos/willRetain then unused
         std::string willPayload;
-        uint8_t willQos = 0;
-        bool willRetain = false;
-        bool cleanSession = true;
+        uint8_t willQos    = 0;
+        bool willRetain    = false;
+        bool cleanSession  = true;
         uint16_t keepAlive = 60; // seconds
     };
 
-    struct ConnAckResult {
+    struct ConnAckResult
+    {
         bool sessionPresent = false;
-        uint8_t returnCode = 0xFF; // 0 = accepted; see MQTT 3.1.1 §3.2.2.3 for the other values
-        bool ok() const { return returnCode == 0; }
+        uint8_t returnCode  = 0xFF; // 0 = accepted; see MQTT 3.1.1 §3.2.2.3 for the other values
+
+        bool ok() const
+        {
+            return returnCode == 0;
+        }
     };
 
-    struct SubAckResult {
-        uint16_t packetId = 0;
+    struct SubAckResult
+    {
+        uint16_t packetId  = 0;
         uint8_t returnCode = 0x80; // granted QoS (0-2), or 0x80 = subscription refused
-        bool ok() const { return returnCode != 0x80; }
+
+        bool ok() const
+        {
+            return returnCode != 0x80;
+        }
     };
 
-    struct PublishMessage {
+    struct PublishMessage
+    {
         std::string topic;
         std::string payload;
-        uint8_t qos = 0;
-        bool retain = false;
-        bool dup = false;
+        uint8_t qos       = 0;
+        bool retain       = false;
+        bool dup          = false;
         uint16_t packetId = 0; // only meaningful (and only present on the wire) for qos > 0
     };
 
@@ -91,15 +103,15 @@ public:
     // (Callers — MqttPlugin — are expected to have already validated topic/
     // argument shape before calling; these assume well-formed input.)
 
-    std::vector<uint8_t> buildConnect(const ConnectParams& params) const;
+    std::vector<uint8_t> buildConnect(const ConnectParams &params) const;
     std::vector<uint8_t> buildDisconnect() const;
     std::vector<uint8_t> buildPingReq() const;
 
     // Assigns a fresh packet id for qos > 0 (written to *pOutPacketId; left
     // at 0, matching "no packet id" for qos == 0, when pOutPacketId is
     // non-null but qos == 0).
-    std::vector<uint8_t> buildPublish(const std::string& topic, const std::string& payload,
-                                       uint8_t qos, bool retain, uint16_t* pOutPacketId);
+    std::vector<uint8_t> buildPublish(const std::string &topic, const std::string &payload,
+                                      uint8_t qos, bool retain, uint16_t *pOutPacketId);
 
     // Subscriber-side acknowledgements MqttPlugin sends back for an
     // incoming PUBLISH it just received (mirror image of the wait-for-ack
@@ -110,24 +122,31 @@ public:
     std::vector<uint8_t> buildPubRel(uint16_t packetId) const;
     std::vector<uint8_t> buildPubComp(uint16_t packetId) const;
 
-    std::vector<uint8_t> buildSubscribe(const std::string& topic, uint8_t qos, uint16_t* pOutPacketId);
-    std::vector<uint8_t> buildUnsubscribe(const std::string& topic, uint16_t* pOutPacketId);
+    std::vector<uint8_t> buildSubscribe(const std::string &topic, uint8_t qos, uint16_t *pOutPacketId);
+    std::vector<uint8_t> buildUnsubscribe(const std::string &topic, uint16_t *pOutPacketId);
 
     // ---- Decoders: pure decode of one already-complete raw packet ----
 
-    static uint8_t packetType(const std::vector<uint8_t>& packet) { return packet.empty() ? 0 : packet[0]; }
-    static bool isPublish(const std::vector<uint8_t>& packet) { return (packetType(packet) & 0xF0) == kPublish; }
+    static uint8_t packetType(const std::vector<uint8_t> &packet)
+    {
+        return packet.empty() ? 0 : packet[0];
+    }
 
-    ConnAckResult decodeConnAck(const std::vector<uint8_t>& packet) const;
-    SubAckResult  decodeSubAck(const std::vector<uint8_t>& packet) const;
+    static bool isPublish(const std::vector<uint8_t> &packet)
+    {
+        return (packetType(packet) & 0xF0) == kPublish;
+    }
+
+    ConnAckResult decodeConnAck(const std::vector<uint8_t> &packet) const;
+    SubAckResult decodeSubAck(const std::vector<uint8_t> &packet) const;
 
     // PUBACK / PUBREC / PUBREL / PUBCOMP / UNSUBACK all share one shape —
     // fixed header + Remaining Length(2) + Packet Identifier, nothing else
     // — so one decoder covers all five. Returns false if the packet is too
     // short to contain a Packet Identifier.
-    static bool decodeSimpleAck(const std::vector<uint8_t>& packet, uint16_t* pOutPacketId);
+    static bool decodeSimpleAck(const std::vector<uint8_t> &packet, uint16_t *pOutPacketId);
 
-    PublishMessage decodePublish(const std::vector<uint8_t>& packet) const;
+    PublishMessage decodePublish(const std::vector<uint8_t> &packet) const;
 
     // ---- Variable Byte Integer helpers ----
     // Used both internally (Remaining Length on every packet this class
@@ -142,9 +161,12 @@ public:
     // to decode, since MqttPlugin's read loop only ever hands over packets
     // it has already fully received) — advances 'offset' past it and
     // returns the value.
-    static uint32_t decodeVarInt(const std::vector<uint8_t>& data, size_t& offset);
+    static uint32_t decodeVarInt(const std::vector<uint8_t> &data, size_t &offset);
 
-    void resetPacketIdSequence() { m_nextPacketId = 1; }
+    void resetPacketIdSequence()
+    {
+        m_nextPacketId = 1;
+    }
 
 private:
     // Packet ids: shared across PUBLISH (QoS>0)/SUBSCRIBE/UNSUBSCRIBE, per

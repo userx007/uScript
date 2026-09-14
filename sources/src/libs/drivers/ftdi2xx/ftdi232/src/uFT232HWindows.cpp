@@ -6,14 +6,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT232H_BASE |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "FT232H_BASE |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // Windows D2XX headers — only included when building for Windows
 #if defined(_WIN32) || defined(_WIN64)
@@ -30,7 +30,7 @@ FT232HBase::~FT232HBase()
 FT232HBase::Status FT232HBase::open_device(uint8_t u8DeviceIndex)
 {
 #if defined(_WIN32) || defined(_WIN64)
-    FT_HANDLE hDev = nullptr;
+    FT_HANDLE hDev     = nullptr;
     FT_STATUS ftStatus = FT_Open(static_cast<int>(u8DeviceIndex), &hDev);
     if (ftStatus != FT_OK) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -86,32 +86,36 @@ bool FT232HBase::is_open() const
     return true;
 }
 
-FT232HBase::Status FT232HBase::mpsse_write(const uint8_t* buf, size_t len) const
+FT232HBase::Status FT232HBase::mpsse_write(const uint8_t *buf, size_t len) const
 {
 #if defined(_WIN32) || defined(_WIN64)
-    if (!buf || len == 0) return Status::INVALID_PARAM;
+    if (!buf || len == 0) {
+        return Status::INVALID_PARAM;
+    }
     DWORD written = 0;
-    if (FT_Write(FTHS, const_cast<LPVOID>(static_cast<const void*>(buf)),
-                 static_cast<DWORD>(len), &written) != FT_OK
-        || written != static_cast<DWORD>(len))
-    {
+    if (FT_Write(FTHS, const_cast<LPVOID>(static_cast<const void *>(buf)),
+                 static_cast<DWORD>(len), &written) != FT_OK ||
+        written != static_cast<DWORD>(len)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FT_Write failed"));
         return Status::WRITE_ERROR;
     }
     return Status::SUCCESS;
 #else
-    (void)buf; (void)len;
+    (void)buf;
+    (void)len;
     return Status::WRITE_ERROR;
 #endif
 }
 
-FT232HBase::Status FT232HBase::mpsse_read(uint8_t* buf, size_t len,
-                                           uint32_t timeoutMs,
-                                           size_t& bytesRead,
-                                           std::stop_token /*stop_tok*/) const
+FT232HBase::Status FT232HBase::mpsse_read(uint8_t *buf, size_t len,
+                                          uint32_t timeoutMs,
+                                          size_t &bytesRead,
+                                          std::stop_token /*stop_tok*/) const
 {
 #if defined(_WIN32) || defined(_WIN64)
-    if (!buf || len == 0) return Status::INVALID_PARAM;
+    if (!buf || len == 0) {
+        return Status::INVALID_PARAM;
+    }
     bytesRead = 0;
     FT_SetTimeouts(FTHS, timeoutMs, 0);
     DWORD got = 0;
@@ -120,10 +124,15 @@ FT232HBase::Status FT232HBase::mpsse_read(uint8_t* buf, size_t len,
         return Status::READ_ERROR;
     }
     bytesRead = static_cast<size_t>(got);
-    if (bytesRead < len) return Status::READ_TIMEOUT;
+    if (bytesRead < len) {
+        return Status::READ_TIMEOUT;
+    }
     return Status::SUCCESS;
 #else
-    (void)buf; (void)len; (void)timeoutMs; (void)bytesRead;
+    (void)buf;
+    (void)len;
+    (void)timeoutMs;
+    (void)bytesRead;
     return Status::READ_ERROR;
 #endif
 }

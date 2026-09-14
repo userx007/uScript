@@ -2,11 +2,11 @@
 #include "uDigisparkSPI.hpp"
 #include "uLogger.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <algorithm>
 #include <mutex>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string_view>
 #include <vector>
@@ -16,15 +16,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "SPI_BRIDGE  |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "SPI_BRIDGE  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // PUBLIC UNIFIED INTERFACE IMPLEMENTATION
@@ -36,41 +35,36 @@ bool SPIBridge::is_open() const
     return m_pDevice != nullptr;
 }
 
-
 ICommDriver::Status SPIBridge::configure(SPIMode eMode, SPIClockDiv eDiv)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (!m_pDevice)
-    {
+    if (!m_pDevice) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("configure: device not open"));
         return Status::PORT_ACCESS;
     }
 
     // Packet: [CMD_SPI_CONFIG][mode][divider][0 0 0 0 0]
     uint8_t txPkt[SPI_PKT_SIZE] = {};
-    txPkt[0] = CMD_SPI_CONFIG;
-    txPkt[1] = static_cast<uint8_t>(eMode);
-    txPkt[2] = static_cast<uint8_t>(eDiv);
+    txPkt[0]                    = CMD_SPI_CONFIG;
+    txPkt[1]                    = static_cast<uint8_t>(eMode);
+    txPkt[2]                    = static_cast<uint8_t>(eDiv);
 
-    Status eSend = hid_pkt_send(std::span<const uint8_t>(txPkt, SPI_PKT_SIZE));
-    if (eSend != Status::SUCCESS)
-    {
+    Status eSend                = hid_pkt_send(std::span<const uint8_t>(txPkt, SPI_PKT_SIZE));
+    if (eSend != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("configure: send failed"));
         return eSend;
     }
 
     uint8_t rxPkt[SPI_PKT_SIZE] = {};
-    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE),
-                                 SPI_WRITE_DEFAULT_TIMEOUT);
-    if (eRecv != Status::SUCCESS)
-    {
+    Status eRecv                = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE),
+                                               SPI_WRITE_DEFAULT_TIMEOUT);
+    if (eRecv != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("configure: recv failed"));
         return eRecv;
     }
 
-    if (rxPkt[0] != CMD_SPI_CONFIG || rxPkt[1] != FW_STATUS_OK)
-    {
+    if (rxPkt[0] != CMD_SPI_CONFIG || rxPkt[1] != FW_STATUS_OK) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("configure: firmware error"); LOG_HEX8(rxPkt[1]));
         return Status::WRITE_ERROR;
@@ -83,26 +77,23 @@ ICommDriver::Status SPIBridge::configure(SPIMode eMode, SPIClockDiv eDiv)
     return Status::SUCCESS;
 }
 
-
-ICommDriver::ReadResult SPIBridge::tout_read(uint32_t           u32ReadTimeout,
-                                              std::span<uint8_t> buffer,
-                                              const ReadOptions& options,
-                                              std::string_view   /*xtra_params*/,
-                                              std::stop_token stop_tok) const
+ICommDriver::ReadResult SPIBridge::tout_read(uint32_t u32ReadTimeout,
+                                             std::span<uint8_t> buffer,
+                                             const ReadOptions &options,
+                                             std::string_view /*xtra_params*/,
+                                             std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     ReadResult result;
 
-    if (!m_pDevice)
-    {
+    if (!m_pDevice) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: device not open"));
         result.status = Status::PORT_ACCESS;
         return result;
     }
 
-    if (buffer.empty())
-    {
+    if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: empty buffer"));
         result.status = Status::INVALID_PARAM;
         return result;
@@ -112,63 +103,56 @@ ICommDriver::ReadResult SPIBridge::tout_read(uint32_t           u32ReadTimeout,
     // it to hidapi's native blocking-forever wait.
     uint32_t u32Timeout = u32ReadTimeout;
 
-    switch (options.mode)
-    {
-        // ── ReadMode::Exact ────────────────────────────────────────────────────
-        // Clock buffer.size() dummy bytes on MOSI (0x00), fill buffer with MISO.
-        case ReadMode::Exact:
-        {
-            result = priv_cmd_read(u32Timeout, buffer, buffer.size(), stop_tok);
-            break;
-        }
+    switch (options.mode) {
+    // ── ReadMode::Exact ────────────────────────────────────────────────────
+    // Clock buffer.size() dummy bytes on MOSI (0x00), fill buffer with MISO.
+    case ReadMode::Exact: {
+        result = priv_cmd_read(u32Timeout, buffer, buffer.size(), stop_tok);
+        break;
+    }
 
-        // ── ReadMode::UntilToken ───────────────────────────────────────────────
-        // Full-duplex: use options.token as the MOSI payload, fill buffer with MISO.
-        // options.token.size() must equal buffer.size().
-        case ReadMode::UntilToken:
-        {
-            if (options.token.empty())
-            {
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("tout_read(UntilToken): token span is empty"));
-                result.status = Status::INVALID_PARAM;
-                return result;
-            }
-
-            if (options.token.size() != buffer.size())
-            {
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("tout_read(UntilToken): token/buffer size mismatch");
-                          LOG_UINT32(options.token.size()); LOG_UINT32(buffer.size()));
-                result.status = Status::INVALID_PARAM;
-                return result;
-            }
-
-            SPIReadOptions spiOpts;
-            spiOpts.mode      = SPIReadMode::Transfer;
-            spiOpts.length    = options.token.size();
-            spiOpts.mosi_data.assign(options.token.begin(), options.token.end());
-
-            result = priv_cmd_transfer(u32Timeout, buffer, spiOpts, stop_tok);
-            break;
-        }
-
-        // ── ReadMode::UntilDelimiter ───────────────────────────────────────────
-        // Not applicable to SPI (byte-framing is handled at application level).
-        case ReadMode::UntilDelimiter:
-        {
+    // ── ReadMode::UntilToken ───────────────────────────────────────────────
+    // Full-duplex: use options.token as the MOSI payload, fill buffer with MISO.
+    // options.token.size() must equal buffer.size().
+    case ReadMode::UntilToken: {
+        if (options.token.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("tout_read: ReadMode::UntilDelimiter not supported on SPI"));
+                      LOG_STRING("tout_read(UntilToken): token span is empty"));
             result.status = Status::INVALID_PARAM;
-            break;
+            return result;
         }
 
-        default:
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: unknown ReadMode"));
+        if (options.token.size() != buffer.size()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("tout_read(UntilToken): token/buffer size mismatch");
+                      LOG_UINT32(options.token.size()); LOG_UINT32(buffer.size()));
             result.status = Status::INVALID_PARAM;
-            break;
+            return result;
         }
+
+        SPIReadOptions spiOpts;
+        spiOpts.mode   = SPIReadMode::Transfer;
+        spiOpts.length = options.token.size();
+        spiOpts.mosi_data.assign(options.token.begin(), options.token.end());
+
+        result = priv_cmd_transfer(u32Timeout, buffer, spiOpts, stop_tok);
+        break;
+    }
+
+    // ── ReadMode::UntilDelimiter ───────────────────────────────────────────
+    // Not applicable to SPI (byte-framing is handled at application level).
+    case ReadMode::UntilDelimiter: {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("tout_read: ReadMode::UntilDelimiter not supported on SPI"));
+        result.status = Status::INVALID_PARAM;
+        break;
+    }
+
+    default: {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: unknown ReadMode"));
+        result.status = Status::INVALID_PARAM;
+        break;
+    }
     }
 
     // SPI has no framing delimiter; found_terminator is always false.
@@ -176,25 +160,22 @@ ICommDriver::ReadResult SPIBridge::tout_read(uint32_t           u32ReadTimeout,
     return result;
 }
 
-
-ICommDriver::WriteResult SPIBridge::tout_write(uint32_t                 u32WriteTimeout,
-                                                std::span<const uint8_t> buffer,
-                                                std::string_view         /*xtra_params*/,
-                                                std::stop_token stop_tok) const
+ICommDriver::WriteResult SPIBridge::tout_write(uint32_t u32WriteTimeout,
+                                               std::span<const uint8_t> buffer,
+                                               std::string_view /*xtra_params*/,
+                                               std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     WriteResult result;
 
-    if (!m_pDevice)
-    {
+    if (!m_pDevice) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_write: device not open"));
         result.status = Status::PORT_ACCESS;
         return result;
     }
 
-    if (buffer.empty() || buffer.size() > SPI_MAX_WRITE_PAYLOAD)
-    {
+    if (buffer.empty() || buffer.size() > SPI_MAX_WRITE_PAYLOAD) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("tout_write: invalid buffer size"); LOG_UINT32(buffer.size()));
         result.status = Status::INVALID_PARAM;
@@ -205,54 +186,48 @@ ICommDriver::WriteResult SPIBridge::tout_write(uint32_t                 u32Write
     // for the firmware's ack packet, so they share the same primitive).
     uint32_t u32Timeout = u32WriteTimeout;
 
-    result = priv_cmd_write(u32Timeout, buffer, stop_tok);
+    result              = priv_cmd_write(u32Timeout, buffer, stop_tok);
     return result;
 }
 
-
 // ── Convenience helpers ───────────────────────────────────────────────────────
 
-ICommDriver::Status SPIBridge::transfer(uint32_t                 u32Timeout,
-                                         std::span<const uint8_t> mosi,
-                                         std::span<uint8_t>       miso) const
+ICommDriver::Status SPIBridge::transfer(uint32_t u32Timeout,
+                                        std::span<const uint8_t> mosi,
+                                        std::span<uint8_t> miso) const
 {
-    if (mosi.empty() || mosi.size() > SPI_MAX_TRANSFER_PAYLOAD)
-    {
+    if (mosi.empty() || mosi.size() > SPI_MAX_TRANSFER_PAYLOAD) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("transfer: invalid mosi size"); LOG_UINT32(mosi.size()));
         return Status::INVALID_PARAM;
     }
 
-    if (miso.size() < mosi.size())
-    {
+    if (miso.size() < mosi.size()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("transfer: miso buffer too small"));
         return Status::BUFFER_OVERFLOW;
     }
 
     // Build ReadOptions using UntilToken mode: token span = MOSI bytes.
     ReadOptions opts;
-    opts.mode  = ReadMode::UntilToken;
-    opts.token = std::span<const uint8_t>(mosi.data(), mosi.size());
+    opts.mode     = ReadMode::UntilToken;
+    opts.token    = std::span<const uint8_t>(mosi.data(), mosi.size());
 
     ReadResult rr = tout_read(u32Timeout, miso, opts);
     return rr.status;
 }
 
-
 ICommDriver::Status SPIBridge::write_reg(uint8_t u8Reg, uint8_t u8Value)
 {
-    const uint8_t buf[2] = { static_cast<uint8_t>(u8Reg & 0x7Fu), u8Value };
+    const uint8_t buf[2] = {static_cast<uint8_t>(u8Reg & 0x7Fu), u8Value};
     // 0 now means "block forever" — this convenience wrapper wants the
     // driver's bounded default instead, so pass it explicitly.
-    WriteResult wr = tout_write(SPI_WRITE_DEFAULT_TIMEOUT, std::span<const uint8_t>(buf, 2));
+    WriteResult wr       = tout_write(SPI_WRITE_DEFAULT_TIMEOUT, std::span<const uint8_t>(buf, 2));
     return wr.status;
 }
 
-
 ICommDriver::Status SPIBridge::read_reg(uint8_t u8Reg, std::span<uint8_t> buffer)
 {
-    if (buffer.empty() || buffer.size() > SPI_MAX_TRANSFER_PAYLOAD - 1)
-    {
+    if (buffer.empty() || buffer.size() > SPI_MAX_TRANSFER_PAYLOAD - 1) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("read_reg: buffer size out of range"); LOG_UINT32(buffer.size()));
         return Status::INVALID_PARAM;
@@ -268,39 +243,36 @@ ICommDriver::Status SPIBridge::read_reg(uint8_t u8Reg, std::span<uint8_t> buffer
     // 0 now means "block forever" — this convenience wrapper wants the
     // driver's bounded default instead, so pass it explicitly.
     Status eSt = transfer(SPI_READ_DEFAULT_TIMEOUT, std::span<const uint8_t>(mosi), std::span<uint8_t>(miso));
-    if (eSt == Status::SUCCESS)
-    {
+    if (eSt == Status::SUCCESS) {
         // Skip the dummy byte received while clocking the address out
-        for (size_t i = 0; i < buffer.size(); ++i)
+        for (size_t i = 0; i < buffer.size(); ++i) {
             buffer[i] = miso[i + 1];
+        }
     }
     return eSt;
 }
-
 
 // ============================================================================
 // PRIVATE COMMAND IMPLEMENTATIONS  (called with m_mutex already held)
 // ============================================================================
 
-ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Timeout,
-                                                      std::span<uint8_t>    buffer,
-                                                      const SPIReadOptions& opts,
-                                                      std::stop_token stop_tok) const
+ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t u32Timeout,
+                                                     std::span<uint8_t> buffer,
+                                                     const SPIReadOptions &opts,
+                                                     std::stop_token stop_tok) const
 {
     ReadResult result;
 
     uint8_t u8Len = static_cast<uint8_t>(
         std::min(opts.mosi_data.size(), SPI_MAX_TRANSFER_PAYLOAD));
 
-    if (u8Len == 0)
-    {
+    if (u8Len == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_transfer: mosi_data empty"));
         result.status = Status::INVALID_PARAM;
         return result;
     }
 
-    if (buffer.size() < u8Len)
-    {
+    if (buffer.size() < u8Len) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("priv_cmd_transfer: miso buffer too small");
                   LOG_UINT32(buffer.size()); LOG_UINT32(u8Len));
@@ -310,30 +282,28 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Ti
 
     // Packet: [CMD_SPI_TRANSFER][len][d0..d5]
     uint8_t txPkt[SPI_PKT_SIZE] = {};
-    txPkt[0] = CMD_SPI_TRANSFER;
-    txPkt[1] = u8Len;
-    for (uint8_t i = 0; i < u8Len; ++i)
+    txPkt[0]                    = CMD_SPI_TRANSFER;
+    txPkt[1]                    = u8Len;
+    for (uint8_t i = 0; i < u8Len; ++i) {
         txPkt[2 + i] = opts.mosi_data[i];
+    }
 
     Status eSend = hid_pkt_send(std::span<const uint8_t>(txPkt, SPI_PKT_SIZE));
-    if (eSend != Status::SUCCESS)
-    {
+    if (eSend != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_transfer: send failed"));
         result.status = eSend;
         return result;
     }
 
     uint8_t rxPkt[SPI_PKT_SIZE] = {};
-    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout, stop_tok);
-    if (eRecv != Status::SUCCESS)
-    {
+    Status eRecv                = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout, stop_tok);
+    if (eRecv != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_transfer: recv failed"));
         result.status = eRecv;
         return result;
     }
 
-    if (rxPkt[0] != CMD_SPI_TRANSFER)
-    {
+    if (rxPkt[0] != CMD_SPI_TRANSFER) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("priv_cmd_transfer: unexpected CMD"); LOG_HEX8(rxPkt[0]));
         result.status = Status::READ_ERROR;
@@ -341,11 +311,12 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Ti
     }
 
     uint8_t n = rxPkt[1];
-    for (uint8_t i = 0; i < n && i < SPI_MAX_TRANSFER_PAYLOAD; ++i)
+    for (uint8_t i = 0; i < n && i < SPI_MAX_TRANSFER_PAYLOAD; ++i) {
         buffer[i] = rxPkt[2 + i];
+    }
 
-    result.status          = Status::SUCCESS;
-    result.bytes_read      = n;
+    result.status           = Status::SUCCESS;
+    result.bytes_read       = n;
     result.found_terminator = false;
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR;
@@ -354,26 +325,23 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Ti
     return result;
 }
 
-
-ICommDriver::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
-                                                  std::span<uint8_t> buffer,
-                                                  size_t             szLen,
-                                                  std::stop_token stop_tok) const
+ICommDriver::ReadResult SPIBridge::priv_cmd_read(uint32_t u32Timeout,
+                                                 std::span<uint8_t> buffer,
+                                                 size_t szLen,
+                                                 std::stop_token stop_tok) const
 {
     ReadResult result;
 
     uint8_t u8Len = static_cast<uint8_t>(
         std::min(szLen, SPI_MAX_READ_PAYLOAD));
 
-    if (u8Len == 0)
-    {
+    if (u8Len == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_read: length is 0"));
         result.status = Status::INVALID_PARAM;
         return result;
     }
 
-    if (buffer.size() < u8Len)
-    {
+    if (buffer.size() < u8Len) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_read: buffer too small"));
         result.status = Status::BUFFER_OVERFLOW;
         return result;
@@ -381,28 +349,25 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
 
     // Packet: [CMD_SPI_READ][len][0 0 0 0 0 0]
     uint8_t txPkt[SPI_PKT_SIZE] = {};
-    txPkt[0] = CMD_SPI_READ;
-    txPkt[1] = u8Len;
+    txPkt[0]                    = CMD_SPI_READ;
+    txPkt[1]                    = u8Len;
 
-    Status eSend = hid_pkt_send(std::span<const uint8_t>(txPkt, SPI_PKT_SIZE));
-    if (eSend != Status::SUCCESS)
-    {
+    Status eSend                = hid_pkt_send(std::span<const uint8_t>(txPkt, SPI_PKT_SIZE));
+    if (eSend != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_read: send failed"));
         result.status = eSend;
         return result;
     }
 
     uint8_t rxPkt[SPI_PKT_SIZE] = {};
-    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout, stop_tok);
-    if (eRecv != Status::SUCCESS)
-    {
+    Status eRecv                = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout, stop_tok);
+    if (eRecv != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_read: recv failed"));
         result.status = eRecv;
         return result;
     }
 
-    if (rxPkt[0] != CMD_SPI_READ)
-    {
+    if (rxPkt[0] != CMD_SPI_READ) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("priv_cmd_read: unexpected CMD"); LOG_HEX8(rxPkt[0]));
         result.status = Status::READ_ERROR;
@@ -410,11 +375,12 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
     }
 
     uint8_t n = rxPkt[1];
-    for (uint8_t i = 0; i < n && i < SPI_MAX_READ_PAYLOAD; ++i)
+    for (uint8_t i = 0; i < n && i < SPI_MAX_READ_PAYLOAD; ++i) {
         buffer[i] = rxPkt[2 + i];
+    }
 
-    result.status          = Status::SUCCESS;
-    result.bytes_read      = n;
+    result.status           = Status::SUCCESS;
+    result.bytes_read       = n;
     result.found_terminator = false;
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR;
@@ -423,10 +389,9 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
     return result;
 }
 
-
-ICommDriver::WriteResult SPIBridge::priv_cmd_write(uint32_t                 u32Timeout,
-                                                    std::span<const uint8_t> data,
-                                                    std::stop_token stop_tok) const
+ICommDriver::WriteResult SPIBridge::priv_cmd_write(uint32_t u32Timeout,
+                                                   std::span<const uint8_t> data,
+                                                   std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -435,30 +400,28 @@ ICommDriver::WriteResult SPIBridge::priv_cmd_write(uint32_t                 u32T
 
     // Packet: [CMD_SPI_WRITE][len][d0..d5]
     uint8_t txPkt[SPI_PKT_SIZE] = {};
-    txPkt[0] = CMD_SPI_WRITE;
-    txPkt[1] = u8Len;
-    for (uint8_t i = 0; i < u8Len; ++i)
+    txPkt[0]                    = CMD_SPI_WRITE;
+    txPkt[1]                    = u8Len;
+    for (uint8_t i = 0; i < u8Len; ++i) {
         txPkt[2 + i] = data[i];
+    }
 
     Status eSend = hid_pkt_send(std::span<const uint8_t>(txPkt, SPI_PKT_SIZE));
-    if (eSend != Status::SUCCESS)
-    {
+    if (eSend != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_write: send failed"));
         result.status = eSend;
         return result;
     }
 
     uint8_t rxPkt[SPI_PKT_SIZE] = {};
-    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout, stop_tok);
-    if (eRecv != Status::SUCCESS)
-    {
+    Status eRecv                = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout, stop_tok);
+    if (eRecv != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_write: recv failed"));
         result.status = eRecv;
         return result;
     }
 
-    if (rxPkt[0] != CMD_SPI_WRITE || rxPkt[1] != FW_STATUS_OK)
-    {
+    if (rxPkt[0] != CMD_SPI_WRITE || rxPkt[1] != FW_STATUS_OK) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("priv_cmd_write: firmware error"); LOG_HEX8(rxPkt[1]));
         result.status = Status::WRITE_ERROR;

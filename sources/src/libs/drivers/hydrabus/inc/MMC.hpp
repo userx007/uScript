@@ -3,11 +3,11 @@
 
 #include "Protocol.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <optional>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <vector>
 
@@ -30,12 +30,12 @@ class Hydrabus;
  * auto blk = mmc.read(0);    // read block 0
  * @endcode
  */
-class MMC : public Protocol {
+class MMC : public Protocol
+{
 public:
-
-    static constexpr size_t BLOCK_SIZE    = 512;
-    static constexpr size_t REG_SIZE_STD  =  16;  ///< CID / CSD
-    static constexpr size_t REG_SIZE_EXT  = 512;  ///< EXT_CSD
+    static constexpr size_t BLOCK_SIZE   = 512;
+    static constexpr size_t REG_SIZE_STD = 16;  ///< CID / CSD
+    static constexpr size_t REG_SIZE_EXT = 512; ///< EXT_CSD
 
     explicit MMC(std::shared_ptr<Hydrabus> hydrabus);
 
@@ -76,7 +76,7 @@ public:
     // -------------------------------------------------------------------------
 
     /** @return 1 or 4 (bus width in bits). */
-    int  get_bus_width() const;
+    int get_bus_width() const;
 
     /**
      * @brief Set bus width.
@@ -93,4 +93,4 @@ private:
 
 } // namespace HydraHAL
 
-#endif //HYDRABUS_MMC_HPP
+#endif // HYDRABUS_MMC_HPP

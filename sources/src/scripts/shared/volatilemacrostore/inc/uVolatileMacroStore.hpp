@@ -73,35 +73,33 @@
 // the whole process no matter how many separate images include this header.
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace uvolatile
-{
+namespace uvolatile {
 
 /**
-  * \brief Process-wide, thread-safe mirror of every "?=" variable macro's
-  *        most recently assigned value.
-*/
+ * \brief Process-wide, thread-safe mirror of every "?=" variable macro's
+ *        most recently assigned value.
+ */
 class VolatileMacroStore
 {
 public:
-
     /** \brief Returns the single, process-wide instance. Defined exactly once,
-      *        out-of-line, in uVolatileMacroStore.cpp (part of the
-      *        uVolatileMacroStore SHARED library) - see this header's
-      *        rationale above for why that matters across plugin .so
-      *        boundaries. Do not move this back to an inline definition. */
-    static VolatileMacroStore& instance();
+     *        out-of-line, in uVolatileMacroStore.cpp (part of the
+     *        uVolatileMacroStore SHARED library) - see this header's
+     *        rationale above for why that matters across plugin .so
+     *        boundaries. Do not move this back to an inline definition. */
+    static VolatileMacroStore &instance();
 
     /** \brief Record/update a macro's current value (called by
-      *        ScriptInterpreter::m_setRuntimeVarMacro() on every assignment). */
-    void set(const std::string& strName, std::string strValue)
+     *        ScriptInterpreter::m_setRuntimeVarMacro() on every assignment). */
+    void set(const std::string &strName, std::string strValue)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_map[strName] = std::move(strValue);
     }
 
     /** \brief Look up a macro's current value.
-      * \return {true, value} if strName is a known volatile macro, {false, {}} otherwise. */
-    std::pair<bool, std::string> get(const std::string& strName) const
+     * \return {true, value} if strName is a known volatile macro, {false, {}} otherwise. */
+    std::pair<bool, std::string> get(const std::string &strName) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_map.find(strName);
@@ -111,37 +109,37 @@ public:
         return {false, {}};
     }
 
-    VolatileMacroStore(const VolatileMacroStore&)            = delete;
-    VolatileMacroStore& operator=(const VolatileMacroStore&) = delete;
+    VolatileMacroStore(const VolatileMacroStore &)            = delete;
+    VolatileMacroStore &operator=(const VolatileMacroStore &) = delete;
 
 private:
     VolatileMacroStore() = default;
 
-    mutable std::mutex                        m_mutex;
+    mutable std::mutex m_mutex;
     std::unordered_map<std::string, std::string> m_map;
 };
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Re-substitute every bare $NAME reference in strInOut with its current value from
-  *        VolatileMacroStore, in place. Deliberately simpler than ScriptInterpreter's own
-  *        m_replaceVariableMacros(): only the plain "$NAME" form (no ".SIZE"/".N"/".$idx" array
-  *        suffixes - those select an ARRAY_MACRO element and are already resolved once, up
-  *        front, by the interpreter before a CYCLIC line is ever dispatched, since they define
-  *        the entry list's *structure*, which must stay fixed for the lifetime of a CYCLIC
-  *        session; see ucmdexec::generic_send_cyclic()'s cached/un-cached split). A name that
-  *        isn't (yet) a known volatile macro is left unexpanded, exactly like the interpreter's
-  *        own "leave unexpanded, next pass will retry" behaviour for a not-yet-resolvable
-  *        reference.
-  *
-  * \param[in,out] strInOut  the entry text (a CYCLIC item's val or id field) to re-resolve
-  *
-  * \return true if at least one $NAME reference was substituted, false if none were (strInOut
-  *          is left completely unchanged in that case, so callers can skip re-validating an
-  *          entry that has no volatile content at all)
-*/
+ * \brief Re-substitute every bare $NAME reference in strInOut with its current value from
+ *        VolatileMacroStore, in place. Deliberately simpler than ScriptInterpreter's own
+ *        m_replaceVariableMacros(): only the plain "$NAME" form (no ".SIZE"/".N"/".$idx" array
+ *        suffixes - those select an ARRAY_MACRO element and are already resolved once, up
+ *        front, by the interpreter before a CYCLIC line is ever dispatched, since they define
+ *        the entry list's *structure*, which must stay fixed for the lifetime of a CYCLIC
+ *        session; see ucmdexec::generic_send_cyclic()'s cached/un-cached split). A name that
+ *        isn't (yet) a known volatile macro is left unexpanded, exactly like the interpreter's
+ *        own "leave unexpanded, next pass will retry" behaviour for a not-yet-resolvable
+ *        reference.
+ *
+ * \param[in,out] strInOut  the entry text (a CYCLIC item's val or id field) to re-resolve
+ *
+ * \return true if at least one $NAME reference was substituted, false if none were (strInOut
+ *          is left completely unchanged in that case, so callers can skip re-validating an
+ *          entry that has no volatile content at all)
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-inline bool resolveVolatileMacros(std::string& strInOut)
+inline bool resolveVolatileMacros(std::string &strInOut)
 {
     static const std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*))");
 

@@ -1,6 +1,7 @@
+#include "buspirate_generic.hpp"
+
 #include "ICommDriver.hpp"
 #include "bithandling.h"
-#include "buspirate_generic.hpp"
 #include "buspirate_plugin.hpp"
 #include "uFile.hpp"
 #include "uHexdump.hpp"
@@ -26,10 +27,10 @@
 #include <vector>
 
 #if defined(_WIN32) || defined(_WIN64)
-    #include <sys/stat.h>
+#include <sys/stat.h>
 #else
-    #include <sys/stat.h>
-    #include <unistd.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -41,14 +42,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "BPIRATE_GEN |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "BPIRATE_GEN |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //            PUBLIC INTERFACES IMPLEMENTATION                   //
@@ -58,13 +59,12 @@
     BuspiratePlugin::getModuleCmdsMap
 ============================================================================================ */
 
-ModuleCommandsMap<BuspiratePlugin>* BuspiratePlugin::getModuleCmdsMap ( const std::string& strModule) const
+ModuleCommandsMap<BuspiratePlugin> *BuspiratePlugin::getModuleCmdsMap(const std::string &strModule) const
 {
-    ModuleCommandsMap<BuspiratePlugin> *pCmdMap = nullptr;
+    ModuleCommandsMap<BuspiratePlugin> *pCmdMap                  = nullptr;
     typename CommandsMapsMap<BuspiratePlugin>::const_iterator it = m_mapCommandsMaps.find(strModule);
 
-    if (it != m_mapCommandsMaps.end() )
-    {
+    if (it != m_mapCommandsMaps.end()) {
         pCmdMap = it->second;
     }
 
@@ -72,12 +72,11 @@ ModuleCommandsMap<BuspiratePlugin>* BuspiratePlugin::getModuleCmdsMap ( const st
 
 } /* getModuleCmdsMap() */
 
-
 /* ============================================================================================
     BuspiratePlugin::getModuleSpeedsMap
 ============================================================================================ */
 
-ModuleSpeedMap* BuspiratePlugin::getModuleSpeedsMap ( const std::string& strModule) const
+ModuleSpeedMap *BuspiratePlugin::getModuleSpeedsMap(const std::string &strModule) const
 {
     ModuleSpeedMap *pSpeedMap = nullptr;
 
@@ -90,7 +89,6 @@ ModuleSpeedMap* BuspiratePlugin::getModuleSpeedsMap ( const std::string& strModu
     return pSpeedMap;
 
 } /* getModuleSpeedsMap() */
-
 
 /* ============================================================================================
  0100wxyz – Configure peripherals w=power, x=pullups, y=AUX, z=CS
@@ -108,7 +106,7 @@ AUX is always a normal pin output (0=GND, 1=3.3volts).
 
 bool BuspiratePlugin::generic_set_peripheral(const std::string &args, std::stop_token st) const
 {
-    bool bRetVal = true;
+    bool bRetVal    = true;
     uint8_t request = 0x40;
 
     if ("help" == args) {
@@ -118,31 +116,46 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args, std::stop_
         LOG_PRINT(LOG_EMPTY, LOG_STRING("c/C - CS: c C"));
     } else if ("?" == args) {
         LOG_PRINT(LOG_WERBOSE, LOG_STRING("Peripherals:"); LOG_UINT8(request));
-    }  else {
+    } else {
         // power
-        if (ustring::containsChar(args, 'W')) { BIT_SET(request,   3); }
-        if (ustring::containsChar(args, 'w')) { BIT_CLEAR(request, 3); }
+        if (ustring::containsChar(args, 'W')) {
+            BIT_SET(request, 3);
+        }
+        if (ustring::containsChar(args, 'w')) {
+            BIT_CLEAR(request, 3);
+        }
         // pull-ups
-        if (ustring::containsChar(args, 'P')) { BIT_SET(request,   2); }
-        if (ustring::containsChar(args, 'p')) { BIT_CLEAR(request, 2); }
+        if (ustring::containsChar(args, 'P')) {
+            BIT_SET(request, 2);
+        }
+        if (ustring::containsChar(args, 'p')) {
+            BIT_CLEAR(request, 2);
+        }
         // AUX
-        if (ustring::containsChar(args, 'A')) { BIT_SET(request,   1); }
-        if (ustring::containsChar(args, 'a')) { BIT_CLEAR(request, 1); }
+        if (ustring::containsChar(args, 'A')) {
+            BIT_SET(request, 1);
+        }
+        if (ustring::containsChar(args, 'a')) {
+            BIT_CLEAR(request, 1);
+        }
         // CS
-        if (ustring::containsChar(args, 'C')) { BIT_SET(request,   0); }
-        if (ustring::containsChar(args, 'c')) { BIT_CLEAR(request, 0); }
+        if (ustring::containsChar(args, 'C')) {
+            BIT_SET(request, 0);
+        }
+        if (ustring::containsChar(args, 'c')) {
+            BIT_CLEAR(request, 0);
+        }
         LOG_PRINT(LOG_WERBOSE, LOG_STRING("Peripherals:"); LOG_UINT8(request));
 
         if (m_bIsEnabled) {
             uint8_t response[sizeof(m_positive_response)] = {};
-            bRetVal = generic_uart_send_receive(std::span<uint8_t>(&request, 1), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
+            bRetVal                                       = generic_uart_send_receive(std::span<uint8_t>(&request, 1), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
         }
     }
 
     return bRetVal;
 
 } /* generic_set_peripheral() */
-
 
 /* ============================================================================================
     BuspiratePlugin::generic_write_read_data
@@ -163,9 +176,9 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::st
         std::vector<uint8_t> response;
         size_t szReadSize = 0;
 
-        if (CHAR_SEPARATOR_COLON == args[0]) {  // only read
+        if (CHAR_SEPARATOR_COLON == args[0]) { // only read
             bRetVal = numeric::str2sizet(args.substr(1), szReadSize);
-        } else {  // write and optional read
+        } else { // write and optional read
             ustring::tokenize(args, CHAR_SEPARATOR_COLON, vectParams);
             if (!vectParams.empty()) {
                 bRetVal = hexutils::stringUnhexlify(vectParams[0], request);
@@ -177,7 +190,7 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::st
 
         if (true == bRetVal) {
             if (true == m_bIsEnabled) {
-                response.resize(szReadSize);  // allocate response buffer
+                response.resize(szReadSize); // allocate response buffer
                 bRetVal = generic_internal_write_read_data(
                     u8Cmd,
                     std::span<const uint8_t>{request},
@@ -192,12 +205,11 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::st
 
 } /* generic_write_read_data() */
 
-
 /* ============================================================================================
     BuspiratePlugin::generic_write_read_file
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::generic_write_read_file(const uint8_t u8Cmd, const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -242,7 +254,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
             }
             if (true == bRetVal) {
                 if (true == m_bIsEnabled) {
-                    bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0], szWriteChunkSize, szReadChunkSize, st);                
+                    bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0], szWriteChunkSize, szReadChunkSize, st);
                 }
             }
         }
@@ -251,8 +263,6 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
     return bRetVal;
 
 } /* generic_write_read_file() */
-
-
 
 /* ============================================================================================
     BuspiratePlugin::generic_wire_write_data (rawwire onewire)
@@ -271,15 +281,13 @@ bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data, std
         return true;
     }
 
-    std::array<uint8_t, szBufflen> request = {};  // zero-initialized
-    request[0] = 0x10 | static_cast<uint8_t>(data.size() - 1);
+    std::array<uint8_t, szBufflen> request = {}; // zero-initialized
+    request[0]                             = 0x10 | static_cast<uint8_t>(data.size() - 1);
     std::copy(data.begin(), data.end(), request.begin() + 1);
 
     return generic_uart_send_receive(std::span<uint8_t>{request.data(), data.size() + 1}, std::span<uint8_t>{}, std::span<const uint8_t>{}, true, st);
 
 } /* generic_wire_write_data() */
-
-
 
 /* ============================================================================================
     BuspiratePlugin::generic_uart_send_receive
@@ -300,13 +308,13 @@ bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data, std
 
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> request, std::span<uint8_t> response, std::span<const uint8_t> expected, bool strictCompare, std::stop_token st) const
+bool BuspiratePlugin::generic_uart_send_receive(std::span<const uint8_t> request, std::span<uint8_t> response, std::span<const uint8_t> expected, bool strictCompare, std::stop_token st) const
 {
     // Determine if we should send.
     // An empty span means receive-only (e.g. draining ACK/NACK bytes after a bulk write).
     // NOTE: must NOT check byte values — a span of 0x00 bytes is a valid payload
     //       (e.g. the 20 x 0x00 sent to enter bitbang mode).
-    bool shouldSend = !request.empty();
+    bool shouldSend    = !request.empty();
 
     // Determine if we should receive
     bool shouldReceive = response.size() > 0;
@@ -320,7 +328,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
 
         auto writeResult = m_drvUart.tout_write(m_sIniValues.u32WriteTimeout, request, std::string_view{}, st);
         if (writeResult.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART write failed:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART write failed:");
                       LOG_STRING(ICommDriver::to_string(writeResult.status));
                       LOG_STRING("Bytes written:"); LOG_SIZET(writeResult.bytes_written));
             return false;
@@ -332,20 +340,20 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
     // Receive
     if (shouldReceive) {
         ICommDriver::ReadOptions options;
-        options.mode = ICommDriver::ReadMode::Exact;  // Read exact bytes
-        
-        auto readResult = m_drvUart.tout_read(m_sIniValues.u32ReadTimeout, response, options, std::string_view{}, st);
+        options.mode       = ICommDriver::ReadMode::Exact; // Read exact bytes
+
+        auto readResult    = m_drvUart.tout_read(m_sIniValues.u32ReadTimeout, response, options, std::string_view{}, st);
         size_t szBytesRead = readResult.bytes_read;
-        
+
         if (readResult.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART read failed:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART read failed:");
                       LOG_STRING(ICommDriver::to_string(readResult.status));
                       LOG_STRING("Bytes read:"); LOG_SIZET(szBytesRead));
             return false;
         }
         // only dump what was received
         const size_t szSafeBytesRead = std::min(szBytesRead, response.size());
-        hexutils::logHexdump(LOG_VERBOSE, "Received Answer:", "SAoC", response.first(szSafeBytesRead));        
+        hexutils::logHexdump(LOG_VERBOSE, "Received Answer:", "SAoC", response.first(szSafeBytesRead));
 
         // Compare - now uses the separate expected parameter
         if (shouldCompare) {
@@ -372,7 +380,6 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
     return true;
 }
 
-
 /* ============================================================================================
     BuspiratePlugin::generic_internal_write_read_data
 ============================================================================================ */
@@ -389,18 +396,17 @@ bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std:
 
     if (false == m_bIsEnabled) {
         return true;
-    }    
+    }
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Write:"); LOG_SIZET(szWriteSize); LOG_STRING("Read:"); LOG_SIZET(szReadSize));
 
     // Build command header
-    std::vector<uint8_t> header {
+    std::vector<uint8_t> header{
         u8Cmd,
         static_cast<uint8_t>((szWriteSize >> 8) & 0xFF),
         static_cast<uint8_t>(szWriteSize & 0xFF),
         static_cast<uint8_t>((szReadSize >> 8) & 0xFF),
-        static_cast<uint8_t>(szReadSize & 0xFF)
-    };
+        static_cast<uint8_t>(szReadSize & 0xFF)};
 
     // Combine header + request
     std::vector<uint8_t> fullRequest;
@@ -426,12 +432,11 @@ bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std:
     return true;
 }
 
-
 /* ============================================================================================
     BuspiratePlugin::generic_internal_write_read_file
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize, std::stop_token st) const
+bool BuspiratePlugin::generic_internal_write_read_file(const uint8_t u8Cmd, const std::string &strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize, std::stop_token st) const
 {
     std::ifstream fin(strFileName, std::ios_base::in | std::ios::binary);
     if (!fin.is_open()) {
@@ -445,15 +450,17 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
         return false;
     }
 
-    size_t szNrChunks = static_cast<size_t>(lFileSize / szWriteChunkSize);
+    size_t szNrChunks      = static_cast<size_t>(lFileSize / szWriteChunkSize);
     size_t szLastChunkSize = static_cast<size_t>(lFileSize % szWriteChunkSize);
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Chunk size:"); LOG_SIZET(szWriteChunkSize); LOG_STRING("NrChunks:"); LOG_SIZET(szNrChunks); LOG_STRING("LastChunkSize:"); LOG_SIZET(szLastChunkSize));
 
     for (size_t i = 0; i < szNrChunks; ++i) {
-        if (st.stop_requested()) return false;
+        if (st.stop_requested()) {
+            return false;
+        }
         std::vector<uint8_t> request(szWriteChunkSize);
-        fin.read(reinterpret_cast<char*>(request.data()), szWriteChunkSize);
+        fin.read(reinterpret_cast<char *>(request.data()), szWriteChunkSize);
 
         std::vector<uint8_t> response(szReadChunkSize, 0x00); // Preallocated read buffer
         if (!generic_internal_write_read_data(u8Cmd, request, response, false, st)) {
@@ -463,7 +470,7 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
 
     if (szLastChunkSize > 0) {
         std::vector<uint8_t> request(szLastChunkSize);
-        fin.read(reinterpret_cast<char*>(request.data()), szLastChunkSize);
+        fin.read(reinterpret_cast<char *>(request.data()), szLastChunkSize);
 
         size_t szLastReadSize = std::min(szReadChunkSize, szLastChunkSize);
         std::vector<uint8_t> response(szLastReadSize, 0x00);
@@ -475,8 +482,3 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
 
     return true;
 }
-
-
-
-
-

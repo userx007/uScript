@@ -1,11 +1,11 @@
 #ifndef TEMPLATE_PLUGIN_HPP
 #define TEMPLATE_PLUGIN_HPP
-#include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "PluginOperations.hpp"
 #include "PluginExport.hpp"
+#include "PluginOperations.hpp"
 #include "uLogger.hpp"
+#include "uSharedConfig.hpp"
 
 #include <string>
 
@@ -20,14 +20,13 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR     "TEMPLATE    |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "TEMPLATE    |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN COMMANDS                             //
@@ -46,12 +45,11 @@
 #define TEMPLATE_GET_BLOCKING(name, blocking, ...) blocking
 #endif
 
-#define TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE       \
-TEMPLATE_PLUGIN_CMD_RECORD( INFO               )    \
-TEMPLATE_PLUGIN_CMD_RECORD( DUMMY1             )    \
-TEMPLATE_PLUGIN_CMD_RECORD( DUMMY2             )    \
-TEMPLATE_PLUGIN_CMD_RECORD( DUMMY3,       true )    \
-
+#define TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE \
+    TEMPLATE_PLUGIN_CMD_RECORD(INFO)          \
+    TEMPLATE_PLUGIN_CMD_RECORD(DUMMY1)        \
+    TEMPLATE_PLUGIN_CMD_RECORD(DUMMY2)        \
+    TEMPLATE_PLUGIN_CMD_RECORD(DUMMY3, true)
 
 ///////////////////////////////////////////////////////////////////
 //            PLUGIN SETTINGS KEYWORDS IN INI FILE               //
@@ -59,23 +57,21 @@ TEMPLATE_PLUGIN_CMD_RECORD( DUMMY3,       true )    \
 
 // the common ones are described in the uSharedConfig.hpp file
 
-
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN INTERFACE                            //
 ///////////////////////////////////////////////////////////////////
 
 /**
-  * \brief Template plugin class definition
-*/
-class TemplatePlugin: public PluginInterface
+ * \brief Template plugin class definition
+ */
+class TemplatePlugin : public PluginInterface
 {
 public:
-
     /**
-      * \brief class constructor
-    */
-    TemplatePlugin() : m_strVersion
-(TEMPLATE_PLUGIN_VERSION)
+     * \brief class constructor
+     */
+    TemplatePlugin()
+        : m_strVersion(TEMPLATE_PLUGIN_VERSION)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -85,45 +81,43 @@ public:
         // TEMPLATE_PLUGIN_CMD_RECORD(name [, bBlocking])
         // Expands to a map insertion with name stringified correctly and
         // bBlocking defaulting to false when omitted.
-#define TEMPLATE_PLUGIN_CMD_RECORD(name, ...) \
-        m_mapCmds.insert( std::make_pair( \
-            #name, \
-            PluginCommandEntry<TemplatePlugin>{ \
-                &TemplatePlugin::m_Template_##name, \
-                TEMPLATE_GET_BLOCKING(name, ##__VA_ARGS__, false) \
-            }));
+#define TEMPLATE_PLUGIN_CMD_RECORD(name, ...)   \
+    m_mapCmds.insert(std::make_pair(            \
+        #name,                                  \
+        PluginCommandEntry<TemplatePlugin>{     \
+            &TemplatePlugin::m_Template_##name, \
+            TEMPLATE_GET_BLOCKING(name, ##__VA_ARGS__, false)}));
         TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE
-#undef  TEMPLATE_PLUGIN_CMD_RECORD
+#undef TEMPLATE_PLUGIN_CMD_RECORD
     }
 
     /**
-      * \brief class destructor
-    */
+     * \brief class destructor
+     */
     ~TemplatePlugin()
     {
-
     }
 
     /**
-      * \brief get the plugin initialization status
-    */
-    bool isInitialized( void ) const
+     * \brief get the plugin initialization status
+     */
+    bool isInitialized(void) const
     {
         return m_bIsInitialized;
     }
 
     /**
-      * \brief get enabling status
-    */
-    bool isEnabled ( void ) const
+     * \brief get enabling status
+     */
+    bool isEnabled(void) const
     {
         return m_bIsEnabled;
     }
 
     /**
-      * \brief Import external settings into the plugin
-    */
-    bool setParams( const PluginDataSet *psSetParams )
+     * \brief Import external settings into the plugin
+     */
+    bool setParams(const PluginDataSet *psSetParams)
     {
         bool bRetVal = false;
 
@@ -137,66 +131,65 @@ public:
     }
 
     /**
-      * \brief function to retrieve information from plugin
-    */
-    void getParams( PluginDataGet *psGetParams ) const
+     * \brief function to retrieve information from plugin
+     */
+    void getParams(PluginDataGet *psGetParams) const
     {
         generic_getparams<TemplatePlugin>(this, psGetParams);
     }
 
     /**
-      * \brief dispatch commands
-    */
-    bool doDispatch( const std::string& strCmd, const std::string& strParams,
-                     std::stop_token st = {} ) const
+     * \brief dispatch commands
+     */
+    bool doDispatch(const std::string &strCmd, const std::string &strParams,
+                    std::stop_token st = {}) const
     {
         return generic_dispatch<TemplatePlugin>(this, strCmd, strParams, st);
     }
 
     /**
-      * \brief get a pointer to the plugin map
-    */
+     * \brief get a pointer to the plugin map
+     */
     const PluginCommandsMap<TemplatePlugin> *getMap(void) const
     {
         return &m_mapCmds;
     }
 
     /**
-      * \brief get the plugin version
-    */
-    const std::string& getVersion(void) const
+     * \brief get the plugin version
+     */
+    const std::string &getVersion(void) const
     {
-        return m_strVersion
-;
+        return m_strVersion;
     }
 
     /**
-      * \brief get the result data
-    */
-    const std::string& getData(void) const
+     * \brief get the result data
+     */
+    const std::string &getData(void) const
     {
         return m_strResultData;
     }
 
     /**
-      * \brief clear the result data (avoid that some data to be returned by other command)
-    */
+     * \brief clear the result data (avoid that some data to be returned by other command)
+     */
     void resetData(void) const
     {
         m_strResultData.clear();
     }
 
     /**
-      * \brief perform the initialization of modules used by the plugin
-      * \note public because it needs to be called explicitely after loading the plugin
-    */
+     * \brief perform the initialization of modules used by the plugin
+     * \note public because it needs to be called explicitely after loading the plugin
+     */
     bool doInit(void *pvUserData);
 
     /**
-      * \brief perform the enabling of the plugin
-      * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
-      *       This mode is used for the command validation
-    */
+     * \brief perform the enabling of the plugin
+     * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
+     *       This mode is used for the command validation
+     */
     bool doEnable(void)
     {
         m_bIsEnabled = true;
@@ -204,77 +197,74 @@ public:
     }
 
     /**
-      * \brief perform the de-initialization of modules used by the plugin
-      * \note public because need to be called explicitely before closing/freeing the shared library
-    */
+     * \brief perform the de-initialization of modules used by the plugin
+     * \note public because need to be called explicitely before closing/freeing the shared library
+     */
     void doCleanup(void);
 
     /**
-      * \brief get fault tolerant flag status
-    */
-    bool isFaultTolerant ( void ) const
+     * \brief get fault tolerant flag status
+     */
+    bool isFaultTolerant(void) const
     {
         return m_bIsFaultTolerant;
     }
 
     /**
-      * \brief get the privileged status
-    */
-    bool isPrivileged ( void ) const
+     * \brief get the privileged status
+     */
+    bool isPrivileged(void) const
     {
         return m_bIsPrivileged;
     }
 
 private:
+    /**
+     * \brief processing of the plugin specific settings
+     */
+    bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
     /**
-      * \brief processing of the plugin specific settings
-    */
-    bool m_LocalSetParams( const PluginDataSet *psSetParams );
-
-    /**
-      * \brief map with association between the command string and the execution function
-    */
+     * \brief map with association between the command string and the execution function
+     */
     PluginCommandsMap<TemplatePlugin> m_mapCmds;
 
     /**
-      * \brief plugin version
-    */
-    std::string m_strVersion
-;
+     * \brief plugin version
+     */
+    std::string m_strVersion;
 
     /**
-      * \brief data returned by plugin
-    */
+     * \brief data returned by plugin
+     */
     mutable std::string m_strResultData;
 
     /**
-      * \brief plugin initialization status
-    */
+     * \brief plugin initialization status
+     */
     bool m_bIsInitialized;
 
     /**
-      * \brief plugin enabling status
-    */
+     * \brief plugin enabling status
+     */
     bool m_bIsEnabled;
 
     /**
-      * \brief plugin fault tolerant mode
-    */
+     * \brief plugin fault tolerant mode
+     */
     bool m_bIsFaultTolerant;
 
     /**
-      * \brief plugin is privileged
-    */
+     * \brief plugin is privileged
+     */
     bool m_bIsPrivileged;
 
-
     /**
-      * \brief functions associated to the plugin commands
-    */
-#define TEMPLATE_PLUGIN_CMD_RECORD(name, ...) bool m_Template_##name ( const std::string& args, std::stop_token st ) const;
+     * \brief functions associated to the plugin commands
+     */
+#define TEMPLATE_PLUGIN_CMD_RECORD(name, ...) bool m_Template_##name(const std::string &args, std::stop_token st) const;
     TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE
-#undef  TEMPLATE_PLUGIN_CMD_RECORD
+#undef TEMPLATE_PLUGIN_CMD_RECORD
 };
 
 #endif /* TEMPLATE_PLUGIN_HPP */

@@ -81,11 +81,10 @@ extern "C" {
 #define _XL_EXPORT_DEF  _XL_EXPORT_DECLSPEC_DLL _XL_EXPORT_API
 #endif
 
-
 // Functions have the following parameters
-#define DEFPARAMS    XLportHandle portHandle, XLaccess accessMask, XLuserHandle userHandle
+#define DEFPARAMS  XLportHandle portHandle, XLaccess accessMask, XLuserHandle userHandle
 // Almost all xlFr... Functions have the following parameters
-#define DEFFRPARAM   XLportHandle portHandle, XLaccess accessMask
+#define DEFFRPARAM XLportHandle portHandle, XLaccess accessMask
 
 // Marcos for interface definition and implementation
 #ifdef DYNAMIC_XLDRIVER_DLL
@@ -93,80 +92,78 @@ extern "C" {
 #ifdef DO_NOT_DEFINE_EXTERN_DECLARATION
 
 // All DECL_STDXL_FUNC have return type XLstatus
-#define DECL_STDXL_FUNC_T(rettype, apiname, apitype, args) typedef rettype(_XL_EXPORT_API* apitype) args
+#define DECL_STDXL_FUNC_T(rettype, apiname, apitype, args) typedef rettype(_XL_EXPORT_API *apitype) args
 
-#else  // DO_NOT_DEFINE_EXTERN_DECLARATION
+#else // DO_NOT_DEFINE_EXTERN_DECLARATION
 
 #define DECL_STDXL_FUNC_T(rettype, apiname, apitype, args) \
-  typedef rettype(_XL_EXPORT_API* apitype) args;           \
-  extern apitype apiname
+    typedef rettype(_XL_EXPORT_API *apitype) args;         \
+    extern apitype apiname
 
-#endif  // DO_NOT_DEFINE_EXTERN_DECLARATION
+#endif // DO_NOT_DEFINE_EXTERN_DECLARATION
 
-#else  // DYNAMIC_XLDRIVER_DLL
+#else // DYNAMIC_XLDRIVER_DLL
 #define DECL_STDXL_FUNC_T(rettype, apiname, apitype, args) rettype _XL_EXPORT_DECL apiname args
 #define IMPL_STDXL_FUNC(apiname, args)                     XLstatus _XL_EXPORT_DEF apiname args
-#endif  // DYNAMIC_XLDRIVER_DLL
+#endif // DYNAMIC_XLDRIVER_DLL
 
 // All DECL_STDXL_FUNC have return type XLstatus
 #define DECL_STDXL_FUNC(apiname, apitype, args) DECL_STDXL_FUNC_T(XLstatus, apiname, apitype, args)
 
-
-
 // Bus types
-#define XL_BUS_TYPE_NONE          0x00000000u
-#define XL_BUS_TYPE_CAN           0x00000001u
-#define XL_BUS_TYPE_LIN           0x00000002u
-#define XL_BUS_TYPE_FLEXRAY       0x00000004u
-#define XL_BUS_TYPE_AFDX          0x00000008u  // former BUS_TYPE_BEAN
-#define XL_BUS_TYPE_MOST          0x00000010u
-#define XL_BUS_TYPE_DAIO          0x00000040u  // IO cab/piggy
-#define XL_BUS_TYPE_J1708         0x00000100u
-#define XL_BUS_TYPE_KLINE         0x00000800u
-#define XL_BUS_TYPE_ETHERNET      0x00001000u
-#define XL_BUS_TYPE_A429          0x00002000u
-#define XL_BUS_TYPE_STATUS        0x00020000u
+#define XL_BUS_TYPE_NONE                        0x00000000u
+#define XL_BUS_TYPE_CAN                         0x00000001u
+#define XL_BUS_TYPE_LIN                         0x00000002u
+#define XL_BUS_TYPE_FLEXRAY                     0x00000004u
+#define XL_BUS_TYPE_AFDX                        0x00000008u // former BUS_TYPE_BEAN
+#define XL_BUS_TYPE_MOST                        0x00000010u
+#define XL_BUS_TYPE_DAIO                        0x00000040u // IO cab/piggy
+#define XL_BUS_TYPE_J1708                       0x00000100u
+#define XL_BUS_TYPE_KLINE                       0x00000800u
+#define XL_BUS_TYPE_ETHERNET                    0x00001000u
+#define XL_BUS_TYPE_A429                        0x00002000u
+#define XL_BUS_TYPE_STATUS                      0x00020000u
 
 //------------------------------------------------------------------------------
 // Transceiver types
 //------------------------------------------------------------------------------
 // CAN Cab
-#define XL_TRANSCEIVER_TYPE_NONE       0x0000
-#define XL_TRANSCEIVER_TYPE_CAN_251    0x0001
-#define XL_TRANSCEIVER_TYPE_CAN_252    0x0002
-#define XL_TRANSCEIVER_TYPE_CAN_DNOPTO 0x0003
-#define XL_TRANSCEIVER_TYPE_CAN_SWC_PROTO  0x0005  //!< Prototype. Driver may latch-up.
-#define XL_TRANSCEIVER_TYPE_CAN_SWC        0x0006
-#define XL_TRANSCEIVER_TYPE_CAN_EVA        0x0007
-#define XL_TRANSCEIVER_TYPE_CAN_FIBER      0x0008
-#define XL_TRANSCEIVER_TYPE_CAN_1054_OPTO  0x000B  //!< 1054 with optical isolation
-#define XL_TRANSCEIVER_TYPE_CAN_SWC_OPTO   0x000C  //!< SWC with optical isolation
-#define XL_TRANSCEIVER_TYPE_CAN_B10011S    0x000D  //!< B10011S truck-and-trailer
-#define XL_TRANSCEIVER_TYPE_CAN_1050       0x000E  //!< 1050
-#define XL_TRANSCEIVER_TYPE_CAN_1050_OPTO  0x000F  //!< 1050 with optical isolation
-#define XL_TRANSCEIVER_TYPE_CAN_1041       0x0010  //!< 1041
-#define XL_TRANSCEIVER_TYPE_CAN_1041_OPTO  0x0011  //!< 1041 with optical isolation
-#define XL_TRANSCEIVER_TYPE_CAN_VIRTUAL    0x0016  //!< Virtual CAN Trasceiver for Virtual CAN Bus Driver
-#define XL_TRANSCEIVER_TYPE_LIN_6258_OPTO  0x0017  //!< Vector LINcab 6258opto with transceiver Infineon TLE6258
-#define XL_TRANSCEIVER_TYPE_LIN_6259_OPTO  0x0019  //!< Vector LINcab 6259opto with transceiver Infineon TLE6259
-#define XL_TRANSCEIVER_TYPE_DAIO_8444_OPTO 0x001D  //!< Vector IOcab 8444  (8 dig.Inp.; 4 dig.Outp.; 4 ana.Inp.; 4 ana.Outp.)
-#define XL_TRANSCEIVER_TYPE_CAN_1041A_OPTO 0x0021  //!< 1041A with optical isolation
+#define XL_TRANSCEIVER_TYPE_NONE                0x0000
+#define XL_TRANSCEIVER_TYPE_CAN_251             0x0001
+#define XL_TRANSCEIVER_TYPE_CAN_252             0x0002
+#define XL_TRANSCEIVER_TYPE_CAN_DNOPTO          0x0003
+#define XL_TRANSCEIVER_TYPE_CAN_SWC_PROTO       0x0005 //!< Prototype. Driver may latch-up.
+#define XL_TRANSCEIVER_TYPE_CAN_SWC             0x0006
+#define XL_TRANSCEIVER_TYPE_CAN_EVA             0x0007
+#define XL_TRANSCEIVER_TYPE_CAN_FIBER           0x0008
+#define XL_TRANSCEIVER_TYPE_CAN_1054_OPTO       0x000B //!< 1054 with optical isolation
+#define XL_TRANSCEIVER_TYPE_CAN_SWC_OPTO        0x000C //!< SWC with optical isolation
+#define XL_TRANSCEIVER_TYPE_CAN_B10011S         0x000D //!< B10011S truck-and-trailer
+#define XL_TRANSCEIVER_TYPE_CAN_1050            0x000E //!< 1050
+#define XL_TRANSCEIVER_TYPE_CAN_1050_OPTO       0x000F //!< 1050 with optical isolation
+#define XL_TRANSCEIVER_TYPE_CAN_1041            0x0010 //!< 1041
+#define XL_TRANSCEIVER_TYPE_CAN_1041_OPTO       0x0011 //!< 1041 with optical isolation
+#define XL_TRANSCEIVER_TYPE_CAN_VIRTUAL         0x0016 //!< Virtual CAN Trasceiver for Virtual CAN Bus Driver
+#define XL_TRANSCEIVER_TYPE_LIN_6258_OPTO       0x0017 //!< Vector LINcab 6258opto with transceiver Infineon TLE6258
+#define XL_TRANSCEIVER_TYPE_LIN_6259_OPTO       0x0019 //!< Vector LINcab 6259opto with transceiver Infineon TLE6259
+#define XL_TRANSCEIVER_TYPE_DAIO_8444_OPTO      0x001D //!< Vector IOcab 8444  (8 dig.Inp.; 4 dig.Outp.; 4 ana.Inp.; 4 ana.Outp.)
+#define XL_TRANSCEIVER_TYPE_CAN_1041A_OPTO      0x0021 //!< 1041A with optical isolation
 #define XL_TRANSCEIVER_TYPE_LIN_6259_MAG \
-  0x0023  //!< LIN transceiver 6259, with transceiver Infineon TLE6259, magnetically isolated, stress functionality
+    0x0023 //!< LIN transceiver 6259, with transceiver Infineon TLE6259, magnetically isolated, stress functionality
 #define XL_TRANSCEIVER_TYPE_LIN_7259_MAG \
-  0x0025  //!< LIN transceiver 7259, with transceiver Infineon TLE7259, magnetically isolated, stress functionality
+    0x0025 //!< LIN transceiver 7259, with transceiver Infineon TLE7259, magnetically isolated, stress functionality
 #define XL_TRANSCEIVER_TYPE_LIN_7269_MAG \
-  0x0027  //!< LIN transceiver 7269, with transceiver Infineon TLE7269, magnetically isolated, stress functionality
-#define XL_TRANSCEIVER_TYPE_CAN_1054_MAG       0x0033  //!< TJA1054, magnetically isolated, with selectable termination resistor (via 4th IO line)
-#define XL_TRANSCEIVER_TYPE_CAN_251_MAG        0x0035  //!< 82C250/251 or equivalent, magnetically isolated
-#define XL_TRANSCEIVER_TYPE_CAN_1050_MAG       0x0037  //!< TJA1050, magnetically isolated
-#define XL_TRANSCEIVER_TYPE_CAN_1040_MAG       0x0039  //!< TJA1040, magnetically isolated
-#define XL_TRANSCEIVER_TYPE_CAN_1041A_MAG      0x003B  //!< TJA1041A, magnetically isolated
-#define XL_TRANSCEIVER_TYPE_TWIN_CAN_1041A_MAG 0x0080  //!< TWINcab with two TJA1041, magnetically isolated
+    0x0027                                            //!< LIN transceiver 7269, with transceiver Infineon TLE7269, magnetically isolated, stress functionality
+#define XL_TRANSCEIVER_TYPE_CAN_1054_MAG       0x0033 //!< TJA1054, magnetically isolated, with selectable termination resistor (via 4th IO line)
+#define XL_TRANSCEIVER_TYPE_CAN_251_MAG        0x0035 //!< 82C250/251 or equivalent, magnetically isolated
+#define XL_TRANSCEIVER_TYPE_CAN_1050_MAG       0x0037 //!< TJA1050, magnetically isolated
+#define XL_TRANSCEIVER_TYPE_CAN_1040_MAG       0x0039 //!< TJA1040, magnetically isolated
+#define XL_TRANSCEIVER_TYPE_CAN_1041A_MAG      0x003B //!< TJA1041A, magnetically isolated
+#define XL_TRANSCEIVER_TYPE_TWIN_CAN_1041A_MAG 0x0080 //!< TWINcab with two TJA1041, magnetically isolated
 #define XL_TRANSCEIVER_TYPE_TWIN_LIN_7269_MAG \
-  0x0081  //!< TWINcab with two 7259, Infineon TLE7259, magnetically isolated, stress functionality
-#define XL_TRANSCEIVER_TYPE_TWIN_CAN_1041AV2_MAG    0x0082  //!< TWINcab with two TJA1041, magnetically isolated
-#define XL_TRANSCEIVER_TYPE_TWIN_CAN_1054_1041A_MAG 0x0083  //!< TWINcab with TJA1054A and TJA1041A with magnetic isolation
+    0x0081                                                 //!< TWINcab with two 7259, Infineon TLE7259, magnetically isolated, stress functionality
+#define XL_TRANSCEIVER_TYPE_TWIN_CAN_1041AV2_MAG    0x0082 //!< TWINcab with two TJA1041, magnetically isolated
+#define XL_TRANSCEIVER_TYPE_TWIN_CAN_1054_1041A_MAG 0x0083 //!< TWINcab with TJA1054A and TJA1041A with magnetic isolation
 
 // CAN PiggyBack
 #define XL_TRANSCEIVER_TYPE_PB_CAN_251              0x0101
@@ -181,116 +178,114 @@ extern "C" {
 #define XL_TRANSCEIVER_TYPE_PB_CAN_1050_OPTO        0x011D
 #define XL_TRANSCEIVER_TYPE_PB_CAN_1041             0x011F
 #define XL_TRANSCEIVER_TYPE_PB_CAN_1041_OPTO        0x0121
-#define XL_TRANSCEIVER_TYPE_PB_LIN_6258_OPTO        0x0129  //!< LIN piggy back with transceiver Infineon TLE6258
-#define XL_TRANSCEIVER_TYPE_PB_LIN_6259_OPTO        0x012B  //!< LIN piggy back with transceiver Infineon TLE6259
+#define XL_TRANSCEIVER_TYPE_PB_LIN_6258_OPTO        0x0129 //!< LIN piggy back with transceiver Infineon TLE6258
+#define XL_TRANSCEIVER_TYPE_PB_LIN_6259_OPTO        0x012B //!< LIN piggy back with transceiver Infineon TLE6259
 #define XL_TRANSCEIVER_TYPE_PB_LIN_6259_MAG \
-  0x012D  //!< LIN piggy back with transceiver Infineon TLE6259, magnetically isolated, stress functionality
-#define XL_TRANSCEIVER_TYPE_PB_CAN_1041A_OPTO 0x012F  //!< CAN transceiver 1041A
+    0x012D                                           //!< LIN piggy back with transceiver Infineon TLE6259, magnetically isolated, stress functionality
+#define XL_TRANSCEIVER_TYPE_PB_CAN_1041A_OPTO 0x012F //!< CAN transceiver 1041A
 #define XL_TRANSCEIVER_TYPE_PB_LIN_7259_MAG \
-  0x0131  //!< LIN piggy back with transceiver Infineon TLE7259, magnetically isolated, stress functionality
+    0x0131 //!< LIN piggy back with transceiver Infineon TLE7259, magnetically isolated, stress functionality
 #define XL_TRANSCEIVER_TYPE_PB_LIN_7269_MAG \
-  0x0133  //!< LIN piggy back with transceiver Infineon TLE7269, magnetically isolated, stress functionality
-#define XL_TRANSCEIVER_TYPE_PB_CAN_251_MAG    0x0135  //!< 82C250/251 or compatible, magnetically isolated
-#define XL_TRANSCEIVER_TYPE_PB_CAN_1050_MAG   0x0136  //!< TJA 1050, magnetically isolated
-#define XL_TRANSCEIVER_TYPE_PB_CAN_1040_MAG   0x0137  //!< TJA 1040, magnetically isolated
-#define XL_TRANSCEIVER_TYPE_PB_CAN_1041A_MAG  0x0138  //!< TJA 1041A, magnetically isolated
-#define XL_TRANSCEIVER_TYPE_PB_DAIO_8444_OPTO 0x0139  //!< optically isolated IO piggy
+    0x0133                                           //!< LIN piggy back with transceiver Infineon TLE7269, magnetically isolated, stress functionality
+#define XL_TRANSCEIVER_TYPE_PB_CAN_251_MAG    0x0135 //!< 82C250/251 or compatible, magnetically isolated
+#define XL_TRANSCEIVER_TYPE_PB_CAN_1050_MAG   0x0136 //!< TJA 1050, magnetically isolated
+#define XL_TRANSCEIVER_TYPE_PB_CAN_1040_MAG   0x0137 //!< TJA 1040, magnetically isolated
+#define XL_TRANSCEIVER_TYPE_PB_CAN_1041A_MAG  0x0138 //!< TJA 1041A, magnetically isolated
+#define XL_TRANSCEIVER_TYPE_PB_DAIO_8444_OPTO 0x0139 //!< optically isolated IO piggy
 #define XL_TRANSCEIVER_TYPE_PB_CAN_1054_MAG \
-  0x013B  //!< TJA1054, magnetically isolated, with selectable termination resistor (via 4th IO line)
-#define XL_TRANSCEIVER_TYPE_CAN_1051_CAP_FIX    0x013C  //!< TJA1051 - fixed transceiver on e.g. 16xx/8970
-#define XL_TRANSCEIVER_TYPE_DAIO_1021_FIX       0x013D  //!< Onboard IO of VN1630/VN1640
-#define XL_TRANSCEIVER_TYPE_LIN_7269_CAP_FIX    0x013E  //!< TLE7269 - fixed transceiver on VN1611
-#define XL_TRANSCEIVER_TYPE_PB_CAN_1051_CAP     0x013F  //!< TJA 1051, capacitive isolated
-#define XL_TRANSCEIVER_TYPE_PB_CAN_SWC_7356_CAP 0x0140  //!< Single Wire NCV7356, capacitive isolated
+    0x013B                                             //!< TJA1054, magnetically isolated, with selectable termination resistor (via 4th IO line)
+#define XL_TRANSCEIVER_TYPE_CAN_1051_CAP_FIX    0x013C //!< TJA1051 - fixed transceiver on e.g. 16xx/8970
+#define XL_TRANSCEIVER_TYPE_DAIO_1021_FIX       0x013D //!< Onboard IO of VN1630/VN1640
+#define XL_TRANSCEIVER_TYPE_LIN_7269_CAP_FIX    0x013E //!< TLE7269 - fixed transceiver on VN1611
+#define XL_TRANSCEIVER_TYPE_PB_CAN_1051_CAP     0x013F //!< TJA 1051, capacitive isolated
+#define XL_TRANSCEIVER_TYPE_PB_CAN_SWC_7356_CAP 0x0140 //!< Single Wire NCV7356, capacitive isolated
 #define XL_TRANSCEIVER_TYPE_PB_CAN_1055_CAP \
-  0x0141  //!< TJA1055, capacitive isolated, with selectable termination resistor (via 4th IO line)
-#define XL_TRANSCEIVER_TYPE_PB_CAN_1057_CAP   0x0142  //!< TJA 1057, capacitive isolated
-#define XL_TRANSCEIVER_TYPE_A429_HOLT8596_FIX 0x0143  //!< Onboard HOLT 8596 TX transceiver on VN0601
-#define XL_TRANSCEIVER_TYPE_A429_HOLT8455_FIX 0x0144  //!< Onboard HOLT 8455 RX transceiver on VN0601
-#define XL_TRANSCEIVER_TYPE_PB_CAN_1051HG_CAP 0x0145  //!< TJA 1051HG, capacitive isolated
-#define XL_TRANSCEIVER_TYPE_CAN_1057_FIX      0x0146  //!< TJA 1057 - fixed transceiver on e.g. VN1530, VN4610
-#define XL_TRANSCEIVER_TYPE_LIN_7269_FIX      0x0147  //!< TLE7269 - fixed transceiver on VN1531
-#define XL_TRANSCEIVER_TYPE_PB_CAN_1462BT     0x0149  //!< NXP 1462BT transceiver
-#define XL_TRANSCEIVER_TYPE_PB_LIN_7259       0x014A  //!< TLE7259-3GE transceiver
-#define XL_TRANSCEIVER_TYPE_CAN_1057B_FIX     0x014E  //!< TJA 1057B - fixed transceiver on e.g. VN1670
-#define XL_TRANSCEIVER_TYPE_CAN_1462BT_FIX    0x014F  //!< NXP 1462BT transceiver - fix on VX1135
-#define XL_TRANSCEIVER_TYPE_LIN_7259_FIX      0x0159  //!< TLE7259-3GE fix transceiver on VN1670
-
+    0x0141                                           //!< TJA1055, capacitive isolated, with selectable termination resistor (via 4th IO line)
+#define XL_TRANSCEIVER_TYPE_PB_CAN_1057_CAP   0x0142 //!< TJA 1057, capacitive isolated
+#define XL_TRANSCEIVER_TYPE_A429_HOLT8596_FIX 0x0143 //!< Onboard HOLT 8596 TX transceiver on VN0601
+#define XL_TRANSCEIVER_TYPE_A429_HOLT8455_FIX 0x0144 //!< Onboard HOLT 8455 RX transceiver on VN0601
+#define XL_TRANSCEIVER_TYPE_PB_CAN_1051HG_CAP 0x0145 //!< TJA 1051HG, capacitive isolated
+#define XL_TRANSCEIVER_TYPE_CAN_1057_FIX      0x0146 //!< TJA 1057 - fixed transceiver on e.g. VN1530, VN4610
+#define XL_TRANSCEIVER_TYPE_LIN_7269_FIX      0x0147 //!< TLE7269 - fixed transceiver on VN1531
+#define XL_TRANSCEIVER_TYPE_PB_CAN_1462BT     0x0149 //!< NXP 1462BT transceiver
+#define XL_TRANSCEIVER_TYPE_PB_LIN_7259       0x014A //!< TLE7259-3GE transceiver
+#define XL_TRANSCEIVER_TYPE_CAN_1057B_FIX     0x014E //!< TJA 1057B - fixed transceiver on e.g. VN1670
+#define XL_TRANSCEIVER_TYPE_CAN_1462BT_FIX    0x014F //!< NXP 1462BT transceiver - fix on VX1135
+#define XL_TRANSCEIVER_TYPE_LIN_7259_FIX      0x0159 //!< TLE7259-3GE fix transceiver on VN1670
 
 // FlexRay PiggyBacks
-#define XL_TRANSCEIVER_TYPE_PB_FR_1080        0x0201  //!< TJA 1080
-#define XL_TRANSCEIVER_TYPE_PB_FR_1080_MAG    0x0202  //!< TJA 1080 magnetically isolated piggy
-#define XL_TRANSCEIVER_TYPE_PB_FR_1080A_MAG   0x0203  //!< TJA 1080A magnetically isolated piggy
-#define XL_TRANSCEIVER_TYPE_PB_FR_1082_CAP    0x0204  //!< TJA 1082 capacitive isolated piggy
-#define XL_TRANSCEIVER_TYPE_PB_FRC_1082_CAP   0x0205  //!< TJA 1082 capacitive isolated piggy with CANpiggy form factor
-#define XL_TRANSCEIVER_TYPE_FR_1082_CAP_FIX   0x0206  //!< TJA 1082 capacitive isolated piggy fixed transceiver - e.g. 7610
+#define XL_TRANSCEIVER_TYPE_PB_FR_1080        0x0201 //!< TJA 1080
+#define XL_TRANSCEIVER_TYPE_PB_FR_1080_MAG    0x0202 //!< TJA 1080 magnetically isolated piggy
+#define XL_TRANSCEIVER_TYPE_PB_FR_1080A_MAG   0x0203 //!< TJA 1080A magnetically isolated piggy
+#define XL_TRANSCEIVER_TYPE_PB_FR_1082_CAP    0x0204 //!< TJA 1082 capacitive isolated piggy
+#define XL_TRANSCEIVER_TYPE_PB_FRC_1082_CAP   0x0205 //!< TJA 1082 capacitive isolated piggy with CANpiggy form factor
+#define XL_TRANSCEIVER_TYPE_FR_1082_CAP_FIX   0x0206 //!< TJA 1082 capacitive isolated piggy fixed transceiver - e.g. 7610
 
-#define XL_TRANSCEIVER_TYPE_MOST150_ONBOARD   0x0220  //!< Onboard MOST150 transceiver of VN2640
+#define XL_TRANSCEIVER_TYPE_MOST150_ONBOARD   0x0220 //!< Onboard MOST150 transceiver of VN2640
 
 // Ethernet Phys
-#define XL_TRANSCEIVER_TYPE_ETH_BCM54810_FIX  0x0230  //!< Onboard Broadcom Ethernet PHY on VN5610 and VX0312
-#define XL_TRANSCEIVER_TYPE_ETH_AR8031_FIX    0x0231  //!< Onboard Atheros Ethernet PHY
-#define XL_TRANSCEIVER_TYPE_ETH_BCM89810_FIX  0x0232  //!< Onboard Broadcom Ethernet PHY
-#define XL_TRANSCEIVER_TYPE_ETH_TJA1100_FIX   0x0233  //!< Onboard NXP Ethernet PHY
+#define XL_TRANSCEIVER_TYPE_ETH_BCM54810_FIX  0x0230 //!< Onboard Broadcom Ethernet PHY on VN5610 and VX0312
+#define XL_TRANSCEIVER_TYPE_ETH_AR8031_FIX    0x0231 //!< Onboard Atheros Ethernet PHY
+#define XL_TRANSCEIVER_TYPE_ETH_BCM89810_FIX  0x0232 //!< Onboard Broadcom Ethernet PHY
+#define XL_TRANSCEIVER_TYPE_ETH_TJA1100_FIX   0x0233 //!< Onboard NXP Ethernet PHY
 #define XL_TRANSCEIVER_TYPE_ETH_BCM54810_89811_FIX \
-  0x0234  //!< Onboard Broadcom Ethernet PHYs (e.g. VN5610A - BCM54810: RJ45, BCM89811: DSUB)
-#define XL_TRANSCEIVER_TYPE_ETH_DP83XG710Q1_FIX           0x0235  //!< No longer applicable
-#define XL_TRANSCEIVER_TYPE_ETH_BCM54811S_FIX             0x0236  //!< Onboard Broadcom Ethernet PHY on VN7640 and VH6501
-#define XL_TRANSCEIVER_TYPE_ETH_RTL9000AA_FIX             0x0237  //!< Onboard Realtek Eth PHY
-#define XL_TRANSCEIVER_TYPE_ETH_BCM89811_FIX              0x0238  //!< Onboard Broadcom Ethernet PHY
-#define XL_TRANSCEIVER_TYPE_ETH_BCM54210_FIX              0x0239  //!< Onboard Broadcom BCM54210
-#define XL_TRANSCEIVER_TYPE_ETH_88Q2112_FIX               0x023A  //!< Onboard Marvell 88Q2112
-#define XL_TRANSCEIVER_TYPE_ETH_BCM84891_FIX              0x023B  //!< Onboard Broadcom BCM84891
-#define XL_TRANSCEIVER_TYPE_ETH_BCM89883_FIX              0x023C  //!< Onboard Broadcom BCM89883
-#define XL_TRANSCEIVER_TYPE_ETH_88Q2220M_FIX              0x023D  //!< Onboard Marvell 88Q2220M
-#define XL_TRANSCEIVER_TYPE_ETH_GPY215_FIX                0x023E  //!< Onboard MaxLinear GPY215
+    0x0234                                                       //!< Onboard Broadcom Ethernet PHYs (e.g. VN5610A - BCM54810: RJ45, BCM89811: DSUB)
+#define XL_TRANSCEIVER_TYPE_ETH_DP83XG710Q1_FIX           0x0235 //!< No longer applicable
+#define XL_TRANSCEIVER_TYPE_ETH_BCM54811S_FIX             0x0236 //!< Onboard Broadcom Ethernet PHY on VN7640 and VH6501
+#define XL_TRANSCEIVER_TYPE_ETH_RTL9000AA_FIX             0x0237 //!< Onboard Realtek Eth PHY
+#define XL_TRANSCEIVER_TYPE_ETH_BCM89811_FIX              0x0238 //!< Onboard Broadcom Ethernet PHY
+#define XL_TRANSCEIVER_TYPE_ETH_BCM54210_FIX              0x0239 //!< Onboard Broadcom BCM54210
+#define XL_TRANSCEIVER_TYPE_ETH_88Q2112_FIX               0x023A //!< Onboard Marvell 88Q2112
+#define XL_TRANSCEIVER_TYPE_ETH_BCM84891_FIX              0x023B //!< Onboard Broadcom BCM84891
+#define XL_TRANSCEIVER_TYPE_ETH_BCM89883_FIX              0x023C //!< Onboard Broadcom BCM89883
+#define XL_TRANSCEIVER_TYPE_ETH_88Q2220M_FIX              0x023D //!< Onboard Marvell 88Q2220M
+#define XL_TRANSCEIVER_TYPE_ETH_GPY215_FIX                0x023E //!< Onboard MaxLinear GPY215
 
 // IOpiggy 8642
-#define XL_TRANSCEIVER_TYPE_PB_DAIO_8642                  0x0280  //!< Iopiggy for VN8900
-#define XL_TRANSCEIVER_TYPE_DAIO_AL_ONLY                  0x028f  //!< virtual piggy type for activation line only (e.g. VN8810ini)
-#define XL_TRANSCEIVER_TYPE_DAIO_1021_FIX_WITH_AL         0x0290  //!< On board IO with Activation Line (e.g. VN5640)
-#define XL_TRANSCEIVER_TYPE_DAIO_AL_WU                    0x0291  //!< virtual piggy type for activation line and WakeUp Line only (e.g. VN5610A/VN5620)
-#define XL_TRANSCEIVER_TYPE_DAIO_1021_FIX_WITH_5V         0x0292  //!< On board IO with 2nd output (e.g. 5V CMOS @ VN4610)
-#define XL_TRANSCEIVER_TYPE_PB_DAIO_8644                  0x0281  //!< IOPiggy for VN1670 and following devices
+#define XL_TRANSCEIVER_TYPE_PB_DAIO_8642                  0x0280 //!< Iopiggy for VN8900
+#define XL_TRANSCEIVER_TYPE_DAIO_AL_ONLY                  0x028f //!< virtual piggy type for activation line only (e.g. VN8810ini)
+#define XL_TRANSCEIVER_TYPE_DAIO_1021_FIX_WITH_AL         0x0290 //!< On board IO with Activation Line (e.g. VN5640)
+#define XL_TRANSCEIVER_TYPE_DAIO_AL_WU                    0x0291 //!< virtual piggy type for activation line and WakeUp Line only (e.g. VN5610A/VN5620)
+#define XL_TRANSCEIVER_TYPE_DAIO_1021_FIX_WITH_5V         0x0292 //!< On board IO with 2nd output (e.g. 5V CMOS @ VN4610)
+#define XL_TRANSCEIVER_TYPE_PB_DAIO_8644                  0x0281 //!< IOPiggy for VN1670 and following devices
 
 // Eth modules
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_BCM89810           0x0300  //!< BroadR-Reach Module with 2x Broadcom BCM89810
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_IEEE_RGMII_AR8031     0x0301  //!< IEEE802.3 RGMII Module with 2x Atheros AR8031
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_IEEE_SGMII_AR8031     0x0302  //!< IEEE802.3 SGMII Module with 2x Atheros AR8031
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_TJA1100            0x0303  //!< BroadR-Reach Module with 2x NXP TJA1100
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_RTL9000AA          0x0304  //!< BroadR-Reach Module with 2x Realtek RTL9000-AA
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_SGMII_DP83XG710Q1  0x0305  //!< No longer applicable
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_88Q2112            0x0306  //!< BroadR-Reach Module with 2x Marvell 88Q2112
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_BCM89811           0x0307  //!< BroadR-Reach Module with 2x Broadcom BCM89811
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_TJA1101            0x0308  //!< 100BASE-T1 Module with 2x NXP TJA1101
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_BCM89810           0x0300 //!< BroadR-Reach Module with 2x Broadcom BCM89810
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_IEEE_RGMII_AR8031     0x0301 //!< IEEE802.3 RGMII Module with 2x Atheros AR8031
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_IEEE_SGMII_AR8031     0x0302 //!< IEEE802.3 SGMII Module with 2x Atheros AR8031
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_TJA1100            0x0303 //!< BroadR-Reach Module with 2x NXP TJA1100
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_RTL9000AA          0x0304 //!< BroadR-Reach Module with 2x Realtek RTL9000-AA
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_SGMII_DP83XG710Q1  0x0305 //!< No longer applicable
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_88Q2112            0x0306 //!< BroadR-Reach Module with 2x Marvell 88Q2112
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_BCM89811           0x0307 //!< BroadR-Reach Module with 2x Broadcom BCM89811
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_BR_TJA1101            0x0308 //!< 100BASE-T1 Module with 2x NXP TJA1101
 
 // AE modules
-#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_88Q2112             0x0400  //!< BroadR-Reach Module with 4x Marvell 88Q2112
-#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_BCM89883            0x0401  //!< 100/1000BASE-T1 Module with 4x Broadcom BCM89883
-#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_BCM89890            0x0402  //!< 2.5G/5G/10GBASE-T1 Module with 2x Broadcom BCM89890
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_BCM84891              0x0403  //!< 2x 10G Broadcom BCM84891 Module
-#define XL_TRANSCEIVER_TYPE_AE_MOD_1AE10MLAN8670_LAN8670  0x0405  //!< 10Base-T1S Module with Microchip 1x LAN8670, 2x Broadcom BCM89883
-#define XL_TRANSCEIVER_TYPE_AE_MOD_1AE10MLAN8670_BCM89883 0x0406  //!< 10Base-T1S Module with Microchip 1x LAN8670, 2x Broadcom BCM89883
-#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_RTL9010AA           0x0407  //!< BroadR-Reach Module with 2x Realtek RTL9010-AA
-#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_88Q2221M            0x0408  //!< BroadR-Reach Module 100/1000 BASE-T1 with 4x Marvell 88Q2221M (with Bypass)
-#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_MVQ3244             0x040A  //!< 2.5G/5G/10GBASE-T1 Module with 2x Marvell MV-Q3244
+#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_88Q2112             0x0400 //!< BroadR-Reach Module with 4x Marvell 88Q2112
+#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_BCM89883            0x0401 //!< 100/1000BASE-T1 Module with 4x Broadcom BCM89883
+#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_BCM89890            0x0402 //!< 2.5G/5G/10GBASE-T1 Module with 2x Broadcom BCM89890
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_BCM84891              0x0403 //!< 2x 10G Broadcom BCM84891 Module
+#define XL_TRANSCEIVER_TYPE_AE_MOD_1AE10MLAN8670_LAN8670  0x0405 //!< 10Base-T1S Module with Microchip 1x LAN8670, 2x Broadcom BCM89883
+#define XL_TRANSCEIVER_TYPE_AE_MOD_1AE10MLAN8670_BCM89883 0x0406 //!< 10Base-T1S Module with Microchip 1x LAN8670, 2x Broadcom BCM89883
+#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_RTL9010AA           0x0407 //!< BroadR-Reach Module with 2x Realtek RTL9010-AA
+#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_88Q2221M            0x0408 //!< BroadR-Reach Module 100/1000 BASE-T1 with 4x Marvell 88Q2221M (with Bypass)
+#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_MVQ3244             0x040A //!< 2.5G/5G/10GBASE-T1 Module with 2x Marvell MV-Q3244
 #define XL_TRANSCEIVER_TYPE_AE_MOD_1AE10MLAN8670_LAN8670_V2 \
-  0x040B  //!< 10Base-T1S Module with Microchip 1x LAN8670+AD3306, 2x Broadcom BCM89883
+    0x040B //!< 10Base-T1S Module with Microchip 1x LAN8670+AD3306, 2x Broadcom BCM89883
 
-#define XL_TRANSCEIVER_TYPE_AE_MOD_2AE1G_M88Q2221M    0x0440  //!< 1G BASE-T1 Module with 2x Marvell 88Q2221M
-#define XL_TRANSCEIVER_TYPE_AE_MOD_2AE2G5_BCM89892    0x0441  //!< 2.5G BASE-T1 Module with 2x Broadcom BCM89892
-#define XL_TRANSCEIVER_TYPE_AE_MOD_2AE10M_LAN8680     0x0442  //!< 10BASE-T1S Module with 2x Microchip LAN8680
+#define XL_TRANSCEIVER_TYPE_AE_MOD_2AE1G_M88Q2221M    0x0440 //!< 1G BASE-T1 Module with 2x Marvell 88Q2221M
+#define XL_TRANSCEIVER_TYPE_AE_MOD_2AE2G5_BCM89892    0x0441 //!< 2.5G BASE-T1 Module with 2x Broadcom BCM89892
+#define XL_TRANSCEIVER_TYPE_AE_MOD_2AE10M_LAN8680     0x0442 //!< 10BASE-T1S Module with 2x Microchip LAN8680
 
 // Module for Small Tool Interface: VN5601 | VN5611 | VN5612 | VN5614
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_AQR115C           0x0480  //!< 2.5G Module with 1x Aquantia/Marvell AQR115C for VN5601
-#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_BCM89883_2CH    0x0481  //!< 100/1000BASE-T1 Module with 2x Broadcom BCM89883 for VN5611
-#define XL_TRANSCEIVER_TYPE_ETH_MOD_BCM54210          0x0482  //!< IEEE 802.3 Module with 2x Broadcom BCM54210 for VN5612
-#define XL_TRANSCEIVER_TYPE_AE_MOD_LAN8670_V2_2CH     0x0483  //!< 10BASE-T1S Module with 2x LAN8670 and AD3306 for VN5614
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_AQR115C           0x0480 //!< 2.5G Module with 1x Aquantia/Marvell AQR115C for VN5601
+#define XL_TRANSCEIVER_TYPE_AE_MOD_BR_BCM89883_2CH    0x0481 //!< 100/1000BASE-T1 Module with 2x Broadcom BCM89883 for VN5611
+#define XL_TRANSCEIVER_TYPE_ETH_MOD_BCM54210          0x0482 //!< IEEE 802.3 Module with 2x Broadcom BCM54210 for VN5612
+#define XL_TRANSCEIVER_TYPE_AE_MOD_LAN8670_V2_2CH     0x0483 //!< 10BASE-T1S Module with 2x LAN8670 and AD3306 for VN5614
 
 // VT Ethernet piggy
-#define XL_TRANSCEIVER_TYPE_PB_ETH_100BASET1_TJA1101  0x1F82  //!< 100BASE-T1 piggy with 6x NXP TJA1101
-#define XL_TRANSCEIVER_TYPE_PB_ETH_1000BASET1_88Q2112 0x1F83  //!< 1000BASE-T1 piggy with 6x Marvell 88Q2112
-
+#define XL_TRANSCEIVER_TYPE_PB_ETH_100BASET1_TJA1101  0x1F82 //!< 100BASE-T1 piggy with 6x NXP TJA1101
+#define XL_TRANSCEIVER_TYPE_PB_ETH_1000BASET1_88Q2112 0x1F83 //!< 1000BASE-T1 piggy with 6x Marvell 88Q2112
 
 //------------------------------------------------------------------------------
 // Transceiver Operation Modes
@@ -299,19 +294,19 @@ extern "C" {
 #define XL_TRANSCEIVER_LINEMODE_TWO_LINE              ((unsigned int)0x0001)
 #define XL_TRANSCEIVER_LINEMODE_CAN_H                 ((unsigned int)0x0002)
 #define XL_TRANSCEIVER_LINEMODE_CAN_L                 ((unsigned int)0x0003)
-#define XL_TRANSCEIVER_LINEMODE_SWC_SLEEP             ((unsigned int)0x0004)  //!< SWC Sleep Mode.
-#define XL_TRANSCEIVER_LINEMODE_SWC_NORMAL            ((unsigned int)0x0005)  //!< SWC Normal Mode.
-#define XL_TRANSCEIVER_LINEMODE_SWC_FAST              ((unsigned int)0x0006)  //!< SWC High-Speed Mode.
-#define XL_TRANSCEIVER_LINEMODE_SWC_WAKEUP            ((unsigned int)0x0007)  //!< SWC Wakeup Mode.
+#define XL_TRANSCEIVER_LINEMODE_SWC_SLEEP             ((unsigned int)0x0004) //!< SWC Sleep Mode.
+#define XL_TRANSCEIVER_LINEMODE_SWC_NORMAL            ((unsigned int)0x0005) //!< SWC Normal Mode.
+#define XL_TRANSCEIVER_LINEMODE_SWC_FAST              ((unsigned int)0x0006) //!< SWC High-Speed Mode.
+#define XL_TRANSCEIVER_LINEMODE_SWC_WAKEUP            ((unsigned int)0x0007) //!< SWC Wakeup Mode.
 #define XL_TRANSCEIVER_LINEMODE_SLEEP                 ((unsigned int)0x0008)
 #define XL_TRANSCEIVER_LINEMODE_NORMAL                ((unsigned int)0x0009)
-#define XL_TRANSCEIVER_LINEMODE_STDBY                 ((unsigned int)0x000a)  //!< Standby for those who support it
-#define XL_TRANSCEIVER_LINEMODE_TT_CAN_H              ((unsigned int)0x000b)  //!< truck & trailer: operating mode single wire using CAN high
-#define XL_TRANSCEIVER_LINEMODE_TT_CAN_L              ((unsigned int)0x000c)  //!< truck & trailer: operating mode single wire using CAN low
-#define XL_TRANSCEIVER_LINEMODE_EVA_00                ((unsigned int)0x000d)  //!< CANcab Eva
-#define XL_TRANSCEIVER_LINEMODE_EVA_01                ((unsigned int)0x000e)  //!< CANcab Eva
-#define XL_TRANSCEIVER_LINEMODE_EVA_10                ((unsigned int)0x000f)  //!< CANcab Eva
-#define XL_TRANSCEIVER_LINEMODE_EVA_11                ((unsigned int)0x0010)  //!< CANcab Eva
+#define XL_TRANSCEIVER_LINEMODE_STDBY                 ((unsigned int)0x000a) //!< Standby for those who support it
+#define XL_TRANSCEIVER_LINEMODE_TT_CAN_H              ((unsigned int)0x000b) //!< truck & trailer: operating mode single wire using CAN high
+#define XL_TRANSCEIVER_LINEMODE_TT_CAN_L              ((unsigned int)0x000c) //!< truck & trailer: operating mode single wire using CAN low
+#define XL_TRANSCEIVER_LINEMODE_EVA_00                ((unsigned int)0x000d) //!< CANcab Eva
+#define XL_TRANSCEIVER_LINEMODE_EVA_01                ((unsigned int)0x000e) //!< CANcab Eva
+#define XL_TRANSCEIVER_LINEMODE_EVA_10                ((unsigned int)0x000f) //!< CANcab Eva
+#define XL_TRANSCEIVER_LINEMODE_EVA_11                ((unsigned int)0x0010) //!< CANcab Eva
 
 //------------------------------------------------------------------------------
 // Transceiver Status Flags
@@ -322,200 +317,195 @@ extern "C" {
 #define XL_TRANSCEIVER_STATUS_EXT_POWER_GOOD          ((unsigned int)0x0020)
 #define XL_TRANSCEIVER_STATUS_NOT_SUPPORTED           ((unsigned int)0x0040)
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // driver status
-#define XL_SUCCESS                      0  //=0x0000
-#define XL_PENDING                      1  //=0x0001
+#define XL_SUCCESS                                    0 //=0x0000
+#define XL_PENDING                                    1 //=0x0001
 
-#define XL_ERR_QUEUE_IS_EMPTY           10   //=0x000A
-#define XL_ERR_QUEUE_IS_FULL            11   //=0x000B
-#define XL_ERR_TX_NOT_POSSIBLE          12   //=0x000C
-#define XL_ERR_NO_LICENSE               14   //=0x000E
-#define XL_ERR_WRONG_PARAMETER          101  //=0x0065
-#define XL_ERR_TWICE_REGISTER           110  //=0x006E
-#define XL_ERR_INVALID_CHAN_INDEX       111  //=0x006F
-#define XL_ERR_INVALID_ACCESS           112  //=0x0070
-#define XL_ERR_PORT_IS_OFFLINE          113  //=0x0071
-#define XL_ERR_CHAN_IS_ONLINE           116  //=0x0074
-#define XL_ERR_NOT_IMPLEMENTED          117  //=0x0075
-#define XL_ERR_INVALID_PORT             118  //=0x0076
-#define XL_ERR_HW_NOT_READY             120  //=0x0078
-#define XL_ERR_CMD_TIMEOUT              121  //=0x0079
-#define XL_ERR_CMD_HANDLING             122  //=0x007A
-#define XL_ERR_HW_NOT_PRESENT           129  //=0x0081
-#define XL_ERR_NOTIFY_ALREADY_ACTIVE    131  //=0x0083
-#define XL_ERR_INVALID_TAG              132  //=0x0084
-#define XL_ERR_INVALID_RESERVED_FLD     133  //=0x0085
-#define XL_ERR_INVALID_SIZE             134  //=0x0086
-#define XL_ERR_INSUFFICIENT_BUFFER      135  //=0x0087
-#define XL_ERR_ERROR_CRC                136  //=0x0088
-#define XL_ERR_BAD_EXE_FORMAT           137  //=0x0089
-#define XL_ERR_NO_SYSTEM_RESOURCES      138  //=0x008A
-#define XL_ERR_NOT_FOUND                139  //=0x008B
-#define XL_ERR_INVALID_ADDRESS          140  //=0x008C
-#define XL_ERR_REQ_NOT_ACCEP            141  //=0x008D
-#define XL_ERR_INVALID_LEVEL            142  //=0x008E
-#define XL_ERR_NO_DATA_DETECTED         143  //=0x008F
-#define XL_ERR_INTERNAL_ERROR           144  //=0x0090
-#define XL_ERR_UNEXP_NET_ERR            145  //=0x0091
-#define XL_ERR_INVALID_USER_BUFFER      146  //=0x0092
-#define XL_ERR_INVALID_PORT_ACCESS_TYPE 147  //=0x0093
-#define XL_ERR_NO_RESOURCES             152  //=0x0098
-#define XL_ERR_WRONG_CHIP_TYPE          153  //=0x0099
-#define XL_ERR_WRONG_COMMAND            154  //=0x009A
-#define XL_ERR_INVALID_HANDLE           155  //=0x009B
-#define XL_ERR_RESERVED_NOT_ZERO        157  //=0x009D
-#define XL_ERR_INIT_ACCESS_MISSING      158  //=0x009E
-#define XL_ERR_WRONG_VERSION            160  //=0x00A0
-#define XL_ERR_ALREADY_EXISTS           183  //=0x00B7
-#define XL_ERR_CANNOT_OPEN_DRIVER       201  //=0x00C9
-#define XL_ERR_WRONG_BUS_TYPE           202  //=0x00CA
-#define XL_ERR_DLL_NOT_FOUND            203  //=0x00CB
-#define XL_ERR_INVALID_CHANNEL_MASK     204  //=0x00CC
-#define XL_ERR_NOT_SUPPORTED            205  //=0x00CD
+#define XL_ERR_QUEUE_IS_EMPTY                         10  //=0x000A
+#define XL_ERR_QUEUE_IS_FULL                          11  //=0x000B
+#define XL_ERR_TX_NOT_POSSIBLE                        12  //=0x000C
+#define XL_ERR_NO_LICENSE                             14  //=0x000E
+#define XL_ERR_WRONG_PARAMETER                        101 //=0x0065
+#define XL_ERR_TWICE_REGISTER                         110 //=0x006E
+#define XL_ERR_INVALID_CHAN_INDEX                     111 //=0x006F
+#define XL_ERR_INVALID_ACCESS                         112 //=0x0070
+#define XL_ERR_PORT_IS_OFFLINE                        113 //=0x0071
+#define XL_ERR_CHAN_IS_ONLINE                         116 //=0x0074
+#define XL_ERR_NOT_IMPLEMENTED                        117 //=0x0075
+#define XL_ERR_INVALID_PORT                           118 //=0x0076
+#define XL_ERR_HW_NOT_READY                           120 //=0x0078
+#define XL_ERR_CMD_TIMEOUT                            121 //=0x0079
+#define XL_ERR_CMD_HANDLING                           122 //=0x007A
+#define XL_ERR_HW_NOT_PRESENT                         129 //=0x0081
+#define XL_ERR_NOTIFY_ALREADY_ACTIVE                  131 //=0x0083
+#define XL_ERR_INVALID_TAG                            132 //=0x0084
+#define XL_ERR_INVALID_RESERVED_FLD                   133 //=0x0085
+#define XL_ERR_INVALID_SIZE                           134 //=0x0086
+#define XL_ERR_INSUFFICIENT_BUFFER                    135 //=0x0087
+#define XL_ERR_ERROR_CRC                              136 //=0x0088
+#define XL_ERR_BAD_EXE_FORMAT                         137 //=0x0089
+#define XL_ERR_NO_SYSTEM_RESOURCES                    138 //=0x008A
+#define XL_ERR_NOT_FOUND                              139 //=0x008B
+#define XL_ERR_INVALID_ADDRESS                        140 //=0x008C
+#define XL_ERR_REQ_NOT_ACCEP                          141 //=0x008D
+#define XL_ERR_INVALID_LEVEL                          142 //=0x008E
+#define XL_ERR_NO_DATA_DETECTED                       143 //=0x008F
+#define XL_ERR_INTERNAL_ERROR                         144 //=0x0090
+#define XL_ERR_UNEXP_NET_ERR                          145 //=0x0091
+#define XL_ERR_INVALID_USER_BUFFER                    146 //=0x0092
+#define XL_ERR_INVALID_PORT_ACCESS_TYPE               147 //=0x0093
+#define XL_ERR_NO_RESOURCES                           152 //=0x0098
+#define XL_ERR_WRONG_CHIP_TYPE                        153 //=0x0099
+#define XL_ERR_WRONG_COMMAND                          154 //=0x009A
+#define XL_ERR_INVALID_HANDLE                         155 //=0x009B
+#define XL_ERR_RESERVED_NOT_ZERO                      157 //=0x009D
+#define XL_ERR_INIT_ACCESS_MISSING                    158 //=0x009E
+#define XL_ERR_WRONG_VERSION                          160 //=0x00A0
+#define XL_ERR_ALREADY_EXISTS                         183 //=0x00B7
+#define XL_ERR_CANNOT_OPEN_DRIVER                     201 //=0x00C9
+#define XL_ERR_WRONG_BUS_TYPE                         202 //=0x00CA
+#define XL_ERR_DLL_NOT_FOUND                          203 //=0x00CB
+#define XL_ERR_INVALID_CHANNEL_MASK                   204 //=0x00CC
+#define XL_ERR_NOT_SUPPORTED                          205 //=0x00CD
 // special stream defines
-#define XL_ERR_CONNECTION_BROKEN        210  //=0x00D2
-#define XL_ERR_CONNECTION_CLOSED        211  //=0x00D3
-#define XL_ERR_INVALID_STREAM_NAME      212  //=0x00D4
-#define XL_ERR_CONNECTION_FAILED        213  //=0x00D5
-#define XL_ERR_STREAM_NOT_FOUND         214  //=0x00D6
-#define XL_ERR_STREAM_NOT_CONNECTED     215  //=0x00D7
-#define XL_ERR_QUEUE_OVERRUN            216  //=0x00D8
-#define XL_ERROR                        255  //=0x00FF
+#define XL_ERR_CONNECTION_BROKEN                      210 //=0x00D2
+#define XL_ERR_CONNECTION_CLOSED                      211 //=0x00D3
+#define XL_ERR_INVALID_STREAM_NAME                    212 //=0x00D4
+#define XL_ERR_CONNECTION_FAILED                      213 //=0x00D5
+#define XL_ERR_STREAM_NOT_FOUND                       214 //=0x00D6
+#define XL_ERR_STREAM_NOT_CONNECTED                   215 //=0x00D7
+#define XL_ERR_QUEUE_OVERRUN                          216 //=0x00D8
+#define XL_ERROR                                      255 //=0x00FF
 
 ////////////////////////////////////////////////////////////////////////////////
 // Extended error codes
-#define XL_ERR_PDU_OUT_OF_MEMORY 0x0104  // Too many PDUs configured or too less system memory free
+#define XL_ERR_PDU_OUT_OF_MEMORY                      0x0104 // Too many PDUs configured or too less system memory free
 #define XL_ERR_FR_CLUSTERCONFIG_MISSING \
-  0x0105  // No cluster configuration has been sent to the driver but is needed for the command which failed
-#define XL_ERR_PDU_OFFSET_REPET_INVALID 0x0106  // Invalid offset and/or repetition value specified
+    0x0105                                     // No cluster configuration has been sent to the driver but is needed for the command which failed
+#define XL_ERR_PDU_OFFSET_REPET_INVALID 0x0106 // Invalid offset and/or repetition value specified
 #define XL_ERR_PDU_PAYLOAD_SIZE_INVALID \
-  0x0107  // Specified PDU payload size is invalid (e.g. size is too large) Frame-API: size is different than static payload length configured in cluster config
-#define XL_ERR_FR_NBR_FRAMES_OVERFLOW    0x0109  // Too many frames specified in parameter
-#define XL_ERR_FR_SLOT_ID_INVALID        0x010B  // Specified slot-ID exceeds biggest possible ID specified by the cluster configuration
+    0x0107                                   // Specified PDU payload size is invalid (e.g. size is too large) Frame-API: size is different than static payload length configured in cluster config
+#define XL_ERR_FR_NBR_FRAMES_OVERFLOW 0x0109 // Too many frames specified in parameter
+#define XL_ERR_FR_SLOT_ID_INVALID     0x010B // Specified slot-ID exceeds biggest possible ID specified by the cluster configuration
 #define XL_ERR_FR_SLOT_ALREADY_OCCUPIED_BY_ERAY \
-  0x010C  // Specified slot cannot be used by Coldstart-Controller because it's already in use by the eRay
+    0x010C // Specified slot cannot be used by Coldstart-Controller because it's already in use by the eRay
 #define XL_ERR_FR_SLOT_ALREADY_OCCUPIED_BY_COLDC \
-  0x010D  // Specified slot cannot be used by eRay because it's already in use by the Coldstart-Controller
-#define XL_ERR_FR_SLOT_OCCUPIED_BY_OTHER_APP 0x010E  // Specified slot cannot be used because it's already in use by another application
+    0x010D                                          // Specified slot cannot be used by eRay because it's already in use by the Coldstart-Controller
+#define XL_ERR_FR_SLOT_OCCUPIED_BY_OTHER_APP 0x010E // Specified slot cannot be used because it's already in use by another application
 #define XL_ERR_FR_SLOT_IN_WRONG_SEGMENT \
-  0x010F  // Specified slot is not in correct segment. E.g.: A dynamic slot was specified for startup&sync
+    0x010F // Specified slot is not in correct segment. E.g.: A dynamic slot was specified for startup&sync
 #define XL_ERR_FR_FRAME_CYCLE_MULTIPLEX_ERROR \
-  0x0110  // The given frame-multiplexing rule (specified by offset and repetition) cannot be done because some of the slots are already in use
-#define XL_ERR_PDU_NO_UNMAP_OF_SYNCFRAME        0x0116  // Unmapping of eRay startup/sync frames is not allowed
-#define XL_ERR_SYNC_FRAME_MODE                   0x0123  // Wrong txMode in sync frame
-#define XL_ERR_INVALID_DLC                       0x0201  // DLC with invalid value
-#define XL_ERR_INVALID_CANID                     0x0202  // CAN Id has invalid bits set
-#define XL_ERR_INVALID_FDFLAG_MODE20             0x0203  // flag set that must not be set when configured for CAN20 (e.g. EDL)
-#define XL_ERR_EDL_RTR                           0x0204  // RTR must not be set in combination with EDL
-#define XL_ERR_EDL_NOT_SET                       0x0205  // EDL is not set but BRS and/or ESICTRL is
-#define XL_ERR_UNKNOWN_FLAG                      0x0206  // unknown bit in flags field is set
-#define XL_ERR_TS_DOMAIN_NOT_SYNC        0x0502
-#define XL_ERR_TS_INVALID_CLUSTER_MASTER 0x0503
-#define XL_ERR_TS_CLOCK_NOT_FOUND        0x0504
-#define XL_ERR_TS_AGGREGATE_STATUS       0x0505
-#define XL_ERR_TS_RESET_CLOCK            0x050C
-#define XL_ERR_TS_SET_CLOCK_OFFSET       0x050D
-#define XL_ERR_TS_MIN_OFFSET_SET         0x050F
-#define XL_ERR_TS_SYNC_TO_LOCAL          0x0510
-#define XL_ERR_TS_SYNC_OFF               0x0511
-#define XL_ERR_TS_CLOCK_NOT_SYNC         0x0512
+    0x0110                                              // The given frame-multiplexing rule (specified by offset and repetition) cannot be done because some of the slots are already in use
+#define XL_ERR_PDU_NO_UNMAP_OF_SYNCFRAME         0x0116 // Unmapping of eRay startup/sync frames is not allowed
+#define XL_ERR_SYNC_FRAME_MODE                   0x0123 // Wrong txMode in sync frame
+#define XL_ERR_INVALID_DLC                       0x0201 // DLC with invalid value
+#define XL_ERR_INVALID_CANID                     0x0202 // CAN Id has invalid bits set
+#define XL_ERR_INVALID_FDFLAG_MODE20             0x0203 // flag set that must not be set when configured for CAN20 (e.g. EDL)
+#define XL_ERR_EDL_RTR                           0x0204 // RTR must not be set in combination with EDL
+#define XL_ERR_EDL_NOT_SET                       0x0205 // EDL is not set but BRS and/or ESICTRL is
+#define XL_ERR_UNKNOWN_FLAG                      0x0206 // unknown bit in flags field is set
+#define XL_ERR_TS_DOMAIN_NOT_SYNC                0x0502
+#define XL_ERR_TS_INVALID_CLUSTER_MASTER         0x0503
+#define XL_ERR_TS_CLOCK_NOT_FOUND                0x0504
+#define XL_ERR_TS_AGGREGATE_STATUS               0x0505
+#define XL_ERR_TS_RESET_CLOCK                    0x050C
+#define XL_ERR_TS_SET_CLOCK_OFFSET               0x050D
+#define XL_ERR_TS_MIN_OFFSET_SET                 0x050F
+#define XL_ERR_TS_SYNC_TO_LOCAL                  0x0510
+#define XL_ERR_TS_SYNC_OFF                       0x0511
+#define XL_ERR_TS_CLOCK_NOT_SYNC                 0x0512
 ///////////////////////////////////////////////////////////////////////////////
 // Ethernet API error code (range: 0x1100..0x11FF)
-#define XL_ERR_ETH_PHY_ACTIVATION_FAILED 0x1100
-#define XL_ERR_ETH_PHY_CONFIG_ABORTED    0x1103
-#define XL_ERR_ETH_RESET_FAILED          0x1104
-#define XL_ERR_ETH_SET_CONFIG_DELAYED    0x1105  //Requested config was stored but could not be immediately activated
-#define XL_ERR_ETH_UNSUPPORTED_FEATURE   0x1106  //Requested feature/function not supported by device
-#define XL_ERR_ETH_MAC_ACTIVATION_FAILED 0x1107
-#define XL_ERR_NET_ETH_SWITCH_IS_ONLINE  0x110C  //Switch has already been activated
-#define XL_ERR_ETH_PLCA_CAPTURE_ONLY_MODE_ACTIVE 0x110E  // Capture only mode active on T1S measurement point
+#define XL_ERR_ETH_PHY_ACTIVATION_FAILED         0x1100
+#define XL_ERR_ETH_PHY_CONFIG_ABORTED            0x1103
+#define XL_ERR_ETH_RESET_FAILED                  0x1104
+#define XL_ERR_ETH_SET_CONFIG_DELAYED            0x1105 // Requested config was stored but could not be immediately activated
+#define XL_ERR_ETH_UNSUPPORTED_FEATURE           0x1106 // Requested feature/function not supported by device
+#define XL_ERR_ETH_MAC_ACTIVATION_FAILED         0x1107
+#define XL_ERR_NET_ETH_SWITCH_IS_ONLINE          0x110C // Switch has already been activated
+#define XL_ERR_ETH_PLCA_CAPTURE_ONLY_MODE_ACTIVE 0x110E // Capture only mode active on T1S measurement point
 
 enum e_XLevent_type {
-  XL_NO_COMMAND  = 0,
-  XL_RECEIVE_MSG = 1,
-  XL_CHIP_STATE  = 4,
-  XL_TRANSCEIVER = 6,
-  XL_TIMER       = 8,
-  XL_TRANSMIT_MSG = 10,
-  XL_SYNC_PULSE   = 11,
-  XL_APPLICATION_NOTIFICATION = 15,
+    XL_NO_COMMAND               = 0,
+    XL_RECEIVE_MSG              = 1,
+    XL_CHIP_STATE               = 4,
+    XL_TRANSCEIVER              = 6,
+    XL_TIMER                    = 8,
+    XL_TRANSMIT_MSG             = 10,
+    XL_SYNC_PULSE               = 11,
+    XL_APPLICATION_NOTIFICATION = 15,
 
+    // for LIN we have special events
+    XL_LIN_MSG                  = 20,
+    XL_LIN_ERRMSG               = 21,
+    XL_LIN_SYNCERR              = 22,
+    XL_LIN_NOANS                = 23,
+    XL_LIN_WAKEUP               = 24,
+    XL_LIN_SLEEP                = 25,
+    XL_LIN_CRCINFO              = 26,
 
-  // for LIN we have special events
-  XL_LIN_MSG     = 20,
-  XL_LIN_ERRMSG  = 21,
-  XL_LIN_SYNCERR = 22,
-  XL_LIN_NOANS   = 23,
-  XL_LIN_WAKEUP  = 24,
-  XL_LIN_SLEEP   = 25,
-  XL_LIN_CRCINFO = 26,
+    // for D/A IO bus
+    XL_RECEIVE_DAIO_DATA        = 32, //!< D/A IO data message
 
-  // for D/A IO bus
-  XL_RECEIVE_DAIO_DATA = 32,   //!< D/A IO data message
-
-  XL_RECEIVE_DAIO_PIGGY = 34,  //!< D/A IO Piggy data message
-  XL_KLINE_MSG = 36,
+    XL_RECEIVE_DAIO_PIGGY       = 34, //!< D/A IO Piggy data message
+    XL_KLINE_MSG                = 36,
 
 };
-
 
 //
 // common event tags
 //
-#define XL_RECEIVE_MSG                 ((unsigned short)0x0001)
-#define XL_CHIP_STATE                  ((unsigned short)0x0004)
-#define XL_TRANSCEIVER_INFO            ((unsigned short)0x0006)
-#define XL_TRANSCEIVER                 (XL_TRANSCEIVER_INFO)
-#define XL_TIMER_EVENT                 ((unsigned short)0x0008)
-#define XL_TIMER                       (XL_TIMER_EVENT)
-#define XL_TRANSMIT_MSG                ((unsigned short)0x000A)
-#define XL_SYNC_PULSE                  ((unsigned short)0x000B)
-#define XL_APPLICATION_NOTIFICATION    ((unsigned short)0x000F)
+#define XL_RECEIVE_MSG                           ((unsigned short)0x0001)
+#define XL_CHIP_STATE                            ((unsigned short)0x0004)
+#define XL_TRANSCEIVER_INFO                      ((unsigned short)0x0006)
+#define XL_TRANSCEIVER                           (XL_TRANSCEIVER_INFO)
+#define XL_TIMER_EVENT                           ((unsigned short)0x0008)
+#define XL_TIMER                                 (XL_TIMER_EVENT)
+#define XL_TRANSMIT_MSG                          ((unsigned short)0x000A)
+#define XL_SYNC_PULSE                            ((unsigned short)0x000B)
+#define XL_APPLICATION_NOTIFICATION              ((unsigned short)0x000F)
 
 //
 // LIN event tags
 //
-#define LIN_MSG                        ((unsigned short)0x0014)
-#define LIN_ERRMSG                     ((unsigned short)0x0015)
-#define LIN_SYNCERR                    ((unsigned short)0x0016)
-#define LIN_NOANS                      ((unsigned short)0x0017)
-#define LIN_WAKEUP                     ((unsigned short)0x0018)
-#define LIN_SLEEP                      ((unsigned short)0x0019)
-#define LIN_CRCINFO                    ((unsigned short)0x001A)
+#define LIN_MSG                                  ((unsigned short)0x0014)
+#define LIN_ERRMSG                               ((unsigned short)0x0015)
+#define LIN_SYNCERR                              ((unsigned short)0x0016)
+#define LIN_NOANS                                ((unsigned short)0x0017)
+#define LIN_WAKEUP                               ((unsigned short)0x0018)
+#define LIN_SLEEP                                ((unsigned short)0x0019)
+#define LIN_CRCINFO                              ((unsigned short)0x001A)
 
 //
 // DAIO event tags
 //
-#define RECEIVE_DAIO_DATA              ((unsigned short)0x0020)  //!< D/A IO data message
+#define RECEIVE_DAIO_DATA                        ((unsigned short)0x0020) //!< D/A IO data message
 
-#define KLINE_MSG                      ((unsigned short)0x0024)
-
-
+#define KLINE_MSG                                ((unsigned short)0x0024)
 
 //
 // FlexRay event tags
 //
-#define XL_FR_START_CYCLE                ((unsigned short)0x0080)
-#define XL_FR_RX_FRAME                   ((unsigned short)0x0081)
-#define XL_FR_TX_FRAME                   ((unsigned short)0x0082)
-#define XL_FR_TXACK_FRAME                ((unsigned short)0x0083)
-#define XL_FR_INVALID_FRAME              ((unsigned short)0x0084)
-#define XL_FR_WAKEUP                     ((unsigned short)0x0085)
-#define XL_FR_SYMBOL_WINDOW              ((unsigned short)0x0086)
-#define XL_FR_ERROR                      ((unsigned short)0x0087)
-#define XL_FR_ERROR_POC_MODE             ((unsigned char)0x01)
-#define XL_FR_ERROR_SYNC_FRAMES_BELOWMIN ((unsigned char)0x02)
-#define XL_FR_ERROR_SYNC_FRAMES_OVERLOAD ((unsigned char)0x03)
-#define XL_FR_ERROR_CLOCK_CORR_FAILURE   ((unsigned char)0x04)
-#define XL_FR_ERROR_NIT_FAILURE          ((unsigned char)0x05)
-#define XL_FR_ERROR_CC_ERROR             ((unsigned char)0x06)
-#define XL_FR_STATUS                     ((unsigned short)0x0088)
-#define XL_FR_NM_VECTOR                  ((unsigned short)0x008A)
-#define XL_FR_TRANCEIVER_STATUS          ((unsigned short)0x008B)
-#define XL_FR_SPY_FRAME                  ((unsigned short)0x008E)
-#define XL_FR_SPY_SYMBOL                 ((unsigned short)0x008F)
+#define XL_FR_START_CYCLE                        ((unsigned short)0x0080)
+#define XL_FR_RX_FRAME                           ((unsigned short)0x0081)
+#define XL_FR_TX_FRAME                           ((unsigned short)0x0082)
+#define XL_FR_TXACK_FRAME                        ((unsigned short)0x0083)
+#define XL_FR_INVALID_FRAME                      ((unsigned short)0x0084)
+#define XL_FR_WAKEUP                             ((unsigned short)0x0085)
+#define XL_FR_SYMBOL_WINDOW                      ((unsigned short)0x0086)
+#define XL_FR_ERROR                              ((unsigned short)0x0087)
+#define XL_FR_ERROR_POC_MODE                     ((unsigned char)0x01)
+#define XL_FR_ERROR_SYNC_FRAMES_BELOWMIN         ((unsigned char)0x02)
+#define XL_FR_ERROR_SYNC_FRAMES_OVERLOAD         ((unsigned char)0x03)
+#define XL_FR_ERROR_CLOCK_CORR_FAILURE           ((unsigned char)0x04)
+#define XL_FR_ERROR_NIT_FAILURE                  ((unsigned char)0x05)
+#define XL_FR_ERROR_CC_ERROR                     ((unsigned char)0x06)
+#define XL_FR_STATUS                             ((unsigned short)0x0088)
+#define XL_FR_NM_VECTOR                          ((unsigned short)0x008A)
+#define XL_FR_TRANCEIVER_STATUS                  ((unsigned short)0x008B)
+#define XL_FR_SPY_FRAME                          ((unsigned short)0x008E)
+#define XL_FR_SPY_SYMBOL                         ((unsigned short)0x008F)
 
 //
 // CAPL-On-Board event tags
@@ -524,147 +514,146 @@ enum e_XLevent_type {
 //
 // MOST25 event tags
 //
-#define XL_MOST_START                               0x0101
-#define XL_MOST_STOP                                0x0102
-#define XL_MOST_EVENTSOURCES                        0x0103
-#define XL_MOST_ALLBYPASS                           0x0107
-#define XL_MOST_TIMINGMODE                          0x0108
-#define XL_MOST_FREQUENCY                           0x0109
-#define XL_MOST_REGISTER_BYTES                      0x010a
-#define XL_MOST_REGISTER_BITS                       0x010b
-#define XL_MOST_SPECIAL_REGISTER                    0x010c
-#define XL_MOST_CTRL_RX_SPY                         0x010d
-#define XL_MOST_CTRL_RX_OS8104                      0x010e
-#define XL_MOST_CTRL_TX                             0x010f
-#define XL_MOST_ASYNC_MSG                           0x0110
-#define XL_MOST_ASYNC_TX                            0x0111
-#define XL_MOST_SYNC_ALLOCTABLE                     0x0112
-#define XL_MOST_SYNC_VOLUME_STATUS                  0x0116
-#define XL_MOST_RXLIGHT                             0x0117
-#define XL_MOST_TXLIGHT                             0x0118
-#define XL_MOST_LOCKSTATUS                          0x0119
-#define XL_MOST_ERROR                               0x011a
-#define XL_MOST_CTRL_RXBUFFER                       0x011c
-#define XL_MOST_SYNC_TX_UNDERFLOW                   0x011d
-#define XL_MOST_SYNC_RX_OVERFLOW                    0x011e
-#define XL_MOST_CTRL_SYNC_AUDIO                     0x011f
-#define XL_MOST_SYNC_MUTE_STATUS                    0x0120
-#define XL_MOST_GENLIGHTERROR                       0x0121
-#define XL_MOST_GENLOCKERROR                        0x0122
-#define XL_MOST_TXLIGHT_POWER                       0x0123
-#define XL_MOST_CTRL_BUSLOAD                        0x0126
-#define XL_MOST_ASYNC_BUSLOAD                       0x0127
-#define XL_MOST_CTRL_SYNC_AUDIO_EX                  0x012a
-#define XL_MOST_TIMINGMODE_SPDIF                    0x012b
-#define XL_MOST_STREAM_STATE                        0x012c
-#define XL_MOST_STREAM_BUFFER                       0x012d
-
+#define XL_MOST_START                            0x0101
+#define XL_MOST_STOP                             0x0102
+#define XL_MOST_EVENTSOURCES                     0x0103
+#define XL_MOST_ALLBYPASS                        0x0107
+#define XL_MOST_TIMINGMODE                       0x0108
+#define XL_MOST_FREQUENCY                        0x0109
+#define XL_MOST_REGISTER_BYTES                   0x010a
+#define XL_MOST_REGISTER_BITS                    0x010b
+#define XL_MOST_SPECIAL_REGISTER                 0x010c
+#define XL_MOST_CTRL_RX_SPY                      0x010d
+#define XL_MOST_CTRL_RX_OS8104                   0x010e
+#define XL_MOST_CTRL_TX                          0x010f
+#define XL_MOST_ASYNC_MSG                        0x0110
+#define XL_MOST_ASYNC_TX                         0x0111
+#define XL_MOST_SYNC_ALLOCTABLE                  0x0112
+#define XL_MOST_SYNC_VOLUME_STATUS               0x0116
+#define XL_MOST_RXLIGHT                          0x0117
+#define XL_MOST_TXLIGHT                          0x0118
+#define XL_MOST_LOCKSTATUS                       0x0119
+#define XL_MOST_ERROR                            0x011a
+#define XL_MOST_CTRL_RXBUFFER                    0x011c
+#define XL_MOST_SYNC_TX_UNDERFLOW                0x011d
+#define XL_MOST_SYNC_RX_OVERFLOW                 0x011e
+#define XL_MOST_CTRL_SYNC_AUDIO                  0x011f
+#define XL_MOST_SYNC_MUTE_STATUS                 0x0120
+#define XL_MOST_GENLIGHTERROR                    0x0121
+#define XL_MOST_GENLOCKERROR                     0x0122
+#define XL_MOST_TXLIGHT_POWER                    0x0123
+#define XL_MOST_CTRL_BUSLOAD                     0x0126
+#define XL_MOST_ASYNC_BUSLOAD                    0x0127
+#define XL_MOST_CTRL_SYNC_AUDIO_EX               0x012a
+#define XL_MOST_TIMINGMODE_SPDIF                 0x012b
+#define XL_MOST_STREAM_STATE                     0x012c
+#define XL_MOST_STREAM_BUFFER                    0x012d
 
 //
 // MOST150 event tags
 //
-#define XL_START                                    ((unsigned short)0x0200)
-#define XL_STOP                                     ((unsigned short)0x0201)
-#define XL_MOST150_EVENT_SOURCE                     ((unsigned short)0x0203)
-#define XL_MOST150_DEVICE_MODE                      ((unsigned short)0x0204)
-#define XL_MOST150_SYNC_ALLOC_INFO                  ((unsigned short)0x0205)
-#define XL_MOST150_FREQUENCY                        ((unsigned short)0x0206)
-#define XL_MOST150_SPECIAL_NODE_INFO                ((unsigned short)0x0207)
-#define XL_MOST150_CTRL_RX                          ((unsigned short)0x0208)
-#define XL_MOST150_CTRL_TX_ACK                      ((unsigned short)0x0209)
-#define XL_MOST150_ASYNC_SPY                        ((unsigned short)0x020A)
-#define XL_MOST150_ASYNC_RX                         ((unsigned short)0x020B)
-#define XL_MOST150_SYNC_VOLUME_STATUS               ((unsigned short)0x020D)
-#define XL_MOST150_TX_LIGHT                         ((unsigned short)0x020E)
-#define XL_MOST150_RXLIGHT_LOCKSTATUS               ((unsigned short)0x020F)
-#define XL_MOST150_ERROR                            ((unsigned short)0x0210)
-#define XL_MOST150_CONFIGURE_RX_BUFFER              ((unsigned short)0x0211)
-#define XL_MOST150_CTRL_SYNC_AUDIO                  ((unsigned short)0x0212)
-#define XL_MOST150_SYNC_MUTE_STATUS                 ((unsigned short)0x0213)
-#define XL_MOST150_LIGHT_POWER                      ((unsigned short)0x0214)
-#define XL_MOST150_GEN_LIGHT_ERROR                  ((unsigned short)0x0215)
-#define XL_MOST150_GEN_LOCK_ERROR                   ((unsigned short)0x0216)
-#define XL_MOST150_CTRL_BUSLOAD                     ((unsigned short)0x0217)
-#define XL_MOST150_ASYNC_BUSLOAD                    ((unsigned short)0x0218)
-#define XL_MOST150_ETHERNET_RX                      ((unsigned short)0x0219)
-#define XL_MOST150_SYSTEMLOCK_FLAG                  ((unsigned short)0x021A)
-#define XL_MOST150_SHUTDOWN_FLAG                    ((unsigned short)0x021B)
-#define XL_MOST150_CTRL_SPY                         ((unsigned short)0x021C)
-#define XL_MOST150_ASYNC_TX_ACK                     ((unsigned short)0x021D)
-#define XL_MOST150_ETHERNET_SPY                     ((unsigned short)0x021E)
-#define XL_MOST150_ETHERNET_TX_ACK                  ((unsigned short)0x021F)
-#define XL_MOST150_SPDIFMODE                        ((unsigned short)0x0220)
-#define XL_MOST150_ECL_LINE_CHANGED                 ((unsigned short)0x0222)
-#define XL_MOST150_ECL_TERMINATION_CHANGED          ((unsigned short)0x0223)
-#define XL_MOST150_NW_STARTUP                       ((unsigned short)0x0224)
-#define XL_MOST150_NW_SHUTDOWN                      ((unsigned short)0x0225)
-#define XL_MOST150_STREAM_STATE                     ((unsigned short)0x0226)
-#define XL_MOST150_STREAM_TX_BUFFER                 ((unsigned short)0x0227)
-#define XL_MOST150_STREAM_RX_BUFFER                 ((unsigned short)0x0228)
-#define XL_MOST150_STREAM_TX_LABEL                  ((unsigned short)0x0229)
-#define XL_MOST150_STREAM_TX_UNDERFLOW              ((unsigned short)0x022B)
-#define XL_MOST150_GEN_BYPASS_STRESS                ((unsigned short)0x022C)
-#define XL_MOST150_ECL_SEQUENCE                     ((unsigned short)0x022D)
-#define XL_MOST150_ECL_GLITCH_FILTER                ((unsigned short)0x022E)
-#define XL_MOST150_SSO_RESULT                       ((unsigned short)0x022F)
+#define XL_START                                 ((unsigned short)0x0200)
+#define XL_STOP                                  ((unsigned short)0x0201)
+#define XL_MOST150_EVENT_SOURCE                  ((unsigned short)0x0203)
+#define XL_MOST150_DEVICE_MODE                   ((unsigned short)0x0204)
+#define XL_MOST150_SYNC_ALLOC_INFO               ((unsigned short)0x0205)
+#define XL_MOST150_FREQUENCY                     ((unsigned short)0x0206)
+#define XL_MOST150_SPECIAL_NODE_INFO             ((unsigned short)0x0207)
+#define XL_MOST150_CTRL_RX                       ((unsigned short)0x0208)
+#define XL_MOST150_CTRL_TX_ACK                   ((unsigned short)0x0209)
+#define XL_MOST150_ASYNC_SPY                     ((unsigned short)0x020A)
+#define XL_MOST150_ASYNC_RX                      ((unsigned short)0x020B)
+#define XL_MOST150_SYNC_VOLUME_STATUS            ((unsigned short)0x020D)
+#define XL_MOST150_TX_LIGHT                      ((unsigned short)0x020E)
+#define XL_MOST150_RXLIGHT_LOCKSTATUS            ((unsigned short)0x020F)
+#define XL_MOST150_ERROR                         ((unsigned short)0x0210)
+#define XL_MOST150_CONFIGURE_RX_BUFFER           ((unsigned short)0x0211)
+#define XL_MOST150_CTRL_SYNC_AUDIO               ((unsigned short)0x0212)
+#define XL_MOST150_SYNC_MUTE_STATUS              ((unsigned short)0x0213)
+#define XL_MOST150_LIGHT_POWER                   ((unsigned short)0x0214)
+#define XL_MOST150_GEN_LIGHT_ERROR               ((unsigned short)0x0215)
+#define XL_MOST150_GEN_LOCK_ERROR                ((unsigned short)0x0216)
+#define XL_MOST150_CTRL_BUSLOAD                  ((unsigned short)0x0217)
+#define XL_MOST150_ASYNC_BUSLOAD                 ((unsigned short)0x0218)
+#define XL_MOST150_ETHERNET_RX                   ((unsigned short)0x0219)
+#define XL_MOST150_SYSTEMLOCK_FLAG               ((unsigned short)0x021A)
+#define XL_MOST150_SHUTDOWN_FLAG                 ((unsigned short)0x021B)
+#define XL_MOST150_CTRL_SPY                      ((unsigned short)0x021C)
+#define XL_MOST150_ASYNC_TX_ACK                  ((unsigned short)0x021D)
+#define XL_MOST150_ETHERNET_SPY                  ((unsigned short)0x021E)
+#define XL_MOST150_ETHERNET_TX_ACK               ((unsigned short)0x021F)
+#define XL_MOST150_SPDIFMODE                     ((unsigned short)0x0220)
+#define XL_MOST150_ECL_LINE_CHANGED              ((unsigned short)0x0222)
+#define XL_MOST150_ECL_TERMINATION_CHANGED       ((unsigned short)0x0223)
+#define XL_MOST150_NW_STARTUP                    ((unsigned short)0x0224)
+#define XL_MOST150_NW_SHUTDOWN                   ((unsigned short)0x0225)
+#define XL_MOST150_STREAM_STATE                  ((unsigned short)0x0226)
+#define XL_MOST150_STREAM_TX_BUFFER              ((unsigned short)0x0227)
+#define XL_MOST150_STREAM_RX_BUFFER              ((unsigned short)0x0228)
+#define XL_MOST150_STREAM_TX_LABEL               ((unsigned short)0x0229)
+#define XL_MOST150_STREAM_TX_UNDERFLOW           ((unsigned short)0x022B)
+#define XL_MOST150_GEN_BYPASS_STRESS             ((unsigned short)0x022C)
+#define XL_MOST150_ECL_SEQUENCE                  ((unsigned short)0x022D)
+#define XL_MOST150_ECL_GLITCH_FILTER             ((unsigned short)0x022E)
+#define XL_MOST150_SSO_RESULT                    ((unsigned short)0x022F)
 
 //
 // CAN/CAN-FD event tags
 // Rx
-#define XL_CAN_EV_TAG_RX_OK                         ((unsigned short)0x0400)
-#define XL_CAN_EV_TAG_RX_ERROR                      ((unsigned short)0x0401)
-#define XL_CAN_EV_TAG_TX_ERROR                      ((unsigned short)0x0402)
-#define XL_CAN_EV_TAG_TX_REQUEST                    ((unsigned short)0x0403)
-#define XL_CAN_EV_TAG_TX_OK                         ((unsigned short)0x0404)
-#define XL_CAN_EV_TAG_CHIP_STATE                    ((unsigned short)0x0409)
+#define XL_CAN_EV_TAG_RX_OK                      ((unsigned short)0x0400)
+#define XL_CAN_EV_TAG_RX_ERROR                   ((unsigned short)0x0401)
+#define XL_CAN_EV_TAG_TX_ERROR                   ((unsigned short)0x0402)
+#define XL_CAN_EV_TAG_TX_REQUEST                 ((unsigned short)0x0403)
+#define XL_CAN_EV_TAG_TX_OK                      ((unsigned short)0x0404)
+#define XL_CAN_EV_TAG_CHIP_STATE                 ((unsigned short)0x0409)
 
 // CAN/CAN-FD event tags
 // Tx
-#define XL_CAN_EV_TAG_TX_MSG                        ((unsigned short)0x0440)
+#define XL_CAN_EV_TAG_TX_MSG                     ((unsigned short)0x0440)
 //
 // Ethernet event tags
 //
-#define XL_ETH_EVENT_TAG_FRAMERX                    ((unsigned short)0x0500)  // Event data type T_XL_ETH_DATAFRAME_RX
-#define XL_ETH_EVENT_TAG_FRAMERX_ERROR              ((unsigned short)0x0501)  // Event data type T_XL_ETH_DATAFRAME_RX_ERROR
-#define XL_ETH_EVENT_TAG_FRAMETX_ERROR              ((unsigned short)0x0506)  // Event data type T_XL_ETH_DATAFRAME_TX_ERROR
-#define XL_ETH_EVENT_TAG_FRAMETX_ERROR_SWITCH       ((unsigned short)0x0507)  // Event data type T_XL_ETH_DATAFRAME_TX_ERR_SW
-#define XL_ETH_EVENT_TAG_FRAMETX_ACK                ((unsigned short)0x0510)  // Event data type T_XL_ETH_DATAFRAME_TXACK
-#define XL_ETH_EVENT_TAG_FRAMETX_ACK_SWITCH         ((unsigned short)0x0511)  // Event data type T_XL_ETH_DATAFRAME_TXACK_SW
-#define XL_ETH_EVENT_TAG_FRAMETX_ACK_OTHER_APP      ((unsigned short)0x0513)  // Event data type T_XL_ETH_DATAFRAME_TXACK_OTHERAPP
-#define XL_ETH_EVENT_TAG_FRAMETX_ERROR_OTHER_APP    ((unsigned short)0x0514)  // Event data type T_XL_ETH_DATAFRAME_TX_ERR_OTHERAPP
-#define XL_ETH_EVENT_TAG_CHANNEL_STATUS             ((unsigned short)0x0520)  // Event data type T_XL_ETH_CHANNEL_STATUS
-#define XL_ETH_EVENT_TAG_CONFIGRESULT               ((unsigned short)0x0530)  // Event data type T_XL_ETH_CONFIG_RESULT
-#define XL_ETH_EVENT_TAG_FRAMERX_SIMULATION ((unsigned short)0x0550)  // Event data type T_XL_NET_ETH_DATAFRAME_RX  (with payload)
+#define XL_ETH_EVENT_TAG_FRAMERX                 ((unsigned short)0x0500) // Event data type T_XL_ETH_DATAFRAME_RX
+#define XL_ETH_EVENT_TAG_FRAMERX_ERROR           ((unsigned short)0x0501) // Event data type T_XL_ETH_DATAFRAME_RX_ERROR
+#define XL_ETH_EVENT_TAG_FRAMETX_ERROR           ((unsigned short)0x0506) // Event data type T_XL_ETH_DATAFRAME_TX_ERROR
+#define XL_ETH_EVENT_TAG_FRAMETX_ERROR_SWITCH    ((unsigned short)0x0507) // Event data type T_XL_ETH_DATAFRAME_TX_ERR_SW
+#define XL_ETH_EVENT_TAG_FRAMETX_ACK             ((unsigned short)0x0510) // Event data type T_XL_ETH_DATAFRAME_TXACK
+#define XL_ETH_EVENT_TAG_FRAMETX_ACK_SWITCH      ((unsigned short)0x0511) // Event data type T_XL_ETH_DATAFRAME_TXACK_SW
+#define XL_ETH_EVENT_TAG_FRAMETX_ACK_OTHER_APP   ((unsigned short)0x0513) // Event data type T_XL_ETH_DATAFRAME_TXACK_OTHERAPP
+#define XL_ETH_EVENT_TAG_FRAMETX_ERROR_OTHER_APP ((unsigned short)0x0514) // Event data type T_XL_ETH_DATAFRAME_TX_ERR_OTHERAPP
+#define XL_ETH_EVENT_TAG_CHANNEL_STATUS          ((unsigned short)0x0520) // Event data type T_XL_ETH_CHANNEL_STATUS
+#define XL_ETH_EVENT_TAG_CONFIGRESULT            ((unsigned short)0x0530) // Event data type T_XL_ETH_CONFIG_RESULT
+#define XL_ETH_EVENT_TAG_FRAMERX_SIMULATION      ((unsigned short)0x0550) // Event data type T_XL_NET_ETH_DATAFRAME_RX  (with payload)
 #define XL_ETH_EVENT_TAG_FRAMERX_ERROR_SIMULATION \
-  ((unsigned short)0x0551)  // Event data type T_XL_NET_ETH_DATAFRAME_RX_ERROR (with payload)
+    ((unsigned short)0x0551) // Event data type T_XL_NET_ETH_DATAFRAME_RX_ERROR (with payload)
 #define XL_ETH_EVENT_TAG_FRAMETX_ACK_SIMULATION \
-  ((unsigned short)0x0552)  // Event data type T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ACK (with payload)
+    ((unsigned short)0x0552) // Event data type T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ACK (with payload)
 #define XL_ETH_EVENT_TAG_FRAMETX_ERROR_SIMULATION \
-  ((unsigned short)0x0553)  // Event data type T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ERROR (with payload)
+    ((unsigned short)0x0553) // Event data type T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ERROR (with payload)
 
 #define XL_ETH_EVENT_TAG_FRAMERX_MEASUREMENT \
-  ((unsigned short)0x0560)  // Event data type T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX  (with payload)
+    ((unsigned short)0x0560) // Event data type T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX  (with payload)
 #define XL_ETH_EVENT_TAG_FRAMERX_ERROR_MEASUREMENT \
-  ((unsigned short)0x0561)  // Event data type T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX_ERROR (with payload)
+    ((unsigned short)0x0561) // Event data type T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX_ERROR (with payload)
 #define XL_ETH_EVENT_TAG_FRAMETX_MEASUREMENT \
-  ((unsigned short)0x0562)  // Event data type T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX (with payload)
+    ((unsigned short)0x0562) // Event data type T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX (with payload)
 #define XL_ETH_EVENT_TAG_FRAMETX_ERROR_MEASUREMENT \
-  ((unsigned short)0x0563)  // Event data type T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX_ERROR (with payload)
+    ((unsigned short)0x0563) // Event data type T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX_ERROR (with payload)
 #define XL_ETH_EVENT_TAG_LOSTEVENT \
-  ((unsigned short)0x05fe)  // Indication that one or more intended events could not be generated. Event data type T_XL_ETH_LOSTEVENT
-#define XL_ETH_EVENT_TAG_ERROR                   ((unsigned short)0x05ff)  // Generic error
+    ((unsigned short)0x05fe)                                  // Indication that one or more intended events could not be generated. Event data type T_XL_ETH_LOSTEVENT
+#define XL_ETH_EVENT_TAG_ERROR       ((unsigned short)0x05ff) // Generic error
 
 //
 // ARINC429 event tags
 //
-#define XL_A429_EV_TAG_TX_OK                     ((unsigned short)0x0600)
-#define XL_A429_EV_TAG_TX_ERR                    ((unsigned short)0x0601)
-#define XL_A429_EV_TAG_RX_OK                     ((unsigned short)0x0608)
-#define XL_A429_EV_TAG_RX_ERR                    ((unsigned short)0x0609)
-#define XL_A429_EV_TAG_BUS_STATISTIC             ((unsigned short)0x060F)
+#define XL_A429_EV_TAG_TX_OK         ((unsigned short)0x0600)
+#define XL_A429_EV_TAG_TX_ERR        ((unsigned short)0x0601)
+#define XL_A429_EV_TAG_RX_OK         ((unsigned short)0x0608)
+#define XL_A429_EV_TAG_RX_ERR        ((unsigned short)0x0609)
+#define XL_A429_EV_TAG_BUS_STATISTIC ((unsigned short)0x060F)
 
 typedef uint64_t XLuint64;
-typedef int64_t  XLint64;
+typedef int64_t XLint64;
 
 // defintion of XLlong and Xlulong
 // Linux: fixed to 32 bits (see header comment) to match the ABI of the
@@ -673,7 +662,7 @@ typedef int64_t  XLint64;
 // XLportHandle, XLulong, XLnetworkHandle, XLethPortHandle or XLrxHandle.
 #ifndef XL_LONG_XL_ULONG_DEFINED
 #define XL_LONG_XL_ULONG_DEFINED
-typedef int32_t  XLlong;
+typedef int32_t XLlong;
 typedef uint32_t XLulong;
 #endif
 
@@ -684,11 +673,11 @@ typedef uint32_t XLulong;
 #define XL_NOTIFY_REASON_CHANNEL_DEACTIVATION 2
 #define XL_NOTIFY_REASON_PORT_CLOSED          3
 
-typedef struct s_xl_application_notification {
-  unsigned int notifyReason;  // XL_NOTIFY_REASON_xxx
-  unsigned int reserved[7];
+typedef struct s_xl_application_notification
+{
+    unsigned int notifyReason; // XL_NOTIFY_REASON_xxx
+    unsigned int reserved[7];
 } XL_APPLICATION_NOTIFICATION_EV;
-
 
 // defines for XL_SYNC_PULSE_EV::triggerSource and s_xl_sync_pulse::pulseCode
 #define XL_SYNC_PULSE_EXTERNAL   0x00
@@ -697,28 +686,26 @@ typedef struct s_xl_application_notification {
 
 // definition of the sync pulse event for xl interface versions V3 and higher
 // (XL_INTERFACE_VERSION_V3, XL_INTERFACE_VERSION_V4, ..)
-typedef struct s_xl_sync_pulse_ev {
-  unsigned int triggerSource;  //!< e.g. external or internal trigger source
-  unsigned int reserved;
-  XLuint64     time;  //!< internally generated timestamp
+typedef struct s_xl_sync_pulse_ev
+{
+    unsigned int triggerSource; //!< e.g. external or internal trigger source
+    unsigned int reserved;
+    XLuint64 time; //!< internally generated timestamp
 } XL_SYNC_PULSE_EV;
 
 // definition of the sync pulse event for xl interface versions V1 and V2
 // (XL_INTERFACE_VERSION_V1, XL_INTERFACE_VERSION_V2)
 #pragma pack(push, 1)
 
-struct s_xl_sync_pulse {
-  unsigned char pulseCode;  //!< generated by us
-  XLuint64      time;       //!< 1 ns resolution
+struct s_xl_sync_pulse
+{
+    unsigned char pulseCode; //!< generated by us
+    XLuint64 time;           //!< 1 ns resolution
 };
 
 #pragma pack(pop)
 
-
-
-
 #pragma pack(pop)
-
 
 //------------------------------------------------------------------------------
 // defines for the supported hardware
@@ -730,8 +717,8 @@ struct s_xl_sync_pulse {
 #define XL_HWTYPE_CANCARDXL              15
 #define XL_HWTYPE_CANCASEXL              21
 #define XL_HWTYPE_CANCASEXL_LOG_OBSOLETE 23
-#define XL_HWTYPE_CANBOARDXL             25  // CANboardXL, CANboardXL PCIe
-#define XL_HWTYPE_CANBOARDXL_PXI         27  // CANboardXL pxi
+#define XL_HWTYPE_CANBOARDXL             25 // CANboardXL, CANboardXL PCIe
+#define XL_HWTYPE_CANBOARDXL_PXI         27 // CANboardXL pxi
 #define XL_HWTYPE_VN2600                 29
 #define XL_HWTYPE_VN2610                 XL_HWTYPE_VN2600
 #define XL_HWTYPE_VN3300                 37
@@ -795,7 +782,7 @@ struct s_xl_sync_pulse {
 #pragma pack(push, 1)
 #define XL_DAIO_IGNORE_CHANNEL (unsigned int)-1
 ////////////////////////////////////////////////////////////////////////////////
-typedef char* XLstringType;
+typedef char *XLstringType;
 
 ////////////////////////////////////////////////////////////////////////////////
 // channel selector
@@ -820,55 +807,54 @@ typedef int XLhandle;
 //------------------------------------------------------------------------------
 
 // defines for xlLinSetChannelParams
-#define XL_LIN_MASTER                   (unsigned int)01    //!< channel is a LIN master
-#define XL_LIN_SLAVE                    (unsigned int)02    //!< channel is a LIN slave
-#define XL_LIN_VERSION_1_3              (unsigned int)0x01  //!< LIN version 1.3
-#define XL_LIN_VERSION_2_0              (unsigned int)0x02  //!< LIN version 2.0
-#define XL_LIN_VERSION_2_1              (unsigned int)0x03  //!< LIN version 2.1
+#define XL_LIN_MASTER                   (unsigned int)01   //!< channel is a LIN master
+#define XL_LIN_SLAVE                    (unsigned int)02   //!< channel is a LIN slave
+#define XL_LIN_VERSION_1_3              (unsigned int)0x01 //!< LIN version 1.3
+#define XL_LIN_VERSION_2_0              (unsigned int)0x02 //!< LIN version 2.0
+#define XL_LIN_VERSION_2_1              (unsigned int)0x03 //!< LIN version 2.1
 
 // defines for xlLinSetSlave
-#define XL_LIN_CALC_CHECKSUM            (unsigned short)0x100  //!< flag for automatic 'classic' checksum calculation
-#define XL_LIN_CALC_CHECKSUM_ENHANCED   (unsigned short)0x200  //!< flag for automatic 'enhanced' checksum calculation
+#define XL_LIN_CALC_CHECKSUM            (unsigned short)0x100 //!< flag for automatic 'classic' checksum calculation
+#define XL_LIN_CALC_CHECKSUM_ENHANCED   (unsigned short)0x200 //!< flag for automatic 'enhanced' checksum calculation
 
 // defines for xlLinSetSleepMode
-#define XL_LIN_FLAG_NO_SLEEP_MODE_EVENT (unsigned char)0x01  //!< No sleep mode event is generated
-#define XL_LIN_FLAG_USE_ID_AS_WAKEUPID  (unsigned char)0x02  //!< Use the given ID as wakeup ID
+#define XL_LIN_FLAG_NO_SLEEP_MODE_EVENT (unsigned char)0x01 //!< No sleep mode event is generated
+#define XL_LIN_FLAG_USE_ID_AS_WAKEUPID  (unsigned char)0x02 //!< Use the given ID as wakeup ID
 // Deprecated
-#define XL_LIN_SET_SILENT               (unsigned char)XL_LIN_FLAG_NO_SLEEP_MODE_EVENT  //!< Deprecated: set hardware into sleep mode
-#define XL_LIN_SET_WAKEUPID                       \
-  (unsigned char)(XL_LIN_FLAG_NO_SLEEP_MODE_EVENT \
-                  | XL_LIN_FLAG_USE_ID_AS_WAKEUPID)  //!< Deprecated: set hardware into sleep mode and send a request at wake-up
+#define XL_LIN_SET_SILENT               (unsigned char)XL_LIN_FLAG_NO_SLEEP_MODE_EVENT //!< Deprecated: set hardware into sleep mode
+#define XL_LIN_SET_WAKEUPID \
+    (unsigned char)(XL_LIN_FLAG_NO_SLEEP_MODE_EVENT | XL_LIN_FLAG_USE_ID_AS_WAKEUPID) //!< Deprecated: set hardware into sleep mode and send a request at wake-up
 
 // defines for xlLinSetChecksum. For LIN >= 2.0 there can be used two different Checksum models.
-#define XL_LIN_CHECKSUM_CLASSIC    (unsigned char)0x00  //!< Use classic CRC
-#define XL_LIN_CHECKSUM_ENHANCED   (unsigned char)0x01  //!< Use enhanced CRC
-#define XL_LIN_CHECKSUM_UNDEFINED  (unsigned char)0xff  //!< Set the checksum calculation to undefined.
+#define XL_LIN_CHECKSUM_CLASSIC    (unsigned char)0x00 //!< Use classic CRC
+#define XL_LIN_CHECKSUM_ENHANCED   (unsigned char)0x01 //!< Use enhanced CRC
+#define XL_LIN_CHECKSUM_UNDEFINED  (unsigned char)0xff //!< Set the checksum calculation to undefined.
 
 // defines for the sleep mode event: XL_LIN_SLEEP
-#define XL_LIN_STAYALIVE           (unsigned char)0x00  //!< flag if nothing changes
-#define XL_LIN_SET_SLEEPMODE       (unsigned char)0x01  //!< flag if the hardware is set into the sleep mode
-#define XL_LIN_COMESFROM_SLEEPMODE (unsigned char)0x02  //!< flag if the hardware comes from the sleep mode
+#define XL_LIN_STAYALIVE           (unsigned char)0x00 //!< flag if nothing changes
+#define XL_LIN_SET_SLEEPMODE       (unsigned char)0x01 //!< flag if the hardware is set into the sleep mode
+#define XL_LIN_COMESFROM_SLEEPMODE (unsigned char)0x02 //!< flag if the hardware comes from the sleep mode
 
 // defines for the wake up event: XL_LIN_WAKEUP
-#define XL_LIN_WAKUP_INTERNAL      (unsigned char)0x01  //!< flag to signal a internal WAKEUP (event)
+#define XL_LIN_WAKUP_INTERNAL      (unsigned char)0x01 //!< flag to signal a internal WAKEUP (event)
 
 // defines for xlLINSetDLC
-#define XL_LIN_UNDEFINED_DLC       (unsigned char)0xff  //!< set the DLC to undefined
+#define XL_LIN_UNDEFINED_DLC       (unsigned char)0xff //!< set the DLC to undefined
 
 // defines for xlLinSwitchSlave
-#define XL_LIN_SLAVE_ON            (unsigned char)0xff  //!< switch on the LIN slave
-#define XL_LIN_SLAVE_OFF           (unsigned char)0x00  //!< switch off the LIN slave
+#define XL_LIN_SLAVE_ON            (unsigned char)0xff //!< switch on the LIN slave
+#define XL_LIN_SLAVE_OFF           (unsigned char)0x00 //!< switch off the LIN slave
 
 //------------------------------------------------------------------------------
 // structures for LIN
 //------------------------------------------------------------------------------
-typedef struct {
-  unsigned int LINMode;     //!< XL_LIN_SLAVE | XL_LIN_MASTER
-  int          baudrate;    //!< the baudrate will be calculated within the API. Here: e.g. 9600, 19200
-  unsigned int LINVersion;  //!< define for the LIN version (actual V1.3 of V2.0)
-  unsigned int reserved;    //!< for future use
+typedef struct
+{
+    unsigned int LINMode;    //!< XL_LIN_SLAVE | XL_LIN_MASTER
+    int baudrate;            //!< the baudrate will be calculated within the API. Here: e.g. 9600, 19200
+    unsigned int LINVersion; //!< define for the LIN version (actual V1.3 of V2.0)
+    unsigned int reserved;   //!< for future use
 } XLlinStatPar;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Defines
@@ -879,42 +865,42 @@ typedef struct {
 #endif
 
 // interface version for our events
-#define XL_INTERFACE_VERSION_V2             2
-#define XL_INTERFACE_VERSION_V3             3
-#define XL_INTERFACE_VERSION_V4             4
+#define XL_INTERFACE_VERSION_V2      2
+#define XL_INTERFACE_VERSION_V3      3
+#define XL_INTERFACE_VERSION_V4      4
 // current version
-#define XL_INTERFACE_VERSION                XL_INTERFACE_VERSION_V3
+#define XL_INTERFACE_VERSION         XL_INTERFACE_VERSION_V3
 
-#define XL_CAN_EXT_MSG_ID                   0x80000000u
+#define XL_CAN_EXT_MSG_ID            0x80000000u
 
-#define XL_CAN_MSG_FLAG_ERROR_FRAME         0x01
-#define XL_CAN_MSG_FLAG_OVERRUN             0x02  //!< Overrun in Driver or CAN Controller, previous msgs have been lost.
-#define XL_CAN_MSG_FLAG_NERR                0x04  //!< Line Error on Lowspeed
-#define XL_CAN_MSG_FLAG_WAKEUP              0x08  //!< High Voltage Message on Single Wire CAN
-#define XL_CAN_MSG_FLAG_REMOTE_FRAME        0x10
-#define XL_CAN_MSG_FLAG_RESERVED_1          0x20
-#define XL_CAN_MSG_FLAG_TX_COMPLETED        0x40  //!< Message Transmitted
-#define XL_CAN_MSG_FLAG_TX_REQUEST          0x80  //!< Transmit Message stored into Controller
-#define XL_CAN_MSG_FLAG_SRR_BIT_DOM         0x0200  //!< SRR bit in CAN message is dominant
+#define XL_CAN_MSG_FLAG_ERROR_FRAME  0x01
+#define XL_CAN_MSG_FLAG_OVERRUN      0x02 //!< Overrun in Driver or CAN Controller, previous msgs have been lost.
+#define XL_CAN_MSG_FLAG_NERR         0x04 //!< Line Error on Lowspeed
+#define XL_CAN_MSG_FLAG_WAKEUP       0x08 //!< High Voltage Message on Single Wire CAN
+#define XL_CAN_MSG_FLAG_REMOTE_FRAME 0x10
+#define XL_CAN_MSG_FLAG_RESERVED_1   0x20
+#define XL_CAN_MSG_FLAG_TX_COMPLETED 0x40   //!< Message Transmitted
+#define XL_CAN_MSG_FLAG_TX_REQUEST   0x80   //!< Transmit Message stored into Controller
+#define XL_CAN_MSG_FLAG_SRR_BIT_DOM  0x0200 //!< SRR bit in CAN message is dominant
 
-#define XL_EVENT_FLAG_OVERRUN               0x01  //!< Used in XLevent.flags
+#define XL_EVENT_FLAG_OVERRUN        0x01 //!< Used in XLevent.flags
 
 // LIN flags
-#define XL_LIN_MSGFLAG_TX                   XL_CAN_MSG_FLAG_TX_COMPLETED  //!< LIN TX flag
-#define XL_LIN_MSGFLAG_CRCERROR             0x81                          //!< Wrong LIN CRC
+#define XL_LIN_MSGFLAG_TX            XL_CAN_MSG_FLAG_TX_COMPLETED //!< LIN TX flag
+#define XL_LIN_MSGFLAG_CRCERROR      0x81                         //!< Wrong LIN CRC
 
 //------------------------------------------------------------------------------
 // structure for XL_RECEIVE_MSG, XL_TRANSMIT_MSG
 
-struct s_xl_can_msg { /* 32 Bytes */
-  unsigned int   id;
-  unsigned short flags;
-  unsigned short dlc;
-  XLuint64       res1;
-  unsigned char  data[MAX_MSG_LEN];
-  XLuint64       res2;
+struct s_xl_can_msg
+{ /* 32 Bytes */
+    unsigned int id;
+    unsigned short flags;
+    unsigned short dlc;
+    XLuint64 res1;
+    unsigned char data[MAX_MSG_LEN];
+    XLuint64 res2;
 };
-
 
 //------------------------------------------------------------------------------
 // structure for XL_TRANSMIT_DAIO_DATA
@@ -926,235 +912,255 @@ struct s_xl_can_msg { /* 32 Bytes */
 #define XL_DAIO_DATA_PWM           0x0010
 
 // optional function flags
-#define XL_DAIO_MODE_PULSE         0x0020  // generates pulse in values of PWM
+#define XL_DAIO_MODE_PULSE         0x0020 // generates pulse in values of PWM
 
-struct s_xl_daio_data {                 /* 32 Bytes */
-  unsigned short flags;                 // 2
-  unsigned int   timestamp_correction;  // 4
-  unsigned char  mask_digital;          // 1
-  unsigned char  value_digital;         // 1
-  unsigned char  mask_analog;           // 1
-  unsigned char  reserved0;             // 1
-  unsigned short value_analog[4];       // 8
-  unsigned int   pwm_frequency;         // 4
-  unsigned short pwm_value;             // 2
-  unsigned int   reserved1;             // 4
-  unsigned int   reserved2;             // 4
+struct s_xl_daio_data
+{                                      /* 32 Bytes */
+    unsigned short flags;              // 2
+    unsigned int timestamp_correction; // 4
+    unsigned char mask_digital;        // 1
+    unsigned char value_digital;       // 1
+    unsigned char mask_analog;         // 1
+    unsigned char reserved0;           // 1
+    unsigned short value_analog[4];    // 8
+    unsigned int pwm_frequency;        // 4
+    unsigned short pwm_value;          // 2
+    unsigned int reserved1;            // 4
+    unsigned int reserved2;            // 4
 };
 
-
-typedef struct s_xl_io_digital_data {
-  unsigned int digitalInputData;
+typedef struct s_xl_io_digital_data
+{
+    unsigned int digitalInputData;
 } XL_IO_DIGITAL_DATA;
 
-typedef struct s_xl_io_analog_data {
-  unsigned int measuredAnalogData0;
-  unsigned int measuredAnalogData1;
-  unsigned int measuredAnalogData2;
-  unsigned int measuredAnalogData3;
+typedef struct s_xl_io_analog_data
+{
+    unsigned int measuredAnalogData0;
+    unsigned int measuredAnalogData1;
+    unsigned int measuredAnalogData2;
+    unsigned int measuredAnalogData3;
 } XL_IO_ANALOG_DATA;
 
+struct s_xl_daio_piggy_data
+{
+    unsigned int daioEvtTag;
+    unsigned int triggerType;
 
-struct s_xl_daio_piggy_data {
-  unsigned int daioEvtTag;
-  unsigned int triggerType;
-
-  union {
-    XL_IO_DIGITAL_DATA digital;
-    XL_IO_ANALOG_DATA  analog;
-  } data;
+    union {
+        XL_IO_DIGITAL_DATA digital;
+        XL_IO_ANALOG_DATA analog;
+    } data;
 };
 
 //------------------------------------------------------------------------------
 // structure for XL_CHIP_STATE
 
-#define XL_CHIPSTAT_BUSOFF         0x01
-#define XL_CHIPSTAT_ERROR_PASSIVE  0x02
-#define XL_CHIPSTAT_ERROR_WARNING  0x04
-#define XL_CHIPSTAT_ERROR_ACTIVE   0x08
+#define XL_CHIPSTAT_BUSOFF        0x01
+#define XL_CHIPSTAT_ERROR_PASSIVE 0x02
+#define XL_CHIPSTAT_ERROR_WARNING 0x04
+#define XL_CHIPSTAT_ERROR_ACTIVE  0x08
 
-
-struct s_xl_chip_state {
-  unsigned char busStatus;
-  unsigned char txErrorCounter;
-  unsigned char rxErrorCounter;
+struct s_xl_chip_state
+{
+    unsigned char busStatus;
+    unsigned char txErrorCounter;
+    unsigned char rxErrorCounter;
 };
 
 //------------------------------------------------------------------------------
 // structure and defines for XL_TRANSCEIVER
 #define XL_TRANSCEIVER_EVENT_NONE         0
-#define XL_TRANSCEIVER_EVENT_INSERTED     1  //!< cable was inserted
-#define XL_TRANSCEIVER_EVENT_REMOVED      2  //!< cable was removed
-#define XL_TRANSCEIVER_EVENT_STATE_CHANGE 3  //!< transceiver state changed
+#define XL_TRANSCEIVER_EVENT_INSERTED     1 //!< cable was inserted
+#define XL_TRANSCEIVER_EVENT_REMOVED      2 //!< cable was removed
+#define XL_TRANSCEIVER_EVENT_STATE_CHANGE 3 //!< transceiver state changed
 
-struct s_xl_transceiver {
-  unsigned char event_reason;  //!< reason for what was event sent
-  unsigned char is_present;    //!< allways valid transceiver presence flag
+struct s_xl_transceiver
+{
+    unsigned char event_reason; //!< reason for what was event sent
+    unsigned char is_present;   //!< allways valid transceiver presence flag
 };
 
 //------------------------------------------------------------------------------
 // defines for SET_OUTPUT_MODE
-#define XL_OUTPUT_MODE_SILENT          0  //!< switch CAN trx into default silent mode
-#define XL_OUTPUT_MODE_NORMAL          1  //!< switch CAN trx into normal mode
-#define XL_OUTPUT_MODE_TX_OFF          2  //!< switch CAN trx into silent mode with tx pin off
-#define XL_OUTPUT_MODE_SJA_1000_SILENT 3  //!< switch CAN trx into SJA1000 silent mode
+#define XL_OUTPUT_MODE_SILENT          0 //!< switch CAN trx into default silent mode
+#define XL_OUTPUT_MODE_NORMAL          1 //!< switch CAN trx into normal mode
+#define XL_OUTPUT_MODE_TX_OFF          2 //!< switch CAN trx into silent mode with tx pin off
+#define XL_OUTPUT_MODE_SJA_1000_SILENT 3 //!< switch CAN trx into SJA1000 silent mode
 
 //------------------------------------------------------------------------------
 // Transceiver modes
-#define XL_TRANSCEIVER_EVENT_ERROR   1
-#define XL_TRANSCEIVER_EVENT_CHANGED 2
+#define XL_TRANSCEIVER_EVENT_ERROR     1
+#define XL_TRANSCEIVER_EVENT_CHANGED   2
 
 ////////////////////////////////////////////////////////////////////////////////
 // LIN lib
 //------------------------------------------------------------------------------
 // LIN event structures
-struct s_xl_lin_msg {
-  unsigned char  id;
-  unsigned char  dlc;
-  unsigned short flags;
-  unsigned char  data[8];
-  unsigned char  crc;
+struct s_xl_lin_msg
+{
+    unsigned char id;
+    unsigned char dlc;
+    unsigned short flags;
+    unsigned char data[8];
+    unsigned char crc;
 };
 
-struct s_xl_lin_sleep {
-  unsigned char flag;
+struct s_xl_lin_sleep
+{
+    unsigned char flag;
 };
 
-struct s_xl_lin_no_ans {
-  unsigned char id;
+struct s_xl_lin_no_ans
+{
+    unsigned char id;
 };
 
-struct s_xl_lin_wake_up {
-  unsigned char flag;
-  unsigned char unused[3];
-  unsigned int  startOffs;  // spec >= 2.0 only, else 0
-  unsigned int  width;      // spec >= 2.0 only, else 0
+struct s_xl_lin_wake_up
+{
+    unsigned char flag;
+    unsigned char unused[3];
+    unsigned int startOffs; // spec >= 2.0 only, else 0
+    unsigned int width;     // spec >= 2.0 only, else 0
 };
 
-struct s_xl_lin_crc_info {
-  unsigned char id;
-  unsigned char flags;
+struct s_xl_lin_crc_info
+{
+    unsigned char id;
+    unsigned char flags;
 };
 
 //------------------------------------------------------------------------------
 // LIN messages structure
 union s_xl_lin_msg_api {
-  struct s_xl_lin_msg       linMsg;
-  struct s_xl_lin_no_ans    linNoAns;
-  struct s_xl_lin_wake_up   linWakeUp;
-  struct s_xl_lin_sleep     linSleep;
-  struct s_xl_lin_crc_info  linCRCinfo;
+    struct s_xl_lin_msg linMsg;
+    struct s_xl_lin_no_ans linNoAns;
+    struct s_xl_lin_wake_up linWakeUp;
+    struct s_xl_lin_sleep linSleep;
+    struct s_xl_lin_crc_info linCRCinfo;
 };
 
 //------------------------------------------------------------------------------
 // K-Line messages structure
-typedef struct s_xl_kline_rx_data {
-  unsigned int timeDiff;
-  unsigned int data;
-  unsigned int error;
+typedef struct s_xl_kline_rx_data
+{
+    unsigned int timeDiff;
+    unsigned int data;
+    unsigned int error;
 } XL_KLINE_RX_DATA;
 
-typedef struct s_xl_kline_tx_data {
-  unsigned int timeDiff;
-  unsigned int data;
-  unsigned int error;
+typedef struct s_xl_kline_tx_data
+{
+    unsigned int timeDiff;
+    unsigned int data;
+    unsigned int error;
 } XL_KLINE_TX_DATA;
 
-typedef struct s_xl_kline_tester_5bd {
-  unsigned int tag5bd;
-  unsigned int timeDiff;
-  unsigned int data;
+typedef struct s_xl_kline_tester_5bd
+{
+    unsigned int tag5bd;
+    unsigned int timeDiff;
+    unsigned int data;
 } XL_KLINE_TESTER_5BD;
 
-typedef struct s_xl_kline_ecu_5bd {
-  unsigned int tag5bd;
-  unsigned int timeDiff;
-  unsigned int data;
+typedef struct s_xl_kline_ecu_5bd
+{
+    unsigned int tag5bd;
+    unsigned int timeDiff;
+    unsigned int data;
 } XL_KLINE_ECU_5BD;
 
-typedef struct s_xl_kline_tester_fastinit_wu_pattern {
-  unsigned int timeDiff;
-  unsigned int fastInitEdgeTimeDiff;
+typedef struct s_xl_kline_tester_fastinit_wu_pattern
+{
+    unsigned int timeDiff;
+    unsigned int fastInitEdgeTimeDiff;
 } XL_KLINE_TESTER_FI_WU_PATTERN;
 
-typedef struct s_xl_kline_ecu_fastinit_wu_pattern {
-  unsigned int timeDiff;
-  unsigned int fastInitEdgeTimeDiff;  // TiniL
+typedef struct s_xl_kline_ecu_fastinit_wu_pattern
+{
+    unsigned int timeDiff;
+    unsigned int fastInitEdgeTimeDiff; // TiniL
 } XL_KLINE_ECU_FI_WU_PATTERN;
 
-typedef struct s_xl_kline_confirmation {
-  unsigned int channel;
-  unsigned int confTag;
-  unsigned int result;
+typedef struct s_xl_kline_confirmation
+{
+    unsigned int channel;
+    unsigned int confTag;
+    unsigned int result;
 } XL_KLINE_CONFIRMATION;
 
-typedef struct s_xl_kline_error_rxtx {
-  unsigned int rxtxErrData;
+typedef struct s_xl_kline_error_rxtx
+{
+    unsigned int rxtxErrData;
 } XL_KLINE_ERROR_RXTX;
 
-typedef struct s_xl_kline_error_5bd_tester {
-  unsigned int tester5BdErr;
+typedef struct s_xl_kline_error_5bd_tester
+{
+    unsigned int tester5BdErr;
 } XL_KLINE_ERROR_TESTER_5BD;
 
-typedef struct s_xl_kline_error_5bd_ecu {
-  unsigned int ecu5BdErr;
+typedef struct s_xl_kline_error_5bd_ecu
+{
+    unsigned int ecu5BdErr;
 } XL_KLINE_ERROR_ECU_5BD;
 
-typedef struct s_xl_kline_error_ibs {
-  unsigned int ibsErr;
-  unsigned int rxtxErrData;
+typedef struct s_xl_kline_error_ibs
+{
+    unsigned int ibsErr;
+    unsigned int rxtxErrData;
 } XL_KLINE_ERROR_IBS;
 
-typedef struct s_xl_kline_error {
-  unsigned int klineErrorTag;
-  unsigned int reserved;
+typedef struct s_xl_kline_error
+{
+    unsigned int klineErrorTag;
+    unsigned int reserved;
 
-  union {
-    XL_KLINE_ERROR_RXTX       rxtxErr;       // klineErrorTag: XL_KLINE_ERROR_TYPE_RXTX_ERROR / XL_KLINE_ERROR_TYPE_FI
-    XL_KLINE_ERROR_TESTER_5BD tester5BdErr;  // klineErrorTag: XL_KLINE_ERROR_TYPE_5BD_TESTER
-    XL_KLINE_ERROR_ECU_5BD    ecu5BdErr;     // klineErrorTag: XL_KLINE_ERROR_TYPE_5BD_ECU
-    XL_KLINE_ERROR_IBS        ibsErr;        // klineErrorTag: XL_KLINE_ERROR_TYPE_IBS
+    union {
+        XL_KLINE_ERROR_RXTX rxtxErr;            // klineErrorTag: XL_KLINE_ERROR_TYPE_RXTX_ERROR / XL_KLINE_ERROR_TYPE_FI
+        XL_KLINE_ERROR_TESTER_5BD tester5BdErr; // klineErrorTag: XL_KLINE_ERROR_TYPE_5BD_TESTER
+        XL_KLINE_ERROR_ECU_5BD ecu5BdErr;       // klineErrorTag: XL_KLINE_ERROR_TYPE_5BD_ECU
+        XL_KLINE_ERROR_IBS ibsErr;              // klineErrorTag: XL_KLINE_ERROR_TYPE_IBS
 
-    unsigned int reserved[4];
+        unsigned int reserved[4];
 
-  } data;
+    } data;
 } XL_KLINE_ERROR;
 
 //------------------------------------------------------------------------------
 // K-Line messages structure
 
-typedef struct s_xl_kline_data {
-  unsigned int klineEvtTag;
-  unsigned int reserved;
+typedef struct s_xl_kline_data
+{
+    unsigned int klineEvtTag;
+    unsigned int reserved;
 
-  union {
-    XL_KLINE_RX_DATA klineRx;
-    XL_KLINE_TX_DATA klineTx;
+    union {
+        XL_KLINE_RX_DATA klineRx;
+        XL_KLINE_TX_DATA klineTx;
 
-    XL_KLINE_TESTER_5BD klineTester5Bd;
-    XL_KLINE_ECU_5BD    klineEcu5Bd;
+        XL_KLINE_TESTER_5BD klineTester5Bd;
+        XL_KLINE_ECU_5BD klineEcu5Bd;
 
-    XL_KLINE_TESTER_FI_WU_PATTERN klineTesterFiWu;
-    XL_KLINE_ECU_FI_WU_PATTERN    klineEcuFiWu;
-    XL_KLINE_CONFIRMATION         klineConfirmation;
+        XL_KLINE_TESTER_FI_WU_PATTERN klineTesterFiWu;
+        XL_KLINE_ECU_FI_WU_PATTERN klineEcuFiWu;
+        XL_KLINE_CONFIRMATION klineConfirmation;
 
-    XL_KLINE_ERROR klineError;
+        XL_KLINE_ERROR klineError;
 
-  } data;
+    } data;
 } XL_KLINE_DATA;
-
 
 //------------------------------------------------------------------------------
 // BASIC bus message structure
 union s_xl_tag_data {
-  struct s_xl_can_msg                  msg;
-  struct s_xl_chip_state               chipState;
-  union s_xl_lin_msg_api               linMsgApi;
-  struct s_xl_sync_pulse               syncPulse;
-  struct s_xl_daio_data                daioData;
-  struct s_xl_transceiver              transceiver;
-  struct s_xl_daio_piggy_data          daioPiggyData;
-  struct s_xl_kline_data               klineData;
+    struct s_xl_can_msg msg;
+    struct s_xl_chip_state chipState;
+    union s_xl_lin_msg_api linMsgApi;
+    struct s_xl_sync_pulse syncPulse;
+    struct s_xl_daio_data daioData;
+    struct s_xl_transceiver transceiver;
+    struct s_xl_daio_piggy_data daioPiggyData;
+    struct s_xl_kline_data klineData;
 };
 
 typedef unsigned char XLeventTag;
@@ -1163,347 +1169,358 @@ typedef unsigned char XLeventTag;
 // XL_EVENT structures
 // event type definition
 
-struct s_xl_event {
-  XLeventTag     tag;         // 1
-  unsigned char  chanIndex;   // 1
-  unsigned short transId;     // 2
-  unsigned short portHandle;  // 2 internal use only !!!!
-  unsigned char  flags;       // 1 (e.g. XL_EVENT_FLAG_OVERRUN)
-  unsigned char reserved;  // 1
-  XLuint64            timeStamp;  // 8
-  union s_xl_tag_data tagData;    // 32 Bytes
+struct s_xl_event
+{
+    XLeventTag tag;              // 1
+    unsigned char chanIndex;     // 1
+    unsigned short transId;      // 2
+    unsigned short portHandle;   // 2 internal use only !!!!
+    unsigned char flags;         // 1 (e.g. XL_EVENT_FLAG_OVERRUN)
+    unsigned char reserved;      // 1
+    XLuint64 timeStamp;          // 8
+    union s_xl_tag_data tagData; // 32 Bytes
 };
+
 // --------
 // 48 Bytes
 
 typedef struct s_xl_event XLevent;
 // message name to acquire a unique message id from windows
-#define DriverNotifyMessageName   "VectorCanDriverChangeNotifyMessage"
+#define DriverNotifyMessageName "VectorCanDriverChangeNotifyMessage"
 
 //------------------------------------------------------------------------------
 // build a channels mask from the channels index
-#define XL_CHANNEL_MASK(x)              (1I64 << (x))
+#define XL_CHANNEL_MASK(x)      (1I64 << (x))
 
-#define XL_MAX_APPNAME                  32
+#define XL_MAX_APPNAME          32
 
 //------------------------------------------------------------------------------
 // driver status
 typedef short XLstatus;
 
-
 // defines for xlGetDriverConfig structures
-#define XL_MAX_LENGTH                  31u
-#define XL_CONFIG_MAX_CHANNELS         64u
-#define XL_MAX_NAME_LENGTH             48u
-
-
+#define XL_MAX_LENGTH              31u
+#define XL_CONFIG_MAX_CHANNELS     64u
+#define XL_MAX_NAME_LENGTH         48u
 
 // defines for xlSet/GetApplConfig
-#define XL_APPLCONFIG_MAX_CHANNELS     256
+#define XL_APPLCONFIG_MAX_CHANNELS 256
 
 // activate - channel flags
-#define XL_ACTIVATE_NONE               0
+#define XL_ACTIVATE_NONE           0
 #define XL_ACTIVATE_RESET_CLOCK \
-  8  // using this flag with time synchronisation protocols supported by Vector Timesync Service is not recommended
+    8 // using this flag with time synchronisation protocols supported by Vector Timesync Service is not recommended
 
-#define XL_BUS_COMPATIBLE_CAN            XL_BUS_TYPE_CAN
-#define XL_BUS_COMPATIBLE_LIN            XL_BUS_TYPE_LIN
-#define XL_BUS_COMPATIBLE_FLEXRAY        XL_BUS_TYPE_FLEXRAY
-#define XL_BUS_COMPATIBLE_MOST           XL_BUS_TYPE_MOST
-#define XL_BUS_COMPATIBLE_DAIO           XL_BUS_TYPE_DAIO  // io cab/piggy
-#define XL_BUS_COMPATIBLE_J1708          XL_BUS_TYPE_J1708
-#define XL_BUS_COMPATIBLE_KLINE          XL_BUS_TYPE_KLINE
-#define XL_BUS_COMPATIBLE_ETHERNET       XL_BUS_TYPE_ETHERNET
-#define XL_BUS_COMPATIBLE_A429           XL_BUS_TYPE_A429
+#define XL_BUS_COMPATIBLE_CAN      XL_BUS_TYPE_CAN
+#define XL_BUS_COMPATIBLE_LIN      XL_BUS_TYPE_LIN
+#define XL_BUS_COMPATIBLE_FLEXRAY  XL_BUS_TYPE_FLEXRAY
+#define XL_BUS_COMPATIBLE_MOST     XL_BUS_TYPE_MOST
+#define XL_BUS_COMPATIBLE_DAIO     XL_BUS_TYPE_DAIO // io cab/piggy
+#define XL_BUS_COMPATIBLE_J1708    XL_BUS_TYPE_J1708
+#define XL_BUS_COMPATIBLE_KLINE    XL_BUS_TYPE_KLINE
+#define XL_BUS_COMPATIBLE_ETHERNET XL_BUS_TYPE_ETHERNET
+#define XL_BUS_COMPATIBLE_A429     XL_BUS_TYPE_A429
 
 // the following bus types can be used with the current cab / piggy
-#define XL_BUS_ACTIVE_CAP_CAN            (XL_BUS_COMPATIBLE_CAN << 16)
-#define XL_BUS_ACTIVE_CAP_LIN            (XL_BUS_COMPATIBLE_LIN << 16)
-#define XL_BUS_ACTIVE_CAP_FLEXRAY        (XL_BUS_COMPATIBLE_FLEXRAY << 16)
-#define XL_BUS_ACTIVE_CAP_MOST           (XL_BUS_COMPATIBLE_MOST << 16)
-#define XL_BUS_ACTIVE_CAP_DAIO           (XL_BUS_COMPATIBLE_DAIO << 16)
-#define XL_BUS_ACTIVE_CAP_J1708          (XL_BUS_COMPATIBLE_J1708 << 16)
-#define XL_BUS_ACTIVE_CAP_KLINE          (XL_BUS_COMPATIBLE_KLINE << 16)
-#define XL_BUS_ACTIVE_CAP_ETHERNET       (XL_BUS_COMPATIBLE_ETHERNET << 16)
-#define XL_BUS_ACTIVE_CAP_A429           (XL_BUS_COMPATIBLE_A429 << 16)
+#define XL_BUS_ACTIVE_CAP_CAN      (XL_BUS_COMPATIBLE_CAN << 16)
+#define XL_BUS_ACTIVE_CAP_LIN      (XL_BUS_COMPATIBLE_LIN << 16)
+#define XL_BUS_ACTIVE_CAP_FLEXRAY  (XL_BUS_COMPATIBLE_FLEXRAY << 16)
+#define XL_BUS_ACTIVE_CAP_MOST     (XL_BUS_COMPATIBLE_MOST << 16)
+#define XL_BUS_ACTIVE_CAP_DAIO     (XL_BUS_COMPATIBLE_DAIO << 16)
+#define XL_BUS_ACTIVE_CAP_J1708    (XL_BUS_COMPATIBLE_J1708 << 16)
+#define XL_BUS_ACTIVE_CAP_KLINE    (XL_BUS_COMPATIBLE_KLINE << 16)
+#define XL_BUS_ACTIVE_CAP_ETHERNET (XL_BUS_COMPATIBLE_ETHERNET << 16)
+#define XL_BUS_ACTIVE_CAP_A429     (XL_BUS_COMPATIBLE_A429 << 16)
 
-#define XL_BUS_NAME_NONE                 ""
-#define XL_BUS_NAME_CAN                  "CAN"
-#define XL_BUS_NAME_LIN                  "LIN"
-#define XL_BUS_NAME_FLEXRAY              "FlexRay"
-#define XL_BUS_NAME_STREAM               "Stream"
-#define XL_BUS_NAME_MOST                 "MOST"
-#define XL_BUS_NAME_DAIO                 "DAIO"
-#define XL_BUS_NAME_HWSYNC_KEYPAD        "HWSYNC_KEYPAD"
-#define XL_BUS_NAME_J1708                "J1708"
-#define XL_BUS_NAME_KLINE                "K-Line"
-#define XL_BUS_NAME_ETHERNET             "Ethernet"
-#define XL_BUS_NAME_AFDX                 "AFDX"
-#define XL_BUS_NAME_A429                 "ARINC429"
-
+#define XL_BUS_NAME_NONE           ""
+#define XL_BUS_NAME_CAN            "CAN"
+#define XL_BUS_NAME_LIN            "LIN"
+#define XL_BUS_NAME_FLEXRAY        "FlexRay"
+#define XL_BUS_NAME_STREAM         "Stream"
+#define XL_BUS_NAME_MOST           "MOST"
+#define XL_BUS_NAME_DAIO           "DAIO"
+#define XL_BUS_NAME_HWSYNC_KEYPAD  "HWSYNC_KEYPAD"
+#define XL_BUS_NAME_J1708          "J1708"
+#define XL_BUS_NAME_KLINE          "K-Line"
+#define XL_BUS_NAME_ETHERNET       "Ethernet"
+#define XL_BUS_NAME_AFDX           "AFDX"
+#define XL_BUS_NAME_A429           "ARINC429"
 
 //------------------------------------------------------------------------------
 // acceptance filter
 
-#define XL_CAN_STD 01  //!< flag for standard ID's
-#define XL_CAN_EXT 02  //!< flag for extended ID's
+#define XL_CAN_STD                 01 //!< flag for standard ID's
+#define XL_CAN_EXT                 02 //!< flag for extended ID's
 
 //------------------------------------------------------------------------------
 // bit timing
 
-#define CANFD_CONFOPT_NO_ISO 0x08u  // configuration option CANFD-BOSCH
+#define CANFD_CONFOPT_NO_ISO       0x08u // configuration option CANFD-BOSCH
 
-typedef struct {
-  unsigned int arbitrationBitRate;
-  unsigned int sjwAbr;  // CAN bus timing for nominal / arbitration bit rate
-  unsigned int tseg1Abr;
-  unsigned int tseg2Abr;
-  unsigned int dataBitRate;
-  unsigned int sjwDbr;  // CAN bus timing for data bit rate
-  unsigned int tseg1Dbr;
-  unsigned int tseg2Dbr;
-  unsigned char reserved;      // has to be zero
-  unsigned char options;       // CANFD_CONFOPT_
-  unsigned char reserved1[2];  // has to be zero
-  unsigned int  reserved2;     // has to be zero
+typedef struct
+{
+    unsigned int arbitrationBitRate;
+    unsigned int sjwAbr; // CAN bus timing for nominal / arbitration bit rate
+    unsigned int tseg1Abr;
+    unsigned int tseg2Abr;
+    unsigned int dataBitRate;
+    unsigned int sjwDbr; // CAN bus timing for data bit rate
+    unsigned int tseg1Dbr;
+    unsigned int tseg2Dbr;
+    unsigned char reserved;     // has to be zero
+    unsigned char options;      // CANFD_CONFOPT_
+    unsigned char reserved1[2]; // has to be zero
+    unsigned int reserved2;     // has to be zero
 } XLcanFdConf;
 
-
-typedef struct {
-  unsigned int  bitRate;
-  unsigned char sjw;
-  unsigned char tseg1;
-  unsigned char tseg2;
-  unsigned char sam;  // 1 or 3
+typedef struct
+{
+    unsigned int bitRate;
+    unsigned char sjw;
+    unsigned char tseg1;
+    unsigned char tseg2;
+    unsigned char sam; // 1 or 3
 } XLchipParams;
 
 // defines for XLbusParams::data::most::activeSpeedGrade and compatibleSpeedGrade
-#define XL_BUS_PARAMS_MOST_SPEED_GRADE_25  0x01
-#define XL_BUS_PARAMS_MOST_SPEED_GRADE_150 0x02
+#define XL_BUS_PARAMS_MOST_SPEED_GRADE_25    0x01
+#define XL_BUS_PARAMS_MOST_SPEED_GRADE_150   0x02
 
 // defines for XLbusParams::data::can/canFD::canOpMode
-#define XL_BUS_PARAMS_CANOPMODE_CAN20      0x01  // channel operates in CAN20
-#define XL_BUS_PARAMS_CANOPMODE_CANFD      0x02  // channel operates in CANFD
-#define XL_BUS_PARAMS_CANOPMODE_CANFD_NO_ISO    0x08  // channel operates in CANFD_NO_ISO
+#define XL_BUS_PARAMS_CANOPMODE_CAN20        0x01 // channel operates in CAN20
+#define XL_BUS_PARAMS_CANOPMODE_CANFD        0x02 // channel operates in CANFD
+#define XL_BUS_PARAMS_CANOPMODE_CANFD_NO_ISO 0x08 // channel operates in CANFD_NO_ISO
 
-typedef struct {
-  unsigned int busType;
+typedef struct
+{
+    unsigned int busType;
 
-  union {
-    struct {
-      unsigned int  bitRate;
-      unsigned char sjw;
-      unsigned char tseg1;
-      unsigned char tseg2;
-      unsigned char sam;  // 1 or 3
-      unsigned char outputMode;
-      unsigned char reserved1[7];
-      unsigned char canOpMode;
-    } can;
+    union {
+        struct
+        {
+            unsigned int bitRate;
+            unsigned char sjw;
+            unsigned char tseg1;
+            unsigned char tseg2;
+            unsigned char sam; // 1 or 3
+            unsigned char outputMode;
+            unsigned char reserved1[7];
+            unsigned char canOpMode;
+        } can;
 
-    struct {
-      unsigned int  arbitrationBitRate;  // CAN bus timing for nominal / arbitration bit rate
-      unsigned char sjwAbr;
-      unsigned char tseg1Abr;
-      unsigned char tseg2Abr;
-      unsigned char samAbr;  // 1 or 3
-      unsigned char outputMode;
-      unsigned char sjwDbr;  // CAN bus timing for data bit rate
-      unsigned char tseg1Dbr;
-      unsigned char tseg2Dbr;
-      unsigned int  dataBitRate;
-      unsigned char canOpMode;
+        struct
+        {
+            unsigned int arbitrationBitRate; // CAN bus timing for nominal / arbitration bit rate
+            unsigned char sjwAbr;
+            unsigned char tseg1Abr;
+            unsigned char tseg2Abr;
+            unsigned char samAbr; // 1 or 3
+            unsigned char outputMode;
+            unsigned char sjwDbr; // CAN bus timing for data bit rate
+            unsigned char tseg1Dbr;
+            unsigned char tseg2Dbr;
+            unsigned int dataBitRate;
+            unsigned char canOpMode;
 
-    } canFD;
+        } canFD;
 
-    struct {
-      unsigned int activeSpeedGrade;
-      unsigned int compatibleSpeedGrade;
-      unsigned int inicFwVersion;
-    } most;
+        struct
+        {
+            unsigned int activeSpeedGrade;
+            unsigned int compatibleSpeedGrade;
+            unsigned int inicFwVersion;
+        } most;
 
-    struct {
-      // status and cfg mode are part of xlFrGetChannelConfiguration, too
-      unsigned int status;    // XL_FR_CHANNEL_CFG_STATUS_xxx
-      unsigned int cfgMode;   // XL_FR_CHANNEL_CFG_MODE_xxx
-      unsigned int baudrate;  // FlexRay baudrate in kBaud
-    } flexray;
+        struct
+        {
+            // status and cfg mode are part of xlFrGetChannelConfiguration, too
+            unsigned int status;   // XL_FR_CHANNEL_CFG_STATUS_xxx
+            unsigned int cfgMode;  // XL_FR_CHANNEL_CFG_MODE_xxx
+            unsigned int baudrate; // FlexRay baudrate in kBaud
+        } flexray;
 
-    struct {
-      unsigned char  macAddr[6];     // MAC address (starting with MSB!)
-      unsigned char  connector;      // XL_ETH_STATUS_CONNECTOR_xxx
-      unsigned char  phy;            // XL_ETH_STATUS_PHY_xxx
-      unsigned char  link;           // XL_ETH_STATUS_LINK_xxx
-      unsigned char  speed;          // XL_ETH_STATUS_SPEED_xxx
-      unsigned char  clockMode;      // XL_ETH_STATUS_CLOCK_xxx
-      unsigned char  bypass;         // XL_ETH_BYPASS_xxx
-    } ethernet;
+        struct
+        {
+            unsigned char macAddr[6]; // MAC address (starting with MSB!)
+            unsigned char connector;  // XL_ETH_STATUS_CONNECTOR_xxx
+            unsigned char phy;        // XL_ETH_STATUS_PHY_xxx
+            unsigned char link;       // XL_ETH_STATUS_LINK_xxx
+            unsigned char speed;      // XL_ETH_STATUS_SPEED_xxx
+            unsigned char clockMode;  // XL_ETH_STATUS_CLOCK_xxx
+            unsigned char bypass;     // XL_ETH_BYPASS_xxx
+        } ethernet;
 
-    struct {
-      unsigned short channelDirection;
-      unsigned short res1;
+        struct
+        {
+            unsigned short channelDirection;
+            unsigned short res1;
 
-      union {
-        struct {
-          unsigned int bitrate;
-          unsigned int parity;
-          unsigned int minGap;
-        } tx;
+            union {
+                struct
+                {
+                    unsigned int bitrate;
+                    unsigned int parity;
+                    unsigned int minGap;
+                } tx;
 
-        struct {
-          unsigned int bitrate;
-          unsigned int minBitrate;
-          unsigned int maxBitrate;
-          unsigned int parity;
-          unsigned int minGap;
-          unsigned int autoBaudrate;
-        } rx;
+                struct
+                {
+                    unsigned int bitrate;
+                    unsigned int minBitrate;
+                    unsigned int maxBitrate;
+                    unsigned int parity;
+                    unsigned int minGap;
+                    unsigned int autoBaudrate;
+                } rx;
 
-        unsigned char raw[24];
-      } dir;
-    } a429;
+                unsigned char raw[24];
+            } dir;
+        } a429;
 
-    unsigned char raw[28];
-  } data;
+        unsigned char raw[28];
+    } data;
 } XLbusParams;
-
 
 // porthandle
 #define XL_INVALID_PORTHANDLE (-1)
 typedef XLlong XLportHandle, *pXLportHandle;
 
-#define XL_CONNECTION_INFO_FAMILY_MASK               ((unsigned int)0xff000000)
-#define XL_CONNECTION_INFO_DETAIL_MASK               ((unsigned int)0x00ffffff)
+#define XL_CONNECTION_INFO_FAMILY_MASK          ((unsigned int)0xff000000)
+#define XL_CONNECTION_INFO_DETAIL_MASK          ((unsigned int)0x00ffffff)
 
 // defines to select the connectionInfo family (most-significant-byte of connection_info)
-#define XL_CONNECTION_INFO_FAMILY_USB                (0 << 24)  //!< USB devices
-#define XL_CONNECTION_INFO_FAMILY_NETWORK            (1 << 24)  //!< Ethernet and WiFi devices
-#define XL_CONNECTION_INFO_FAMILY_PCIE               (2 << 24)  //!< PCI-Express devices
+#define XL_CONNECTION_INFO_FAMILY_USB           (0 << 24) //!< USB devices
+#define XL_CONNECTION_INFO_FAMILY_NETWORK       (1 << 24) //!< Ethernet and WiFi devices
+#define XL_CONNECTION_INFO_FAMILY_PCIE          (2 << 24) //!< PCI-Express devices
 
 // defines for the connectionInfo (only for the USB devices)
-#define XL_CONNECTION_INFO_USB_UNKNOWN               0
-#define XL_CONNECTION_INFO_USB_FULLSPEED             1
-#define XL_CONNECTION_INFO_USB_HIGHSPEED             2
-#define XL_CONNECTION_INFO_USB_SUPERSPEED            3
+#define XL_CONNECTION_INFO_USB_UNKNOWN          0
+#define XL_CONNECTION_INFO_USB_FULLSPEED        1
+#define XL_CONNECTION_INFO_USB_HIGHSPEED        2
+#define XL_CONNECTION_INFO_USB_SUPERSPEED       3
 // defines for FPGA core types (fpgaCoreCapabilities)
-#define XL_FPGA_CORE_TYPE_NONE                       0
-#define XL_FPGA_CORE_TYPE_CAN                        1
-#define XL_FPGA_CORE_TYPE_LIN                        2
-#define XL_FPGA_CORE_TYPE_LIN_RX                     3
+#define XL_FPGA_CORE_TYPE_NONE                  0
+#define XL_FPGA_CORE_TYPE_CAN                   1
+#define XL_FPGA_CORE_TYPE_LIN                   2
+#define XL_FPGA_CORE_TYPE_LIN_RX                3
 
 // #defines for specialDeviceStatus
-#define XL_SPECIAL_DEVICE_STAT_FPGA_UPDATE_DONE      0x01  //!< automatic driver FPGA flashing done
+#define XL_SPECIAL_DEVICE_STAT_FPGA_UPDATE_DONE 0x01 //!< automatic driver FPGA flashing done
 
 // structure for xlGetLicenseInfo function
 // This structure is returned as an array from the xlGetLicenseInfo. It contains all available licenses on
 // the queried channels. The position inside the array is defined by the license itself, e.g. the license for
 // the Advanced-Flexray-Library is always at the same array index.
-typedef struct s_xl_license_info {
-  unsigned char bAvailable;   //!< License is available
-  char          licName[65];  //!< Name of the license as NULL-terminated string
+typedef struct s_xl_license_info
+{
+    unsigned char bAvailable; //!< License is available
+    char licName[65];         //!< Name of the license as NULL-terminated string
 } XL_LICENSE_INFO;
 
 typedef XL_LICENSE_INFO XLlicenseInfo;
 
 // structures for xlGetDriverConfig
-typedef struct s_xl_channel_config {
-  char           name[XL_MAX_LENGTH + 1];
-  unsigned char  hwType;                  //!< XL_HWTYPE_xxxx (see above)
-  unsigned char  hwIndex;                 //!< Index of the hardware (same type) (0,1,...)
-  unsigned char  hwChannel;               //!< Index of the channel (same hardware) (0,1,...)
-  unsigned short transceiverType;         //!< TRANSCEIVER_TYPE_xxxx (see above)
-  unsigned short transceiverState;        //!< transceiver state (XL_TRANSCEIVER_STATUS...)
-  unsigned short configError;             //!< XL_CHANNEL_CONFIG_ERROR_XXX (see above)
-  unsigned char  channelIndex;            //!< Global channel index (0,1,...)
-  XLuint64       channelMask;             //!< Global channel mask (=1<<channelIndex)
-  unsigned int   channelCapabilities;     //!< capabilities which are supported (e.g CHANNEL_FLAG_XXX)
-  unsigned int   channelBusCapabilities;  //!< what buses are supported and which are possible to be
-                                          //!< activated (e.g. XXX_BUS_ACTIVE_CAP_CAN)
+typedef struct s_xl_channel_config
+{
+    char name[XL_MAX_LENGTH + 1];
+    unsigned char hwType;                //!< XL_HWTYPE_xxxx (see above)
+    unsigned char hwIndex;               //!< Index of the hardware (same type) (0,1,...)
+    unsigned char hwChannel;             //!< Index of the channel (same hardware) (0,1,...)
+    unsigned short transceiverType;      //!< TRANSCEIVER_TYPE_xxxx (see above)
+    unsigned short transceiverState;     //!< transceiver state (XL_TRANSCEIVER_STATUS...)
+    unsigned short configError;          //!< XL_CHANNEL_CONFIG_ERROR_XXX (see above)
+    unsigned char channelIndex;          //!< Global channel index (0,1,...)
+    XLuint64 channelMask;                //!< Global channel mask (=1<<channelIndex)
+    unsigned int channelCapabilities;    //!< capabilities which are supported (e.g CHANNEL_FLAG_XXX)
+    unsigned int channelBusCapabilities; //!< what buses are supported and which are possible to be
+                                         //!< activated (e.g. XXX_BUS_ACTIVE_CAP_CAN)
 
-  // Channel
-  unsigned char isOnBus;           //!< The channel is on bus
-  unsigned int  connectedBusType;  //!< currently selected bus
-  XLbusParams   busParams;
-  unsigned int  _doNotUse;  //!< introduced for compatibility reasons since EM00056439
+    // Channel
+    unsigned char isOnBus;         //!< The channel is on bus
+    unsigned int connectedBusType; //!< currently selected bus
+    XLbusParams busParams;
+    unsigned int _doNotUse; //!< introduced for compatibility reasons since EM00056439
 
-  unsigned int driverVersion;
-  unsigned int interfaceVersion;  //!< version of interface with driver
-  unsigned int raw_data[10];
+    unsigned int driverVersion;
+    unsigned int interfaceVersion; //!< version of interface with driver
+    unsigned int raw_data[10];
 
-  unsigned int serialNumber;
-  unsigned int articleNumber;
+    unsigned int serialNumber;
+    unsigned int articleNumber;
 
-  char transceiverName[XL_MAX_LENGTH + 1];  //!< name for CANcab or another transceiver
+    char transceiverName[XL_MAX_LENGTH + 1]; //!< name for CANcab or another transceiver
 
-  unsigned int   specialCabFlags;               //!< XL_SPECIAL_CAB_XXX flags
-  unsigned int   dominantTimeout;               //!< Dominant Timeout in us.
-  unsigned char  dominantRecessiveDelay;        //!< Delay in us.
-  unsigned char  recessiveDominantDelay;        //!< Delay in us.
-  unsigned char  connectionInfo;                //!< XL_CONNECTION_INFO_XXX
-  unsigned char  currentlyAvailableTimestamps;  //!< XL_CURRENTLY_AVAILABLE_TIMESTAMP...
-  unsigned short minimalSupplyVoltage;          //!< Minimal Supply Voltage of the Cab/Piggy in 1/100 V
-  unsigned short maximalSupplyVoltage;          //!< Maximal Supply Voltage of the Cab/Piggy in 1/100 V
-  unsigned int   maximalBaudrate;               //!< Maximal supported LIN baudrate
-  unsigned char  fpgaCoreCapabilities;          //!< e.g.: XL_FPGA_CORE_TYPE_XXX
-  unsigned char  specialDeviceStatus;           //!< e.g.: XL_SPECIAL_DEVICE_STAT_XXX
-  unsigned short channelBusActiveCapabilities;  //!< like channelBusCapabilities (but without core dependencies)
-  unsigned short breakOffset;                   //!< compensation for edge asymmetry in ns
-  unsigned short delimiterOffset;               //!< compensation for edgdfde asymmetry in ns
-  unsigned int   reserved[3];
+    unsigned int specialCabFlags;                //!< XL_SPECIAL_CAB_XXX flags
+    unsigned int dominantTimeout;                //!< Dominant Timeout in us.
+    unsigned char dominantRecessiveDelay;        //!< Delay in us.
+    unsigned char recessiveDominantDelay;        //!< Delay in us.
+    unsigned char connectionInfo;                //!< XL_CONNECTION_INFO_XXX
+    unsigned char currentlyAvailableTimestamps;  //!< XL_CURRENTLY_AVAILABLE_TIMESTAMP...
+    unsigned short minimalSupplyVoltage;         //!< Minimal Supply Voltage of the Cab/Piggy in 1/100 V
+    unsigned short maximalSupplyVoltage;         //!< Maximal Supply Voltage of the Cab/Piggy in 1/100 V
+    unsigned int maximalBaudrate;                //!< Maximal supported LIN baudrate
+    unsigned char fpgaCoreCapabilities;          //!< e.g.: XL_FPGA_CORE_TYPE_XXX
+    unsigned char specialDeviceStatus;           //!< e.g.: XL_SPECIAL_DEVICE_STAT_XXX
+    unsigned short channelBusActiveCapabilities; //!< like channelBusCapabilities (but without core dependencies)
+    unsigned short breakOffset;                  //!< compensation for edge asymmetry in ns
+    unsigned short delimiterOffset;              //!< compensation for edgdfde asymmetry in ns
+    unsigned int reserved[3];
 } XL_CHANNEL_CONFIG;
 
-typedef XL_CHANNEL_CONFIG  XLchannelConfig;
-typedef XL_CHANNEL_CONFIG* pXLchannelConfig;
+typedef XL_CHANNEL_CONFIG XLchannelConfig;
+typedef XL_CHANNEL_CONFIG *pXLchannelConfig;
 
-typedef struct s_xl_driver_config {
-  unsigned int    dllVersion;
-  unsigned int    channelCount;  // total number of channels
-  unsigned int    reserved[10];
-  XLchannelConfig channel[XL_CONFIG_MAX_CHANNELS];  // [channelCount]
+typedef struct s_xl_driver_config
+{
+    unsigned int dllVersion;
+    unsigned int channelCount; // total number of channels
+    unsigned int reserved[10];
+    XLchannelConfig channel[XL_CONFIG_MAX_CHANNELS]; // [channelCount]
 } XL_DRIVER_CONFIG;
 
-typedef XL_DRIVER_CONFIG  XLdriverConfig;
-typedef XL_DRIVER_CONFIG* pXLdriverConfig;
-
+typedef XL_DRIVER_CONFIG XLdriverConfig;
+typedef XL_DRIVER_CONFIG *pXLdriverConfig;
 
 ///////////////////////////////////////////////////////
 // DAIO params definition
 
 // analog and digital port configuration
-#define XL_DAIO_DIGITAL_ENABLED                0x00000001  // digital port is enabled
-#define XL_DAIO_DIGITAL_INPUT                  0x00000002  // digital port is input, otherwise it is an output
-#define XL_DAIO_DIGITAL_TRIGGER                0x00000004  // digital port is trigger
+#define XL_DAIO_DIGITAL_ENABLED                0x00000001 // digital port is enabled
+#define XL_DAIO_DIGITAL_INPUT                  0x00000002 // digital port is input, otherwise it is an output
+#define XL_DAIO_DIGITAL_TRIGGER                0x00000004 // digital port is trigger
 
-#define XL_DAIO_ANALOG_ENABLED                 0x00000001  // analog port is enabled
-#define XL_DAIO_ANALOG_INPUT                   0x00000002  // analog port is input, otherwise it is an output
-#define XL_DAIO_ANALOG_TRIGGER                 0x00000004  // analog port is trigger
-#define XL_DAIO_ANALOG_RANGE_32V               0x00000008  // analog port is in range 0..32,768V, otherwise 0..8,192V
+#define XL_DAIO_ANALOG_ENABLED                 0x00000001 // analog port is enabled
+#define XL_DAIO_ANALOG_INPUT                   0x00000002 // analog port is input, otherwise it is an output
+#define XL_DAIO_ANALOG_TRIGGER                 0x00000004 // analog port is trigger
+#define XL_DAIO_ANALOG_RANGE_32V               0x00000008 // analog port is in range 0..32,768V, otherwise 0..8,192V
 
 // XL_DAIO trigger mode
-#define XL_DAIO_TRIGGER_MODE_NONE              0x00000000  // no trigger configured
-#define XL_DAIO_TRIGGER_MODE_DIGITAL           0x00000001  // trigger on preconfigured digital lines
-#define XL_DAIO_TRIGGER_MODE_ANALOG_ASCENDING  0x00000002  // trigger on input 3 ascending
-#define XL_DAIO_TRIGGER_MODE_ANALOG_DESCENDING 0x00000004  // trigger on input 3 ascending
-#define XL_DAIO_TRIGGER_MODE_ANALOG            (XL_DAIO_TRIGGER_MODE_ANALOG_ASCENDING | XL_DAIO_TRIGGER_MODE_ANALOG_DESCENDING)  // trigger on input 3
+#define XL_DAIO_TRIGGER_MODE_NONE              0x00000000                                                                       // no trigger configured
+#define XL_DAIO_TRIGGER_MODE_DIGITAL           0x00000001                                                                       // trigger on preconfigured digital lines
+#define XL_DAIO_TRIGGER_MODE_ANALOG_ASCENDING  0x00000002                                                                       // trigger on input 3 ascending
+#define XL_DAIO_TRIGGER_MODE_ANALOG_DESCENDING 0x00000004                                                                       // trigger on input 3 ascending
+#define XL_DAIO_TRIGGER_MODE_ANALOG            (XL_DAIO_TRIGGER_MODE_ANALOG_ASCENDING | XL_DAIO_TRIGGER_MODE_ANALOG_DESCENDING) // trigger on input 3
 
 // XL_DAIO trigger level
-#define XL_DAIO_TRIGGER_LEVEL_NONE             0  // no trigger level is defined
+#define XL_DAIO_TRIGGER_LEVEL_NONE             0 // no trigger level is defined
 
 // periodic measurement setting
-#define XL_DAIO_POLLING_NONE                   0  // periodic measurement is disabled
+#define XL_DAIO_POLLING_NONE                   0 // periodic measurement is disabled
 
 // structure for the acceptance filter
-struct _XLacc_filt {
-  unsigned char isSet;
-  unsigned int  code;
-  unsigned int  mask;  // relevant = 1
+struct _XLacc_filt
+{
+    unsigned char isSet;
+    unsigned int code;
+    unsigned int mask; // relevant = 1
 };
 typedef struct _XLacc_filt XLaccFilt;
 
 // structure for the acceptance filter of one CAN chip
-struct _XLacceptance {
-  XLaccFilt std;
-  XLaccFilt xtd;
+struct _XLacceptance
+{
+    XLaccFilt std;
+    XLaccFilt xtd;
 };
 typedef struct _XLacceptance XLacceptance;
 
@@ -1512,7 +1529,6 @@ typedef struct _XLacceptance XLacceptance;
 #define XL_SET_TIMESYNC_ON        (XLulong)1
 #define XL_SET_TIMESYNC_OFF       (XLulong)2
 
-
 #pragma pack(pop)
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1520,18 +1536,16 @@ typedef struct _XLacceptance XLacceptance;
 //------------------------------------------------------------------------------
 // special MOST defines
 
-#define XLuserHandle          unsigned short
+#define XLuserHandle                      unsigned short
 
 // size of allocation table
-#define MOST_ALLOC_TABLE_SIZE 64  // size of channel alloctaion table + 4Bytes (MPR, MDR; ?, ?)
-
+#define MOST_ALLOC_TABLE_SIZE             64 // size of channel alloctaion table + 4Bytes (MPR, MDR; ?, ?)
 
 ///////////////////////////////////////////////////////
 // Remote API
 
 #define XL_IPv4                           4
 #define XL_IPv6                           6
-
 
 #define XL_MAX_REMOTE_DEVICE_INFO         16
 #define XL_ALL_REMOTE_DEVICES             0xFFFFFFFF
@@ -1552,12 +1566,12 @@ typedef struct _XLacceptance XLacceptance;
 #define XL_REMOTE_DISCONNECT_NONE         0x0
 #define XL_REMOTE_DISCONNECT_REMOVE_ENTRY 0x1
 
-#define XL_REMOTE_DEVICE_AVAILABLE        0x00000001  // the device is present
-#define XL_REMOTE_DEVICE_CONFIGURED       0x00000002  // the device has a configuration entry in registry
-#define XL_REMOTE_DEVICE_CONNECTED        0x00000004  // the device is connected to this client
-#define XL_REMOTE_DEVICE_ENABLED          0x00000008  // the driver should open a connection to this client
-#define XL_REMOTE_DEVICE_BUSY             0x00000010  // the device is used by another client
-#define XL_REMOTE_DEVICE_TEMP_CONFIGURED  0x00000020  // the device is temporary configured, it has not entry in registry
+#define XL_REMOTE_DEVICE_AVAILABLE        0x00000001 // the device is present
+#define XL_REMOTE_DEVICE_CONFIGURED       0x00000002 // the device has a configuration entry in registry
+#define XL_REMOTE_DEVICE_CONNECTED        0x00000004 // the device is connected to this client
+#define XL_REMOTE_DEVICE_ENABLED          0x00000008 // the driver should open a connection to this client
+#define XL_REMOTE_DEVICE_BUSY             0x00000010 // the device is used by another client
+#define XL_REMOTE_DEVICE_TEMP_CONFIGURED  0x00000020 // the device is temporary configured, it has not entry in registry
 
 #define XL_REMOTE_DEVICE_STATUS_MASK      0x0000003F
 
@@ -1567,11 +1581,10 @@ typedef struct _XLacceptance XLacceptance;
 #define XL_REMOTE_DEVICE_TYPE_UNKNOWN     0
 #define XL_REMOTE_DEVICE_TYPE_VN8900      1
 #define XL_REMOTE_DEVICE_TYPE_STANDARD_PC 2
-#define XL_REMOTE_DEVICE_TYPE_VX          3  // VX hardware
+#define XL_REMOTE_DEVICE_TYPE_VX          3 // VX hardware
 #define XL_REMOTE_DEVICE_TYPE_VN8800      4
-#define XL_REMOTE_DEVICE_TYPE_VN          5  // VN network interfaces
-#define XL_REMOTE_DEVICE_TYPE_VT          6  // VT hardware
-
+#define XL_REMOTE_DEVICE_TYPE_VN          5 // VN network interfaces
+#define XL_REMOTE_DEVICE_TYPE_VT          6 // VT hardware
 
 typedef unsigned int XLremoteHandle;
 typedef unsigned int XLdeviceAccess;
@@ -1582,55 +1595,55 @@ typedef unsigned int XLremoteStatus;
 //
 // XL Remote Device configuration
 
-typedef struct s_xl_ip_address {
-  union {
-    unsigned int v4;
-    unsigned int v6[4];
-  } ip;
+typedef struct s_xl_ip_address
+{
+    union {
+        unsigned int v4;
+        unsigned int v6[4];
+    } ip;
 
-  unsigned int prefixLength;
-  unsigned int ipVersion;
-  unsigned int configPort;
-  unsigned int eventPort;
+    unsigned int prefixLength;
+    unsigned int ipVersion;
+    unsigned int configPort;
+    unsigned int eventPort;
 } XLipAddress;
 
-typedef struct s_xl_remote_location_config {
-  char           hostName[64];
-  char           alias[64];
-  XLipAddress    ipAddress;
-  XLipAddress    userIpAddress;
-  unsigned int   deviceType;
-  unsigned int   serialNumber;
-  unsigned int   articleNumber;
-  XLremoteHandle remoteHandle;
+typedef struct s_xl_remote_location_config
+{
+    char hostName[64];
+    char alias[64];
+    XLipAddress ipAddress;
+    XLipAddress userIpAddress;
+    unsigned int deviceType;
+    unsigned int serialNumber;
+    unsigned int articleNumber;
+    XLremoteHandle remoteHandle;
 } XLremoteLocationConfig;
 
-typedef struct s_xl_remote_device {
-  char         deviceName[32];
-  unsigned int hwType;
-  unsigned int articleNumber;
-  unsigned int serialNumber;
-  unsigned int reserved;
+typedef struct s_xl_remote_device
+{
+    char deviceName[32];
+    unsigned int hwType;
+    unsigned int articleNumber;
+    unsigned int serialNumber;
+    unsigned int reserved;
 } XLremoteDevice;
 
-typedef struct s_xl_remote_device_info {
-  XLremoteLocationConfig locationConfig;
-  unsigned int           flags;
-  unsigned int           reserved;
-  unsigned int           nbrOfDevices;
-  XLremoteDevice         deviceInfo[XL_MAX_REMOTE_DEVICE_INFO];
+typedef struct s_xl_remote_device_info
+{
+    XLremoteLocationConfig locationConfig;
+    unsigned int flags;
+    unsigned int reserved;
+    unsigned int nbrOfDevices;
+    XLremoteDevice deviceInfo[XL_MAX_REMOTE_DEVICE_INFO];
 } XLremoteDeviceInfo;
-
-
-
-
 
 #pragma pack(pop)
 
 // flags for channelCapabilities
 // Time-Sync
 #define XL_CHANNEL_FLAG_TIME_SYNC_RUNNING                      0x00000001
-#define XL_CHANNEL_FLAG_NO_HWSYNC_SUPPORT                      0x00000400  //Device is not capable of hardware-based time synchronization via Sync-line
+#define XL_CHANNEL_FLAG_NO_HWSYNC_SUPPORT                      0x00000400 // Device is not capable of hardware-based time synchronization via Sync-line
 // used to distinguish between VN2600 (w/o SPDIF) and VN2610 (with S/PDIF)
 #define XL_CHANNEL_FLAG_SPDIF_CAPABLE                          0x00004000
 #define XL_CHANNEL_FLAG_CANFD_BOSCH_SUPPORT                    0x20000000
@@ -1647,265 +1660,263 @@ typedef struct s_xl_remote_device_info {
 #define XL_CHANNEL_FLAG_EX1_CANFD_BOSCH_SUPPORT                XL_CHANNEL_FLAG_EX_MASK(35)
 // Ethernet device operates in network-based instead of channel-based mode
 #define XL_CHANNEL_FLAG_EX1_NET_ETH_SUPPORT                    XL_CHANNEL_FLAG_EX_MASK(36)
-#define XL_CHANNEL_FLAG_EX1_TIME_SYNC_SERVICE_PROTOCOL_RUNNING XL_CHANNEL_FLAG_EX_MASK(51)  // New TimeSyncApi necessary
+#define XL_CHANNEL_FLAG_EX1_TIME_SYNC_SERVICE_PROTOCOL_RUNNING XL_CHANNEL_FLAG_EX_MASK(51) // New TimeSyncApi necessary
 
 // defines for xlMostSwitchEventSources
-#define XL_MOST_SOURCE_ASYNC_SPY                     0x8000
-#define XL_MOST_SOURCE_ASYNC_RX                      0x1000
-#define XL_MOST_SOURCE_ASYNC_TX                      0x0800
-#define XL_MOST_SOURCE_CTRL_OS8104A                  0x0400
-#define XL_MOST_SOURCE_CTRL_SPY                      0x0100
-#define XL_MOST_SOURCE_ALLOC_TABLE                   0x0080
-#define XL_MOST_SOURCE_SYNC_RC_OVER                  0x0040
-#define XL_MOST_SOURCE_SYNC_TX_UNDER                 0x0020
-#define XL_MOST_SOURCE_SYNCLINE                      0x0010
-#define XL_MOST_SOURCE_ASYNC_RX_FIFO_OVER            0x0008
+#define XL_MOST_SOURCE_ASYNC_SPY                               0x8000
+#define XL_MOST_SOURCE_ASYNC_RX                                0x1000
+#define XL_MOST_SOURCE_ASYNC_TX                                0x0800
+#define XL_MOST_SOURCE_CTRL_OS8104A                            0x0400
+#define XL_MOST_SOURCE_CTRL_SPY                                0x0100
+#define XL_MOST_SOURCE_ALLOC_TABLE                             0x0080
+#define XL_MOST_SOURCE_SYNC_RC_OVER                            0x0040
+#define XL_MOST_SOURCE_SYNC_TX_UNDER                           0x0020
+#define XL_MOST_SOURCE_SYNCLINE                                0x0010
+#define XL_MOST_SOURCE_ASYNC_RX_FIFO_OVER                      0x0008
 
 // data for XL_MOST_ERROR:
-#define XL_MOST_OS8104_TX_LOCK_ERROR                 0x00000001
-#define XL_MOST_OS8104_SPDIF_LOCK_ERROR              0x00000002
-#define XL_MOST_OS8104_ASYNC_BUFFER_FULL             0x00000003
-#define XL_MOST_OS8104_ASYNC_CRC_ERROR               0x00000004
-#define XL_MOST_ASYNC_TX_UNDERRUN                    0x00000005
-#define XL_MOST_CTRL_TX_UNDERRUN                     0x00000006
-#define XL_MOST_MCU_TS_CMD_QUEUE_UNDERRUN            0x00000007
-#define XL_MOST_MCU_TS_CMD_QUEUE_OVERRUN             0x00000008
-#define XL_MOST_CMD_TX_UNDERRUN                      0x00000009
-#define XL_MOST_SYNCPULSE_ERROR                      0x0000000A
-#define XL_MOST_OS8104_CODING_ERROR                  0x0000000B
-#define XL_MOST_ERROR_UNKNOWN_COMMAND                0x0000000C
-#define XL_MOST_ASYNC_RX_OVERFLOW_ERROR              0x0000000D
-#define XL_MOST_FPGA_TS_FIFO_OVERFLOW                0x0000000E
-#define XL_MOST_SPY_OVERFLOW_ERROR                   0x0000000F
-#define XL_MOST_CTRL_TYPE_QUEUE_OVERFLOW             0x00000010
-#define XL_MOST_ASYNC_TYPE_QUEUE_OVERFLOW            0x00000011
-#define XL_MOST_CTRL_UNKNOWN_TYPE                    0x00000012
-#define XL_MOST_CTRL_QUEUE_UNDERRUN                  0x00000013
-#define XL_MOST_ASYNC_UNKNOWN_TYPE                   0x00000014
-#define XL_MOST_ASYNC_QUEUE_UNDERRUN                 0x00000015
+#define XL_MOST_OS8104_TX_LOCK_ERROR                           0x00000001
+#define XL_MOST_OS8104_SPDIF_LOCK_ERROR                        0x00000002
+#define XL_MOST_OS8104_ASYNC_BUFFER_FULL                       0x00000003
+#define XL_MOST_OS8104_ASYNC_CRC_ERROR                         0x00000004
+#define XL_MOST_ASYNC_TX_UNDERRUN                              0x00000005
+#define XL_MOST_CTRL_TX_UNDERRUN                               0x00000006
+#define XL_MOST_MCU_TS_CMD_QUEUE_UNDERRUN                      0x00000007
+#define XL_MOST_MCU_TS_CMD_QUEUE_OVERRUN                       0x00000008
+#define XL_MOST_CMD_TX_UNDERRUN                                0x00000009
+#define XL_MOST_SYNCPULSE_ERROR                                0x0000000A
+#define XL_MOST_OS8104_CODING_ERROR                            0x0000000B
+#define XL_MOST_ERROR_UNKNOWN_COMMAND                          0x0000000C
+#define XL_MOST_ASYNC_RX_OVERFLOW_ERROR                        0x0000000D
+#define XL_MOST_FPGA_TS_FIFO_OVERFLOW                          0x0000000E
+#define XL_MOST_SPY_OVERFLOW_ERROR                             0x0000000F
+#define XL_MOST_CTRL_TYPE_QUEUE_OVERFLOW                       0x00000010
+#define XL_MOST_ASYNC_TYPE_QUEUE_OVERFLOW                      0x00000011
+#define XL_MOST_CTRL_UNKNOWN_TYPE                              0x00000012
+#define XL_MOST_CTRL_QUEUE_UNDERRUN                            0x00000013
+#define XL_MOST_ASYNC_UNKNOWN_TYPE                             0x00000014
+#define XL_MOST_ASYNC_QUEUE_UNDERRUN                           0x00000015
 
 // data for demanded timstamps
-#define XL_MOST_DEMANDED_START                       0x00000001
+#define XL_MOST_DEMANDED_START                                 0x00000001
 
-#define XL_MOST_RX_DATA_SIZE                         1028
-#define XL_MOST_TS_DATA_SIZE                         12
-#define XL_MOST_RX_ELEMENT_HEADER_SIZE               32
-#define XL_MOST_CTRL_RX_SPY_SIZE                     36
-#define XL_MOST_CTRL_RX_OS8104_SIZE                  28
-#define XL_MOST_SPECIAL_REGISTER_CHANGE_SIZE         20
-#define XL_MOST_ERROR_EV_SIZE_4                      4   // dwords
-#define XL_MOST_ERROR_EV_SIZE                        16  // bytes
+#define XL_MOST_RX_DATA_SIZE                                   1028
+#define XL_MOST_TS_DATA_SIZE                                   12
+#define XL_MOST_RX_ELEMENT_HEADER_SIZE                         32
+#define XL_MOST_CTRL_RX_SPY_SIZE                               36
+#define XL_MOST_CTRL_RX_OS8104_SIZE                            28
+#define XL_MOST_SPECIAL_REGISTER_CHANGE_SIZE                   20
+#define XL_MOST_ERROR_EV_SIZE_4                                4  // dwords
+#define XL_MOST_ERROR_EV_SIZE                                  16 // bytes
 
 // defines for the audio devices
-#define XL_MOST_DEVICE_CASE_LINE_IN                  0
-#define XL_MOST_DEVICE_CASE_LINE_OUT                 1
-#define XL_MOST_DEVICE_SPDIF_IN                      7
-#define XL_MOST_DEVICE_SPDIF_OUT                     8
-#define XL_MOST_DEVICE_SPDIF_IN_OUT_SYNC             11
+#define XL_MOST_DEVICE_CASE_LINE_IN                            0
+#define XL_MOST_DEVICE_CASE_LINE_OUT                           1
+#define XL_MOST_DEVICE_SPDIF_IN                                7
+#define XL_MOST_DEVICE_SPDIF_OUT                               8
+#define XL_MOST_DEVICE_SPDIF_IN_OUT_SYNC                       11
 
 // defines for xlMostCtrlSyncAudioEx, mode
-#define XL_MOST_SPDIF_LOCK_OFF                       0
-#define XL_MOST_SPDIF_LOCK_ON                        1
+#define XL_MOST_SPDIF_LOCK_OFF                                 0
+#define XL_MOST_SPDIF_LOCK_ON                                  1
 
 // defines for the XL_MOST_SYNC_MUTES_STATUS event
-#define XL_MOST_NO_MUTE                              0
-#define XL_MOST_MUTE                                 1
+#define XL_MOST_NO_MUTE                                        0
+#define XL_MOST_MUTE                                           1
 
 // defines for the event sources in XLmostEvent
-#define XL_MOST_VN2600                               0x01
-#define XL_MOST_OS8104A                              0x02
-#define XL_MOST_OS8104B                              0x04
-#define XL_MOST_SPY                                  0x08
+#define XL_MOST_VN2600                                         0x01
+#define XL_MOST_OS8104A                                        0x02
+#define XL_MOST_OS8104B                                        0x04
+#define XL_MOST_SPY                                            0x08
 
 // defines for xlMostSetAllBypass and XL_MOST_ALLBYPASS
-#define XL_MOST_MODE_DEACTIVATE                      0
-#define XL_MOST_MODE_ACTIVATE                        1
-#define XL_MOST_MODE_FORCE_DEACTIVATE                2
+#define XL_MOST_MODE_DEACTIVATE                                0
+#define XL_MOST_MODE_ACTIVATE                                  1
+#define XL_MOST_MODE_FORCE_DEACTIVATE                          2
 
-#define XL_MOST_RX_BUFFER_CLEAR_ONCE                 2
+#define XL_MOST_RX_BUFFER_CLEAR_ONCE                           2
 
 // defines for xlMostSetTimingMode and the XL_MOST_TIMINGMODE(_SPDIF)_EV event.
-#define XL_MOST_TIMING_SLAVE                         0
-#define XL_MOST_TIMING_MASTER                        1
-#define XL_MOST_TIMING_SLAVE_SPDIF_MASTER            2
-#define XL_MOST_TIMING_SLAVE_SPDIF_SLAVE             3
-#define XL_MOST_TIMING_MASTER_SPDIF_MASTER           4
-#define XL_MOST_TIMING_MASTER_SPDIF_SLAVE            5
-#define XL_MOST_TIMING_MASTER_FROM_SPDIF_SLAVE       6
-
+#define XL_MOST_TIMING_SLAVE                                   0
+#define XL_MOST_TIMING_MASTER                                  1
+#define XL_MOST_TIMING_SLAVE_SPDIF_MASTER                      2
+#define XL_MOST_TIMING_SLAVE_SPDIF_SLAVE                       3
+#define XL_MOST_TIMING_MASTER_SPDIF_MASTER                     4
+#define XL_MOST_TIMING_MASTER_SPDIF_SLAVE                      5
+#define XL_MOST_TIMING_MASTER_FROM_SPDIF_SLAVE                 6
 
 // defines for xlMostSetFrequency and the XL_MOST_FREQUENCY_EV event.
-#define XL_MOST_FREQUENCY_44100                      0
-#define XL_MOST_FREQUENCY_48000                      1
-#define XL_MOST_FREQUENCY_ERROR                      2
+#define XL_MOST_FREQUENCY_44100                                0
+#define XL_MOST_FREQUENCY_48000                                1
+#define XL_MOST_FREQUENCY_ERROR                                2
 
 // defines for xlMostSetTxLight
-#define XL_MOST_LIGHT_OFF                            0
-#define XL_MOST_LIGHT_FORCE_ON                       1  // unmodulated on
-#define XL_MOST_LIGHT_MODULATED                      2  // modulated light
+#define XL_MOST_LIGHT_OFF                                      0
+#define XL_MOST_LIGHT_FORCE_ON                                 1 // unmodulated on
+#define XL_MOST_LIGHT_MODULATED                                2 // modulated light
 
-//defines for xlMostSetTxLightPower and the XL_MOST_TXLIGHT_POWER_EV event.
-#define XL_MOST_LIGHT_FULL                           100
-#define XL_MOST_LIGHT_3DB                            50
+// defines for xlMostSetTxLightPower and the XL_MOST_TXLIGHT_POWER_EV event.
+#define XL_MOST_LIGHT_FULL                                     100
+#define XL_MOST_LIGHT_3DB                                      50
 
 // defines for the XL_MOST_LOCKSTATUS event
-#define XL_MOST_UNLOCK                               5
-#define XL_MOST_LOCK                                 6
-#define XL_MOST_STATE_UNKNOWN                        9
+#define XL_MOST_UNLOCK                                         5
+#define XL_MOST_LOCK                                           6
+#define XL_MOST_STATE_UNKNOWN                                  9
 
 // defines for the XL_MOST_CTRL_RX_OS8104 event (tx event)
-#define XL_MOST_TX_WHILE_UNLOCKED                    0x80000000
-#define XL_MOST_TX_TIMEOUT                           0x40000000
-#define XL_MOST_DIRECTION_RX                         0
-#define XL_MOST_DIRECTION_TX                         1
+#define XL_MOST_TX_WHILE_UNLOCKED                              0x80000000
+#define XL_MOST_TX_TIMEOUT                                     0x40000000
+#define XL_MOST_DIRECTION_RX                                   0
+#define XL_MOST_DIRECTION_TX                                   1
 
-#define XL_MOST_NO_QUEUE_OVERFLOW                    0x0000  // No rx-queue overflow occured
-#define XL_MOST_QUEUE_OVERFLOW                       0x8000  // Overflow of rx-queue in firmware when trying to add a rx-event
-#define XL_MOST_COMMAND_FAILED                       0x4000
-#define XL_MOST_INTERNAL_OVERFLOW                    0x2000  // Overflow of command-timestamp-queue in firmware
-#define XL_MOST_MEASUREMENT_NOT_ACTIVE               0x1000
-#define XL_MOST_QUEUE_OVERFLOW_ASYNC                 0x0800  // Overflow of async rx-queue in firmware when trying to add a packet
-#define XL_MOST_QUEUE_OVERFLOW_CTRL                  0x0400  // Overflow of rx-queue in firmware when trying to add a message
-#define XL_MOST_NOT_SUPPORTED                        0x0200
-#define XL_MOST_QUEUE_OVERFLOW_DRV                   0x0100  // Overflow occured when trying to add an event to application rx-queue
+#define XL_MOST_NO_QUEUE_OVERFLOW                              0x0000 // No rx-queue overflow occured
+#define XL_MOST_QUEUE_OVERFLOW                                 0x8000 // Overflow of rx-queue in firmware when trying to add a rx-event
+#define XL_MOST_COMMAND_FAILED                                 0x4000
+#define XL_MOST_INTERNAL_OVERFLOW                              0x2000 // Overflow of command-timestamp-queue in firmware
+#define XL_MOST_MEASUREMENT_NOT_ACTIVE                         0x1000
+#define XL_MOST_QUEUE_OVERFLOW_ASYNC                           0x0800 // Overflow of async rx-queue in firmware when trying to add a packet
+#define XL_MOST_QUEUE_OVERFLOW_CTRL                            0x0400 // Overflow of rx-queue in firmware when trying to add a message
+#define XL_MOST_NOT_SUPPORTED                                  0x0200
+#define XL_MOST_QUEUE_OVERFLOW_DRV                             0x0100 // Overflow occured when trying to add an event to application rx-queue
 
-#define XL_MOST_NA_CHANGED                           0x0001  // node address changed
-#define XL_MOST_GA_CHANGED                           0x0002  // group address changed
-#define XL_MOST_APA_CHANGED                          0x0004  // alternative packet address changed
-#define XL_MOST_NPR_CHANGED                          0x0008  // node position register changed
-#define XL_MOST_MPR_CHANGED                          0x0010  // max position register changed
-#define XL_MOST_NDR_CHANGED                          0x0020  // node delay register changed
-#define XL_MOST_MDR_CHANGED                          0x0040  // max delay register changed
-#define XL_MOST_SBC_CHANGED                          0x0080  //
-#define XL_MOST_XTIM_CHANGED                         0x0100  //
-#define XL_MOST_XRTY_CHANGED                         0x0200  //
+#define XL_MOST_NA_CHANGED                                     0x0001 // node address changed
+#define XL_MOST_GA_CHANGED                                     0x0002 // group address changed
+#define XL_MOST_APA_CHANGED                                    0x0004 // alternative packet address changed
+#define XL_MOST_NPR_CHANGED                                    0x0008 // node position register changed
+#define XL_MOST_MPR_CHANGED                                    0x0010 // max position register changed
+#define XL_MOST_NDR_CHANGED                                    0x0020 // node delay register changed
+#define XL_MOST_MDR_CHANGED                                    0x0040 // max delay register changed
+#define XL_MOST_SBC_CHANGED                                    0x0080 //
+#define XL_MOST_XTIM_CHANGED                                   0x0100 //
+#define XL_MOST_XRTY_CHANGED                                   0x0200 //
 
 // defines for the MOST register (xlMostWriteRegister)
-#define XL_MOST_bGA                                  0x89  // Group Address
-#define XL_MOST_bNAH                                 0x8A  // Node Address High
-#define XL_MOST_bNAL                                 0x8B  // Node Address Low
-#define XL_MOST_bSDC2                                0x8C  // Source Data Control 2
-#define XL_MOST_bSDC3                                0x8D  // Source Data Control 3
-#define XL_MOST_bCM2                                 0x8E  // Clock Manager 2
-#define XL_MOST_bNDR                                 0x8F  // Node Delay
-#define XL_MOST_bMPR                                 0x90  // Maximum Position
-#define XL_MOST_bMDR                                 0x91  // Maximum Delay
-#define XL_MOST_bCM4                                 0x93  // Clock Manager 4
-#define XL_MOST_bSBC                                 0x96  // Synchronous Bandwidth Control
-#define XL_MOST_bXSR2                                0x97  // Transceiver Status 2
+#define XL_MOST_bGA                                            0x89 // Group Address
+#define XL_MOST_bNAH                                           0x8A // Node Address High
+#define XL_MOST_bNAL                                           0x8B // Node Address Low
+#define XL_MOST_bSDC2                                          0x8C // Source Data Control 2
+#define XL_MOST_bSDC3                                          0x8D // Source Data Control 3
+#define XL_MOST_bCM2                                           0x8E // Clock Manager 2
+#define XL_MOST_bNDR                                           0x8F // Node Delay
+#define XL_MOST_bMPR                                           0x90 // Maximum Position
+#define XL_MOST_bMDR                                           0x91 // Maximum Delay
+#define XL_MOST_bCM4                                           0x93 // Clock Manager 4
+#define XL_MOST_bSBC                                           0x96 // Synchronous Bandwidth Control
+#define XL_MOST_bXSR2                                          0x97 // Transceiver Status 2
 
-#define XL_MOST_bRTYP                                0xA0  // Receive Message Type
-#define XL_MOST_bRSAH                                0xA1  // Source Address High
-#define XL_MOST_bRSAL                                0xA2  // Source Address Low
-#define XL_MOST_bRCD0                                0xA3  // Receive Control Data 0 --> bRCD16 = bRCD0+16
+#define XL_MOST_bRTYP                                          0xA0 // Receive Message Type
+#define XL_MOST_bRSAH                                          0xA1 // Source Address High
+#define XL_MOST_bRSAL                                          0xA2 // Source Address Low
+#define XL_MOST_bRCD0                                          0xA3 // Receive Control Data 0 --> bRCD16 = bRCD0+16
 
-#define XL_MOST_bXTIM                                0xBE  // Transmit Retry Time
-#define XL_MOST_bXRTY                                0xBF  // Transmit Retries
+#define XL_MOST_bXTIM                                          0xBE // Transmit Retry Time
+#define XL_MOST_bXRTY                                          0xBF // Transmit Retries
 
-#define XL_MOST_bXPRI                                0xC0  // Transmit Priority
-#define XL_MOST_bXTYP                                0xC1  // Transmit Message Type
-#define XL_MOST_bXTAH                                0xC2  // Target Address High
-#define XL_MOST_bXTAL                                0xC3  // Target Address Low
-#define XL_MOST_bXCD0                                0xC4  // Transmit Control Data 0 --> bXCD16 = bXCD0+16
+#define XL_MOST_bXPRI                                          0xC0 // Transmit Priority
+#define XL_MOST_bXTYP                                          0xC1 // Transmit Message Type
+#define XL_MOST_bXTAH                                          0xC2 // Target Address High
+#define XL_MOST_bXTAL                                          0xC3 // Target Address Low
+#define XL_MOST_bXCD0                                          0xC4 // Transmit Control Data 0 --> bXCD16 = bXCD0+16
 
-#define XL_MOST_bXTS                                 0xD5  // Transmit Transfer Status
+#define XL_MOST_bXTS                                           0xD5 // Transmit Transfer Status
 
-#define XL_MOST_bPCTC                                0xE2  // Packet Control
-#define XL_MOST_bPCTS                                0xE3  // Packet Status
+#define XL_MOST_bPCTC                                          0xE2 // Packet Control
+#define XL_MOST_bPCTS                                          0xE3 // Packet Status
 
 // defines
-#define XL_MOST_SPY_RX_STATUS_NO_LIGHT               0x01
-#define XL_MOST_SPY_RX_STATUS_NO_LOCK                0x02
-#define XL_MOST_SPY_RX_STATUS_BIPHASE_ERROR          0x04
-#define XL_MOST_SPY_RX_STATUS_MESSAGE_LENGTH_ERROR   0x08
-#define XL_MOST_SPY_RX_STATUS_PARITY_ERROR           0x10
-#define XL_MOST_SPY_RX_STATUS_FRAME_LENGTH_ERROR     0x20
-#define XL_MOST_SPY_RX_STATUS_PREAMBLE_TYPE_ERROR    0x40
-#define XL_MOST_SPY_RX_STATUS_CRC_ERROR              0x80
+#define XL_MOST_SPY_RX_STATUS_NO_LIGHT                         0x01
+#define XL_MOST_SPY_RX_STATUS_NO_LOCK                          0x02
+#define XL_MOST_SPY_RX_STATUS_BIPHASE_ERROR                    0x04
+#define XL_MOST_SPY_RX_STATUS_MESSAGE_LENGTH_ERROR             0x08
+#define XL_MOST_SPY_RX_STATUS_PARITY_ERROR                     0x10
+#define XL_MOST_SPY_RX_STATUS_FRAME_LENGTH_ERROR               0x20
+#define XL_MOST_SPY_RX_STATUS_PREAMBLE_TYPE_ERROR              0x40
+#define XL_MOST_SPY_RX_STATUS_CRC_ERROR                        0x80
 
 // defines for status of async frames
-#define XL_MOST_ASYNC_NO_ERROR                       0x00
-#define XL_MOST_ASYNC_SBC_ERROR                      0x0C
-#define XL_MOST_ASYNC_NEXT_STARTS_TO_EARLY           0x0D
-#define XL_MOST_ASYNC_TO_LONG                        0x0E
+#define XL_MOST_ASYNC_NO_ERROR                                 0x00
+#define XL_MOST_ASYNC_SBC_ERROR                                0x0C
+#define XL_MOST_ASYNC_NEXT_STARTS_TO_EARLY                     0x0D
+#define XL_MOST_ASYNC_TO_LONG                                  0x0E
 
-#define XL_MOST_ASYNC_UNLOCK                         0x0F  // unlock occured within receiption of packet
+#define XL_MOST_ASYNC_UNLOCK                                   0x0F // unlock occured within receiption of packet
 
 // defines for XL_MOST_SYNC_PULSE_EV member trigger_source
-#define SYNC_PULSE_EXTERNAL                          0x00
-#define SYNC_PULSE_OUR                               0x01
+#define SYNC_PULSE_EXTERNAL                                    0x00
+#define SYNC_PULSE_OUR                                         0x01
 
 // ctrlType value within the XL_CTRL_SPY event
-#define XL_MOST_CTRL_TYPE_NORMAL                     0x00
-#define XL_MOST_CTRL_TYPE_REMOTE_READ                0x01
-#define XL_MOST_CTRL_TYPE_REMOTE_WRITE               0x02
-#define XL_MOST_CTRL_TYPE_RESOURCE_ALLOCATE          0x03
-#define XL_MOST_CTRL_TYPE_RESOURCE_DEALLOCATE        0x04
-#define XL_MOST_CTRL_TYPE_GET_SOURCE                 0x05
+#define XL_MOST_CTRL_TYPE_NORMAL                               0x00
+#define XL_MOST_CTRL_TYPE_REMOTE_READ                          0x01
+#define XL_MOST_CTRL_TYPE_REMOTE_WRITE                         0x02
+#define XL_MOST_CTRL_TYPE_RESOURCE_ALLOCATE                    0x03
+#define XL_MOST_CTRL_TYPE_RESOURCE_DEALLOCATE                  0x04
+#define XL_MOST_CTRL_TYPE_GET_SOURCE                           0x05
 
 // counterType for the xlMost****GenerateBusload function
-#define XL_MOST_BUSLOAD_COUNTER_TYPE_NONE            0x00
-#define XL_MOST_BUSLOAD_COUNTER_TYPE_1_BYTE          0x01
-#define XL_MOST_BUSLOAD_COUNTER_TYPE_2_BYTE          0x02
-#define XL_MOST_BUSLOAD_COUNTER_TYPE_3_BYTE          0x03
-#define XL_MOST_BUSLOAD_COUNTER_TYPE_4_BYTE          0x04
+#define XL_MOST_BUSLOAD_COUNTER_TYPE_NONE                      0x00
+#define XL_MOST_BUSLOAD_COUNTER_TYPE_1_BYTE                    0x01
+#define XL_MOST_BUSLOAD_COUNTER_TYPE_2_BYTE                    0x02
+#define XL_MOST_BUSLOAD_COUNTER_TYPE_3_BYTE                    0x03
+#define XL_MOST_BUSLOAD_COUNTER_TYPE_4_BYTE                    0x04
 
 // selection bits for xlMostGetDeviceStates / CMD_GET_DEVICE_STATE->selection_mask
-#define XL_MOST_STATESEL_LIGHTLOCK                   0x0001
-#define XL_MOST_STATESEL_REGISTERBUNCH1              0x0002
-#define XL_MOST_STATESEL_BYPASSTIMING                0x0004
-#define XL_MOST_STATESEL_REGISTERBUNCH2              0x0008
-#define XL_MOST_STATESEL_REGISTERBUNCH3              0x0010
-#define XL_MOST_STATESEL_VOLUMEMUTE                  0x0020
-#define XL_MOST_STATESEL_EVENTSOURCE                 0x0040
-#define XL_MOST_STATESEL_RXBUFFERMODE                0x0080
-#define XL_MOST_STATESEL_ALLOCTABLE                  0x0100
-#define XL_MOST_STATESEL_SUPERVISOR_LOCKSTATUS       0x0200
-#define XL_MOST_STATESEL_SUPERVISOR_MESSAGE          0x0400
+#define XL_MOST_STATESEL_LIGHTLOCK                             0x0001
+#define XL_MOST_STATESEL_REGISTERBUNCH1                        0x0002
+#define XL_MOST_STATESEL_BYPASSTIMING                          0x0004
+#define XL_MOST_STATESEL_REGISTERBUNCH2                        0x0008
+#define XL_MOST_STATESEL_REGISTERBUNCH3                        0x0010
+#define XL_MOST_STATESEL_VOLUMEMUTE                            0x0020
+#define XL_MOST_STATESEL_EVENTSOURCE                           0x0040
+#define XL_MOST_STATESEL_RXBUFFERMODE                          0x0080
+#define XL_MOST_STATESEL_ALLOCTABLE                            0x0100
+#define XL_MOST_STATESEL_SUPERVISOR_LOCKSTATUS                 0x0200
+#define XL_MOST_STATESEL_SUPERVISOR_MESSAGE                    0x0400
 
 // defines for sync data streaming
-#define XL_MOST_STREAM_RX_DATA                       0  // RX streaming: MOST -> PC
-#define XL_MOST_STREAM_TX_DATA                       1  // TX streaming: PC -> MOST
+#define XL_MOST_STREAM_RX_DATA                                 0 // RX streaming: MOST -> PC
+#define XL_MOST_STREAM_TX_DATA                                 1 // TX streaming: PC -> MOST
 
-#define XL_MOST_STREAM_ADD_FRAME_HEADER              1  // only for RX: additionally the orig. TS + status information are reported
+#define XL_MOST_STREAM_ADD_FRAME_HEADER                        1 // only for RX: additionally the orig. TS + status information are reported
 
 // stream states
-#define XL_MOST_STREAM_STATE_CLOSED                  0x01
-#define XL_MOST_STREAM_STATE_OPENED                  0x02
-#define XL_MOST_STREAM_STATE_STARTED                 0x03
-#define XL_MOST_STREAM_STATE_STOPPED                 0x04
-#define XL_MOST_STREAM_STATE_START_PENDING           0x05  // waiting for result from hw
-#define XL_MOST_STREAM_STATE_STOP_PENDING            0x06  // waiting for result from hw
-#define XL_MOST_STREAM_STATE_UNKNOWN                 0xFF
+#define XL_MOST_STREAM_STATE_CLOSED                            0x01
+#define XL_MOST_STREAM_STATE_OPENED                            0x02
+#define XL_MOST_STREAM_STATE_STARTED                           0x03
+#define XL_MOST_STREAM_STATE_STOPPED                           0x04
+#define XL_MOST_STREAM_STATE_START_PENDING                     0x05 // waiting for result from hw
+#define XL_MOST_STREAM_STATE_STOP_PENDING                      0x06 // waiting for result from hw
+#define XL_MOST_STREAM_STATE_UNKNOWN                           0xFF
 
 // stream modes
-#define XL_MOST_STREAM_ACTIVATE                      0
-#define XL_MOST_STREAM_DEACTIVATE                    1
+#define XL_MOST_STREAM_ACTIVATE                                0
+#define XL_MOST_STREAM_DEACTIVATE                              1
 
-#define XL_MOST_STREAM_INVALID_HANDLE                0
+#define XL_MOST_STREAM_INVALID_HANDLE                          0
 
 // latency values
-#define XL_MOST_STREAM_LATENCY_VERY_LOW              0
-#define XL_MOST_STREAM_LATENCY_LOW                   1
-#define XL_MOST_STREAM_LATENCY_MEDIUM                2
-#define XL_MOST_STREAM_LATENCY_HIGH                  3
-#define XL_MOST_STREAM_LATENCY_VERY_HIGH             4
+#define XL_MOST_STREAM_LATENCY_VERY_LOW                        0
+#define XL_MOST_STREAM_LATENCY_LOW                             1
+#define XL_MOST_STREAM_LATENCY_MEDIUM                          2
+#define XL_MOST_STREAM_LATENCY_HIGH                            3
+#define XL_MOST_STREAM_LATENCY_VERY_HIGH                       4
 
 // error defines for sync data streaming
-#define XL_MOST_STREAM_ERR_NO_ERROR                  0x00
-#define XL_MOST_STREAM_ERR_INVALID_HANDLE            0x01
-#define XL_MOST_STREAM_ERR_NO_MORE_BUFFERS_AVAILABLE 0x02
-#define XL_MOST_STREAM_ERR_ANY_BUFFER_LOCKED         0x03
-#define XL_MOST_STREAM_ERR_WRITE_RE_FAILED           0x04
-#define XL_MOST_STREAM_ERR_STREAM_ALREADY_STARTED    0x05
-#define XL_MOST_STREAM_ERR_TX_BUFFER_UNDERRUN        0x06
-#define XL_MOST_STREAM_ERR_RX_BUFFER_OVERFLOW        0x07
-#define XL_MOST_STREAM_ERR_INSUFFICIENT_RESOURCES    0x08
-
+#define XL_MOST_STREAM_ERR_NO_ERROR                            0x00
+#define XL_MOST_STREAM_ERR_INVALID_HANDLE                      0x01
+#define XL_MOST_STREAM_ERR_NO_MORE_BUFFERS_AVAILABLE           0x02
+#define XL_MOST_STREAM_ERR_ANY_BUFFER_LOCKED                   0x03
+#define XL_MOST_STREAM_ERR_WRITE_RE_FAILED                     0x04
+#define XL_MOST_STREAM_ERR_STREAM_ALREADY_STARTED              0x05
+#define XL_MOST_STREAM_ERR_TX_BUFFER_UNDERRUN                  0x06
+#define XL_MOST_STREAM_ERR_RX_BUFFER_OVERFLOW                  0x07
+#define XL_MOST_STREAM_ERR_INSUFFICIENT_RESOURCES              0x08
 
 // max. size of rx fifo for rx event in bytes
-#define RX_FIFO_MOST_QUEUE_SIZE_MAX 1048576
-#define RX_FIFO_MOST_QUEUE_SIZE_MIN 8192
+#define RX_FIFO_MOST_QUEUE_SIZE_MAX                            1048576
+#define RX_FIFO_MOST_QUEUE_SIZE_MIN                            8192
 
 #pragma pack(push, 8)
 
@@ -1913,201 +1924,232 @@ typedef struct s_xl_remote_device_info {
 //                    Structures for MOST events
 // -------------------------------------------------------------
 
-typedef struct s_xl_most_ctrl_spy {
-  unsigned int   arbitration;
-  unsigned short targetAddress;
-  unsigned short sourceAddress;
-  unsigned char  ctrlType;
-  unsigned char  ctrlData[17];
-  unsigned short crc;
-  unsigned short txStatus;
-  unsigned short ctrlRes;
-  unsigned int   spyRxStatus;
+typedef struct s_xl_most_ctrl_spy
+{
+    unsigned int arbitration;
+    unsigned short targetAddress;
+    unsigned short sourceAddress;
+    unsigned char ctrlType;
+    unsigned char ctrlData[17];
+    unsigned short crc;
+    unsigned short txStatus;
+    unsigned short ctrlRes;
+    unsigned int spyRxStatus;
 } XL_MOST_CTRL_SPY_EV;
 
-typedef struct s_xl_most_ctrl_msg {
-  unsigned char  ctrlPrio;
-  unsigned char  ctrlType;
-  unsigned short targetAddress;
-  unsigned short sourceAddress;
-  unsigned char  ctrlData[17];
-  unsigned char  direction;  // transmission or real receiption
-  unsigned int   status;     // unused for real rx msgs
+typedef struct s_xl_most_ctrl_msg
+{
+    unsigned char ctrlPrio;
+    unsigned char ctrlType;
+    unsigned short targetAddress;
+    unsigned short sourceAddress;
+    unsigned char ctrlData[17];
+    unsigned char direction; // transmission or real receiption
+    unsigned int status;     // unused for real rx msgs
 } XL_MOST_CTRL_MSG_EV;
 
-typedef struct s_xl_most_async_msg {
-  unsigned int   status;  // read as last data from PLD but stored first
-  unsigned int   crc;     // not used
-  unsigned char  arbitration;
-  unsigned char  length;  // real length of async data in quadlets
-  unsigned short targetAddress;
-  unsigned short sourceAddress;
-  unsigned char  asyncData[1018];  // max size but only used data is transmitted to pc
+typedef struct s_xl_most_async_msg
+{
+    unsigned int status; // read as last data from PLD but stored first
+    unsigned int crc;    // not used
+    unsigned char arbitration;
+    unsigned char length; // real length of async data in quadlets
+    unsigned short targetAddress;
+    unsigned short sourceAddress;
+    unsigned char asyncData[1018]; // max size but only used data is transmitted to pc
 } XL_MOST_ASYNC_MSG_EV;
 
-typedef struct s_xl_most_async_tx {
-  unsigned char  arbitration;
-  unsigned char  length;  // real length of async data in quadlets
-  unsigned short targetAddress;
-  unsigned short sourceAddress;
-  unsigned char  asyncData[1014];  // worst case
+typedef struct s_xl_most_async_tx
+{
+    unsigned char arbitration;
+    unsigned char length; // real length of async data in quadlets
+    unsigned short targetAddress;
+    unsigned short sourceAddress;
+    unsigned char asyncData[1014]; // worst case
 } XL_MOST_ASYNC_TX_EV;
 
-typedef struct s_xl_most_special_register {
-  unsigned int  changeMask;  // see defines "XL_MOST_..._CHANGED"
-  unsigned int  lockStatus;
-  unsigned char register_bNAH;
-  unsigned char register_bNAL;
-  unsigned char register_bGA;
-  unsigned char register_bAPAH;
-  unsigned char register_bAPAL;
-  unsigned char register_bNPR;
-  unsigned char register_bMPR;
-  unsigned char register_bNDR;
-  unsigned char register_bMDR;
-  unsigned char register_bSBC;
-  unsigned char register_bXTIM;
-  unsigned char register_bXRTY;
+typedef struct s_xl_most_special_register
+{
+    unsigned int changeMask; // see defines "XL_MOST_..._CHANGED"
+    unsigned int lockStatus;
+    unsigned char register_bNAH;
+    unsigned char register_bNAL;
+    unsigned char register_bGA;
+    unsigned char register_bAPAH;
+    unsigned char register_bAPAL;
+    unsigned char register_bNPR;
+    unsigned char register_bMPR;
+    unsigned char register_bNDR;
+    unsigned char register_bMDR;
+    unsigned char register_bSBC;
+    unsigned char register_bXTIM;
+    unsigned char register_bXRTY;
 } XL_MOST_SPECIAL_REGISTER_EV;
 
-typedef struct s_xl_most_event_source {
-  unsigned int mask;
-  unsigned int state;
+typedef struct s_xl_most_event_source
+{
+    unsigned int mask;
+    unsigned int state;
 } XL_MOST_EVENT_SOURCE_EV;
 
-typedef struct s_xl_most_all_bypass {
-  unsigned int bypassState;
+typedef struct s_xl_most_all_bypass
+{
+    unsigned int bypassState;
 } XL_MOST_ALL_BYPASS_EV;
 
-typedef struct s_xl_most_timing_mode {
-  unsigned int timingmode;
+typedef struct s_xl_most_timing_mode
+{
+    unsigned int timingmode;
 } XL_MOST_TIMING_MODE_EV;
 
-typedef struct s_xl_most_timing_mode_spdif {
-  unsigned int timingmode;
+typedef struct s_xl_most_timing_mode_spdif
+{
+    unsigned int timingmode;
 } XL_MOST_TIMING_MODE_SPDIF_EV;
 
-typedef struct s_xl_most_frequency {
-  unsigned int frequency;
+typedef struct s_xl_most_frequency
+{
+    unsigned int frequency;
 } XL_MOST_FREQUENCY_EV;
 
-typedef struct s_xl_most_register_bytes {
-  unsigned int  number;
-  unsigned int  address;
-  unsigned char value[16];
+typedef struct s_xl_most_register_bytes
+{
+    unsigned int number;
+    unsigned int address;
+    unsigned char value[16];
 } XL_MOST_REGISTER_BYTES_EV;
 
-typedef struct s_xl_most_register_bits {
-  unsigned int address;
-  unsigned int value;
-  unsigned int mask;
+typedef struct s_xl_most_register_bits
+{
+    unsigned int address;
+    unsigned int value;
+    unsigned int mask;
 } XL_MOST_REGISTER_BITS_EV;
 
-typedef struct s_xl_most_sync_alloc {
-  unsigned char allocTable[MOST_ALLOC_TABLE_SIZE];
+typedef struct s_xl_most_sync_alloc
+{
+    unsigned char allocTable[MOST_ALLOC_TABLE_SIZE];
 } XL_MOST_SYNC_ALLOC_EV;
 
-typedef struct s_xl_most_ctrl_sync_audio {
-  unsigned int channelMask[4];
-  unsigned int device;
-  unsigned int mode;
+typedef struct s_xl_most_ctrl_sync_audio
+{
+    unsigned int channelMask[4];
+    unsigned int device;
+    unsigned int mode;
 } XL_MOST_CTRL_SYNC_AUDIO_EV;
 
-typedef struct s_xl_most_ctrl_sync_audio_ex {
-  unsigned int channelMask[16];
-  unsigned int device;
-  unsigned int mode;
+typedef struct s_xl_most_ctrl_sync_audio_ex
+{
+    unsigned int channelMask[16];
+    unsigned int device;
+    unsigned int mode;
 } XL_MOST_CTRL_SYNC_AUDIO_EX_EV;
 
-typedef struct s_xl_most_sync_volume_status {
-  unsigned int device;
-  unsigned int volume;
+typedef struct s_xl_most_sync_volume_status
+{
+    unsigned int device;
+    unsigned int volume;
 } XL_MOST_SYNC_VOLUME_STATUS_EV;
 
-typedef struct s_xl_most_sync_mutes_status {
-  unsigned int device;
-  unsigned int mute;
+typedef struct s_xl_most_sync_mutes_status
+{
+    unsigned int device;
+    unsigned int mute;
 } XL_MOST_SYNC_MUTES_STATUS_EV;
 
-typedef struct s_xl_most_rx_light {
-  unsigned int light;
+typedef struct s_xl_most_rx_light
+{
+    unsigned int light;
 } XL_MOST_RX_LIGHT_EV;
 
-typedef struct s_xl_most_tx_light {
-  unsigned int light;
+typedef struct s_xl_most_tx_light
+{
+    unsigned int light;
 } XL_MOST_TX_LIGHT_EV;
 
-typedef struct s_xl_most_light_power {
-  unsigned int lightPower;
+typedef struct s_xl_most_light_power
+{
+    unsigned int lightPower;
 } XL_MOST_LIGHT_POWER_EV;
 
-typedef struct s_xl_most_lock_status {
-  unsigned int lockStatus;
+typedef struct s_xl_most_lock_status
+{
+    unsigned int lockStatus;
 } XL_MOST_LOCK_STATUS_EV;
 
-typedef struct s_xl_most_supervisor_lock_status {
-  unsigned int supervisorLockStatus;
+typedef struct s_xl_most_supervisor_lock_status
+{
+    unsigned int supervisorLockStatus;
 } XL_MOST_SUPERVISOR_LOCK_STATUS_EV;
 
-typedef struct s_xl_most_gen_light_error {
-  unsigned int lightOnTime;
-  unsigned int lightOffTime;
-  unsigned int repeat;
+typedef struct s_xl_most_gen_light_error
+{
+    unsigned int lightOnTime;
+    unsigned int lightOffTime;
+    unsigned int repeat;
 } XL_MOST_GEN_LIGHT_ERROR_EV;
 
-typedef struct s_xl_most_gen_lock_error {
-  unsigned int lockOnTime;
-  unsigned int lockOffTime;
-  unsigned int repeat;
+typedef struct s_xl_most_gen_lock_error
+{
+    unsigned int lockOnTime;
+    unsigned int lockOffTime;
+    unsigned int repeat;
 } XL_MOST_GEN_LOCK_ERROR_EV;
 
-typedef struct s_xl_most_rx_buffer {
-  unsigned int mode;
+typedef struct s_xl_most_rx_buffer
+{
+    unsigned int mode;
 } XL_MOST_RX_BUFFER_EV;
 
-typedef struct s_xl_most_error {
-  unsigned int errorCode;
-  unsigned int parameter[3];
+typedef struct s_xl_most_error
+{
+    unsigned int errorCode;
+    unsigned int parameter[3];
 } XL_MOST_ERROR_EV;
 
 typedef XL_SYNC_PULSE_EV XL_MOST_SYNC_PULSE_EV;
 
-typedef struct s_xl_most_ctrl_busload {
-  unsigned int busloadCtrlStarted;
+typedef struct s_xl_most_ctrl_busload
+{
+    unsigned int busloadCtrlStarted;
 } XL_MOST_CTRL_BUSLOAD_EV;
 
-typedef struct s_xl_most_async_busload {
-  unsigned int busloadAsyncStarted;
+typedef struct s_xl_most_async_busload
+{
+    unsigned int busloadAsyncStarted;
 } XL_MOST_ASYNC_BUSLOAD_EV;
 
-typedef struct s_xl_most_stream_state {
-  unsigned int streamHandle;
-  unsigned int streamState;  // see XL_MOST_STREAM_STATE_...
-  unsigned int streamError;  // see XL_MOST_STREAM_ERR_...
-  unsigned int reserved;
+typedef struct s_xl_most_stream_state
+{
+    unsigned int streamHandle;
+    unsigned int streamState; // see XL_MOST_STREAM_STATE_...
+    unsigned int streamError; // see XL_MOST_STREAM_ERR_...
+    unsigned int reserved;
 } XL_MOST_STREAM_STATE_EV;
 
-typedef struct s_xl_most_stream_buffer {
-  unsigned int streamHandle;
+typedef struct s_xl_most_stream_buffer
+{
+    unsigned int streamHandle;
 #ifdef _MSC_VER
-  unsigned char* POINTER_32 pBuffer;  // 32bit LSDW of buffer pointer
+    unsigned char *POINTER_32 pBuffer; // 32bit LSDW of buffer pointer
 #else
-  unsigned int pBuffer;  // 32bit LSDW of buffer pointer
+    unsigned int pBuffer; // 32bit LSDW of buffer pointer
 #endif
-  unsigned int validBytes;
-  unsigned int status;  // // see XL_MOST_STREAM_ERR_...
-  unsigned int pBuffer_highpart;
+    unsigned int validBytes;
+    unsigned int status; // // see XL_MOST_STREAM_ERR_...
+    unsigned int pBuffer_highpart;
 } XL_MOST_STREAM_BUFFER_EV;
 
-
-typedef struct s_xl_most_sync_tx_underflow {
-  unsigned int streamHandle;
-  unsigned int reserved;
+typedef struct s_xl_most_sync_tx_underflow
+{
+    unsigned int streamHandle;
+    unsigned int reserved;
 } XL_MOST_SYNC_TX_UNDERFLOW_EV;
 
-typedef struct s_xl_most_sync_rx_overflow {
-  unsigned int streamHandle;
-  unsigned int reserved;
+typedef struct s_xl_most_sync_rx_overflow
+{
+    unsigned int streamHandle;
+    unsigned int reserved;
 } XL_MOST_SYNC_RX_OVERFLOW_EV;
 
 #define XL_MOST_EVENT_HEADER_SIZE   32
@@ -2116,54 +2158,55 @@ typedef struct s_xl_most_sync_rx_overflow {
 
 // rx event definition
 union s_xl_most_tag_data {
-  XL_MOST_CTRL_SPY_EV               mostCtrlSpy;
-  XL_MOST_CTRL_MSG_EV               mostCtrlMsg;
-  XL_MOST_ASYNC_MSG_EV              mostAsyncMsg;  // received async frame
-  XL_MOST_ASYNC_TX_EV               mostAsyncTx;   // async frame tx acknowledge
-  XL_MOST_SPECIAL_REGISTER_EV       mostSpecialRegister;
-  XL_MOST_EVENT_SOURCE_EV           mostEventSource;
-  XL_MOST_ALL_BYPASS_EV             mostAllBypass;
-  XL_MOST_TIMING_MODE_EV            mostTimingMode;
-  XL_MOST_TIMING_MODE_SPDIF_EV      mostTimingModeSpdif;
-  XL_MOST_FREQUENCY_EV              mostFrequency;
-  XL_MOST_REGISTER_BYTES_EV         mostRegisterBytes;
-  XL_MOST_REGISTER_BITS_EV          mostRegisterBits;
-  XL_MOST_SYNC_ALLOC_EV             mostSyncAlloc;
-  XL_MOST_CTRL_SYNC_AUDIO_EV        mostCtrlSyncAudio;
-  XL_MOST_CTRL_SYNC_AUDIO_EX_EV     mostCtrlSyncAudioEx;
-  XL_MOST_SYNC_VOLUME_STATUS_EV     mostSyncVolumeStatus;
-  XL_MOST_SYNC_MUTES_STATUS_EV      mostSyncMuteStatus;
-  XL_MOST_RX_LIGHT_EV               mostRxLight;
-  XL_MOST_TX_LIGHT_EV               mostTxLight;
-  XL_MOST_LIGHT_POWER_EV            mostLightPower;
-  XL_MOST_LOCK_STATUS_EV            mostLockStatus;
-  XL_MOST_GEN_LIGHT_ERROR_EV        mostGenLightError;
-  XL_MOST_GEN_LOCK_ERROR_EV         mostGenLockError;
-  XL_MOST_RX_BUFFER_EV              mostRxBuffer;
-  XL_MOST_ERROR_EV                  mostError;
-  XL_MOST_SYNC_PULSE_EV             mostSyncPulse;
-  XL_MOST_CTRL_BUSLOAD_EV           mostCtrlBusload;
-  XL_MOST_ASYNC_BUSLOAD_EV          mostAsyncBusload;
-  XL_MOST_STREAM_STATE_EV           mostStreamState;
-  XL_MOST_STREAM_BUFFER_EV          mostStreamBuffer;
-  XL_MOST_SYNC_TX_UNDERFLOW_EV      mostSyncTxUnderflow;
-  XL_MOST_SYNC_RX_OVERFLOW_EV       mostSyncRxOverflow;
+    XL_MOST_CTRL_SPY_EV mostCtrlSpy;
+    XL_MOST_CTRL_MSG_EV mostCtrlMsg;
+    XL_MOST_ASYNC_MSG_EV mostAsyncMsg; // received async frame
+    XL_MOST_ASYNC_TX_EV mostAsyncTx;   // async frame tx acknowledge
+    XL_MOST_SPECIAL_REGISTER_EV mostSpecialRegister;
+    XL_MOST_EVENT_SOURCE_EV mostEventSource;
+    XL_MOST_ALL_BYPASS_EV mostAllBypass;
+    XL_MOST_TIMING_MODE_EV mostTimingMode;
+    XL_MOST_TIMING_MODE_SPDIF_EV mostTimingModeSpdif;
+    XL_MOST_FREQUENCY_EV mostFrequency;
+    XL_MOST_REGISTER_BYTES_EV mostRegisterBytes;
+    XL_MOST_REGISTER_BITS_EV mostRegisterBits;
+    XL_MOST_SYNC_ALLOC_EV mostSyncAlloc;
+    XL_MOST_CTRL_SYNC_AUDIO_EV mostCtrlSyncAudio;
+    XL_MOST_CTRL_SYNC_AUDIO_EX_EV mostCtrlSyncAudioEx;
+    XL_MOST_SYNC_VOLUME_STATUS_EV mostSyncVolumeStatus;
+    XL_MOST_SYNC_MUTES_STATUS_EV mostSyncMuteStatus;
+    XL_MOST_RX_LIGHT_EV mostRxLight;
+    XL_MOST_TX_LIGHT_EV mostTxLight;
+    XL_MOST_LIGHT_POWER_EV mostLightPower;
+    XL_MOST_LOCK_STATUS_EV mostLockStatus;
+    XL_MOST_GEN_LIGHT_ERROR_EV mostGenLightError;
+    XL_MOST_GEN_LOCK_ERROR_EV mostGenLockError;
+    XL_MOST_RX_BUFFER_EV mostRxBuffer;
+    XL_MOST_ERROR_EV mostError;
+    XL_MOST_SYNC_PULSE_EV mostSyncPulse;
+    XL_MOST_CTRL_BUSLOAD_EV mostCtrlBusload;
+    XL_MOST_ASYNC_BUSLOAD_EV mostAsyncBusload;
+    XL_MOST_STREAM_STATE_EV mostStreamState;
+    XL_MOST_STREAM_BUFFER_EV mostStreamBuffer;
+    XL_MOST_SYNC_TX_UNDERFLOW_EV mostSyncTxUnderflow;
+    XL_MOST_SYNC_RX_OVERFLOW_EV mostSyncRxOverflow;
 };
 
 typedef unsigned short XLmostEventTag;
 
-struct s_xl_most_event {
-  unsigned int             size;           // 4 - overall size of the complete event
-  XLmostEventTag           tag;            // 2 - type of the event
-  unsigned short           channelIndex;   // 2
-  unsigned int             userHandle;     // 4 - internal use only
-  unsigned short           flagsChip;      // 2
-  unsigned short           reserved;       // 2
-  XLuint64                 timeStamp;      // 8
-  XLuint64                 timeStampSync;  // 8
-                                           // ---------
-                                           // 32 bytes -> XL_MOST_EVENT_HEADER_SIZE
-  union s_xl_most_tag_data tagData;
+struct s_xl_most_event
+{
+    unsigned int size;           // 4 - overall size of the complete event
+    XLmostEventTag tag;          // 2 - type of the event
+    unsigned short channelIndex; // 2
+    unsigned int userHandle;     // 4 - internal use only
+    unsigned short flagsChip;    // 2
+    unsigned short reserved;     // 2
+    XLuint64 timeStamp;          // 8
+    XLuint64 timeStampSync;      // 8
+                                 // ---------
+                                 // 32 bytes -> XL_MOST_EVENT_HEADER_SIZE
+    union s_xl_most_tag_data tagData;
 };
 
 typedef struct s_xl_most_event XLmostEvent;
@@ -2171,78 +2214,83 @@ typedef struct s_xl_most_event XLmostEvent;
 typedef XL_MOST_CTRL_MSG_EV XLmostCtrlMsg;
 typedef XL_MOST_ASYNC_TX_EV XLmostAsyncMsg;
 
-typedef struct s_xl_most_ctrl_busload_configuration {
-  unsigned int        transmissionRate;
-  unsigned int        counterType;
-  unsigned int        counterPosition;
-  XL_MOST_CTRL_MSG_EV busloadCtrlMsg;
+typedef struct s_xl_most_ctrl_busload_configuration
+{
+    unsigned int transmissionRate;
+    unsigned int counterType;
+    unsigned int counterPosition;
+    XL_MOST_CTRL_MSG_EV busloadCtrlMsg;
 } XL_MOST_CTRL_BUSLOAD_CONFIGURATION;
 
-typedef struct s_xl_most_async_busload_configuration {
-  unsigned int        transmissionRate;
-  unsigned int        counterType;
-  unsigned int        counterPosition;
-  XL_MOST_ASYNC_TX_EV busloadAsyncMsg;
+typedef struct s_xl_most_async_busload_configuration
+{
+    unsigned int transmissionRate;
+    unsigned int counterType;
+    unsigned int counterPosition;
+    XL_MOST_ASYNC_TX_EV busloadAsyncMsg;
 } XL_MOST_ASYNC_BUSLOAD_CONFIGURATION;
 
-typedef XL_MOST_CTRL_BUSLOAD_CONFIGURATION  XLmostCtrlBusloadConfiguration;
+typedef XL_MOST_CTRL_BUSLOAD_CONFIGURATION XLmostCtrlBusloadConfiguration;
 typedef XL_MOST_ASYNC_BUSLOAD_CONFIGURATION XLmostAsyncBusloadConfiguration;
 
-typedef struct s_xl_most_device_state {
-  unsigned int  selectionMask;
-  // XL_MOST_STATESEL_LIGHTLOCK
-  unsigned int  lockState;     // see XL_MOST_LOCK_STATUS_EV
-  unsigned int  rxLight;       // see XL_MOST_RX_LIGHT_EV
-  unsigned int  txLight;       // see XL_MOST_TX_LIGHT_EV
-  unsigned int  txLightPower;  // see XL_MOST_LIGHT_POWER_EV
-  // XL_MOST_STATESEL_REGISTERBUNCH1
-  unsigned char registerBunch1[16];  // 16 OS8104 registers (0x87...0x96 -> NPR...SBC)
-  // XL_MOST_STATESEL_BYPASSTIMING
-  unsigned int  bypassState;  // see XL_MOST_ALL_BYPASS_EV
-  unsigned int  timingMode;   // see XL_MOST_TIMING_MODE_EV
-  unsigned int  frequency;    // frame rate (if master); see XL_MOST_FREQUENCY_EV
-  // XL_MOST_STATESEL_REGISTERBUNCH2
-  unsigned char registerBunch2[2];  // 2 OS8104 registers (0xBE, 0xBF -> XTIM, XRTY)
-  // XL_MOST_STATESEL_REGISTERBUNCH3
-  unsigned char registerBunch3[2];  // 2 OS8104 registers (0xE8, 0xE9 -> APAH, APAL)
-  // XL_MOST_STATESEL_VOLUMEMUTE
-  unsigned int  volume[2];  // volume state for DEVICE_CASE_LINE_IN, DEVICE_CASE_LINE_OUT
-  unsigned int  mute[2];    // mute state for DEVICE_CASE_LINE_IN, DEVICE_CASE_LINE_OUT
-  // XL_MOST_STATESEL_EVENTSOURCE
-  unsigned int  eventSource;  // see XL_MOST_EVENT_SOURCE_EV
-  // XL_MOST_STATESEL_RXBUFFERMODE
-  unsigned int  rxBufferMode;  // see XL_MOST_RX_BUFFER_EV
-  // XL_MOST_STATESEL_ALLOCTABLE
-  unsigned char allocTable[MOST_ALLOC_TABLE_SIZE];  // see XL_MOST_SYNC_ALLOC_EV
-                                                    // XL_MOST_STATESEL_SUPERVISOR_LOCKSTATUS
-  unsigned int  supervisorLockStatus;
-  // XL_MOST_STATESEL_SUPERVISOR_MESSAGE
-  unsigned int  broadcastedConfigStatus;
-  unsigned int  adrNetworkMaster;
-  unsigned int  abilityToWake;
+typedef struct s_xl_most_device_state
+{
+    unsigned int selectionMask;
+    // XL_MOST_STATESEL_LIGHTLOCK
+    unsigned int lockState;    // see XL_MOST_LOCK_STATUS_EV
+    unsigned int rxLight;      // see XL_MOST_RX_LIGHT_EV
+    unsigned int txLight;      // see XL_MOST_TX_LIGHT_EV
+    unsigned int txLightPower; // see XL_MOST_LIGHT_POWER_EV
+    // XL_MOST_STATESEL_REGISTERBUNCH1
+    unsigned char registerBunch1[16]; // 16 OS8104 registers (0x87...0x96 -> NPR...SBC)
+    // XL_MOST_STATESEL_BYPASSTIMING
+    unsigned int bypassState; // see XL_MOST_ALL_BYPASS_EV
+    unsigned int timingMode;  // see XL_MOST_TIMING_MODE_EV
+    unsigned int frequency;   // frame rate (if master); see XL_MOST_FREQUENCY_EV
+    // XL_MOST_STATESEL_REGISTERBUNCH2
+    unsigned char registerBunch2[2]; // 2 OS8104 registers (0xBE, 0xBF -> XTIM, XRTY)
+    // XL_MOST_STATESEL_REGISTERBUNCH3
+    unsigned char registerBunch3[2]; // 2 OS8104 registers (0xE8, 0xE9 -> APAH, APAL)
+    // XL_MOST_STATESEL_VOLUMEMUTE
+    unsigned int volume[2]; // volume state for DEVICE_CASE_LINE_IN, DEVICE_CASE_LINE_OUT
+    unsigned int mute[2];   // mute state for DEVICE_CASE_LINE_IN, DEVICE_CASE_LINE_OUT
+    // XL_MOST_STATESEL_EVENTSOURCE
+    unsigned int eventSource; // see XL_MOST_EVENT_SOURCE_EV
+    // XL_MOST_STATESEL_RXBUFFERMODE
+    unsigned int rxBufferMode; // see XL_MOST_RX_BUFFER_EV
+    // XL_MOST_STATESEL_ALLOCTABLE
+    unsigned char allocTable[MOST_ALLOC_TABLE_SIZE]; // see XL_MOST_SYNC_ALLOC_EV
+                                                     // XL_MOST_STATESEL_SUPERVISOR_LOCKSTATUS
+    unsigned int supervisorLockStatus;
+    // XL_MOST_STATESEL_SUPERVISOR_MESSAGE
+    unsigned int broadcastedConfigStatus;
+    unsigned int adrNetworkMaster;
+    unsigned int abilityToWake;
 } XL_MOST_DEVICE_STATE;
 
 typedef XL_MOST_DEVICE_STATE XLmostDeviceState;
 
-typedef struct s_xl_most_stream_open {
-  unsigned int* pStreamHandle;
-  unsigned int  numSyncChannels;
-  unsigned int  direction;
-  unsigned int  options;
-  unsigned int  latency;
+typedef struct s_xl_most_stream_open
+{
+    unsigned int *pStreamHandle;
+    unsigned int numSyncChannels;
+    unsigned int direction;
+    unsigned int options;
+    unsigned int latency;
 } XL_MOST_STREAM_OPEN;
 
 typedef XL_MOST_STREAM_OPEN XLmostStreamOpen;
 
-typedef struct s_xl_most_stream_info {
-  unsigned int  streamHandle;
-  unsigned int  numSyncChannels;
-  unsigned int  direction;
-  unsigned int  options;
-  unsigned int  latency;
-  unsigned int  streamState;
-  unsigned int  reserved;
-  unsigned char syncChannels[60];
+typedef struct s_xl_most_stream_info
+{
+    unsigned int streamHandle;
+    unsigned int numSyncChannels;
+    unsigned int direction;
+    unsigned int options;
+    unsigned int latency;
+    unsigned int streamState;
+    unsigned int reserved;
+    unsigned char syncChannels[60];
 } XL_MOST_STREAM_INFO;
 
 typedef XL_MOST_STREAM_INFO XLmostStreamInfo;
@@ -2260,85 +2308,85 @@ typedef XL_MOST_STREAM_INFO XLmostStreamInfo;
 // function structures
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 // structure for xlFrSetConfiguration
-typedef struct s_xl_fr_cluster_configuration {
-  unsigned int busGuardianEnable;
-  unsigned int baudrate;
-  unsigned int busGuardianTick;
-  unsigned int externalClockCorrectionMode;
-  unsigned int gColdStartAttempts;
-  unsigned int gListenNoise;
-  unsigned int gMacroPerCycle;
-  unsigned int gMaxWithoutClockCorrectionFatal;
-  unsigned int gMaxWithoutClockCorrectionPassive;
-  unsigned int gNetworkManagementVectorLength;
-  unsigned int gNumberOfMinislots;
-  unsigned int gNumberOfStaticSlots;
-  unsigned int gOffsetCorrectionStart;
-  unsigned int gPayloadLengthStatic;
-  unsigned int gSyncNodeMax;
-  unsigned int gdActionPointOffset;
-  unsigned int gdDynamicSlotIdlePhase;
-  unsigned int gdMacrotick;
-  unsigned int gdMinislot;
-  unsigned int gdMiniSlotActionPointOffset;
-  unsigned int gdNIT;
-  unsigned int gdStaticSlot;
-  unsigned int gdSymbolWindow;
-  unsigned int gdTSSTransmitter;
-  unsigned int gdWakeupSymbolRxIdle;
-  unsigned int gdWakeupSymbolRxLow;
-  unsigned int gdWakeupSymbolRxWindow;
-  unsigned int gdWakeupSymbolTxIdle;
-  unsigned int gdWakeupSymbolTxLow;
-  unsigned int pAllowHaltDueToClock;
-  unsigned int pAllowPassiveToActive;
-  unsigned int pChannels;
-  unsigned int pClusterDriftDamping;
-  unsigned int pDecodingCorrection;
-  unsigned int pDelayCompensationA;
-  unsigned int pDelayCompensationB;
-  unsigned int pExternOffsetCorrection;
-  unsigned int pExternRateCorrection;
-  unsigned int pKeySlotUsedForStartup;
-  unsigned int pKeySlotUsedForSync;
-  unsigned int pLatestTx;
-  unsigned int pMacroInitialOffsetA;
-  unsigned int pMacroInitialOffsetB;
-  unsigned int pMaxPayloadLengthDynamic;
-  unsigned int pMicroInitialOffsetA;
-  unsigned int pMicroInitialOffsetB;
-  unsigned int pMicroPerCycle;
-  unsigned int pMicroPerMacroNom;
-  unsigned int pOffsetCorrectionOut;
-  unsigned int pRateCorrectionOut;
-  unsigned int pSamplesPerMicrotick;
-  unsigned int pSingleSlotEnabled;
-  unsigned int pWakeupChannel;
-  unsigned int pWakeupPattern;
-  unsigned int pdAcceptedStartupRange;
-  unsigned int pdListenTimeout;
-  unsigned int pdMaxDrift;
-  unsigned int pdMicrotick;
-  unsigned int gdCASRxLowMax;
-  unsigned int gChannels;
-  unsigned int vExternOffsetControl;
-  unsigned int vExternRateControl;
-  unsigned int pChannelsMTS;
+typedef struct s_xl_fr_cluster_configuration
+{
+    unsigned int busGuardianEnable;
+    unsigned int baudrate;
+    unsigned int busGuardianTick;
+    unsigned int externalClockCorrectionMode;
+    unsigned int gColdStartAttempts;
+    unsigned int gListenNoise;
+    unsigned int gMacroPerCycle;
+    unsigned int gMaxWithoutClockCorrectionFatal;
+    unsigned int gMaxWithoutClockCorrectionPassive;
+    unsigned int gNetworkManagementVectorLength;
+    unsigned int gNumberOfMinislots;
+    unsigned int gNumberOfStaticSlots;
+    unsigned int gOffsetCorrectionStart;
+    unsigned int gPayloadLengthStatic;
+    unsigned int gSyncNodeMax;
+    unsigned int gdActionPointOffset;
+    unsigned int gdDynamicSlotIdlePhase;
+    unsigned int gdMacrotick;
+    unsigned int gdMinislot;
+    unsigned int gdMiniSlotActionPointOffset;
+    unsigned int gdNIT;
+    unsigned int gdStaticSlot;
+    unsigned int gdSymbolWindow;
+    unsigned int gdTSSTransmitter;
+    unsigned int gdWakeupSymbolRxIdle;
+    unsigned int gdWakeupSymbolRxLow;
+    unsigned int gdWakeupSymbolRxWindow;
+    unsigned int gdWakeupSymbolTxIdle;
+    unsigned int gdWakeupSymbolTxLow;
+    unsigned int pAllowHaltDueToClock;
+    unsigned int pAllowPassiveToActive;
+    unsigned int pChannels;
+    unsigned int pClusterDriftDamping;
+    unsigned int pDecodingCorrection;
+    unsigned int pDelayCompensationA;
+    unsigned int pDelayCompensationB;
+    unsigned int pExternOffsetCorrection;
+    unsigned int pExternRateCorrection;
+    unsigned int pKeySlotUsedForStartup;
+    unsigned int pKeySlotUsedForSync;
+    unsigned int pLatestTx;
+    unsigned int pMacroInitialOffsetA;
+    unsigned int pMacroInitialOffsetB;
+    unsigned int pMaxPayloadLengthDynamic;
+    unsigned int pMicroInitialOffsetA;
+    unsigned int pMicroInitialOffsetB;
+    unsigned int pMicroPerCycle;
+    unsigned int pMicroPerMacroNom;
+    unsigned int pOffsetCorrectionOut;
+    unsigned int pRateCorrectionOut;
+    unsigned int pSamplesPerMicrotick;
+    unsigned int pSingleSlotEnabled;
+    unsigned int pWakeupChannel;
+    unsigned int pWakeupPattern;
+    unsigned int pdAcceptedStartupRange;
+    unsigned int pdListenTimeout;
+    unsigned int pdMaxDrift;
+    unsigned int pdMicrotick;
+    unsigned int gdCASRxLowMax;
+    unsigned int gChannels;
+    unsigned int vExternOffsetControl;
+    unsigned int vExternRateControl;
+    unsigned int pChannelsMTS;
 
-  unsigned int framePresetData;  //!< 16-bit value with data for pre-initializing the Flexray payload data words
+    unsigned int framePresetData; //!< 16-bit value with data for pre-initializing the Flexray payload data words
 
-  unsigned int reserved[15];
+    unsigned int reserved[15];
 } XLfrClusterConfig;
 
-
 // structure and defines for function xlFrGetChannelConfig
-typedef struct s_xl_fr_channel_config {
-  unsigned int      status;   // XL_FR_CHANNEL_CFG_STATUS_xxx
-  unsigned int      cfgMode;  // XL_FR_CHANNEL_CFG_MODE_xxx
-  unsigned int      reserved[6];
-  XLfrClusterConfig xlFrClusterConfig;  // same as used in function xlFrSetConfig
+typedef struct s_xl_fr_channel_config
+{
+    unsigned int status;  // XL_FR_CHANNEL_CFG_STATUS_xxx
+    unsigned int cfgMode; // XL_FR_CHANNEL_CFG_MODE_xxx
+    unsigned int reserved[6];
+    XLfrClusterConfig xlFrClusterConfig; // same as used in function xlFrSetConfig
 } XLfrChannelConfig;
 
 // defines for XLfrChannelConfig::status and XLbusParams::data::flexray::status
@@ -2353,31 +2401,31 @@ typedef struct s_xl_fr_channel_config {
 #define XL_FR_CHANNEL_CFG_MODE_ASYNCHRONOUS        3
 
 // defines for xlFrSetMode (frModes)
-#define XL_FR_MODE_NORMAL                          0x00  //!< setup the VN3000 (eRay) normal operation mode. (default mode)
-#define XL_FR_MODE_COLD_NORMAL                     0x04  //!< setup the VN3000 (Fujitsu) normal operation mode. (default mode)
-#define XL_FR_MODE_BUS_HALT                        0x06  //!< no (Fujitsu) communication
+#define XL_FR_MODE_NORMAL                          0x00 //!< setup the VN3000 (eRay) normal operation mode. (default mode)
+#define XL_FR_MODE_COLD_NORMAL                     0x04 //!< setup the VN3000 (Fujitsu) normal operation mode. (default mode)
+#define XL_FR_MODE_BUS_HALT                        0x06 //!< no (Fujitsu) communication
 
 // defines for xlFrSetMode (frStartupAttributes)
-#define XL_FR_MODE_NONE                            0x00  //!< for normal use
-#define XL_FR_MODE_WAKEUP                          0x01  //!< for wakeup
-#define XL_FR_MODE_COLDSTART_LEADING               0x02  //!< Coldstart path initiating the schedule synchronization
-#define XL_FR_MODE_COLDSTART_FOLLOWING             0x03  //!< Coldstart path joining other coldstart nodes
-#define XL_FR_MODE_WAKEUP_AND_COLDSTART_LEADING    0x04  //!< Send Wakeup and Coldstart path initiating the schedule synchronization
-#define XL_FR_MODE_WAKEUP_AND_COLDSTART_FOLLOWING  0x05  //!< Send Wakeup and Coldstart path joining other coldstart nodes
+#define XL_FR_MODE_NONE                            0x00 //!< for normal use
+#define XL_FR_MODE_WAKEUP                          0x01 //!< for wakeup
+#define XL_FR_MODE_COLDSTART_LEADING               0x02 //!< Coldstart path initiating the schedule synchronization
+#define XL_FR_MODE_COLDSTART_FOLLOWING             0x03 //!< Coldstart path joining other coldstart nodes
+#define XL_FR_MODE_WAKEUP_AND_COLDSTART_LEADING    0x04 //!< Send Wakeup and Coldstart path initiating the schedule synchronization
+#define XL_FR_MODE_WAKEUP_AND_COLDSTART_FOLLOWING  0x05 //!< Send Wakeup and Coldstart path joining other coldstart nodes
 
 // structure for xlFrSetMode
-typedef struct s_xl_fr_set_modes {
-  unsigned int   frMode;
-  unsigned int   frStartupAttributes;
-  unsigned short useSelCycle;
-  unsigned short selCycle;
-  unsigned int   reserved[29];
+typedef struct s_xl_fr_set_modes
+{
+    unsigned int frMode;
+    unsigned int frStartupAttributes;
+    unsigned short useSelCycle;
+    unsigned short selCycle;
+    unsigned int reserved[29];
 } XLfrMode;
 
 // defines for xlFrSetupSymbolWindow
-#define XL_FR_SYMBOL_MTS                    0x01  //!< defines a MTS (Media Access Test Symbol)
-#define XL_FR_SYMBOL_CAS                    0x02  //!< defines a CAS (Collision Avoidance Symbol)
-
+#define XL_FR_SYMBOL_MTS                    0x01 //!< defines a MTS (Media Access Test Symbol)
+#define XL_FR_SYMBOL_CAS                    0x02 //!< defines a CAS (Collision Avoidance Symbol)
 
 // FR transceiver xlFrSetTransceiverMode modes
 #define XL_FR_TRANSCEIVER_MODE_SLEEP        0x01
@@ -2399,23 +2447,25 @@ typedef struct s_xl_fr_set_modes {
 // defines for xlFrSetAcceptanceFilter
 //////////////////////////////////////
 // filterStatus
-#define XL_FR_FILTER_PASS           0x00000000  //!< maching frame passes the filter
-#define XL_FR_FILTER_BLOCK          0x00000001  //!< maching frame is blocked
+#define XL_FR_FILTER_PASS           0x00000000 //!< maching frame passes the filter
+#define XL_FR_FILTER_BLOCK          0x00000001 //!< maching frame is blocked
 
 // filterTypeMask
-#define XL_FR_FILTER_TYPE_DATA      0x00000001  //!< specifies a data frame
-#define XL_FR_FILTER_TYPE_NF        0x00000002  //!< specifies a null frame in an used cycle
-#define XL_FR_FILTER_TYPE_FILLUP_NF 0x00000004  //!< specifies a null frame in an unused cycle
+#define XL_FR_FILTER_TYPE_DATA      0x00000001 //!< specifies a data frame
+#define XL_FR_FILTER_TYPE_NF        0x00000002 //!< specifies a null frame in an used cycle
+#define XL_FR_FILTER_TYPE_FILLUP_NF 0x00000004 //!< specifies a null frame in an unused cycle
 
 // filterChannelMask
-#define XL_FR_FILTER_CHANNEL_A      0x00000001  //!< specifies FlexRay channel A for the PC
-#define XL_FR_FILTER_CHANNEL_B      0x00000002  //!< specifies FlexRay channel B for the PC
-typedef struct s_xl_fr_acceptance_filter {
-  unsigned int filterStatus;       //!< defines if the specified frame should be blocked or pass the filter
-  unsigned int filterTypeMask;     //!< specifies the frame type that should be filtered
-  unsigned int filterFirstSlot;    //!< beginning of the slot range
-  unsigned int filterLastSlot;     //!< end of the slot range (can be the same as filterFirstSlot)
-  unsigned int filterChannelMask;  //!< channel A, B for PC, channel A, B for COB
+#define XL_FR_FILTER_CHANNEL_A      0x00000001 //!< specifies FlexRay channel A for the PC
+#define XL_FR_FILTER_CHANNEL_B      0x00000002 //!< specifies FlexRay channel B for the PC
+
+typedef struct s_xl_fr_acceptance_filter
+{
+    unsigned int filterStatus;      //!< defines if the specified frame should be blocked or pass the filter
+    unsigned int filterTypeMask;    //!< specifies the frame type that should be filtered
+    unsigned int filterFirstSlot;   //!< beginning of the slot range
+    unsigned int filterLastSlot;    //!< end of the slot range (can be the same as filterFirstSlot)
+    unsigned int filterChannelMask; //!< channel A, B for PC, channel A, B for COB
 } XLfrAcceptanceFilter;
 
 #pragma pack(pop)
@@ -2426,31 +2476,30 @@ typedef struct s_xl_fr_acceptance_filter {
 #define XL_FR_CHANNEL_A                         ((unsigned short)0x01)
 #define XL_FR_CHANNEL_B                         ((unsigned short)0x02)
 #define XL_FR_CHANNEL_AB                        ((unsigned short)(XL_FR_CHANNEL_A | XL_FR_CHANNEL_B))
-#define XL_FR_CC_COLD_A                         ((unsigned short)0x04)  //!< second CC channel A to initiate the coldstart
-#define XL_FR_CC_COLD_B                         ((unsigned short)0x08)  //!< second CC channel B to initiate the coldstart
+#define XL_FR_CC_COLD_A                         ((unsigned short)0x04) //!< second CC channel A to initiate the coldstart
+#define XL_FR_CC_COLD_B                         ((unsigned short)0x08) //!< second CC channel B to initiate the coldstart
 #define XL_FR_CC_COLD_AB                        ((unsigned short)(XL_FR_CC_COLD_A | XL_FR_CC_COLD_B))
-#define XL_FR_SPY_CHANNEL_A                     ((unsigned short)0x10)  //!< Spy mode flags
-#define XL_FR_SPY_CHANNEL_B                     ((unsigned short)0x20)  //!< Spy mode flags
+#define XL_FR_SPY_CHANNEL_A                     ((unsigned short)0x10) //!< Spy mode flags
+#define XL_FR_SPY_CHANNEL_B                     ((unsigned short)0x20) //!< Spy mode flags
 
-#define XL_FR_QUEUE_OVERFLOW                    ((unsigned short)0x0100)  //!< driver queue overflow
-
+#define XL_FR_QUEUE_OVERFLOW                    ((unsigned short)0x0100) //!< driver queue overflow
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // T_FLEXRAY_FRAME structure flags / defines
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // defines for T_FLEXRAY_FRAME member flags
-#define XL_FR_FRAMEFLAG_STARTUP                 ((unsigned short)0x0001)  //!< indicates a startup frame
-#define XL_FR_FRAMEFLAG_SYNC                    ((unsigned short)0x0002)  //!< indicates a sync frame
-#define XL_FR_FRAMEFLAG_NULLFRAME               ((unsigned short)0x0004)  //!< indicates a null frame
-#define XL_FR_FRAMEFLAG_PAYLOAD_PREAMBLE        ((unsigned short)0x0008)  //!< indicates a present payload preamble bit
-#define XL_FR_FRAMEFLAG_FR_RESERVED             ((unsigned short)0x0010)  //!< reserved by Flexray protocol
+#define XL_FR_FRAMEFLAG_STARTUP                 ((unsigned short)0x0001) //!< indicates a startup frame
+#define XL_FR_FRAMEFLAG_SYNC                    ((unsigned short)0x0002) //!< indicates a sync frame
+#define XL_FR_FRAMEFLAG_NULLFRAME               ((unsigned short)0x0004) //!< indicates a null frame
+#define XL_FR_FRAMEFLAG_PAYLOAD_PREAMBLE        ((unsigned short)0x0008) //!< indicates a present payload preamble bit
+#define XL_FR_FRAMEFLAG_FR_RESERVED             ((unsigned short)0x0010) //!< reserved by Flexray protocol
 
-#define XL_FR_FRAMEFLAG_REQ_TXACK               ((unsigned short)0x0020)   //!< used for Tx events only
-#define XL_FR_FRAMEFLAG_TXACK_SS                XL_FR_FRAMEFLAG_REQ_TXACK  //!< indicates TxAck of SingleShot; used for TxAck events only
-#define XL_FR_FRAMEFLAG_RX_UNEXPECTED           XL_FR_FRAMEFLAG_REQ_TXACK  //!< indicates unexpected Rx frame; used for Rx events only
+#define XL_FR_FRAMEFLAG_REQ_TXACK               ((unsigned short)0x0020)  //!< used for Tx events only
+#define XL_FR_FRAMEFLAG_TXACK_SS                XL_FR_FRAMEFLAG_REQ_TXACK //!< indicates TxAck of SingleShot; used for TxAck events only
+#define XL_FR_FRAMEFLAG_RX_UNEXPECTED           XL_FR_FRAMEFLAG_REQ_TXACK //!< indicates unexpected Rx frame; used for Rx events only
 
-#define XL_FR_FRAMEFLAG_NEW_DATA_TX             ((unsigned short)0x0040)  //!< flag used with TxAcks to indicate first TxAck after data update
-#define XL_FR_FRAMEFLAG_DATA_UPDATE_LOST        ((unsigned short)0x0080)  //!< flag used with TxAcks indicating that data update has been lost
+#define XL_FR_FRAMEFLAG_NEW_DATA_TX             ((unsigned short)0x0040) //!< flag used with TxAcks to indicate first TxAck after data update
+#define XL_FR_FRAMEFLAG_DATA_UPDATE_LOST        ((unsigned short)0x0080) //!< flag used with TxAcks indicating that data update has been lost
 
 #define XL_FR_FRAMEFLAG_SYNTAX_ERROR            ((unsigned short)0x0200)
 #define XL_FR_FRAMEFLAG_CONTENT_ERROR           ((unsigned short)0x0400)
@@ -2458,24 +2507,24 @@ typedef struct s_xl_fr_acceptance_filter {
 #define XL_FR_FRAMEFLAG_TX_CONFLICT             ((unsigned short)0x1000)
 #define XL_FR_FRAMEFLAG_EMPTY_SLOT              ((unsigned short)0x2000)
 #define XL_FR_FRAMEFLAG_FRAME_TRANSMITTED \
-  ((unsigned short)0x8000)  //!< Only used with TxAcks: Frame has been transmitted. If not set after transmission, an error has occurred.
+    ((unsigned short)0x8000) //!< Only used with TxAcks: Frame has been transmitted. If not set after transmission, an error has occurred.
 
 // XL_FR_SPY_FRAME_EV event: frameError value
-#define XL_FR_SPY_FRAMEFLAG_FRAMING_ERROR        ((unsigned char)0x01)
-#define XL_FR_SPY_FRAMEFLAG_HEADER_CRC_ERROR     ((unsigned char)0x02)
-#define XL_FR_SPY_FRAMEFLAG_FRAME_CRC_ERROR      ((unsigned char)0x04)
-#define XL_FR_SPY_FRAMEFLAG_BUS_ERROR            ((unsigned char)0x08)
+#define XL_FR_SPY_FRAMEFLAG_FRAMING_ERROR           ((unsigned char)0x01)
+#define XL_FR_SPY_FRAMEFLAG_HEADER_CRC_ERROR        ((unsigned char)0x02)
+#define XL_FR_SPY_FRAMEFLAG_FRAME_CRC_ERROR         ((unsigned char)0x04)
+#define XL_FR_SPY_FRAMEFLAG_BUS_ERROR               ((unsigned char)0x08)
 
 // XL_FR_SPY_FRAME_EV event: frameCRC value
-#define XL_FR_SPY_FRAMEFLAG_FRAME_CRC_NEW_LAYOUT ((unsigned int)0x80000000)
+#define XL_FR_SPY_FRAMEFLAG_FRAME_CRC_NEW_LAYOUT    ((unsigned int)0x80000000)
 
 // XL_FR_SPY_FRAME_EV event: frameFlags value
-#define XL_FR_SPY_FRAMEFLAG_STATIC_FRAME         ((unsigned char)0x01)
+#define XL_FR_SPY_FRAMEFLAG_STATIC_FRAME            ((unsigned char)0x01)
 
 // XL_FR_TX_FRAME event: txMode flags
-#define XL_FR_TX_MODE_CYCLIC                     ((unsigned char)0x01)  //!< 'normal' cyclic mode
-#define XL_FR_TX_MODE_SINGLE_SHOT                ((unsigned char)0x02)  //!< sends only a single shot
-#define XL_FR_TX_MODE_NONE                          ((unsigned char)0xff)  //!< switch off TX
+#define XL_FR_TX_MODE_CYCLIC                        ((unsigned char)0x01) //!< 'normal' cyclic mode
+#define XL_FR_TX_MODE_SINGLE_SHOT                   ((unsigned char)0x02) //!< sends only a single shot
+#define XL_FR_TX_MODE_NONE                          ((unsigned char)0xff) //!< switch off TX
 
 // XL_FR_TX_FRAME event: incrementSize values
 #define XL_FR_PAYLOAD_INCREMENT_8BIT                ((unsigned char)8)
@@ -2484,83 +2533,82 @@ typedef struct s_xl_fr_acceptance_filter {
 #define XL_FR_PAYLOAD_INCREMENT_NONE                ((unsigned char)0)
 
 // XL_FR_STATUS event: statusType (POC status)
-#define XL_FR_STATUS_DEFAULT_CONFIG                 0x00  //!< indicates the actual state of the POC in operation control
-#define XL_FR_STATUS_READY                          0x01  //!< ...
-#define XL_FR_STATUS_NORMAL_ACTIVE                  0x02  //!< ...
-#define XL_FR_STATUS_NORMAL_PASSIVE                 0x03  //!< ...
-#define XL_FR_STATUS_HALT                           0x04  //!< ...
-#define XL_FR_STATUS_MONITOR_MODE                   0x05  //!< ...
-#define XL_FR_STATUS_CONFIG                         0x0f  //!< ...
+#define XL_FR_STATUS_DEFAULT_CONFIG                 0x00 //!< indicates the actual state of the POC in operation control
+#define XL_FR_STATUS_READY                          0x01 //!< ...
+#define XL_FR_STATUS_NORMAL_ACTIVE                  0x02 //!< ...
+#define XL_FR_STATUS_NORMAL_PASSIVE                 0x03 //!< ...
+#define XL_FR_STATUS_HALT                           0x04 //!< ...
+#define XL_FR_STATUS_MONITOR_MODE                   0x05 //!< ...
+#define XL_FR_STATUS_CONFIG                         0x0f //!< ...
 
-#define XL_FR_STATUS_WAKEUP_STANDBY                 0x10  //!< indicates the actual state of the POC in the wakeup path
-#define XL_FR_STATUS_WAKEUP_LISTEN                  0x11  //!< ...
-#define XL_FR_STATUS_WAKEUP_SEND                    0x12  //!< ...
-#define XL_FR_STATUS_WAKEUP_DETECT                  0x13  //!< ...
+#define XL_FR_STATUS_WAKEUP_STANDBY                 0x10 //!< indicates the actual state of the POC in the wakeup path
+#define XL_FR_STATUS_WAKEUP_LISTEN                  0x11 //!< ...
+#define XL_FR_STATUS_WAKEUP_SEND                    0x12 //!< ...
+#define XL_FR_STATUS_WAKEUP_DETECT                  0x13 //!< ...
 
-#define XL_FR_STATUS_STARTUP_PREPARE                0x20  //!< indicates the actual state of the POC in the startup path
-#define XL_FR_STATUS_COLDSTART_LISTEN               0x21  //!< ...
-#define XL_FR_STATUS_COLDSTART_COLLISION_RESOLUTION 0x22  //!< ...
-#define XL_FR_STATUS_COLDSTART_CONSISTENCY_CHECK    0x23  //!< ...
-#define XL_FR_STATUS_COLDSTART_GAP                  0x24  //!< ...
-#define XL_FR_STATUS_COLDSTART_JOIN                 0x25  //!< ...
-#define XL_FR_STATUS_INTEGRATION_COLDSTART_CHECK    0x26  //!< ...
-#define XL_FR_STATUS_INTEGRATION_LISTEN             0x27  //!< ...
-#define XL_FR_STATUS_INTEGRATION_CONSISTENCY_CHECK  0x28  //!< ...
-#define XL_FR_STATUS_INITIALIZE_SCHEDULE            0x29  //!< ...
-#define XL_FR_STATUS_ABORT_STARTUP                  0x2a  //!< ...
-#define XL_FR_STATUS_STARTUP_SUCCESS                0x2b  //!< ...
+#define XL_FR_STATUS_STARTUP_PREPARE                0x20 //!< indicates the actual state of the POC in the startup path
+#define XL_FR_STATUS_COLDSTART_LISTEN               0x21 //!< ...
+#define XL_FR_STATUS_COLDSTART_COLLISION_RESOLUTION 0x22 //!< ...
+#define XL_FR_STATUS_COLDSTART_CONSISTENCY_CHECK    0x23 //!< ...
+#define XL_FR_STATUS_COLDSTART_GAP                  0x24 //!< ...
+#define XL_FR_STATUS_COLDSTART_JOIN                 0x25 //!< ...
+#define XL_FR_STATUS_INTEGRATION_COLDSTART_CHECK    0x26 //!< ...
+#define XL_FR_STATUS_INTEGRATION_LISTEN             0x27 //!< ...
+#define XL_FR_STATUS_INTEGRATION_CONSISTENCY_CHECK  0x28 //!< ...
+#define XL_FR_STATUS_INITIALIZE_SCHEDULE            0x29 //!< ...
+#define XL_FR_STATUS_ABORT_STARTUP                  0x2a //!< ...
+#define XL_FR_STATUS_STARTUP_SUCCESS                0x2b //!< ...
 
 // XL_FR_ERROR event: XL_FR_ERROR_POC_MODE, errorMode
-#define XL_FR_ERROR_POC_ACTIVE                      0x00  //!< Indicates the actual error mode of the POC: active (green)
-#define XL_FR_ERROR_POC_PASSIVE                     0x01  //!< Indicates the actual error mode of the POC: passive (yellow)
-#define XL_FR_ERROR_POC_COMM_HALT                   0x02  //!< Indicates the actual error mode of the POC: comm-halt (red)
+#define XL_FR_ERROR_POC_ACTIVE                      0x00 //!< Indicates the actual error mode of the POC: active (green)
+#define XL_FR_ERROR_POC_PASSIVE                     0x01 //!< Indicates the actual error mode of the POC: passive (yellow)
+#define XL_FR_ERROR_POC_COMM_HALT                   0x02 //!< Indicates the actual error mode of the POC: comm-halt (red)
 
 // XL_FR_ERROR event: XL_FR_ERROR_NIT_FAILURE, flags
-#define XL_FR_ERROR_NIT_SENA                        0x100  //!< Syntax Error during NIT Channel A
-#define XL_FR_ERROR_NIT_SBNA                        0x200  //!< Slot Boundary Violation during NIT Channel B
-#define XL_FR_ERROR_NIT_SENB                        0x400  //!< Syntax Error during NIT Channel A
-#define XL_FR_ERROR_NIT_SBNB                        0x800  //!< Slot Boundary Violation during NIT Channel B
+#define XL_FR_ERROR_NIT_SENA                        0x100 //!< Syntax Error during NIT Channel A
+#define XL_FR_ERROR_NIT_SBNA                        0x200 //!< Slot Boundary Violation during NIT Channel B
+#define XL_FR_ERROR_NIT_SENB                        0x400 //!< Syntax Error during NIT Channel A
+#define XL_FR_ERROR_NIT_SBNB                        0x800 //!< Slot Boundary Violation during NIT Channel B
 
 // XL_FR_ERROR event: XL_FR_ERROR_CLOCK_CORR_FAILURE, flags
-#define XL_FR_ERROR_MISSING_OFFSET_CORRECTION       0x00000001  //!< Set if no sync frames were received. -> no offset correction possible.
-#define XL_FR_ERROR_MAX_OFFSET_CORRECTION_REACHED   0x00000002  //!< Set if max. offset correction limit is reached.
-#define XL_FR_ERROR_MISSING_RATE_CORRECTION         0x00000004  //!< Set if no even/odd sync frames were received -> no rate correction possible.
-#define XL_FR_ERROR_MAX_RATE_CORRECTION_REACHED     0x00000008  //!< Set if max. rate correction limit is reached.
+#define XL_FR_ERROR_MISSING_OFFSET_CORRECTION       0x00000001 //!< Set if no sync frames were received. -> no offset correction possible.
+#define XL_FR_ERROR_MAX_OFFSET_CORRECTION_REACHED   0x00000002 //!< Set if max. offset correction limit is reached.
+#define XL_FR_ERROR_MISSING_RATE_CORRECTION         0x00000004 //!< Set if no even/odd sync frames were received -> no rate correction possible.
+#define XL_FR_ERROR_MAX_RATE_CORRECTION_REACHED     0x00000008 //!< Set if max. rate correction limit is reached.
 
 // XL_FR_ERROR event: XL_FR_ERROR_CC_ERROR, erayEir
-#define XL_FR_ERROR_CC_PERR                         0x00000040  //!< Parity Error, data from MHDS (internal ERay error)
-#define XL_FR_ERROR_CC_IIBA                         0x00000200  //!< Illegal Input Buffer Access (internal ERay error)
-#define XL_FR_ERROR_CC_IOBA                         0x00000400  //!< Illegal Output Buffer Access (internal ERay error)
-#define XL_FR_ERROR_CC_MHF                          0x00000800  //!< Message Handler Constraints Flag data from MHDF (internal ERay error)
-#define XL_FR_ERROR_CC_EDA                          0x00010000  //!< Error Detection on channel A, data from ACS
-#define XL_FR_ERROR_CC_LTVA                         0x00020000  //!< Latest Transmit Violation on channel A
-#define XL_FR_ERROR_CC_TABA                         0x00040000  //!< Transmit Across Boundary on Channel A
-#define XL_FR_ERROR_CC_EDB                          0x01000000  //!< Error Detection on channel B, data from ACS
-#define XL_FR_ERROR_CC_LTVB                         0x02000000  //!< Latest Transmit Violation on channel B
-#define XL_FR_ERROR_CC_TABB                         0x04000000  //!< Transmit Across Boundary on Channel B
+#define XL_FR_ERROR_CC_PERR                         0x00000040 //!< Parity Error, data from MHDS (internal ERay error)
+#define XL_FR_ERROR_CC_IIBA                         0x00000200 //!< Illegal Input Buffer Access (internal ERay error)
+#define XL_FR_ERROR_CC_IOBA                         0x00000400 //!< Illegal Output Buffer Access (internal ERay error)
+#define XL_FR_ERROR_CC_MHF                          0x00000800 //!< Message Handler Constraints Flag data from MHDF (internal ERay error)
+#define XL_FR_ERROR_CC_EDA                          0x00010000 //!< Error Detection on channel A, data from ACS
+#define XL_FR_ERROR_CC_LTVA                         0x00020000 //!< Latest Transmit Violation on channel A
+#define XL_FR_ERROR_CC_TABA                         0x00040000 //!< Transmit Across Boundary on Channel A
+#define XL_FR_ERROR_CC_EDB                          0x01000000 //!< Error Detection on channel B, data from ACS
+#define XL_FR_ERROR_CC_LTVB                         0x02000000 //!< Latest Transmit Violation on channel B
+#define XL_FR_ERROR_CC_TABB                         0x04000000 //!< Transmit Across Boundary on Channel B
 
 // XL_FR_WAKEUP event: wakeupStatus
-#define XL_FR_WAKEUP_UNDEFINED                      0x00  //!< No wakeup attempt since CONFIG state was left. (e.g. when a wakeup pattern A|B is received)
-#define XL_FR_WAKEUP_RECEIVED_HEADER                0x01  //!< Frame header without coding violation received.
-#define XL_FR_WAKEUP_RECEIVED_WUP                   0x02  //!< Wakeup pattern on the configured wakeup channel received.
-#define XL_FR_WAKEUP_COLLISION_HEADER               0x03  //!< Detected collision during wakeup pattern transmission received.
-#define XL_FR_WAKEUP_COLLISION_WUP                  0x04  //!< Collision during wakeup pattern transmission received.
-#define XL_FR_WAKEUP_COLLISION_UNKNOWN              0x05  //!< Set when the CC stops wakeup.
-#define XL_FR_WAKEUP_TRANSMITTED                    0x06  //!< Completed the transmission of the wakeup pattern.
-#define XL_FR_WAKEUP_EXTERNAL_WAKEUP                0x07  //!< wakeup comes from external
-#define XL_FR_WAKEUP_WUP_RECEIVED_WITHOUT_WUS_TX    0x10  //!< wakeupt pattern received from flexray bus
+#define XL_FR_WAKEUP_UNDEFINED                      0x00 //!< No wakeup attempt since CONFIG state was left. (e.g. when a wakeup pattern A|B is received)
+#define XL_FR_WAKEUP_RECEIVED_HEADER                0x01 //!< Frame header without coding violation received.
+#define XL_FR_WAKEUP_RECEIVED_WUP                   0x02 //!< Wakeup pattern on the configured wakeup channel received.
+#define XL_FR_WAKEUP_COLLISION_HEADER               0x03 //!< Detected collision during wakeup pattern transmission received.
+#define XL_FR_WAKEUP_COLLISION_WUP                  0x04 //!< Collision during wakeup pattern transmission received.
+#define XL_FR_WAKEUP_COLLISION_UNKNOWN              0x05 //!< Set when the CC stops wakeup.
+#define XL_FR_WAKEUP_TRANSMITTED                    0x06 //!< Completed the transmission of the wakeup pattern.
+#define XL_FR_WAKEUP_EXTERNAL_WAKEUP                0x07 //!< wakeup comes from external
+#define XL_FR_WAKEUP_WUP_RECEIVED_WITHOUT_WUS_TX    0x10 //!< wakeupt pattern received from flexray bus
 #define XL_FR_WAKEUP_RESERVED                       0xFF
 
 // XL_FR_SYMBOL_WINDOW event: flags
-#define XL_FR_SYMBOL_STATUS_SESA                    0x01  //!< Syntax Error in Symbol Window Channel A
-#define XL_FR_SYMBOL_STATUS_SBSA                    0x02  //!< Slot Boundary Violation in Symbol Window Channel A
-#define XL_FR_SYMBOL_STATUS_TCSA                    0x04  //!< Transmission Conflict in Symbol Window Channel A
-#define XL_FR_SYMBOL_STATUS_SESB                    0x08  //!< Syntax Error in Symbol Window Channel B
-#define XL_FR_SYMBOL_STATUS_SBSB                    0x10  //!< Slot Boundary Violation in Symbol Window Channel B
-#define XL_FR_SYMBOL_STATUS_TCSB                    0x20  //!< Transmission Conflict in Symbol Window Channel B
-#define XL_FR_SYMBOL_STATUS_MTSA                    0x40  //!< MTS received in Symbol Window Channel A
-#define XL_FR_SYMBOL_STATUS_MTSB                    0x80  //!< MTS received in Symbol Window Channel B
-
+#define XL_FR_SYMBOL_STATUS_SESA                    0x01 //!< Syntax Error in Symbol Window Channel A
+#define XL_FR_SYMBOL_STATUS_SBSA                    0x02 //!< Slot Boundary Violation in Symbol Window Channel A
+#define XL_FR_SYMBOL_STATUS_TCSA                    0x04 //!< Transmission Conflict in Symbol Window Channel A
+#define XL_FR_SYMBOL_STATUS_SESB                    0x08 //!< Syntax Error in Symbol Window Channel B
+#define XL_FR_SYMBOL_STATUS_SBSB                    0x10 //!< Slot Boundary Violation in Symbol Window Channel B
+#define XL_FR_SYMBOL_STATUS_TCSB                    0x20 //!< Transmission Conflict in Symbol Window Channel B
+#define XL_FR_SYMBOL_STATUS_MTSA                    0x40 //!< MTS received in Symbol Window Channel A
+#define XL_FR_SYMBOL_STATUS_MTSB                    0x80 //!< MTS received in Symbol Window Channel B
 
 #pragma pack(push, 8)
 
@@ -2570,170 +2618,185 @@ typedef struct s_xl_fr_acceptance_filter {
 // Structures for FlexRay events
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-typedef struct s_xl_fr_start_cycle {
-  unsigned int cycleCount;
-  int          vRateCorrection;
-  int          vOffsetCorrection;
-  unsigned int vClockCorrectionFailed;
-  unsigned int vAllowPassivToActive;
-  unsigned int reserved[3];
+typedef struct s_xl_fr_start_cycle
+{
+    unsigned int cycleCount;
+    int vRateCorrection;
+    int vOffsetCorrection;
+    unsigned int vClockCorrectionFailed;
+    unsigned int vAllowPassivToActive;
+    unsigned int reserved[3];
 } XL_FR_START_CYCLE_EV;
 
-typedef struct s_xl_fr_rx_frame {
-  unsigned short flags;
-  unsigned short headerCRC;
-  unsigned short slotID;
-  unsigned char  cycleCount;
-  unsigned char  payloadLength;
-  unsigned char  data[XL_FR_MAX_DATA_LENGTH];
+typedef struct s_xl_fr_rx_frame
+{
+    unsigned short flags;
+    unsigned short headerCRC;
+    unsigned short slotID;
+    unsigned char cycleCount;
+    unsigned char payloadLength;
+    unsigned char data[XL_FR_MAX_DATA_LENGTH];
 } XL_FR_RX_FRAME_EV;
 
-typedef struct s_xl_fr_tx_frame {
-  unsigned short flags;
-  unsigned short slotID;
-  unsigned char  offset;
-  unsigned char  repetition;
-  unsigned char  payloadLength;
-  unsigned char  txMode;
-  unsigned char  incrementSize;
-  unsigned char  incrementOffset;
-  unsigned char  reserved0;
-  unsigned char  reserved1;
-  unsigned char  data[XL_FR_MAX_DATA_LENGTH];
+typedef struct s_xl_fr_tx_frame
+{
+    unsigned short flags;
+    unsigned short slotID;
+    unsigned char offset;
+    unsigned char repetition;
+    unsigned char payloadLength;
+    unsigned char txMode;
+    unsigned char incrementSize;
+    unsigned char incrementOffset;
+    unsigned char reserved0;
+    unsigned char reserved1;
+    unsigned char data[XL_FR_MAX_DATA_LENGTH];
 } XL_FR_TX_FRAME_EV;
 
-typedef struct s_xl_fr_wakeup {
-  unsigned char cycleCount;    //!< Actual cyclecount.
-  unsigned char wakeupStatus;  //!< XL_FR_WAKEUP_UNDEFINED, ...
-  unsigned char reserved[6];
+typedef struct s_xl_fr_wakeup
+{
+    unsigned char cycleCount;   //!< Actual cyclecount.
+    unsigned char wakeupStatus; //!< XL_FR_WAKEUP_UNDEFINED, ...
+    unsigned char reserved[6];
 } XL_FR_WAKEUP_EV;
 
-typedef struct s_xl_fr_symbol_window {
-  unsigned int  symbol;      //!< XL_FR_SYMBOL_MTS, ...
-  unsigned int  flags;       //!< XL_FR_SYMBOL_STATUS_SESA, ...
-  unsigned char cycleCount;  //!< Actual cyclecount.
-  unsigned char reserved[7];
+typedef struct s_xl_fr_symbol_window
+{
+    unsigned int symbol;      //!< XL_FR_SYMBOL_MTS, ...
+    unsigned int flags;       //!< XL_FR_SYMBOL_STATUS_SESA, ...
+    unsigned char cycleCount; //!< Actual cyclecount.
+    unsigned char reserved[7];
 } XL_FR_SYMBOL_WINDOW_EV;
 
-typedef struct s_xl_fr_status {
-  unsigned int statusType;  //!< POC status XL_FR_STATUS_ defines like, normal, active...
-  unsigned int reserved;
+typedef struct s_xl_fr_status
+{
+    unsigned int statusType; //!< POC status XL_FR_STATUS_ defines like, normal, active...
+    unsigned int reserved;
 } XL_FR_STATUS_EV;
 
-typedef struct s_xl_fr_nm_vector {
-  unsigned char nmVector[12];
-  unsigned char cycleCount;  //!< Actual cyclecount.
-  unsigned char reserved[3];
+typedef struct s_xl_fr_nm_vector
+{
+    unsigned char nmVector[12];
+    unsigned char cycleCount; //!< Actual cyclecount.
+    unsigned char reserved[3];
 } XL_FR_NM_VECTOR_EV;
 
 typedef XL_SYNC_PULSE_EV XL_FR_SYNC_PULSE_EV;
 
-typedef struct s_xl_fr_error_poc_mode {
-  unsigned char errorMode;  //!< error mode like: active, passive, comm_halt
-  unsigned char reserved[3];
+typedef struct s_xl_fr_error_poc_mode
+{
+    unsigned char errorMode; //!< error mode like: active, passive, comm_halt
+    unsigned char reserved[3];
 } XL_FR_ERROR_POC_MODE_EV;
 
-typedef struct s_xl_fr_error_sync_frames {
-  unsigned short evenSyncFramesA;  //!< valid RX/TX sync frames on frCh A for even cycles
-  unsigned short oddSyncFramesA;   //!< valid RX/TX sync frames on frCh A for odd cycles
-  unsigned short evenSyncFramesB;  //!< valid RX/TX sync frames on frCh B for even cycles
-  unsigned short oddSyncFramesB;   //!< valid RX/TX sync frames on frCh B for odd cycles
-  unsigned int   reserved;
+typedef struct s_xl_fr_error_sync_frames
+{
+    unsigned short evenSyncFramesA; //!< valid RX/TX sync frames on frCh A for even cycles
+    unsigned short oddSyncFramesA;  //!< valid RX/TX sync frames on frCh A for odd cycles
+    unsigned short evenSyncFramesB; //!< valid RX/TX sync frames on frCh B for even cycles
+    unsigned short oddSyncFramesB;  //!< valid RX/TX sync frames on frCh B for odd cycles
+    unsigned int reserved;
 } XL_FR_ERROR_SYNC_FRAMES_EV;
 
-typedef struct s_xl_fr_error_clock_corr_failure {
-  unsigned short evenSyncFramesA;         //!< valid RX/TX sync frames on frCh A for even cycles
-  unsigned short oddSyncFramesA;          //!< valid RX/TX sync frames on frCh A for odd cycles
-  unsigned short evenSyncFramesB;         //!< valid RX/TX sync frames on frCh B for even cycles
-  unsigned short oddSyncFramesB;          //!< valid RX/TX sync frames on frCh B for odd cycles
-  unsigned int   flags;                   //!< missing/maximum rate/offset correction flags.
-  unsigned int   clockCorrFailedCounter;  //!< E-Ray: CCEV register (CCFC value)
-  unsigned int   reserved;
+typedef struct s_xl_fr_error_clock_corr_failure
+{
+    unsigned short evenSyncFramesA;      //!< valid RX/TX sync frames on frCh A for even cycles
+    unsigned short oddSyncFramesA;       //!< valid RX/TX sync frames on frCh A for odd cycles
+    unsigned short evenSyncFramesB;      //!< valid RX/TX sync frames on frCh B for even cycles
+    unsigned short oddSyncFramesB;       //!< valid RX/TX sync frames on frCh B for odd cycles
+    unsigned int flags;                  //!< missing/maximum rate/offset correction flags.
+    unsigned int clockCorrFailedCounter; //!< E-Ray: CCEV register (CCFC value)
+    unsigned int reserved;
 } XL_FR_ERROR_CLOCK_CORR_FAILURE_EV;
 
-typedef struct s_xl_fr_error_nit_failure {
-  unsigned int flags;  //!< flags for NIT boundary, syntax error...
-  unsigned int reserved;
+typedef struct s_xl_fr_error_nit_failure
+{
+    unsigned int flags; //!< flags for NIT boundary, syntax error...
+    unsigned int reserved;
 } XL_FR_ERROR_NIT_FAILURE_EV;
 
-typedef struct s_xl_fr_error_cc_error {
-  unsigned int ccError;  //!< internal CC errors (Transmit Across Boundary, Transmit Violation...)
-  unsigned int reserved;
+typedef struct s_xl_fr_error_cc_error
+{
+    unsigned int ccError; //!< internal CC errors (Transmit Across Boundary, Transmit Violation...)
+    unsigned int reserved;
 } XL_FR_ERROR_CC_ERROR_EV;
 
 union s_xl_fr_error_info {
-  XL_FR_ERROR_POC_MODE_EV           frPocMode;                 //!< E-RAY: EIR_PEMC
-  XL_FR_ERROR_SYNC_FRAMES_EV        frSyncFramesBelowMin;      //!< E-RAY: EIR_SFBM
-  XL_FR_ERROR_SYNC_FRAMES_EV        frSyncFramesOverload;      //!< E-RAY: EIR_SFO
-  XL_FR_ERROR_CLOCK_CORR_FAILURE_EV frClockCorrectionFailure;  //!< E-RAY: EIR_CCF
-  XL_FR_ERROR_NIT_FAILURE_EV        frNitFailure;              //!< NIT part of the E_RAY: SWNIT register
-  XL_FR_ERROR_CC_ERROR_EV           frCCError;                 //!< internal CC error flags (E-RAY: EIR)
+    XL_FR_ERROR_POC_MODE_EV frPocMode;                          //!< E-RAY: EIR_PEMC
+    XL_FR_ERROR_SYNC_FRAMES_EV frSyncFramesBelowMin;            //!< E-RAY: EIR_SFBM
+    XL_FR_ERROR_SYNC_FRAMES_EV frSyncFramesOverload;            //!< E-RAY: EIR_SFO
+    XL_FR_ERROR_CLOCK_CORR_FAILURE_EV frClockCorrectionFailure; //!< E-RAY: EIR_CCF
+    XL_FR_ERROR_NIT_FAILURE_EV frNitFailure;                    //!< NIT part of the E_RAY: SWNIT register
+    XL_FR_ERROR_CC_ERROR_EV frCCError;                          //!< internal CC error flags (E-RAY: EIR)
 };
 
-typedef struct s_xl_fr_error {
-  unsigned char            tag;
-  unsigned char            cycleCount;
-  unsigned char            reserved[6];
-  union s_xl_fr_error_info errorInfo;
+typedef struct s_xl_fr_error
+{
+    unsigned char tag;
+    unsigned char cycleCount;
+    unsigned char reserved[6];
+    union s_xl_fr_error_info errorInfo;
 } XL_FR_ERROR_EV;
 
-typedef struct s_xl_fr_spy_frame {
-  unsigned int   frameLength;
-  unsigned char  frameError;  //!< XL_FR_SPY_FRAMEFLAG_XXX values
-  unsigned char  tssLength;
-  unsigned short headerFlags;
-  unsigned short slotID;
-  unsigned short headerCRC;
-  unsigned char  payloadLength;
-  unsigned char  cycleCount;
-  unsigned char  frameFlags;
-  unsigned char  reserved;
-  unsigned int   frameCRC;
-  unsigned char  data[XL_FR_MAX_DATA_LENGTH];
+typedef struct s_xl_fr_spy_frame
+{
+    unsigned int frameLength;
+    unsigned char frameError; //!< XL_FR_SPY_FRAMEFLAG_XXX values
+    unsigned char tssLength;
+    unsigned short headerFlags;
+    unsigned short slotID;
+    unsigned short headerCRC;
+    unsigned char payloadLength;
+    unsigned char cycleCount;
+    unsigned char frameFlags;
+    unsigned char reserved;
+    unsigned int frameCRC;
+    unsigned char data[XL_FR_MAX_DATA_LENGTH];
 } XL_FR_SPY_FRAME_EV;
 
-typedef struct s_xl_fr_spy_symbol {
-  unsigned short lowLength;
-  unsigned short reserved;
+typedef struct s_xl_fr_spy_symbol
+{
+    unsigned short lowLength;
+    unsigned short reserved;
 } XL_FR_SPY_SYMBOL_EV;
-
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // rx event definition
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 union s_xl_fr_tag_data {
-  XL_FR_START_CYCLE_EV      frStartCycle;
-  XL_FR_RX_FRAME_EV         frRxFrame;
-  XL_FR_TX_FRAME_EV         frTxFrame;
-  XL_FR_WAKEUP_EV           frWakeup;
-  XL_FR_SYMBOL_WINDOW_EV    frSymbolWindow;
-  XL_FR_ERROR_EV            frError;
-  XL_FR_STATUS_EV           frStatus;
-  XL_FR_NM_VECTOR_EV        frNmVector;
-  XL_FR_SYNC_PULSE_EV       frSyncPulse;
-  XL_FR_SPY_FRAME_EV        frSpyFrame;
-  XL_FR_SPY_SYMBOL_EV       frSpySymbol;
+    XL_FR_START_CYCLE_EV frStartCycle;
+    XL_FR_RX_FRAME_EV frRxFrame;
+    XL_FR_TX_FRAME_EV frTxFrame;
+    XL_FR_WAKEUP_EV frWakeup;
+    XL_FR_SYMBOL_WINDOW_EV frSymbolWindow;
+    XL_FR_ERROR_EV frError;
+    XL_FR_STATUS_EV frStatus;
+    XL_FR_NM_VECTOR_EV frNmVector;
+    XL_FR_SYNC_PULSE_EV frSyncPulse;
+    XL_FR_SPY_FRAME_EV frSpyFrame;
+    XL_FR_SPY_SYMBOL_EV frSpySymbol;
 
-  XL_APPLICATION_NOTIFICATION_EV applicationNotification;
+    XL_APPLICATION_NOTIFICATION_EV applicationNotification;
 
-  unsigned char raw[XL_FR_MAX_EVENT_SIZE - XL_FR_RX_EVENT_HEADER_SIZE];
+    unsigned char raw[XL_FR_MAX_EVENT_SIZE - XL_FR_RX_EVENT_HEADER_SIZE];
 };
 
 typedef unsigned short XLfrEventTag;
 
-struct s_xl_fr_event {
-  unsigned int           size;           // 4 - overall size of the complete event
-  XLfrEventTag           tag;            // 2 - type of the event
-  unsigned short         channelIndex;   // 2
-  unsigned int           userHandle;     // 4
-  unsigned short         flagsChip;      // 2 - frChannel e.g. XL_FR_CHANNEL_A (lower 8 bit), queue overflow (upper 8bit)
-  unsigned short         reserved;       // 2
-  XLuint64               timeStamp;      // 8 - raw timestamp
-  XLuint64               timeStampSync;  // 8 - timestamp which is synchronized by the driver
-                                         // ---------
-                                         // 32 bytes -> XL_FR_RX_EVENT_HEADER_SIZE
-  union s_xl_fr_tag_data tagData;
+struct s_xl_fr_event
+{
+    unsigned int size;           // 4 - overall size of the complete event
+    XLfrEventTag tag;            // 2 - type of the event
+    unsigned short channelIndex; // 2
+    unsigned int userHandle;     // 4
+    unsigned short flagsChip;    // 2 - frChannel e.g. XL_FR_CHANNEL_A (lower 8 bit), queue overflow (upper 8bit)
+    unsigned short reserved;     // 2
+    XLuint64 timeStamp;          // 8 - raw timestamp
+    XLuint64 timeStampSync;      // 8 - timestamp which is synchronized by the driver
+                                 // ---------
+                                 // 32 bytes -> XL_FR_RX_EVENT_HEADER_SIZE
+    union s_xl_fr_tag_data tagData;
 };
 
 typedef struct s_xl_fr_event XLfrEvent;
@@ -2755,19 +2818,21 @@ typedef struct s_xl_fr_event XLfrEvent;
 
 ///////////////////////////////////////////////
 // defines for xlIoSetTriggerMode
-typedef struct s_xl_daio_trigger_mode {
-  unsigned int portTypeMask;  //!< Use defines XL_DAIO_PORT_TYPE_MASK_xxx. Unused for VN1630/VN1640.
-  unsigned int triggerType;   //!< Use defines XL_DAIO_TRIGGER_TYPE_xxx from above
+typedef struct s_xl_daio_trigger_mode
+{
+    unsigned int portTypeMask; //!< Use defines XL_DAIO_PORT_TYPE_MASK_xxx. Unused for VN1630/VN1640.
+    unsigned int triggerType;  //!< Use defines XL_DAIO_TRIGGER_TYPE_xxx from above
 
-  union triggerTypeParams {
-    unsigned int cycleTime;  //!< specify time in microseconds
+    union triggerTypeParams {
+        unsigned int cycleTime; //!< specify time in microseconds
 
-    struct {
-      unsigned int portMask;
-      unsigned int type;  //!< Use defines XL_DAIO_TRIGGER_TYPE_xxx from below
-    } digital;
+        struct
+        {
+            unsigned int portMask;
+            unsigned int type; //!< Use defines XL_DAIO_TRIGGER_TYPE_xxx from below
+        } digital;
 
-  } param;
+    } param;
 
 } XLdaioTriggerMode;
 
@@ -2777,19 +2842,20 @@ typedef struct s_xl_daio_trigger_mode {
 
 ///////////////////////////////////////////////
 // defines for xlIoConfigurePorts
-typedef struct xl_daio_set_port {
-  unsigned int portType;         //!< Only one signal group is allowed. One of the defines XL_DAIO_PORT_TYPE_MASK_*
-  unsigned int portMask;         //!< Mask of affected ports.
-  unsigned int portFunction[8];  //!< Special function of port. One of the defines XL_DAIO_PORT_DIGITAL_* or XL_DAIO_PORT_ANALOG_*
-  unsigned int reserved[8];      //!< Set this parameters to zero!
+typedef struct xl_daio_set_port
+{
+    unsigned int portType;        //!< Only one signal group is allowed. One of the defines XL_DAIO_PORT_TYPE_MASK_*
+    unsigned int portMask;        //!< Mask of affected ports.
+    unsigned int portFunction[8]; //!< Special function of port. One of the defines XL_DAIO_PORT_DIGITAL_* or XL_DAIO_PORT_ANALOG_*
+    unsigned int reserved[8];     //!< Set this parameters to zero!
 } XLdaioSetPort;
 
 // for digital ports:
 #define XL_DAIO_PORT_DIGITAL_IN        0x00
 #define XL_DAIO_PORT_DIGITAL_PUSHPULL  0x01
 #define XL_DAIO_PORT_DIGITAL_OPENDRAIN 0x02
-#define XL_DAIO_PORT_DIGITAL_SWITCH    0x05  //(only for digital pin 4..7)
-#define XL_DAIO_PORT_DIGITAL_IN_OUT    0x06  //(only for WakeUp line)
+#define XL_DAIO_PORT_DIGITAL_SWITCH    0x05 //(only for digital pin 4..7)
+#define XL_DAIO_PORT_DIGITAL_IN_OUT    0x06 //(only for WakeUp line)
 
 // for analog ports:
 #define XL_DAIO_PORT_ANALOG_IN         0x00
@@ -2803,12 +2869,12 @@ typedef struct xl_daio_set_port {
 #define XL_DAIO_DO_LEVEL_5V            5
 #define XL_DAIO_DO_LEVEL_12V           12
 
-
 ///////////////////////////////////////////////
 // defines for xlIoSetDigitalOutput
-typedef struct xl_daio_digital_params {
-  unsigned int portMask;   //!< Use defines XL_DAIO_PORT_MASK_DIGITAL_*
-  unsigned int valueMask;  //!< Specify the port value (ON/HIGH - 1 | OFF/LOW - 0)
+typedef struct xl_daio_digital_params
+{
+    unsigned int portMask;  //!< Use defines XL_DAIO_PORT_MASK_DIGITAL_*
+    unsigned int valueMask; //!< Specify the port value (ON/HIGH - 1 | OFF/LOW - 0)
 } XLdaioDigitalParams;
 
 // defines for portMask
@@ -2823,9 +2889,10 @@ typedef struct xl_daio_digital_params {
 
 ///////////////////////////////////////////////
 // defines for xlIoSetAnalogOutput
-typedef struct xl_daio_analog_params {
-  unsigned int portMask;  //!< Use defines XL_DAIO_PORT_MASK_ANALOG_*
-  unsigned int value[8];  //!< 12-bit values
+typedef struct xl_daio_analog_params
+{
+    unsigned int portMask; //!< Use defines XL_DAIO_PORT_MASK_ANALOG_*
+    unsigned int value[8]; //!< 12-bit values
 } XLdaioAnalogParams;
 
 ///////////////////////////////////////////////
@@ -2837,8 +2904,8 @@ typedef struct xl_daio_analog_params {
 
 ///////////////////////////////////////////////
 // event ids
-#define XL_DAIO_EVT_ID_DIGITAL            XL_DAIO_PORT_TYPE_MASK_DIGITAL
-#define XL_DAIO_EVT_ID_ANALOG             XL_DAIO_PORT_TYPE_MASK_ANALOG
+#define XL_DAIO_EVT_ID_DIGITAL      XL_DAIO_PORT_TYPE_MASK_DIGITAL
+#define XL_DAIO_EVT_ID_ANALOG       XL_DAIO_PORT_TYPE_MASK_ANALOG
 #pragma pack(pop)
 #pragma pack(push, 8)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2861,75 +2928,81 @@ typedef struct xl_daio_analog_params {
 
 ////////////////////////////////////////
 // defines for xlKlineSetUartParams
-typedef struct s_xl_kline_uart_params {
-  unsigned int databits;
-  unsigned int stopbits;
-  unsigned int parity;
+typedef struct s_xl_kline_uart_params
+{
+    unsigned int databits;
+    unsigned int stopbits;
+    unsigned int parity;
 } XLklineUartParameter;
 
 ////////////////////////////////////////
 // defines for xlKlineFastInitTester
-typedef struct s_xl_kline_init_tester {
-  unsigned int TiniL;  //!< [us]
-  unsigned int Twup;   //!< [us]
-  unsigned int reserved;
+typedef struct s_xl_kline_init_tester
+{
+    unsigned int TiniL; //!< [us]
+    unsigned int Twup;  //!< [us]
+    unsigned int reserved;
 } XLklineInitTester;
 
 ////////////////////////////////////////
 // defines for xlKlineInit5BdTester
-typedef struct s_xl_kline_init_5BdTester {
-  unsigned int addr;
-  unsigned int rate5bd;
-  unsigned int W1min;  //!< [us]
-  unsigned int W1max;  //!< [us]
-  unsigned int W2min;  //!< [us]
-  unsigned int W2max;  //!< [us]
-  unsigned int W3min;  //!< [us]
-  unsigned int W3max;  //!< [us]
-  unsigned int W4;     //!< [us]
-  unsigned int W4min;  //!< [us]
-  unsigned int W4max;  //!< [us]
-  unsigned int kb2Not;
-  unsigned int reserved;
+typedef struct s_xl_kline_init_5BdTester
+{
+    unsigned int addr;
+    unsigned int rate5bd;
+    unsigned int W1min; //!< [us]
+    unsigned int W1max; //!< [us]
+    unsigned int W2min; //!< [us]
+    unsigned int W2max; //!< [us]
+    unsigned int W3min; //!< [us]
+    unsigned int W3max; //!< [us]
+    unsigned int W4;    //!< [us]
+    unsigned int W4min; //!< [us]
+    unsigned int W4max; //!< [us]
+    unsigned int kb2Not;
+    unsigned int reserved;
 } XLkline5BdTester;
 
 ////////////////////////////////////////
 // defines for xlKlineInit5BdEcu
-typedef struct s_xl_kline_init_5BdEcu {
-  unsigned int configure;
-  unsigned int addr;
-  unsigned int rate5bd;
-  unsigned int syncPattern;
-  unsigned int W1;     //!< [us]
-  unsigned int W2;     //!< [us]
-  unsigned int W3;     //!< [us]
-  unsigned int W4;     //!< [us]
-  unsigned int W4min;  //!< [us]
-  unsigned int W4max;  //!< [us]
-  unsigned int kb1;
-  unsigned int kb2;
-  unsigned int addrNot;
-  unsigned int reserved;
+typedef struct s_xl_kline_init_5BdEcu
+{
+    unsigned int configure;
+    unsigned int addr;
+    unsigned int rate5bd;
+    unsigned int syncPattern;
+    unsigned int W1;    //!< [us]
+    unsigned int W2;    //!< [us]
+    unsigned int W3;    //!< [us]
+    unsigned int W4;    //!< [us]
+    unsigned int W4min; //!< [us]
+    unsigned int W4max; //!< [us]
+    unsigned int kb1;
+    unsigned int kb2;
+    unsigned int addrNot;
+    unsigned int reserved;
 } XLkline5BdEcu;
 
 ////////////////////////////////////////
 // defines for xlKlineSetCommunicationTimingTester
-typedef struct s_xl_kline_set_com_tester {
-  unsigned int P1min;  //!< [us]
-  unsigned int P4;     //!< [us]
-  unsigned int reserved;
+typedef struct s_xl_kline_set_com_tester
+{
+    unsigned int P1min; //!< [us]
+    unsigned int P4;    //!< [us]
+    unsigned int reserved;
 } XLklineSetComTester;
 
 ////////////////////////////////////////
 // defines for xlKlineSetCommunicationTimingEcu
-typedef struct s_xl_kline_set_com_ecu {
-  unsigned int P1;        //!< [us]
-  unsigned int P4min;     //!< [us]
-  unsigned int TinilMin;  //!< [us]
-  unsigned int TinilMax;  //!< [us]
-  unsigned int TwupMin;   //!< [us]
-  unsigned int TwupMax;   //!< [us]
-  unsigned int reserved;
+typedef struct s_xl_kline_set_com_ecu
+{
+    unsigned int P1;       //!< [us]
+    unsigned int P4min;    //!< [us]
+    unsigned int TinilMin; //!< [us]
+    unsigned int TinilMax; //!< [us]
+    unsigned int TwupMin;  //!< [us]
+    unsigned int TwupMax;  //!< [us]
+    unsigned int reserved;
 } XLklineSetComEcu;
 
 #pragma pack(pop)
@@ -2996,9 +3069,9 @@ typedef struct s_xl_kline_set_com_ecu {
 #define XL_KLINE_ERROR_TYPE_FI                 5
 
 // defines for XL_KLINE_ERROR_TYPE_RXTX_ERROR / XL_KLINE_ERROR_TYPE_FI
-#define XL_KLINE_ERR_RXTX_UA                   0x04  // unexpected activity
-#define XL_KLINE_ERR_RXTX_MA                   0x02  // missing activity
-#define XL_KLINE_ERR_RXTX_ISB                  0x01  // invalid sync byte
+#define XL_KLINE_ERR_RXTX_UA                   0x04 // unexpected activity
+#define XL_KLINE_ERR_RXTX_MA                   0x02 // missing activity
+#define XL_KLINE_ERR_RXTX_ISB                  0x01 // invalid sync byte
 
 // defines for XL_KLINE_ERROR_TYPE_5BD_TESTER
 #define XL_KLINE_ERR_TESTER_W1MIN              1
@@ -3031,15 +3104,15 @@ typedef struct s_xl_kline_set_com_ecu {
 #define XL_ETH_EVENT_SIZE_HEADER      (unsigned short)32
 #define XL_ETH_EVENT_SIZE_MAX         (unsigned int)2048
 
-#define XL_ETH_RX_FIFO_QUEUE_SIZE_MAX (unsigned int)(64 * 1024 * 1024)  //!< Maximum size of ethernet receive queue: 64 MByte
-#define XL_ETH_RX_FIFO_QUEUE_SIZE_MIN (unsigned int)(64 * 1024)         //!< Minimum size of ethernet receive queue: 64 KByte
+#define XL_ETH_RX_FIFO_QUEUE_SIZE_MAX (unsigned int)(64 * 1024 * 1024) //!< Maximum size of ethernet receive queue: 64 MByte
+#define XL_ETH_RX_FIFO_QUEUE_SIZE_MIN (unsigned int)(64 * 1024)        //!< Minimum size of ethernet receive queue: 64 KByte
 
-#define XL_ETH_PAYLOAD_SIZE_MAX       (unsigned int)1500  // maximum payload length for sending an ethernet packet
-#define XL_ETH_PAYLOAD_SIZE_MIN       (unsigned int)46  // minimum payload length for sending an ethernet packet (42 octets with VLAN tag present)
+#define XL_ETH_PAYLOAD_SIZE_MAX       (unsigned int)1500 // maximum payload length for sending an ethernet packet
+#define XL_ETH_PAYLOAD_SIZE_MIN       (unsigned int)46   // minimum payload length for sending an ethernet packet (42 octets with VLAN tag present)
 #define XL_ETH_RAW_FRAME_SIZE_MAX \
-  (unsigned int)1600  // maximum buffer size for storing a "raw" Ethernet frame (including VLAN tags, if present)
+    (unsigned int)1600 // maximum buffer size for storing a "raw" Ethernet frame (including VLAN tags, if present)
 #define XL_ETH_RAW_FRAME_SIZE_MIN \
-  (unsigned int)24  // minimum buffer size for storing a "raw" Ethernet frame (including VLAN tags, if present)
+    (unsigned int)24 // minimum buffer size for storing a "raw" Ethernet frame (including VLAN tags, if present)
 
 #define XL_ETH_MACADDR_OCTETS        6
 #define XL_ETH_ETHERTYPE_OCTETS      2
@@ -3049,17 +3122,17 @@ typedef struct s_xl_kline_set_com_ecu {
 // General information in driver config
 ////////////////////////////////////////////////
 
-#define XL_ETH_CHANNEL_CAP_IEEE100T1 0x0001  // Channel supports IEEE 802.3pw (100BASE-T1) - Automotive Ethernet over single twisted pair
+#define XL_ETH_CHANNEL_CAP_IEEE100T1 0x0001 // Channel supports IEEE 802.3pw (100BASE-T1) - Automotive Ethernet over single twisted pair
 #define XL_ETH_CHANNEL_CAP_IEEE100TX \
-  0x0002  // Channel supports IEEE 802.3u (100-BASE-TX) and 802.3i (10BASE-T) - Ethernet and Fast Ethernet
-#define XL_ETH_CHANNEL_CAP_IEEE1000T     0x0004  // Channel supports IEEE 802.3ab (1000BASE-T) - Gigabit Ethernet
-#define XL_ETH_CHANNEL_CAP_IEEE1000T1    0x0008  // Channel supports IEEE 802.3bp (1000BASE-T1) - Automotive Ethernet over single twisted pair
+    0x0002                                      // Channel supports IEEE 802.3u (100-BASE-TX) and 802.3i (10BASE-T) - Ethernet and Fast Ethernet
+#define XL_ETH_CHANNEL_CAP_IEEE1000T     0x0004 // Channel supports IEEE 802.3ab (1000BASE-T) - Gigabit Ethernet
+#define XL_ETH_CHANNEL_CAP_IEEE1000T1    0x0008 // Channel supports IEEE 802.3bp (1000BASE-T1) - Automotive Ethernet over single twisted pair
 
 // Switch Type (XLswitchDrvConfig*::switchCapability)
-#define XL_NET_ETH_SWITCH_CAP_REALSWITCH 0x00000000  // Switch type is "normal" switch (learning is on)
-#define XL_NET_ETH_SWITCH_CAP_DIRECTCONN 0x00000001  // Switch type is direct connection
-#define XL_NET_ETH_SWITCH_CAP_TAP_LINK   0x00000002  // Switch type is TAP
-#define XL_NET_ETH_SWITCH_CAP_MULTIDROP  0x00000004  // Switch type is T1S multidrop
+#define XL_NET_ETH_SWITCH_CAP_REALSWITCH 0x00000000 // Switch type is "normal" switch (learning is on)
+#define XL_NET_ETH_SWITCH_CAP_DIRECTCONN 0x00000001 // Switch type is direct connection
+#define XL_NET_ETH_SWITCH_CAP_TAP_LINK   0x00000002 // Switch type is TAP
+#define XL_NET_ETH_SWITCH_CAP_MULTIDROP  0x00000004 // Switch type is T1S multidrop
 
 ////////////////////////////////////////////////
 // Infos in the flagsChip parameter of Ethernet events
@@ -3068,9 +3141,9 @@ typedef struct s_xl_kline_set_com_ecu {
 #define XL_ETH_CONNECTOR_DSUB            (unsigned short)0x0002
 #define XL_ETH_PHY_IEEE                  (unsigned short)0x0004
 #define XL_ETH_PHY_BROADR                (unsigned short)0x0008
-#define XL_ETH_FRAME_BYPASSED            (unsigned short)0x0010  // For Rx and RxError events
+#define XL_ETH_FRAME_BYPASSED            (unsigned short)0x0010 // For Rx and RxError events
 #define XL_ETH_QUEUE_OVERFLOW            (unsigned short)0x0100
-#define XL_ETH_BYPASS_QUEUE_OVERFLOW     (unsigned short)0x8000  // MAC bypass queue full condition occurred, one or more packets dropped
+#define XL_ETH_BYPASS_QUEUE_OVERFLOW     (unsigned short)0x8000 // MAC bypass queue full condition occurred, one or more packets dropped
 
 ////////////////////////////////////////////////
 // Values for xlEthSetConfig
@@ -3087,7 +3160,7 @@ typedef struct s_xl_kline_set_com_ecu {
 // duplex
 #define XL_ETH_MODE_DUPLEX_DONT_CARE     0 /* Used for BroadR-Reach since only full duplex mode possible. */
 #define XL_ETH_MODE_DUPLEX_AUTO \
-  1 /* Duplex mode set via auto-negotiation. Requires connection speed set to an "auto" value. Only for IEEE 802.3*/
+    1                                     /* Duplex mode set via auto-negotiation. Requires connection speed set to an "auto" value. Only for IEEE 802.3*/
 #define XL_ETH_MODE_DUPLEX_HALF         2 /* Half duplex mode. Only for IEEE 802.3 */
 #define XL_ETH_MODE_DUPLEX_FULL         3 /* Full duplex mode. Only for IEEE 802.3 */
 
@@ -3104,18 +3177,18 @@ typedef struct s_xl_kline_set_com_ecu {
 // clockMode
 #define XL_ETH_MODE_CLOCK_DONT_CARE     0 /* Used for IEEE 802.3 100 and 10 MBit */
 #define XL_ETH_MODE_CLOCK_AUTO \
-  1 /* Clock mode set automatically via auto-negotiation. Only for 1000Base-T if speed mode is one of the "auto" modes */
-#define XL_ETH_MODE_CLOCK_MASTER                        2 /* Clock mode is master. Only for 1000Base-T or BroadR-Reach */
-#define XL_ETH_MODE_CLOCK_SLAVE                         3 /* Clock mode is slave. Only for 1000Base-T or BroadR-Reach */
+    1                                     /* Clock mode set automatically via auto-negotiation. Only for 1000Base-T if speed mode is one of the "auto" modes */
+#define XL_ETH_MODE_CLOCK_MASTER        2 /* Clock mode is master. Only for 1000Base-T or BroadR-Reach */
+#define XL_ETH_MODE_CLOCK_SLAVE         3 /* Clock mode is slave. Only for 1000Base-T or BroadR-Reach */
 
 // mdiMode
-#define XL_ETH_MODE_MDI_AUTO                            1 /* Perform MDI auto detection */
-#define XL_ETH_MODE_MDI_STRAIGHT                        2 /* Direct MDI (connected to switch) */
-#define XL_ETH_MODE_MDI_CROSSOVER                       3 /* Crossover MDI (connected to endpoint) */
+#define XL_ETH_MODE_MDI_AUTO            1 /* Perform MDI auto detection */
+#define XL_ETH_MODE_MDI_STRAIGHT        2 /* Direct MDI (connected to switch) */
+#define XL_ETH_MODE_MDI_CROSSOVER       3 /* Crossover MDI (connected to endpoint) */
 
 // brPairs
-#define XL_ETH_MODE_BR_PAIR_DONT_CARE                   0 /* Used for IEEE 802.3 */
-#define XL_ETH_MODE_BR_PAIR_1PAIR                       1 /* BR 1-pair connection. Only for BroadR-Reach */
+#define XL_ETH_MODE_BR_PAIR_DONT_CARE   0 /* Used for IEEE 802.3 */
+#define XL_ETH_MODE_BR_PAIR_1PAIR       1 /* BR 1-pair connection. Only for BroadR-Reach */
 
 ////////////////////////////////////////////////
 
@@ -3124,101 +3197,99 @@ typedef struct s_xl_kline_set_com_ecu {
 ////////////////////////////////////////////////
 
 // T_XL_ETH_CHANNEL_STATUS.link
-#define XL_ETH_STATUS_LINK_UNKNOWN                      0 /* The link state could not be determined (e.g. lost connection to board) */
-#define XL_ETH_STATUS_LINK_DOWN                         1 /* Link is down (no cable attached, no configuration set, configuration does not match) */
-#define XL_ETH_STATUS_LINK_UP                           2 /* Link is up */
-#define XL_ETH_STATUS_LINK_ERROR                        4 /* Link is in error state (e.g. auto-negotiation failed) */
+#define XL_ETH_STATUS_LINK_UNKNOWN      0 /* The link state could not be determined (e.g. lost connection to board) */
+#define XL_ETH_STATUS_LINK_DOWN         1 /* Link is down (no cable attached, no configuration set, configuration does not match) */
+#define XL_ETH_STATUS_LINK_UP           2 /* Link is up */
+#define XL_ETH_STATUS_LINK_ERROR        4 /* Link is in error state (e.g. auto-negotiation failed) */
 
 // T_XL_ETH_CHANNEL_STATUS.speed
-#define XL_ETH_STATUS_SPEED_UNKNOWN                     0 /* Connection speed could not be determined (e.g. during auto-negotiation or if link down) */
-#define XL_ETH_STATUS_SPEED_10                          1 /* Link speed is 10 Mbps */
-#define XL_ETH_STATUS_SPEED_100                         2 /* Link speed is 100 Mbps */
-#define XL_ETH_STATUS_SPEED_1000                        3 /* Link speed is 1000 Mbps */
-#define XL_ETH_STATUS_SPEED_2500                        4 /* Link speed is 2500 Mbps */
-#define XL_ETH_STATUS_SPEED_5000                        5 /* Link speed is 5000 Mbps */
-#define XL_ETH_STATUS_SPEED_10000                       6 /* Link speed is 10000 Mbps */
+#define XL_ETH_STATUS_SPEED_UNKNOWN     0 /* Connection speed could not be determined (e.g. during auto-negotiation or if link down) */
+#define XL_ETH_STATUS_SPEED_10          1 /* Link speed is 10 Mbps */
+#define XL_ETH_STATUS_SPEED_100         2 /* Link speed is 100 Mbps */
+#define XL_ETH_STATUS_SPEED_1000        3 /* Link speed is 1000 Mbps */
+#define XL_ETH_STATUS_SPEED_2500        4 /* Link speed is 2500 Mbps */
+#define XL_ETH_STATUS_SPEED_5000        5 /* Link speed is 5000 Mbps */
+#define XL_ETH_STATUS_SPEED_10000       6 /* Link speed is 10000 Mbps */
 
 // T_XL_ETH_CHANNEL_STATUS.duplex
-#define XL_ETH_STATUS_DUPLEX_UNKNOWN                    0 /* Duplex mode could not be determined (e.g. during auto-negotiation or if link down) */
-#define XL_ETH_STATUS_DUPLEX_HALF                       1 /* Half duplex mode */
-#define XL_ETH_STATUS_DUPLEX_FULL                       2 /* Full duplex mode */
+#define XL_ETH_STATUS_DUPLEX_UNKNOWN    0 /* Duplex mode could not be determined (e.g. during auto-negotiation or if link down) */
+#define XL_ETH_STATUS_DUPLEX_HALF       1 /* Half duplex mode */
+#define XL_ETH_STATUS_DUPLEX_FULL       2 /* Full duplex mode */
 
 // T_XL_ETH_CHANNEL_STATUS.mdiType
-#define XL_ETH_STATUS_MDI_UNKNOWN                       0 /* MDI mode could not be determined  (e.g. during auto-negotiation or if link down) */
-#define XL_ETH_STATUS_MDI_STRAIGHT                      1 /* Direct MDI */
-#define XL_ETH_STATUS_MDI_CROSSOVER                     2 /* Crossover MDI */
+#define XL_ETH_STATUS_MDI_UNKNOWN       0 /* MDI mode could not be determined  (e.g. during auto-negotiation or if link down) */
+#define XL_ETH_STATUS_MDI_STRAIGHT      1 /* Direct MDI */
+#define XL_ETH_STATUS_MDI_CROSSOVER     2 /* Crossover MDI */
 
 // T_XL_ETH_CHANNEL_STATUS.activeConnector
-#define XL_ETH_STATUS_CONNECTOR_DEFAULT                 0 /* Using the only available connector on channel */
-#define XL_ETH_STATUS_CONNECTOR_RJ45                    1 /* Using RJ-45 connector */
-#define XL_ETH_STATUS_CONNECTOR_DSUB                    2 /* Using D-Sub connector */
+#define XL_ETH_STATUS_CONNECTOR_DEFAULT 0 /* Using the only available connector on channel */
+#define XL_ETH_STATUS_CONNECTOR_RJ45    1 /* Using RJ-45 connector */
+#define XL_ETH_STATUS_CONNECTOR_DSUB    2 /* Using D-Sub connector */
 
 // T_XL_ETH_CHANNEL_STATUS.activePhy
-#define XL_ETH_STATUS_PHY_UNKNOWN                       0 /* PHY is currently unknown (e.g. if link is down) */
-#define XL_ETH_STATUS_PHY_IEEE_802_3                    1 /* PHY is IEEE 802.3 */
-#define XL_ETH_STATUS_PHY_BROADR_REACH                  2 /* PHY is BroadR-Reach - value is obsolete. Use XL_ETH_STATUS_PHY_100BASE_T1 instead. */
-#define XL_ETH_STATUS_PHY_100BASE_T1                    2 /* PHY is IEEE  100BASE-T1 (802.3bw) - intentionally same value as BroadR-Reach 100Bit */
-#define XL_ETH_STATUS_PHY_1000BASE_T1                   4 /* PHY is IEEE 1000BASE-T1 (802.3bp) */
-#define XL_ETH_STATUS_PHY_2500BASE_T1                   5 /* PHY is IEEE 2500BASE-T1 (802.3ae) */
-#define XL_ETH_STATUS_PHY_5000BASE_T1                   6 /* PHY is IEEE 5000BASE-T1 (802.3ae) */
-#define XL_ETH_STATUS_PHY_10000BASE_T1                  7 /* PHY is IEEE 10000BASE-T1 (802.3ae) */
-#define XL_ETH_STATUS_PHY_10BASE_T1S                    8 /* PHY is IEEE 10BASE-T1S (802.3cg) */
+#define XL_ETH_STATUS_PHY_UNKNOWN       0 /* PHY is currently unknown (e.g. if link is down) */
+#define XL_ETH_STATUS_PHY_IEEE_802_3    1 /* PHY is IEEE 802.3 */
+#define XL_ETH_STATUS_PHY_BROADR_REACH  2 /* PHY is BroadR-Reach - value is obsolete. Use XL_ETH_STATUS_PHY_100BASE_T1 instead. */
+#define XL_ETH_STATUS_PHY_100BASE_T1    2 /* PHY is IEEE  100BASE-T1 (802.3bw) - intentionally same value as BroadR-Reach 100Bit */
+#define XL_ETH_STATUS_PHY_1000BASE_T1   4 /* PHY is IEEE 1000BASE-T1 (802.3bp) */
+#define XL_ETH_STATUS_PHY_2500BASE_T1   5 /* PHY is IEEE 2500BASE-T1 (802.3ae) */
+#define XL_ETH_STATUS_PHY_5000BASE_T1   6 /* PHY is IEEE 5000BASE-T1 (802.3ae) */
+#define XL_ETH_STATUS_PHY_10000BASE_T1  7 /* PHY is IEEE 10000BASE-T1 (802.3ae) */
+#define XL_ETH_STATUS_PHY_10BASE_T1S    8 /* PHY is IEEE 10BASE-T1S (802.3cg) */
 
 // T_XL_ETH_CHANNEL_STATUS.clockMode
-#define XL_ETH_STATUS_CLOCK_DONT_CARE                   0 /* Clock mode not relevant. Only for IEEE 802.3 100/10 MBit */
-#define XL_ETH_STATUS_CLOCK_MASTER                      1 /* Clock mode is master. Only for 1000Base-T or BroadR-Reach */
-#define XL_ETH_STATUS_CLOCK_SLAVE                       2 /* Clock mode is slave. Only for 1000Base-T or BroadR-Reach */
+#define XL_ETH_STATUS_CLOCK_DONT_CARE   0 /* Clock mode not relevant. Only for IEEE 802.3 100/10 MBit */
+#define XL_ETH_STATUS_CLOCK_MASTER      1 /* Clock mode is master. Only for 1000Base-T or BroadR-Reach */
+#define XL_ETH_STATUS_CLOCK_SLAVE       2 /* Clock mode is slave. Only for 1000Base-T or BroadR-Reach */
 
 // T_XL_ETH_CHANNEL_STATUS.brPairs
-#define XL_ETH_STATUS_BR_PAIR_DONT_CARE                 0 /* No BR pair available. Only for IEEE 802.3 1000/100/10 MBit */
-#define XL_ETH_STATUS_BR_PAIR_1PAIR                     1 /* BR 1-pair connection. Only for BroadR-Reach */
-
+#define XL_ETH_STATUS_BR_PAIR_DONT_CARE 0 /* No BR pair available. Only for IEEE 802.3 1000/100/10 MBit */
+#define XL_ETH_STATUS_BR_PAIR_1PAIR     1 /* BR 1-pair connection. Only for BroadR-Reach */
 
 ////////////////////////////////////////////////
 
 // T_XL_ETH_DATAFRAME_RX_ERROR.errorFlags
 #define XL_ETH_RX_ERROR_INVALID_LENGTH \
-  ((unsigned int)0x00000001) /* Invalid length error. Set when the receive frame has an invalid length as defined by IEEE802.3 */
+    ((unsigned int)0x00000001) /* Invalid length error. Set when the receive frame has an invalid length as defined by IEEE802.3 */
 #define XL_ETH_RX_ERROR_INVALID_CRC \
-  ((unsigned int)0x00000002)                                 /* CRC error. Set when frame is received with CRC-32 error but valid length */
-#define XL_ETH_RX_ERROR_PHY_ERROR ((unsigned int)0x00000004) /* Corrupted receive frame caused by a PHY error */
+    ((unsigned int)0x00000002)                                                /* CRC error. Set when frame is received with CRC-32 error but valid length */
+#define XL_ETH_RX_ERROR_PHY_ERROR                  ((unsigned int)0x00000004) /* Corrupted receive frame caused by a PHY error */
 
 // T_XL_ETH_DATAFRAME_TX.flags
 // T_XL_ETH_DATAFRAME_TXACK.flags
 // T_XL_ETH_DATAFRAME_TXACK_OTHERAPP.flags
 // T_XL_ETH_DATAFRAME_TXACK_SW.flags
-#define XL_ETH_DATAFRAME_FLAGS_USE_SOURCE_MAC   (unsigned int)0x00000001 /* Use the given source MAC address (not set by hardware) */
+#define XL_ETH_DATAFRAME_FLAGS_USE_SOURCE_MAC      (unsigned int)0x00000001 /* Use the given source MAC address (not set by hardware) */
 
 // Bypass values
-#define XL_ETH_BYPASS_INACTIVE                        0 /* Bypass inactive (default state) */
-#define XL_ETH_BYPASS_PHY                             1 /* Bypass active via PHY loop */
-#define XL_ETH_BYPASS_MACCORE                         2 /* Bypass active via L2 switch (using MAC cores) */
+#define XL_ETH_BYPASS_INACTIVE                     0 /* Bypass inactive (default state) */
+#define XL_ETH_BYPASS_PHY                          1 /* Bypass active via PHY loop */
+#define XL_ETH_BYPASS_MACCORE                      2 /* Bypass active via L2 switch (using MAC cores) */
 
 // T_XL_ETH_DATAFRAME_TX_ERROR.errorType
 // T_XL_ETH_DATAFRAME_TX_ERR_SW.errorType
 // T_XL_ETH_DATAFRAME_TX_ERR_OTHERAPP.errorType
-#define XL_ETH_TX_ERROR_BYPASS_ENABLED                1 /* Bypass activated */
-#define XL_ETH_TX_ERROR_NO_LINK                       2 /* No Link */
-#define XL_ETH_TX_ERROR_PHY_NOT_CONFIGURED            3 /* PHY not yet configured */
-#define XL_ETH_TX_ERROR_INVALID_LENGTH                7 /* Frame with invalid length transmitted */
+#define XL_ETH_TX_ERROR_BYPASS_ENABLED             1 /* Bypass activated */
+#define XL_ETH_TX_ERROR_NO_LINK                    2 /* No Link */
+#define XL_ETH_TX_ERROR_PHY_NOT_CONFIGURED         3 /* PHY not yet configured */
+#define XL_ETH_TX_ERROR_INVALID_LENGTH             7 /* Frame with invalid length transmitted */
 // Network-based mode Tx error flags
 // T_XL_ETH_DATAFRAME_SIMULATION_TX_ERROR/T_XL_ETH_DATAFRAME_MEASUREMENT_TX_ERROR.errorFlags
-#define XL_ETH_NETWORK_TX_ERROR_NO_LINK               (unsigned int)0x00000001 /* No Link */
-#define XL_ETH_NETWORK_TX_ERROR_PHY_NOT_CONFIGURED    (unsigned int)0x00000002 /* PHY not yet configured */
-#define XL_ETH_NETWORK_TX_ERROR_PHY_BRIDGE_ENABLED    (unsigned int)0x00000004 /* PHY Bypass activated */
-#define XL_ETH_NETWORK_TX_ERROR_CONVERTER_RESET       (unsigned int)0x00000008 /* RGMII Converter in reset */
+#define XL_ETH_NETWORK_TX_ERROR_NO_LINK            (unsigned int)0x00000001 /* No Link */
+#define XL_ETH_NETWORK_TX_ERROR_PHY_NOT_CONFIGURED (unsigned int)0x00000002 /* PHY not yet configured */
+#define XL_ETH_NETWORK_TX_ERROR_PHY_BRIDGE_ENABLED (unsigned int)0x00000004 /* PHY Bypass activated */
+#define XL_ETH_NETWORK_TX_ERROR_CONVERTER_RESET    (unsigned int)0x00000008 /* RGMII Converter in reset */
 #define XL_ETH_NETWORK_TX_ERROR_INVALID_LENGTH \
-  ((unsigned int)0x00000010) /* Invalid length error. Set when the frame has an invalid length as defined by IEEE802.3 */
+    ((unsigned int)0x00000010) /* Invalid length error. Set when the frame has an invalid length as defined by IEEE802.3 */
 #define XL_ETH_NETWORK_TX_ERROR_INVALID_CRC \
-  ((unsigned int)0x00000020) /* CRC error. Set when frame is transmitted with CRC-32 error but valid length */
-#define XL_ETH_NETWORK_TX_ERROR_MACADDR_ERROR        ((unsigned int)0x00000040) /* Invalid src or dest MAC address */
-
+    ((unsigned int)0x00000020)                                           /* CRC error. Set when frame is transmitted with CRC-32 error but valid length */
+#define XL_ETH_NETWORK_TX_ERROR_MACADDR_ERROR ((unsigned int)0x00000040) /* Invalid src or dest MAC address */
 
 // T_XL_ETH_DATAFRAME_SIMULATION_RX_ERROR/T_XL_ETH_DATAFRAME_MEASUREMENT_RX_ERROR.errorFlags
 #define XL_ETH_NETWORK_RX_ERROR_INVALID_LENGTH \
-  ((unsigned int)0x00000001) /* Invalid length error. Set when the receive frame has an invalid length as defined by IEEE802.3 */
+    ((unsigned int)0x00000001) /* Invalid length error. Set when the receive frame has an invalid length as defined by IEEE802.3 */
 #define XL_ETH_NETWORK_RX_ERROR_INVALID_CRC \
-  ((unsigned int)0x00000002) /* CRC error. Set when frame is received with CRC-32 error but valid length */
+    ((unsigned int)0x00000002)                                           /* CRC error. Set when frame is received with CRC-32 error but valid length */
 #define XL_ETH_NETWORK_RX_ERROR_PHY_ERROR     ((unsigned int)0x00000004) /* Corrupted receive frame caused by a PHY error */
 #define XL_ETH_NETWORK_RX_ERROR_MACADDR_ERROR ((unsigned int)0x00000008) /* Invalid src or dest MAC address */
 
@@ -3227,14 +3298,14 @@ typedef struct s_xl_kline_set_com_ecu {
 ////////////////////////////////////////////////////////////////////////////////
 
 // Network configuration name sizes
-#define XL_NET_MAX_NAME_LENGTH                         32U
+#define XL_NET_MAX_NAME_LENGTH                32U
 // Network queue access types
-#define XL_ACCESS_TYPE_UNRELIABLE              (unsigned int)(0x00000000)  // Only for Ethernet uplink, means UDP transfers. (Not supported yet)
-#define XL_ACCESS_TYPE_RELIABLE                (unsigned int)(0x00000001)  // Always for USB uplink or TCP for Ethernet host uplink
+#define XL_ACCESS_TYPE_UNRELIABLE             (unsigned int)(0x00000000) // Only for Ethernet uplink, means UDP transfers. (Not supported yet)
+#define XL_ACCESS_TYPE_RELIABLE               (unsigned int)(0x00000001) // Always for USB uplink or TCP for Ethernet host uplink
 ////////////////////////////////////////////////////////////////////////////////
 // Ethernet Network-based mode type declaration
 ////////////////////////////////////////////////////////////////////////////////
-#define XL_INVALID_NETWORKID (-1)
+#define XL_INVALID_NETWORKID                  (-1)
 typedef int XLnetworkId, *pXLnetworkId;
 #define XL_INVALID_SWITCHID (-1)
 typedef int XLswitchId, *pXLswitchId;
@@ -3252,77 +3323,84 @@ typedef XLlong XLrxHandle, *pXLrxHandle;
 #define XL_NET_CFG_DUPLICATE_MP_NAME      0x03
 
 #pragma pack(push, 4)
-#define XL_TS_DEFAULT_TIMEDOMAIN_NAME                     "xlDefaultTimeDomain"
+#define XL_TS_DEFAULT_TIMEDOMAIN_NAME    "xlDefaultTimeDomain"
 // Defines for XLtsLeapSeconds::leapSecondsFlags
-#define XL_TS_LEAP_SECONDS_FLAGS_VALID                    0x01U  //!< Leap second verified by GPS
+#define XL_TS_LEAP_SECONDS_FLAGS_VALID   0x01U //!< Leap second verified by GPS
 // Defines for XLtsClockDrvConfigIntV2::getDomainTime::syncStatus
-#define XL_TS_DOMAIN_STAT_APP_IN_SYNC                    0x01U
-#define XL_TS_DOMAIN_STAT_DOMAIN_IN_SYNC                 0x04U
+#define XL_TS_DOMAIN_STAT_APP_IN_SYNC    0x01U
+#define XL_TS_DOMAIN_STAT_DOMAIN_IN_SYNC 0x04U
+
 typedef enum e_xl_timesync_clock_uuid_format {
-  XL_TS_CLK_UUID_FORMAT_UNDEFINED,        // see XLtsClkUuid
-  XL_TS_CLK_UUID_FORMAT_VECTOR_DEV,       // see XLtsClkUuid
-  XL_TS_CLK_UUID_FORMAT_EUI64,            // see XLtsClkUuid
-  XL_TS_CLK_UUID_FORMAT_LOCAL_PC,         // see XLtsClkUuid
-  XL_TS_CLK_UUID_FORMAT_VECTOR_PC,        // see XLtsClkUuid
-  XL_TS_CLK_UUID_FORMAT_STANDARD_PC,      // see XLtsClkUuid
-  XL_TS_CLK_UUID_FORMAT_PERFORMANCE_CNT,  // see XLtsClkUuid
-  XL_TS_CLK_UUID_FORMAT_EXTERNAL,         // see XLtsClkUuid
-  XL_TS_CLK_UUID_FORMAT_GPTP              // see XLtsClkUuid
+    XL_TS_CLK_UUID_FORMAT_UNDEFINED,       // see XLtsClkUuid
+    XL_TS_CLK_UUID_FORMAT_VECTOR_DEV,      // see XLtsClkUuid
+    XL_TS_CLK_UUID_FORMAT_EUI64,           // see XLtsClkUuid
+    XL_TS_CLK_UUID_FORMAT_LOCAL_PC,        // see XLtsClkUuid
+    XL_TS_CLK_UUID_FORMAT_VECTOR_PC,       // see XLtsClkUuid
+    XL_TS_CLK_UUID_FORMAT_STANDARD_PC,     // see XLtsClkUuid
+    XL_TS_CLK_UUID_FORMAT_PERFORMANCE_CNT, // see XLtsClkUuid
+    XL_TS_CLK_UUID_FORMAT_EXTERNAL,        // see XLtsClkUuid
+    XL_TS_CLK_UUID_FORMAT_GPTP             // see XLtsClkUuid
 } T_XL_TIMESYNC_CLK_UUID_FORMAT;
 
 typedef T_XL_TIMESYNC_CLK_UUID_FORMAT XLtsClkUuidFormat;
 
 typedef enum e_xl_timesync_time_scale {
-  XL_TS_TIMESCALE_UNDEFINED,
-  XL_TS_TIMESCALE_UTC,
-  XL_TS_TIMESCALE_TAI,
-  XL_TS_TIMESCALE_PERFORMANCE_COUNTER,
-  XL_TS_TIMESCALE_ARBITRARY,
-  XL_TS_TIMESCALE_RTC
+    XL_TS_TIMESCALE_UNDEFINED,
+    XL_TS_TIMESCALE_UTC,
+    XL_TS_TIMESCALE_TAI,
+    XL_TS_TIMESCALE_PERFORMANCE_COUNTER,
+    XL_TS_TIMESCALE_ARBITRARY,
+    XL_TS_TIMESCALE_RTC
 } XLtsTimeScale;
 
 typedef enum e_xl_timesync_clk_external_type {
-  XL_TS_CLK_EXTTYPE_NONE = 0,
-  XL_TS_CLK_EXTTYPE_DOMAIN = 4,
+    XL_TS_CLK_EXTTYPE_NONE   = 0,
+    XL_TS_CLK_EXTTYPE_DOMAIN = 4,
 } XLtsClkExternalType;
 
-typedef struct s_xl_timesync_leap_seconds {
-  unsigned int leapSecondsFlags;  //!< see XL_TS_LEAP_SECONDS_FLAGS_...
-  int          leapSecondsValue;
+typedef struct s_xl_timesync_leap_seconds
+{
+    unsigned int leapSecondsFlags; //!< see XL_TS_LEAP_SECONDS_FLAGS_...
+    int leapSecondsValue;
 } XLtsLeapSeconds;
 
-typedef struct s_xl_timesync_clock_uuid_ {
-  XLtsClkUuidFormat uuidFormat;
+typedef struct s_xl_timesync_clock_uuid_
+{
+    XLtsClkUuidFormat uuidFormat;
 
-  union {
-    struct {
-      unsigned int articleNumber;
-      unsigned int serialNumber;
-      unsigned int clkId;
-    } vectorDevUuid;
+    union {
+        struct
+        {
+            unsigned int articleNumber;
+            unsigned int serialNumber;
+            unsigned int clkId;
+        } vectorDevUuid;
 
-    struct {
-      unsigned char oui[3];
-      unsigned char extensionId[5];  // lower 3 Byte of MAC
-    } eui64Uuid;
+        struct
+        {
+            unsigned char oui[3];
+            unsigned char extensionId[5]; // lower 3 Byte of MAC
+        } eui64Uuid;
 
-    unsigned int raw[6];  // resvd for std UUID format (24 Byte)
-  } uuid;
+        unsigned int raw[6]; // resvd for std UUID format (24 Byte)
+    } uuid;
 
-  unsigned int reserved[4];
+    unsigned int reserved[4];
 } XLtsClkUuid;
 
-typedef struct s_xl_ts_domain_time {
-  XLuint64        domainTime;
-  XLtsTimeScale   timeScale;
-  XLtsLeapSeconds leapSeconds;
-  XLtsClkUuid     clusterMaster;
-  unsigned int    syncStatus;
+typedef struct s_xl_ts_domain_time
+{
+    XLuint64 domainTime;
+    XLtsTimeScale timeScale;
+    XLtsLeapSeconds leapSeconds;
+    XLtsClkUuid clusterMaster;
+    unsigned int syncStatus;
 } XLtsDomainTime;
 
 typedef int XLtsClockHandle;
 
-typedef enum e_xl_timesync_interface_version { XL_TS_INTERFACE_VERSION_INVL = 0, XL_TS_INTERFACE_VERSION_1 = 1 } XLtsInterfaceVersion;
+typedef enum e_xl_timesync_interface_version { XL_TS_INTERFACE_VERSION_INVL = 0,
+                                               XL_TS_INTERFACE_VERSION_1    = 1 } XLtsInterfaceVersion;
 
 #pragma pack(pop)
 #pragma pack(push, 1)
@@ -3333,74 +3411,78 @@ typedef enum e_xl_timesync_interface_version { XL_TS_INTERFACE_VERSION_INVL = 0,
 
 typedef unsigned short XLethEventTag;
 
-
-typedef struct s_xl_eth_frame {
-  unsigned short etherType; /* Ethernet type in network byte order */
-  unsigned char  payload[XL_ETH_PAYLOAD_SIZE_MAX];
+typedef struct s_xl_eth_frame
+{
+    unsigned short etherType; /* Ethernet type in network byte order */
+    unsigned char payload[XL_ETH_PAYLOAD_SIZE_MAX];
 } T_XL_ETH_FRAME;
 
 typedef union s_xl_eth_framedata {
-  unsigned char         rawData[XL_ETH_RAW_FRAME_SIZE_MAX];
-  T_XL_ETH_FRAME        ethFrame;
+    unsigned char rawData[XL_ETH_RAW_FRAME_SIZE_MAX];
+    T_XL_ETH_FRAME ethFrame;
 } T_XL_ETH_FRAMEDATA;
 
-typedef struct s_xl_eth_dataframe_rx {
-  unsigned int   frameIdentifier; /* FPGA internal identifier unique to every received frame */
-  unsigned int   frameDuration;   /* transmit duration of the Ethernet frame, in nanoseconds */
-  unsigned short dataLen;         /* Overall data length of <frameData> */
-  unsigned short reserved;     /* currently reserved field - not used, ignore */
-  unsigned int   reserved2[3]; /* currently reserved field - not used, ignore */
-  unsigned int       fcs;                              /* Frame Check Sum */
-  unsigned char      destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
-  unsigned char      sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
-  T_XL_ETH_FRAMEDATA frameData;
+typedef struct s_xl_eth_dataframe_rx
+{
+    unsigned int frameIdentifier;                   /* FPGA internal identifier unique to every received frame */
+    unsigned int frameDuration;                     /* transmit duration of the Ethernet frame, in nanoseconds */
+    unsigned short dataLen;                         /* Overall data length of <frameData> */
+    unsigned short reserved;                        /* currently reserved field - not used, ignore */
+    unsigned int reserved2[3];                      /* currently reserved field - not used, ignore */
+    unsigned int fcs;                               /* Frame Check Sum */
+    unsigned char destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
+    unsigned char sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
+    T_XL_ETH_FRAMEDATA frameData;
 } T_XL_ETH_DATAFRAME_RX;
 
-typedef struct s_xl_eth_dataframe_rxerror {
-  unsigned int   frameIdentifier; /* FPGA internal identifier unique to every received frame */
-  unsigned int   frameDuration;   /* transmit duration of the Ethernet frame, in nanoseconds */
-  unsigned int   errorFlags;      /* Error information (XL_ETH_RX_ERROR_*) */
-  unsigned short dataLen;         /* Overall data length of <frameData> */
-  unsigned short reserved;     /* currently reserved field - not used, ignore */
-  unsigned int   reserved2[3]; /* currently reserved field - not used, ignore */
-  unsigned int       fcs;                              /* Frame Check Sum */
-  unsigned char      destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
-  unsigned char      sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
-  T_XL_ETH_FRAMEDATA frameData;
+typedef struct s_xl_eth_dataframe_rxerror
+{
+    unsigned int frameIdentifier;                   /* FPGA internal identifier unique to every received frame */
+    unsigned int frameDuration;                     /* transmit duration of the Ethernet frame, in nanoseconds */
+    unsigned int errorFlags;                        /* Error information (XL_ETH_RX_ERROR_*) */
+    unsigned short dataLen;                         /* Overall data length of <frameData> */
+    unsigned short reserved;                        /* currently reserved field - not used, ignore */
+    unsigned int reserved2[3];                      /* currently reserved field - not used, ignore */
+    unsigned int fcs;                               /* Frame Check Sum */
+    unsigned char destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
+    unsigned char sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
+    T_XL_ETH_FRAMEDATA frameData;
 } T_XL_ETH_DATAFRAME_RX_ERROR;
 
-typedef struct s_xl_eth_dataframe_tx {
-  unsigned int frameIdentifier; /* FPGA internal identifier unique to every frame sent */
-  unsigned int   flags;        /* Flags to specify (see XL_ETH_DATAFRAME_FLAGS_) */
-  unsigned short dataLen;      /* Overall data length of <frameData> */
-  unsigned short reserved;     /* currently reserved field - must be set to "0" */
-  unsigned int   reserved2[4]; /* reserved field - must be set to "0" */
-  unsigned char      destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
-  unsigned char      sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
-  T_XL_ETH_FRAMEDATA frameData;
+typedef struct s_xl_eth_dataframe_tx
+{
+    unsigned int frameIdentifier;                   /* FPGA internal identifier unique to every frame sent */
+    unsigned int flags;                             /* Flags to specify (see XL_ETH_DATAFRAME_FLAGS_) */
+    unsigned short dataLen;                         /* Overall data length of <frameData> */
+    unsigned short reserved;                        /* currently reserved field - must be set to "0" */
+    unsigned int reserved2[4];                      /* reserved field - must be set to "0" */
+    unsigned char destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
+    unsigned char sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
+    T_XL_ETH_FRAMEDATA frameData;
 } T_XL_ETH_DATAFRAME_TX;
 
-
-typedef struct s_xl_eth_dataframe_tx_event {
-  unsigned int frameIdentifier; /* FPGA internal identifier unique to every frame sent */
-  unsigned int   flags;         /* Flags (see XL_ETH_DATAFRAME_FLAGS_) */
-  unsigned short dataLen;       /* Overall data length of <frameData> */
-  unsigned short reserved;      /* currently reserved field - not used, ignore */
-  unsigned int   frameDuration; /* transmit duration of the Ethernet frame, in nanoseconds */
-  unsigned int   reserved2[2];  /* currently reserved field - not used, ignore */
-  unsigned int       fcs;                              /* Frame Check Sum */
-  unsigned char      destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
-  unsigned char      sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
-  T_XL_ETH_FRAMEDATA frameData;
+typedef struct s_xl_eth_dataframe_tx_event
+{
+    unsigned int frameIdentifier;                   /* FPGA internal identifier unique to every frame sent */
+    unsigned int flags;                             /* Flags (see XL_ETH_DATAFRAME_FLAGS_) */
+    unsigned short dataLen;                         /* Overall data length of <frameData> */
+    unsigned short reserved;                        /* currently reserved field - not used, ignore */
+    unsigned int frameDuration;                     /* transmit duration of the Ethernet frame, in nanoseconds */
+    unsigned int reserved2[2];                      /* currently reserved field - not used, ignore */
+    unsigned int fcs;                               /* Frame Check Sum */
+    unsigned char destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
+    unsigned char sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
+    T_XL_ETH_FRAMEDATA frameData;
 } T_XL_ETH_DATAFRAME_TX_EVENT;
 
 typedef T_XL_ETH_DATAFRAME_TX_EVENT T_XL_ETH_DATAFRAME_TXACK;
 typedef T_XL_ETH_DATAFRAME_TX_EVENT T_XL_ETH_DATAFRAME_TXACK_SW;
 typedef T_XL_ETH_DATAFRAME_TX_EVENT T_XL_ETH_DATAFRAME_TXACK_OTHERAPP;
 
-typedef struct s_xl_eth_dataframe_txerror {
-  unsigned int                errorType; /* Error information */
-  T_XL_ETH_DATAFRAME_TX_EVENT txFrame;
+typedef struct s_xl_eth_dataframe_txerror
+{
+    unsigned int errorType; /* Error information */
+    T_XL_ETH_DATAFRAME_TX_EVENT txFrame;
 } T_XL_ETH_DATAFRAME_TX_ERROR;
 
 typedef T_XL_ETH_DATAFRAME_TX_ERROR T_XL_ETH_DATAFRAME_TX_ERR_SW;
@@ -3410,117 +3492,124 @@ typedef T_XL_ETH_DATAFRAME_TX_ERROR T_XL_ETH_DATAFRAME_TX_ERR_OTHERAPP;
 
 #pragma pack(push, 4)
 
-typedef struct s_xl_eth_config_result {
-  unsigned int result;
+typedef struct s_xl_eth_config_result
+{
+    unsigned int result;
 } T_XL_ETH_CONFIG_RESULT;
 
-typedef struct s_xl_eth_channel_status {
-  unsigned int link;            /* (XL_ETH_STATUS_LINK_*)      Ethernet connection status */
-  unsigned int speed;           /* (XL_ETH_STATUS_SPEED_*)     Link connection speed */
-  unsigned int duplex;          /* (XL_ETH_STATUS_DUPLEX_*)    Ethernet duplex mode. 1000Base-T always uses full duplex. */
-  unsigned int mdiType;         /* (XL_ETH_STATUS_MDI_*)       Currently active MDI-mode */
-  unsigned int activeConnector; /* (XL_ETH_STATUS_CONNECTOR_*) Connector (plug) to use (BroadR-REACH or RJ-45). */
-  unsigned int activePhy;       /* (XL_ETH_STATUS_PHY_*)       Currently active physical layer */
-  unsigned int clockMode;       /* (XL_ETH_STATUS_CLOCK_*)     When in 1000Base-T or BroadR-mode, currently active mode */
-  unsigned int brPairs;         /* (XL_ETH_STATUS_BR_PAIR_*)   When in BroadR-mode, number of used cable pairs */
+typedef struct s_xl_eth_channel_status
+{
+    unsigned int link;            /* (XL_ETH_STATUS_LINK_*)      Ethernet connection status */
+    unsigned int speed;           /* (XL_ETH_STATUS_SPEED_*)     Link connection speed */
+    unsigned int duplex;          /* (XL_ETH_STATUS_DUPLEX_*)    Ethernet duplex mode. 1000Base-T always uses full duplex. */
+    unsigned int mdiType;         /* (XL_ETH_STATUS_MDI_*)       Currently active MDI-mode */
+    unsigned int activeConnector; /* (XL_ETH_STATUS_CONNECTOR_*) Connector (plug) to use (BroadR-REACH or RJ-45). */
+    unsigned int activePhy;       /* (XL_ETH_STATUS_PHY_*)       Currently active physical layer */
+    unsigned int clockMode;       /* (XL_ETH_STATUS_CLOCK_*)     When in 1000Base-T or BroadR-mode, currently active mode */
+    unsigned int brPairs;         /* (XL_ETH_STATUS_BR_PAIR_*)   When in BroadR-mode, number of used cable pairs */
 } T_XL_ETH_CHANNEL_STATUS;
 
-typedef struct s_xl_eth_lostevent {
-  XLethEventTag  eventTypeLost; /* Type of event lost */
-  unsigned short reserved;      /* currently reserved field - not used */
-  unsigned int   reason;        /* Reason code why the events were lost (0 means unknown) */
+typedef struct s_xl_eth_lostevent
+{
+    XLethEventTag eventTypeLost; /* Type of event lost */
+    unsigned short reserved;     /* currently reserved field - not used */
+    unsigned int reason;         /* Reason code why the events were lost (0 means unknown) */
 
-  union {
-    struct {
-      unsigned int  frameIdentifier;                  /* FPGA internal identifier unique to every frame sent */
-      unsigned int  fcs;                              /* Frame Check Sum */
-      unsigned char sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
-      unsigned char reserved[2];                      /* currently reserved field - not used */
-    } txAck, txAckSw;
+    union {
+        struct
+        {
+            unsigned int frameIdentifier;                   /* FPGA internal identifier unique to every frame sent */
+            unsigned int fcs;                               /* Frame Check Sum */
+            unsigned char sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
+            unsigned char reserved[2];                      /* currently reserved field - not used */
+        } txAck, txAckSw;
 
-    struct {
-      unsigned int  errorType;
-      unsigned int  frameIdentifier;                  /* FPGA internal identifier unique to every frame sent */
-      unsigned int  fcs;                              /* Frame Check Sum */
-      unsigned char sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
-      unsigned char reserved[2];                      /* currently reserved field - not used */
-    } txError, txErrorSw;
+        struct
+        {
+            unsigned int errorType;
+            unsigned int frameIdentifier;                   /* FPGA internal identifier unique to every frame sent */
+            unsigned int fcs;                               /* Frame Check Sum */
+            unsigned char sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
+            unsigned char reserved[2];                      /* currently reserved field - not used */
+        } txError, txErrorSw;
 
-    unsigned int reserved[20];
-  } eventInfo;
+        unsigned int reserved[20];
+    } eventInfo;
 } T_XL_ETH_LOSTEVENT;
 
-typedef struct s_xl_eth_event {
-  unsigned int   size;          // 4 - overall size of the complete event, depending on event type and piggybacked data
-  XLethEventTag  tag;           // 2 - type of the event
-  unsigned short channelIndex;  // 2
-  unsigned int   userHandle;    // 4
-  unsigned short flagsChip;     // 2
-  unsigned short reserved;      // 2
-  XLuint64 reserved1;  // 8
-  XLuint64 timeStampSync;  // 8 - timestamp which is synchronized by the driver
-                           // ---------
-                           // 32 bytes -> XL_ETH_EVENT_SIZE_HEADER
+typedef struct s_xl_eth_event
+{
+    unsigned int size;           // 4 - overall size of the complete event, depending on event type and piggybacked data
+    XLethEventTag tag;           // 2 - type of the event
+    unsigned short channelIndex; // 2
+    unsigned int userHandle;     // 4
+    unsigned short flagsChip;    // 2
+    unsigned short reserved;     // 2
+    XLuint64 reserved1;          // 8
+    XLuint64 timeStampSync;      // 8 - timestamp which is synchronized by the driver
+                                 // ---------
+                                 // 32 bytes -> XL_ETH_EVENT_SIZE_HEADER
 
-  union s_xl_eth_tag_data {
-    unsigned char               rawData[XL_ETH_EVENT_SIZE_MAX];
-    T_XL_ETH_DATAFRAME_RX       frameRxOk;     //(tag==XL_ETH_EVENT_TAG_FRAMERX)              Frame received from network
-    T_XL_ETH_DATAFRAME_RX_ERROR frameRxError;  //(tag==XL_ETH_EVENT_TAG_FRAMERX_ERROR)        Erroneous frame received from network
-    T_XL_ETH_DATAFRAME_TXACK    frameTxAck;    //(tag==XL_ETH_EVENT_TAG_FRAMETX_ACK)          ACK for frame sent by application
-    T_XL_ETH_DATAFRAME_TXACK_SW frameTxAckSw;  //(tag==XL_ETH_EVENT_TAG_FRAMETX_ACK_SWITCH)   ACK for frame sent by switch
-    T_XL_ETH_DATAFRAME_TXACK_OTHERAPP
-    frameTxAckOtherApp;  //(tag==XL_ETH_EVENT_TAG_FRAMETX_ERROR_OTHER_APP) ACK for frame sent by another application
-    T_XL_ETH_DATAFRAME_TX_ERROR
-    frameTxError;  //(tag==XL_ETH_EVENT_TAG_FRAMETX_ERROR)        NACK for frame sent by application (frame could not be transmitted)
-    T_XL_ETH_DATAFRAME_TX_ERR_SW
-    frameTxErrorSw;  //(tag==XL_ETH_EVENT_TAG_FRAMETX_ERROR_SWITCH) NACK for frame sent by switch. May indicate internal processing failure
-                     //(e.g. queue full condition)
-    T_XL_ETH_DATAFRAME_TX_ERR_OTHERAPP
-    frameTxErrorOtherApp;  //(tag==XL_ETH_EVENT_TAG_FRAMETX_ERROR_OTHER_APP) NACK for frame sent by another application
-    T_XL_ETH_CONFIG_RESULT  configResult;
-    T_XL_ETH_CHANNEL_STATUS channelStatus;
-    XL_SYNC_PULSE_EV        syncPulse;
-    T_XL_ETH_LOSTEVENT      lostEvent;  //(tag==XL_ETH_EVENT_TAG_LOSTEVENT)          Indication that one or more events have been lost
-  } tagData;
+    union s_xl_eth_tag_data {
+        unsigned char rawData[XL_ETH_EVENT_SIZE_MAX];
+        T_XL_ETH_DATAFRAME_RX frameRxOk;          //(tag==XL_ETH_EVENT_TAG_FRAMERX)              Frame received from network
+        T_XL_ETH_DATAFRAME_RX_ERROR frameRxError; //(tag==XL_ETH_EVENT_TAG_FRAMERX_ERROR)        Erroneous frame received from network
+        T_XL_ETH_DATAFRAME_TXACK frameTxAck;      //(tag==XL_ETH_EVENT_TAG_FRAMETX_ACK)          ACK for frame sent by application
+        T_XL_ETH_DATAFRAME_TXACK_SW frameTxAckSw; //(tag==XL_ETH_EVENT_TAG_FRAMETX_ACK_SWITCH)   ACK for frame sent by switch
+        T_XL_ETH_DATAFRAME_TXACK_OTHERAPP
+        frameTxAckOtherApp; //(tag==XL_ETH_EVENT_TAG_FRAMETX_ERROR_OTHER_APP) ACK for frame sent by another application
+        T_XL_ETH_DATAFRAME_TX_ERROR
+        frameTxError; //(tag==XL_ETH_EVENT_TAG_FRAMETX_ERROR)        NACK for frame sent by application (frame could not be transmitted)
+        T_XL_ETH_DATAFRAME_TX_ERR_SW
+        frameTxErrorSw; //(tag==XL_ETH_EVENT_TAG_FRAMETX_ERROR_SWITCH) NACK for frame sent by switch. May indicate internal processing failure
+                        //(e.g. queue full condition)
+        T_XL_ETH_DATAFRAME_TX_ERR_OTHERAPP
+        frameTxErrorOtherApp; //(tag==XL_ETH_EVENT_TAG_FRAMETX_ERROR_OTHER_APP) NACK for frame sent by another application
+        T_XL_ETH_CONFIG_RESULT configResult;
+        T_XL_ETH_CHANNEL_STATUS channelStatus;
+        XL_SYNC_PULSE_EV syncPulse;
+        T_XL_ETH_LOSTEVENT lostEvent; //(tag==XL_ETH_EVENT_TAG_LOSTEVENT)          Indication that one or more events have been lost
+    } tagData;
 } T_XL_ETH_EVENT;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Ethernet Network-based mode events
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct s_xl_net_eth_dataframe_rx {
-  unsigned int   frameDuration; /* Transmit duration of the Ethernet frame, in nanoseconds */
-  unsigned short dataLen;       /* Overall data length of <frameData> */
-  unsigned char reserved1; /* currently reserved field - not used, ignore */
-  unsigned char reserved2; /* currently reserved field - not used, ignore */
-  unsigned int       errorFlags;                       /* see XL_ETH_NETWORK_RX_ERROR_xxx and XL_ETH_NETWORK_TX_ERROR_xxx */
-  unsigned int       reserved3;                        /* currently reserved field - not used, ignore */
-  unsigned int       fcs;                              /* Frame Check Sum */
-  unsigned char      destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
-  unsigned char      sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
-  T_XL_ETH_FRAMEDATA frameData;
+typedef struct s_xl_net_eth_dataframe_rx
+{
+    unsigned int frameDuration;                     /* Transmit duration of the Ethernet frame, in nanoseconds */
+    unsigned short dataLen;                         /* Overall data length of <frameData> */
+    unsigned char reserved1;                        /* currently reserved field - not used, ignore */
+    unsigned char reserved2;                        /* currently reserved field - not used, ignore */
+    unsigned int errorFlags;                        /* see XL_ETH_NETWORK_RX_ERROR_xxx and XL_ETH_NETWORK_TX_ERROR_xxx */
+    unsigned int reserved3;                         /* currently reserved field - not used, ignore */
+    unsigned int fcs;                               /* Frame Check Sum */
+    unsigned char destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
+    unsigned char sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
+    T_XL_ETH_FRAMEDATA frameData;
 } T_XL_NET_ETH_DATAFRAME_RX;
 
-typedef struct s_xl_net_eth_dataframe_rx_error {
-  unsigned int   frameDuration; /* Transmit duration of the Ethernet frame, in nanoseconds */
-  unsigned int   errorFlags;    /* see XL_ETH_NETWORK_RX_ERROR_xxx and XL_ETH_NETWORK_TX_ERROR_xxx */
-  unsigned short dataLen;       /* Overall data length of <frameData> */
-  unsigned char reserved1; /* currently reserved field - not used, ignore */
-  unsigned char reserved2; /* currently reserved field - not used, ignore */
-  unsigned int       reserved3[2];                     /* currently reserved field - not used, ignore */
-  unsigned int       fcs;                              /* Frame Check Sum */
-  unsigned char      destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
-  unsigned char      sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
-  T_XL_ETH_FRAMEDATA frameData;
+typedef struct s_xl_net_eth_dataframe_rx_error
+{
+    unsigned int frameDuration;                     /* Transmit duration of the Ethernet frame, in nanoseconds */
+    unsigned int errorFlags;                        /* see XL_ETH_NETWORK_RX_ERROR_xxx and XL_ETH_NETWORK_TX_ERROR_xxx */
+    unsigned short dataLen;                         /* Overall data length of <frameData> */
+    unsigned char reserved1;                        /* currently reserved field - not used, ignore */
+    unsigned char reserved2;                        /* currently reserved field - not used, ignore */
+    unsigned int reserved3[2];                      /* currently reserved field - not used, ignore */
+    unsigned int fcs;                               /* Frame Check Sum */
+    unsigned char destMAC[XL_ETH_MACADDR_OCTETS];   /* Destination MAC address */
+    unsigned char sourceMAC[XL_ETH_MACADDR_OCTETS]; /* Source MAC address */
+    T_XL_ETH_FRAMEDATA frameData;
 } T_XL_NET_ETH_DATAFRAME_RX_ERROR;
 
-
 // RX events
-typedef T_XL_NET_ETH_DATAFRAME_RX       T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ACK;
+typedef T_XL_NET_ETH_DATAFRAME_RX T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ACK;
 typedef T_XL_NET_ETH_DATAFRAME_RX_ERROR T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ERROR;
-typedef T_XL_NET_ETH_DATAFRAME_RX       T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX;
+typedef T_XL_NET_ETH_DATAFRAME_RX T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX;
 typedef T_XL_NET_ETH_DATAFRAME_RX_ERROR T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX_ERROR;
-typedef T_XL_NET_ETH_DATAFRAME_RX       T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX;
+typedef T_XL_NET_ETH_DATAFRAME_RX T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX;
 typedef T_XL_NET_ETH_DATAFRAME_RX_ERROR T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX_ERROR;
 
 // TX events
@@ -3529,52 +3618,54 @@ typedef T_XL_ETH_DATAFRAME_TX T_XL_NET_ETH_DATAFRAME_TX;
 // common events
 typedef T_XL_ETH_CHANNEL_STATUS T_XL_NET_ETH_CHANNEL_STATUS;
 
+typedef struct s_xl_net_eth_event
+{
+    unsigned int size;           // 4 - overall size of the complete event
+    XLethEventTag tag;           // 2 - type of the event
+    unsigned short channelIndex; // 2 - channel index
+    unsigned int userHandle;     // 4 - application specific user handle
+    unsigned short flagsChip;    // 2 - flags
+    unsigned short reserved;     // 2 - currently reserved field - not used
 
-typedef struct s_xl_net_eth_event {
-  unsigned int   size;          // 4 - overall size of the complete event
-  XLethEventTag  tag;           // 2 - type of the event
-  unsigned short channelIndex;  // 2 - channel index
-  unsigned int   userHandle;    // 4 - application specific user handle
-  unsigned short flagsChip;     // 2 - flags
-  unsigned short reserved;      // 2 - currently reserved field - not used
+    XLuint64 reserved1;     // 8 - currently reserved field - not used
+    XLuint64 timeStampSync; // 8 - synchronized TS by the driver
 
-  XLuint64 reserved1;      // 8 - currently reserved field - not used
-  XLuint64 timeStampSync;  // 8 - synchronized TS by the driver
+    // ---------
+    // 32 bytes -> XL_ETH_EVENT_SIZE_HEADER
 
-  // ---------
-  // 32 bytes -> XL_ETH_EVENT_SIZE_HEADER
-
-  union s_xl_eth_net_tag_data {
-    unsigned char                               rawData[XL_ETH_EVENT_SIZE_MAX];
-    T_XL_NET_ETH_DATAFRAME_RX                   frameSimRx;
-    T_XL_NET_ETH_DATAFRAME_RX_ERROR             frameSimRxError;
-    T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ACK    frameSimTxAck;
-    T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ERROR  frameSimTxError;
-    T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX       frameMeasureRx;
-    T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX_ERROR frameMeasureRxError;
-    T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX       frameMeasureTx;
-    T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX_ERROR frameMeasureTxError;
-    T_XL_NET_ETH_CHANNEL_STATUS                 channelStatus;
-  } tagData;
+    union s_xl_eth_net_tag_data {
+        unsigned char rawData[XL_ETH_EVENT_SIZE_MAX];
+        T_XL_NET_ETH_DATAFRAME_RX frameSimRx;
+        T_XL_NET_ETH_DATAFRAME_RX_ERROR frameSimRxError;
+        T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ACK frameSimTxAck;
+        T_XL_NET_ETH_DATAFRAME_SIMULATION_TX_ERROR frameSimTxError;
+        T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX frameMeasureRx;
+        T_XL_NET_ETH_DATAFRAME_MEASUREMENT_RX_ERROR frameMeasureRxError;
+        T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX frameMeasureTx;
+        T_XL_NET_ETH_DATAFRAME_MEASUREMENT_TX_ERROR frameMeasureTxError;
+        T_XL_NET_ETH_CHANNEL_STATUS channelStatus;
+    } tagData;
 } T_XL_NET_ETH_EVENT;
 
-typedef struct {
-  unsigned int speed; /* (XL_ETH_MODE_SPEED_*)       Connection speed setting */
-  unsigned int
-    duplex; /* (XL_ETH_MODE_DUPLEX_*)      Duplex mode setting. Not relevant for BroadR-REACH mode, set to "nochange" or "auto". */
-  unsigned int connector; /* (XL_ETH_MODE_CONNECTOR_*)   Connector to use  */
-  unsigned int phy;       /* (XL_ETH_MODE_PHY_*)         Physical interface to enable  */
-  unsigned int clockMode; /* (XL_ETH_MODE_CLOCK_*)       Master or slave clock mode setting (1000Base-T/BroadR-REACH mode only). */
-  unsigned int mdiMode;   /* (XL_ETH_MODE_MDI_*)         Currently active MDI-mode */
-  unsigned int brPairs;   /* (XL_ETH_MODE_BR_PAIR_*)     Number of cable pairs to use (BroadR-REACH mode only). */
+typedef struct
+{
+    unsigned int speed; /* (XL_ETH_MODE_SPEED_*)       Connection speed setting */
+    unsigned int
+        duplex;             /* (XL_ETH_MODE_DUPLEX_*)      Duplex mode setting. Not relevant for BroadR-REACH mode, set to "nochange" or "auto". */
+    unsigned int connector; /* (XL_ETH_MODE_CONNECTOR_*)   Connector to use  */
+    unsigned int phy;       /* (XL_ETH_MODE_PHY_*)         Physical interface to enable  */
+    unsigned int clockMode; /* (XL_ETH_MODE_CLOCK_*)       Master or slave clock mode setting (1000Base-T/BroadR-REACH mode only). */
+    unsigned int mdiMode;   /* (XL_ETH_MODE_MDI_*)         Currently active MDI-mode */
+    unsigned int brPairs;   /* (XL_ETH_MODE_BR_PAIR_*)     Number of cable pairs to use (BroadR-REACH mode only). */
 } T_XL_ETH_CONFIG;
 
 #pragma pack(pop)
 
 #pragma pack(push, 4)
 
-typedef struct {
-  unsigned char address[XL_ETH_MACADDR_OCTETS];
+typedef struct
+{
+    unsigned char address[XL_ETH_MACADDR_OCTETS];
 } T_XL_ETH_MAC_ADDRESS;
 
 #pragma pack(pop)
@@ -3588,18 +3679,18 @@ typedef struct {
 #define MOST150_SYNC_ALLOC_INFO_SIZE                (unsigned int)372
 
 #define XL_MOST150_CTRL_PAYLOAD_MAX_SIZE            (unsigned short)45
-#define XL_MOST150_ASYNC_PAYLOAD_MAX_SIZE           (unsigned short)1524  // maximum valid length (s. INIC User Manual)
-#define XL_MOST150_ETHERNET_PAYLOAD_MAX_SIZE        (unsigned short)1506  // maximum valid length (s. INIC User Manual)
-#define XL_MOST150_ASYNC_SEND_PAYLOAD_MAX_SIZE      (unsigned short)1600  // maximum length for sending a MDP
-#define XL_MOST150_ETHERNET_SEND_PAYLOAD_MAX_SIZE   (unsigned short)1600  // maximum length for sending a MEP
+#define XL_MOST150_ASYNC_PAYLOAD_MAX_SIZE           (unsigned short)1524 // maximum valid length (s. INIC User Manual)
+#define XL_MOST150_ETHERNET_PAYLOAD_MAX_SIZE        (unsigned short)1506 // maximum valid length (s. INIC User Manual)
+#define XL_MOST150_ASYNC_SEND_PAYLOAD_MAX_SIZE      (unsigned short)1600 // maximum length for sending a MDP
+#define XL_MOST150_ETHERNET_SEND_PAYLOAD_MAX_SIZE   (unsigned short)1600 // maximum length for sending a MEP
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Flags for the flagsChip parameter
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-#define XL_MOST150_VN2640                           (unsigned short)0x0001  //!< common VN2640 event
-#define XL_MOST150_INIC                             (unsigned short)0x0002  //!< event was generated by INIC
-#define XL_MOST150_SPY                              (unsigned short)0x0004  //!< event was generated by spy
-#define XL_MOST150_QUEUE_OVERFLOW                   (unsigned short)0x0100  //!< queue overflow occured (some events are lost)
+#define XL_MOST150_VN2640                           (unsigned short)0x0001 //!< common VN2640 event
+#define XL_MOST150_INIC                             (unsigned short)0x0002 //!< event was generated by INIC
+#define XL_MOST150_SPY                              (unsigned short)0x0004 //!< event was generated by spy
+#define XL_MOST150_QUEUE_OVERFLOW                   (unsigned short)0x0100 //!< queue overflow occured (some events are lost)
 
 // XL_MOST150_EVENT_SOURCE_EV.mask
 #define XL_MOST150_SOURCE_SPECIAL_NODE              (unsigned int)0x00000001
@@ -3653,13 +3744,13 @@ typedef struct {
 #define XL_MOST150_SPECIAL_NODE_MASK_CHANGED        (unsigned int)0x00003FFF
 
 // Retry Parameters
-#define XL_MOST150_CTRL_RETRY_TIME_MIN              (unsigned int)3  // Time Unit: 16 MOST Frames
+#define XL_MOST150_CTRL_RETRY_TIME_MIN              (unsigned int)3 // Time Unit: 16 MOST Frames
 #define XL_MOST150_CTRL_RETRY_TIME_MAX              (unsigned int)31
 #define XL_MOST150_CTRL_SEND_ATTEMPT_MIN            (unsigned int)1
 #define XL_MOST150_CTRL_SEND_ATTEMPT_MAX            (unsigned int)16
-#define XL_MOST150_ASYNC_RETRY_TIME_MIN             (unsigned int)0  // Time Unit: 1 MOST Frame
+#define XL_MOST150_ASYNC_RETRY_TIME_MIN             (unsigned int)0 // Time Unit: 1 MOST Frame
 #define XL_MOST150_ASYNC_RETRY_TIME_MAX             (unsigned int)255
-#define XL_MOST150_ASYNC_SEND_ATTEMPT_MIN           (unsigned int)1  // For both MDP and MEP
+#define XL_MOST150_ASYNC_SEND_ATTEMPT_MIN           (unsigned int)1 // For both MDP and MEP
 #define XL_MOST150_ASYNC_SEND_ATTEMPT_MAX           (unsigned int)16
 
 // NIStates
@@ -3698,22 +3789,22 @@ typedef struct {
 // XL_MOST150_ETHERNET_SPY_EV.pAck
 #define XL_MOST150_PACK_OK                          (unsigned int)0x00000004
 #define XL_MOST150_PACK_BUFFER_FULL                 (unsigned int)0x00000001
-#define XL_MOST150_PACK_NO_RESPONSE                 (unsigned int)0x00000000  // maybe spy before receiver
+#define XL_MOST150_PACK_NO_RESPONSE                 (unsigned int)0x00000000 // maybe spy before receiver
 
 // XL_MOST150_CTRL_SPY_EV.cAck
 // XL_MOST150_ASYNC_SPY_EV.cAck
 // XL_MOST150_ETHERNET_SPY_EV.cAck
 #define XL_MOST150_CACK_OK                          (unsigned int)0x00000004
 #define XL_MOST150_CACK_CRC_ERROR                   (unsigned int)0x00000001
-#define XL_MOST150_CACK_NO_RESPONSE                 (unsigned int)0x00000000  // maybe spy before receiver
+#define XL_MOST150_CACK_NO_RESPONSE                 (unsigned int)0x00000000 // maybe spy before receiver
 
-//XL_MOST150_ASYNC_RX_EV.length
+// XL_MOST150_ASYNC_RX_EV.length
 #define XL_MOST150_ASYNC_INVALID_RX_LENGTH \
-  (unsigned int)0x00008000  // flag indicating a received MDP with length > XL_MOST150_ASYNC_PAYLOAD_MAX_SIZE
+    (unsigned int)0x00008000 // flag indicating a received MDP with length > XL_MOST150_ASYNC_PAYLOAD_MAX_SIZE
 
-//XL_MOST150_ETHERNET_RX_EV.length
+// XL_MOST150_ETHERNET_RX_EV.length
 #define XL_MOST150_ETHERNET_INVALID_RX_LENGTH \
-  (unsigned int)0x80000000  // flag indicating a received MEP with length > XL_MOST150_ETHERNET_PAYLOAD_MAX_SIZE
+    (unsigned int)0x80000000 // flag indicating a received MEP with length > XL_MOST150_ETHERNET_PAYLOAD_MAX_SIZE
 
 // XL_MOST150_TX_LIGHT_EV.light
 #define XL_MOST150_LIGHT_OFF                             (unsigned int)0x00000000
@@ -3721,7 +3812,7 @@ typedef struct {
 #define XL_MOST150_LIGHT_MODULATED                       (unsigned int)0x00000002
 
 // XL_MOST150_RXLIGHT_LOCKSTATUS_EV.status
-//#define XL_MOST150_LIGHT_OFF                             (unsigned int) 0x00000000
+// #define XL_MOST150_LIGHT_OFF                             (unsigned int) 0x00000000
 #define XL_MOST150_LIGHT_ON_UNLOCK                       (unsigned int)0x00000003
 #define XL_MOST150_LIGHT_ON_LOCK                         (unsigned int)0x00000004
 #define XL_MOST150_LIGHT_ON_STABLE_LOCK                  (unsigned int)0x00000005
@@ -3798,13 +3889,13 @@ typedef struct {
 // Maximum number of states that can be configured for a sequence
 #define XL_MOST150_ECL_SEQ_NUM_STATES_MAX                200
 // Value range for duration of ECL sequence states
-#define XL_MOST150_ECL_SEQ_DURATION_MIN                  1       // -> 100 us
-#define XL_MOST150_ECL_SEQ_DURATION_MAX                  655350  // -> 65535 ms
+#define XL_MOST150_ECL_SEQ_DURATION_MIN                  1      // -> 100 us
+#define XL_MOST150_ECL_SEQ_DURATION_MAX                  655350 // -> 65535 ms
 
 // xlMost150EclSetGlitchFilter
 // Value range for setting the glitch filter
-#define XL_MOST150_ECL_GLITCH_FILTER_MIN                 50     // -> 50 us
-#define XL_MOST150_ECL_GLITCH_FILTER_MAX                 50000  // -> 50 ms
+#define XL_MOST150_ECL_GLITCH_FILTER_MIN                 50    // -> 50 us
+#define XL_MOST150_ECL_GLITCH_FILTER_MAX                 50000 // -> 50 ms
 
 // XL_MOST150_GEN_LIGHT_ERROR_EV.stressStarted
 // XL_MOST150_GEN_LOCK_ERROR_EV.stressStarted
@@ -3825,7 +3916,6 @@ typedef struct {
 #define XL_MOST150_BUSLOAD_COUNTER_TYPE_3_BYTE           0x03
 #define XL_MOST150_BUSLOAD_COUNTER_TYPE_4_BYTE           0x04
 
-
 // XL_MOST150_SPDIF_MODE_EV.spdifMode
 #define XL_MOST150_SPDIF_MODE_SLAVE                      (unsigned int)0x00000000
 #define XL_MOST150_SPDIF_MODE_MASTER                     (unsigned int)0x00000001
@@ -3845,8 +3935,8 @@ typedef struct {
 #define XL_MOST150_SHUTDOWN_NO_ERRORINFO                 (unsigned int)0xFFFFFFFF
 
 /// Values for synchronous streaming API
-#define XL_MOST150_STREAM_RX_DATA                        0  // RX streaming: MOST -> PC
-#define XL_MOST150_STREAM_TX_DATA                        1  // TX streaming: PC -> MOST
+#define XL_MOST150_STREAM_RX_DATA                        0 // RX streaming: MOST -> PC
+#define XL_MOST150_STREAM_TX_DATA                        1 // TX streaming: PC -> MOST
 
 #define XL_MOST150_STREAM_INVALID_HANDLE                 0
 
@@ -3855,10 +3945,10 @@ typedef struct {
 #define XL_MOST150_STREAM_STATE_OPENED                   0x02
 #define XL_MOST150_STREAM_STATE_STARTED                  0x03
 #define XL_MOST150_STREAM_STATE_STOPPED                  0x04
-#define XL_MOST150_STREAM_STATE_START_PENDING            0x05  // waiting for result from hw
-#define XL_MOST150_STREAM_STATE_STOP_PENDING             0x06  // waiting for result from hw
-#define XL_MOST150_STREAM_STATE_OPEN_PENDING             0x07  // waiting for result from hw
-#define XL_MOST150_STREAM_STATE_CLOSE_PENDING            0x08  // waiting for result from hw
+#define XL_MOST150_STREAM_STATE_START_PENDING            0x05 // waiting for result from hw
+#define XL_MOST150_STREAM_STATE_STOP_PENDING             0x06 // waiting for result from hw
+#define XL_MOST150_STREAM_STATE_OPEN_PENDING             0x07 // waiting for result from hw
+#define XL_MOST150_STREAM_STATE_CLOSE_PENDING            0x08 // waiting for result from hw
 
 // TX Streaming: Maximum number of bytes that can be streamed per MOST frame
 #define XL_MOST150_STREAM_TX_BYTES_PER_FRAME_MIN         1
@@ -3892,13 +3982,13 @@ typedef struct {
 #define XL_MOST150_STREAM_BUFFER_TX_FIFO_CLEARED         2
 
 // XL_MOST150_STREAM_RX_BUFFER_EV.status
-//#define XL_MOST150_STREAM_BUFFER_ERROR_NO_ERROR          0
+// #define XL_MOST150_STREAM_BUFFER_ERROR_NO_ERROR          0
 #define XL_MOST150_STREAM_BUFFER_ERROR_STOP_BY_APP       1
 #define XL_MOST150_STREAM_BUFFER_ERROR_MOST_SIGNAL_OFF   2
 #define XL_MOST150_STREAM_BUFFER_ERROR_UNLOCK            3
 #define XL_MOST150_STREAM_BUFFER_ERROR_CL_MISSING        4
 #define XL_MOST150_STREAM_BUFFER_ERROR_ALL_CL_MISSING    5
-#define XL_MOST150_STREAM_BUFFER_ERROR_OVERFLOW          128  // overflow bit
+#define XL_MOST150_STREAM_BUFFER_ERROR_OVERFLOW          128 // overflow bit
 
 // latency values
 #define XL_MOST150_STREAM_LATENCY_VERY_LOW               0
@@ -3906,7 +3996,6 @@ typedef struct {
 #define XL_MOST150_STREAM_LATENCY_MEDIUM                 2
 #define XL_MOST150_STREAM_LATENCY_HIGH                   3
 #define XL_MOST150_STREAM_LATENCY_VERY_HIGH              4
-
 
 // bypass stress maximum/minimum timing parameter in msec
 #define XL_MOST150_BYPASS_STRESS_TIME_MIN                10
@@ -3918,14 +4007,12 @@ typedef struct {
 #define XL_MOST150_BYPASS_STRESS_STOPPED_LIGHT_OFF       2
 #define XL_MOST150_BYPASS_STRESS_STOPPED_DEVICE_MODE     3
 
-
 // xlMost150SetSSOResult
 // XL_MOST150_SSO_RESULT_EV.status
 #define XL_MOST150_SSO_RESULT_NO_RESULT                  (unsigned int)0x00000000
 #define XL_MOST150_SSO_RESULT_NO_FAULT_SAVED             (unsigned int)0x00000001
 #define XL_MOST150_SSO_RESULT_SUDDEN_SIGNAL_OFF          (unsigned int)0x00000002
 #define XL_MOST150_SSO_RESULT_CRITICAL_UNLOCK            (unsigned int)0x00000003
-
 
 #pragma pack(push, 1)
 
@@ -3935,482 +4022,532 @@ typedef struct {
 
 typedef unsigned short XLmostEventTag;
 
-
-typedef struct s_xl_most150_event_source {
-  unsigned int sourceMask;
+typedef struct s_xl_most150_event_source
+{
+    unsigned int sourceMask;
 } XL_MOST150_EVENT_SOURCE_EV;
 
-typedef struct s_xl_most150_device_mode {
-  unsigned int deviceMode;
+typedef struct s_xl_most150_device_mode
+{
+    unsigned int deviceMode;
 } XL_MOST150_DEVICE_MODE_EV;
 
-typedef struct s_xl_most150_frequency {
-  unsigned int frequency;
+typedef struct s_xl_most150_frequency
+{
+    unsigned int frequency;
 } XL_MOST150_FREQUENCY_EV;
 
-typedef struct s_xl_most150_special_node_info {
-  unsigned int   changeMask;
-  unsigned short nodeAddress;
-  unsigned short groupAddress;
-  unsigned char  npr;
-  unsigned char  mpr;
-  unsigned char  sbc;
-  unsigned char  ctrlRetryTime;
-  unsigned char  ctrlSendAttempts;
-  unsigned char  asyncRetryTime;
-  unsigned char  asyncSendAttempts;
-  unsigned char  macAddr[6];
-  unsigned char  nprSpy;
-  unsigned char  mprSpy;
-  unsigned char  sbcSpy;
-  unsigned char  inicNIState;
-  unsigned char  reserved1[3];
-  unsigned int   reserved2[3];
+typedef struct s_xl_most150_special_node_info
+{
+    unsigned int changeMask;
+    unsigned short nodeAddress;
+    unsigned short groupAddress;
+    unsigned char npr;
+    unsigned char mpr;
+    unsigned char sbc;
+    unsigned char ctrlRetryTime;
+    unsigned char ctrlSendAttempts;
+    unsigned char asyncRetryTime;
+    unsigned char asyncSendAttempts;
+    unsigned char macAddr[6];
+    unsigned char nprSpy;
+    unsigned char mprSpy;
+    unsigned char sbcSpy;
+    unsigned char inicNIState;
+    unsigned char reserved1[3];
+    unsigned int reserved2[3];
 } XL_MOST150_SPECIAL_NODE_INFO_EV;
 
-typedef struct s_xl_most150_ctrl_rx {
-  unsigned short targetAddress;
-  unsigned short sourceAddress;
-  unsigned char  fblockId;
-  unsigned char  instId;
-  unsigned short functionId;
-  unsigned char  opType;
-  unsigned char  telId;
-  unsigned short telLen;
-  unsigned char  ctrlData[45];
+typedef struct s_xl_most150_ctrl_rx
+{
+    unsigned short targetAddress;
+    unsigned short sourceAddress;
+    unsigned char fblockId;
+    unsigned char instId;
+    unsigned short functionId;
+    unsigned char opType;
+    unsigned char telId;
+    unsigned short telLen;
+    unsigned char ctrlData[45];
 } XL_MOST150_CTRL_RX_EV;
 
-typedef struct s_xl_most150_ctrl_spy {
-  unsigned int   frameCount;
-  unsigned int   msgDuration;  // duration of message transmission in [ns]
-  unsigned char  priority;
-  unsigned short targetAddress;
-  unsigned char  pAck;
-  unsigned short ctrlDataLenAnnounced;
-  unsigned char  reserved0;
-  unsigned char  pIndex;
-  unsigned short sourceAddress;
-  unsigned short reserved1;
-  unsigned short crc;
-  unsigned short crcCalculated;
-  unsigned char  cAck;
-  unsigned short ctrlDataLen;  // number of bytes contained in ctrlData[]
-  unsigned char  reserved2;
-  unsigned int   status;  // currently not used
-  unsigned int   validMask;
-  unsigned char  ctrlData[51];
+typedef struct s_xl_most150_ctrl_spy
+{
+    unsigned int frameCount;
+    unsigned int msgDuration; // duration of message transmission in [ns]
+    unsigned char priority;
+    unsigned short targetAddress;
+    unsigned char pAck;
+    unsigned short ctrlDataLenAnnounced;
+    unsigned char reserved0;
+    unsigned char pIndex;
+    unsigned short sourceAddress;
+    unsigned short reserved1;
+    unsigned short crc;
+    unsigned short crcCalculated;
+    unsigned char cAck;
+    unsigned short ctrlDataLen; // number of bytes contained in ctrlData[]
+    unsigned char reserved2;
+    unsigned int status; // currently not used
+    unsigned int validMask;
+    unsigned char ctrlData[51];
 } XL_MOST150_CTRL_SPY_EV;
 
-typedef struct s_xl_most150_async_rx_msg {
-  unsigned short length;
-  unsigned short targetAddress;
-  unsigned short sourceAddress;
-  unsigned char  asyncData[1524];
+typedef struct s_xl_most150_async_rx_msg
+{
+    unsigned short length;
+    unsigned short targetAddress;
+    unsigned short sourceAddress;
+    unsigned char asyncData[1524];
 } XL_MOST150_ASYNC_RX_EV;
 
-typedef struct s_xl_most150_async_spy_msg {
-  unsigned int   frameCount;
-  unsigned int   pktDuration;  // duration of data packet transmission in [ns]
-  unsigned short asyncDataLenAnnounced;
-  unsigned short targetAddress;
-  unsigned char  pAck;
-  unsigned char  pIndex;
-  unsigned short sourceAddress;
-  unsigned int   crc;
-  unsigned int   crcCalculated;
-  unsigned char  cAck;
-  unsigned short asyncDataLen;  // number of bytes contained in asyncData[]
-  unsigned char  reserved;
-  unsigned int   status;  // currently not used
-  unsigned int   validMask;
-  unsigned char  asyncData[1524];
+typedef struct s_xl_most150_async_spy_msg
+{
+    unsigned int frameCount;
+    unsigned int pktDuration; // duration of data packet transmission in [ns]
+    unsigned short asyncDataLenAnnounced;
+    unsigned short targetAddress;
+    unsigned char pAck;
+    unsigned char pIndex;
+    unsigned short sourceAddress;
+    unsigned int crc;
+    unsigned int crcCalculated;
+    unsigned char cAck;
+    unsigned short asyncDataLen; // number of bytes contained in asyncData[]
+    unsigned char reserved;
+    unsigned int status; // currently not used
+    unsigned int validMask;
+    unsigned char asyncData[1524];
 } XL_MOST150_ASYNC_SPY_EV;
 
-typedef struct s_xl_most150_ethernet_rx {
-  unsigned char sourceAddress[6];
-  unsigned char targetAddress[6];
-  unsigned int  length;
-  unsigned char ethernetData[1510];
+typedef struct s_xl_most150_ethernet_rx
+{
+    unsigned char sourceAddress[6];
+    unsigned char targetAddress[6];
+    unsigned int length;
+    unsigned char ethernetData[1510];
 } XL_MOST150_ETHERNET_RX_EV;
 
-typedef struct s_xl_most150_ethernet_spy {
-  unsigned int   frameCount;
-  unsigned int   pktDuration;  // duration of ethernet packet transmission in [ns]
-  unsigned short ethernetDataLenAnnounced;
-  unsigned char  targetAddress[6];
-  unsigned char  pAck;
-  unsigned char  sourceAddress[6];
-  unsigned char  reserved0;
-  unsigned int   crc;
-  unsigned int   crcCalculated;
-  unsigned char  cAck;
-  unsigned short ethernetDataLen;  // number of bytes contained in ethernetData[]
-  unsigned char  reserved1;
-  unsigned int   status;  // currently not used
-  unsigned int   validMask;
-  unsigned char  ethernetData[1506];
+typedef struct s_xl_most150_ethernet_spy
+{
+    unsigned int frameCount;
+    unsigned int pktDuration; // duration of ethernet packet transmission in [ns]
+    unsigned short ethernetDataLenAnnounced;
+    unsigned char targetAddress[6];
+    unsigned char pAck;
+    unsigned char sourceAddress[6];
+    unsigned char reserved0;
+    unsigned int crc;
+    unsigned int crcCalculated;
+    unsigned char cAck;
+    unsigned short ethernetDataLen; // number of bytes contained in ethernetData[]
+    unsigned char reserved1;
+    unsigned int status; // currently not used
+    unsigned int validMask;
+    unsigned char ethernetData[1506];
 } XL_MOST150_ETHERNET_SPY_EV;
 
-typedef struct s_xl_most150_cl_info {
-  unsigned short label;
-  unsigned short channelWidth;
+typedef struct s_xl_most150_cl_info
+{
+    unsigned short label;
+    unsigned short channelWidth;
 } XL_MOST150_CL_INFO;
 
-typedef struct s_xl_most150_sync_alloc_info {
-  XL_MOST150_CL_INFO allocTable[MOST150_SYNC_ALLOC_INFO_SIZE];
+typedef struct s_xl_most150_sync_alloc_info
+{
+    XL_MOST150_CL_INFO allocTable[MOST150_SYNC_ALLOC_INFO_SIZE];
 } XL_MOST150_SYNC_ALLOC_INFO_EV;
 
-
-typedef struct s_xl_most150_sync_volume_status {
-  unsigned int device;
-  unsigned int volume;
+typedef struct s_xl_most150_sync_volume_status
+{
+    unsigned int device;
+    unsigned int volume;
 } XL_MOST150_SYNC_VOLUME_STATUS_EV;
 
-typedef struct s_xl_most150_tx_light {
-  unsigned int light;
+typedef struct s_xl_most150_tx_light
+{
+    unsigned int light;
 } XL_MOST150_TX_LIGHT_EV;
 
-typedef struct s_xl_most150_rx_light_lock_status {
-  unsigned int status;
+typedef struct s_xl_most150_rx_light_lock_status
+{
+    unsigned int status;
 } XL_MOST150_RXLIGHT_LOCKSTATUS_EV;
 
-typedef struct s_xl_most150_error {
-  unsigned int errorCode;
-  unsigned int parameter[3];
+typedef struct s_xl_most150_error
+{
+    unsigned int errorCode;
+    unsigned int parameter[3];
 } XL_MOST150_ERROR_EV;
 
-typedef struct s_xl_most150_configure_rx_buffer {
-  unsigned int bufferType;
-  unsigned int bufferMode;
+typedef struct s_xl_most150_configure_rx_buffer
+{
+    unsigned int bufferType;
+    unsigned int bufferMode;
 } XL_MOST150_CONFIGURE_RX_BUFFER_EV;
 
-typedef struct s_xl_most150_ctrl_sync_audio {
-  unsigned int label;
-  unsigned int width;
-  unsigned int device;
-  unsigned int mode;
+typedef struct s_xl_most150_ctrl_sync_audio
+{
+    unsigned int label;
+    unsigned int width;
+    unsigned int device;
+    unsigned int mode;
 } XL_MOST150_CTRL_SYNC_AUDIO_EV;
 
-typedef struct s_xl_most150_sync_mute_status {
-  unsigned int device;
-  unsigned int mute;
+typedef struct s_xl_most150_sync_mute_status
+{
+    unsigned int device;
+    unsigned int mute;
 } XL_MOST150_SYNC_MUTE_STATUS_EV;
 
-typedef struct s_xl_most150_tx_light_power {
-  unsigned int lightPower;
+typedef struct s_xl_most150_tx_light_power
+{
+    unsigned int lightPower;
 } XL_MOST150_LIGHT_POWER_EV;
 
-typedef struct s_xl_most150_gen_light_error {
-  unsigned int stressStarted;
+typedef struct s_xl_most150_gen_light_error
+{
+    unsigned int stressStarted;
 } XL_MOST150_GEN_LIGHT_ERROR_EV;
 
-typedef struct s_xl_most150_gen_lock_error {
-  unsigned int stressStarted;
+typedef struct s_xl_most150_gen_lock_error
+{
+    unsigned int stressStarted;
 } XL_MOST150_GEN_LOCK_ERROR_EV;
 
-typedef struct s_xl_most150_ctrl_busload {
-  unsigned int busloadStarted;
+typedef struct s_xl_most150_ctrl_busload
+{
+    unsigned int busloadStarted;
 } XL_MOST150_CTRL_BUSLOAD_EV;
 
-typedef struct s_xl_most150_async_busload {
-  unsigned int busloadStarted;
+typedef struct s_xl_most150_async_busload
+{
+    unsigned int busloadStarted;
 } XL_MOST150_ASYNC_BUSLOAD_EV;
 
-typedef struct s_xl_most150_systemlock_flag {
-  unsigned int state;
+typedef struct s_xl_most150_systemlock_flag
+{
+    unsigned int state;
 } XL_MOST150_SYSTEMLOCK_FLAG_EV;
 
-typedef struct s_xl_most150_shutdown_flag {
-  unsigned int state;
+typedef struct s_xl_most150_shutdown_flag
+{
+    unsigned int state;
 } XL_MOST150_SHUTDOWN_FLAG_EV;
 
-typedef struct s_xl_most150_spdif_mode {
-  unsigned int spdifMode;
-  unsigned int spdifError;
+typedef struct s_xl_most150_spdif_mode
+{
+    unsigned int spdifMode;
+    unsigned int spdifError;
 } XL_MOST150_SPDIF_MODE_EV;
 
-typedef struct s_xl_most150_ecl {
-  unsigned int eclLineState;
+typedef struct s_xl_most150_ecl
+{
+    unsigned int eclLineState;
 } XL_MOST150_ECL_EV;
 
-typedef struct s_xl_most150_ecl_termination {
-  unsigned int resistorEnabled;
+typedef struct s_xl_most150_ecl_termination
+{
+    unsigned int resistorEnabled;
 } XL_MOST150_ECL_TERMINATION_EV;
 
-typedef struct s_xl_most150_nw_startup {
-  unsigned int error;
-  unsigned int errorInfo;
+typedef struct s_xl_most150_nw_startup
+{
+    unsigned int error;
+    unsigned int errorInfo;
 } XL_MOST150_NW_STARTUP_EV;
 
-typedef struct s_xl_most150_nw_shutdown {
-  unsigned int error;
-  unsigned int errorInfo;
+typedef struct s_xl_most150_nw_shutdown
+{
+    unsigned int error;
+    unsigned int errorInfo;
 } XL_MOST150_NW_SHUTDOWN_EV;
 
-typedef struct s_xl_most150_stream_state {
-  unsigned int streamHandle;
-  unsigned int streamState;
-  unsigned int streamError;
+typedef struct s_xl_most150_stream_state
+{
+    unsigned int streamHandle;
+    unsigned int streamState;
+    unsigned int streamError;
 } XL_MOST150_STREAM_STATE_EV;
 
-typedef struct s_xl_most150_stream_tx_buffer {
-  unsigned int streamHandle;
-  unsigned int numberOfBytes;
-  unsigned int status;
+typedef struct s_xl_most150_stream_tx_buffer
+{
+    unsigned int streamHandle;
+    unsigned int numberOfBytes;
+    unsigned int status;
 } XL_MOST150_STREAM_TX_BUFFER_EV;
 
-typedef struct s_xl_most150_stream_rx_buffer {
-  unsigned int streamHandle;
-  unsigned int numberOfBytes;
-  unsigned int status;
-  unsigned int labelInfo;
+typedef struct s_xl_most150_stream_rx_buffer
+{
+    unsigned int streamHandle;
+    unsigned int numberOfBytes;
+    unsigned int status;
+    unsigned int labelInfo;
 } XL_MOST150_STREAM_RX_BUFFER_EV;
 
-typedef struct s_xl_most150_stream_tx_underflow {
-  unsigned int streamHandle;
-  unsigned int reserved;
+typedef struct s_xl_most150_stream_tx_underflow
+{
+    unsigned int streamHandle;
+    unsigned int reserved;
 } XL_MOST150_STREAM_TX_UNDERFLOW_EV;
 
-typedef struct s_xl_most150_stream_tx_label {
-  unsigned int streamHandle;
-  unsigned int errorInfo;
-  unsigned int connLabel;
-  unsigned int width;
+typedef struct s_xl_most150_stream_tx_label
+{
+    unsigned int streamHandle;
+    unsigned int errorInfo;
+    unsigned int connLabel;
+    unsigned int width;
 } XL_MOST150_STREAM_TX_LABEL_EV;
 
-typedef struct s_xl_most150_gen_bypass_stress {
-  unsigned int stressStarted;
+typedef struct s_xl_most150_gen_bypass_stress
+{
+    unsigned int stressStarted;
 } XL_MOST150_GEN_BYPASS_STRESS_EV;
 
-typedef struct s_xl_most150_ecl_sequence {
-  unsigned int sequenceStarted;
+typedef struct s_xl_most150_ecl_sequence
+{
+    unsigned int sequenceStarted;
 } XL_MOST150_ECL_SEQUENCE_EV;
 
-typedef struct s_xl_most150_ecl_glitch_filter {
-  unsigned int duration;
+typedef struct s_xl_most150_ecl_glitch_filter
+{
+    unsigned int duration;
 } XL_MOST150_ECL_GLITCH_FILTER_EV;
 
-typedef struct s_xl_most150_sso_result {
-  unsigned int status;
+typedef struct s_xl_most150_sso_result
+{
+    unsigned int status;
 } XL_MOST150_SSO_RESULT_EV;
 
+typedef struct s_xl_most150_ctrl_tx_ack
+{
+    unsigned short targetAddress;
+    unsigned short sourceAddress;
+    unsigned char ctrlPrio;
+    unsigned char ctrlSendAttempts;
+    unsigned char reserved[2];
+    unsigned int status;
 
-typedef struct s_xl_most150_ctrl_tx_ack {
-  unsigned short targetAddress;
-  unsigned short sourceAddress;
-  unsigned char  ctrlPrio;
-  unsigned char  ctrlSendAttempts;
-  unsigned char  reserved[2];
-  unsigned int   status;
-
-  // ctrlData structure:
-  // -----------------------------------------------------------------------
-  // FBlockID | InstID | FunctionID | OpType | TelID | TelLen | Payload
-  // -----------------------------------------------------------------------
-  //  8 bit   | 8 bit  |   12 bit   | 4 bit  | 4 bit | 12 bit | 0 .. 45 byte
-  // -----------------------------------------------------------------------
-  // ctrlData[0]: FBlockID
-  // ctrlData[1]: InstID
-  // ctrlData[2]: FunctionID (upper 8 bits)
-  // ctrlData[3]: FunctionID (lower 4 bits) + OpType (4 bits)
-  // ctrlData[4]: TelId (4 bits) + TelLen (upper 4 bits)
-  // ctrlData[5]: TelLen (lower 8 bits)
-  // ctrlData[6..50]: Payload
-  unsigned char ctrlData[51];
+    // ctrlData structure:
+    // -----------------------------------------------------------------------
+    // FBlockID | InstID | FunctionID | OpType | TelID | TelLen | Payload
+    // -----------------------------------------------------------------------
+    //  8 bit   | 8 bit  |   12 bit   | 4 bit  | 4 bit | 12 bit | 0 .. 45 byte
+    // -----------------------------------------------------------------------
+    // ctrlData[0]: FBlockID
+    // ctrlData[1]: InstID
+    // ctrlData[2]: FunctionID (upper 8 bits)
+    // ctrlData[3]: FunctionID (lower 4 bits) + OpType (4 bits)
+    // ctrlData[4]: TelId (4 bits) + TelLen (upper 4 bits)
+    // ctrlData[5]: TelLen (lower 8 bits)
+    // ctrlData[6..50]: Payload
+    unsigned char ctrlData[51];
 } XL_MOST150_CTRL_TX_ACK_EV;
 
-typedef struct s_xl_most150_async_tx_ack {
-  unsigned char  priority;
-  unsigned char  asyncSendAttempts;
-  unsigned short length;
-  unsigned short targetAddress;
-  unsigned short sourceAddress;
-  unsigned int   status;
-  unsigned char  asyncData[1524];
+typedef struct s_xl_most150_async_tx_ack
+{
+    unsigned char priority;
+    unsigned char asyncSendAttempts;
+    unsigned short length;
+    unsigned short targetAddress;
+    unsigned short sourceAddress;
+    unsigned int status;
+    unsigned char asyncData[1524];
 } XL_MOST150_ASYNC_TX_ACK_EV;
 
-typedef struct s_xl_most150_ethernet_tx {
-  unsigned char priority;
-  unsigned char ethSendAttempts;
-  unsigned char sourceAddress[6];
-  unsigned char targetAddress[6];
-  unsigned char reserved[2];
-  unsigned int  length;
-  unsigned char ethernetData[1510];
+typedef struct s_xl_most150_ethernet_tx
+{
+    unsigned char priority;
+    unsigned char ethSendAttempts;
+    unsigned char sourceAddress[6];
+    unsigned char targetAddress[6];
+    unsigned char reserved[2];
+    unsigned int length;
+    unsigned char ethernetData[1510];
 } XL_MOST150_ETHERNET_TX_ACK_EV;
 
-typedef struct s_xl_most150_hw_sync {
-  unsigned int pulseCode;
+typedef struct s_xl_most150_hw_sync
+{
+    unsigned int pulseCode;
 } XL_MOST150_HW_SYNC_EV;
 
-typedef struct s_xl_event_most150 {
-  unsigned int   size;           // 4 - overall size of the complete event
-  XLmostEventTag tag;            // 2 - type of the event
-  unsigned short channelIndex;   // 2
-  unsigned int   userHandle;     // 4
-  unsigned short flagsChip;      // 2
-  unsigned short reserved;       // 2
-  XLuint64       timeStamp;      // 8 - raw timestamp
-  XLuint64       timeStampSync;  // 8 - timestamp which is synchronized by the driver
+typedef struct s_xl_event_most150
+{
+    unsigned int size;           // 4 - overall size of the complete event
+    XLmostEventTag tag;          // 2 - type of the event
+    unsigned short channelIndex; // 2
+    unsigned int userHandle;     // 4
+    unsigned short flagsChip;    // 2
+    unsigned short reserved;     // 2
+    XLuint64 timeStamp;          // 8 - raw timestamp
+    XLuint64 timeStampSync;      // 8 - timestamp which is synchronized by the driver
                                  // ---------
                                  // 32 bytes -> XL_MOST_EVENT_HEADER_SIZE
 
-  union {
-    unsigned char                      rawData[XL_MOST150_MAX_EVENT_DATA_SIZE];
-    XL_MOST150_EVENT_SOURCE_EV         mostEventSource;
-    XL_MOST150_DEVICE_MODE_EV          mostDeviceMode;
-    XL_MOST150_FREQUENCY_EV            mostFrequency;
-    XL_MOST150_SPECIAL_NODE_INFO_EV    mostSpecialNodeInfo;
-    XL_MOST150_CTRL_RX_EV              mostCtrlRx;
-    XL_MOST150_CTRL_TX_ACK_EV          mostCtrlTxAck;
-    XL_MOST150_ASYNC_SPY_EV            mostAsyncSpy;
-    XL_MOST150_ASYNC_RX_EV             mostAsyncRx;
-    XL_MOST150_SYNC_ALLOC_INFO_EV      mostSyncAllocInfo;
-    XL_MOST150_SYNC_VOLUME_STATUS_EV   mostSyncVolumeStatus;
-    XL_MOST150_TX_LIGHT_EV             mostTxLight;
-    XL_MOST150_RXLIGHT_LOCKSTATUS_EV   mostRxLightLockStatus;
-    XL_MOST150_ERROR_EV                mostError;
-    XL_MOST150_CONFIGURE_RX_BUFFER_EV  mostConfigureRxBuffer;
-    XL_MOST150_CTRL_SYNC_AUDIO_EV      mostCtrlSyncAudio;
-    XL_MOST150_SYNC_MUTE_STATUS_EV     mostSyncMuteStatus;
-    XL_MOST150_LIGHT_POWER_EV          mostLightPower;
-    XL_MOST150_GEN_LIGHT_ERROR_EV      mostGenLightError;
-    XL_MOST150_GEN_LOCK_ERROR_EV       mostGenLockError;
-    XL_MOST150_CTRL_BUSLOAD_EV         mostCtrlBusload;
-    XL_MOST150_ASYNC_BUSLOAD_EV        mostAsyncBusload;
-    XL_MOST150_ETHERNET_RX_EV          mostEthernetRx;
-    XL_MOST150_SYSTEMLOCK_FLAG_EV      mostSystemLockFlag;
-    XL_MOST150_SHUTDOWN_FLAG_EV        mostShutdownFlag;
-    XL_MOST150_SPDIF_MODE_EV           mostSpdifMode;
-    XL_MOST150_ECL_EV                  mostEclEvent;
-    XL_MOST150_ECL_TERMINATION_EV      mostEclTermination;
-    XL_MOST150_CTRL_SPY_EV             mostCtrlSpy;
-    XL_MOST150_ASYNC_TX_ACK_EV         mostAsyncTxAck;
-    XL_MOST150_ETHERNET_SPY_EV         mostEthernetSpy;
-    XL_MOST150_ETHERNET_TX_ACK_EV      mostEthernetTxAck;
-    XL_MOST150_HW_SYNC_EV              mostHWSync;
-    XL_MOST150_NW_STARTUP_EV           mostStartup;
-    XL_MOST150_NW_SHUTDOWN_EV          mostShutdown;
-    XL_MOST150_STREAM_STATE_EV         mostStreamState;
-    XL_MOST150_STREAM_TX_BUFFER_EV     mostStreamTxBuffer;
-    XL_MOST150_STREAM_RX_BUFFER_EV     mostStreamRxBuffer;
-    XL_MOST150_STREAM_TX_UNDERFLOW_EV  mostStreamTxUnderflow;
-    XL_MOST150_STREAM_TX_LABEL_EV      mostStreamTxLabel;
-    XL_MOST150_GEN_BYPASS_STRESS_EV    mostGenBypassStress;
-    XL_MOST150_ECL_SEQUENCE_EV         mostEclSequence;
-    XL_MOST150_ECL_GLITCH_FILTER_EV    mostEclGlitchFilter;
-    XL_MOST150_SSO_RESULT_EV           mostSsoResult;
-  } tagData;
+    union {
+        unsigned char rawData[XL_MOST150_MAX_EVENT_DATA_SIZE];
+        XL_MOST150_EVENT_SOURCE_EV mostEventSource;
+        XL_MOST150_DEVICE_MODE_EV mostDeviceMode;
+        XL_MOST150_FREQUENCY_EV mostFrequency;
+        XL_MOST150_SPECIAL_NODE_INFO_EV mostSpecialNodeInfo;
+        XL_MOST150_CTRL_RX_EV mostCtrlRx;
+        XL_MOST150_CTRL_TX_ACK_EV mostCtrlTxAck;
+        XL_MOST150_ASYNC_SPY_EV mostAsyncSpy;
+        XL_MOST150_ASYNC_RX_EV mostAsyncRx;
+        XL_MOST150_SYNC_ALLOC_INFO_EV mostSyncAllocInfo;
+        XL_MOST150_SYNC_VOLUME_STATUS_EV mostSyncVolumeStatus;
+        XL_MOST150_TX_LIGHT_EV mostTxLight;
+        XL_MOST150_RXLIGHT_LOCKSTATUS_EV mostRxLightLockStatus;
+        XL_MOST150_ERROR_EV mostError;
+        XL_MOST150_CONFIGURE_RX_BUFFER_EV mostConfigureRxBuffer;
+        XL_MOST150_CTRL_SYNC_AUDIO_EV mostCtrlSyncAudio;
+        XL_MOST150_SYNC_MUTE_STATUS_EV mostSyncMuteStatus;
+        XL_MOST150_LIGHT_POWER_EV mostLightPower;
+        XL_MOST150_GEN_LIGHT_ERROR_EV mostGenLightError;
+        XL_MOST150_GEN_LOCK_ERROR_EV mostGenLockError;
+        XL_MOST150_CTRL_BUSLOAD_EV mostCtrlBusload;
+        XL_MOST150_ASYNC_BUSLOAD_EV mostAsyncBusload;
+        XL_MOST150_ETHERNET_RX_EV mostEthernetRx;
+        XL_MOST150_SYSTEMLOCK_FLAG_EV mostSystemLockFlag;
+        XL_MOST150_SHUTDOWN_FLAG_EV mostShutdownFlag;
+        XL_MOST150_SPDIF_MODE_EV mostSpdifMode;
+        XL_MOST150_ECL_EV mostEclEvent;
+        XL_MOST150_ECL_TERMINATION_EV mostEclTermination;
+        XL_MOST150_CTRL_SPY_EV mostCtrlSpy;
+        XL_MOST150_ASYNC_TX_ACK_EV mostAsyncTxAck;
+        XL_MOST150_ETHERNET_SPY_EV mostEthernetSpy;
+        XL_MOST150_ETHERNET_TX_ACK_EV mostEthernetTxAck;
+        XL_MOST150_HW_SYNC_EV mostHWSync;
+        XL_MOST150_NW_STARTUP_EV mostStartup;
+        XL_MOST150_NW_SHUTDOWN_EV mostShutdown;
+        XL_MOST150_STREAM_STATE_EV mostStreamState;
+        XL_MOST150_STREAM_TX_BUFFER_EV mostStreamTxBuffer;
+        XL_MOST150_STREAM_RX_BUFFER_EV mostStreamRxBuffer;
+        XL_MOST150_STREAM_TX_UNDERFLOW_EV mostStreamTxUnderflow;
+        XL_MOST150_STREAM_TX_LABEL_EV mostStreamTxLabel;
+        XL_MOST150_GEN_BYPASS_STRESS_EV mostGenBypassStress;
+        XL_MOST150_ECL_SEQUENCE_EV mostEclSequence;
+        XL_MOST150_ECL_GLITCH_FILTER_EV mostEclGlitchFilter;
+        XL_MOST150_SSO_RESULT_EV mostSsoResult;
+    } tagData;
 } XLmost150event;
 
 ///////////////////////////////////////////////////////////////////////////////////
 // Structures for MOST150 API commands
 ///////////////////////////////////////////////////////////////////////////////////
 
-//XLstatus xlMost150SetSpecialNodeInfo(DEFPARAMS, XLmost150SetSpecialNodeInfo *specialodeInfo);
-typedef struct s_xl_set_most150_special_node_info {
-  unsigned int  changeMask;  // see XL_MOST150_SPECIAL_NODE_MASK_CHANGED
-  unsigned int  nodeAddress;
-  unsigned int  groupAddress;
-  unsigned int  sbc;
-  unsigned int  ctrlRetryTime;
-  unsigned int  ctrlSendAttempts;
-  unsigned int  asyncRetryTime;
-  unsigned int  asyncSendAttempts;
-  unsigned char macAddr[6];
+// XLstatus xlMost150SetSpecialNodeInfo(DEFPARAMS, XLmost150SetSpecialNodeInfo *specialodeInfo);
+typedef struct s_xl_set_most150_special_node_info
+{
+    unsigned int changeMask; // see XL_MOST150_SPECIAL_NODE_MASK_CHANGED
+    unsigned int nodeAddress;
+    unsigned int groupAddress;
+    unsigned int sbc;
+    unsigned int ctrlRetryTime;
+    unsigned int ctrlSendAttempts;
+    unsigned int asyncRetryTime;
+    unsigned int asyncSendAttempts;
+    unsigned char macAddr[6];
 } XLmost150SetSpecialNodeInfo;
 
-//XLstatus xlMost150CtrlTransmit(DEFPARAMS, XLmost150CtrlTxMsg *pCtrlTxMsg);
-typedef struct s_xl_most150_ctrl_tx_msg {
-  unsigned int ctrlPrio;          // Prio: Currently fixed to 0x01 for Control Messages
-  unsigned int ctrlSendAttempts;  // 1..16 attempts, set an invalid value to use the default value set by xlMost150SetCtrlRetryParameters
-  unsigned int targetAddress;
+// XLstatus xlMost150CtrlTransmit(DEFPARAMS, XLmost150CtrlTxMsg *pCtrlTxMsg);
+typedef struct s_xl_most150_ctrl_tx_msg
+{
+    unsigned int ctrlPrio;         // Prio: Currently fixed to 0x01 for Control Messages
+    unsigned int ctrlSendAttempts; // 1..16 attempts, set an invalid value to use the default value set by xlMost150SetCtrlRetryParameters
+    unsigned int targetAddress;
 
-  // ctrlData structure:
-  // -----------------------------------------------------------------------
-  // FBlockID | InstID | FunctionID | OpType | TelID | TelLen | Payload
-  // -----------------------------------------------------------------------
-  //  8 bit   | 8 bit  |   12 bit   | 4 bit  | 4 bit | 12 bit | 0 .. 45 byte
-  // -----------------------------------------------------------------------
-  // ctrlData[0]: FBlockID
-  // ctrlData[1]: InstID
-  // ctrlData[2]: FunctionID (upper 8 bits)
-  // ctrlData[3]: FunctionID (lower 4 bits) + OpType (4 bits)
-  // ctrlData[4]: TelId (4 bits) + TelLen (upper 4 bits)
-  // ctrlData[5]: TelLen (lower 8 bits)
-  // ctrlData[6..50]: Payload
-  unsigned char ctrlData[51];
+    // ctrlData structure:
+    // -----------------------------------------------------------------------
+    // FBlockID | InstID | FunctionID | OpType | TelID | TelLen | Payload
+    // -----------------------------------------------------------------------
+    //  8 bit   | 8 bit  |   12 bit   | 4 bit  | 4 bit | 12 bit | 0 .. 45 byte
+    // -----------------------------------------------------------------------
+    // ctrlData[0]: FBlockID
+    // ctrlData[1]: InstID
+    // ctrlData[2]: FunctionID (upper 8 bits)
+    // ctrlData[3]: FunctionID (lower 4 bits) + OpType (4 bits)
+    // ctrlData[4]: TelId (4 bits) + TelLen (upper 4 bits)
+    // ctrlData[5]: TelLen (lower 8 bits)
+    // ctrlData[6..50]: Payload
+    unsigned char ctrlData[51];
 } XLmost150CtrlTxMsg;
 
-//XLstatus xlMost150AsyncTransmit(DEFPARAMS, XLmost150AsyncTxMsg *pAsyncTxMsg);
-typedef struct s_xl_most150_async_tx_msg {
-  unsigned int  priority;           // Prio: Currently fixed to 0x00 for MDP /MEP
-  unsigned int  asyncSendAttempts;  // 1..16 attempts,set an invalid value to use the default value set by xlMost150SetAsyncRetryParameters
-  unsigned int  length;             // max. 1600 bytes
-  unsigned int  targetAddress;
-  unsigned char asyncData[XL_MOST150_ASYNC_SEND_PAYLOAD_MAX_SIZE];
+// XLstatus xlMost150AsyncTransmit(DEFPARAMS, XLmost150AsyncTxMsg *pAsyncTxMsg);
+typedef struct s_xl_most150_async_tx_msg
+{
+    unsigned int priority;          // Prio: Currently fixed to 0x00 for MDP /MEP
+    unsigned int asyncSendAttempts; // 1..16 attempts,set an invalid value to use the default value set by xlMost150SetAsyncRetryParameters
+    unsigned int length;            // max. 1600 bytes
+    unsigned int targetAddress;
+    unsigned char asyncData[XL_MOST150_ASYNC_SEND_PAYLOAD_MAX_SIZE];
 } XLmost150AsyncTxMsg;
 
-//XLstatus xlMost150EthernetTransmit(DEFPARAMS, XLmost150EthernetTxMsg  *pEthernetTxMsg);
-typedef struct s_xl_most150_ethernet_tx_msg {
-  unsigned int  priority;         // Prio: Currently fixed to 0x00 for MDP /MEP
-  unsigned int  ethSendAttempts;  // 1..16 attempts, set an invalid value to use the default value set by xlMost150SetAsyncRetryParameters
-  unsigned char sourceAddress[6];
-  unsigned char targetAddress[6];
-  unsigned int  length;  // max. 1600 bytes
-  unsigned char ethernetData[XL_MOST150_ETHERNET_SEND_PAYLOAD_MAX_SIZE];
+// XLstatus xlMost150EthernetTransmit(DEFPARAMS, XLmost150EthernetTxMsg  *pEthernetTxMsg);
+typedef struct s_xl_most150_ethernet_tx_msg
+{
+    unsigned int priority;        // Prio: Currently fixed to 0x00 for MDP /MEP
+    unsigned int ethSendAttempts; // 1..16 attempts, set an invalid value to use the default value set by xlMost150SetAsyncRetryParameters
+    unsigned char sourceAddress[6];
+    unsigned char targetAddress[6];
+    unsigned int length; // max. 1600 bytes
+    unsigned char ethernetData[XL_MOST150_ETHERNET_SEND_PAYLOAD_MAX_SIZE];
 } XLmost150EthernetTxMsg;
 
-//XLstatus xlMost150CtrlSyncAudio(DEFPARAMS, XLmost150SyncAudioParameter *syncAudioParameter);
-typedef struct s_xl_most150_sync_audio_parameter {
-  unsigned int label;
-  unsigned int width;
-  unsigned int device;
-  unsigned int mode;
+// XLstatus xlMost150CtrlSyncAudio(DEFPARAMS, XLmost150SyncAudioParameter *syncAudioParameter);
+typedef struct s_xl_most150_sync_audio_parameter
+{
+    unsigned int label;
+    unsigned int width;
+    unsigned int device;
+    unsigned int mode;
 } XLmost150SyncAudioParameter;
 
-//XLstatus xlMost150CtrlConfigureBusload(DEFPARAMS, XLmost150CtrlBusloadConfig  *pCtrlBusloadConfig);
-typedef struct s_xl_most150_ctrl_busload_config {
-  unsigned int       transmissionRate;
-  unsigned int       counterType;
-  unsigned int       counterPosition;  // counter can be only be set in the payload -> position 0 means first payload byte!
-  XLmost150CtrlTxMsg busloadCtrlMsg;
+// XLstatus xlMost150CtrlConfigureBusload(DEFPARAMS, XLmost150CtrlBusloadConfig  *pCtrlBusloadConfig);
+typedef struct s_xl_most150_ctrl_busload_config
+{
+    unsigned int transmissionRate;
+    unsigned int counterType;
+    unsigned int counterPosition; // counter can be only be set in the payload -> position 0 means first payload byte!
+    XLmost150CtrlTxMsg busloadCtrlMsg;
 } XLmost150CtrlBusloadConfig;
 
-//XLstatus xlMost150AsyncConfigureBusload(DEFPARAMS, XLmost150AsyncBusloadConfig  *pAsyncBusloadConfig);
-typedef struct s_xl_most150_async_busload_config {
-  unsigned int busloadType;
-  unsigned int transmissionRate;
-  unsigned int counterType;
-  unsigned int counterPosition;
+// XLstatus xlMost150AsyncConfigureBusload(DEFPARAMS, XLmost150AsyncBusloadConfig  *pAsyncBusloadConfig);
+typedef struct s_xl_most150_async_busload_config
+{
+    unsigned int busloadType;
+    unsigned int transmissionRate;
+    unsigned int counterType;
+    unsigned int counterPosition;
 
-  union {
-    unsigned char          rawBusloadPkt[1540];
-    XLmost150AsyncTxMsg    busloadAsyncPkt;
-    XLmost150EthernetTxMsg busloadEthernetPkt;
-  } busloadPkt;
+    union {
+        unsigned char rawBusloadPkt[1540];
+        XLmost150AsyncTxMsg busloadAsyncPkt;
+        XLmost150EthernetTxMsg busloadEthernetPkt;
+    } busloadPkt;
 } XLmost150AsyncBusloadConfig;
 
-//XLstatus xlMost150StreamOpen(DEFPARAMS, XLmost150StreamOpen*  pStreamOpen);
-typedef struct s_xl_most150_stream_open {
-  unsigned int* pStreamHandle;
-  unsigned int  direction;
-  unsigned int  numBytesPerFrame;
-  unsigned int  reserved;
-  unsigned int  latency;
+// XLstatus xlMost150StreamOpen(DEFPARAMS, XLmost150StreamOpen*  pStreamOpen);
+typedef struct s_xl_most150_stream_open
+{
+    unsigned int *pStreamHandle;
+    unsigned int direction;
+    unsigned int numBytesPerFrame;
+    unsigned int reserved;
+    unsigned int latency;
 } XLmost150StreamOpen;
 
-//XLstatus xlMost150StreamGetInfo(DEFPARAMS, XLmost150StreamInfo*  pStreamInfo);
-typedef struct s_xl_most150_stream_get_info {
-  unsigned int streamHandle;
-  unsigned int numBytesPerFrame;
-  unsigned int direction;
-  unsigned int reserved;
-  unsigned int latency;
-  unsigned int streamState;
-  unsigned int connLabels[XL_MOST150_STREAM_RX_NUM_CL_MAX];
+// XLstatus xlMost150StreamGetInfo(DEFPARAMS, XLmost150StreamInfo*  pStreamInfo);
+typedef struct s_xl_most150_stream_get_info
+{
+    unsigned int streamHandle;
+    unsigned int numBytesPerFrame;
+    unsigned int direction;
+    unsigned int reserved;
+    unsigned int latency;
+    unsigned int streamState;
+    unsigned int connLabels[XL_MOST150_STREAM_RX_NUM_CL_MAX];
 } XLmost150StreamInfo;
-
 
 #pragma pack(pop)
 
@@ -4425,11 +4562,11 @@ typedef struct s_xl_most150_stream_get_info {
 #define XL_CANFD_MAX_EVENT_SIZE       128
 
 // to be used with XLcanTxEvent::XL_CAN_TX_MSG::msgFlags
-#define XL_CAN_TXMSG_FLAG_EDL         0x0001u  // extended data length
-#define XL_CAN_TXMSG_FLAG_BRS         0x0002u  // baud rate switch
-#define XL_CAN_TXMSG_FLAG_RTR         0x0010u  // remote transmission request
-#define XL_CAN_TXMSG_FLAG_HIGHPRIO    0x0080u  // high priority message - clears all send buffers - then transmits
-#define XL_CAN_TXMSG_FLAG_WAKEUP      0x0200u  // generate a wakeup message
+#define XL_CAN_TXMSG_FLAG_EDL         0x0001u // extended data length
+#define XL_CAN_TXMSG_FLAG_BRS         0x0002u // baud rate switch
+#define XL_CAN_TXMSG_FLAG_RTR         0x0010u // remote transmission request
+#define XL_CAN_TXMSG_FLAG_HIGHPRIO    0x0080u // high priority message - clears all send buffers - then transmits
+#define XL_CAN_TXMSG_FLAG_WAKEUP      0x0200u // generate a wakeup message
 
 // to be used with
 // XLcanRxEvent::XL_CAN_EV_RX_MSG::msgFlags
@@ -4437,38 +4574,39 @@ typedef struct s_xl_most150_stream_get_info {
 // XLcanRxEvent::XL_CAN_EV_RX_MSG::msgFlags
 // XLcanRxEvent::XL_CAN_EV_TX_REMOVED::msgFlags
 // XLcanRxEvent::XL_CAN_EV_ERROR::msgFlags
-#define XL_CAN_RXMSG_FLAG_EDL         0x0001u  // extended data length
-#define XL_CAN_RXMSG_FLAG_BRS         0x0002u  // baud rate switch
-#define XL_CAN_RXMSG_FLAG_ESI         0x0004u  // error state indicator
-#define XL_CAN_RXMSG_FLAG_RTR         0x0010u  // remote transmission request
-#define XL_CAN_RXMSG_FLAG_EF 0x0200u  // error frame (only posssible in XL_CAN_EV_TX_REQUEST/XL_CAN_EV_TX_REMOVED)
+#define XL_CAN_RXMSG_FLAG_EDL         0x0001u // extended data length
+#define XL_CAN_RXMSG_FLAG_BRS         0x0002u // baud rate switch
+#define XL_CAN_RXMSG_FLAG_ESI         0x0004u // error state indicator
+#define XL_CAN_RXMSG_FLAG_RTR         0x0010u // remote transmission request
+#define XL_CAN_RXMSG_FLAG_EF          0x0200u // error frame (only posssible in XL_CAN_EV_TX_REQUEST/XL_CAN_EV_TX_REMOVED)
 #define XL_CAN_RXMSG_FLAG_ARB_LOST \
-  0x0400u  // Arbitration Lost set if the receiving node tried to transmit a message but lost arbitration process
-#define XL_CAN_RXMSG_FLAG_WAKEUP    0x2000u  // high voltage message on single wire CAN
-#define XL_CAN_RXMSG_FLAG_TE        0x4000u  // 1: transceiver error detected
-
+    0x0400u                              // Arbitration Lost set if the receiving node tried to transmit a message but lost arbitration process
+#define XL_CAN_RXMSG_FLAG_WAKEUP 0x2000u // high voltage message on single wire CAN
+#define XL_CAN_RXMSG_FLAG_TE     0x4000u // 1: transceiver error detected
 
 ////////////////////////////////////////////////////////////////////////
 // CAN / CAN-FD tx event definitions
 ////////////////////////////////////////////////////////////////////////
 
-typedef struct {
-  unsigned int  canId;
-  unsigned int  msgFlags;
-  unsigned char dlc;
-  unsigned char reserved[7];
-  unsigned char data[XL_CAN_MAX_DATA_LEN];
+typedef struct
+{
+    unsigned int canId;
+    unsigned int msgFlags;
+    unsigned char dlc;
+    unsigned char reserved[7];
+    unsigned char data[XL_CAN_MAX_DATA_LEN];
 } XL_CAN_TX_MSG;
 
-typedef struct {
-  unsigned short tag;           //  2 - type of the event
-  unsigned short transId;       //  2
-  unsigned char  channelIndex;  //  1 - internal has to be 0
-  unsigned char  reserved[3];   //  3 - has to be zero
+typedef struct
+{
+    unsigned short tag;         //  2 - type of the event
+    unsigned short transId;     //  2
+    unsigned char channelIndex; //  1 - internal has to be 0
+    unsigned char reserved[3];  //  3 - has to be zero
 
-  union {
-    XL_CAN_TX_MSG   canMsg;
-  } tagData;
+    union {
+        XL_CAN_TX_MSG canMsg;
+    } tagData;
 } XLcanTxEvent;
 
 ////////////////////////////////////////////////////////////////////////
@@ -4476,36 +4614,37 @@ typedef struct {
 ////////////////////////////////////////////////////////////////////////
 
 // used with XL_CAN_EV_TAG_RX_OK, XL_CAN_EV_TAG_TX_OK
-typedef struct {
-  unsigned int canId;
-  unsigned int msgFlags;
-  unsigned int crc;
-  unsigned char reserved1[12];
-  unsigned short totalBitCnt;
-  unsigned char  dlc;
-  unsigned char reserved[5];
-  unsigned char data[XL_CAN_MAX_DATA_LEN];
+typedef struct
+{
+    unsigned int canId;
+    unsigned int msgFlags;
+    unsigned int crc;
+    unsigned char reserved1[12];
+    unsigned short totalBitCnt;
+    unsigned char dlc;
+    unsigned char reserved[5];
+    unsigned char data[XL_CAN_MAX_DATA_LEN];
 } XL_CAN_EV_RX_MSG;
 
-typedef struct {
-  unsigned int  canId;
-  unsigned int  msgFlags;
-  unsigned char dlc;
-  unsigned char reserved1;
-  unsigned short reserved;
-  unsigned char  data[XL_CAN_MAX_DATA_LEN];
+typedef struct
+{
+    unsigned int canId;
+    unsigned int msgFlags;
+    unsigned char dlc;
+    unsigned char reserved1;
+    unsigned short reserved;
+    unsigned char data[XL_CAN_MAX_DATA_LEN];
 } XL_CAN_EV_TX_REQUEST;
 
-
 // to be used with XL_CAN_EV_TAG_CHIP_STATE
-typedef struct {
-  unsigned char busStatus;
-  unsigned char txErrorCounter;
-  unsigned char rxErrorCounter;
-  unsigned char reserved;
-  unsigned int  reserved0;
+typedef struct
+{
+    unsigned char busStatus;
+    unsigned char txErrorCounter;
+    unsigned char rxErrorCounter;
+    unsigned char reserved;
+    unsigned int reserved0;
 } XL_CAN_EV_CHIP_STATE;
-
 
 typedef XL_SYNC_PULSE_EV XL_CAN_EV_SYNC_PULSE;
 
@@ -4520,42 +4659,43 @@ typedef XL_SYNC_PULSE_EV XL_CAN_EV_SYNC_PULSE;
 #define XL_CAN_ERRC_OVLD_ERROR  8
 #define XL_CAN_ERRC_EXCPT_ERROR 9
 
-//to be used with XL_CAN_EV_TAG_RX_ERROR/XL_CAN_EV_TAG_TX_ERROR
-typedef struct {
-  unsigned char errorCode;
-  unsigned char reserved[95];
+// to be used with XL_CAN_EV_TAG_RX_ERROR/XL_CAN_EV_TAG_TX_ERROR
+typedef struct
+{
+    unsigned char errorCode;
+    unsigned char reserved[95];
 } XL_CAN_EV_ERROR;
 
 // to be used with XLcanRxEvent::flagsChip
 #define XL_CAN_QUEUE_OVERFLOW        0x100u
 
 // max./min size of application rx fifo (bytes)
-#define RX_FIFO_CANFD_QUEUE_SIZE_MAX 524288  // 0,5 MByte
-#define RX_FIFO_CANFD_QUEUE_SIZE_MIN 8192    // 8 kByte
-
+#define RX_FIFO_CANFD_QUEUE_SIZE_MAX 524288 // 0,5 MByte
+#define RX_FIFO_CANFD_QUEUE_SIZE_MIN 8192   // 8 kByte
 
 //------------------------------------------------------------------------------
 // General RX Event
-typedef struct {
-  unsigned int   size;          // 4 - overall size of the complete event
-  unsigned short tag;           // 2 - type of the event
-  unsigned short channelIndex;  // 2
-  unsigned int   userHandle;    // 4 (lower 12 bit available for CAN)
-  unsigned short flagsChip;     // 2 queue overflow (upper 8bit)
-  unsigned short reserved0;     // 2
-  XLuint64 reserved1;  // 8
-  XLuint64 timeStampSync;  // 8 - timestamp which is synchronized by the driver
+typedef struct
+{
+    unsigned int size;           // 4 - overall size of the complete event
+    unsigned short tag;          // 2 - type of the event
+    unsigned short channelIndex; // 2
+    unsigned int userHandle;     // 4 (lower 12 bit available for CAN)
+    unsigned short flagsChip;    // 2 queue overflow (upper 8bit)
+    unsigned short reserved0;    // 2
+    XLuint64 reserved1;          // 8
+    XLuint64 timeStampSync;      // 8 - timestamp which is synchronized by the driver
 
-  union u_tagData {
-    unsigned char        raw[XL_CANFD_MAX_EVENT_SIZE - XL_CANFD_RX_EVENT_HEADER_SIZE];
-    XL_CAN_EV_RX_MSG     canRxOkMsg;
-    XL_CAN_EV_RX_MSG     canTxOkMsg;
-    XL_CAN_EV_TX_REQUEST canTxRequest;
+    union u_tagData {
+        unsigned char raw[XL_CANFD_MAX_EVENT_SIZE - XL_CANFD_RX_EVENT_HEADER_SIZE];
+        XL_CAN_EV_RX_MSG canRxOkMsg;
+        XL_CAN_EV_RX_MSG canTxOkMsg;
+        XL_CAN_EV_TX_REQUEST canTxRequest;
 
-    XL_CAN_EV_ERROR         canError;
-    XL_CAN_EV_CHIP_STATE    canChipState;
-    XL_CAN_EV_SYNC_PULSE    canSyncPulse;
-  } tagData;
+        XL_CAN_EV_ERROR canError;
+        XL_CAN_EV_CHIP_STATE canChipState;
+        XL_CAN_EV_SYNC_PULSE canSyncPulse;
+    } tagData;
 } XLcanRxEvent;
 
 #pragma pack(pop)
@@ -4602,13 +4742,13 @@ typedef struct {
 #define XL_A429_MSG_CYCLE_MAX                  0x3FFFFFFF
 
 // to be used with XL_A429_TX_MSG::gap
-#define XL_A429_MSG_GAP_DEFAULT                0  // get minGap config from set channel params
+#define XL_A429_MSG_GAP_DEFAULT                0 // get minGap config from set channel params
 #define XL_A429_MSG_GAP_MAX                    0x000FFFFF
 
 // to be used with XL_A429_PARAMS::data::parity
 // to be used with XL_A429_TX_MSG::parity
-#define XL_A429_MSG_PARITY_DEFAULT             0  // get parity config from set channel params
-#define XL_A429_MSG_PARITY_DISABLED            1  // tx: get parity config from transmit data - rx: check disabled
+#define XL_A429_MSG_PARITY_DEFAULT             0 // get parity config from set channel params
+#define XL_A429_MSG_PARITY_DISABLED            1 // tx: get parity config from transmit data - rx: check disabled
 #define XL_A429_MSG_PARITY_ODD                 2
 #define XL_A429_MSG_PARITY_EVEN                3
 
@@ -4634,8 +4774,8 @@ typedef struct {
 #define XL_A429_QUEUE_OVERFLOW                 0x100
 
 // max./min size of application rx fifo (bytes)
-#define XL_A429_RX_FIFO_QUEUE_SIZE_MAX         524288  // 0,5 MByte
-#define XL_A429_RX_FIFO_QUEUE_SIZE_MIN         8192    // 8 kByte
+#define XL_A429_RX_FIFO_QUEUE_SIZE_MAX         524288 // 0,5 MByte
+#define XL_A429_RX_FIFO_QUEUE_SIZE_MIN         8192   // 8 kByte
 
 /* ============================================================================== */
 /*                                                                                */
@@ -4647,44 +4787,48 @@ typedef struct {
 // ARINC429 paramter configuration definitions
 ////////////////////////////////////////////////////////////////////////
 
-typedef struct s_xl_a429_params {
-  unsigned short channelDirection;
-  unsigned short res1;
+typedef struct s_xl_a429_params
+{
+    unsigned short channelDirection;
+    unsigned short res1;
 
-  union {
-    struct {
-      unsigned int bitrate;
-      unsigned int parity;
-      unsigned int minGap;
-    } tx;
+    union {
+        struct
+        {
+            unsigned int bitrate;
+            unsigned int parity;
+            unsigned int minGap;
+        } tx;
 
-    struct {
-      unsigned int bitrate;
-      unsigned int minBitrate;
-      unsigned int maxBitrate;
-      unsigned int parity;
-      unsigned int minGap;
-      unsigned int autoBaudrate;
-    } rx;
+        struct
+        {
+            unsigned int bitrate;
+            unsigned int minBitrate;
+            unsigned int maxBitrate;
+            unsigned int parity;
+            unsigned int minGap;
+            unsigned int autoBaudrate;
+        } rx;
 
-    unsigned char raw[28];
-  } data;
+        unsigned char raw[28];
+    } data;
 } XL_A429_PARAMS;
 
 ////////////////////////////////////////////////////////////////////////
 // ARINC429 tx event definitions
 ////////////////////////////////////////////////////////////////////////
 
-typedef struct s_xl_a429_msg_tx {
-  unsigned short userHandle;
-  unsigned short res1;
-  unsigned int   flags;
-  unsigned int   cycleTime;
-  unsigned int   gap;
-  unsigned char  label;
-  unsigned char  parity;
-  unsigned short res2;
-  unsigned int   data;
+typedef struct s_xl_a429_msg_tx
+{
+    unsigned short userHandle;
+    unsigned short res1;
+    unsigned int flags;
+    unsigned int cycleTime;
+    unsigned int gap;
+    unsigned char label;
+    unsigned char parity;
+    unsigned short res2;
+    unsigned int data;
 } XL_A429_MSG_TX;
 
 ////////////////////////////////////////////////////////////////////////
@@ -4692,74 +4836,80 @@ typedef struct s_xl_a429_msg_tx {
 ////////////////////////////////////////////////////////////////////////
 
 // used with XL_A429_EV_TAG_TX_OK
-typedef struct s_xl_a429_ev_tx_ok {
-  unsigned int   frameLength;
-  unsigned int   bitrate;
-  unsigned char  label;
-  unsigned char  msgCtrl;
-  unsigned short res1;
-  unsigned int   data;
+typedef struct s_xl_a429_ev_tx_ok
+{
+    unsigned int frameLength;
+    unsigned int bitrate;
+    unsigned char label;
+    unsigned char msgCtrl;
+    unsigned short res1;
+    unsigned int data;
 } XL_A429_EV_TX_OK;
 
 // used with XL_A429_EV_TAG_TX_ERR
-typedef struct s_xl_a429_ev_tx_err {
-  unsigned int  frameLength;
-  unsigned int  bitrate;
-  unsigned char errorPosition;
-  unsigned char errorReason;
-  unsigned char label;
-  unsigned char res1;
-  unsigned int  data;
+typedef struct s_xl_a429_ev_tx_err
+{
+    unsigned int frameLength;
+    unsigned int bitrate;
+    unsigned char errorPosition;
+    unsigned char errorReason;
+    unsigned char label;
+    unsigned char res1;
+    unsigned int data;
 } XL_A429_EV_TX_ERR;
 
 // used with XL_A429_EV_TAG_RX_OK
-typedef struct s_xl_a429_ev_rx_ok {
-  unsigned int  frameLength;
-  unsigned int  bitrate;
-  unsigned char label;
-  unsigned char res1[3];
-  unsigned int  data;
+typedef struct s_xl_a429_ev_rx_ok
+{
+    unsigned int frameLength;
+    unsigned int bitrate;
+    unsigned char label;
+    unsigned char res1[3];
+    unsigned int data;
 } XL_A429_EV_RX_OK;
 
 // used with XL_A429_EV_TAG_RX_ERR
-typedef struct s_xl_a429_ev_rx_err {
-  unsigned int  frameLength;
-  unsigned int  bitrate;
-  unsigned int  bitLengthOfLastBit;
-  unsigned char errorPosition;
-  unsigned char errorReason;
-  unsigned char label;
-  unsigned char res1;
-  unsigned int  data;
+typedef struct s_xl_a429_ev_rx_err
+{
+    unsigned int frameLength;
+    unsigned int bitrate;
+    unsigned int bitLengthOfLastBit;
+    unsigned char errorPosition;
+    unsigned char errorReason;
+    unsigned char label;
+    unsigned char res1;
+    unsigned int data;
 } XL_A429_EV_RX_ERR;
 
 // used with XL_A429_EV_TAG_BUS_STATISTIC
-typedef struct s_xl_a429_ev_bus_statistic {
-  unsigned int busLoad;  // 0.00-100.00%
-  unsigned int res1[3];
+typedef struct s_xl_a429_ev_bus_statistic
+{
+    unsigned int busLoad; // 0.00-100.00%
+    unsigned int res1[3];
 } XL_A429_EV_BUS_STATISTIC;
 
 typedef XL_SYNC_PULSE_EV XL_A429_EV_SYNC_PULSE;
 
-typedef struct {
-  unsigned int   size;           // 4 - overall size of the complete event
-  unsigned short tag;            // 2 - type of the event
-  unsigned char  channelIndex;   // 1
-  unsigned char  reserved;       // 1
-  unsigned int   userHandle;     // 4 (lower 12 bit available for CAN)
-  unsigned short flagsChip;      // 2 queue overflow (upper 8bit)
-  unsigned short reserved0;      // 1
-  XLuint64       timeStamp;      // 8 - raw timestamp
-  XLuint64       timeStampSync;  // 8 - timestamp which is synchronized by the driver
+typedef struct
+{
+    unsigned int size;          // 4 - overall size of the complete event
+    unsigned short tag;         // 2 - type of the event
+    unsigned char channelIndex; // 1
+    unsigned char reserved;     // 1
+    unsigned int userHandle;    // 4 (lower 12 bit available for CAN)
+    unsigned short flagsChip;   // 2 queue overflow (upper 8bit)
+    unsigned short reserved0;   // 1
+    XLuint64 timeStamp;         // 8 - raw timestamp
+    XLuint64 timeStampSync;     // 8 - timestamp which is synchronized by the driver
 
-  union {
-    XL_A429_EV_TX_OK         a429TxOkMsg;
-    XL_A429_EV_TX_ERR        a429TxErrMsg;
-    XL_A429_EV_RX_OK         a429RxOkMsg;
-    XL_A429_EV_RX_ERR        a429RxErrMsg;
-    XL_A429_EV_BUS_STATISTIC a429BusStatistic;
-    XL_A429_EV_SYNC_PULSE    a429SyncPulse;
-  } tagData;
+    union {
+        XL_A429_EV_TX_OK a429TxOkMsg;
+        XL_A429_EV_TX_ERR a429TxErrMsg;
+        XL_A429_EV_RX_OK a429RxOkMsg;
+        XL_A429_EV_RX_ERR a429RxErrMsg;
+        XL_A429_EV_BUS_STATISTIC a429BusStatistic;
+        XL_A429_EV_SYNC_PULSE a429SyncPulse;
+    } tagData;
 } XLa429RxEvent;
 
 #pragma pack(pop)
@@ -4770,171 +4920,188 @@ struct XLIDriverConfig;
 
 // driver config handle is a pointer to anonymous structure
 struct _XLdriverConfig;
-typedef struct _XLdriverConfig* XLdrvConfigHandle;
+typedef struct _XLdriverConfig *XLdrvConfigHandle;
 
 #define XL_INVALID_CONFIG_HANDLE (0)
 
 // XLAPI channel configuration V1
-typedef struct s_xl_channel_drv_config_v1 {
-  unsigned int hwChannel;            //!< Index of the channel (same hardware) (0,1,...)
-  unsigned int channelIndex;         //!< Global channel index (0,1,...) in the channel list
-                                     //!< on remote devices this is the index of the local administrated channel
-  unsigned int deviceIndex;          //!< The index of the device in the device list
-  unsigned int interfaceVersion;     //!< version of interface with driver
-  unsigned int isOnBus;              //!< The channel is on bus
-  XLuint64     channelCapabilities;  //!< capabilities which are supported (e.g CHANNEL_FLAG_XXX)
-  XLuint64     channelCapabilities2;
-  XLuint64     channelBusCapabilities;        //!< what buses are supported
-  XLuint64     channelBusActiveCapabilities;  //!< and which are possible to be activated
-  XLuint64     connectedBusType;              //!< currently selected bus
-  unsigned int currentlyAvailableTimestamps;
-  XLbusParams  busParams;
+typedef struct s_xl_channel_drv_config_v1
+{
+    unsigned int hwChannel;        //!< Index of the channel (same hardware) (0,1,...)
+    unsigned int channelIndex;     //!< Global channel index (0,1,...) in the channel list
+                                   //!< on remote devices this is the index of the local administrated channel
+    unsigned int deviceIndex;      //!< The index of the device in the device list
+    unsigned int interfaceVersion; //!< version of interface with driver
+    unsigned int isOnBus;          //!< The channel is on bus
+    XLuint64 channelCapabilities;  //!< capabilities which are supported (e.g CHANNEL_FLAG_XXX)
+    XLuint64 channelCapabilities2;
+    XLuint64 channelBusCapabilities;       //!< what buses are supported
+    XLuint64 channelBusActiveCapabilities; //!< and which are possible to be activated
+    XLuint64 connectedBusType;             //!< currently selected bus
+    unsigned int currentlyAvailableTimestamps;
+    XLbusParams busParams;
 
-  struct {
-    const char*  name;  //!< name of the transceiver, NULL terminated UTF-8 encoded string
-    unsigned int type;
-    unsigned int configError;  //!< XL_CHANNEL_CONFIG_ERROR_XXX (see above)
-  } transceiver;
-  const struct s_xl_channel_drv_config_v1* remoteChannel;  //!< optional reference to remote channel info
+    struct
+    {
+        const char *name; //!< name of the transceiver, NULL terminated UTF-8 encoded string
+        unsigned int type;
+        unsigned int configError; //!< XL_CHANNEL_CONFIG_ERROR_XXX (see above)
+    } transceiver;
+    const struct s_xl_channel_drv_config_v1 *remoteChannel; //!< optional reference to remote channel info
 } XLchannelDrvConfigV1, *pXLchannelDrvConfigV1;
 
 // channel list type
-typedef struct s_channel_drv_config_list_v1 {
-  const XLchannelDrvConfigV1* item;
-  unsigned int                count;
+typedef struct s_channel_drv_config_list_v1
+{
+    const XLchannelDrvConfigV1 *item;
+    unsigned int count;
 } XLchannelDrvConfigListV1, *pXLchannelDrvConfigListV1;
 
 // channel config interface
-typedef XLstatus(_XL_EXPORT_API* TP_FCT_XLAPI_GET_CHANNEL_CONFIG_V1)(XLdrvConfigHandle         configHandle,
-                                                                     XLchannelDrvConfigListV1* channelCfgList);
+typedef XLstatus(_XL_EXPORT_API *TP_FCT_XLAPI_GET_CHANNEL_CONFIG_V1)(XLdrvConfigHandle configHandle,
+                                                                     XLchannelDrvConfigListV1 *channelCfgList);
 
 // XLAPI device configuration V1
-typedef struct s_xl_device_drv_config_v1 {
-  const char*  name;     //!< NULL terminated UTF-8 encoded string
-  unsigned int hwType;   //!< XL_HWTYPE_xxxx (see above)
-  unsigned int hwIndex;  //!< Index of the hardware (same type) (0,1,...)
-  unsigned int serialNumber;
-  unsigned int articleNumber;
-  XLuint64     driverVersion;   //!< version of the driver
-  unsigned int connectionInfo;  //!< XL_CONNECTION_INFO_XXX
-  unsigned int isRemoteDevice;  //!< indicates a device of the remote driver config
+typedef struct s_xl_device_drv_config_v1
+{
+    const char *name;     //!< NULL terminated UTF-8 encoded string
+    unsigned int hwType;  //!< XL_HWTYPE_xxxx (see above)
+    unsigned int hwIndex; //!< Index of the hardware (same type) (0,1,...)
+    unsigned int serialNumber;
+    unsigned int articleNumber;
+    XLuint64 driverVersion;      //!< version of the driver
+    unsigned int connectionInfo; //!< XL_CONNECTION_INFO_XXX
+    unsigned int isRemoteDevice; //!< indicates a device of the remote driver config
 
-  struct {
-    const struct s_xl_device_drv_config_v1* item;
-    unsigned int                            count;
-  } remoteDeviceList;
+    struct
+    {
+        const struct s_xl_device_drv_config_v1 *item;
+        unsigned int count;
+    } remoteDeviceList;
 
-  XLchannelDrvConfigListV1 channelList;  //!< device channel list
+    XLchannelDrvConfigListV1 channelList; //!< device channel list
 } XLdeviceDrvConfigV1, *pXLdeviceDrvConfigV1;
 
 // device list type
-typedef struct s_device_drv_config_list_v1 {
-  const XLdeviceDrvConfigV1* item;
-  unsigned int               count;
+typedef struct s_device_drv_config_list_v1
+{
+    const XLdeviceDrvConfigV1 *item;
+    unsigned int count;
 } XLdeviceDrvConfigListV1, *pXLdeviceDrvConfigListV1;
 
 // device config interface
-typedef XLstatus(_XL_EXPORT_API* TP_FCT_XLAPI_GET_DEVICE_CONFIG_V1)(XLdrvConfigHandle configHandle, XLdeviceDrvConfigListV1* deviceCfgList);
+typedef XLstatus(_XL_EXPORT_API *TP_FCT_XLAPI_GET_DEVICE_CONFIG_V1)(XLdrvConfigHandle configHandle, XLdeviceDrvConfigListV1 *deviceCfgList);
+
 // XLAPI Virtual port configuration V1
-typedef struct s_xl_virtual_port_drv_config_v1 {
-  const char*  virtualPortName;  //!< name of the virtual port, NULL terminated UTF-8 encoded string
-  unsigned int networkIdx;       //!< the index of the network in the network list this vp belongs to
-  XLswitchId   switchId;         //!< ID of the switch in the network - switches in different networks may have the same switch ID
+typedef struct s_xl_virtual_port_drv_config_v1
+{
+    const char *virtualPortName; //!< name of the virtual port, NULL terminated UTF-8 encoded string
+    unsigned int networkIdx;     //!< the index of the network in the network list this vp belongs to
+    XLswitchId switchId;         //!< ID of the switch in the network - switches in different networks may have the same switch ID
 } XLvirtualportDrvConfigV1, *pXLvirtualportDrvConfigV1;
 
 // virtual port list
-typedef struct s_virtual_port_drv_config_list_v1 {
-  const XLvirtualportDrvConfigV1* item;
-  unsigned int                    count;
+typedef struct s_virtual_port_drv_config_list_v1
+{
+    const XLvirtualportDrvConfigV1 *item;
+    unsigned int count;
 } XLvirtualportDrvConfigListV1, *pXLvirtualportDrvConfigListV1;
 
 // virtual port config interface
-typedef XLstatus(_XL_EXPORT_API* TP_FCT_XLAPI_GET_VIRTUAL_PORT_CONFIG_V1)(XLdrvConfigHandle             configHandle,
-                                                                          XLvirtualportDrvConfigListV1* virtualPortCfgList);
+typedef XLstatus(_XL_EXPORT_API *TP_FCT_XLAPI_GET_VIRTUAL_PORT_CONFIG_V1)(XLdrvConfigHandle configHandle,
+                                                                          XLvirtualportDrvConfigListV1 *virtualPortCfgList);
 
 // XLAPI Measurement point configuration V1
-typedef struct s_xl_measurement_point_drv_config_v1 {
-  const char*                 measurementPointName;  //!< name of the measurement point, NULL terminated UTF-8 encoded string
-  unsigned int                networkIdx;            //!< the index of the network in the network list this mp belongs to
-  XLswitchId                  switchId;  //!< ID of the switch in the network - switches in different networks may have the same switch ID
-  const XLchannelDrvConfigV1* channel;   //!< the hardware channel the MP is connected to
+typedef struct s_xl_measurement_point_drv_config_v1
+{
+    const char *measurementPointName;    //!< name of the measurement point, NULL terminated UTF-8 encoded string
+    unsigned int networkIdx;             //!< the index of the network in the network list this mp belongs to
+    XLswitchId switchId;                 //!< ID of the switch in the network - switches in different networks may have the same switch ID
+    const XLchannelDrvConfigV1 *channel; //!< the hardware channel the MP is connected to
 } XLmeasurementpointDrvConfigV1, *pXLmeasurementpointDrvConfigV1;
 
 // measurement point config list
-typedef struct s_xl_measurement_point_drv_config_list_v1 {
-  const XLmeasurementpointDrvConfigV1* item;
-  unsigned int                         count;
+typedef struct s_xl_measurement_point_drv_config_list_v1
+{
+    const XLmeasurementpointDrvConfigV1 *item;
+    unsigned int count;
 } XLmeasurementpointDrvConfigListV1, *pXLmeasurementpointDrvConfigListV1;
 
 // measurement point config interface
-typedef XLstatus(_XL_EXPORT_API* TP_FCT_XLAPI_GET_MEASUREMENT_POINT_CONFIG_V1)(XLdrvConfigHandle                  configHandle,
-                                                                               XLmeasurementpointDrvConfigListV1* measurementPointCfg);
+typedef XLstatus(_XL_EXPORT_API *TP_FCT_XLAPI_GET_MEASUREMENT_POINT_CONFIG_V1)(XLdrvConfigHandle configHandle,
+                                                                               XLmeasurementpointDrvConfigListV1 *measurementPointCfg);
 
 // XLAPI Switch configuration V1
-typedef struct s_xl_switch_drv_config_v1 {
-  const char*                  switchName;  //!< name of the switch, NULL terminated UTF-8 encoded string
-  XLswitchId                   switchId;  //!< ID of the switch in the network - switches in different networks may have the same switch ID
-  unsigned int                 networkIdx;        //!< the index of the network in the network list this switch belongs to
-  const XLdeviceDrvConfigV1*   device;            //!< the device the switch resides on
-  unsigned int                 switchCapability;  //!< type of the switch "real", TAP or direct connection
-  XLvirtualportDrvConfigListV1 vpList;            //!< Virtual Port list
-  XLmeasurementpointDrvConfigListV1 mpList;       //!< Measurement Point list
+typedef struct s_xl_switch_drv_config_v1
+{
+    const char *switchName;                   //!< name of the switch, NULL terminated UTF-8 encoded string
+    XLswitchId switchId;                      //!< ID of the switch in the network - switches in different networks may have the same switch ID
+    unsigned int networkIdx;                  //!< the index of the network in the network list this switch belongs to
+    const XLdeviceDrvConfigV1 *device;        //!< the device the switch resides on
+    unsigned int switchCapability;            //!< type of the switch "real", TAP or direct connection
+    XLvirtualportDrvConfigListV1 vpList;      //!< Virtual Port list
+    XLmeasurementpointDrvConfigListV1 mpList; //!< Measurement Point list
 } XLswitchDrvConfigV1, *pXLswitchDrvConfigV1;
 
 // switch list type
-typedef struct s_switch_drv_config_list_v1 {
-  const XLswitchDrvConfigV1* item;
-  unsigned int               count;
+typedef struct s_switch_drv_config_list_v1
+{
+    const XLswitchDrvConfigV1 *item;
+    unsigned int count;
 } XLswitchDrvConfigListV1, *pXLswitchDrvConfigListV1;
 
 // network config interface
-typedef XLstatus(_XL_EXPORT_API* TP_FCT_XLAPI_GET_SWITCH_CONFIG_V1)(XLdrvConfigHandle configHandle, XLswitchDrvConfigListV1* switchCfgList);
+typedef XLstatus(_XL_EXPORT_API *TP_FCT_XLAPI_GET_SWITCH_CONFIG_V1)(XLdrvConfigHandle configHandle, XLswitchDrvConfigListV1 *switchCfgList);
 
 // Network configuration
 typedef enum { XL_ETH_NETWORK = 1 } XLnetworkType;
 
 // XLAPI Network configuration V1
-typedef struct s_xl_network_drv_config_v1 {
-  const char*   networkName;        //!< name of the network, NULL terminated UTF-8 encoded string
-  unsigned int  statusCode;         //!< network configuration error XL_NET_CFG_*
-  const char*   statusErrorString;  //!< NULL terminated UTF-8 encoded string that describes statusCode. NULL if no error string exists.
-  XLnetworkType networkType;        //!< XL_ETH_NETWORK
-  XLswitchDrvConfigListV1 switchList;
+typedef struct s_xl_network_drv_config_v1
+{
+    const char *networkName;       //!< name of the network, NULL terminated UTF-8 encoded string
+    unsigned int statusCode;       //!< network configuration error XL_NET_CFG_*
+    const char *statusErrorString; //!< NULL terminated UTF-8 encoded string that describes statusCode. NULL if no error string exists.
+    XLnetworkType networkType;     //!< XL_ETH_NETWORK
+    XLswitchDrvConfigListV1 switchList;
 } XLnetworkDrvConfigV1, *pXLnetworkDrvConfigV1;
 
 // network list type
-typedef struct s_xl_network_drv_config_list_v1 {
-  const XLnetworkDrvConfigV1* item;
-  unsigned int                count;
+typedef struct s_xl_network_drv_config_list_v1
+{
+    const XLnetworkDrvConfigV1 *item;
+    unsigned int count;
 } XLnetworkDrvConfigListV1, *pXLnetworkDrvConfigListV1;
 
 // network config interface
-typedef XLstatus(_XL_EXPORT_API* TP_FCT_XLAPI_GET_NETWORK_CONFIG_V1)(XLdrvConfigHandle         configHandle,
-                                                                     XLnetworkDrvConfigListV1* networkCfgList);
+typedef XLstatus(_XL_EXPORT_API *TP_FCT_XLAPI_GET_NETWORK_CONFIG_V1)(XLdrvConfigHandle configHandle,
+                                                                     XLnetworkDrvConfigListV1 *networkCfgList);
 
 // XLAPI DLL configuration V1
-typedef struct s_xl_dll_drv_config_v1 {
-  XLuint64 dllVersion;  //!< version of the loaded DLL instance
+typedef struct s_xl_dll_drv_config_v1
+{
+    XLuint64 dllVersion; //!< version of the loaded DLL instance
 } XLdllDrvConfigV1, *pXLdllDrvConfigV1;
 
 // XLAPI DLL config interface
-typedef XLstatus(_XL_EXPORT_API* TP_FCT_XLAPI_GET_DLL_CONFIG_V1)(XLdrvConfigHandle configHandle, XLdllDrvConfigV1* dllCfg);
+typedef XLstatus(_XL_EXPORT_API *TP_FCT_XLAPI_GET_DLL_CONFIG_V1)(XLdrvConfigHandle configHandle, XLdllDrvConfigV1 *dllCfg);
 
 // driver config interface version
 typedef enum {
-  XL_IDRIVER_CONFIG_VERSION_1 = 0x8001
+    XL_IDRIVER_CONFIG_VERSION_1 = 0x8001
 } XLIdriverConfigVersion;
 
 // XLAPI driver configuration interface structure V1
-typedef struct s_xlapi_driver_config_v1 {
-  XLdrvConfigHandle                            configHandle;
-  TP_FCT_XLAPI_GET_DEVICE_CONFIG_V1            fctGetDeviceConfig;
-  TP_FCT_XLAPI_GET_CHANNEL_CONFIG_V1           fctGetChannelConfig;
-  TP_FCT_XLAPI_GET_NETWORK_CONFIG_V1           fctGetNetworkConfig;
-  TP_FCT_XLAPI_GET_SWITCH_CONFIG_V1            fctGetSwitchConfig;
-  TP_FCT_XLAPI_GET_VIRTUAL_PORT_CONFIG_V1      fctGetVirtualPortConfig;
-  TP_FCT_XLAPI_GET_MEASUREMENT_POINT_CONFIG_V1 fctGetMeasurementPointConfig;
-  TP_FCT_XLAPI_GET_DLL_CONFIG_V1               fctGetDllConfig;
+typedef struct s_xlapi_driver_config_v1
+{
+    XLdrvConfigHandle configHandle;
+    TP_FCT_XLAPI_GET_DEVICE_CONFIG_V1 fctGetDeviceConfig;
+    TP_FCT_XLAPI_GET_CHANNEL_CONFIG_V1 fctGetChannelConfig;
+    TP_FCT_XLAPI_GET_NETWORK_CONFIG_V1 fctGetNetworkConfig;
+    TP_FCT_XLAPI_GET_SWITCH_CONFIG_V1 fctGetSwitchConfig;
+    TP_FCT_XLAPI_GET_VIRTUAL_PORT_CONFIG_V1 fctGetVirtualPortConfig;
+    TP_FCT_XLAPI_GET_MEASUREMENT_POINT_CONFIG_V1 fctGetMeasurementPointConfig;
+    TP_FCT_XLAPI_GET_DLL_CONFIG_V1 fctGetDllConfig;
 } XLapiIDriverConfigV1, *pXLapiIDriverConfigV1;
 
 #pragma pack(pop)
@@ -4958,9 +5125,9 @@ The Application calls this function to get access to the driver.
 
 #ifdef DYNAMIC_XLDRIVER_DLL
 // in case of dynamic loading the application defines this function
-typedef XLstatus(_XL_EXPORT_API* XLOPENDRIVER)(void);
+typedef XLstatus(_XL_EXPORT_API *XLOPENDRIVER)(void);
 #else
-XLstatus _XL_EXPORT_DECL     xlOpenDriver(void);
+XLstatus _XL_EXPORT_DECL xlOpenDriver(void);
 #endif
 
 /*------------------------------------------------------------------------------
@@ -4972,9 +5139,9 @@ Does not close the open ports !!!
 */
 
 #ifdef DYNAMIC_XLDRIVER_DLL
-typedef XLstatus(_XL_EXPORT_API* XLCLOSEDRIVER)(void);
+typedef XLstatus(_XL_EXPORT_API *XLCLOSEDRIVER)(void);
 #else
-XLstatus _XL_EXPORT_DECL     xlCloseDriver(void);
+XLstatus _XL_EXPORT_DECL xlCloseDriver(void);
 #endif
 
 /*------------------------------------------------------------------------------
@@ -4995,23 +5162,22 @@ This values can be used in a subsequent call to xlGetChannelMask or xlGetChannel
 */
 
 DECL_STDXL_FUNC(xlGetApplConfig, XLGETAPPLCONFIG,
-                (char*         appName,     //<! Name of Application
-                 unsigned int  appChannel,  //<! 0,1
-                 unsigned int* pHwType,     //<! HWTYPE_xxxx
-                 unsigned int* pHwIndex,    //<! Index of the hardware (slot) (0,1,...)
-                 unsigned int* pHwChannel,  //<! Index of the channel (connector) (0,1,...)
-                 unsigned int  busType      //<! Bus type of configuration, should be BUS_TYPE_NONE when no bus type is set
-                 ));
-
-DECL_STDXL_FUNC(xlSetApplConfig, XLSETAPPLCONFIG,
-                (char*        appName,     //<! Name of Application
+                (char *appName,            //<! Name of Application
                  unsigned int appChannel,  //<! 0,1
-                 unsigned int hwType,      //<! HWTYPE_xxxx
-                 unsigned int hwIndex,     //<! Index of the hardware (slot) (0,1,...)
-                 unsigned int hwChannel,   //<! Index of the channel (connector) (0,1,...)
+                 unsigned int *pHwType,    //<! HWTYPE_xxxx
+                 unsigned int *pHwIndex,   //<! Index of the hardware (slot) (0,1,...)
+                 unsigned int *pHwChannel, //<! Index of the channel (connector) (0,1,...)
                  unsigned int busType      //<! Bus type of configuration, should be BUS_TYPE_NONE when no bus type is set
                  ));
 
+DECL_STDXL_FUNC(xlSetApplConfig, XLSETAPPLCONFIG,
+                (char *appName,           //<! Name of Application
+                 unsigned int appChannel, //<! 0,1
+                 unsigned int hwType,     //<! HWTYPE_xxxx
+                 unsigned int hwIndex,    //<! Index of the hardware (slot) (0,1,...)
+                 unsigned int hwChannel,  //<! Index of the channel (connector) (0,1,...)
+                 unsigned int busType     //<! Bus type of configuration, should be BUS_TYPE_NONE when no bus type is set
+                 ));
 
 /*------------------------------------------------------------------------------
 xlGetDriverConfig():
@@ -5023,7 +5189,6 @@ must provide the memory (pointer to XLdriverConfig structure).
 
 DECL_STDXL_FUNC(xlGetDriverConfig, XLGETDRIVERCONFIG, (XLdriverConfig * pDriverConfig));
 
-
 /** xlCreateDriverConfig()
 *\brief Function to retrieve requested version of the driver configuration interface.
 *
@@ -5033,7 +5198,7 @@ DECL_STDXL_FUNC(xlGetDriverConfig, XLGETDRIVERCONFIG, (XLdriverConfig * pDriverC
 *  \return XLstatus     XL_SUCCESS on success
 *
 */
-DECL_STDXL_FUNC(xlCreateDriverConfig, XLCREATEDRIVERCONFIG, (XLIdriverConfigVersion version, struct XLIDriverConfig* pConfigInterface));
+DECL_STDXL_FUNC(xlCreateDriverConfig, XLCREATEDRIVERCONFIG, (XLIdriverConfigVersion version, struct XLIDriverConfig *pConfigInterface));
 
 /** xlDestroyDriverConfig()
 *\brief Function to release driver configuration context.
@@ -5073,7 +5238,7 @@ The port handle and permitted init access is returned.
 */
 
 DECL_STDXL_FUNC(xlOpenPort, XLOPENPORT,
-                (XLportHandle * pPortHandle, char* userName, XLaccess accessMask, XLaccess* pPermissionMask, unsigned int rxQueueSize,
+                (XLportHandle * pPortHandle, char *userName, XLaccess accessMask, XLaccess *pPermissionMask, unsigned int rxQueueSize,
                  unsigned int xlInterfaceVersion, unsigned int busType));
 
 /*------------------------------------------------------------------------------
@@ -5085,7 +5250,7 @@ The port handle is returned.
 */
 
 DECL_STDXL_FUNC(xlCreatePort, XLCREATEPORT,
-                (XLportHandle * pPortHandle, const char* appName, unsigned int rxQueueSize, unsigned int xlInterfaceVersion,
+                (XLportHandle * pPortHandle, const char *appName, unsigned int rxQueueSize, unsigned int xlInterfaceVersion,
                  XLuint64 busType));
 
 /*------------------------------------------------------------------------------
@@ -5097,7 +5262,7 @@ to initialize the channel.
 */
 
 DECL_STDXL_FUNC(xlAddChannelToPort, XLADDCHANNELTOPORT,
-                (XLportHandle portHandle, XLaccess channelIndex, unsigned int initAccess, unsigned int* permission, XLuint64 busType));
+                (XLportHandle portHandle, XLaccess channelIndex, unsigned int initAccess, unsigned int *permission, XLuint64 busType));
 
 /*------------------------------------------------------------------------------
 xlFinalizePort():
@@ -5146,8 +5311,7 @@ Example: timerRate=25  ==> Used timerrate would be 250us.
 */
 
 DECL_STDXL_FUNC(xlSetTimerRateAndChannel, XLSETTIMERRATEANDCHANNEL,
-                (XLportHandle portHandle, XLaccess* timerChannelMask, XLulong* timerRate));
-
+                (XLportHandle portHandle, XLaccess *timerChannelMask, XLulong *timerRate));
 
 /*------------------------------------------------------------------------------
 xlResetClock():
@@ -5160,80 +5324,80 @@ DECL_STDXL_FUNC(xlResetClock, XLRESETCLOCK, (XLportHandle portHandle));
 /********************************************************************
 xlTsResetClocks()
 *
-*\brief Check synchronization status of the channels and reset the time stamps. 
-*       The channel is part of the port. A channel is called to be in synchronous 
-*       state when the measurement clock of the device is in synchronous state. 
+*\brief Check synchronization status of the channels and reset the time stamps.
+*       The channel is part of the port. A channel is called to be in synchronous
+*       state when the measurement clock of the device is in synchronous state.
 *
-*  \param portHandle   [IN]    : A port handle created with xlCreatePort() or xlOpenPort(). 
-*  \param timeScale    [OUT]   : The actual timescale of the channels time stamps. 
+*  \param portHandle   [IN]    : A port handle created with xlCreatePort() or xlOpenPort().
+*  \param timeScale    [OUT]   : The actual timescale of the channels time stamps.
 *  \param leapSeconds  [OUT]   : When timescale equals TAI these are the leap seconds on the protocol.
 *  \param gmUuid       [OUT]   : This is the XL-API clock identifier of the grandmaster clock. When receiving time from GNSS and the
-*                                receiving device is a Vector device this is the identifier of the devices local clock. 
+*                                receiving device is a Vector device this is the identifier of the devices local clock.
 *  \param timeOffset   [INOUT] : When this function is called with *timeOffset = 0, the driver resets the clocks and returns the offset
 *                                of the channels time stamp.
 *                                When *timeOffset is not 0, the driver uses this value as time offset for the channels. This mode of the
-*                                function can be used to re-synchronize a channel to an existing time domain (e.g. after reconnecting a device). 
-*  \return XLstatus    Returns an error code. 
+*                                function can be used to re-synchronize a channel to an existing time domain (e.g. after reconnecting a device).
+*  \return XLstatus    Returns an error code.
 *                      XL_SUCCESS                       - If no error occurred.
 *                      XL_ERR_TS_DOMAIN_NOT_SYNC        - The port is not in synchronous state. See description of the function.
-*                      XL_ERR_TS_AGGREGATE_STATUS       - At least the time scale of one measurement clock is undefined. 
+*                      XL_ERR_TS_AGGREGATE_STATUS       - At least the time scale of one measurement clock is undefined.
 *                      XL_ERR_TS_INVALID_CLUSTER_MASTER - The cluster master of at least one measurement clock is undefined.
 *                      XL_ERR_TS_RESET_CLOCK            - At least one clock could not be reset or its timeOffset could not be read.
 *                      XL_ERR_TS_SET_CLOCK_OFFSET       - The TimeOffset for at least one clock could not be set.
 *                      XL_ERR_TS_CLOCK_NOT_FOUND        - There were no clocks found that can be resetted.
 */
 DECL_STDXL_FUNC(xlTsResetClocks, XLFP_TSRESETCLOCK,
-                (XLportHandle portHandle, XLtsTimeScale* timescale, XLtsLeapSeconds* leapSeconds, XLtsClkUuid* gmUuid,
-                 XLuint64* timeOffset));
+                (XLportHandle portHandle, XLtsTimeScale *timescale, XLtsLeapSeconds *leapSeconds, XLtsClkUuid *gmUuid,
+                 XLuint64 *timeOffset));
 
 /********************************************************************
 xlNetTsResetClocks()
 *
-*\brief Check synchronization status of the channels and reset the time stamps. 
-*       The channel is part of the port. A channel is called to be in synchronous 
+*\brief Check synchronization status of the channels and reset the time stamps.
+*       The channel is part of the port. A channel is called to be in synchronous
 *       state when the measurement clock of the device is in synchronous state.
 *
-*  \param networkHandle    [IN]    : A network handle created with xlNetEthOpenNetwork(). 
-*  \param timeScale        [OUT]   : The actual timescale of the channels time stamps. 
+*  \param networkHandle    [IN]    : A network handle created with xlNetEthOpenNetwork().
+*  \param timeScale        [OUT]   : The actual timescale of the channels time stamps.
 *  \param leapSeconds      [OUT]   : When timescale equals TAI these are the leap seconds on the protocol.
 *  \param gmUuid           [OUT]   : This is the XL-API clock identifier of the grandmaster clock. When receiving time from GNSS and the
-*                                    receiving device is a Vector device this is the identifier of the devices local clock. 
+*                                    receiving device is a Vector device this is the identifier of the devices local clock.
 *  \param timeOffset       [INOUT] : When this function is called with *timeOffset = 0, the driver resets the clocks and returns the offset
 *                                    of the channels time stamp.
 *                                    When *timeOffset is not 0, the driver uses this value as time offset for the channels. This mode of the
-*                                    function can be used to re-synchronize a channel to an existing time domain (e.g. after reconnecting a device). 
-*  \return XLstatus            Returns an error code. 
+*                                    function can be used to re-synchronize a channel to an existing time domain (e.g. after reconnecting a device).
+*  \return XLstatus            Returns an error code.
 *                              XL_SUCCESS                       - No error occurred.
 *                              XL_ERR_TS_DOMAIN_NOT_SYNC        - The port is not in synchronous state. See description of the function.
-*                              XL_ERR_TS_AGGREGATE_STATUS       - At least the time scale of one measurement clock is undefined. 
+*                              XL_ERR_TS_AGGREGATE_STATUS       - At least the time scale of one measurement clock is undefined.
 *                              XL_ERR_TS_INVALID_CLUSTER_MASTER - The cluster master of at least one measurement clock is undefined.
 *                              XL_ERR_TS_RESET_CLOCK            - At least one clock could not be reset or its timeOffset could not be read.
 *                              XL_ERR_TS_SET_CLOCK_OFFSET       - The TimeOffset for at least one clock could not be set.
 *                              XL_ERR_TS_CLOCK_NOT_FOUND        - There were no clocks found that can be resetted.
 */
 DECL_STDXL_FUNC(xlNetTsResetClocks, XLFP_NETTSRESETCLOCK,
-                (XLnetworkHandle networkHandle, XLtsTimeScale* timescale, XLtsLeapSeconds* leapSeconds, XLtsClkUuid* gmUuid,
-                 XLuint64* timeOffset));
+                (XLnetworkHandle networkHandle, XLtsTimeScale *timescale, XLtsLeapSeconds *leapSeconds, XLtsClkUuid *gmUuid,
+                 XLuint64 *timeOffset));
 
 /********************************************************************
 xlTsGetStatus()
 *
 *\brief Check synchronization status of the channels which are part of the port. A channel is called to be in
-        synchronous state when the measurement clock of the device is in synchronous state. 
+        synchronous state when the measurement clock of the device is in synchronous state.
 *
 *  \param portHandle       [IN]    : A port handle created with xlCreatePort() or xlOpenPort().
-*  \param accessMask       [IN]    : Selects the channel for which to get the time synchronization status. 
-                                     Use XL_USE_ALL_CHANNELS to get the time synchronization status of the overall port. 
+*  \param accessMask       [IN]    : Selects the channel for which to get the time synchronization status.
+                                     Use XL_USE_ALL_CHANNELS to get the time synchronization status of the overall port.
 *  \param timescale        [OUT]   : The actual timescale of the channels time stamps.
 *  \param leapSeconds      [OUT]   : When timescale equals TAI these are the leap seconds on the protocol.
 *  \param gmUuid           [OUT]   : This is the XL-API clock identifier of the grandmaster clock. When receiving time from GNSS and the
-*                                    receiving device is a Vector device this is the identifier of the devices local clock. 
+*                                    receiving device is a Vector device this is the identifier of the devices local clock.
 *  \param localUuid        [OUT]   : The unique clock identifier of the time source for the channel when
-*                                    accessMask != XL_USE_ALL_CHANNELS. This parameter is optional and can be set to null. 
-*  \return XLstatus            Returns an error code. 
+*                                    accessMask != XL_USE_ALL_CHANNELS. This parameter is optional and can be set to null.
+*  \return XLstatus            Returns an error code.
 *                              XL_SUCCESS                       - No error occurred.
 *                              XL_ERR_TS_DOMAIN_NOT_SYNC        - The port is not in synchronous state. See description of the function.
-*                              XL_ERR_TS_AGGREGATE_STATUS       - At least the time scale of one measurement clock is undefined. 
+*                              XL_ERR_TS_AGGREGATE_STATUS       - At least the time scale of one measurement clock is undefined.
 *                              XL_ERR_TS_INVALID_CLUSTER_MASTER - The cluster master of at least one measurement clock is undefined.
 *                              XL_ERR_TS_CLOCK_NOT_FOUND        - There were no clocks found for the selected channels.
 *                              XL_ERR_INVALID_CHANNEL_MASK      - The accessMask is not a subset of the port accessMask
@@ -5241,35 +5405,35 @@ xlTsGetStatus()
 *                              XL_ERR_TS_SYNC_OFF               - Synchronization protocols are off.
 */
 DECL_STDXL_FUNC(xlTsGetStatus, XLFP_TSGETSTATUS,
-                (XLportHandle portHandle, XLaccess accessMask, XLtsTimeScale* timescale, XLtsLeapSeconds* leapSeconds,
-                 XLtsClkUuid* gmUuid, XLtsClkUuid* localUuid));
+                (XLportHandle portHandle, XLaccess accessMask, XLtsTimeScale *timescale, XLtsLeapSeconds *leapSeconds,
+                 XLtsClkUuid *gmUuid, XLtsClkUuid *localUuid));
 
 /********************************************************************
 xlNetTsGetStatus()
 *
 *\brief Check synchronization status of the ethPorts which are part of the network. A ethPort is called to be in
-        synchronous state when the measurement clock of the device is in synchronous state. 
+        synchronous state when the measurement clock of the device is in synchronous state.
 *
-*  \param networkHandle    [IN]    : A network handle created with xlNetEthOpenNetwork(). 
+*  \param networkHandle    [IN]    : A network handle created with xlNetEthOpenNetwork().
 *  \param ethPortHandle    [IN]    : Reserved for future use must be set to XL_INVALID_ETHPORTHANDLE.
 *  \param timescale        [OUT]   : The actual timescale of the channels time stamps.
 *  \param leapSeconds      [OUT]   : When timescale equals TAI these are the leap seconds on the protocol.
 *  \param gmUuid           [OUT]   : This is the XL-API clock identifier of the grandmaster clock. When receiving time from GNSS and the
-*                                    receiving device is a Vector device this is the identifier of the devices local clock. 
+*                                    receiving device is a Vector device this is the identifier of the devices local clock.
 *  \param localUuid        [OUT]   : The unique clock identifier of the time source for the network when
-*                                    only one time source exits. This parameter is optional and can be set to null. 
-*  \return XLstatus            Returns an error code. 
+*                                    only one time source exits. This parameter is optional and can be set to null.
+*  \return XLstatus            Returns an error code.
 *                              XL_SUCCESS                       - No error occurred.
 *                              XL_ERR_TS_DOMAIN_NOT_SYNC        - The port is not in synchronous state. See description of the function.
-*                              XL_ERR_TS_AGGREGATE_STATUS       - At least the time scale of one measurement clock is undefined. 
+*                              XL_ERR_TS_AGGREGATE_STATUS       - At least the time scale of one measurement clock is undefined.
 *                              XL_ERR_TS_INVALID_CLUSTER_MASTER - The cluster master of at least one measurement clock is undefined.
 *                              XL_ERR_TS_CLOCK_NOT_FOUND        - There were no clocks found for the selected network.
 *                              XL_ERR_TS_SYNC_TO_LOCAL          - The reference clock of the synchronization cluster is not sync.
 *                              XL_ERR_TS_SYNC_OFF               - Synchronization protocols are off.
 */
 DECL_STDXL_FUNC(xlNetTsGetStatus, XLFP_NETTSGETSTATUS,
-                (XLnetworkHandle networkHandle, XLethPortHandle ethPortHandle, XLtsTimeScale* timescale, XLtsLeapSeconds* leapSeconds,
-                 XLtsClkUuid* gmUuid, XLtsClkUuid* localUuid));
+                (XLnetworkHandle networkHandle, XLethPortHandle ethPortHandle, XLtsTimeScale *timescale, XLtsLeapSeconds *leapSeconds,
+                 XLtsClkUuid *gmUuid, XLtsClkUuid *localUuid));
 
 /*------------------------------------------------------------------------------
 xlSetNotification():
@@ -5283,8 +5447,7 @@ to be sure to re enable the event. The API generates the handle by
 itself. For LIN the queueLevel is fix to one.
 */
 
-DECL_STDXL_FUNC(xlSetNotification, XLSETNOTIFICATION, (XLportHandle portHandle, XLhandle* pHandle, int queueLevel));
-
+DECL_STDXL_FUNC(xlSetNotification, XLSETNOTIFICATION, (XLportHandle portHandle, XLhandle *pHandle, int queueLevel));
 
 /*------------------------------------------------------------------------------
 xlSetTimerBasedNotifiy():
@@ -5293,7 +5456,7 @@ Setup a event to notify the application based on the timerrate which can
 be set by xlSetTimerRate()/xlSetTimerRateAndChannel().
 */
 
-DECL_STDXL_FUNC(xlSetTimerBasedNotify, XLSETTIMERBASEDNOTIFY, (XLportHandle portHandle, XLhandle* pHandle));
+DECL_STDXL_FUNC(xlSetTimerBasedNotify, XLSETTIMERBASEDNOTIFY, (XLportHandle portHandle, XLhandle *pHandle));
 
 /*------------------------------------------------------------------------------
 xlFlushReceiveQueue():
@@ -5312,7 +5475,7 @@ on the interface verion used when the port was opened:
 - XL_INTERFACE_VERSION_V4: level contains number of bytes. Event encoding and size may differ
                            between the fifo layout and the XLAPI interface
 */
-DECL_STDXL_FUNC(xlGetReceiveQueueLevel, XLGETRECEIVEQUEUELEVEL, (XLportHandle portHandle, int* level));
+DECL_STDXL_FUNC(xlGetReceiveQueueLevel, XLGETRECEIVEQUEUELEVEL, (XLportHandle portHandle, int *level));
 
 /*------------------------------------------------------------------------------
 xlActivateChannel():
@@ -5340,7 +5503,7 @@ The function only works for CAN, LIN, DAIO. For MOST there is a different
 function
 */
 
-DECL_STDXL_FUNC(xlReceive, XLRECEIVE, (XLportHandle portHandle, unsigned int* pEventCount, XLevent* pEvents));
+DECL_STDXL_FUNC(xlReceive, XLRECEIVE, (XLportHandle portHandle, unsigned int *pEventCount, XLevent *pEvents));
 
 /*------------------------------------------------------------------------------
 xlGetErrorString():
@@ -5357,7 +5520,7 @@ xlOemContact():
 --------------------------------------------------------------------------------
 */
 
-DECL_STDXL_FUNC(xlOemContact, XLOEMCONTACT, (XLportHandle portHandle, XLulong Channel, XLuint64 context1, XLuint64* context2));
+DECL_STDXL_FUNC(xlOemContact, XLOEMCONTACT, (XLportHandle portHandle, XLulong Channel, XLuint64 context1, XLuint64 *context2));
 
 /** \brief Returns the current high precision PC time (in ns).
  *   If software legacy time synchronization is active, the event timestamp is synchronized to the PC time.
@@ -5369,7 +5532,7 @@ DECL_STDXL_FUNC(xlOemContact, XLOEMCONTACT, (XLportHandle portHandle, XLulong Ch
  *   \param[out] pTime                    the output time in ns
  *   \return     XLstatus                 status information
  */
-DECL_STDXL_FUNC(xlGetSyncTime, XLGETSYNCTIME, (XLportHandle portHandle, XLuint64* pTime));
+DECL_STDXL_FUNC(xlGetSyncTime, XLGETSYNCTIME, (XLportHandle portHandle, XLuint64 *pTime));
 
 /*------------------------------------------------------------------------------
 xlGetChannelTime():
@@ -5377,7 +5540,7 @@ xlGetChannelTime():
 Function reads the 64-bit PC-based card time.
 */
 
-DECL_STDXL_FUNC(xlGetChannelTime, XLGETCHANNELTIME, (XLportHandle portHandle, XLaccess accessMask, XLuint64* pChannelTime));
+DECL_STDXL_FUNC(xlGetChannelTime, XLGETCHANNELTIME, (XLportHandle portHandle, XLaccess accessMask, XLuint64 *pChannelTime));
 
 /*------------------------------------------------------------------------------
 xlGenerateSyncPulse():
@@ -5416,8 +5579,7 @@ DECL_STDXL_FUNC(xlGenerateSyncPulse, XLGENERATESYNCPULSE, (XLportHandle portHand
  * --------------------------------------------------------------------------------
  */
 
-DECL_STDXL_FUNC(xlPopupHwConfig, XLPOPUPHWCONFIG, (char* callSign, unsigned int waitForFinish));
-
+DECL_STDXL_FUNC(xlPopupHwConfig, XLPOPUPHWCONFIG, (char *callSign, unsigned int waitForFinish));
 
 /*------------------------------------------------------------------------------
 xlDeactivateChannel():
@@ -5475,9 +5637,9 @@ xlCanSetReceiveMode():
 */
 
 DECL_STDXL_FUNC(xlCanSetReceiveMode, XLCANSETRECEIVEMODE,
-                (XLportHandle  Port,        // Port Handle
-                 unsigned char ErrorFrame,  // suppress Error Frames
-                 unsigned char ChipState    // suppress Chip States
+                (XLportHandle Port,        // Port Handle
+                 unsigned char ErrorFrame, // suppress Error Frames
+                 unsigned char ChipState   // suppress Chip States
                  ));
 
 /*------------------------------------------------------------------------------*/
@@ -5505,7 +5667,7 @@ The port must have init access to the channels.
 */
 
 DECL_STDXL_FUNC(xlCanSetChannelParams, XLCANSETCHANNELPARAMS,
-                (XLportHandle portHandle, XLaccess accessMask, XLchipParams* pChipParams));
+                (XLportHandle portHandle, XLaccess accessMask, XLchipParams *pChipParams));
 
 DECL_STDXL_FUNC(xlCanSetChannelParamsC200, XLCANSETCHANNELPARAMSC200,
                 (XLportHandle portHandle, XLaccess accessMask, unsigned char btr0, unsigned char btr1));
@@ -5517,23 +5679,21 @@ DECL_STDXL_FUNC(xlCanSetChannelBitrate, XLCANSETCHANNELBITRATE, (XLportHandle po
 //--------------------------------------------------------------------------------
 // configures CAN-FD
 DECL_STDXL_FUNC(xlCanFdSetConfiguration, XLCANFDSETCONFIGURATION,
-                (XLportHandle portHandle, XLaccess accessMask, XLcanFdConf* pCanFdConf));
-
+                (XLportHandle portHandle, XLaccess accessMask, XLcanFdConf *pCanFdConf));
 
 //------------------------------------------------------------------------------
 // xlCanReceive
 //--------------------------------------------------------------------------------
 // receives a CAN/CAN-FD event from the applications receive queue
-DECL_STDXL_FUNC(xlCanReceive, XLCANRECEIVE, (XLportHandle portHandle, XLcanRxEvent* pXlCanRxEvt));
-
+DECL_STDXL_FUNC(xlCanReceive, XLCANRECEIVE, (XLportHandle portHandle, XLcanRxEvent *pXlCanRxEvt));
 
 //------------------------------------------------------------------------------
 // xlCanTransmitEx
 //--------------------------------------------------------------------------------
 // transmits a number of CAN / CAN-FD events
 DECL_STDXL_FUNC(xlCanTransmitEx, XLCANTRANSMITEX,
-                (XLportHandle portHandle, XLaccess accessMask, unsigned int msgCnt, unsigned int* pMsgCntSent,
-                 XLcanTxEvent* pXlCanTxEvt));
+                (XLportHandle portHandle, XLaccess accessMask, unsigned int msgCnt, unsigned int *pMsgCntSent,
+                 XLcanTxEvent *pXlCanTxEvt));
 
 /*------------------------------------------------------------------------------
 xlCanSetAcceptance():
@@ -5582,15 +5742,14 @@ in messages. On return function writes number of transmitted messages
 */
 
 DECL_STDXL_FUNC(xlCanTransmit, XLCANTRANSMIT,
-                (XLportHandle portHandle, XLaccess accessMask, unsigned int* pEventCount, void* pEvents));
+                (XLportHandle portHandle, XLaccess accessMask, unsigned int *pEventCount, void *pEvents));
 
 /*------------------------------------------------------------------------------
 xlSetGlobalTimeSync():
 --------------------------------------------------------------------------------
 To query and change the global time sync setting
 */
-DECL_STDXL_FUNC(xlSetGlobalTimeSync, XLSETGLOBALTIMESYNC, (XLulong newValue, XLulong* previousValue));
-
+DECL_STDXL_FUNC(xlSetGlobalTimeSync, XLSETGLOBALTIMESYNC, (XLulong newValue, XLulong *previousValue));
 
 /*------------------------------------------------------------------------------
 xlCheckLicense():
@@ -5616,7 +5775,7 @@ DECL_STDXL_FUNC(xlCheckLicense, XLCHECKLICENSE, (XLportHandle portHandle, XLacce
  *                              XL_ERR_NO_RESOURCES if the given array size is too small to copy all available licenses into it.
  *                              XL_ERROR if general error occurred.
  */
-DECL_STDXL_FUNC(xlGetLicenseInfo, XLGETLICENSEINFO, (XLaccess channelMask, XLlicenseInfo* pLicInfoArray, unsigned int licInfoArraySize));
+DECL_STDXL_FUNC(xlGetLicenseInfo, XLGETLICENSEINFO, (XLaccess channelMask, XLlicenseInfo *pLicInfoArray, unsigned int licInfoArraySize));
 
 ////////////////////////////////////////////////////////////////////////////////
 // LIN functions
@@ -5664,9 +5823,9 @@ DECL_STDXL_FUNC(xlDAIOSetDigitalTrigger, XLDAIOSETDIGITALTRIGGER,
 ////////////////////////////////////////////////////////////////////////////////
 // K-Line API functions
 ////////////////////////////////////////////////////////////////////////////////
-DECL_STDXL_FUNC(xlKlineTransmit, XLKLINETRANSMIT, (DEFFRPARAM, unsigned int length, unsigned char* data));
+DECL_STDXL_FUNC(xlKlineTransmit, XLKLINETRANSMIT, (DEFFRPARAM, unsigned int length, unsigned char *data));
 
-DECL_STDXL_FUNC(xlKlineSetUartParams, XLKLINESETUARTPARAMS, (DEFFRPARAM, XLklineUartParameter* pxlKlineUartParams));
+DECL_STDXL_FUNC(xlKlineSetUartParams, XLKLINESETUARTPARAMS, (DEFFRPARAM, XLklineUartParameter *pxlKlineUartParams));
 
 DECL_STDXL_FUNC(xlKlineSwitchHighspeedMode, XLKLINESWITCHHIGHSPEEDMODE, (DEFFRPARAM, unsigned int trxMode));
 
@@ -5675,16 +5834,16 @@ DECL_STDXL_FUNC(xlKlineSwitchTesterResistor, XLKLINESWITCHTESTERRESISTOR, (DEFFR
 DECL_STDXL_FUNC(xlKlineSetBaudrate, XLKLINESETBAUDRATE, (DEFFRPARAM, unsigned int baudrate));
 
 DECL_STDXL_FUNC(xlKlineFastInitTester, XLKLINEFASTINITTESTER,
-                (DEFFRPARAM, unsigned int length, unsigned char* data, XLklineInitTester* pxlKlineInitTester));
+                (DEFFRPARAM, unsigned int length, unsigned char *data, XLklineInitTester *pxlKlineInitTester));
 
-DECL_STDXL_FUNC(xlKlineInit5BdTester, XLKLINE5BDTESTER, (DEFFRPARAM, XLkline5BdTester* pxlKline5BdTester));
+DECL_STDXL_FUNC(xlKlineInit5BdTester, XLKLINE5BDTESTER, (DEFFRPARAM, XLkline5BdTester *pxlKline5BdTester));
 
-DECL_STDXL_FUNC(xlKlineInit5BdEcu, XLKLINE5BDECU, (DEFFRPARAM, XLkline5BdEcu* pxlKline5BdEcu));
+DECL_STDXL_FUNC(xlKlineInit5BdEcu, XLKLINE5BDECU, (DEFFRPARAM, XLkline5BdEcu *pxlKline5BdEcu));
 
 DECL_STDXL_FUNC(xlKlineSetCommunicationTimingTester, XLKLINESETCOMMUNICATIONTIMINGTESTER,
-                (DEFFRPARAM, XLklineSetComTester* pxlKlineSetComTester));
+                (DEFFRPARAM, XLklineSetComTester *pxlKlineSetComTester));
 
-DECL_STDXL_FUNC(xlKlineSetCommunicationTimingEcu, XLKLINESETCOMMUNICATIONTIMINGECU, (DEFFRPARAM, XLklineSetComEcu* pxlKlineSetComEcu));
+DECL_STDXL_FUNC(xlKlineSetCommunicationTimingEcu, XLKLINESETCOMMUNICATIONTIMINGECU, (DEFFRPARAM, XLklineSetComEcu *pxlKlineSetComEcu));
 
 ////////////////////////////////////////////////////////////////////////////////
 // extern declaration for dynamically linking... for functions without the macro
@@ -5697,11 +5856,11 @@ XLstatus xlOpenDriver(void);
 XLstatus xlCloseDriver(void);
 
 extern XLGETCHANNELINDEX xlGetChannelIndex;
-extern XLGETCHANNELMASK  xlGetChannelMask;
+extern XLGETCHANNELMASK xlGetChannelMask;
 
-extern XLGETEVENTSTRING    xlGetEventString;
+extern XLGETEVENTSTRING xlGetEventString;
 extern XLCANGETEVENTSTRING xlCanGetEventString;
-extern XLGETERRORSTRING    xlGetErrorString;
+extern XLGETERRORSTRING xlGetErrorString;
 
 #endif
 #endif
@@ -5738,7 +5897,7 @@ extern XLGETERRORSTRING    xlGetErrorString;
  *                                         the next event of the receive queue
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMostReceive, XLFP_MOSTRECEIVE, (XLportHandle portHandle, XLmostEvent* pEventBuffer));
+DECL_STDXL_FUNC(xlMostReceive, XLFP_MOSTRECEIVE, (XLportHandle portHandle, XLmostEvent *pEventBuffer));
 
 /** \brief Activates or deactivates the different event sources of VN2600.
  *  This method is used to select which bus events should be delivered by VN2600.
@@ -5843,7 +6002,7 @@ DECL_STDXL_FUNC(xlMostWriteRegisterBit, XLFP_MOSTWRITEREGISTERBIT,
  *  \param  pCtrlMsg                  [IN] structure with all relevant data needed for a transmit request
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMostCtrlTransmit, XLFP_MOSTCTRLTRANSMIT, (DEFPARAMS, XLmostCtrlMsg* pCtrlMsg));
+DECL_STDXL_FUNC(xlMostCtrlTransmit, XLFP_MOSTCTRLTRANSMIT, (DEFPARAMS, XLmostCtrlMsg *pCtrlMsg));
 
 /** \brief Sending a MOST Async Message (Packet).
  *  This method is used to send an asynchronous message (packet) to the MOST ring.
@@ -5856,7 +6015,7 @@ DECL_STDXL_FUNC(xlMostCtrlTransmit, XLFP_MOSTCTRLTRANSMIT, (DEFPARAMS, XLmostCtr
  *  \param  pAsyncMsg                 [IN] structure with all relevant data needed for a transmit request
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMostAsyncTransmit, XLFP_MOSTASYNCTRANSMIT, (DEFPARAMS, XLmostAsyncMsg* pAsyncMsg));
+DECL_STDXL_FUNC(xlMostAsyncTransmit, XLFP_MOSTASYNCTRANSMIT, (DEFPARAMS, XLmostAsyncMsg *pAsyncMsg));
 
 /** \brief Triggers the event XL_MOST_SYNC_ALLOCTABLE.
  *  This method is used to trigger the event XL_MOST_SYNC_ALLOCTABLE,
@@ -6021,7 +6180,7 @@ DECL_STDXL_FUNC(xlMostTwinklePowerLed, XLFP_MOSTTWINKLEPOWERLED, (DEFPARAMS));
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlMostCtrlConfigureBusload, XLFP_MOSTCTRLCONFIGUREBUSLOAD,
-                (DEFPARAMS, XLmostCtrlBusloadConfiguration* pCtrlBusloadConfiguration));
+                (DEFPARAMS, XLmostCtrlBusloadConfiguration *pCtrlBusloadConfiguration));
 
 /** \brief Starts busload generation with MOST control frames.
  *  Attention: "xlMostCtrlConfigureBusload" has to be called before.
@@ -6047,7 +6206,7 @@ DECL_STDXL_FUNC(xlMostCtrlGenerateBusload, XLFP_MOSTCTRLGENERATEBUSLOAD, (DEFPAR
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlMostAsyncConfigureBusload, XLFP_MOSTASYNCCONFIGUREBUSLOAD,
-                (DEFPARAMS, XLmostAsyncBusloadConfiguration* pAsyncBusloadConfiguration));
+                (DEFPARAMS, XLmostAsyncBusloadConfiguration *pAsyncBusloadConfiguration));
 
 /** \brief Starts busload generation with MOST asynchronous frames.
  *  Attention: "xlMostAsyncConfigureBusload" has to be called before.
@@ -6061,7 +6220,6 @@ DECL_STDXL_FUNC(xlMostAsyncConfigureBusload, XLFP_MOSTASYNCCONFIGUREBUSLOAD,
  */
 DECL_STDXL_FUNC(xlMostAsyncGenerateBusload, XLFP_MOSTASYNCGENERATEBUSLOAD, (DEFPARAMS, XLulong numberAsyncFrames));
 
-
 /** \brief Opens a stream (Rx / Tx) for routing synchronous data to or from the MOST bus (synchronous channel).
  *  Attention: Has to be called before "xlMostStreamBufferAllocate".
  *  ResponseEvent:                         none
@@ -6073,7 +6231,7 @@ DECL_STDXL_FUNC(xlMostAsyncGenerateBusload, XLFP_MOSTASYNCGENERATEBUSLOAD, (DEFP
  *                                         it's storage has has to be supplied by the caller
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMostStreamOpen, XLFP_MOSTSTREAMOPEN, (DEFPARAMS, XLmostStreamOpen* pStreamOpen));
+DECL_STDXL_FUNC(xlMostStreamOpen, XLFP_MOSTSTREAMOPEN, (DEFPARAMS, XLmostStreamOpen *pStreamOpen));
 
 /** \brief Closes an opened a stream (Rx / Tx) used for routing synchronous data to or from the MOST bus (synchronous channel).
  *  ResponseEvent:                         none
@@ -6126,7 +6284,7 @@ DECL_STDXL_FUNC(xlMostStreamStop, XLFP_MOSTSTREAMSTOP, (DEFPARAMS, unsigned int 
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlMostStreamBufferAllocate, XLFP_MOSTSTREAMBUFFERALLOCATE,
-                (DEFPARAMS, unsigned int streamHandle, unsigned char** ppBuffer, unsigned int* pBufferSize));
+                (DEFPARAMS, unsigned int streamHandle, unsigned char **ppBuffer, unsigned int *pBufferSize));
 
 /** \brief Deallocates any buffer allocated with "xlMostStreamBufferAllocate".
  *  Attention: Has to be called before "xlMostStreamClose". Afterwards no buffer must be accessed!
@@ -6152,7 +6310,7 @@ DECL_STDXL_FUNC(xlMostStreamBufferDeallocateAll, XLFP_MOSTSTREAMBUFFERDEALLOCATE
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlMostStreamBufferSetNext, XLFP_MOSTSTREAMBUFFERSETNEXT,
-                (DEFPARAMS, unsigned int streamHandle, unsigned char* pBuffer, unsigned int filledBytes));
+                (DEFPARAMS, unsigned int streamHandle, unsigned char *pBuffer, unsigned int filledBytes));
 
 /** \brief Retrieves the stream information.
  *  This method is used to gather the recent stream state information.\n
@@ -6164,7 +6322,7 @@ DECL_STDXL_FUNC(xlMostStreamBufferSetNext, XLFP_MOSTSTREAMBUFFERSETNEXT,
  *  \param pStreamInfo               [OUT] Pointer to the stream information.
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMostStreamGetInfo, XLFP_MOSTSTREAMGETINFO, (DEFPARAMS, XLmostStreamInfo* pStreamInfo));
+DECL_STDXL_FUNC(xlMostStreamGetInfo, XLFP_MOSTSTREAMGETINFO, (DEFPARAMS, XLmostStreamInfo *pStreamInfo));
 
 /** \brief Clears the content of the buffer(s) which are not already sent.
  *  This method is used to clear the content of any TX streaming buffer which has not been sent yet.\n
@@ -6190,8 +6348,7 @@ DECL_STDXL_FUNC(xlMostStreamBufferClearAll, XLFP_MOSTSTREAMBUFFERCLEARALL, (DEFP
  *  \return XLstatus                       general status information
  */
 
-DECL_STDXL_FUNC(xlFrSetConfiguration, XLFP_FRSETCONFIGURATION, (DEFFRPARAM, XLfrClusterConfig* pxlClusterConfig));
-
+DECL_STDXL_FUNC(xlFrSetConfiguration, XLFP_FRSETCONFIGURATION, (DEFFRPARAM, XLfrClusterConfig *pxlClusterConfig));
 
 /** \brief Get configuration of a FlexRay channel
  *  ResponseEvent:
@@ -6201,7 +6358,7 @@ DECL_STDXL_FUNC(xlFrSetConfiguration, XLFP_FRSETCONFIGURATION, (DEFFRPARAM, XLfr
  *  \return XLstatus                       general status information
  */
 
-DECL_STDXL_FUNC(xlFrGetChannelConfiguration, XLFP_FRGETCHANNELCONFIGURATION, (DEFFRPARAM, XLfrChannelConfig* pxlFrChannelConfig));
+DECL_STDXL_FUNC(xlFrGetChannelConfiguration, XLFP_FRGETCHANNELCONFIGURATION, (DEFFRPARAM, XLfrChannelConfig *pxlFrChannelConfig));
 
 /** \brief Setup the FlexRay mode
  *  ResponseEvent:
@@ -6211,7 +6368,7 @@ DECL_STDXL_FUNC(xlFrGetChannelConfiguration, XLFP_FRGETCHANNELCONFIGURATION, (DE
  *  \return XLstatus                       general status information
  */
 
-DECL_STDXL_FUNC(xlFrSetMode, XLFP_FRSETMODE, (DEFFRPARAM, XLfrMode* pxlFrMode));
+DECL_STDXL_FUNC(xlFrSetMode, XLFP_FRSETMODE, (DEFFRPARAM, XLfrMode *pxlFrMode));
 
 /** \brief Initialize the cold start and define the sync event
  *  ResponseEvent:
@@ -6221,7 +6378,7 @@ DECL_STDXL_FUNC(xlFrSetMode, XLFP_FRSETMODE, (DEFFRPARAM, XLfrMode* pxlFrMode));
  *  \return XLstatus                       general status information
  */
 
-DECL_STDXL_FUNC(xlFrInitStartupAndSync, XLFP_FRINITSTARTUPANDSYNC, (DEFFRPARAM, XLfrEvent* pEventBuffer));
+DECL_STDXL_FUNC(xlFrInitStartupAndSync, XLFP_FRINITSTARTUPANDSYNC, (DEFFRPARAM, XLfrEvent *pEventBuffer));
 
 /** \brief setup the symbol window.
  *  ResponseEvent:
@@ -6241,7 +6398,7 @@ DECL_STDXL_FUNC(xlFrSetupSymbolWindow, XLFP_FRSETUPSYMBOLWINDOW, (DEFFRPARAM, un
  *  \return XLstatus                       general status information
  */
 
-DECL_STDXL_FUNC(xlFrReceive, XLFP_FRRECEIVE, (XLportHandle portHandle, XLfrEvent* pEventBuffer));
+DECL_STDXL_FUNC(xlFrReceive, XLFP_FRRECEIVE, (XLportHandle portHandle, XLfrEvent *pEventBuffer));
 
 /** \brief Transmit a FlexRay event
  *  ResponseEvent:
@@ -6251,7 +6408,7 @@ DECL_STDXL_FUNC(xlFrReceive, XLFP_FRRECEIVE, (XLportHandle portHandle, XLfrEvent
  *  \return XLstatus                       general status information
  */
 
-DECL_STDXL_FUNC(xlFrTransmit, XLFP_FRTRANSMIT, (DEFFRPARAM, XLfrEvent* pEventBuffer));
+DECL_STDXL_FUNC(xlFrTransmit, XLFP_FRTRANSMIT, (DEFFRPARAM, XLfrEvent *pEventBuffer));
 
 /** \brief
  *  ResponseEvent:
@@ -6284,14 +6441,13 @@ DECL_STDXL_FUNC(xlFrSendSymbolWindow, XLFP_FRSENDSYMBOLWINDOW, (DEFFRPARAM, unsi
 
 DECL_STDXL_FUNC(xlFrActivateSpy, XLFP_FRACTIVATESPY, (DEFFRPARAM, unsigned int mode));
 
-
 /** \brief Function to set the filter type for a range of slots.
  *  ResponseEvent:
  *  \param pAcceptanceFilter          [IN] type and ranges of slots
  *  \return XLstatus                       general status information
  */
 
-DECL_STDXL_FUNC(xlFrSetAcceptanceFilter, XLFP_FRSETACCEPTANCEFILTER, (DEFFRPARAM, XLfrAcceptanceFilter* pAcceptanceFilter));
+DECL_STDXL_FUNC(xlFrSetAcceptanceFilter, XLFP_FRSETACCEPTANCEFILTER, (DEFFRPARAM, XLfrAcceptanceFilter *pAcceptanceFilter));
 
 /** \brief The application gets the information, which remote channels are available in the system. The user
  *         must provide the memory (pointer to XLdriverConfig structure).
@@ -6309,7 +6465,7 @@ DECL_STDXL_FUNC(xlGetRemoteDriverConfig, XLGETREMOTEDRIVERCONFIG, (XLdriverConfi
  *  \return XLstatus                        general status information
  */
 DECL_STDXL_FUNC(xlGetRemoteDeviceInfo, XLGETREMOTEDEVICEINFO,
-                (XLremoteDeviceInfo * *deviceList, unsigned int* nbrOfRemoteDevices, unsigned int netSearch));
+                (XLremoteDeviceInfo * *deviceList, unsigned int *nbrOfRemoteDevices, unsigned int netSearch));
 
 /** \brief Frees the buffer allocated by a call to xlGetRemoteDeviceInfo.
  *  \param deviceList                 [IN] Pointer containing the address of the buffer.
@@ -6353,8 +6509,7 @@ DECL_STDXL_FUNC(xlUpdateRemoteDeviceInfo, XLUPDATEREMOTEDEVICEINFO, (XLremoteDev
  *
  *  \return XLstatus                        general status information
  */
-DECL_STDXL_FUNC(xlGetRemoteHwInfo, XLGETREMOTEHWINFO, (XLremoteHandle remoteHandle, int* hwType, int* hwIndex, int* isPresent));
-
+DECL_STDXL_FUNC(xlGetRemoteHwInfo, XLGETREMOTEHWINFO, (XLremoteHandle remoteHandle, int *hwType, int *hwIndex, int *isPresent));
 
 /** \brief Registers a manual configured network node.
  *  \param hwType                     [IN]  Hardware type of the device to be registered.
@@ -6364,8 +6519,7 @@ DECL_STDXL_FUNC(xlGetRemoteHwInfo, XLGETREMOTEHWINFO, (XLremoteHandle remoteHand
  *
  *  \return XLstatus                        general status information
  */
-DECL_STDXL_FUNC(xlRegisterRemoteDevice, XLREGISTERREMOTEDEVICE, (int hwType, XLipAddress* ipAddress, unsigned int flags));
-
+DECL_STDXL_FUNC(xlRegisterRemoteDevice, XLREGISTERREMOTEDEVICE, (int hwType, XLipAddress *ipAddress, unsigned int flags));
 
 ///////////////////////////////////////////////////////////
 // IOpiggy API functions (Public)
@@ -6377,21 +6531,20 @@ DECL_STDXL_FUNC(xlRegisterRemoteDevice, XLREGISTERREMOTEDEVICE, (int hwType, XLi
  *  \return XLstatus                       general status information
  */
 
-DECL_STDXL_FUNC(xlIoSetTriggerMode, XLIOSETTRIGGERMODE, (DEFFRPARAM, XLdaioTriggerMode* pxlDaioTriggerMode));
+DECL_STDXL_FUNC(xlIoSetTriggerMode, XLIOSETTRIGGERMODE, (DEFFRPARAM, XLdaioTriggerMode *pxlDaioTriggerMode));
 
 /** \brief Sets the values of digital outputs.
  *  \param pxlDaioDigitalParams    [IN] Pointer to the digital parameter structure
  *  \return XLstatus                       general status information
  */
 
-DECL_STDXL_FUNC(xlIoSetDigitalOutput, XLIOSETDIGITALOUTPUT, (DEFFRPARAM, XLdaioDigitalParams* pxlDaioDigitalParams));
-
+DECL_STDXL_FUNC(xlIoSetDigitalOutput, XLIOSETDIGITALOUTPUT, (DEFFRPARAM, XLdaioDigitalParams *pxlDaioDigitalParams));
 
 /** \brief Setup the DAIO ports.
  *  \param pxlDaioSetPort          [IN] Pointer to the XLdaioSetPort structure.
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlIoConfigurePorts, XLIOCONFIGUREPORTS, (DEFFRPARAM, XLdaioSetPort* pxlDaioSetPort));
+DECL_STDXL_FUNC(xlIoConfigurePorts, XLIOCONFIGUREPORTS, (DEFFRPARAM, XLdaioSetPort *pxlDaioSetPort));
 
 /** \brief Defines the voltage level where a digital signal is measured as logical high and where it is measured as logical low.
  *  \param level                   [IN] 10bit value which defines voltage level [mV] for input threshold of digital ports.
@@ -6412,7 +6565,7 @@ DECL_STDXL_FUNC(xlIoSetDigOutLevel, XLIOSETDIGOUTLEVEL, (DEFFRPARAM, unsigned in
  *  \return XLstatus                       general status information
  */
 
-DECL_STDXL_FUNC(xlIoSetAnalogOutput, XLIOSETANALOGOUTPUT, (DEFFRPARAM, XLdaioAnalogParams* pxlDaioAnalogParams));
+DECL_STDXL_FUNC(xlIoSetAnalogOutput, XLIOSETANALOGOUTPUT, (DEFFRPARAM, XLdaioAnalogParams *pxlDaioAnalogParams));
 
 /** \brief Start measurements.
  *  \param portTypeMask            [IN] Port types on which to start the measurements. Use defines XL_DAIO_PORT_TYPE_MASK_*.
@@ -6453,7 +6606,7 @@ DECL_STDXL_FUNC(xlIoStartSampling, XLIOSTARTSAMPLING, (DEFFRPARAM, unsigned int 
  *                                         the next event of the receive queue
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMost150Receive, XLFP_MOST150RECEIVE, (XLportHandle portHandle, XLmost150event* pEventBuffer));
+DECL_STDXL_FUNC(xlMost150Receive, XLFP_MOST150RECEIVE, (XLportHandle portHandle, XLmost150event *pEventBuffer));
 
 /** \brief Twinkle the power led from the VN2640.
  *  ResponseEvent:                         none
@@ -6469,7 +6622,6 @@ DECL_STDXL_FUNC(xlMost150TwinklePowerLed, XLFP_MOST150TWINKLEPOWERLED, (DEFPARAM
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlMost150SwitchEventSources, XLFP_MOST150SWITCHEVENTSOURCES, (DEFPARAMS, unsigned int sourceMask));
-
 
 /** \brief Sets the device mode.
  *  This method is used to switch the device mode to either Master, Slave or bypass \n
@@ -6502,13 +6654,12 @@ DECL_STDXL_FUNC(xlMost150SetSPDIFMode, XLFP_MOST150SETSPDIFMODE, (DEFPARAMS, uns
  */
 DECL_STDXL_FUNC(xlMost150GetSPDIFMode, XLFP_MOST150GETSPDIFMODE, (DEFPARAMS));
 
-
 /** \brief Set one or more parameters of the special node info at once.
  *  ResponseEvent:                         XL_MOST150_SPECIAL_NODE_INFO
  *  \param  pSpecialNodeInfo          [IN] contains the parameter to set
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMost150SetSpecialNodeInfo, XLFP_MOST150SETSPECIALNODEINFO, (DEFPARAMS, XLmost150SetSpecialNodeInfo* pSpecialNodeInfo));
+DECL_STDXL_FUNC(xlMost150SetSpecialNodeInfo, XLFP_MOST150SETSPECIALNODEINFO, (DEFPARAMS, XLmost150SetSpecialNodeInfo *pSpecialNodeInfo));
 
 /** \brief Requests one or more parameters of the special node info at once.
  *  ResponseEvent:                         XL_MOST150_SPECIAL_NODE_INFO
@@ -6535,21 +6686,21 @@ DECL_STDXL_FUNC(xlMost150GetFrequency, XLFP_MOST150GETFREQUENCY, (DEFPARAMS));
  *  \param  pCtrlTxMsg                [IN] pointer to structure that contains the control message to be sent
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMost150CtrlTransmit, XLFP_MOST150CTRLTRANSMIT, (DEFPARAMS, XLmost150CtrlTxMsg* pCtrlTxMsg));
+DECL_STDXL_FUNC(xlMost150CtrlTransmit, XLFP_MOST150CTRLTRANSMIT, (DEFPARAMS, XLmost150CtrlTxMsg *pCtrlTxMsg));
 
 /** \brief Transmit a data packet (MDP) on the MOST150 ring.
  *  ResponseEvent:                         XL_MOST150_ASYNC_TX
  *  \param  pAsyncTxMsg               [IN] pointer to structure that contains the MOST Data Packet (MDP) to be sent
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMost150AsyncTransmit, XLFP_MOST150ASYNCTRANSMIT, (DEFPARAMS, XLmost150AsyncTxMsg* pAsyncTxMsg));
+DECL_STDXL_FUNC(xlMost150AsyncTransmit, XLFP_MOST150ASYNCTRANSMIT, (DEFPARAMS, XLmost150AsyncTxMsg *pAsyncTxMsg));
 
 /** \brief Transmit a Ethernet packet (MEP) on the MOST150 ring.
  *  ResponseEvent:                         XL_MOST150_ETHERNET_TX
  *  \param  pEthernetTxMsg            [IN] pointer to structure that contains the MOST Ethernet Packet (MEP) to be sent
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMost150EthernetTransmit, XLFP_MOST150ETHTRANSMIT, (DEFPARAMS, XLmost150EthernetTxMsg* pEthernetTxMsg));
+DECL_STDXL_FUNC(xlMost150EthernetTransmit, XLFP_MOST150ETHTRANSMIT, (DEFPARAMS, XLmost150EthernetTxMsg *pEthernetTxMsg));
 
 /** \brief Requests the state of the system lock flag.
  *  ResponseEvent:                         XL_MOST150_SYSTEMLOCK_FLAG
@@ -6587,7 +6738,7 @@ DECL_STDXL_FUNC(xlMost150SyncGetAllocTable, XLFP_MOST150GETALLOCTABLE, (DEFPARAM
  *  \param  pSyncAudioParameter       [IN] pointer to structure that contains the data
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMost150CtrlSyncAudio, XLFP_MOST150CTRLSYNCAUDIO, (DEFPARAMS, XLmost150SyncAudioParameter* pSyncAudioParameter));
+DECL_STDXL_FUNC(xlMost150CtrlSyncAudio, XLFP_MOST150CTRLSYNCAUDIO, (DEFPARAMS, XLmost150SyncAudioParameter *pSyncAudioParameter));
 
 /** \brief Set the volume of Line In/Out audio device.
  *  ResponseEvent:                         XL_MOST150_SYNC_VOLUME_STATUS
@@ -6685,7 +6836,7 @@ DECL_STDXL_FUNC(xlMost150ConfigureRxBuffer, XLFP_MOST150CONFIGURERXBUFFER, (DEFP
  *  \param  pCtrlBusLoad              [IN] pointer to structure that contains the control message
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMost150CtrlConfigureBusload, XLFP_MOST150CTRLCONFIGLOAD, (DEFPARAMS, XLmost150CtrlBusloadConfig* pCtrlBusLoad));
+DECL_STDXL_FUNC(xlMost150CtrlConfigureBusload, XLFP_MOST150CTRLCONFIGLOAD, (DEFPARAMS, XLmost150CtrlBusloadConfig *pCtrlBusLoad));
 
 /** \brief Starts or stops the control message busload by sending the control message defined with xlMost150CtrlConfigureBusload().
  *  ResponseEvent:                        XL_MOST150_CTRL_BUSLOAD
@@ -6702,7 +6853,7 @@ DECL_STDXL_FUNC(xlMost150CtrlGenerateBusload, XLFP_MOST150CTRLGENLOAD, (DEFPARAM
  *  \param  pAsyncBusLoad             [IN] pointer to structure that contains either the data or the Ethernet packet
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMost150AsyncConfigureBusload, XLFP_MOST150ASYNCCONFIGLOAD, (DEFPARAMS, XLmost150AsyncBusloadConfig* pAsyncBusLoad));
+DECL_STDXL_FUNC(xlMost150AsyncConfigureBusload, XLFP_MOST150ASYNCCONFIGLOAD, (DEFPARAMS, XLmost150AsyncBusloadConfig *pAsyncBusLoad));
 
 /** \brief Starts or stops the packet busload by sending either the data or Ethernet packet defined with xlMost150AsyncConfigureBusload().
  *  ResponseEvent:                         XL_MOST150_ASYNC_BUSLOAD
@@ -6713,7 +6864,6 @@ DECL_STDXL_FUNC(xlMost150AsyncConfigureBusload, XLFP_MOST150ASYNCCONFIGLOAD, (DE
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlMost150AsyncGenerateBusload, XLFP_MOST150ASYNCGENLOAD, (DEFPARAMS, XLulong numberAsyncPackets));
-
 
 /** \brief Set the ECL state.
  *  ResponseEvent:                         XL_MOST150_ECL_LINE_CHANGED
@@ -6747,7 +6897,7 @@ DECL_STDXL_FUNC(xlMost150GetECLInfo, XLFP_MOST150GETECLINFO, (DEFPARAMS));
  *                                         it's storage has has to be supplied by the caller
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMost150StreamOpen, XLFP_MOST150STREAMOPEN, (DEFPARAMS, XLmost150StreamOpen* pStreamOpen));
+DECL_STDXL_FUNC(xlMost150StreamOpen, XLFP_MOST150STREAMOPEN, (DEFPARAMS, XLmost150StreamOpen *pStreamOpen));
 
 /** \brief Closes an opened a stream (Rx / Tx) used for routing synchronous data to or from the MOST bus (synchronous channel).
  *  ResponseEvent:                         XL_MOST150_STREAM_STATE
@@ -6773,7 +6923,7 @@ DECL_STDXL_FUNC(xlMost150StreamClose, XLFP_MOST150STREAMCLOSE, (DEFPARAMS, unsig
  * information
  */
 DECL_STDXL_FUNC(xlMost150StreamStart, XLFP_MOST150STREAMSTART,
-                (DEFPARAMS, unsigned int streamHandle, unsigned int numConnLabels, unsigned int* pConnLabels));
+                (DEFPARAMS, unsigned int streamHandle, unsigned int numConnLabels, unsigned int *pConnLabels));
 
 /** \brief Stops the streaming (Rx / Tx) of synchronous data to or from the MOST bus (synchronous channel).
  *  Attention: Has to be called after XL_MOST150_STREAM_STATE "Started" was received.
@@ -6801,7 +6951,7 @@ DECL_STDXL_FUNC(xlMost150StreamStop, XLFP_MOST150STREAMSTOP, (DEFPARAMS, unsigne
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlMost150StreamTransmitData, XLFP_MOST150STREAMTRANSMITDATA,
-                (DEFPARAMS, unsigned int streamHandle, unsigned char* pBuffer, unsigned int* pNumberOfBytes));
+                (DEFPARAMS, unsigned int streamHandle, unsigned char *pBuffer, unsigned int *pNumberOfBytes));
 
 /** \brief Clears the content of the driver's Tx FIFO.
  *  This method is used to clear the content of the driver's TX streaming FIFO which has not been sent yet.\n
@@ -6825,7 +6975,7 @@ DECL_STDXL_FUNC(xlMost150StreamClearTxFifo, XLFP_MOST150STREAMCLEARTXFIFO, (DEFP
  *  \param pStreamInfo               [OUT] Pointer to the stream information.
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlMost150StreamGetInfo, XLFP_MOST150STREAMGETINFO, (DEFPARAMS, XLmost150StreamInfo* pStreamInfo));
+DECL_STDXL_FUNC(xlMost150StreamGetInfo, XLFP_MOST150STREAMGETINFO, (DEFPARAMS, XLmost150StreamInfo *pStreamInfo));
 
 /** \brief Initializes the Rx Streaming FIFO.
  *  This method is used to initialize the FIFO for storing the received streaming data.\n
@@ -6850,7 +7000,7 @@ DECL_STDXL_FUNC(xlMost150StreamInitRxFifo, XLFP_MOST150STREAMINITRXFIFO, (XLport
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlMost150StreamReceiveData, XLFP_MOST150STREAMRECEIVEDATA,
-                (XLportHandle portHandle, XLaccess accessMask, unsigned char* pBuffer, unsigned int* pBufferSize));
+                (XLportHandle portHandle, XLaccess accessMask, unsigned char *pBuffer, unsigned int *pBufferSize));
 
 /** \brief Controls the bypass stress generation.
  *  \param  XLportHandle portHandle:  [IN] was previously fetched by xlOpenPort API
@@ -6877,7 +7027,7 @@ DECL_STDXL_FUNC(xlMost150GenerateBypassStress, XLFP_MOST150GENERATEBYPASSSTRESS,
  * information
  */
 DECL_STDXL_FUNC(xlMost150EclConfigureSeq, XLFP_MOST150ECLCONFIGURESEQ,
-                (DEFPARAMS, unsigned int numStates, unsigned int* pEclStates, unsigned int* pEclStatesDuration));
+                (DEFPARAMS, unsigned int numStates, unsigned int *pEclStates, unsigned int *pEclStatesDuration));
 
 /** \brief Starts or stops the previously configured ECL sequence.
  *  \param  XLportHandle portHandle:  [IN] was previously fetched by xlOpenPort API
@@ -6898,7 +7048,6 @@ DECL_STDXL_FUNC(xlMost150EclGenerateSeq, XLFP_MOST150ECLGENERATESEQ, (DEFPARAMS,
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlMost150SetECLGlitchFilter, XLFP_MOST150SETECLGLITCHFILTER, (DEFPARAMS, unsigned int duration));
-
 
 /** \brief Sets the SSOResult value - needed for resetting the value to 0x00 (No Result) after Shutdown Result analysis has been done.
  *  ResponseEvent:                         XL_MOST150_SSO_RESULT.
@@ -6948,7 +7097,7 @@ DECL_STDXL_FUNC(xlMost150GetSSOResult, XLFP_MOST150GETSSORESULT, (DEFPARAMS));
  *  \param  config                    [IN] new configuration to set
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlEthSetConfig, XLFP_ETHSETCONFIG, (DEFPARAMS, const T_XL_ETH_CONFIG* config));
+DECL_STDXL_FUNC(xlEthSetConfig, XLFP_ETHSETCONFIG, (DEFPARAMS, const T_XL_ETH_CONFIG *config));
 
 /** \brief Synchronously read the last Ethernet configuration settings.
  *  This allows an application to detect if a change in configuration is necessary.\n
@@ -6956,7 +7105,7 @@ DECL_STDXL_FUNC(xlEthSetConfig, XLFP_ETHSETCONFIG, (DEFPARAMS, const T_XL_ETH_CO
  *  \param  config                   [OUT] current configuration
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlEthGetConfig, XLFP_ETHGETCONFIG, (DEFPARAMS, T_XL_ETH_CONFIG* config));
+DECL_STDXL_FUNC(xlEthGetConfig, XLFP_ETHGETCONFIG, (DEFPARAMS, T_XL_ETH_CONFIG *config));
 
 /** \brief Fetching events from driver queue.
  *  This method is used to fetch events, either bus events or acknowledgments
@@ -6970,7 +7119,7 @@ DECL_STDXL_FUNC(xlEthGetConfig, XLFP_ETHGETCONFIG, (DEFPARAMS, T_XL_ETH_CONFIG* 
  *                                         it holds the actual size.
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlEthReceive, XLFP_ETHRECEIVE, (XLportHandle portHandle, T_XL_ETH_EVENT* ethEventBuffer));
+DECL_STDXL_FUNC(xlEthReceive, XLFP_ETHRECEIVE, (XLportHandle portHandle, T_XL_ETH_EVENT *ethEventBuffer));
 
 /** \brief Configures the bypass of two channels.
  *  This method is used to enable the bypass of two channels or to disable the bypass for several channels\n
@@ -6979,7 +7128,6 @@ DECL_STDXL_FUNC(xlEthReceive, XLFP_ETHRECEIVE, (XLportHandle portHandle, T_XL_ET
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlEthSetBypass, XLFP_ETHSETBYPASS, (DEFPARAMS, unsigned int mode));
-
 
 /** \brief Twinkle the Status led from the VN5610.
  *  ResponseEvent:                         none
@@ -6993,7 +7141,7 @@ DECL_STDXL_FUNC(xlEthTwinkleStatusLed, XLFP_ETHTWINKLESTATUSLED, (DEFPARAMS));
  *  \param  data:                     [IN] pointer to an Ethernet data frame to be sent
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlEthTransmit, XLFP_ETHTRANSMIT, (DEFPARAMS, const T_XL_ETH_DATAFRAME_TX* data));
+DECL_STDXL_FUNC(xlEthTransmit, XLFP_ETHTRANSMIT, (DEFPARAMS, const T_XL_ETH_DATAFRAME_TX *data));
 
 ////////////////////////////////////////////////////////////////////////////////
 // Ethernet Network-based mode function declarations
@@ -7014,7 +7162,7 @@ DECL_STDXL_FUNC(xlEthTransmit, XLFP_ETHTRANSMIT, (DEFPARAMS, const T_XL_ETH_DATA
  * the allocated handle.
  */
 DECL_STDXL_FUNC(xlNetEthOpenNetwork, XLFP_NETETHOPENNETWORK,
-                (const char* pNetworkName, XLnetworkHandle* pNetworkHandle, const char* pAppName, unsigned int accessType,
+                (const char *pNetworkName, XLnetworkHandle *pNetworkHandle, const char *pAppName, unsigned int accessType,
                  unsigned int queueSize));
 
 /********************************************************************/
@@ -7035,7 +7183,7 @@ DECL_STDXL_FUNC(xlNetCloseNetwork, XLFP_NETCLOSENETWORK, (XLnetworkHandle networ
  *  \return XLstatus     general status information
  */
 DECL_STDXL_FUNC(xlNetOpenVirtualPort, XLFP_NETOPENVIRTUALPORT,
-                (XLnetworkHandle networkHandle, const char* pVPortName, XLethPortHandle* pEthPortHandle, XLrxHandle rxHandle));
+                (XLnetworkHandle networkHandle, const char *pVPortName, XLethPortHandle *pEthPortHandle, XLrxHandle rxHandle));
 
 /********************************************************************/
 /** xlNetAddVirtualPort
@@ -7048,7 +7196,7 @@ DECL_STDXL_FUNC(xlNetOpenVirtualPort, XLFP_NETOPENVIRTUALPORT,
  *  \return XLstatus     general status information
  */
 DECL_STDXL_FUNC(xlNetAddVirtualPort, XLFP_NETADDVIRTUALPORT,
-                (XLnetworkHandle networkHandle, const char* pSwitchName, const char* pVPortName, XLethPortHandle* pEthPortHandle,
+                (XLnetworkHandle networkHandle, const char *pSwitchName, const char *pVPortName, XLethPortHandle *pEthPortHandle,
                  XLrxHandle rxHandle));
 
 /********************************************************************/
@@ -7062,7 +7210,7 @@ DECL_STDXL_FUNC(xlNetAddVirtualPort, XLFP_NETADDVIRTUALPORT,
  *  \return XLstatus     general status information
  */
 DECL_STDXL_FUNC(xlNetConnectMeasurementPoint, XLFP_NETCONNECTMEASUREMENTPOINT,
-                (XLnetworkHandle networkHandle, const char* pPortName, XLethPortHandle* pEthPortHandle, XLrxHandle rxHandle));
+                (XLnetworkHandle networkHandle, const char *pPortName, XLethPortHandle *pEthPortHandle, XLrxHandle rxHandle));
 
 /********************************************************************/
 /** xlNetActivateNetwork
@@ -7093,7 +7241,7 @@ DECL_STDXL_FUNC(xlNetDeactivateNetwork, XLFP_NETDEACTIVATENETWORK, (XLnetworkHan
  */
 DECL_STDXL_FUNC(xlNetEthSend, XLFP_NETETHSEND,
                 (XLnetworkHandle networkHandle, XLethPortHandle ethPortHandle, XLuserHandle userHandle,
-                 const T_XL_NET_ETH_DATAFRAME_TX* pEthTxFrame));
+                 const T_XL_NET_ETH_DATAFRAME_TX *pEthTxFrame));
 
 /********************************************************************/
 /** xlNetEthReceive
@@ -7105,7 +7253,7 @@ DECL_STDXL_FUNC(xlNetEthSend, XLFP_NETETHSEND,
  *  \return XLstatus      general status information
  */
 DECL_STDXL_FUNC(xlNetEthReceive, XLFP_NETETHRECEIVE,
-                (XLnetworkHandle networkHandle, T_XL_NET_ETH_EVENT* pEventBuffer, unsigned int* pRxHandleCount, XLrxHandle* pRxHandle));
+                (XLnetworkHandle networkHandle, T_XL_NET_ETH_EVENT *pEventBuffer, unsigned int *pRxHandleCount, XLrxHandle *pRxHandle));
 
 /********************************************************************/
 /** xlNetEthRequestChannelStatus
@@ -7129,7 +7277,7 @@ DECL_STDXL_FUNC(xlNetEthRequestChannelStatus, XLFP_NETETHREQUESTCHANNELSTATUS, (
  *  \param queueLevel    [IN]  Specifies the number of bytes that triggers the event
  *  \return XLstatus     general status information
  */
-DECL_STDXL_FUNC(xlNetSetNotification, XLFP_NETSETNOTIFICATION, (XLnetworkHandle networkHandle, XLhandle* pHandle, int queueLevel));
+DECL_STDXL_FUNC(xlNetSetNotification, XLFP_NETSETNOTIFICATION, (XLnetworkHandle networkHandle, XLhandle *pHandle, int queueLevel));
 
 /********************************************************************/
 /** xlNetRequestMACAddress
@@ -7152,7 +7300,7 @@ DECL_STDXL_FUNC(xlNetSetNotification, XLFP_NETSETNOTIFICATION, (XLnetworkHandle 
 *  XL_ERR_NOT_SUPPORTED if no device in the network has a pool of
 *                       demand-allocatable MAC addresses
 */
-DECL_STDXL_FUNC(xlNetRequestMACAddress, XLFP_NETREQUESTMACADDRESS, (XLnetworkHandle networkHandle, T_XL_ETH_MAC_ADDRESS* pMACAddress));
+DECL_STDXL_FUNC(xlNetRequestMACAddress, XLFP_NETREQUESTMACADDRESS, (XLnetworkHandle networkHandle, T_XL_ETH_MAC_ADDRESS *pMACAddress));
 
 /********************************************************************/
 /** xlNetReleaseMACAddress
@@ -7169,7 +7317,7 @@ DECL_STDXL_FUNC(xlNetRequestMACAddress, XLFP_NETREQUESTMACADDRESS, (XLnetworkHan
  *                       demand-allocatable MAC addresses
  */
 DECL_STDXL_FUNC(xlNetReleaseMACAddress, XLFP_NETRELEASEMACADDRESS,
-                (XLnetworkHandle networkHandle, const T_XL_ETH_MAC_ADDRESS* pMACAddress));
+                (XLnetworkHandle networkHandle, const T_XL_ETH_MAC_ADDRESS *pMACAddress));
 
 /********************************************************************/
 /** xlNetFlushReceiveQueue
@@ -7204,14 +7352,14 @@ DECL_STDXL_FUNC(xlNetFlushReceiveQueue, XLFP_NETFLUSHRECEIVEQUEUE, (XLnetworkHan
  *                                         it holds the actual size.
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlA429Receive, XLFP_A429RECEIVE, (XLportHandle portHandle, XLa429RxEvent* pXlA429RxEvt));
+DECL_STDXL_FUNC(xlA429Receive, XLFP_A429RECEIVE, (XLportHandle portHandle, XLa429RxEvent *pXlA429RxEvt));
 
 /** \brief Configures basic Arinc429 settings.
  *  This method is used to configure the basic Arinc429 settings like parity, bitrate, etc. \n
  *  \param  pXlA429Params:            [IN] new Arinc429 parameter to set
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlA429SetChannelParams, XLFP_A429SETCHANNELPARAMS, (DEFFRPARAM, XL_A429_PARAMS* pXlA429Params));
+DECL_STDXL_FUNC(xlA429SetChannelParams, XLFP_A429SETCHANNELPARAMS, (DEFFRPARAM, XL_A429_PARAMS *pXlA429Params));
 
 /** \brief Transmit a Arinc429 uint16_t to the network.
  *  This method is asynchronous; a confirmation of the transmit is received via an XL_A429_EV_TAG_TX_OK/XL_A429_EV_TAG_TX_ERR event.
@@ -7219,7 +7367,7 @@ DECL_STDXL_FUNC(xlA429SetChannelParams, XLFP_A429SETCHANNELPARAMS, (DEFFRPARAM, 
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlA429Transmit, XLFP_A429TRANSMIT,
-                (DEFFRPARAM, unsigned int msgCnt, unsigned int* pMsgCntSent, XL_A429_MSG_TX* pXlA429MsgTx));
+                (DEFFRPARAM, unsigned int msgCnt, unsigned int *pMsgCntSent, XL_A429_MSG_TX *pXlA429MsgTx));
 
 ////////////////////////////////////////////////////////////////////////////////
 // Vector Keyman Function Declarations
@@ -7231,7 +7379,7 @@ DECL_STDXL_FUNC(xlA429Transmit, XLFP_A429TRANSMIT,
  *  \param  boxCount:                 [IN] number of connected Keyman license Dongles
  *  \return XLstatus                       general status information
  */
-DECL_STDXL_FUNC(xlGetKeymanBoxes, XLFP_GETKEYMANBOXES, (unsigned int* boxCount));
+DECL_STDXL_FUNC(xlGetKeymanBoxes, XLFP_GETKEYMANBOXES, (unsigned int *boxCount));
 
 /** \brief Returns serial number and license info.
  *  This method returns serial number and license info (license bits) of selected Keyman License dongle
@@ -7242,7 +7390,7 @@ DECL_STDXL_FUNC(xlGetKeymanBoxes, XLFP_GETKEYMANBOXES, (unsigned int* boxCount))
  *  \return XLstatus                       general status information
  */
 DECL_STDXL_FUNC(xlGetKeymanInfo, XLFP_GETKEYMANINFO,
-                (unsigned int boxIndex, unsigned int* boxMask, unsigned int* boxSerial, XLuint64* licInfo));
+                (unsigned int boxIndex, unsigned int *boxMask, unsigned int *boxSerial, XLuint64 *licInfo));
 
 /** \brief Allocates a new clock context or opens an exiting clock
 
@@ -7262,7 +7410,7 @@ by the API)
 *   \return XLstatus                     status information
 */
 DECL_STDXL_FUNC(xlTsCreateClock, XLFP_TSCREATECLOCK,
-                (XLtsClockHandle * pClockHandle, const char* timeDomainName, XLtsClkExternalType clkType, XLtsInterfaceVersion apiVersion));
+                (XLtsClockHandle * pClockHandle, const char *timeDomainName, XLtsClkExternalType clkType, XLtsInterfaceVersion apiVersion));
 
 /** \brief Release external clock context
  *
@@ -7286,7 +7434,7 @@ DECL_STDXL_FUNC(xlTsDestroyClock, XLFP_TSDESTROYCLOCK, (XLtsClockHandle clockHan
 *                                     XL_ERR_TS_MASTER_NOT_FOUND no device was found that can synchronize the vTSS internal clock
 *                                     XL_ERR_INTERNAL_ERROR a fatal internal error
 */
-DECL_STDXL_FUNC(xlTsGetDomainTime, XLFP_TSGETDOMAINTIME, (XLtsClockHandle clockHandle, XLtsDomainTime* domainTime, XLuint64* slaveTime));
+DECL_STDXL_FUNC(xlTsGetDomainTime, XLFP_TSGETDOMAINTIME, (XLtsClockHandle clockHandle, XLtsDomainTime *domainTime, XLuint64 *slaveTime));
 
 /** \brief Setup an event to notify the application if the synchronization status of a clock regarding this port is changing.
 
@@ -7297,7 +7445,7 @@ DECL_STDXL_FUNC(xlTsGetDomainTime, XLFP_TSGETDOMAINTIME, (XLtsClockHandle clockH
 *   \param[out] pHandle                output handle object; this will be owned by the status port
 *   \return     XLstatus               status information
 */
-DECL_STDXL_FUNC(xlTsSetNotification, XLFP_TSSETNOTIFICATION, (XLportHandle statusPortHandle, XLportHandle portHandle, XLhandle* pHandle));
+DECL_STDXL_FUNC(xlTsSetNotification, XLFP_TSSETNOTIFICATION, (XLportHandle statusPortHandle, XLportHandle portHandle, XLhandle *pHandle));
 
 /** \brief Setup an event to notify the application if the synchronization status of a clock regarding this network is changing.
 
@@ -7310,25 +7458,23 @@ DECL_STDXL_FUNC(xlTsSetNotification, XLFP_TSSETNOTIFICATION, (XLportHandle statu
 *   \return     XLstatus               status information
 */
 DECL_STDXL_FUNC(xlNetTsSetNotification, XLFP_NETTSSETNOTIFICATION,
-                (XLportHandle statusPortHandle, XLnetworkHandle networkHandle, XLhandle* pHandle));
+                (XLportHandle statusPortHandle, XLnetworkHandle networkHandle, XLhandle *pHandle));
 
 ////////////////////////////////////////////////////////////////////////
 // get the number of databytes from dlc/edl/rtr in received events
 #define CANFD_GET_NUM_DATABYTES(dlc, edl, rtr) \
-  ((rtr)       ? 0 :                           \
-   (dlc) < 9   ? (dlc) :                       \
-   !(edl)      ? 8 :                           \
-   (dlc) == 9  ? 12 :                          \
-   (dlc) == 10 ? 16 :                          \
-   (dlc) == 11 ? 20 :                          \
-   (dlc) == 12 ? 24 :                          \
-   (dlc) == 13 ? 32 :                          \
-   (dlc) == 14 ? 48 :                          \
-                 64)
-
+    ((rtr) ? 0 : (dlc) < 9 ? (dlc)             \
+             : !(edl)      ? 8                 \
+             : (dlc) == 9  ? 12                \
+             : (dlc) == 10 ? 16                \
+             : (dlc) == 11 ? 20                \
+             : (dlc) == 12 ? 24                \
+             : (dlc) == 13 ? 32                \
+             : (dlc) == 14 ? 48                \
+                           : 64)
 
 #ifdef __cplusplus
 }
-#endif  // _cplusplus
+#endif // _cplusplus
 
-#endif  // _V_XLAPI_H_
+#endif // _V_XLAPI_H_

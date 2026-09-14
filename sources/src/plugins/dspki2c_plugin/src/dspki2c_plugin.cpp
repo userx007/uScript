@@ -1,6 +1,7 @@
+#include "dspki2c_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
-#include "dspki2c_plugin.hpp"
 #include "dspki2c_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -15,12 +16,12 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <cstdio>
 #include <exception>
 #include <memory>
 #include <new>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -29,20 +30,18 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED DSPKi2cPlugin *pluginEntry()
 {
-    EXPORTED DSPKi2cPlugin* pluginEntry()
-    {
-        return new DSPKi2cPlugin();
-    }
+    return new DSPKi2cPlugin();
+}
 
-    EXPORTED void pluginExit( DSPKi2cPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(DSPKi2cPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -51,32 +50,29 @@ extern "C"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if the plugin initialization fails.
-  *
-  * \note Usage example:
-  *       DSPKI2C.INFO
-  *
-  * \param[in] args empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if the plugin initialization fails.
+ *
+ * \note Usage example:
+ *       DSPKI2C.INFO
+ *
+ * \param[in] args empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool DSPKi2cPlugin::m_DSPKI2C_INFO (const std::string &args, std::stop_token st ) const
+bool DSPKi2cPlugin::m_DSPKI2C_INFO(const std::string &args, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -130,51 +126,46 @@ bool DSPKi2cPlugin::m_DSPKI2C_INFO (const std::string &args, std::stop_token st 
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
-
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current I2C/USB bridge parameters.
-  *
-  * \note Usage examples:
-  *       DSPKI2C.CONFIG v=16C0 p=05DF a=48 r=2000 w=2000 s=64
-  *       DSPKI2C.CONFIG a=68 r=500
-  *
-  * \param[in] args  space-separated key=value pairs (see dspki2c_setup.hpp)
-  *
-  * \return true if all parameters were accepted, false otherwise
-*/
+ * \brief CONFIG command implementation; overwrite the current I2C/USB bridge parameters.
+ *
+ * \note Usage examples:
+ *       DSPKI2C.CONFIG v=16C0 p=05DF a=48 r=2000 w=2000 s=64
+ *       DSPKI2C.CONFIG a=68 r=500
+ *
+ * \param[in] args  space-separated key=value pairs (see dspki2c_setup.hpp)
+ *
+ * \return true if all parameters were accepted, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool DSPKi2cPlugin::m_DSPKI2C_CONFIG ( const std::string &args, std::stop_token st ) const
+bool DSPKi2cPlugin::m_DSPKI2C_CONFIG(const std::string &args, std::stop_token st) const
 {
     return generic_i2c_set_params<DSPKi2cPlugin>(this, args);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCAN command implementation; discovers all responding I2C slave addresses.
-  *
-  * Opens a fresh I2CBridge connection, issues a bus scan (CMD_SCAN), logs each
-  * found address, and closes the device.  The scan result is also appended to
-  * m_strResultData so callers can retrieve addresses programmatically via getData().
-  *
-  * \note Usage example:
-  *       DSPKI2C.SCAN
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief SCAN command implementation; discovers all responding I2C slave addresses.
+ *
+ * Opens a fresh I2CBridge connection, issues a bus scan (CMD_SCAN), logs each
+ * found address, and closes the device.  The scan result is also appended to
+ * m_strResultData so callers can retrieve addresses programmatically via getData().
+ *
+ * \note Usage example:
+ *       DSPKI2C.SCAN
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_DSPKI2C_SCAN ( const std::string &args, std::stop_token st ) const
+bool DSPKi2cPlugin::m_DSPKI2C_SCAN(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
@@ -222,39 +213,36 @@ bool DSPKi2cPlugin::m_DSPKI2C_SCAN ( const std::string &args, std::stop_token st
 
             bRetVal = true;
 
-        } catch (const std::bad_alloc& e) {
+        } catch (const std::bad_alloc &e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
+        } catch (const std::exception &e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
         }
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
-
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation; sends and/or receives I2C frames.
-  *
-  * Uses the same mini-language as UART.CMD.  The I2CBridge is opened
-  * fresh per invocation (RAII) using the currently configured VID/PID
-  * and slave address.
-  *
-  * \note Usage examples:
-  *       DSPKI2C.CMD > H"AABBCCDD" | ok
-  *       DSPKI2C.CMD < "Ping" | H"FF"
-  *
-  * \param[in] args  command string parsed by CommScriptCommandValidator
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CMD command implementation; sends and/or receives I2C frames.
+ *
+ * Uses the same mini-language as UART.CMD.  The I2CBridge is opened
+ * fresh per invocation (RAII) using the currently configured VID/PID
+ * and slave address.
+ *
+ * \note Usage examples:
+ *       DSPKI2C.CMD > H"AABBCCDD" | ok
+ *       DSPKI2C.CMD < "Ping" | H"FF"
+ *
+ * \param[in] args  command string parsed by CommScriptCommandValidator
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool DSPKi2cPlugin::m_DSPKI2C_CMD ( const std::string &args, std::stop_token st ) const
+bool DSPKi2cPlugin::m_DSPKI2C_CMD(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -275,22 +263,21 @@ bool DSPKi2cPlugin::m_DSPKI2C_CMD ( const std::string &args, std::stop_token st 
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation; executes a file containing CMD lines.
-  *
-  * \note Usage examples:
-  *       DSPKI2C.SCRIPT i2c_seq.txt
-  *       DSPKI2C.SCRIPT i2c_seq.txt |50
-  *
-  * \param[in] args  scriptpathname [|delay_ms]
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief SCRIPT command implementation; executes a file containing CMD lines.
+ *
+ * \note Usage examples:
+ *       DSPKI2C.SCRIPT i2c_seq.txt
+ *       DSPKI2C.SCRIPT i2c_seq.txt |50
+ *
+ * \param[in] args  scriptpathname [|delay_ms]
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT ( const std::string &args, std::stop_token st ) const
+bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -311,28 +298,27 @@ bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT ( const std::string &args, std::stop_token 
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic DSPKI2C messages.
-  *
-  * \note The Digispark I2C bridge is opened once for the whole CYCLIC session (like SCRIPT) and
-  *       closed automatically on return (RAII). Each entry's optional "id" is the 7-bit I2C
-  *       slave address (decimal or 0x-hex; falls back to the default slave address set via
-  *       CONFIG when omitted) and "val" is the payload as a plain hex string (e.g. "AABBCCDD").
-  *
-  * \note Usage example:
-  *       DSPKI2C.CYCLIC 100 AABBCCDD 0x50, 250 1122 0x51
-  *       DSPKI2C.CYCLIC 100 AABBCCDD 0x50, 250 1122 0x51 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic DSPKI2C messages.
+ *
+ * \note The Digispark I2C bridge is opened once for the whole CYCLIC session (like SCRIPT) and
+ *       closed automatically on return (RAII). Each entry's optional "id" is the 7-bit I2C
+ *       slave address (decimal or 0x-hex; falls back to the default slave address set via
+ *       CONFIG when omitted) and "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+ *
+ * \note Usage example:
+ *       DSPKI2C.CYCLIC 100 AABBCCDD 0x50, 250 1122 0x51
+ *       DSPKI2C.CYCLIC 100 AABBCCDD 0x50, 250 1122 0x51 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_DSPKI2C_CYCLIC ( const std::string &args, std::stop_token st ) const
+bool DSPKi2cPlugin::m_DSPKI2C_CYCLIC(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
@@ -351,31 +337,29 @@ bool DSPKi2cPlugin::m_DSPKI2C_CYCLIC ( const std::string &args, std::stop_token 
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //            PRIVATE INTERFACES IMPLEMENTATION                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Load and validate settings from the INI file / PluginDataSet.
-  *
-  * Recognised keys (case-sensitive):
-  *   ARTEFACTS_PATH, I2C_VID, I2C_PID, I2C_SLAVE_ADDR,
-  *   READ_TIMEOUT, WRITE_TIMEOUT, READ_BUF_SIZE
-*/
+ * \brief Load and validate settings from the INI file / PluginDataSet.
+ *
+ * Recognised keys (case-sensitive):
+ *   ARTEFACTS_PATH, I2C_VID, I2C_PID, I2C_SLAVE_ADDR,
+ *   READ_TIMEOUT, WRITE_TIMEOUT, READ_BUF_SIZE
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief message sender — delegates to ICommDriver::tout_write().
-  *
-  * The I2CBridge base-interface write convention requires the first byte of
-  * the buffer to be the 7-bit slave address.  This wrapper prepends the
-  * configured m_u8SlaveAddr automatically so callers can pass raw payload.
-*/
+ * \brief message sender — delegates to ICommDriver::tout_write().
+ *
+ * The I2CBridge base-interface write convention requires the first byte of
+ * the buffer to be the 7-bit slave address.  This wrapper prepends the
+ * configured m_u8SlaveAddr automatically so callers can pass raw payload.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver ) const
+bool DSPKi2cPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     // Build a buffer with the slave address as the leading byte
     std::vector<uint8_t> buf;
@@ -395,55 +379,53 @@ bool DSPKi2cPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<c
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief message receiver — delegates to ICommDriver::tout_read().
-  *
-  * Maps CommCommandReadType onto ICommDriver::ReadMode following the same
-  * convention used by the UART plugin:
-  *   LINE            → UntilDelimiter  (delimiter = '\\n')
-  *   TOKEN_STRING /
-  *   TOKEN_HEXSTREAM → UntilToken      (token = expected payload)
-  *   default         → Exact
-  *
-  * For I2CBridge the slave address is passed through ReadOptions::delimiter
-  * (base-interface convention documented in uDigisparkI2C.hpp).
-*/
+ * \brief message receiver — delegates to ICommDriver::tout_read().
+ *
+ * Maps CommCommandReadType onto ICommDriver::ReadMode following the same
+ * convention used by the UART plugin:
+ *   LINE            → UntilDelimiter  (delimiter = '\\n')
+ *   TOKEN_STRING /
+ *   TOKEN_HEXSTREAM → UntilToken      (token = expected payload)
+ *   default         → Exact
+ *
+ * For I2CBridge the slave address is passed through ReadOptions::delimiter
+ * (base-interface convention documented in uDigisparkI2C.hpp).
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
+bool DSPKi2cPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;
 
-    switch(readType)
-    {
-        case CommCommandReadType::LINE:
-            options.mode      = ICommDriver::ReadMode::UntilDelimiter;
-            options.delimiter = m_u8SlaveAddr;  // slave addr carried in delimiter field
-            break;
+    switch (readType) {
+    case CommCommandReadType::LINE:
+        options.mode      = ICommDriver::ReadMode::UntilDelimiter;
+        options.delimiter = m_u8SlaveAddr; // slave addr carried in delimiter field
+        break;
 
-        case CommCommandReadType::TOKEN_STRING:
-            [[fallthrough]];
-        case CommCommandReadType::TOKEN_HEXSTREAM:
-            options.mode       = ICommDriver::ReadMode::UntilToken;
-            options.token      = dataSpan;
-            options.use_buffer = true;
-            options.delimiter  = m_u8SlaveAddr;
-            break;
+    case CommCommandReadType::TOKEN_STRING:
+        [[fallthrough]];
+    case CommCommandReadType::TOKEN_HEXSTREAM:
+        options.mode       = ICommDriver::ReadMode::UntilToken;
+        options.token      = dataSpan;
+        options.use_buffer = true;
+        options.delimiter  = m_u8SlaveAddr;
+        break;
 
-        default:
-            options.mode      = ICommDriver::ReadMode::Exact;
-            options.delimiter = m_u8SlaveAddr;
-            break;
+    default:
+        options.mode      = ICommDriver::ReadMode::Exact;
+        options.delimiter = m_u8SlaveAddr;
+        break;
     }
 
     auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
 
     if (result.status == ICommDriver::Status::SUCCESS) {
-        szSize   = result.bytes_read;
-        bRetVal  = true;
+        szSize  = result.bytes_read;
+        bRetVal = true;
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:");
                   LOG_STRING(ICommDriver::to_string(result.status));

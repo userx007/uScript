@@ -3,11 +3,11 @@
 
 #include "Protocol.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <optional>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <vector>
 
@@ -37,9 +37,9 @@ class Hydrabus;
  * i2c.stop();
  * @endcode
  */
-class I2C : public Protocol {
+class I2C : public Protocol
+{
 public:
-
     enum class Speed : uint8_t {
         I2C_50K  = 0b00,
         I2C_100K = 0b01,
@@ -101,9 +101,9 @@ public:
      * @return Read bytes, or nullopt on error.
      */
     std::optional<std::vector<uint8_t>> write_read(
-            std::span<const uint8_t> data,
-            size_t                   read_len,
-            std::stop_token          stop_tok = {});
+        std::span<const uint8_t> data,
+        size_t read_len,
+        std::stop_token stop_tok = {});
 
     /**
      * @brief Write bytes (uses write_read with read_len = 0).
@@ -156,4 +156,4 @@ private:
 
 } // namespace HydraHAL
 
-#endif //HYDRABUS_I2C_HPP
+#endif // HYDRABUS_I2C_HPP

@@ -3,8 +3,8 @@
 
 #include "RawWire.hpp"
 
-#include <stdint.h>
 #include <memory>
+#include <stdint.h>
 #include <stop_token>
 
 namespace HydraHAL {
@@ -31,10 +31,10 @@ class Hydrabus;
  * @endcode
  */
 
-class SWD : public RawWire {
+class SWD : public RawWire
+{
 
 public:
-
     explicit SWD(std::shared_ptr<Hydrabus> hydrabus);
 
     // -------------------------------------------------------------------------
@@ -81,8 +81,8 @@ public:
      * @throws std::runtime_error on FAULT response (unless ignore_status).
      */
     void write_dp(uint8_t addr, uint32_t value,
-                  int  to_ap        = 0,
-                  bool ignore_status = false,
+                  int to_ap                = 0,
+                  bool ignore_status       = false,
                   std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
@@ -128,7 +128,6 @@ public:
     void abort(uint8_t flags = 0b11111, std::stop_token stop_tok = {});
 
 private:
-
     /** @brief Apply odd parity to the request header byte. */
     uint8_t _apply_dp_parity(uint8_t value) const;
 
@@ -138,4 +137,4 @@ private:
 
 } // namespace HydraHAL
 
-#endif //HYDRABUS_SWD_HPP
+#endif // HYDRABUS_SWD_HPP

@@ -8,11 +8,11 @@
 #include "cp2112_generic.hpp"
 #include "gpio_config.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <map>
 #include <memory>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 
@@ -31,8 +31,8 @@ struct PluginDataSet;
 //                          PLUGIN NAME / VERSION                              //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define CP2112_PLUGIN_VERSION  "1.0.0.0"
-#define CP2112_PLUGIN_NAME     "CP2112"
+#define CP2112_PLUGIN_VERSION "1.0.0.0"
+#define CP2112_PLUGIN_NAME    "CP2112"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN MACROS                                      //
@@ -47,11 +47,11 @@ struct PluginDataSet;
 //                          PLUGIN COMMANDS                                    //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define CP2112_PLUGIN_COMMANDS_CONFIG_TABLE   \
-CP2112_PLUGIN_CMD_RECORD( INFO )              \
-CP2112_PLUGIN_CMD_RECORD( CONFIG )            \
-CP2112_PLUGIN_CMD_RECORD( I2C  )              \
-CP2112_PLUGIN_CMD_RECORD( GPIO )
+#define CP2112_PLUGIN_COMMANDS_CONFIG_TABLE \
+    CP2112_PLUGIN_CMD_RECORD(INFO)          \
+    CP2112_PLUGIN_CMD_RECORD(CONFIG)        \
+    CP2112_PLUGIN_CMD_RECORD(I2C)           \
+    CP2112_PLUGIN_CMD_RECORD(GPIO)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                                   //
@@ -93,7 +93,6 @@ class CP2112Plugin : public PluginInterface
 {
 
 public:
-
     CP2112Plugin()
         : m_strVersion(CP2112_PLUGIN_VERSION)
         , m_strInstanceName(CP2112_PLUGIN_NAME)
@@ -102,170 +101,214 @@ public:
         , m_bIsFaultTolerant(false)
         , m_bIsPrivileged(false)
     {
-        // Top-level command map 
-        #define CP2112_PLUGIN_CMD_RECORD(a, ...) \
-            m_mapCmds.insert({#a, \
-            PluginCommandEntry<CP2112Plugin>{&CP2112Plugin::m_CP2112_##a, CP2112_GET_BLOCKING(a, ##__VA_ARGS__, false)} });
+// Top-level command map
+#define CP2112_PLUGIN_CMD_RECORD(a, ...) \
+    m_mapCmds.insert({#a,                \
+                      PluginCommandEntry<CP2112Plugin>{&CP2112Plugin::m_CP2112_##a, CP2112_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
         CP2112_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef CP2112_PLUGIN_CMD_RECORD
+#undef CP2112_PLUGIN_CMD_RECORD
 
-        // I2C 
-        #define I2C_CMD_RECORD(a) \
-            m_mapCmds_I2C.insert({#a, &CP2112Plugin::m_handle_i2c_##a});
+// I2C
+#define I2C_CMD_RECORD(a) \
+    m_mapCmds_I2C.insert({#a, &CP2112Plugin::m_handle_i2c_##a});
         I2C_COMMANDS_CONFIG_TABLE
-        #undef I2C_CMD_RECORD
+#undef I2C_CMD_RECORD
 
-        #define I2C_SPEED_RECORD(a,b) m_mapSpeed_I2C.insert({a, static_cast<size_t>(b)});
+#define I2C_SPEED_RECORD(a, b) m_mapSpeed_I2C.insert({a, static_cast<size_t>(b)});
         I2C_SPEED_CONFIG_TABLE
-        #undef I2C_SPEED_RECORD
+#undef I2C_SPEED_RECORD
 
-        // GPIO 
-        #define GPIO_CMD_RECORD(a) \
-            m_mapCmds_GPIO.insert({#a, &CP2112Plugin::m_handle_gpio_##a});
+// GPIO
+#define GPIO_CMD_RECORD(a) \
+    m_mapCmds_GPIO.insert({#a, &CP2112Plugin::m_handle_gpio_##a});
         GPIO_COMMANDS_CONFIG_TABLE
-        #undef GPIO_CMD_RECORD
+#undef GPIO_CMD_RECORD
 
-        // Meta maps 
-        m_mapSpeedsMaps.insert({"I2C",  &m_mapSpeed_I2C});
-        m_mapSpeedsMaps.insert({"GPIO", nullptr});   // no speed map for GPIO
+        // Meta maps
+        m_mapSpeedsMaps.insert({"I2C", &m_mapSpeed_I2C});
+        m_mapSpeedsMaps.insert({"GPIO", nullptr}); // no speed map for GPIO
 
-        m_mapCommandsMaps.insert({"I2C",  &m_mapCmds_I2C});
+        m_mapCommandsMaps.insert({"I2C", &m_mapCmds_I2C});
         m_mapCommandsMaps.insert({"GPIO", &m_mapCmds_GPIO});
     }
 
     ~CP2112Plugin() = default;
 
-    bool isInitialized()   const override { return m_bIsInitialized;   }
-    bool isEnabled()       const override { return m_bIsEnabled;       }
+    bool isInitialized() const override
+    {
+        return m_bIsInitialized;
+    }
 
-    bool setParams(const PluginDataSet* ps) {
+    bool isEnabled() const override
+    {
+        return m_bIsEnabled;
+    }
+
+    bool setParams(const PluginDataSet *ps)
+    {
         bool ok = generic_setparams<CP2112Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
         return ok && m_LocalSetParams(ps);
     }
 
-    void getParams(PluginDataGet* pg) const {
+    void getParams(PluginDataGet *pg) const
+    {
         generic_getparams<CP2112Plugin>(this, pg);
     }
 
-    const PluginCommandsMap<CP2112Plugin>* getMap() const { return &m_mapCmds; }
+    const PluginCommandsMap<CP2112Plugin> *getMap() const
+    {
+        return &m_mapCmds;
+    }
 
-    const std::string& getVersion() const { return m_strVersion; }
-    const std::string& getData()    const { return m_strResultData; }
-    void resetData()                const { m_strResultData.clear(); }
+    const std::string &getVersion() const
+    {
+        return m_strVersion;
+    }
 
-    bool doInit(void* pvUserData);
-    bool doEnable()  { m_bIsEnabled = true; return true; }
+    const std::string &getData() const
+    {
+        return m_strResultData;
+    }
 
-    bool doDispatch(const std::string& cmd, const std::string& params,
-                   std::stop_token st = {} ) const {
+    void resetData() const
+    {
+        m_strResultData.clear();
+    }
+
+    bool doInit(void *pvUserData);
+
+    bool doEnable()
+    {
+        m_bIsEnabled = true;
+        return true;
+    }
+
+    bool doDispatch(const std::string &cmd, const std::string &params,
+                    std::stop_token st = {}) const
+    {
         return generic_dispatch<CP2112Plugin>(this, cmd, params, st);
     }
-    void doCleanup();
-    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
-    bool isPrivileged()    const override { return false;              }
-    void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
-    ModuleCommandsMap<CP2112Plugin>* getModuleCmdsMap(const std::string& m) const;
-    ModuleSpeedMap*                  getModuleSpeedsMap(const std::string& m) const;
+    void doCleanup();
+
+    bool isFaultTolerant() const override
+    {
+        return m_bIsFaultTolerant;
+    }
+
+    bool isPrivileged() const override
+    {
+        return false;
+    }
+
+    void setFaultTolerant()
+    {
+        m_bIsFaultTolerant = true;
+    }
+
+    ModuleCommandsMap<CP2112Plugin> *getModuleCmdsMap(const std::string &m) const;
+    ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
     // Re-open I2C at a new clock frequency while keeping the same address
 
-    bool setModuleSpeed(const std::string& module, size_t hz) const;
+    bool setModuleSpeed(const std::string &module, size_t hz) const;
 
-    // INI accessor 
+    // INI accessor
 
-    struct IniValues {
+    struct IniValues
+    {
         std::string strArtefactsPath;
-        uint8_t     u8DeviceIndex  {0};
-        uint32_t    u32I2cClockHz  {100000u};
-        uint8_t     u8I2cAddress   {0x50u};
-        uint32_t    u32ReadTimeout {1000u};    ///< Default read timeout (ms) for script execution
-        uint32_t    u32ScriptDelay {0u};       ///< Inter-command delay (ms) for script execution
-    };   
+        uint8_t u8DeviceIndex{0};
+        uint32_t u32I2cClockHz{100000u};
+        uint8_t u8I2cAddress{0x50u};
+        uint32_t u32ReadTimeout{1000u}; ///< Default read timeout (ms) for script execution
+        uint32_t u32ScriptDelay{0u};    ///< Inter-command delay (ms) for script execution
+    };
 
-        // ---- CONFIG-command setters (see inc/private/cp2112_setup.hpp) ----
+    // ---- CONFIG-command setters (see inc/private/cp2112_setup.hpp) ----
 
-        /** \brief CONFIG-command setter for u8DeviceIndex (flag 'x') */
-        bool setDeviceIndex (const std::string& strVal) const
-        {
-            return numeric::str2uint8(strVal, m_sIniValues.u8DeviceIndex);
-        }
+    /** \brief CONFIG-command setter for u8DeviceIndex (flag 'x') */
+    bool setDeviceIndex(const std::string &strVal) const
+    {
+        return numeric::str2uint8(strVal, m_sIniValues.u8DeviceIndex);
+    }
 
-        /** \brief CONFIG-command setter for u32I2cClockHz (flag 'c') */
-        bool setI2cClockHz (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32I2cClockHz);
-        }
+    /** \brief CONFIG-command setter for u32I2cClockHz (flag 'c') */
+    bool setI2cClockHz(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32I2cClockHz);
+    }
 
-        /** \brief CONFIG-command setter for u8I2cAddress (flag 'a') */
-        bool setI2cAddress (const std::string& strVal) const
-        {
-            return numeric::str2uint8(strVal, m_sIniValues.u8I2cAddress);
-        }
+    /** \brief CONFIG-command setter for u8I2cAddress (flag 'a') */
+    bool setI2cAddress(const std::string &strVal) const
+    {
+        return numeric::str2uint8(strVal, m_sIniValues.u8I2cAddress);
+    }
 
-        /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
-        bool setReadTimeout (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
-        }
+    /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
+    bool setReadTimeout(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
+    }
 
-        /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
-        bool setScriptDelay (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
-        }
+    /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
+    bool setScriptDelay(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
+    }
 
-        friend const IniValues* getAccessIniValues(const CP2112Plugin& obj);
+    friend const IniValues *getAccessIniValues(const CP2112Plugin &obj);
 
 private:
+    // Pending configuration
 
-    // Pending configuration 
-
-    struct I2cPendingCfg {
-        uint8_t  address {0x50u};
-        uint32_t clockHz {100000u};
+    struct I2cPendingCfg
+    {
+        uint8_t address{0x50u};
+        uint32_t clockHz{100000u};
     };
 
-    struct GpioPendingCfg {
-        uint8_t directionMask   {0x00u}; ///< 1 = output, 0 = input (default all inputs)
-        uint8_t pushPullMask    {0x00u}; ///< 1 = push-pull, 0 = open-drain
-        uint8_t specialFuncMask {0x00u}; ///< Special function enables (TX LED, irq, clk, RX LED)
-        uint8_t clockDivider    {0x00u}; ///< Clock divider (used when GPIO.6 = clock output)
+    struct GpioPendingCfg
+    {
+        uint8_t directionMask{0x00u};   ///< 1 = output, 0 = input (default all inputs)
+        uint8_t pushPullMask{0x00u};    ///< 1 = push-pull, 0 = open-drain
+        uint8_t specialFuncMask{0x00u}; ///< Special function enables (TX LED, irq, clk, RX LED)
+        uint8_t clockDivider{0x00u};    ///< Clock divider (used when GPIO.6 = clock output)
     };
 
-    // Driver instance accessors 
+    // Driver instance accessors
 
-    CP2112*     m_i2c()  const;
-    CP2112Gpio* m_gpio() const;
+    CP2112 *m_i2c() const;
+    CP2112Gpio *m_gpio() const;
 
-    // WrRd callback 
+    // WrRd callback
 
     bool m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const;
 
-    // Top-level command handlers 
+    // Top-level command handlers
 
-    #define CP2112_PLUGIN_CMD_RECORD(a, ...) \
-        bool m_CP2112_##a( const std::string& args, std::stop_token st ) const;
+#define CP2112_PLUGIN_CMD_RECORD(a, ...) \
+    bool m_CP2112_##a(const std::string &args, std::stop_token st) const;
     CP2112_PLUGIN_COMMANDS_CONFIG_TABLE
-    #undef CP2112_PLUGIN_CMD_RECORD
+#undef CP2112_PLUGIN_CMD_RECORD
 
-    // Per-module subcommand declarations 
+    // Per-module subcommand declarations
 
-    #define I2C_CMD_RECORD(a)  bool m_handle_i2c_##a (const std::string&, std::stop_token st) const;
+#define I2C_CMD_RECORD(a) bool m_handle_i2c_##a(const std::string &, std::stop_token st) const;
     I2C_COMMANDS_CONFIG_TABLE
-    #undef I2C_CMD_RECORD
+#undef I2C_CMD_RECORD
 
-    #define GPIO_CMD_RECORD(a) bool m_handle_gpio_##a(const std::string&, std::stop_token st) const;
+#define GPIO_CMD_RECORD(a) bool m_handle_gpio_##a(const std::string &, std::stop_token st) const;
     GPIO_COMMANDS_CONFIG_TABLE
-    #undef GPIO_CMD_RECORD
+#undef GPIO_CMD_RECORD
 
-    // Parse helpers 
+    // Parse helpers
 
-    static bool parseGpioKv(const std::string& key,
-                            const std::string& val,
-                            GpioPendingCfg& cfg);
+    static bool parseGpioKv(const std::string &key,
+                            const std::string &val,
+                            GpioPendingCfg &cfg);
 
-    // Member data 
+    // Member data
 
     std::string m_strVersion;
 
@@ -280,23 +323,23 @@ private:
     bool m_bIsFaultTolerant;
     bool m_bIsPrivileged;
 
-    mutable IniValues       m_sIniValues;
-    mutable I2cPendingCfg  m_sI2cCfg;
+    mutable IniValues m_sIniValues;
+    mutable I2cPendingCfg m_sI2cCfg;
     mutable GpioPendingCfg m_sGpioCfg;
 
-    mutable std::unique_ptr<CP2112>     m_pI2C;
+    mutable std::unique_ptr<CP2112> m_pI2C;
     mutable std::unique_ptr<CP2112Gpio> m_pGPIO;
 
-    PluginCommandsMap<CP2112Plugin>   m_mapCmds;
-    SpeedsMapsMap                     m_mapSpeedsMaps;
-    CommandsMapsMap<CP2112Plugin>     m_mapCommandsMaps;
+    PluginCommandsMap<CP2112Plugin> m_mapCmds;
+    SpeedsMapsMap m_mapSpeedsMaps;
+    CommandsMapsMap<CP2112Plugin> m_mapCommandsMaps;
 
-    ModuleCommandsMap<CP2112Plugin>   m_mapCmds_I2C;
-    ModuleCommandsMap<CP2112Plugin>   m_mapCmds_GPIO;
+    ModuleCommandsMap<CP2112Plugin> m_mapCmds_I2C;
+    ModuleCommandsMap<CP2112Plugin> m_mapCmds_GPIO;
 
-    ModuleSpeedMap                    m_mapSpeed_I2C;
+    ModuleSpeedMap m_mapSpeed_I2C;
 
-    bool m_LocalSetParams(const PluginDataSet* ps);
+    bool m_LocalSetParams(const PluginDataSet *ps);
 };
 
 #endif // CP2112_PLUGIN_HPP

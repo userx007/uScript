@@ -19,8 +19,8 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -29,36 +29,40 @@
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+#undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR   "HB_NFC     |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR        "HB_NFC     |"
+#define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "NFC"
 
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_nfc_help(const std::string&, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_nfc_help(const std::string &, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
 
-bool HydrabusPlugin::m_handle_nfc_mode(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_nfc_mode(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: mode [14443a|15693]"));
         return true;
     }
-    auto* p = m_nfc();
-    if (!p) return false;
+    auto *p = m_nfc();
+    if (!p) {
+        return false;
+    }
 
-    if      (args == "14443a") { p->set_mode(HydraHAL::NFC::Mode::ISO_14443A, st); }
-    else if (args == "15693")  { p->set_mode(HydraHAL::NFC::Mode::ISO_15693, st);  }
-    else {
+    if (args == "14443a") {
+        p->set_mode(HydraHAL::NFC::Mode::ISO_14443A, st);
+    } else if (args == "15693") {
+        p->set_mode(HydraHAL::NFC::Mode::ISO_15693, st);
+    } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown mode:"); LOG_STRING(args));
         return false;
     }
@@ -66,18 +70,22 @@ bool HydrabusPlugin::m_handle_nfc_mode(const std::string& args, std::stop_token 
     return true;
 }
 
-bool HydrabusPlugin::m_handle_nfc_rf(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_nfc_rf(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: rf [on|off]"));
         return true;
     }
-    auto* p = m_nfc();
-    if (!p) return false;
+    auto *p = m_nfc();
+    if (!p) {
+        return false;
+    }
 
-    if      (args == "on")  { p->set_rf(true, st);  }
-    else if (args == "off") { p->set_rf(false, st); }
-    else {
+    if (args == "on") {
+        p->set_rf(true, st);
+    } else if (args == "off") {
+        p->set_rf(false, st);
+    } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected on or off"));
         return false;
     }
@@ -86,22 +94,26 @@ bool HydrabusPlugin::m_handle_nfc_rf(const std::string& args, std::stop_token st
 }
 
 // write AABB.. [crc]
-bool HydrabusPlugin::m_handle_nfc_write(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_nfc_write(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write AABB.. [crc]  (append CRC if 'crc' present)"));
         return true;
     }
-    auto* p = m_nfc();
-    if (!p) return false;
+    auto *p = m_nfc();
+    if (!p) {
+        return false;
+    }
 
     // Split off optional trailing "crc" keyword
     std::vector<std::string> parts;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
-    if (parts.empty()) return false;
+    if (parts.empty()) {
+        return false;
+    }
 
-    bool appendCrc = (parts.size() >= 2 && parts.back() == "crc");
+    bool appendCrc     = (parts.size() >= 2 && parts.back() == "crc");
     std::string hexStr = parts[0];
 
     std::vector<uint8_t> data;
@@ -119,15 +131,17 @@ bool HydrabusPlugin::m_handle_nfc_write(const std::string& args, std::stop_token
 }
 
 // write_bits HEXBYTE N
-bool HydrabusPlugin::m_handle_nfc_write_bits(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_nfc_write_bits(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write_bits HEXBYTE N  (e.g. write_bits 26 7)"));
         return true;
     }
-    auto* p = m_nfc();
-    if (!p) return false;
+    auto *p = m_nfc();
+    if (!p) {
+        return false;
+    }
 
     std::vector<std::string> parts;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
@@ -155,7 +169,7 @@ bool HydrabusPlugin::m_handle_nfc_write_bits(const std::string& args, std::stop_
     return true;
 }
 
-bool HydrabusPlugin::m_handle_nfc_aux(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_nfc_aux(const std::string &args, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(args, m_nfc());
 }

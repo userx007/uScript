@@ -9,11 +9,11 @@
 #include "gpio_config.hpp"
 #include "i2c_config.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <map>
 #include <memory>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 
@@ -35,8 +35,8 @@ struct PluginDataSet;
 //                          PLUGIN NAME / VERSION                              //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define FT232H_PLUGIN_VERSION  "1.0.0.0"
-#define FT232H_PLUGIN_NAME     "FT232H"
+#define FT232H_PLUGIN_VERSION "1.0.0.0"
+#define FT232H_PLUGIN_NAME    "FT232H"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN MACROS                                      //
@@ -51,13 +51,13 @@ struct PluginDataSet;
 //                          PLUGIN COMMANDS                                    //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define FT232H_PLUGIN_COMMANDS_CONFIG_TABLE   \
-FT232H_PLUGIN_CMD_RECORD( INFO )              \
-FT232H_PLUGIN_CMD_RECORD( CONFIG )            \
-FT232H_PLUGIN_CMD_RECORD( SPI  )              \
-FT232H_PLUGIN_CMD_RECORD( I2C  )              \
-FT232H_PLUGIN_CMD_RECORD( GPIO )              \
-FT232H_PLUGIN_CMD_RECORD( UART )
+#define FT232H_PLUGIN_COMMANDS_CONFIG_TABLE \
+    FT232H_PLUGIN_CMD_RECORD(INFO)          \
+    FT232H_PLUGIN_CMD_RECORD(CONFIG)        \
+    FT232H_PLUGIN_CMD_RECORD(SPI)           \
+    FT232H_PLUGIN_CMD_RECORD(I2C)           \
+    FT232H_PLUGIN_CMD_RECORD(GPIO)          \
+    FT232H_PLUGIN_CMD_RECORD(UART)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                                   //
@@ -95,7 +95,6 @@ FT232H_PLUGIN_CMD_RECORD( UART )
 class FT232HPlugin : public PluginInterface
 {
 public:
-
     FT232HPlugin()
         : m_strVersion(FT232H_PLUGIN_VERSION)
         , m_strInstanceName(FT232H_PLUGIN_NAME)
@@ -104,230 +103,273 @@ public:
         , m_bIsFaultTolerant(false)
         , m_bIsPrivileged(false)
     {
-        // Top-level command map 
-        #define FT232H_PLUGIN_CMD_RECORD(a, ...) \
-            m_mapCmds.insert({#a, \
-            PluginCommandEntry<FT232HPlugin>{&FT232HPlugin::m_FT232H_##a, FT232H_GET_BLOCKING(a, ##__VA_ARGS__, false)} });
+// Top-level command map
+#define FT232H_PLUGIN_CMD_RECORD(a, ...) \
+    m_mapCmds.insert({#a,                \
+                      PluginCommandEntry<FT232HPlugin>{&FT232HPlugin::m_FT232H_##a, FT232H_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
         FT232H_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef FT232H_PLUGIN_CMD_RECORD
+#undef FT232H_PLUGIN_CMD_RECORD
 
-        // SPI 
-        #define SPI_CMD_RECORD(a) \
-            m_mapCmds_SPI.insert({#a, &FT232HPlugin::m_handle_spi_##a});
+// SPI
+#define SPI_CMD_RECORD(a) \
+    m_mapCmds_SPI.insert({#a, &FT232HPlugin::m_handle_spi_##a});
         SPI_COMMANDS_CONFIG_TABLE
-        #undef SPI_CMD_RECORD
+#undef SPI_CMD_RECORD
 
-        #define SPI_SPEED_RECORD(a,b) m_mapSpeed_SPI.insert({a, static_cast<size_t>(b)});
+#define SPI_SPEED_RECORD(a, b) m_mapSpeed_SPI.insert({a, static_cast<size_t>(b)});
         SPI_SPEED_CONFIG_TABLE
-        #undef SPI_SPEED_RECORD
+#undef SPI_SPEED_RECORD
 
-        // I2C 
-        #define I2C_CMD_RECORD(a) \
-            m_mapCmds_I2C.insert({#a, &FT232HPlugin::m_handle_i2c_##a});
+// I2C
+#define I2C_CMD_RECORD(a) \
+    m_mapCmds_I2C.insert({#a, &FT232HPlugin::m_handle_i2c_##a});
         I2C_COMMANDS_CONFIG_TABLE
-        #undef I2C_CMD_RECORD
+#undef I2C_CMD_RECORD
 
-        #define I2C_SPEED_RECORD(a,b) m_mapSpeed_I2C.insert({a, static_cast<size_t>(b)});
+#define I2C_SPEED_RECORD(a, b) m_mapSpeed_I2C.insert({a, static_cast<size_t>(b)});
         I2C_SPEED_CONFIG_TABLE
-        #undef I2C_SPEED_RECORD
+#undef I2C_SPEED_RECORD
 
-        // GPIO 
-        #define GPIO_CMD_RECORD(a) \
-            m_mapCmds_GPIO.insert({#a, &FT232HPlugin::m_handle_gpio_##a});
+// GPIO
+#define GPIO_CMD_RECORD(a) \
+    m_mapCmds_GPIO.insert({#a, &FT232HPlugin::m_handle_gpio_##a});
         GPIO_COMMANDS_CONFIG_TABLE
-        #undef GPIO_CMD_RECORD
+#undef GPIO_CMD_RECORD
 
-        // UART 
-        #define UART_CMD_RECORD(a) \
-            m_mapCmds_UART.insert({#a, &FT232HPlugin::m_handle_uart_##a});
+// UART
+#define UART_CMD_RECORD(a) \
+    m_mapCmds_UART.insert({#a, &FT232HPlugin::m_handle_uart_##a});
         UART_COMMANDS_CONFIG_TABLE
-        #undef UART_CMD_RECORD
+#undef UART_CMD_RECORD
 
-        #define UART_SPEED_RECORD(a,b) m_mapSpeed_UART.insert({a, static_cast<size_t>(b)});
+#define UART_SPEED_RECORD(a, b) m_mapSpeed_UART.insert({a, static_cast<size_t>(b)});
         UART_SPEED_CONFIG_TABLE
-        #undef UART_SPEED_RECORD
+#undef UART_SPEED_RECORD
 
-        // Meta maps 
-        m_mapSpeedsMaps.insert({"SPI",  &m_mapSpeed_SPI});
-        m_mapSpeedsMaps.insert({"I2C",  &m_mapSpeed_I2C});
+        // Meta maps
+        m_mapSpeedsMaps.insert({"SPI", &m_mapSpeed_SPI});
+        m_mapSpeedsMaps.insert({"I2C", &m_mapSpeed_I2C});
         m_mapSpeedsMaps.insert({"GPIO", nullptr});
         m_mapSpeedsMaps.insert({"UART", &m_mapSpeed_UART});
 
-        m_mapCommandsMaps.insert({"SPI",  &m_mapCmds_SPI});
-        m_mapCommandsMaps.insert({"I2C",  &m_mapCmds_I2C});
+        m_mapCommandsMaps.insert({"SPI", &m_mapCmds_SPI});
+        m_mapCommandsMaps.insert({"I2C", &m_mapCmds_I2C});
         m_mapCommandsMaps.insert({"GPIO", &m_mapCmds_GPIO});
         m_mapCommandsMaps.insert({"UART", &m_mapCmds_UART});
     }
 
     ~FT232HPlugin() = default;
 
-    // PluginInterface 
+    // PluginInterface
 
-    bool isInitialized()   const override { return m_bIsInitialized;   }
-    bool isEnabled()       const override { return m_bIsEnabled;       }
+    bool isInitialized() const override
+    {
+        return m_bIsInitialized;
+    }
 
-    bool setParams(const PluginDataSet* ps) {
+    bool isEnabled() const override
+    {
+        return m_bIsEnabled;
+    }
+
+    bool setParams(const PluginDataSet *ps)
+    {
         bool ok = generic_setparams<FT232HPlugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
         return ok && m_LocalSetParams(ps);
     }
 
-    void getParams(PluginDataGet* pg) const {
+    void getParams(PluginDataGet *pg) const
+    {
         generic_getparams<FT232HPlugin>(this, pg);
     }
 
-    const PluginCommandsMap<FT232HPlugin>* getMap() const { return &m_mapCmds; }
+    const PluginCommandsMap<FT232HPlugin> *getMap() const
+    {
+        return &m_mapCmds;
+    }
 
-    const std::string& getVersion() const { return m_strVersion; }
-    const std::string& getData()    const { return m_strResultData; }
-    void resetData()                const { m_strResultData.clear(); }
+    const std::string &getVersion() const
+    {
+        return m_strVersion;
+    }
 
-    bool doInit(void* pvUserData);
-    bool doEnable()  { m_bIsEnabled = true; return true; }
+    const std::string &getData() const
+    {
+        return m_strResultData;
+    }
 
-    bool doDispatch(const std::string& cmd, const std::string& params,
-                   std::stop_token st = {} ) const {
+    void resetData() const
+    {
+        m_strResultData.clear();
+    }
+
+    bool doInit(void *pvUserData);
+
+    bool doEnable()
+    {
+        m_bIsEnabled = true;
+        return true;
+    }
+
+    bool doDispatch(const std::string &cmd, const std::string &params,
+                    std::stop_token st = {}) const
+    {
         return generic_dispatch<FT232HPlugin>(this, cmd, params, st);
     }
+
     void doCleanup();
-    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
-    bool isPrivileged()    const override { return false;              }
-    void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
-    // Module-map accessors 
+    bool isFaultTolerant() const override
+    {
+        return m_bIsFaultTolerant;
+    }
 
-    ModuleCommandsMap<FT232HPlugin>* getModuleCmdsMap(const std::string& m) const;
-    ModuleSpeedMap*                  getModuleSpeedsMap(const std::string& m) const;
+    bool isPrivileged() const override
+    {
+        return false;
+    }
+
+    void setFaultTolerant()
+    {
+        m_bIsFaultTolerant = true;
+    }
+
+    // Module-map accessors
+
+    ModuleCommandsMap<FT232HPlugin> *getModuleCmdsMap(const std::string &m) const;
+    ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
     /**
      * @brief Apply a speed (Hz) to an open module.
      *
      * Re-opens the driver at the new clock if currently open.
      */
-    bool setModuleSpeed(const std::string& module, size_t hz) const;
+    bool setModuleSpeed(const std::string &module, size_t hz) const;
 
-    // INI accessor 
+    // INI accessor
 
-    struct IniValues {
+    struct IniValues
+    {
         std::string strArtefactsPath;
-        uint8_t     u8DeviceIndex  {0};
-        uint32_t    u32SpiClockHz  {1000000u};
-        uint32_t    u32I2cClockHz  {100000u};
-        uint8_t     u8I2cAddress   {0x50u};
-        uint32_t    u32ReadTimeout {1000u};    ///< Default read timeout (ms) for script execution
-        uint32_t    u32ScriptDelay {0u};       ///< Inter-command delay (ms) for script execution
-        uint32_t    u32UartBaudRate{115200u};  ///< Default UART baud rate
+        uint8_t u8DeviceIndex{0};
+        uint32_t u32SpiClockHz{1000000u};
+        uint32_t u32I2cClockHz{100000u};
+        uint8_t u8I2cAddress{0x50u};
+        uint32_t u32ReadTimeout{1000u};    ///< Default read timeout (ms) for script execution
+        uint32_t u32ScriptDelay{0u};       ///< Inter-command delay (ms) for script execution
+        uint32_t u32UartBaudRate{115200u}; ///< Default UART baud rate
     };
 
-        // ---- CONFIG-command setters (see inc/private/ft232h_setup.hpp) ----
+    // ---- CONFIG-command setters (see inc/private/ft232h_setup.hpp) ----
 
-        /** \brief CONFIG-command setter for u8DeviceIndex (flag 'x') */
-        bool setDeviceIndex (const std::string& strVal) const
-        {
-            return numeric::str2uint8(strVal, m_sIniValues.u8DeviceIndex);
-        }
+    /** \brief CONFIG-command setter for u8DeviceIndex (flag 'x') */
+    bool setDeviceIndex(const std::string &strVal) const
+    {
+        return numeric::str2uint8(strVal, m_sIniValues.u8DeviceIndex);
+    }
 
-        /** \brief CONFIG-command setter for u32SpiClockHz (flag 'spf') */
-        bool setSpiClockHz (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32SpiClockHz);
-        }
+    /** \brief CONFIG-command setter for u32SpiClockHz (flag 'spf') */
+    bool setSpiClockHz(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32SpiClockHz);
+    }
 
-        /** \brief CONFIG-command setter for u32I2cClockHz (flag 'i2f') */
-        bool setI2cClockHz (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32I2cClockHz);
-        }
+    /** \brief CONFIG-command setter for u32I2cClockHz (flag 'i2f') */
+    bool setI2cClockHz(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32I2cClockHz);
+    }
 
-        /** \brief CONFIG-command setter for u8I2cAddress (flag 'a') */
-        bool setI2cAddress (const std::string& strVal) const
-        {
-            return numeric::str2uint8(strVal, m_sIniValues.u8I2cAddress);
-        }
+    /** \brief CONFIG-command setter for u8I2cAddress (flag 'a') */
+    bool setI2cAddress(const std::string &strVal) const
+    {
+        return numeric::str2uint8(strVal, m_sIniValues.u8I2cAddress);
+    }
 
-        /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
-        bool setReadTimeout (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
-        }
+    /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
+    bool setReadTimeout(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
+    }
 
-        /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
-        bool setScriptDelay (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
-        }
+    /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
+    bool setScriptDelay(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
+    }
 
-        /** \brief CONFIG-command setter for u32UartBaudRate (flag 'baud') */
-        bool setUartBaudRate (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32UartBaudRate);
-        }
+    /** \brief CONFIG-command setter for u32UartBaudRate (flag 'baud') */
+    bool setUartBaudRate(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32UartBaudRate);
+    }
 
-
-
-    friend const IniValues* getAccessIniValues(const FT232HPlugin& obj);
+    friend const IniValues *getAccessIniValues(const FT232HPlugin &obj);
 
 private:
+    // Pending configuration
 
-    // Pending configuration 
-
-    struct SpiPendingCfg {
-        uint32_t               clockHz    {1000000u};
-        FT232HSPI::SpiMode     mode       {FT232HSPI::SpiMode::Mode0};
-        FT232HSPI::BitOrder    bitOrder   {FT232HSPI::BitOrder::MsbFirst};
-        uint8_t                csPin      {0x08u};
-        FT232HSPI::CsPolarity  csPolarity {FT232HSPI::CsPolarity::ActiveLow};
+    struct SpiPendingCfg
+    {
+        uint32_t clockHz{1000000u};
+        FT232HSPI::SpiMode mode{FT232HSPI::SpiMode::Mode0};
+        FT232HSPI::BitOrder bitOrder{FT232HSPI::BitOrder::MsbFirst};
+        uint8_t csPin{0x08u};
+        FT232HSPI::CsPolarity csPolarity{FT232HSPI::CsPolarity::ActiveLow};
     };
 
-    struct I2cPendingCfg {
-        uint8_t  address {0x50u};
-        uint32_t clockHz {100000u};
+    struct I2cPendingCfg
+    {
+        uint8_t address{0x50u};
+        uint32_t clockHz{100000u};
     };
 
-    struct GpioPendingCfg {
-        uint8_t lowDirMask  {0x00u};
-        uint8_t lowValue    {0x00u};
-        uint8_t highDirMask {0x00u};
-        uint8_t highValue   {0x00u};
+    struct GpioPendingCfg
+    {
+        uint8_t lowDirMask{0x00u};
+        uint8_t lowValue{0x00u};
+        uint8_t highDirMask{0x00u};
+        uint8_t highValue{0x00u};
     };
 
-    // Driver instance accessors 
+    // Driver instance accessors
 
-    FT232HSPI*  m_spi()  const;
-    FT232HI2C*  m_i2c()  const;
-    FT232HGPIO* m_gpio() const;
-    FT232HUART* m_uart() const;
+    FT232HSPI *m_spi() const;
+    FT232HI2C *m_i2c() const;
+    FT232HGPIO *m_gpio() const;
+    FT232HUART *m_uart() const;
 
-    // WrRd callbacks 
+    // WrRd callbacks
 
     bool m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const;
     bool m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const;
 
-    // Top-level command handlers 
+    // Top-level command handlers
 
-    #define FT232H_PLUGIN_CMD_RECORD(a, ...) \
-        bool m_FT232H_##a( const std::string& args, std::stop_token st ) const;
+#define FT232H_PLUGIN_CMD_RECORD(a, ...) \
+    bool m_FT232H_##a(const std::string &args, std::stop_token st) const;
     FT232H_PLUGIN_COMMANDS_CONFIG_TABLE
-    #undef FT232H_PLUGIN_CMD_RECORD
+#undef FT232H_PLUGIN_CMD_RECORD
 
-    // Per-module subcommand declarations 
+    // Per-module subcommand declarations
 
-    #define SPI_CMD_RECORD(a)  bool m_handle_spi_##a (const std::string&, std::stop_token st) const;
+#define SPI_CMD_RECORD(a) bool m_handle_spi_##a(const std::string &, std::stop_token st) const;
     SPI_COMMANDS_CONFIG_TABLE
-    #undef SPI_CMD_RECORD
+#undef SPI_CMD_RECORD
 
-    #define I2C_CMD_RECORD(a)  bool m_handle_i2c_##a (const std::string&, std::stop_token st) const;
+#define I2C_CMD_RECORD(a) bool m_handle_i2c_##a(const std::string &, std::stop_token st) const;
     I2C_COMMANDS_CONFIG_TABLE
-    #undef I2C_CMD_RECORD
+#undef I2C_CMD_RECORD
 
-    #define GPIO_CMD_RECORD(a) bool m_handle_gpio_##a(const std::string&, std::stop_token st) const;
+#define GPIO_CMD_RECORD(a) bool m_handle_gpio_##a(const std::string &, std::stop_token st) const;
     GPIO_COMMANDS_CONFIG_TABLE
-    #undef GPIO_CMD_RECORD
+#undef GPIO_CMD_RECORD
 
-    #define UART_CMD_RECORD(a) bool m_handle_uart_##a(const std::string&, std::stop_token st) const;
+#define UART_CMD_RECORD(a) bool m_handle_uart_##a(const std::string &, std::stop_token st) const;
     UART_COMMANDS_CONFIG_TABLE
-    #undef UART_CMD_RECORD
+#undef UART_CMD_RECORD
 
-    // Member data 
+    // Member data
 
     std::string m_strVersion;
 
@@ -346,37 +388,37 @@ private:
 
     using UartPendingCfg = FT232HUART::UartConfig;
 
-    mutable SpiPendingCfg  m_sSpiCfg;
-    mutable I2cPendingCfg  m_sI2cCfg;
+    mutable SpiPendingCfg m_sSpiCfg;
+    mutable I2cPendingCfg m_sI2cCfg;
     mutable GpioPendingCfg m_sGpioCfg;
     mutable UartPendingCfg m_sUartCfg;
 
-    mutable std::unique_ptr<FT232HSPI>  m_pSPI;
-    mutable std::unique_ptr<FT232HI2C>  m_pI2C;
+    mutable std::unique_ptr<FT232HSPI> m_pSPI;
+    mutable std::unique_ptr<FT232HI2C> m_pI2C;
     mutable std::unique_ptr<FT232HGPIO> m_pGPIO;
     mutable std::unique_ptr<FT232HUART> m_pUART;
 
-    PluginCommandsMap<FT232HPlugin>   m_mapCmds;
-    SpeedsMapsMap                     m_mapSpeedsMaps;
-    CommandsMapsMap<FT232HPlugin>     m_mapCommandsMaps;
+    PluginCommandsMap<FT232HPlugin> m_mapCmds;
+    SpeedsMapsMap m_mapSpeedsMaps;
+    CommandsMapsMap<FT232HPlugin> m_mapCommandsMaps;
 
-    ModuleCommandsMap<FT232HPlugin>   m_mapCmds_SPI;
-    ModuleCommandsMap<FT232HPlugin>   m_mapCmds_I2C;
-    ModuleCommandsMap<FT232HPlugin>   m_mapCmds_GPIO;
-    ModuleCommandsMap<FT232HPlugin>   m_mapCmds_UART;
+    ModuleCommandsMap<FT232HPlugin> m_mapCmds_SPI;
+    ModuleCommandsMap<FT232HPlugin> m_mapCmds_I2C;
+    ModuleCommandsMap<FT232HPlugin> m_mapCmds_GPIO;
+    ModuleCommandsMap<FT232HPlugin> m_mapCmds_UART;
 
-    ModuleSpeedMap                    m_mapSpeed_SPI;
-    ModuleSpeedMap                    m_mapSpeed_I2C;
-    ModuleSpeedMap                    m_mapSpeed_UART;
+    ModuleSpeedMap m_mapSpeed_SPI;
+    ModuleSpeedMap m_mapSpeed_I2C;
+    ModuleSpeedMap m_mapSpeed_UART;
 
-    bool m_LocalSetParams(const PluginDataSet* ps);
+    bool m_LocalSetParams(const PluginDataSet *ps);
 
-    // Parse helpers 
-    static bool parseSpiParams(const std::string& args,
-                               SpiPendingCfg& cfg,
-                               uint8_t* pDeviceIndexOut = nullptr);
-    static bool parseUartParams(const std::string& args, UartPendingCfg& cfg,
-                                 uint8_t* pDeviceIndexOut = nullptr);
+    // Parse helpers
+    static bool parseSpiParams(const std::string &args,
+                               SpiPendingCfg &cfg,
+                               uint8_t *pDeviceIndexOut = nullptr);
+    static bool parseUartParams(const std::string &args, UartPendingCfg &cfg,
+                                uint8_t *pDeviceIndexOut = nullptr);
 };
 
 #endif // FT232H_PLUGIN_HPP

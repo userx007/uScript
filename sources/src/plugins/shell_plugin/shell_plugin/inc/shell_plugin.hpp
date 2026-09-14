@@ -19,13 +19,13 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR     "SHELL_P     |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR               "SHELL_P     |"
+#define LOG_HDR              LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //
@@ -46,22 +46,22 @@
 //                          PLUGIN COMMANDS                                    //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define SHELL_PLUGIN_COMMANDS_CONFIG_TABLE    \
-SHELL_PLUGIN_CMD_RECORD( INFO               ) \
-SHELL_PLUGIN_CMD_RECORD( RUN                ) \
+#define SHELL_PLUGIN_COMMANDS_CONFIG_TABLE \
+    SHELL_PLUGIN_CMD_RECORD(INFO)          \
+    SHELL_PLUGIN_CMD_RECORD(RUN)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-class ShellPlugin: public PluginInterface
+class ShellPlugin : public PluginInterface
 {
 public:
-
     /**
-      * \brief class constructor
-    */
-    ShellPlugin() : m_strVersion(SHELL_PLUGIN_VERSION)
+     * \brief class constructor
+     */
+    ShellPlugin()
+        : m_strVersion(SHELL_PLUGIN_VERSION)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -69,41 +69,40 @@ public:
         , m_pvUserData(nullptr)
         , m_strResultData("")
     {
-        #define SHELL_PLUGIN_CMD_RECORD(a, ...) \
-            m_mapCmds.insert( std::make_pair( #a, \
-            PluginCommandEntry<ShellPlugin>{&ShellPlugin::m_Shell_##a, SHELL_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
+#define SHELL_PLUGIN_CMD_RECORD(a, ...) \
+    m_mapCmds.insert(std::make_pair(#a, \
+                                    PluginCommandEntry<ShellPlugin>{&ShellPlugin::m_Shell_##a, SHELL_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
         SHELL_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef  SHELL_PLUGIN_CMD_RECORD
+#undef SHELL_PLUGIN_CMD_RECORD
     }
 
     /**
-      * \brief class destructor
-    */
+     * \brief class destructor
+     */
     ~ShellPlugin()
     {
-
     }
 
     /**
-      * \brief get the plugin initialization status
-    */
-    bool isInitialized( void ) const
+     * \brief get the plugin initialization status
+     */
+    bool isInitialized(void) const
     {
         return m_bIsInitialized;
     }
 
     /**
-      * \brief get enabling status
-    */
-    bool isEnabled ( void ) const
+     * \brief get enabling status
+     */
+    bool isEnabled(void) const
     {
         return m_bIsEnabled;
     }
 
     /**
-      * \brief Import external settings into the plugin
-    */
-    bool setParams( const PluginDataSet *psSetParams )
+     * \brief Import external settings into the plugin
+     */
+    bool setParams(const PluginDataSet *psSetParams)
     {
         bool bRetVal = false;
 
@@ -117,72 +116,71 @@ public:
     }
 
     /**
-      * \brief function to retrieve information from plugin
-    */
-    void getParams( PluginDataGet *psGetParams ) const
+     * \brief function to retrieve information from plugin
+     */
+    void getParams(PluginDataGet *psGetParams) const
     {
         generic_getparams<ShellPlugin>(this, psGetParams);
     }
 
     /**
-      * \brief dispatch commands
-    */
-    bool doDispatch( const std::string& strCmd, const std::string& strParams,
-                     std::stop_token st = {} ) const
+     * \brief dispatch commands
+     */
+    bool doDispatch(const std::string &strCmd, const std::string &strParams,
+                    std::stop_token st = {}) const
     {
         return generic_dispatch<ShellPlugin>(this, strCmd, strParams, st);
     }
 
     /**
-      * \brief get a pointer to the plugin map
-    */
+     * \brief get a pointer to the plugin map
+     */
     const PluginCommandsMap<ShellPlugin> *getMap(void) const
     {
         return &m_mapCmds;
     }
 
     /**
-      * \brief get the plugin version
-    */
-    const std::string& getVersion(void) const
+     * \brief get the plugin version
+     */
+    const std::string &getVersion(void) const
     {
-        return m_strVersion
-;
+        return m_strVersion;
     }
 
     /**
-      * \brief get the result data
-    */
-    const std::string& getData(void) const
+     * \brief get the result data
+     */
+    const std::string &getData(void) const
     {
         return m_strResultData;
     }
 
     /**
-      * \brief clear the result data (avoid that some data to be returned by other command)
-    */
+     * \brief clear the result data (avoid that some data to be returned by other command)
+     */
     void resetData(void) const
     {
         m_strResultData.clear();
     }
 
     /**
-      * \brief perform the initialization of modules used by the plugin
-      * \note public because it needs to be called explicitely after loading the plugin
-    */
+     * \brief perform the initialization of modules used by the plugin
+     * \note public because it needs to be called explicitely after loading the plugin
+     */
     bool doInit(void *pvUserData)
     {
         m_bIsInitialized = true;
-        m_pvUserData = pvUserData;
+        m_pvUserData     = pvUserData;
 
         return m_bIsInitialized;
     }
 
     /**
-      * \brief perform the enabling of the plugin
-      * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
-      *       This mode is used for the command validation
-    */
+     * \brief perform the enabling of the plugin
+     * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
+     *       This mode is used for the command validation
+     */
     bool doEnable(void)
     {
         m_bIsEnabled = true;
@@ -190,9 +188,9 @@ public:
     }
 
     /**
-      * \brief perform the de-initialization of modules used by the plugin
-      * \note public because need to be called explicitely before closing/freeing the shared library
-    */
+     * \brief perform the de-initialization of modules used by the plugin
+     * \note public because need to be called explicitely before closing/freeing the shared library
+     */
     void doCleanup(void)
     {
         m_bIsInitialized = false;
@@ -200,24 +198,23 @@ public:
     }
 
     /**
-      * \brief get fault tolerant flag status
-    */
-    bool isFaultTolerant ( void ) const
+     * \brief get fault tolerant flag status
+     */
+    bool isFaultTolerant(void) const
     {
         return m_bIsFaultTolerant;
     }
 
     /**
-      * \brief get the privileged status
-    */
-    bool isPrivileged ( void ) const
+     * \brief get the privileged status
+     */
+    bool isPrivileged(void) const
     {
         return m_bIsPrivileged;
     }
 
 private:
-
-    bool m_LocalSetParams( const PluginDataSet *psSetParams )
+    bool m_LocalSetParams(const PluginDataSet *psSetParams)
     {
         if (true == psSetParams->mapSettings.empty()) {
             LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
@@ -229,58 +226,57 @@ private:
         PluginSettingsBinder sSettings;
 
         return sSettings.Apply(psSetParams->mapSettings,
-            [](const std::string& strKey, const std::string& strRawValue) {
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-            });
+                               [](const std::string &strKey, const std::string &strRawValue) {
+                                   LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+                               });
     }
 
     /**
-      * \brief map with association between the command string and the execution function
-    */
+     * \brief map with association between the command string and the execution function
+     */
     PluginCommandsMap<ShellPlugin> m_mapCmds;
 
     /**
-      * \brief plugin version
-    */
-    std::string m_strVersion
-;
+     * \brief plugin version
+     */
+    std::string m_strVersion;
 
     /**
-      * \brief data returned by plugin
-    */
+     * \brief data returned by plugin
+     */
     mutable std::string m_strResultData;
 
     /**
-      * \brief plugin initialization status
-    */
+     * \brief plugin initialization status
+     */
     bool m_bIsInitialized;
 
     /**
-      * \brief plugin enabling status
-    */
+     * \brief plugin enabling status
+     */
     bool m_bIsEnabled;
 
     /**
-      * \brief plugin fault tolerant mode
-    */
+     * \brief plugin fault tolerant mode
+     */
     bool m_bIsFaultTolerant;
 
     /**
-      * \brief plugin is privileged
-    */
+     * \brief plugin is privileged
+     */
     bool m_bIsPrivileged;
 
     /**
-      * \brief pointer to the user data structure
-    */
+     * \brief pointer to the user data structure
+     */
     void *m_pvUserData;
 
     /**
-      * \brief functions associated to the plugin commands
-    */
-#define SHELL_PLUGIN_CMD_RECORD(a, ...)  bool m_Shell_##a ( const std::string& args, std::stop_token st ) const;
+     * \brief functions associated to the plugin commands
+     */
+#define SHELL_PLUGIN_CMD_RECORD(a, ...) bool m_Shell_##a(const std::string &args, std::stop_token st) const;
     SHELL_PLUGIN_COMMANDS_CONFIG_TABLE
-#undef  SHELL_PLUGIN_CMD_RECORD
+#undef SHELL_PLUGIN_CMD_RECORD
 };
 
 #endif /* SHELL_PLUGIN_HPP */

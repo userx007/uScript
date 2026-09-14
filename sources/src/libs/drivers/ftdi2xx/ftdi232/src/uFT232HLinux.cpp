@@ -15,11 +15,11 @@
 #include "FT232HBase.hpp"
 #include "uLogger.hpp"
 
-#include <ftdi.h>
-#include <stdint.h>
 #include <chrono>
 #include <compare>
 #include <cstring>
+#include <ftdi.h>
+#include <stdint.h>
 #include <stop_token>
 #include <thread>
 
@@ -28,17 +28,16 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT232H_BASE |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "FT232H_BASE |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
-#define CTX (static_cast<struct ftdi_context*>(m_hDevice))
-
+#define CTX     (static_cast<struct ftdi_context *>(m_hDevice))
 
 // ============================================================================
 // Destructor
@@ -49,14 +48,13 @@ FT232HBase::~FT232HBase()
     FT232HBase::close();
 }
 
-
 // ============================================================================
 // open_device
 // ============================================================================
 
 FT232HBase::Status FT232HBase::open_device(uint8_t u8DeviceIndex)
 {
-    struct ftdi_context* ctx = ftdi_new();
+    struct ftdi_context *ctx = ftdi_new();
     if (!ctx) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ftdi_new() returned nullptr"));
         return Status::OUT_OF_MEMORY;
@@ -75,8 +73,7 @@ FT232HBase::Status FT232HBase::open_device(uint8_t u8DeviceIndex)
                                  static_cast<int>(FT232H_PID),
                                  nullptr,
                                  nullptr,
-                                 static_cast<unsigned int>(u8DeviceIndex)) < 0)
-    {
+                                 static_cast<unsigned int>(u8DeviceIndex)) < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_usb_open_desc_index() failed, index="); LOG_UINT32(u8DeviceIndex);
                   LOG_STRING("error:"); LOG_STRING(ftdi_get_error_string(ctx)));
@@ -108,7 +105,7 @@ FT232HBase::Status FT232HBase::open_device(uint8_t u8DeviceIndex)
     }
 
     // Large chunk sizes for best bulk throughput
-    (void)ftdi_read_data_set_chunksize(ctx,  65536);
+    (void)ftdi_read_data_set_chunksize(ctx, 65536);
     (void)ftdi_write_data_set_chunksize(ctx, 65536);
 
     m_hDevice = ctx;
@@ -118,7 +115,6 @@ FT232HBase::Status FT232HBase::open_device(uint8_t u8DeviceIndex)
 
     return Status::SUCCESS;
 }
-
 
 // ============================================================================
 // close / is_open
@@ -144,17 +140,17 @@ bool FT232HBase::is_open() const
     return true;
 }
 
-
 // ============================================================================
 // MPSSE transport primitives
 // ============================================================================
 
-FT232HBase::Status FT232HBase::mpsse_write(const uint8_t* buf, size_t len) const
+FT232HBase::Status FT232HBase::mpsse_write(const uint8_t *buf, size_t len) const
 {
-    if (!buf || len == 0)
+    if (!buf || len == 0) {
         return Status::INVALID_PARAM;
+    }
 
-    int ret = ftdi_write_data(CTX, const_cast<uint8_t*>(buf), static_cast<int>(len));
+    int ret = ftdi_write_data(CTX, const_cast<uint8_t *>(buf), static_cast<int>(len));
     if (ret < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_write_data() failed, ret="); LOG_INT(ret);
@@ -170,20 +166,20 @@ FT232HBase::Status FT232HBase::mpsse_write(const uint8_t* buf, size_t len) const
     return Status::SUCCESS;
 }
 
-FT232HBase::Status FT232HBase::mpsse_read(uint8_t* buf, size_t len,
-                                           uint32_t timeoutMs,
-                                           size_t& bytesRead,
-                                           std::stop_token stop_tok) const
+FT232HBase::Status FT232HBase::mpsse_read(uint8_t *buf, size_t len,
+                                          uint32_t timeoutMs,
+                                          size_t &bytesRead,
+                                          std::stop_token stop_tok) const
 {
-    if (!buf || len == 0)
+    if (!buf || len == 0) {
         return Status::INVALID_PARAM;
+    }
 
-    bytesRead = 0;
+    bytesRead            = 0;
 
     // 0 == infinite timeout: never expire this poll loop.
     const bool bInfinite = (timeoutMs == 0);
-    auto deadline = std::chrono::steady_clock::now()
-                    + std::chrono::milliseconds(timeoutMs);
+    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
     while (bytesRead < len) {
         int ret = ftdi_read_data(CTX,

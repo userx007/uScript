@@ -13,18 +13,18 @@
  * libftdi1 is opened with INTERFACE_B and ftdi_set_bitmode is NOT called
  * (BITMODE_RESET leaves the channel in async serial mode).
  */
-#include "FT2232Base.hpp"   // FT2232_VID / FT2232D_PID constants
+#include "FT2232Base.hpp" // FT2232_VID / FT2232D_PID constants
 #include "uFT2232UART.hpp"
 #include "uLogger.hpp"
 
-#include <ftdi.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <algorithm>
 #include <chrono>
 #include <compare>
+#include <ftdi.h>
 #include <ratio>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string_view>
 #include <thread>
@@ -35,17 +35,16 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT2232_UART |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "FT2232_UART |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
-#define CTX (static_cast<struct ftdi_context*>(m_hDevice))
-
+#define CTX     (static_cast<struct ftdi_context *>(m_hDevice))
 
 // ============================================================================
 // open_device
@@ -54,8 +53,8 @@
 FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant, uint8_t u8DeviceIndex)
 {
     (void)variant;
-    
-    struct ftdi_context* ctx = ftdi_new();
+
+    struct ftdi_context *ctx = ftdi_new();
 
     if (!ctx) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -74,11 +73,11 @@ FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant, uint8_t 
 
     // Open by VID/PID and device index
     if (ftdi_usb_open_desc_index(ctx,
-                                  static_cast<int>(FT2232Base::FT2232_VID),
-                                  static_cast<int>(FT2232Base::FT2232D_PID),
-                                  nullptr,
-                                  nullptr,
-                                  static_cast<unsigned int>(u8DeviceIndex)) < 0) {
+                                 static_cast<int>(FT2232Base::FT2232_VID),
+                                 static_cast<int>(FT2232Base::FT2232D_PID),
+                                 nullptr,
+                                 nullptr,
+                                 static_cast<unsigned int>(u8DeviceIndex)) < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_usb_open_desc_index() failed: ");
                   LOG_STRING(ftdi_get_error_string(ctx)));
@@ -103,7 +102,7 @@ FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant, uint8_t 
     ftdi_write_data_set_chunksize(ctx, 65536);
     ftdi_tcioflush(ctx);
 
-    m_hDevice = static_cast<void*>(ctx);
+    m_hDevice = static_cast<void *>(ctx);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT2232D UART ch-B opened, deviceIndex=");
@@ -112,12 +111,11 @@ FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant, uint8_t 
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // apply_config
 // ============================================================================
 
-FT2232UART::Status FT2232UART::apply_config(const UartConfig& config) const
+FT2232UART::Status FT2232UART::apply_config(const UartConfig &config) const
 {
     // ── Baud rate ─────────────────────────────────────────────────────────
     if (ftdi_set_baudrate(CTX, static_cast<int>(config.baudRate)) < 0) {
@@ -134,26 +132,47 @@ FT2232UART::Status FT2232UART::apply_config(const UartConfig& config) const
     // dataBits: 7 → BITS_7 | 8 → BITS_8
     enum ftdi_bits_type bits;
     switch (config.dataBits) {
-        case 7:  bits = BITS_7; break;
-        case 8:  default: bits = BITS_8; break;
+    case 7:
+        bits = BITS_7;
+        break;
+    case 8:
+    default:
+        bits = BITS_8;
+        break;
     }
 
     // stopBits: 0=1bit → STOP_BIT_1 | 1=1.5bits → STOP_BIT_15 | 2=2bits → STOP_BIT_2
     enum ftdi_stopbits_type stop;
     switch (config.stopBits) {
-        case 1:  stop = STOP_BIT_15; break;
-        case 2:  stop = STOP_BIT_2;  break;
-        default: stop = STOP_BIT_1;  break;
+    case 1:
+        stop = STOP_BIT_15;
+        break;
+    case 2:
+        stop = STOP_BIT_2;
+        break;
+    default:
+        stop = STOP_BIT_1;
+        break;
     }
 
     // parity: 0=none | 1=odd | 2=even | 3=mark | 4=space
     enum ftdi_parity_type parity;
     switch (config.parity) {
-        case 1:  parity = ODD;   break;
-        case 2:  parity = EVEN;  break;
-        case 3:  parity = MARK;  break;
-        case 4:  parity = SPACE; break;
-        default: parity = NONE;  break;
+    case 1:
+        parity = ODD;
+        break;
+    case 2:
+        parity = EVEN;
+        break;
+    case 3:
+        parity = MARK;
+        break;
+    case 4:
+        parity = SPACE;
+        break;
+    default:
+        parity = NONE;
+        break;
     }
 
     if (ftdi_set_line_property(CTX, bits, stop, parity) < 0) {
@@ -173,15 +192,14 @@ FT2232UART::Status FT2232UART::apply_config(const UartConfig& config) const
     }
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("UART cfg: baud=");  LOG_UINT32(config.baudRate);
-              LOG_STRING(" data=");  LOG_UINT32(config.dataBits);
-              LOG_STRING(" stop=");  LOG_UINT32(config.stopBits);
-              LOG_STRING(" par=");   LOG_UINT32(config.parity);
-              LOG_STRING(" flow=");  LOG_UINT32(config.hwFlowCtrl ? 1u : 0u));
+              LOG_STRING("UART cfg: baud="); LOG_UINT32(config.baudRate);
+              LOG_STRING(" data="); LOG_UINT32(config.dataBits);
+              LOG_STRING(" stop="); LOG_UINT32(config.stopBits);
+              LOG_STRING(" par="); LOG_UINT32(config.parity);
+              LOG_STRING(" flow="); LOG_UINT32(config.hwFlowCtrl ? 1u : 0u));
 
     return Status::SUCCESS;
 }
-
 
 // ============================================================================
 // close
@@ -189,8 +207,9 @@ FT2232UART::Status FT2232UART::apply_config(const UartConfig& config) const
 
 FT2232UART::Status FT2232UART::close()
 {
-    if (!m_hDevice)
+    if (!m_hDevice) {
         return Status::SUCCESS;
+    }
 
     ftdi_usb_close(CTX);
     ftdi_free(CTX);
@@ -200,7 +219,6 @@ FT2232UART::Status FT2232UART::close()
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // tout_write — blocking write with timeout
 //
@@ -209,30 +227,36 @@ FT2232UART::Status FT2232UART::close()
 // by writing in a deadline loop to handle short writes.
 // ============================================================================
 
-FT2232UART::WriteResult FT2232UART::tout_write(uint32_t                 u32WriteTimeout,
-                                                std::span<const uint8_t> buffer,
-                                                std::string_view         /*xtra_params*/,
-                                                std::stop_token stop_tok) const
+FT2232UART::WriteResult FT2232UART::tout_write(uint32_t u32WriteTimeout,
+                                               std::span<const uint8_t> buffer,
+                                               std::string_view /*xtra_params*/,
+                                               std::stop_token stop_tok) const
 {
     WriteResult result;
 
-    if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
-    if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_written = 0; return result; }
+    if (!m_hDevice) {
+        result.status = Status::PORT_ACCESS;
+        return result;
+    }
+    if (buffer.empty()) {
+        result.status        = Status::SUCCESS;
+        result.bytes_written = 0;
+        return result;
+    }
 
     // 0 == infinite timeout: forwarded through unchanged.
     const uint32_t timeoutMs = u32WriteTimeout;
 
     // 0 == infinite timeout: never expire this poll loop.
-    const bool bInfinite = (timeoutMs == 0);
-    const auto deadline = std::chrono::steady_clock::now()
-                          + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite     = (timeoutMs == 0);
+    const auto deadline      = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
-    const uint8_t* ptr       = buffer.data();
-    size_t         remaining = buffer.size();
+    const uint8_t *ptr       = buffer.data();
+    size_t remaining         = buffer.size();
 
     while (remaining > 0) {
         int ret = ftdi_write_data(CTX,
-                                  const_cast<uint8_t*>(ptr),
+                                  const_cast<uint8_t *>(ptr),
                                   static_cast<int>(remaining));
         if (ret < 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -242,9 +266,9 @@ FT2232UART::WriteResult FT2232UART::tout_write(uint32_t                 u32Write
             return result;
         }
 
-        ptr                  += static_cast<size_t>(ret);
+        ptr += static_cast<size_t>(ret);
         result.bytes_written += static_cast<size_t>(ret);
-        remaining            -= static_cast<size_t>(ret);
+        remaining -= static_cast<size_t>(ret);
 
         if (remaining > 0) {
             if (stop_tok.stop_requested()) {
@@ -265,7 +289,6 @@ FT2232UART::WriteResult FT2232UART::tout_write(uint32_t                 u32Write
     return result;
 }
 
-
 // ============================================================================
 // tout_read — blocking read (Exact / UntilDelimiter / UntilToken)
 //
@@ -274,27 +297,33 @@ FT2232UART::WriteResult FT2232UART::tout_write(uint32_t                 u32Write
 // poll in a 1 ms sleep loop until the deadline expires.
 // ============================================================================
 
-FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
-                                              std::span<uint8_t> buffer,
-                                              const ReadOptions& options,
-                                              std::string_view   /*xtra_params*/,
-                                              std::stop_token stop_tok) const
+FT2232UART::ReadResult FT2232UART::tout_read(uint32_t u32ReadTimeout,
+                                             std::span<uint8_t> buffer,
+                                             const ReadOptions &options,
+                                             std::string_view /*xtra_params*/,
+                                             std::stop_token stop_tok) const
 {
     ReadResult result;
 
-    if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
-    if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_read = 0; return result; }
+    if (!m_hDevice) {
+        result.status = Status::PORT_ACCESS;
+        return result;
+    }
+    if (buffer.empty()) {
+        result.status     = Status::SUCCESS;
+        result.bytes_read = 0;
+        return result;
+    }
 
     // 0 == infinite timeout: forwarded through unchanged.
     const uint32_t timeoutMs = u32ReadTimeout;
 
     // 0 == infinite timeout: never expire this poll loop.
-    const bool bInfinite = (timeoutMs == 0);
-    const auto deadline = std::chrono::steady_clock::now()
-                          + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite     = (timeoutMs == 0);
+    const auto deadline      = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
     // ── Helper: read one byte with deadline check ─────────────────────────
-    auto read_one = [&](uint8_t& byte) -> bool {
+    auto read_one            = [&](uint8_t &byte) -> bool {
         while (true) {
             int ret = ftdi_read_data(CTX, &byte, 1);
             if (ret < 0) {
@@ -304,7 +333,9 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
                 result.status = Status::READ_ERROR;
                 return false;
             }
-            if (ret == 1) return true;
+            if (ret == 1) {
+                return true;
+            }
             // ret == 0: nothing available yet
             if (stop_tok.stop_requested()) {
                 return false;
@@ -343,8 +374,9 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
                     result.status = Status::READ_TIMEOUT;
                     return result;
                 }
-                if (ret == 0)
+                if (ret == 0) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
             }
         }
         result.status = Status::SUCCESS;
@@ -355,7 +387,9 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
     case ReadMode::UntilDelimiter: {
         while (result.bytes_read < buffer.size()) {
             uint8_t byte = 0;
-            if (!read_one(byte)) return result;
+            if (!read_one(byte)) {
+                return result;
+            }
             buffer[result.bytes_read++] = byte;
             if (byte == options.delimiter) {
                 result.status = Status::SUCCESS;
@@ -368,27 +402,39 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
 
     // ── UntilToken: KMP search for byte sequence ───────────────────────────
     case ReadMode::UntilToken: {
-        const auto& token = options.token;
-        if (token.empty()) { result.status = Status::INVALID_PARAM; return result; }
+        const auto &token = options.token;
+        if (token.empty()) {
+            result.status = Status::INVALID_PARAM;
+            return result;
+        }
 
         // Build KMP failure table
         std::vector<size_t> fail(token.size(), 0u);
         for (size_t i = 1; i < token.size(); ++i) {
             size_t j = fail[i - 1];
-            while (j > 0 && token[i] != token[j]) j = fail[j - 1];
-            if (token[i] == token[j]) ++j;
+            while (j > 0 && token[i] != token[j]) {
+                j = fail[j - 1];
+            }
+            if (token[i] == token[j]) {
+                ++j;
+            }
             fail[i] = j;
         }
 
         size_t matched = 0;
         while (result.bytes_read < buffer.size()) {
             uint8_t byte = 0;
-            if (!read_one(byte)) return result;
+            if (!read_one(byte)) {
+                return result;
+            }
             buffer[result.bytes_read++] = byte;
 
-            while (matched > 0 && byte != token[matched])
+            while (matched > 0 && byte != token[matched]) {
                 matched = fail[matched - 1];
-            if (byte == token[matched]) ++matched;
+            }
+            if (byte == token[matched]) {
+                ++matched;
+            }
             if (matched == token.size()) {
                 result.status = Status::SUCCESS;
                 return result;

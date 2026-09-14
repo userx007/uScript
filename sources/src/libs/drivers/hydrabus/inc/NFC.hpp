@@ -3,9 +3,9 @@
 
 #include "Protocol.hpp"
 
-#include <stdint.h>
 #include <memory>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <vector>
 
@@ -31,10 +31,10 @@ class Hydrabus;
  * auto atqa = nfc.write({0x93, 0x20}, false);    // Anticol CL1
  * @endcode
  */
-class NFC : public Protocol {
+class NFC : public Protocol
+{
 
 public:
-
     enum class Mode : uint8_t {
         ISO_14443A = 0,
         ISO_15693  = 1,
@@ -91,11 +91,10 @@ public:
     std::vector<uint8_t> write_bits(uint8_t data, uint8_t num_bits, std::stop_token stop_tok = {});
 
 private:
-    
-    Mode _mode {Mode::ISO_14443A};
-    bool _rf   {false};
+    Mode _mode{Mode::ISO_14443A};
+    bool _rf{false};
 };
 
 } // namespace HydraHAL
 
-#endif //HYDRABUS_NFC_HPP
+#endif // HYDRABUS_NFC_HPP

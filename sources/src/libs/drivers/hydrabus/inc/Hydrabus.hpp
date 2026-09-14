@@ -3,10 +3,10 @@
 
 #include "ICommDriver.hpp"
 
-#include <stddef.h>
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <stddef.h>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -34,12 +34,13 @@ namespace HydraHAL {
  * hb->enter_bbio();
  * @endcode
  */
-class Hydrabus {
+class Hydrabus
+{
 public:
     static constexpr uint32_t DEFAULT_TIMEOUT_MS = 1000u;
-    static constexpr uint32_t SHORT_TIMEOUT_MS   =   10u;
-    static constexpr uint32_t RESET_TIMEOUT_MS   =  100u;
-    static constexpr uint32_t ZERO_TIMEOUT_MS    =    0u;
+    static constexpr uint32_t SHORT_TIMEOUT_MS   = 10u;
+    static constexpr uint32_t RESET_TIMEOUT_MS   = 100u;
+    static constexpr uint32_t ZERO_TIMEOUT_MS    = 0u;
 
     /**
      * @brief Construct with an open ICommDriver.
@@ -48,11 +49,11 @@ public:
      */
     explicit Hydrabus(std::shared_ptr<const ICommDriver> driver);
 
-    Hydrabus(const Hydrabus&)            = delete;
-    Hydrabus& operator=(const Hydrabus&) = delete;
-    Hydrabus(Hydrabus&&)                 = default;
-    Hydrabus& operator=(Hydrabus&&)      = default;
-    ~Hydrabus()                          = default;
+    Hydrabus(const Hydrabus &)            = delete;
+    Hydrabus &operator=(const Hydrabus &) = delete;
+    Hydrabus(Hydrabus &&)                 = default;
+    Hydrabus &operator=(Hydrabus &&)      = default;
+    ~Hydrabus()                           = default;
 
     // -------------------------------------------------------------------------
     // Raw I/O
@@ -126,8 +127,8 @@ public:
      * @brief Set the default timeout applied to all read()/write() calls
      *        that do not specify an explicit timeout.
      */
-    void        set_timeout(uint32_t timeout_ms);
-    uint32_t    get_timeout() const;
+    void set_timeout(uint32_t timeout_ms);
+    uint32_t get_timeout() const;
 
     /**
      * @brief Current protocol mode tag, set by Protocol::_enter().
@@ -137,7 +138,7 @@ public:
 
 private:
     std::shared_ptr<const ICommDriver> _driver;
-    uint32_t                           _timeout_ms{DEFAULT_TIMEOUT_MS};
+    uint32_t _timeout_ms{DEFAULT_TIMEOUT_MS};
 };
 
 } // namespace HydraHAL

@@ -4,9 +4,9 @@
 #include "FT2232Base.hpp"
 #include "ICommDriver.hpp"
 
-#include <stop_token>
 #include <cstdint>
 #include <span>
+#include <stop_token>
 #include <string>
 
 /**
@@ -37,8 +37,7 @@
 class FT2232UART : public ICommDriver
 {
 public:
-
-    using Status = ICommDriver::Status;
+    using Status                                                = ICommDriver::Status;
 
     // ── Timeouts ─────────────────────────────────────────────────────────
     static constexpr uint32_t FT2232_UART_READ_DEFAULT_TIMEOUT  = 1000u; ///< ms
@@ -56,13 +55,14 @@ public:
      * parity encoding:
      *   0 = none  |  1 = odd  |  2 = even  |  3 = mark  |  4 = space
      */
-    struct UartConfig {
-        uint32_t            baudRate   {115200u};              ///< Baud rate in bps
-        uint8_t             dataBits   {8u};                   ///< Data bits (7 or 8)
-        uint8_t             stopBits   {0u};                   ///< 0=1bit 1=1.5bits 2=2bits
-        uint8_t             parity     {0u};                   ///< 0=none 1=odd 2=even 3=mark 4=space
-        bool                hwFlowCtrl {false};                ///< true = RTS/CTS hardware flow
-        FT2232Base::Variant variant    {FT2232Base::Variant::FT2232D}; ///< Must be FT2232D
+    struct UartConfig
+    {
+        uint32_t baudRate{115200u};                                ///< Baud rate in bps
+        uint8_t dataBits{8u};                                      ///< Data bits (7 or 8)
+        uint8_t stopBits{0u};                                      ///< 0=1bit 1=1.5bits 2=2bits
+        uint8_t parity{0u};                                        ///< 0=none 1=odd 2=even 3=mark 4=space
+        bool hwFlowCtrl{false};                                    ///< true = RTS/CTS hardware flow
+        FT2232Base::Variant variant{FT2232Base::Variant::FT2232D}; ///< Must be FT2232D
     };
 
     FT2232UART() = default;
@@ -75,18 +75,21 @@ public:
      *                         describeConnection()), supplied separately —
      *                         e.g. "FT2232 #0 chB" or the adapter's serial number.
      */
-    explicit FT2232UART(const UartConfig& config, uint8_t u8DeviceIndex = 0u,
-                        const std::string& strIdentityLabel = {})
+    explicit FT2232UART(const UartConfig &config, uint8_t u8DeviceIndex = 0u,
+                        const std::string &strIdentityLabel = {})
         : m_strIdentityLabel(strIdentityLabel)
     {
         this->open(config, u8DeviceIndex);
     }
 
-    ~FT2232UART() override { close(); }
+    ~FT2232UART() override
+    {
+        close();
+    }
 
     // Non-copyable
-    FT2232UART(const FT2232UART&)            = delete;
-    FT2232UART& operator=(const FT2232UART&) = delete;
+    FT2232UART(const FT2232UART &)            = delete;
+    FT2232UART &operator=(const FT2232UART &) = delete;
 
     /**
      * @brief Open the FT2232D channel B and configure for async UART
@@ -97,7 +100,7 @@ public:
      * @param config        UART bus parameters
      * @param u8DeviceIndex Physical device index (0 = first chip found)
      */
-    Status open(const UartConfig& config, uint8_t u8DeviceIndex = 0u);
+    Status open(const UartConfig &config, uint8_t u8DeviceIndex = 0u);
 
     /**
      * @brief Close the channel handle (safe to call more than once)
@@ -113,7 +116,7 @@ public:
     CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
     {
         return commdump_details(CommFamily::SERIAL,
-                                 m_strIdentityLabel.empty() ? "FT2232 UART" : m_strIdentityLabel);
+                                m_strIdentityLabel.empty() ? "FT2232 UART" : m_strIdentityLabel);
     }
 
     /**
@@ -121,7 +124,7 @@ public:
      *
      * The variant field is ignored (use close() + open() to change chips).
      */
-    Status configure(const UartConfig& config);
+    Status configure(const UartConfig &config);
 
     /**
      * @brief Change baud rate on an already-open channel
@@ -135,7 +138,7 @@ public:
     WriteResult tout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
                            std::string_view xtra_params = {},
-                           std::stop_token stop_tok = {}) const override;
+                           std::stop_token stop_tok     = {}) const override;
 
     /**
      * @brief Blocking read  (implements ICommDriver)
@@ -146,24 +149,23 @@ public:
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
                          std::span<uint8_t> buffer,
-                         const ReadOptions& options,
+                         const ReadOptions &options,
                          std::string_view xtra_params = {},
-                         std::stop_token stop_tok = {}) const override;
+                         std::stop_token stop_tok     = {}) const override;
 
 private:
-
     // Platform handle — void* keeps D2XX / libftdi headers out of this header.
     //   Linux   : struct ftdi_context*
     //   Windows : FT_HANDLE
     // nullptr = channel not open.
-    void*      m_hDevice = nullptr;
+    void *m_hDevice = nullptr;
 
     UartConfig m_config;
-    std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
+    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 
     // Platform helpers (uFT2232UARTCommon.cpp + platform .cpp files)
     Status open_device(FT2232Base::Variant variant, uint8_t u8DeviceIndex);
-    Status apply_config(const UartConfig& config) const;
+    Status apply_config(const UartConfig &config) const;
 };
 
 #endif // U_FT2232_UART_DRIVER_H

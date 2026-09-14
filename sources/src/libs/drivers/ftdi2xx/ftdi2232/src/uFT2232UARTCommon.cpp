@@ -18,18 +18,21 @@
 //                      open / close                             //
 ///////////////////////////////////////////////////////////////////
 
-FT2232UART::Status FT2232UART::open(const UartConfig& config, uint8_t u8DeviceIndex)
+FT2232UART::Status FT2232UART::open(const UartConfig &config, uint8_t u8DeviceIndex)
 {
     // FT2232H has no async UART channel — both A and B are MPSSE
-    if (config.variant != FT2232Base::Variant::FT2232D)
+    if (config.variant != FT2232Base::Variant::FT2232D) {
         return Status::INVALID_PARAM;
+    }
 
-    if (m_hDevice)
+    if (m_hDevice) {
         close();
+    }
 
     Status s = open_device(config.variant, u8DeviceIndex);
-    if (s != Status::SUCCESS)
+    if (s != Status::SUCCESS) {
         return s;
+    }
 
     s = apply_config(config);
     if (s != Status::SUCCESS) {
@@ -41,7 +44,6 @@ FT2232UART::Status FT2232UART::open(const UartConfig& config, uint8_t u8DeviceIn
     return Status::SUCCESS;
 }
 
-
 bool FT2232UART::is_open() const
 {
     return m_hDevice != nullptr;
@@ -51,10 +53,11 @@ bool FT2232UART::is_open() const
 //                  configure / set_baud                         //
 ///////////////////////////////////////////////////////////////////
 
-FT2232UART::Status FT2232UART::configure(const UartConfig& config)
+FT2232UART::Status FT2232UART::configure(const UartConfig &config)
 {
-    if (!m_hDevice)
+    if (!m_hDevice) {
         return Status::PORT_ACCESS;
+    }
 
     Status s = apply_config(config);
     if (s == Status::SUCCESS) {
@@ -74,4 +77,3 @@ FT2232UART::Status FT2232UART::set_baud(uint32_t baudRate)
     updated.baudRate   = baudRate;
     return configure(updated);
 }
-

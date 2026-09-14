@@ -1,4 +1,5 @@
 #include "AUXPin.hpp"
+
 #include "Hydrabus.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
@@ -11,15 +12,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_AUXPIN|"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_AUXPIN|"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
@@ -70,7 +70,7 @@ bool AUXPin::set_value(int value)
     // CMD 0b11010000 | new_values_byte
     uint8_t current = _get_values();
     uint8_t updated = set_bit(current, value, _number);
-    uint8_t cmd = static_cast<uint8_t>(0b11010000 | updated);
+    uint8_t cmd     = static_cast<uint8_t>(0b11010000 | updated);
 
     _hydrabus->write_byte(cmd);
     auto resp = _hydrabus->read(1);
@@ -93,7 +93,7 @@ bool AUXPin::toggle()
 AUXPin::Direction AUXPin::get_direction() const
 {
     uint8_t cfg = _get_config();
-    return (( cfg >> _number) & 0x01) ? Direction::Input : Direction::Output;
+    return ((cfg >> _number) & 0x01) ? Direction::Input : Direction::Output;
 }
 
 bool AUXPin::set_direction(Direction dir)
@@ -101,9 +101,9 @@ bool AUXPin::set_direction(Direction dir)
     // CMD 0b11110000, then 1-byte parameter with the new config
     constexpr uint8_t CMD = 0b11110000;
 
-    uint8_t cfg     = _get_config();
-    int     bit_val = (dir == Direction::Input) ? 1 : 0;
-    uint8_t param   = set_bit(cfg, bit_val, _number);
+    uint8_t cfg           = _get_config();
+    int bit_val           = (dir == Direction::Input) ? 1 : 0;
+    uint8_t param         = set_bit(cfg, bit_val, _number);
 
     _hydrabus->write_byte(CMD);
     _hydrabus->write_byte(param);
@@ -130,8 +130,8 @@ bool AUXPin::set_pullup(int enable)
 {
     constexpr uint8_t CMD = 0b11110000;
 
-    uint8_t cfg   = _get_config();
-    uint8_t param = set_bit(cfg, enable ? 1 : 0, 4 + _number);
+    uint8_t cfg           = _get_config();
+    uint8_t param         = set_bit(cfg, enable ? 1 : 0, 4 + _number);
 
     _hydrabus->write_byte(CMD);
     _hydrabus->write_byte(param);

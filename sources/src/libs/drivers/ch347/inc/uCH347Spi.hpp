@@ -32,12 +32,12 @@
  * at open() time.
  */
 
-#include "ch347_compat.h"   // platform-unified CH347 API + CH347_HANDLE
 #include "ICommDriver.hpp"
+#include "ch347_compat.h" // platform-unified CH347 API + CH347_HANDLE
 
-#include <string>
-#include <span>
 #include <cstdio>
+#include <span>
+#include <string>
 
 // ---------------------------------------------------------------------------
 // SPI-specific transfer options (extend base ReadOptions with CS info)
@@ -56,10 +56,11 @@ enum class SpiCS : uint8_t {
  * Embed inside the generic ReadOptions::token field (reinterpreted as a
  * single-byte span) OR use the extended tout_xfer() helper directly.
  */
-struct SpiXferOptions {
-    SpiCS chipSelect  = SpiCS::CS1; /**< CS line to use */
-    bool  ignoreCS    = false;      /**< Pass true to skip CS toggling */
-    int   writeStep   = 512;        /**< Bytes per USB packet for writes */
+struct SpiXferOptions
+{
+    SpiCS chipSelect = SpiCS::CS1; /**< CS line to use */
+    bool ignoreCS    = false;      /**< Pass true to skip CS toggling */
+    int writeStep    = 512;        /**< Bytes per USB packet for writes */
 };
 
 // ---------------------------------------------------------------------------
@@ -77,7 +78,7 @@ public:
     // Construction / destruction
     // -----------------------------------------------------------------------
 
-    CH347SPI() = default;
+    CH347SPI()                                          = default;
 
     /**
      * @brief Construct and immediately open a CH347 SPI device.
@@ -89,24 +90,29 @@ public:
      *                         describeConnection()), supplied separately from
      *                         strDevice — e.g. "/dev/ch34xpis0" or a friendlier name.
      */
-    explicit CH347SPI(const std::string&    strDevice,
-                      const mSpiCfgS&       cfg,
-                      const SpiXferOptions& xferOpts = {},
-                      const std::string&    strIdentityLabel = {})
-        : m_iHandle(CH347_INVALID_HANDLE), m_xferOpts(xferOpts), m_strIdentityLabel(strIdentityLabel)
+    explicit CH347SPI(const std::string &strDevice,
+                      const mSpiCfgS &cfg,
+                      const SpiXferOptions &xferOpts      = {},
+                      const std::string &strIdentityLabel = {})
+        : m_iHandle(CH347_INVALID_HANDLE)
+        , m_xferOpts(xferOpts)
+        , m_strIdentityLabel(strIdentityLabel)
     {
         open(strDevice, cfg);
     }
 
-    virtual ~CH347SPI() { close(); }
+    virtual ~CH347SPI()
+    {
+        close();
+    }
 
     // -----------------------------------------------------------------------
     // Lifecycle
     // -----------------------------------------------------------------------
 
-    Status open(const std::string& strDevice, const mSpiCfgS& cfg);
+    Status open(const std::string &strDevice, const mSpiCfgS &cfg);
     Status close();
-    bool   is_open() const override;
+    bool is_open() const override;
 
     /**
      * @brief Describe this connection for the GUI comm-dump panel.
@@ -147,7 +153,7 @@ public:
     Status change_cs(uint8_t iStatus);
 
     /** Read back the current hardware SPI configuration. */
-    Status get_config(mSpiCfgS& cfg) const;
+    Status get_config(mSpiCfgS &cfg) const;
 
     // -----------------------------------------------------------------------
     // ICommDriver interface
@@ -174,10 +180,10 @@ public:
      *       { Status::INVALID_PARAM, 0, false }.
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t>    buffer,
-                         const ReadOptions& options,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
                          std::string_view xtra_params = {},
-                         std::stop_token stop_tok = {}) const override;
+                         std::stop_token stop_tok     = {}) const override;
 
     /**
      * @brief Write-only SPI transfer (MOSI only, MISO discarded).
@@ -191,7 +197,7 @@ public:
     WriteResult tout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
                            std::string_view xtra_params = {},
-                           std::stop_token stop_tok = {}) const override;
+                           std::stop_token stop_tok     = {}) const override;
 
     // -----------------------------------------------------------------------
     // Extended helpers (SPI-specific, not part of ICommDriver)
@@ -204,22 +210,22 @@ public:
      * @param opts      Per-transfer chip-select and packet-size options
      * @return ReadResult { status, bytesXfered, false }
      */
-    ReadResult tout_xfer(std::span<uint8_t>    buffer,
-                         const SpiXferOptions& opts) const;
+    ReadResult tout_xfer(std::span<uint8_t> buffer,
+                         const SpiXferOptions &opts) const;
 
     /**
      * @brief Write-only transfer with explicit per-call options.
      */
     WriteResult tout_write_ex(std::span<const uint8_t> buffer,
-                              const SpiXferOptions&    opts) const;
+                              const SpiXferOptions &opts) const;
 
 private:
-    CH347_HANDLE  m_iHandle  = CH347_INVALID_HANDLE;
+    CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
     SpiXferOptions m_xferOpts{};
-    std::string    m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
+    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 
     /** Resolve effective CS value for CH347SPI_* calls. */
-    std::pair<bool, uint8_t> resolve_cs(const SpiXferOptions& opts) const;
+    std::pair<bool, uint8_t> resolve_cs(const SpiXferOptions &opts) const;
 };
 
 #endif // U_CH347_SPI_DRIVER_H

@@ -1,18 +1,19 @@
 #include "uVectorDriverHandle.hpp"
+
 #include "uLogger.hpp"
 
 #ifdef LT_HDR
-#  undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-#  undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "VECTOR_DRV  |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR  "VECTOR_DRV  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 std::mutex VectorDriverHandle::s_mutex;
-uint32_t   VectorDriverHandle::s_u32RefCount = 0;
+uint32_t VectorDriverHandle::s_u32RefCount = 0;
 
 ICommDriver::Status VectorDriverHandle::Acquire()
 {

@@ -1,4 +1,5 @@
 #include "CommDumpView.hpp"
+
 #include "CommDumpModel.hpp"
 
 #include <QAbstractItemModel>
@@ -115,14 +116,14 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_saveBtn->setText("SAVE");
     m_saveBtn->setToolTip("Save trace to a file");
     m_saveBtn->setPopupMode(QToolButton::InstantPopup);
-    m_saveMenu = new QMenu(m_saveBtn);
-    QAction *saveAllAct = m_saveMenu->addAction("Save all records");
+    m_saveMenu               = new QMenu(m_saveBtn);
+    QAction *saveAllAct      = m_saveMenu->addAction("Save all records");
     QAction *saveFilteredAct = m_saveMenu->addAction("Save filtered records");
     m_saveBtn->setMenu(m_saveMenu);
-    connect(saveAllAct,      &QAction::triggered, this, &CommDumpView::onSaveAll);
+    connect(saveAllAct, &QAction::triggered, this, &CommDumpView::onSaveAll);
     connect(saveFilteredAct, &QAction::triggered, this, &CommDumpView::onSaveFilteredOnly);
 
-    m_saveBtn->setEnabled(false);   // nothing to save until a record arrives
+    m_saveBtn->setEnabled(false); // nothing to save until a record arrives
 
     m_loadBtn = new QPushButton("LOAD", header);
     m_loadBtn->setObjectName("clearBtn");
@@ -171,16 +172,16 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_tree->setWordWrap(true);
     m_tree->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_tree->header()->setSectionResizeMode(CommDumpModel::ColTimestamp, QHeaderView::ResizeToContents);
-    m_tree->header()->setSectionResizeMode(CommDumpModel::ColPlugin,    QHeaderView::ResizeToContents);
-    m_tree->header()->setSectionResizeMode(CommDumpModel::ColDetails,   QHeaderView::Interactive);
-    m_tree->header()->setSectionResizeMode(CommDumpModel::ColDir,       QHeaderView::ResizeToContents);
-    m_tree->header()->setSectionResizeMode(CommDumpModel::ColLength,    QHeaderView::ResizeToContents);
-    m_tree->header()->setSectionResizeMode(CommDumpModel::ColData,      QHeaderView::Interactive);
-    m_tree->header()->setSectionResizeMode(CommDumpModel::ColAscii,     QHeaderView::Stretch);
+    m_tree->header()->setSectionResizeMode(CommDumpModel::ColPlugin, QHeaderView::ResizeToContents);
+    m_tree->header()->setSectionResizeMode(CommDumpModel::ColDetails, QHeaderView::Interactive);
+    m_tree->header()->setSectionResizeMode(CommDumpModel::ColDir, QHeaderView::ResizeToContents);
+    m_tree->header()->setSectionResizeMode(CommDumpModel::ColLength, QHeaderView::ResizeToContents);
+    m_tree->header()->setSectionResizeMode(CommDumpModel::ColData, QHeaderView::Interactive);
+    m_tree->header()->setSectionResizeMode(CommDumpModel::ColAscii, QHeaderView::Stretch);
     m_tree->header()->setSectionResizeMode(CommDumpModel::ColRepeatCount, QHeaderView::ResizeToContents);
     m_tree->setColumnWidth(CommDumpModel::ColDetails, 160);
     m_tree->setColumnWidth(CommDumpModel::ColData, 220);
-    m_tree->setColumnHidden(CommDumpModel::ColRepeatCount, true);   // only meaningful in collapsed view
+    m_tree->setColumnHidden(CommDumpModel::ColRepeatCount, true); // only meaningful in collapsed view
     m_tree->installEventFilter(this);
 
     // Multi-row selection (Ctrl/Shift-click) so several records can be
@@ -236,8 +237,9 @@ CommDumpView::CommDumpView(QWidget *parent)
             m_model->setTimeFormat(static_cast<CommDumpModel::TimeFormat>(next));
         } else if (section == CommDumpModel::ColData) {
             // Cycle 8 -> 16 -> 32 -> 8 ...
-            const int cur = m_model->dumpBytesPerLine();
-            const int next = (cur == 8) ? 16 : (cur == 16) ? 32 : 8;
+            const int cur  = m_model->dumpBytesPerLine();
+            const int next = (cur == 8) ? 16 : (cur == 16) ? 32
+                                                           : 8;
             m_model->setDumpBytesPerLine(next);
         }
     });
@@ -271,7 +273,9 @@ CommDumpView::CommDumpView(QWidget *parent)
     // Handle double-click on the Timestamp column to expand/collapse
     // Expansion only occurs if the data exceeds the preview size
     connect(m_tree, &QTreeView::doubleClicked, this, [this](const QModelIndex &index) {
-        if (!index.isValid()) return;
+        if (!index.isValid()) {
+            return;
+        }
 
         // Only react if the click was on the Timestamp column
         if (index.column() != CommDumpModel::ColTimestamp) {
@@ -279,10 +283,14 @@ CommDumpView::CommDumpView(QWidget *parent)
         }
 
         CommDumpModel *model = qobject_cast<CommDumpModel *>(m_tree->model());
-        if (!model) return;
+        if (!model) {
+            return;
+        }
 
         const CommDumpModel::Record *rec = model->recordForIndex(index);
-        if (!rec) return;
+        if (!rec) {
+            return;
+        }
 
         bool shouldExpand = (rec->data.size() > CommDumpModel::k_previewBytes);
 
@@ -300,7 +308,6 @@ CommDumpView::CommDumpView(QWidget *parent)
         }
     });
 
-
     updateCountLabel();
 
     // Initialize font size based on the tree's current font
@@ -314,20 +321,23 @@ CommDumpView::CommDumpView(QWidget *parent)
 bool CommDumpView::rowPassesFilters(int row) const
 {
     const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
-    if (!rec)
-        return true;   // shouldn't happen — don't hide a row we can't classify
+    if (!rec) {
+        return true; // shouldn't happen — don't hide a row we can't classify
+    }
     return recordPassesFilters(*rec);
 }
 
 bool CommDumpView::recordPassesFilters(const CommDumpModel::Record &rec) const
 {
-    const int  sel = m_dirFilterCb->currentIndex();   // 0 All, 1 Rx, 2 Tx
-    if ((sel == 1 && rec.isTx) || (sel == 2 && !rec.isTx))
+    const int sel = m_dirFilterCb->currentIndex(); // 0 All, 1 Rx, 2 Tx
+    if ((sel == 1 && rec.isTx) || (sel == 2 && !rec.isTx)) {
         return false;
+    }
 
-    if (auto *act = m_pluginActions.value(rec.plugin, nullptr))
+    if (auto *act = m_pluginActions.value(rec.plugin, nullptr)) {
         return act->isChecked();
-    return true;   // unknown plugin (shouldn't happen) — don't hide it
+    }
+    return true; // unknown plugin (shouldn't happen) — don't hide it
 }
 
 void CommDumpView::reapplyAllFilters()
@@ -339,8 +349,9 @@ void CommDumpView::reapplyAllFilters()
     // repaint at the end and one per row. The single setUpdatesEnabled(true)
     // afterwards triggers one full repaint, same as a normal update.
     m_tree->setUpdatesEnabled(false);
-    for (int row = 0; row < m_model->recordCount(); ++row)
+    for (int row = 0; row < m_model->recordCount(); ++row) {
         m_tree->setRowHidden(row, QModelIndex(), !rowPassesFilters(row));
+    }
     m_tree->setUpdatesEnabled(true);
 }
 
@@ -365,8 +376,9 @@ void CommDumpView::rebuildRowViewStateAfterReset()
     // what made toggling the "collapsed" checkbox take 10-20+ seconds even
     // offline: see that connection's comment for why.
     m_tree->setUpdatesEnabled(false);
-    for (int row = 0; row < m_model->recordCount(); ++row)
+    for (int row = 0; row < m_model->recordCount(); ++row) {
         m_tree->setRowHidden(row, QModelIndex(), !rowPassesFilters(row));
+    }
     m_tree->setUpdatesEnabled(true);
 }
 
@@ -377,8 +389,9 @@ void CommDumpView::rebuildRowViewStateAfterReset()
 // ─────────────────────────────────────────────────────────────────────────────
 void CommDumpView::ensurePluginKnown(const QString &plugin)
 {
-    if (m_pluginActions.contains(plugin))
+    if (m_pluginActions.contains(plugin)) {
         return;
+    }
 
     auto *act = m_pluginMenu->addAction(plugin);
     act->setCheckable(true);
@@ -407,12 +420,14 @@ void CommDumpView::onSelectAllRows()
     // the child rows too.
     QItemSelection sel;
     for (int row = 0; row < m_model->recordCount(); ++row) {
-        if (m_tree->isRowHidden(row, QModelIndex()))
+        if (m_tree->isRowHidden(row, QModelIndex())) {
             continue;
+        }
         const QModelIndex left  = m_model->index(row, 0);
         const QModelIndex right = m_model->index(row, CommDumpModel::ColCount - 1);
-        if (left.isValid() && right.isValid())
+        if (left.isValid() && right.isValid()) {
             sel.select(left, right);
+        }
     }
     m_tree->selectionModel()->select(sel, QItemSelectionModel::ClearAndSelect);
 }
@@ -435,13 +450,15 @@ QList<int> CommDumpView::selectedRecordRows() const
     QSet<int> rows;
     const QModelIndexList sel = m_tree->selectionModel()->selectedRows(0);
     for (const QModelIndex &idx : sel) {
-        if (!idx.isValid())
+        if (!idx.isValid()) {
             continue;
+        }
         // A selected full-dump child row belongs to its parent record; fold
         // it back onto the same row number so it isn't copied twice.
         const QModelIndex top = m_model->isChildRow(idx) ? m_model->parent(idx) : idx;
-        if (top.isValid())
+        if (top.isValid()) {
             rows.insert(top.row());
+        }
     }
     QList<int> result = rows.values();
     std::sort(result.begin(), result.end());
@@ -452,13 +469,14 @@ QString CommDumpView::buildCopyText(const QList<int> &rows) const
 {
     QString out;
     for (int i = 0; i < rows.size(); ++i) {
-        const int row = rows[i];
+        const int row                    = rows[i];
         const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
-        if (!rec)
+        if (!rec) {
             continue;
+        }
 
         const QString ts = m_model->data(m_model->index(row, CommDumpModel::ColTimestamp)).toString();
-        const int     len = rec->data.size();
+        const int len    = rec->data.size();
 
         // Mirrors the tree's own column order (Timestamp | Plugin | Details
         // | Dir | Length), tab-separated so it pastes cleanly into a table
@@ -472,11 +490,13 @@ QString CommDumpView::buildCopyText(const QList<int> &rows) const
         // Always the full hex+ASCII dump — "expand the data" applies even
         // if this particular row is currently collapsed on screen.
         const QString dump = m_model->fullDumpForRow(row);
-        if (!dump.isEmpty())
+        if (!dump.isEmpty()) {
             out += dump + '\n';
+        }
 
-        if (i + 1 < rows.size())
+        if (i + 1 < rows.size()) {
             out += '\n';
+        }
     }
     return out;
 }
@@ -484,12 +504,14 @@ QString CommDumpView::buildCopyText(const QList<int> &rows) const
 void CommDumpView::onCopySelected()
 {
     const QList<int> rows = selectedRecordRows();
-    if (rows.isEmpty())
+    if (rows.isEmpty()) {
         return;
+    }
 
     const QString text = buildCopyText(rows);
-    if (!text.isEmpty())
+    if (!text.isEmpty()) {
         QApplication::clipboard()->setText(text);
+    }
 }
 
 void CommDumpView::onTreeContextMenuRequested(const QPoint &pos)
@@ -497,9 +519,9 @@ void CommDumpView::onTreeContextMenuRequested(const QPoint &pos)
     m_treeContextMenu->clear();
 
     const bool hasSelection = m_tree->selectionModel()->hasSelection();
-    const bool hasRecords    = m_model->recordCount() > 0;
+    const bool hasRecords   = m_model->recordCount() > 0;
 
-    QAction *copyAct = m_treeContextMenu->addAction("Copy");
+    QAction *copyAct        = m_treeContextMenu->addAction("Copy");
     copyAct->setEnabled(hasSelection);
     copyAct->setShortcut(QKeySequence::Copy);
     connect(copyAct, &QAction::triggered, this, &CommDumpView::onCopySelected);
@@ -538,18 +560,19 @@ void CommDumpView::rebuildPluginMenuFromModel()
     // (see CommDumpModel::rawRecordCount()).
     const int n = m_model->rawRecordCount();
     for (int row = 0; row < n; ++row) {
-        if (const CommDumpModel::Record *rec = m_model->rawRecordAt(row))
+        if (const CommDumpModel::Record *rec = m_model->rawRecordAt(row)) {
             ensurePluginKnown(rec->plugin);
+        }
     }
 }
 
 void CommDumpView::addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
-                              const QByteArray &data)
+                             const QByteArray &data)
 {
     // Does NOT touch the model/tree directly — see the class comment on why
     // ingestion is coalesced. Just stage the record and make sure a flush is
     // scheduled.
-    m_pendingQueue.append({ timestampUs, plugin, details, isTx, data });
+    m_pendingQueue.append({timestampUs, plugin, details, isTx, data});
 
     if (m_pendingQueue.size() >= kForceFlushThreshold) {
         // Pathological burst: don't let the pending queue itself grow
@@ -558,8 +581,9 @@ void CommDumpView::addRecord(qint64 timestampUs, const QString &plugin, const QS
         return;
     }
 
-    if (!m_flushTimer->isActive())
+    if (!m_flushTimer->isActive()) {
         m_flushTimer->start();
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -572,21 +596,24 @@ void CommDumpView::addRecord(qint64 timestampUs, const QString &plugin, const QS
 // ─────────────────────────────────────────────────────────────────────────────
 void CommDumpView::flushPending()
 {
-    if (m_pendingQueue.isEmpty())
+    if (m_pendingQueue.isEmpty()) {
         return;
+    }
 
     const CommDumpModel::IngestResult result = m_model->addRecords(m_pendingQueue);
     m_pendingQueue.clear();
 
-    if (result.touchedRows.isEmpty())
-        return;   // shouldn't happen (queue was non-empty), but guard anyway
+    if (result.touchedRows.isEmpty()) {
+        return; // shouldn't happen (queue was non-empty), but guard anyway
+    }
 
     prepareTouchedRows(result.touchedRows);
 
     updateCountLabel();
 
-    if (!m_saveBtn->isEnabled())
+    if (!m_saveBtn->isEnabled()) {
         m_saveBtn->setEnabled(true);
+    }
 
     // Only move the viewport when the trace's tail genuinely grew this
     // flush (result.rowsAppended > 0 — every record in raw/flat mode, or a
@@ -603,12 +630,14 @@ void CommDumpView::flushPending()
     // geometry from scratch, and doing that on every ~30ms flush regardless
     // of whether anything actually moved is exactly what "choppy" feels
     // like.
-    if (result.rowsAppended <= 0)
+    if (result.rowsAppended <= 0) {
         return;
+    }
 
     const int lastRow = m_model->recordCount() - 1;
-    if (m_autoScroll && lastRow >= 0 && !m_tree->isRowHidden(lastRow, QModelIndex()))
+    if (m_autoScroll && lastRow >= 0 && !m_tree->isRowHidden(lastRow, QModelIndex())) {
         m_tree->scrollToBottom();
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -632,8 +661,9 @@ void CommDumpView::prepareTouchedRows(const QVector<int> &rows)
 {
     for (int row : rows) {
         const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
-        if (rec)
+        if (rec) {
             ensurePluginKnown(rec->plugin);
+        }
 
         // Explicitly set both ways (not just "hide if it now fails") — an
         // aggregate row's direction can change between occurrences (the
@@ -656,7 +686,7 @@ void CommDumpView::clear()
     m_pluginMenu->clear();
     m_pluginActions.clear();
     updateCountLabel();
-    m_saveBtn->setEnabled(false);   // nothing to save until a new record arrives
+    m_saveBtn->setEnabled(false); // nothing to save until a new record arrives
 }
 
 void CommDumpView::setDumpFont(const QFont &font)
@@ -672,9 +702,11 @@ void CommDumpView::setTreeFont(const QFont &font)
 
 void CommDumpView::updateFullDumpFontSize()
 {
-    if (!m_tree) return;
+    if (!m_tree) {
+        return;
+    }
 
-    const QFont treeFont = m_tree->font();
+    const QFont treeFont         = m_tree->font();
     const double currentFontSize = treeFont.pointSizeF();
 
     // m_fullDumpFontProportion is the view's own stored ratio (e.g. 0.8).
@@ -682,11 +714,10 @@ void CommDumpView::updateFullDumpFontSize()
     // getter returns the *absolute* point size the model was last given,
     // and treating it as a proportion again would multiply it into itself
     // on every call (font change, load, etc.), growing without bound.
-    const double newDumpSize = currentFontSize * m_fullDumpFontProportion;
+    const double newDumpSize     = currentFontSize * m_fullDumpFontProportion;
 
     m_model->setFullDumpFontSize(newDumpSize);
 }
-
 
 // Deliberately minimal by design (see m_countLabel's construction comment
 // for the reason it must not vary): just the number of rows currently
@@ -704,8 +735,15 @@ void CommDumpView::updateCountLabel()
 // ─────────────────────────────────────────────────────────────────────────────
 //  Save / reload traces
 // ─────────────────────────────────────────────────────────────────────────────
-void CommDumpView::onSaveAll()          { saveToFile(false); }
-void CommDumpView::onSaveFilteredOnly() { saveToFile(true); }
+void CommDumpView::onSaveAll()
+{
+    saveToFile(false);
+}
+
+void CommDumpView::onSaveFilteredOnly()
+{
+    saveToFile(true);
+}
 
 void CommDumpView::saveToFile(bool filteredOnly)
 {
@@ -718,8 +756,9 @@ void CommDumpView::saveToFile(bool filteredOnly)
 
     const QString path = QFileDialog::getSaveFileName(
         this, "Save Comm Dump Trace", QString(), "Comm Dump Trace (*.json)");
-    if (path.isEmpty())
+    if (path.isEmpty()) {
         return;
+    }
 
     QList<int> rows;
     if (filteredOnly) {
@@ -731,8 +770,9 @@ void CommDumpView::saveToFile(bool filteredOnly)
         const int rawCount = m_model->rawRecordCount();
         for (int row = 0; row < rawCount; ++row) {
             const CommDumpModel::Record *rec = m_model->rawRecordAt(row);
-            if (rec && recordPassesFilters(*rec))
+            if (rec && recordPassesFilters(*rec)) {
                 rows << row;
+            }
         }
     }
 
@@ -745,13 +785,19 @@ void CommDumpView::saveToFile(bool filteredOnly)
     // onLoadTriggered() still accepts a bare records array for older files.
     QJsonObject root;
     switch (m_model->timeFormat()) {
-    case CommDumpModel::TimeWallClock:         root["timeFormat"] = QStringLiteral("wallClock");        break;
-    case CommDumpModel::TimeDeltaPrevious:     root["timeFormat"] = QStringLiteral("deltaPrevious");    break;
-    case CommDumpModel::TimeSinceCaptureStart: root["timeFormat"] = QStringLiteral("sinceCaptureStart"); break;
+    case CommDumpModel::TimeWallClock:
+        root["timeFormat"] = QStringLiteral("wallClock");
+        break;
+    case CommDumpModel::TimeDeltaPrevious:
+        root["timeFormat"] = QStringLiteral("deltaPrevious");
+        break;
+    case CommDumpModel::TimeSinceCaptureStart:
+        root["timeFormat"] = QStringLiteral("sinceCaptureStart");
+        break;
     }
     root["fontSizeProportion"] = m_fullDumpFontProportion;
-    root["dumpBytesPerLine"] = m_model->dumpBytesPerLine();
-    root["records"] = m_model->toJsonArray(rows);
+    root["dumpBytesPerLine"]   = m_model->dumpBytesPerLine();
+    root["records"]            = m_model->toJsonArray(rows);
 
     const QJsonDocument doc(root);
     QFile f(path);
@@ -766,8 +812,9 @@ void CommDumpView::onLoadTriggered()
 {
     const QString path = QFileDialog::getOpenFileName(
         this, "Load Comm Dump Trace", QString(), "Comm Dump Trace (*.json)");
-    if (path.isEmpty())
+    if (path.isEmpty()) {
         return;
+    }
 
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly)) {
@@ -779,7 +826,7 @@ void CommDumpView::onLoadTriggered()
     const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
     if (err.error != QJsonParseError::NoError || !(doc.isArray() || doc.isObject())) {
         QMessageBox::warning(this, "Load failed",
-                              "File is not a valid comm dump trace:\n" + err.errorString());
+                             "File is not a valid comm dump trace:\n" + err.errorString());
         return;
     }
 
@@ -797,40 +844,43 @@ void CommDumpView::onLoadTriggered()
     // trace files use, mapped onto their closest equivalent here.
     QJsonArray recordsArr;
     CommDumpModel::TimeFormat loadedFormat = CommDumpModel::TimeWallClock;
-    double fontSizeProp = m_fullDumpFontProportion; // keep current setting unless the file overrides it
-    int loadedBytesPerLine = m_model->dumpBytesPerLine(); // ditto
+    double fontSizeProp                    = m_fullDumpFontProportion;    // keep current setting unless the file overrides it
+    int loadedBytesPerLine                 = m_model->dumpBytesPerLine(); // ditto
     if (doc.isArray()) {
         recordsArr = doc.array();
     } else {
         const QJsonObject root = doc.object();
-        recordsArr = root.value("records").toArray();
-        const QString fmt = root.value("timeFormat").toString();
-        if (fmt == QStringLiteral("deltaPrevious") || fmt == QStringLiteral("relative"))
+        recordsArr             = root.value("records").toArray();
+        const QString fmt      = root.value("timeFormat").toString();
+        if (fmt == QStringLiteral("deltaPrevious") || fmt == QStringLiteral("relative")) {
             loadedFormat = CommDumpModel::TimeDeltaPrevious;
-        else if (fmt == QStringLiteral("sinceCaptureStart"))
+        } else if (fmt == QStringLiteral("sinceCaptureStart")) {
             loadedFormat = CommDumpModel::TimeSinceCaptureStart;
+        }
         // else "wallClock"/"absolute"/unknown/missing -> TimeWallClock (default)
 
         // Load font size proportion if present, clamped to a sane range so
         // a corrupt or hand-edited file (0, negative, or absurdly large)
         // can't produce a zero-size or huge dump font.
-        if (root.contains("fontSizeProportion"))
+        if (root.contains("fontSizeProportion")) {
             fontSizeProp = qBound(0.1, root.value("fontSizeProportion").toDouble(), 5.0);
+        }
 
         // Only 8, 16, and 32 are valid; anything else (missing key,
         // hand-edited file) falls back to whatever's currently set rather
         // than silently accepting a nonsensical bytes-per-line.
         if (root.contains("dumpBytesPerLine")) {
             const int v = root.value("dumpBytesPerLine").toInt();
-            if (v == 8 || v == 16 || v == 32)
+            if (v == 8 || v == 16 || v == 32) {
                 loadedBytesPerLine = v;
+            }
         }
     }
 
     m_model->loadJsonArray(recordsArr);
     m_fullDumpFontProportion = fontSizeProp;
 
-    m_dirFilterCb->setCurrentIndex(0);   // reset to "All": the new trace may have a different plugin set
+    m_dirFilterCb->setCurrentIndex(0); // reset to "All": the new trace may have a different plugin set
     m_model->setTimeFormat(loadedFormat);
     m_model->setDumpBytesPerLine(loadedBytesPerLine);
     // Must run BEFORE rebuildRowViewStateAfterReset(): filter-visibility
@@ -845,8 +895,9 @@ void CommDumpView::onLoadTriggered()
 
     updateFullDumpFontSize();
 
-    if (m_autoScroll)
+    if (m_autoScroll) {
         m_tree->scrollToBottom();
+    }
 }
 
 bool CommDumpView::eventFilter(QObject *watched, QEvent *event)

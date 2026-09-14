@@ -1,27 +1,26 @@
 #ifndef UART_PLUGIN_HPP
 #define UART_PLUGIN_HPP
-#include "uSharedConfig.hpp"
-#include "uCommandExec.hpp"
+#include "ICommDriver.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "ICommDriver.hpp"
-#include "PluginOperations.hpp"
 #include "PluginExport.hpp"
-#include "uNumeric.hpp"
+#include "PluginOperations.hpp"
+#include "uCommandExec.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
 
+#include <regex>
+#include <span>
 #include <string>
 #include <utility>
-#include <span>
-#include <regex>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define UART_PLUGIN_VERSION    "1.0.0.0"
-#define UART_PLUGIN_NAME       "UART"
-
+#define UART_PLUGIN_VERSION "1.0.0.0"
+#define UART_PLUGIN_NAME    "UART"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                                    //
@@ -33,457 +32,454 @@
 #define UART_GET_BLOCKING(name, blocking, ...) blocking
 #endif
 
-#define UART_PLUGIN_COMMANDS_CONFIG_TABLE    \
-UART_PLUGIN_CMD_RECORD( INFO               ) \
-UART_PLUGIN_CMD_RECORD( CONFIG             ) \
-UART_PLUGIN_CMD_RECORD( CMD                ) \
-UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
-UART_PLUGIN_CMD_RECORD( CYCLIC             ) \
+#define UART_PLUGIN_COMMANDS_CONFIG_TABLE \
+    UART_PLUGIN_CMD_RECORD(INFO)          \
+    UART_PLUGIN_CMD_RECORD(CONFIG)        \
+    UART_PLUGIN_CMD_RECORD(CMD)           \
+    UART_PLUGIN_CMD_RECORD(SCRIPT)        \
+    UART_PLUGIN_CMD_RECORD(CYCLIC)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
-  * \brief Uart plugin class definition
-*/
-class UARTPlugin: public PluginInterface
+ * \brief Uart plugin class definition
+ */
+class UARTPlugin : public PluginInterface
 {
-    public:
-
-        /**
-          * \brief class constructor
-        */
-        UARTPlugin() : m_strVersion(UART_PLUGIN_VERSION)
-                     , m_strInstanceName(UART_PLUGIN_NAME)
-                     , m_bIsInitialized(false)
-                     , m_bIsEnabled(false)
-                     , m_bIsFaultTolerant(false)
-                     , m_bIsPrivileged(false)
-                     , m_strResultData("")
-                     , m_bRawResult(false)
-                     , m_bCyclicCached(true)
-        {
-            #define UART_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
-            PluginCommandEntry<UARTPlugin>{&UARTPlugin::m_UART_##a, UART_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
-            UART_PLUGIN_COMMANDS_CONFIG_TABLE
-            #undef  UART_PLUGIN_CMD_RECORD
-        }
-
-        /**
-          * \brief class destructor
-        */
-        ~UARTPlugin()
-        {
-
-        }
-
-        /**
-          * \brief get the plugin initialization status
-        */
-        bool isInitialized( void ) const
-        {
-            return m_bIsInitialized;
-        }
-
-        /**
-          * \brief get enabling status
-        */
-        bool isEnabled (void) const
-        {
-            return m_bIsEnabled;
-        }
-
-        /**
-          * \brief Import external settings into the plugin
-        */
-        bool setParams( const PluginDataSet *psSetParams )
-        {
-            bool bRetVal = false;
-
-            if (true == generic_setparams<UARTPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-                if (true == m_LocalSetParams(psSetParams)) {
-                    bRetVal = true;
-                }
-            }
-
-            return bRetVal;
-        }
-
-        /**
-          * \brief function to retrieve information from plugin
-        */
-        void getParams( PluginDataGet *psGetParams ) const
-        {
-            generic_getparams<UARTPlugin>(this, psGetParams);
-        }
-
-        /**
-          * \brief perform the initialization of modules used by the plugin
-          * \note public because it needs to be called explicitely after loading the plugin
-        */
-        bool doInit(void *pvUserData)
-        {
-            m_bIsInitialized = true;
-            return m_bIsInitialized;
-        }
-
-        /**
-          * \brief perform the de-initialization of modules used by the plugin
-          * \note public because need to be called explicitely before closing/freeing the shared library
-        */
-        void doCleanup(void)
-        {
-            m_bIsInitialized = false;
-            m_bIsEnabled     = false;
-        }
-
-        /**
-          * \brief perform the enabling of the plugin
-          * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
-          *       This mode is used for the command validation
-        */
-        bool doEnable(void)
-        {
-            m_bIsEnabled = true;
-            return true;
-        }
-
-        /**
-          * \brief dispatch commands
-        */
-        bool doDispatch( const std::string& strCmd, const std::string& strParams, std::stop_token st = {} ) const
-        {
-            return generic_dispatch<UARTPlugin>(this, strCmd, strParams, st);
-        }
-
-        /**
-          * \brief get a pointer to the plugin map
-        */
-        const PluginCommandsMap<UARTPlugin> *getMap(void) const
-        {
-            return &m_mapCmds;
-        }
-
-        /**
-          * \brief get the plugin version
-        */
-        const std::string& getVersion(void) const
-        {
-            return m_strVersion;
-        }
-
-        /**
-          * \brief get the result data
-        */
-        const std::string& getData(void) const
-        {
-            return m_strResultData;
-        }
-
-        /**
-          * \brief clear the result data (avoid that some data to be returned by other command)
-        */
-        void resetData(void) const
-        {
-            m_strResultData.clear();
-        }
-
-        /**
-          * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-        */
-        bool setRawResult (const std::string& strValue) const
-        {
-            return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
-        }
-
-        /**
-          * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-        */
-        bool setCyclicCached (const std::string& strValue) const
-        {
-            return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
-        }
-
-        /**
-          * \brief get fault tolerant flag status
-        */
-        bool isFaultTolerant (void) const
-        {
-            return m_bIsFaultTolerant;
-        }
-
-        /**
-          * \brief get the privileged status
-        */
-        bool isPrivileged (void) const
-        {
-          return m_bIsPrivileged;
-        }
-
-        /**
-          * \brief get UART port
-        */
-        const char *getUartPort (void) const
-        {
-            return m_strUartPort.c_str();
-        }
-
-        /**
-          * \brief set UART port (CONFIG "p=" key).
-          *
-          * Validates the port syntax before storing it - on Linux/macOS it must match
-          * "/dev/(tnt|ttyACM|ttyUSB)N"; on Windows it must match "COMx", with the "\\.\"
-          * prefix applied automatically for port numbers above 9 that need it.
-          *
-          * \note Only the CONFIG command routes through this validated setter - the ini
-          *       file's UART_PORT key is bound directly to m_strUartPort (unvalidated),
-          *       matching this plugin's existing ini-vs-CONFIG behavior.
-          *
-          * \param[in] strUartPort  candidate port string, e.g. "/dev/ttyUSB0" or "COM3"
-          * \return true if strUartPort has valid UART port syntax, false otherwise
-        */
-        bool setUartPort (const std::string& strUartPort) const
-        {
-            if (true == strUartPort.empty()) {
-                LOG_PRINT(LOG_DEBUG, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Missing port"));
-                return false;
-            }
-
-#ifdef _WIN32
-            static const std::string strPrefix("\\\\.\\");
-            const bool bHasPrefix = std::equal(strPrefix.begin(), strPrefix.end(), strUartPort.begin());
-            const std::string strPortToCheck = (false == bHasPrefix) ? strUartPort : strUartPort.substr(strPrefix.size());
-#else
-            const std::string& strPortToCheck = strUartPort;
-#endif
-            if (false == m_IsValidUartPort(strPortToCheck)) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Invalid port syntax:"); LOG_STRING(strUartPort));
-                return false;
-            }
-
-#ifdef _WIN32
-            // modify the format in order to support ports with number higher than 9
-            m_strUartPort = (false == bHasPrefix) ? strPrefix + strUartPort : strUartPort;
-#else
-            m_strUartPort = strUartPort;
-#endif
-            LOG_PRINT(LOG_DEBUG, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("UART port changed to:"); LOG_STRING(m_strUartPort));
-            return true;
-        }
-
-        /**
-          * \brief set UART baudrate
-        */
-        bool setUartBaudrate (const std::string& strUartBaudrate) const
-        {
-            return numeric::str2uint32(strUartBaudrate, m_u32UartBaudrate);
-        }
-
-        /**
-          * \brief set UART read timeout
-        */
-        bool setUartReadTimeout (const std::string& strReadTimeout) const
-        {
-            return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
-        }
-
-        /**
-          * \brief set UART write timeout
-        */
-        bool setUartWriteTimeout (const std::string& strWriteTimeout) const
-        {
-            return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
-        }
-
-        /**
-          * \brief set UART buffer size
-        */
-        bool setUartReadBufferSize (const std::string& strUartReadBufferSize) const
-        {
-            return numeric::str2uint32(strUartReadBufferSize, m_u32ReadBufferSize);
-        }
-
-    private:
-
-        /**
-          * \brief Check if a string represents a UART port (see setUartPort()).
-          * \param[in] strInput string to be evaluated
-          * \return true if the string matches the expected syntax, false otherwise
-        */
-        static bool m_IsValidUartPort (const std::string& strInput)
-        {
-#ifndef _WIN32
-            static const std::regex pattern("^/dev/(tnt|ttyACM|ttyUSB)(?:1\\d{2}|2[0-4]\\d|[1-9]?\\d|25[0-5])$");
-#else
-            static const std::regex pattern("^COM(?:1\\d{2}|2[0-4]\\d|[1-9]?\\d|25[0-5])$");
-#endif
-            return std::regex_match(strInput, pattern);
-        }
-
-        /**
-          * \brief message sender
-        */
-        bool m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver ) const
-        {
-            auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
-
-            if (result.status != ICommDriver::Status::SUCCESS) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed:");
-                          LOG_STRING(ICommDriver::to_string(result.status));
-                          LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
-                return false;
-            }
-
-            return true;
-        }
-
-        /**
-          * \brief message receiver
-        */
-        bool m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
-        {
-            bool bRetVal = false;
-            ICommDriver::ReadOptions options;
-
-            switch(readType)
-            {
-                case CommCommandReadType::LINE:
-                    options.mode = ICommDriver::ReadMode::UntilDelimiter;
-                    options.delimiter = '\n';  // CHAR_SEPARATOR_NEWLINE
-                    break;
-
-                case CommCommandReadType::TOKEN_STRING:
-                    [[fallthrough]];
-                case CommCommandReadType::TOKEN_HEXSTREAM:
-                    options.mode = ICommDriver::ReadMode::UntilToken;
-                    options.token = dataSpan;
-                    options.use_buffer = true;
-                    break;
-
-                default:
-                    options.mode = ICommDriver::ReadMode::Exact;
-                    break;
-            }
-
-            auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
-
-            if (result.status == ICommDriver::Status::SUCCESS) {
-                szSize = result.bytes_read;
-                bRetVal = true;
-            } else {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:");
-                          LOG_STRING(ICommDriver::to_string(result.status));
-                          LOG_STRING("Bytes read:"); LOG_SIZET(result.bytes_read));
-                szSize = result.bytes_read;
-                bRetVal = false;
-            }
-
-            return bRetVal;
-        }
-
-        /**
-          * \brief processing of the plugin specific settings
-        */
-        bool m_LocalSetParams (const PluginDataSet *psSetParams);
-
-        /**
-          * \brief map with association between the command string and the execution function
-        */
-        PluginCommandsMap<UARTPlugin> m_mapCmds;
-
-        /**
-          * \brief plugin version
-        */
-        std::string m_strVersion;
-
-        /**
-          * \brief runtime instance identity used for the GUI comm-dump panel
-          *        (e.g. "UART" or "UART:1" — see PluginDataSet::strInstanceName).
-          *        Falls back to UART_PLUGIN_NAME when unset (e.g. standalone
-          *        construction outside the script interpreter).
-        */
-        std::string m_strInstanceName;
-
-        /**
-          * \brief data returned by plugin
-        */
-        mutable std::string m_strResultData;
-
-        /**
-          * \brief when true, CMD returns the raw received bytes as-is instead of
-          *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
-          *        settable via the ini file's RAW_RESULT key or the CONFIG command's
-          *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
-        */
-        mutable bool m_bRawResult;
-
-        /**
-          * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
-          *        command exactly once for the whole session; false re-resolves and re-validates
-          *        every due entry on every tick, needed to track a volatile ("?=") macro used as
-          *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
-          *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
-          *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
-        */
-        mutable bool m_bCyclicCached;
-
-        /**
-          * \brief plugin initialization status
-        */
-        bool m_bIsInitialized;
-
-        /**
-          * \brief plugin enabling status
-        */
-        bool m_bIsEnabled;
-
-        /**
-          * \brief plugin fault tolerant mode
-        */
-        bool m_bIsFaultTolerant;
-
-        /**
-          * \brief plugin is priviledged
-        */
-        bool m_bIsPrivileged;
-
-        /**
-          * \brief the artefacts path got from command line
-        */
-        std::string m_strArtefactsPath;
-
-        /**
-          * \brief the UART port got from command line
-        */
-        mutable std::string m_strUartPort;
-
-        /**
-          * \brief the UART baudrate in used intialized from u32UartBaudrateHigh got from command line
-        */
-        mutable uint32_t m_u32UartBaudrate;
-
-        /**
-          * \brief the UART read timeout got from command line
-        */
-        mutable uint32_t m_u32ReadTimeout;
-
-        /**
-          * \brief the UART write timeout got from command line
-        */
-        mutable uint32_t m_u32WriteTimeout;
-
-       /**
-         * \brief size of the buffer where to read from UART (in order to empty the UART buffer)
-        */
-        mutable uint32_t m_u32ReadBufferSize;
-
-        /**
-          * \brief functions associated to the plugin commands
-        */
-        #define UART_PLUGIN_CMD_RECORD(a, ...)  bool m_UART_##a ( const std::string& args, std::stop_token st ) const;
+public:
+    /**
+     * \brief class constructor
+     */
+    UARTPlugin()
+        : m_strVersion(UART_PLUGIN_VERSION)
+        , m_strInstanceName(UART_PLUGIN_NAME)
+        , m_bIsInitialized(false)
+        , m_bIsEnabled(false)
+        , m_bIsFaultTolerant(false)
+        , m_bIsPrivileged(false)
+        , m_strResultData("")
+        , m_bRawResult(false)
+        , m_bCyclicCached(true)
+    {
+#define UART_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
+                                                                       PluginCommandEntry<UARTPlugin>{&UARTPlugin::m_UART_##a, UART_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
         UART_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef  UART_PLUGIN_CMD_RECORD
+#undef UART_PLUGIN_CMD_RECORD
+    }
+
+    /**
+     * \brief class destructor
+     */
+    ~UARTPlugin()
+    {
+    }
+
+    /**
+     * \brief get the plugin initialization status
+     */
+    bool isInitialized(void) const
+    {
+        return m_bIsInitialized;
+    }
+
+    /**
+     * \brief get enabling status
+     */
+    bool isEnabled(void) const
+    {
+        return m_bIsEnabled;
+    }
+
+    /**
+     * \brief Import external settings into the plugin
+     */
+    bool setParams(const PluginDataSet *psSetParams)
+    {
+        bool bRetVal = false;
+
+        if (true == generic_setparams<UARTPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (true == m_LocalSetParams(psSetParams)) {
+                bRetVal = true;
+            }
+        }
+
+        return bRetVal;
+    }
+
+    /**
+     * \brief function to retrieve information from plugin
+     */
+    void getParams(PluginDataGet *psGetParams) const
+    {
+        generic_getparams<UARTPlugin>(this, psGetParams);
+    }
+
+    /**
+     * \brief perform the initialization of modules used by the plugin
+     * \note public because it needs to be called explicitely after loading the plugin
+     */
+    bool doInit(void *pvUserData)
+    {
+        m_bIsInitialized = true;
+        return m_bIsInitialized;
+    }
+
+    /**
+     * \brief perform the de-initialization of modules used by the plugin
+     * \note public because need to be called explicitely before closing/freeing the shared library
+     */
+    void doCleanup(void)
+    {
+        m_bIsInitialized = false;
+        m_bIsEnabled     = false;
+    }
+
+    /**
+     * \brief perform the enabling of the plugin
+     * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
+     *       This mode is used for the command validation
+     */
+    bool doEnable(void)
+    {
+        m_bIsEnabled = true;
+        return true;
+    }
+
+    /**
+     * \brief dispatch commands
+     */
+    bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st = {}) const
+    {
+        return generic_dispatch<UARTPlugin>(this, strCmd, strParams, st);
+    }
+
+    /**
+     * \brief get a pointer to the plugin map
+     */
+    const PluginCommandsMap<UARTPlugin> *getMap(void) const
+    {
+        return &m_mapCmds;
+    }
+
+    /**
+     * \brief get the plugin version
+     */
+    const std::string &getVersion(void) const
+    {
+        return m_strVersion;
+    }
+
+    /**
+     * \brief get the result data
+     */
+    const std::string &getData(void) const
+    {
+        return m_strResultData;
+    }
+
+    /**
+     * \brief clear the result data (avoid that some data to be returned by other command)
+     */
+    void resetData(void) const
+    {
+        m_strResultData.clear();
+    }
+
+    /**
+     * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+     */
+    bool setRawResult(const std::string &strValue) const
+    {
+        return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
+    }
+
+    /**
+     * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+     */
+    bool setCyclicCached(const std::string &strValue) const
+    {
+        return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
+    }
+
+    /**
+     * \brief get fault tolerant flag status
+     */
+    bool isFaultTolerant(void) const
+    {
+        return m_bIsFaultTolerant;
+    }
+
+    /**
+     * \brief get the privileged status
+     */
+    bool isPrivileged(void) const
+    {
+        return m_bIsPrivileged;
+    }
+
+    /**
+     * \brief get UART port
+     */
+    const char *getUartPort(void) const
+    {
+        return m_strUartPort.c_str();
+    }
+
+    /**
+     * \brief set UART port (CONFIG "p=" key).
+     *
+     * Validates the port syntax before storing it - on Linux/macOS it must match
+     * "/dev/(tnt|ttyACM|ttyUSB)N"; on Windows it must match "COMx", with the "\\.\"
+     * prefix applied automatically for port numbers above 9 that need it.
+     *
+     * \note Only the CONFIG command routes through this validated setter - the ini
+     *       file's UART_PORT key is bound directly to m_strUartPort (unvalidated),
+     *       matching this plugin's existing ini-vs-CONFIG behavior.
+     *
+     * \param[in] strUartPort  candidate port string, e.g. "/dev/ttyUSB0" or "COM3"
+     * \return true if strUartPort has valid UART port syntax, false otherwise
+     */
+    bool setUartPort(const std::string &strUartPort) const
+    {
+        if (true == strUartPort.empty()) {
+            LOG_PRINT(LOG_DEBUG, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Missing port"));
+            return false;
+        }
+
+#ifdef _WIN32
+        static const std::string strPrefix("\\\\.\\");
+        const bool bHasPrefix            = std::equal(strPrefix.begin(), strPrefix.end(), strUartPort.begin());
+        const std::string strPortToCheck = (false == bHasPrefix) ? strUartPort : strUartPort.substr(strPrefix.size());
+#else
+        const std::string &strPortToCheck = strUartPort;
+#endif
+        if (false == m_IsValidUartPort(strPortToCheck)) {
+            LOG_PRINT(LOG_ERROR, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Invalid port syntax:"); LOG_STRING(strUartPort));
+            return false;
+        }
+
+#ifdef _WIN32
+        // modify the format in order to support ports with number higher than 9
+        m_strUartPort = (false == bHasPrefix) ? strPrefix + strUartPort : strUartPort;
+#else
+        m_strUartPort = strUartPort;
+#endif
+        LOG_PRINT(LOG_DEBUG, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("UART port changed to:"); LOG_STRING(m_strUartPort));
+        return true;
+    }
+
+    /**
+     * \brief set UART baudrate
+     */
+    bool setUartBaudrate(const std::string &strUartBaudrate) const
+    {
+        return numeric::str2uint32(strUartBaudrate, m_u32UartBaudrate);
+    }
+
+    /**
+     * \brief set UART read timeout
+     */
+    bool setUartReadTimeout(const std::string &strReadTimeout) const
+    {
+        return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
+    }
+
+    /**
+     * \brief set UART write timeout
+     */
+    bool setUartWriteTimeout(const std::string &strWriteTimeout) const
+    {
+        return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
+    }
+
+    /**
+     * \brief set UART buffer size
+     */
+    bool setUartReadBufferSize(const std::string &strUartReadBufferSize) const
+    {
+        return numeric::str2uint32(strUartReadBufferSize, m_u32ReadBufferSize);
+    }
+
+private:
+    /**
+     * \brief Check if a string represents a UART port (see setUartPort()).
+     * \param[in] strInput string to be evaluated
+     * \return true if the string matches the expected syntax, false otherwise
+     */
+    static bool m_IsValidUartPort(const std::string &strInput)
+    {
+#ifndef _WIN32
+        static const std::regex pattern("^/dev/(tnt|ttyACM|ttyUSB)(?:1\\d{2}|2[0-4]\\d|[1-9]?\\d|25[0-5])$");
+#else
+        static const std::regex pattern("^COM(?:1\\d{2}|2[0-4]\\d|[1-9]?\\d|25[0-5])$");
+#endif
+        return std::regex_match(strInput, pattern);
+    }
+
+    /**
+     * \brief message sender
+     */
+    bool m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
+    {
+        auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
+
+        if (result.status != ICommDriver::Status::SUCCESS) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed:");
+                      LOG_STRING(ICommDriver::to_string(result.status));
+                      LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * \brief message receiver
+     */
+    bool m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+    {
+        bool bRetVal = false;
+        ICommDriver::ReadOptions options;
+
+        switch (readType) {
+        case CommCommandReadType::LINE:
+            options.mode      = ICommDriver::ReadMode::UntilDelimiter;
+            options.delimiter = '\n'; // CHAR_SEPARATOR_NEWLINE
+            break;
+
+        case CommCommandReadType::TOKEN_STRING:
+            [[fallthrough]];
+        case CommCommandReadType::TOKEN_HEXSTREAM:
+            options.mode       = ICommDriver::ReadMode::UntilToken;
+            options.token      = dataSpan;
+            options.use_buffer = true;
+            break;
+
+        default:
+            options.mode = ICommDriver::ReadMode::Exact;
+            break;
+        }
+
+        auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
+
+        if (result.status == ICommDriver::Status::SUCCESS) {
+            szSize  = result.bytes_read;
+            bRetVal = true;
+        } else {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:");
+                      LOG_STRING(ICommDriver::to_string(result.status));
+                      LOG_STRING("Bytes read:"); LOG_SIZET(result.bytes_read));
+            szSize  = result.bytes_read;
+            bRetVal = false;
+        }
+
+        return bRetVal;
+    }
+
+    /**
+     * \brief processing of the plugin specific settings
+     */
+    bool m_LocalSetParams(const PluginDataSet *psSetParams);
+
+    /**
+     * \brief map with association between the command string and the execution function
+     */
+    PluginCommandsMap<UARTPlugin> m_mapCmds;
+
+    /**
+     * \brief plugin version
+     */
+    std::string m_strVersion;
+
+    /**
+     * \brief runtime instance identity used for the GUI comm-dump panel
+     *        (e.g. "UART" or "UART:1" — see PluginDataSet::strInstanceName).
+     *        Falls back to UART_PLUGIN_NAME when unset (e.g. standalone
+     *        construction outside the script interpreter).
+     */
+    std::string m_strInstanceName;
+
+    /**
+     * \brief data returned by plugin
+     */
+    mutable std::string m_strResultData;
+
+    /**
+     * \brief when true, CMD returns the raw received bytes as-is instead of
+     *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+     *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+     *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+     */
+    mutable bool m_bRawResult;
+
+    /**
+     * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+     *        command exactly once for the whole session; false re-resolves and re-validates
+     *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+     *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+     *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+     *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+     */
+    mutable bool m_bCyclicCached;
+
+    /**
+     * \brief plugin initialization status
+     */
+    bool m_bIsInitialized;
+
+    /**
+     * \brief plugin enabling status
+     */
+    bool m_bIsEnabled;
+
+    /**
+     * \brief plugin fault tolerant mode
+     */
+    bool m_bIsFaultTolerant;
+
+    /**
+     * \brief plugin is priviledged
+     */
+    bool m_bIsPrivileged;
+
+    /**
+     * \brief the artefacts path got from command line
+     */
+    std::string m_strArtefactsPath;
+
+    /**
+     * \brief the UART port got from command line
+     */
+    mutable std::string m_strUartPort;
+
+    /**
+     * \brief the UART baudrate in used intialized from u32UartBaudrateHigh got from command line
+     */
+    mutable uint32_t m_u32UartBaudrate;
+
+    /**
+     * \brief the UART read timeout got from command line
+     */
+    mutable uint32_t m_u32ReadTimeout;
+
+    /**
+     * \brief the UART write timeout got from command line
+     */
+    mutable uint32_t m_u32WriteTimeout;
+
+    /**
+     * \brief size of the buffer where to read from UART (in order to empty the UART buffer)
+     */
+    mutable uint32_t m_u32ReadBufferSize;
+
+/**
+ * \brief functions associated to the plugin commands
+ */
+#define UART_PLUGIN_CMD_RECORD(a, ...) bool m_UART_##a(const std::string &args, std::stop_token st) const;
+    UART_PLUGIN_COMMANDS_CONFIG_TABLE
+#undef UART_PLUGIN_CMD_RECORD
 };
 
 #endif /* UART_PLUGIN_HPP */

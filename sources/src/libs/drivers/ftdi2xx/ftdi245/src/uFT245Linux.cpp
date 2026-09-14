@@ -12,11 +12,11 @@
 #include "FT245Base.hpp"
 #include "uLogger.hpp"
 
+#include <chrono>
+#include <compare>
 #include <ftdi.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <chrono>
-#include <compare>
 #include <stop_token>
 #include <thread>
 
@@ -25,18 +25,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT245_BASE  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "FT245_BASE  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // Convenience cast — avoids repeating the cast everywhere in this file
-#define CTX (static_cast<struct ftdi_context*>(m_hDevice))
-
+#define CTX     (static_cast<struct ftdi_context *>(m_hDevice))
 
 // ============================================================================
 // Destructor
@@ -47,14 +46,13 @@ FT245Base::~FT245Base()
     FT245Base::close();
 }
 
-
 // ============================================================================
 // open_device
 // ============================================================================
 
-FT245Base::Status FT245Base::open_device(Variant  variant,
-                                          FifoMode fifoMode,
-                                          uint8_t  u8DeviceIndex)
+FT245Base::Status FT245Base::open_device(Variant variant,
+                                         FifoMode fifoMode,
+                                         uint8_t u8DeviceIndex)
 {
     // ── Validate mode vs variant ──────────────────────────────────────────────
     // FT245R does not support synchronous FIFO mode.
@@ -65,7 +63,7 @@ FT245Base::Status FT245Base::open_device(Variant  variant,
     }
 
     // ── Allocate a new ftdi_context ───────────────────────────────────────────
-    struct ftdi_context* ctx = ftdi_new();
+    struct ftdi_context *ctx = ftdi_new();
     if (!ctx) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_new() returned nullptr (out of memory?)"));
@@ -90,8 +88,7 @@ FT245Base::Status FT245Base::open_device(Variant  variant,
                                  static_cast<int>(pid),
                                  nullptr,
                                  nullptr,
-                                 static_cast<unsigned int>(u8DeviceIndex)) < 0)
-    {
+                                 static_cast<unsigned int>(u8DeviceIndex)) < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_usb_open_desc_index() failed, PID="); LOG_HEX16(pid);
                   LOG_STRING("index="); LOG_UINT32(u8DeviceIndex);
@@ -113,8 +110,8 @@ FT245Base::Status FT245Base::open_device(Variant  variant,
     // BITMODE_RESET (0x00) = async FIFO (both variants)
     // BITMODE_SYNC_FIFO (0x40) = sync FIFO (FT245BM only)
     const uint8_t mode = (fifoMode == FifoMode::Sync)
-                         ? BITMODE_SYNC_FIFO
-                         : BITMODE_RESET;
+                             ? BITMODE_SYNC_FIFO
+                             : BITMODE_RESET;
 
     // Mask 0xFF = all 8 data pins; direction is handled internally by the
     // device in FIFO mode (D0–D7 switch direction per-transfer).
@@ -155,7 +152,6 @@ FT245Base::Status FT245Base::open_device(Variant  variant,
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // close / is_open
 // ============================================================================
@@ -171,7 +167,6 @@ FT245Base::Status FT245Base::close()
     return Status::SUCCESS;
 }
 
-
 bool FT245Base::is_open() const
 {
     if (!m_hDevice) {
@@ -180,7 +175,6 @@ bool FT245Base::is_open() const
     }
     return true;
 }
-
 
 // ============================================================================
 // FIFO transport primitives
@@ -191,14 +185,14 @@ bool FT245Base::is_open() const
  *
  * Uses ftdi_write_data() which performs a synchronous USB bulk write.
  */
-FT245Base::Status FT245Base::fifo_write(const uint8_t* buf, size_t len) const
+FT245Base::Status FT245Base::fifo_write(const uint8_t *buf, size_t len) const
 {
     if (!buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
     int ret = ftdi_write_data(CTX,
-                              const_cast<uint8_t*>(buf),
+                              const_cast<uint8_t *>(buf),
                               static_cast<int>(len));
     if (ret < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -216,28 +210,26 @@ FT245Base::Status FT245Base::fifo_write(const uint8_t* buf, size_t len) const
     return Status::SUCCESS;
 }
 
-
 /**
  * @brief Read bytes from the FT245 RX FIFO with a timeout
  *
  * ftdi_read_data() is non-blocking; this wrapper polls with 1 ms sleeps
  * until the requested number of bytes arrives or the timeout expires.
  */
-FT245Base::Status FT245Base::fifo_read(uint8_t* buf, size_t len,
-                                        uint32_t timeoutMs,
-                                        size_t& bytesRead,
-                                        std::stop_token stop_tok) const
+FT245Base::Status FT245Base::fifo_read(uint8_t *buf, size_t len,
+                                       uint32_t timeoutMs,
+                                       size_t &bytesRead,
+                                       std::stop_token stop_tok) const
 {
     if (!buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
-    bytesRead = 0;
+    bytesRead            = 0;
 
     // 0 == infinite timeout: never expire this poll loop.
     const bool bInfinite = (timeoutMs == 0);
-    auto deadline = std::chrono::steady_clock::now()
-                    + std::chrono::milliseconds(timeoutMs);
+    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
     while (bytesRead < len) {
         int ret = ftdi_read_data(CTX,
@@ -268,7 +260,6 @@ FT245Base::Status FT245Base::fifo_read(uint8_t* buf, size_t len,
 
     return Status::SUCCESS;
 }
-
 
 /**
  * @brief Purge the device's RX and TX FIFOs

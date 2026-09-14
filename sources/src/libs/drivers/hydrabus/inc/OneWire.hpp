@@ -3,11 +3,11 @@
 
 #include "Protocol.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <optional>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <vector>
 
@@ -32,9 +32,9 @@ class Hydrabus;
  * ow.write({0xCC, 0x44});   // SKIP ROM + CONVERT T
  * @endcode
  */
-class OneWire : public Protocol {
+class OneWire : public Protocol
+{
 public:
-
     explicit OneWire(std::shared_ptr<Hydrabus> hydrabus);
 
     // -------------------------------------------------------------------------
@@ -116,13 +116,12 @@ public:
     bool swio_write_reg(uint8_t address, uint32_t value, std::stop_token stop_tok = {});
 
 private:
-
     bool _configure_port();
 
-    static constexpr uint8_t DEFAULT_CONFIG = 0b100;   ///< Pull-up enabled by default
+    static constexpr uint8_t DEFAULT_CONFIG = 0b100; ///< Pull-up enabled by default
     uint8_t _config{DEFAULT_CONFIG};
 };
 
 } // namespace HydraHAL
 
-#endif //HYDRABUS_ONEWIRE_HPP
+#endif // HYDRABUS_ONEWIRE_HPP

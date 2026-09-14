@@ -3,35 +3,34 @@
 #include "uNumeric.hpp"
 #include "uSystecCan.hpp"
 
-#include <errno.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <sys/socket.h>      // setsockopt
 #include <algorithm>
 #include <array>
+#include <errno.h>
+#include <linux/can.h>     // can_filter, CAN_EFF_FLAG, CAN_EFF_MASK, CAN_SFF_MASK
+#include <linux/can/raw.h> // SOL_CAN_RAW, CAN_RAW_FILTER
 #include <mutex>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string_view>
+#include <sys/socket.h> // setsockopt
 #include <utility>
 #include <vector>
-#include <linux/can.h>       // can_filter, CAN_EFF_FLAG, CAN_EFF_MASK, CAN_SFF_MASK
-#include <linux/can/raw.h>   // SOL_CAN_RAW, CAN_RAW_FILTER
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "SYSTEC_DRV  |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "SYSTEC_DRV  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 bool SYSTECCAN::is_open() const
 {
@@ -39,23 +38,21 @@ bool SYSTECCAN::is_open() const
     return m_iHandle >= 0;
 }
 
-
 void SYSTECCAN::set_tx_id(uint32_t u32Id)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_u32TxId = u32Id;
 }
 
-
 // ============================================================================
 // PUBLIC UNIFIED INTERFACE IMPLEMENTATION
 // ============================================================================
 
 SYSTECCAN::ReadResult SYSTECCAN::tout_read(uint32_t u32ReadTimeout,
-                               std::span<uint8_t> buffer,
-                               const ReadOptions& options,
-                               std::string_view xtra_params,
-                               std::stop_token stop_tok) const
+                                           std::span<uint8_t> buffer,
+                                           const ReadOptions &options,
+                                           std::string_view xtra_params,
+                                           std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -82,89 +79,75 @@ SYSTECCAN::ReadResult SYSTECCAN::tout_read(uint32_t u32ReadTimeout,
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (!xtra_params.empty())
-        {
+        if (!xtra_params.empty()) {
             uint32_t u32RxId = 0;
 
-            if (numeric::str2uint32(xtra_params, u32RxId))
-            {
+            if (numeric::str2uint32(xtra_params, u32RxId)) {
                 /* Build a kernel filter that accepts exactly this CAN ID.
                  * For extended frames (bit 31 set) also set CAN_EFF_FLAG in
                  * the mask so the comparison is made against the full 29-bit
                  * field. */
                 struct can_filter kf = {};
-                if (u32RxId & CAN_EFF_FLAG)
-                {
+                if (u32RxId & CAN_EFF_FLAG) {
                     kf.can_id   = u32RxId;
                     kf.can_mask = CAN_EFF_MASK | CAN_EFF_FLAG;
-                }
-                else
-                {
+                } else {
                     kf.can_id   = u32RxId & CAN_SFF_MASK;
                     kf.can_mask = CAN_SFF_MASK;
                 }
 
                 if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
-                                 &kf, sizeof(kf)) == 0)
-                {
+                                 &kf, sizeof(kf)) == 0) {
                     bTransientFilter = true;
-                    savedFilters = m_vFilters; // save current filter state for restore
+                    savedFilters     = m_vFilters; // save current filter state for restore
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                               LOG_STRING("tout_read: transient RX filter id:");
                               LOG_HEX32(u32RxId));
-                }
-                else
-                {
+                } else {
                     LOG_PRINT(LOG_WARNING, LOG_HDR;
                               LOG_STRING("tout_read: failed to set transient RX filter, errno:");
                               LOG_INT(errno));
                 }
-            }
-            else
-            {
+            } else {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
                           LOG_STRING("tout_read: xtra_params not a valid CAN ID, ignored:"));
             }
         }
     } // ---- mutex released here; blocking I/O proceeds without holding the lock
 
-    switch (options.mode)
-    {
-        case ReadMode::Exact:
-        {
-            size_t bytes_read = 0;
-            result.status           = timeout_read(u32ReadTimeout, buffer, bytes_read, stop_tok);
-            result.bytes_read       = bytes_read;
-            result.found_terminator = false;
-            break;
-        }
+    switch (options.mode) {
+    case ReadMode::Exact: {
+        size_t bytes_read       = 0;
+        result.status           = timeout_read(u32ReadTimeout, buffer, bytes_read, stop_tok);
+        result.bytes_read       = bytes_read;
+        result.found_terminator = false;
+        break;
+    }
 
-        case ReadMode::UntilDelimiter:
-        {
-            size_t bytes_read = 0;
-            result.status           = timeout_read_until(u32ReadTimeout, buffer,
-                                                         options.delimiter, bytes_read, stop_tok);
-            result.bytes_read       = bytes_read;
-            result.found_terminator = (result.status == Status::SUCCESS);
-            break;
-        }
+    case ReadMode::UntilDelimiter: {
+        size_t bytes_read       = 0;
+        result.status           = timeout_read_until(u32ReadTimeout, buffer,
+                                                     options.delimiter, bytes_read, stop_tok);
+        result.bytes_read       = bytes_read;
+        result.found_terminator = (result.status == Status::SUCCESS);
+        break;
+    }
 
-        case ReadMode::UntilToken:
-        {
-            result.status           = timeout_wait_for_token(u32ReadTimeout,
-                                                             options.token,
-                                                             options.use_buffer,
-                                                             stop_tok);
-            result.bytes_read       = 0; // Token search does not fill the user buffer
-            result.found_terminator = (result.status == Status::SUCCESS);
-            break;
-        }
+    case ReadMode::UntilToken: {
+        result.status           = timeout_wait_for_token(u32ReadTimeout,
+                                                         options.token,
+                                                         options.use_buffer,
+                                                         stop_tok);
+        result.bytes_read       = 0; // Token search does not fill the user buffer
+        result.found_terminator = (result.status == Status::SUCCESS);
+        break;
+    }
 
-        default:
-            result.status           = Status::INVALID_PARAM;
-            result.bytes_read       = 0;
-            result.found_terminator = false;
-            break;
+    default:
+        result.status           = Status::INVALID_PARAM;
+        result.bytes_read       = 0;
+        result.found_terminator = false;
+        break;
     }
 
     /* ---------- locked section: restore filter state -----------------------
@@ -178,12 +161,10 @@ SYSTECCAN::ReadResult SYSTECCAN::tout_read(uint32_t u32ReadTimeout,
      * Errors here are non-fatal and only logged; the read result is already
      * determined at this point.
      */
-    if (bTransientFilter)
-    {
+    if (bTransientFilter) {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (savedFilters.empty())
-        {
+        if (savedFilters.empty()) {
             // Previous state was accept-all — restore it.
             //
             // IMPORTANT: setsockopt(CAN_RAW_FILTER, nullptr, 0) does NOT mean
@@ -195,12 +176,11 @@ SYSTECCAN::ReadResult SYSTECCAN::tout_read(uint32_t u32ReadTimeout,
             // matches every id: can_id = 0, can_mask = 0, since
             // (frame_id & 0) == (0 & 0) is always true.
             struct can_filter acceptAllFilter = {};
-            acceptAllFilter.can_id  = 0;
-            acceptAllFilter.can_mask = 0;
+            acceptAllFilter.can_id            = 0;
+            acceptAllFilter.can_mask          = 0;
 
             if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
-                             &acceptAllFilter, sizeof(acceptAllFilter)) < 0)
-            {
+                             &acceptAllFilter, sizeof(acceptAllFilter)) < 0) {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
                           LOG_STRING("tout_read: failed to restore accept-all filter, errno:");
                           LOG_INT(errno));
@@ -208,15 +188,12 @@ SYSTECCAN::ReadResult SYSTECCAN::tout_read(uint32_t u32ReadTimeout,
             m_vFilters.clear(); // keep mirror in sync; "empty" is our own
                                 // convention meaning accept-all, not "no filter
                                 // programmed on the socket"
-        }
-        else
-        {
+        } else {
             m_vFilters = savedFilters;
 
             if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
                              m_vFilters.data(),
-                             static_cast<socklen_t>(m_vFilters.size() * sizeof(struct can_filter))) < 0)
-            {
+                             static_cast<socklen_t>(m_vFilters.size() * sizeof(struct can_filter))) < 0) {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
                           LOG_STRING("tout_read: failed to restore previous filters, errno:");
                           LOG_INT(errno));
@@ -231,16 +208,13 @@ SYSTECCAN::ReadResult SYSTECCAN::tout_read(uint32_t u32ReadTimeout,
     return result;
 }
 
-
 uint32_t SYSTECCAN::resolveTxId(std::string_view xtra_params) const
 {
-    if (xtra_params.empty())
-    {
+    if (xtra_params.empty()) {
         return m_u32TxId;
     }
     uint32_t u32Override = 0;
-    if (numeric::str2uint32(xtra_params, u32Override))
-    {
+    if (numeric::str2uint32(xtra_params, u32Override)) {
         return u32Override;
     }
     LOG_PRINT(LOG_WARNING, LOG_HDR;
@@ -249,9 +223,9 @@ uint32_t SYSTECCAN::resolveTxId(std::string_view xtra_params) const
 }
 
 SYSTECCAN::WriteResult SYSTECCAN::tout_write(uint32_t u32WriteTimeout,
-                                 std::span<const uint8_t> buffer,
-                                 std::string_view xtra_params,
-                                 std::stop_token /*stop_tok*/) const
+                                             std::span<const uint8_t> buffer,
+                                             std::string_view xtra_params,
+                                             std::stop_token /*stop_tok*/) const
 {
     WriteResult result;
 
@@ -275,11 +249,10 @@ SYSTECCAN::WriteResult SYSTECCAN::tout_write(uint32_t u32WriteTimeout,
         std::lock_guard<std::mutex> lock(m_mutex);
         u32EffectiveTxId = resolveTxId(xtra_params);
 
-        if (!xtra_params.empty())
-        {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+        if (!xtra_params.empty()) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("tout_write: effective TX ID for this exchange:");
-                          LOG_HEX32(u32EffectiveTxId));
+                      LOG_HEX32(u32EffectiveTxId));
         }
 
         /* ---- Arm the RX acceptance filter for this exact TX id -----------
@@ -302,42 +275,36 @@ SYSTECCAN::WriteResult SYSTECCAN::tout_write(uint32_t u32WriteTimeout,
          * if this exact id isn't already covered by an existing entry.
          */
         const uint32_t u32FilterMask = (u32EffectiveTxId & CAN_EFF_FLAG)
-                                      ? (CAN_EFF_FLAG | CAN_EFF_MASK)
-                                      : CAN_SFF_MASK;
+                                           ? (CAN_EFF_FLAG | CAN_EFF_MASK)
+                                           : CAN_SFF_MASK;
 
-        const bool bAlreadyCovered = m_vFilters.empty() ||
-            std::any_of(m_vFilters.begin(), m_vFilters.end(),
-                        [&](const CanFilter& f)
-                        {
-                            return f.can_id == u32EffectiveTxId && f.can_mask == u32FilterMask;
-                        });
+        const bool bAlreadyCovered   = m_vFilters.empty() ||
+                                       std::any_of(m_vFilters.begin(), m_vFilters.end(),
+                                                   [&](const CanFilter &f) {
+                                                     return f.can_id == u32EffectiveTxId && f.can_mask == u32FilterMask;
+                                                   });
 
-        if (!bAlreadyCovered)
-        {
+        if (!bAlreadyCovered) {
             std::vector<CanFilter> vWidened = m_vFilters;
             vWidened.push_back(CanFilter{u32EffectiveTxId, u32FilterMask});
 
             std::vector<struct can_filter> kFilters;
             kFilters.reserve(vWidened.size());
-            for (const auto& f : vWidened)
-            {
+            for (const auto &f : vWidened) {
                 struct can_filter kf = {};
-                kf.can_id   = f.can_id;
-                kf.can_mask = f.can_mask;
+                kf.can_id            = f.can_id;
+                kf.can_mask          = f.can_mask;
                 kFilters.push_back(kf);
             }
 
             if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
                              kFilters.data(),
-                             static_cast<socklen_t>(kFilters.size() * sizeof(struct can_filter))) == 0)
-            {
+                             static_cast<socklen_t>(kFilters.size() * sizeof(struct can_filter))) == 0) {
                 m_vFilters = std::move(vWidened);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("tout_write: widened RX filter to also accept TX id:");
                           LOG_HEX32(u32EffectiveTxId));
-            }
-            else
-            {
+            } else {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
                           LOG_STRING("tout_write: failed to widen RX filter for TX id, errno:");
                           LOG_INT(errno));
@@ -352,26 +319,24 @@ SYSTECCAN::WriteResult SYSTECCAN::tout_write(uint32_t u32WriteTimeout,
     return result;
 }
 
-
 // ============================================================================
 // PRIVATE LEGACY IMPLEMENTATION (INTERNAL USE ONLY)
 // ============================================================================
 
 SYSTECCAN::Status SYSTECCAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
-                                        std::span<const uint8_t> token,
-                                        bool useBuffer,
-                                        std::stop_token stop_tok) const
+                                                    std::span<const uint8_t> token,
+                                                    bool useBuffer,
+                                                    std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
-    if (token.empty() || szTokenLength == 0 || szTokenLength >= CAN_DRV_MAX_BUFLENGTH)
-    {
+    if (token.empty() || szTokenLength == 0 || szTokenLength >= CAN_DRV_MAX_BUFLENGTH) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid token or length"));
         return Status::INVALID_PARAM;
     }
 
-    const uint32_t u32Timeout      = (u32ReadTimeout == 0) ? CAN_READ_DEFAULT_TIMEOUT
-                                                           : u32ReadTimeout;
-    const bool     bReturnOnTimeout = (u32ReadTimeout != 0);
+    const uint32_t u32Timeout   = (u32ReadTimeout == 0) ? CAN_READ_DEFAULT_TIMEOUT
+                                                        : u32ReadTimeout;
+    const bool bReturnOnTimeout = (u32ReadTimeout != 0);
 
     std::vector<int> viLps;
     build_kmp_table(token, szTokenLength, viLps);
@@ -379,21 +344,19 @@ SYSTECCAN::Status SYSTECCAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
     return kmp_stream_match(token, viLps, u32Timeout, bReturnOnTimeout, useBuffer, stop_tok);
 }
 
-
 void SYSTECCAN::build_kmp_table(std::span<const uint8_t> pattern,
-                          size_t szLength,
-                          std::vector<int>& viLps) const
+                                size_t szLength,
+                                std::vector<int> &viLps) const
 {
     ukmp::build_kmp_table(pattern, szLength, viLps);
 }
 
-
 SYSTECCAN::Status SYSTECCAN::kmp_stream_match(std::span<const uint8_t> token,
-                                  const std::vector<int>& viLps,
-                                  uint32_t u32Timeout,
-                                  bool bReturnOnTimeout,
-                                  bool useBuffer,
-                                  std::stop_token stop_tok) const
+                                              const std::vector<int> &viLps,
+                                              uint32_t u32Timeout,
+                                              bool bReturnOnTimeout,
+                                              bool useBuffer,
+                                              std::stop_token stop_tok) const
 {
     // Receive frames and feed their payload bytes one-by-one into KMP.
     // A scratch buffer sized to one max classic-CAN payload (8 bytes) is
@@ -402,35 +365,31 @@ SYSTECCAN::Status SYSTECCAN::kmp_stream_match(std::span<const uint8_t> token,
     // The ring buffer (used only when useBuffer) is sized independently, to
     // the driver's overall max buffer length rather than a single frame.
     return ukmp::kmp_stream_match(
-        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
+        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t &bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
         token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
         /*szChunkBufferSize=*/CAN_DRV_MAX_DLEN, /*szRingBufferSize=*/CAN_DRV_MAX_BUFLENGTH);
 }
 
-
 SYSTECCAN::Status SYSTECCAN::timeout_read_until(uint32_t u32ReadTimeout,
-                                    std::span<uint8_t> buffer,
-                                    uint8_t cDelimiter,
-                                    size_t& szBytesRead,
-                                    std::stop_token stop_tok) const
+                                                std::span<uint8_t> buffer,
+                                                uint8_t cDelimiter,
+                                                size_t &szBytesRead,
+                                                std::stop_token stop_tok) const
 {
-    if (buffer.size() < 2)
-    {
+    if (buffer.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Buffer too small for delimiter + null terminator"));
         return Status::INVALID_PARAM;
     }
 
-    szBytesRead = 0;
-    SYSTECCAN::Status eResult = Status::RETVAL_NOT_SET;
+    szBytesRead                                        = 0;
+    SYSTECCAN::Status eResult                          = Status::RETVAL_NOT_SET;
 
     std::array<uint8_t, CAN_DRV_MAX_DLEN> framePayload = {};
 
-    while (eResult == Status::RETVAL_NOT_SET)
-    {
+    while (eResult == Status::RETVAL_NOT_SET) {
         const size_t bytesRemaining = buffer.size() - szBytesRead - 1; // reserve for '\0'
-        if (bytesRemaining == 0)
-        {
+        if (bytesRemaining == 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer full before delimiter found"));
             return Status::BUFFER_OVERFLOW;
         }
@@ -442,26 +401,19 @@ SYSTECCAN::Status SYSTECCAN::timeout_read_until(uint32_t u32ReadTimeout,
                          std::span<uint8_t>(framePayload.data(), framePayload.size()),
                          frameBytes, stop_tok);
 
-        if (readResult == Status::SUCCESS && frameBytes > 0)
-        {
-            for (size_t i = 0; i < frameBytes && szBytesRead < buffer.size() - 1; ++i)
-            {
+        if (readResult == Status::SUCCESS && frameBytes > 0) {
+            for (size_t i = 0; i < frameBytes && szBytesRead < buffer.size() - 1; ++i) {
                 const uint8_t ch = framePayload[i];
 
-                if (ch == cDelimiter)
-                {
+                if (ch == cDelimiter) {
                     buffer[szBytesRead] = '\0';
                     return Status::SUCCESS;
                 }
                 buffer[szBytesRead++] = ch;
             }
-        }
-        else if (readResult == Status::READ_TIMEOUT)
-        {
+        } else if (readResult == Status::READ_TIMEOUT) {
             eResult = (u32ReadTimeout > 0) ? Status::READ_TIMEOUT : Status::PORT_ACCESS;
-        }
-        else
-        {
+        } else {
             eResult = Status::PORT_ACCESS;
         }
     }

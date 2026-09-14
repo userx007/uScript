@@ -25,11 +25,11 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <iomanip>
 #include <memory>
 #include <span>
 #include <sstream>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -39,14 +39,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "CH347_GPIO  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR        "CH347_GPIO  |"
+#define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "GPIO"
 
@@ -54,7 +54,7 @@
 //             Internal parse helper                                           //
 /////////////////////////////////////////////////////////////////////////////////
 
-static bool parseHexByte(const std::string& s, uint8_t& out)
+static bool parseHexByte(const std::string &s, uint8_t &out)
 {
     return numeric::str2uint8(s, out);
 }
@@ -62,8 +62,9 @@ static bool parseHexByte(const std::string& s, uint8_t& out)
 static std::string fmtBinary8(uint8_t v)
 {
     std::string s;
-    for (int bit = 7; bit >= 0; --bit)
+    for (int bit = 7; bit >= 0; --bit) {
         s += ((v >> bit) & 1) ? '1' : '0';
+    }
     return s;
 }
 
@@ -71,7 +72,7 @@ static std::string fmtBinary8(uint8_t v)
 //                       HELP                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_help(const std::string&, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_help(const std::string &, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<CH347Plugin>(this, PROTOCOL_NAME);
 }
@@ -80,7 +81,7 @@ bool CH347Plugin::m_handle_gpio_help(const std::string&, std::stop_token /*st*/)
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_open(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -95,19 +96,22 @@ bool CH347Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*
     // Accept optional device=path override
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
         if (kv.size() == 2 && kv[0] == "device") {
             devPath = kv[1];
         }
     }
-    const_cast<CH347Plugin*>(this)->m_sIniValues.strDevicePath = devPath;
+    const_cast<CH347Plugin *>(this)->m_sIniValues.strDevicePath = devPath;
 
-    if (m_pGPIO) { m_pGPIO->close(); m_pGPIO.reset(); }
+    if (m_pGPIO) {
+        m_pGPIO->close();
+        m_pGPIO.reset();
+    }
 
     m_pGPIO = std::make_unique<CH347GPIO>();
-    auto s = m_pGPIO->open(devPath);
+    auto s  = m_pGPIO->open(devPath);
     if (s != CH347GPIO::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("GPIO open failed"));
         m_pGPIO.reset();
@@ -123,7 +127,7 @@ bool CH347Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*
 //                       CLOSE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_close(const std::string &, std::stop_token /*st*/) const
 {
     if (m_pGPIO) {
         m_pGPIO->close();
@@ -139,7 +143,7 @@ bool CH347Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*/
 //                       DIR                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_dir(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -151,20 +155,26 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*s
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     uint8_t outMask = 0x00u;
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
     bool parsed = false;
 
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
+        if (kv.size() != 2) {
+            continue;
+        }
         if (kv[0] == "output") {
-            if (!parseHexByte(kv[1], outMask)) return false;
+            if (!parseHexByte(kv[1], outMask)) {
+                return false;
+            }
             parsed = true;
         }
         // "input" is just ~output; ignore if provided (informational only)
@@ -180,15 +190,15 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*s
 
     m_sGpioCfg.dirMask = outMask;
 
-    auto s = p->pin_set_direction(GpioPin::GPIO_ALL, outMask > 0);
+    auto s             = p->pin_set_direction(GpioPin::GPIO_ALL, outMask > 0);
     if (s != CH347GPIO::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dir: failed to set direction"));
         return false;
     }
 
     // Apply each pin's direction individually via the 3-byte buffer API
-    const uint8_t buf[3] = { 0xFFu, outMask, m_sGpioCfg.dataValue };
-    auto wr = p->tout_write(0, std::span<const uint8_t>(buf, 3));
+    const uint8_t buf[3] = {0xFFu, outMask, m_sGpioCfg.dataValue};
+    auto wr              = p->tout_write(0, std::span<const uint8_t>(buf, 3));
 
     if (wr.status != CH347GPIO::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dir: failed to apply direction"));
@@ -208,7 +218,7 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*s
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_write(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -220,21 +230,35 @@ bool CH347Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     uint8_t pinMask   = 0xFFu;
     uint8_t levelMask = 0x00u;
-    bool    hasPins   = false, hasLevels = false;
+    bool hasPins = false, hasLevels = false;
 
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
-        if (kv[0] == "pins")   { if (!parseHexByte(kv[1], pinMask))   return false; hasPins   = true; }
-        if (kv[0] == "levels") { if (!parseHexByte(kv[1], levelMask)) return false; hasLevels = true; }
+        if (kv.size() != 2) {
+            continue;
+        }
+        if (kv[0] == "pins") {
+            if (!parseHexByte(kv[1], pinMask)) {
+                return false;
+            }
+            hasPins = true;
+        }
+        if (kv[0] == "levels") {
+            if (!parseHexByte(kv[1], levelMask)) {
+                return false;
+            }
+            hasLevels = true;
+        }
     }
 
     if (!hasLevels) {
@@ -249,7 +273,7 @@ bool CH347Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /
 
     m_sGpioCfg.dataValue = (m_sGpioCfg.dataValue & ~pinMask) | (levelMask & pinMask);
 
-    auto s = p->pins_write(pinMask, levelMask);
+    auto s               = p->pins_write(pinMask, levelMask);
     if (s != CH347GPIO::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write failed"));
         return false;
@@ -265,7 +289,7 @@ bool CH347Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /
 //                       SET                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -273,19 +297,23 @@ bool CH347Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*s
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     uint8_t mask = 0;
     // Accept "pins=0xNN" or bare "0xNN"
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
     bool parsed = false;
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
         if (kv.size() == 2 && kv[0] == "pins") {
-            if (!parseHexByte(kv[1], mask)) return false;
+            if (!parseHexByte(kv[1], mask)) {
+                return false;
+            }
             parsed = true;
         }
     }
@@ -310,7 +338,7 @@ bool CH347Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*s
 //                       CLEAR                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -318,18 +346,22 @@ bool CH347Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     uint8_t mask = 0;
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
     bool parsed = false;
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
         if (kv.size() == 2 && kv[0] == "pins") {
-            if (!parseHexByte(kv[1], mask)) return false;
+            if (!parseHexByte(kv[1], mask)) {
+                return false;
+            }
             parsed = true;
         }
     }
@@ -354,7 +386,7 @@ bool CH347Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /
 //                       TOGGLE                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_toggle(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -362,18 +394,22 @@ bool CH347Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token 
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     uint8_t mask = 0;
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
     bool parsed = false;
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
         if (kv.size() == 2 && kv[0] == "pins") {
-            if (!parseHexByte(kv[1], mask)) return false;
+            if (!parseHexByte(kv[1], mask)) {
+                return false;
+            }
             parsed = true;
         }
     }
@@ -400,7 +436,7 @@ bool CH347Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token 
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_read(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -408,17 +444,19 @@ bool CH347Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
-    uint8_t iDir  = 0;
-    uint8_t iData = 0;
+    uint8_t iDir   = 0;
+    uint8_t iData  = 0;
 
     // Use the 2-byte read interface
     uint8_t buf[2] = {0, 0};
     ICommDriver::ReadOptions opts;
     opts.mode = ICommDriver::ReadMode::Exact;
-    auto rd = p->tout_read(0, std::span<uint8_t>(buf, 2), opts);
+    auto rd   = p->tout_read(0, std::span<uint8_t>(buf, 2), opts);
 
     if (rd.status != CH347GPIO::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read failed"));

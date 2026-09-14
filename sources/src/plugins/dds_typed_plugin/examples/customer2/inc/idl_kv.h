@@ -28,50 +28,54 @@
  * scalars/strings — add it in kv_parse_scalar() below if a real payload
  * needs it (e.g. a label containing a comma).
  */
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 
-typedef enum { KV_SCALAR, KV_OBJECT, KV_ARRAY } KvKind;
+typedef enum { KV_SCALAR,
+               KV_OBJECT,
+               KV_ARRAY } KvKind;
 
-typedef struct KvNode {
+typedef struct KvNode
+{
     KvKind kind;
-    char* key;              /* NULL for array elements */
-    char* scalar;           /* KV_SCALAR only, NUL-terminated */
-    struct KvNode** children; /* KV_OBJECT (keyed) / KV_ARRAY (unkeyed) */
+    char *key;                /* NULL for array elements */
+    char *scalar;             /* KV_SCALAR only, NUL-terminated */
+    struct KvNode **children; /* KV_OBJECT (keyed) / KV_ARRAY (unkeyed) */
     size_t n_children;
 } KvNode;
 
 /* Parse `text` into a tree of implicit top-level KV_OBJECT. Returns NULL
  * on malformed input. Caller must kv_free() the result. */
-KvNode* kv_parse(const char* text);
+KvNode *kv_parse(const char *text);
 
 /* Look up a direct child of an object node by key. NULL if absent or
  * `node` is not a KV_OBJECT. */
-const KvNode* kv_get(const KvNode* node, const char* key);
+const KvNode *kv_get(const KvNode *node, const char *key);
 
 /* Convenience scalar readers. Return false (leaving *out untouched) if
  * `node` is NULL or not a KV_SCALAR, or the text doesn't parse as that
  * type. */
-bool kv_as_i64(const KvNode* node, long long* out);
-bool kv_as_double(const KvNode* node, double* out);
-bool kv_as_bool(const KvNode* node, bool* out);
-const char* kv_as_str(const KvNode* node); /* NULL if not KV_SCALAR */
+bool kv_as_i64(const KvNode *node, long long *out);
+bool kv_as_double(const KvNode *node, double *out);
+bool kv_as_bool(const KvNode *node, bool *out);
+const char *kv_as_str(const KvNode *node); /* NULL if not KV_SCALAR */
 
-void kv_free(KvNode* node);
+void kv_free(KvNode *node);
 
 /* --- Printing (encode-side) ------------------------------------------- */
 
 /* Minimal growable string buffer used by generated encode() functions so
  * they don't have to hand-roll snprintf offset bookkeeping. */
-typedef struct {
-    char* buf;
+typedef struct
+{
+    char *buf;
     size_t cap;
     size_t len; /* excludes NUL */
     bool overflow;
 } KvWriter;
 
-void kv_writer_init(KvWriter* w, char* buf, size_t cap);
+void kv_writer_init(KvWriter *w, char *buf, size_t cap);
 /* Appends raw text (no escaping). Sets w->overflow on truncation. */
-void kv_write(KvWriter* w, const char* fmt, ...);
+void kv_write(KvWriter *w, const char *fmt, ...);
 
 #endif /* IDL_KV_H */

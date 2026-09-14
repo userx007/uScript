@@ -3,15 +3,15 @@
 
 #include "ICommDriver.hpp"
 
+#include <array>
+#include <cstdint>
+#include <cstdio>
+#include <mutex>
+#include <span>
 #include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <span>
-#include <array>
-#include <mutex>
-#include <cstdint>
-#include <cstdio>
 
 /**
  * @brief Raw (layer-2) Ethernet driver implementing the ICommDriver interface.
@@ -92,231 +92,228 @@
  */
 class RawEth : public ICommDriver
 {
-    public:
+public:
+    static constexpr size_t RAWETH_MAC_ADDR_LEN            = 6;    /**< Bytes in a MAC address.                    */
+    static constexpr size_t RAWETH_ETH_HEADER_LEN          = 14;   /**< dst(6) + src(6) + EtherType(2).            */
+    static constexpr size_t RAWETH_MAX_PAYLOAD             = 1500; /**< Standard (non-jumbo) Ethernet MTU payload. */
+    static constexpr size_t RAWETH_MAX_FRAME_LEN           = RAWETH_ETH_HEADER_LEN + RAWETH_MAX_PAYLOAD;
+    static constexpr size_t RAWETH_MAX_BUFLENGTH           = 256;    /**< Max assembled buffer length (delimiter/token modes). */
+    static constexpr uint16_t RAWETH_DEFAULT_ETHERTYPE     = 0x88B5; /**< IEEE 802 "Local Experimental Ethertype 1". */
+    static constexpr uint32_t RAWETH_READ_DEFAULT_TIMEOUT  = 5000;   /**< Default read timeout in milliseconds.      */
+    static constexpr uint32_t RAWETH_WRITE_DEFAULT_TIMEOUT = 5000;   /**< Default write timeout in milliseconds.     */
 
-        static constexpr size_t   RAWETH_MAC_ADDR_LEN          = 6;      /**< Bytes in a MAC address.                    */
-        static constexpr size_t   RAWETH_ETH_HEADER_LEN         = 14;    /**< dst(6) + src(6) + EtherType(2).            */
-        static constexpr size_t   RAWETH_MAX_PAYLOAD            = 1500;  /**< Standard (non-jumbo) Ethernet MTU payload. */
-        static constexpr size_t   RAWETH_MAX_FRAME_LEN          = RAWETH_ETH_HEADER_LEN + RAWETH_MAX_PAYLOAD;
-        static constexpr size_t   RAWETH_MAX_BUFLENGTH          = 256;   /**< Max assembled buffer length (delimiter/token modes). */
-        static constexpr uint16_t RAWETH_DEFAULT_ETHERTYPE      = 0x88B5;/**< IEEE 802 "Local Experimental Ethertype 1". */
-        static constexpr uint32_t RAWETH_READ_DEFAULT_TIMEOUT   = 5000;  /**< Default read timeout in milliseconds.      */
-        static constexpr uint32_t RAWETH_WRITE_DEFAULT_TIMEOUT  = 5000;  /**< Default write timeout in milliseconds.     */
+    using MacAddr                                          = std::array<uint8_t, RAWETH_MAC_ADDR_LEN>;
 
-        using MacAddr = std::array<uint8_t, RAWETH_MAC_ADDR_LEN>;
+    static constexpr MacAddr RAWETH_BROADCAST_MAC          = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-        static constexpr MacAddr RAWETH_BROADCAST_MAC = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    RawEth()                                               = default;
 
-        RawEth() = default;
+    /**
+     * @brief Construct and immediately bind to strIfaceName.
+     * @param strIfaceName      Interface name, e.g. "eth0".
+     * @param defaultDestMac    Default destination MAC for writes (broadcast if omitted).
+     * @param u16EtherType      EtherType to bind/send with (0 = use RAWETH_DEFAULT_ETHERTYPE).
+     * @param bPromiscuous      Put the interface into promiscuous mode while open.
+     * @param strIdentityLabel  Display text for the GUI comm-dump panel (see
+     *                          describeConnection()), supplied separately from
+     *                          strIfaceName by the caller — e.g. "eth0" or a
+     *                          friendlier interface name.
+     */
+    explicit RawEth(const std::string &strIfaceName,
+                    const MacAddr &defaultDestMac       = RAWETH_BROADCAST_MAC,
+                    uint16_t u16EtherType               = 0,
+                    bool bPromiscuous                   = false,
+                    const std::string &strIdentityLabel = {})
+        : m_strIdentityLabel(strIdentityLabel)
+    {
+        open(strIfaceName, defaultDestMac, u16EtherType, bPromiscuous);
+    }
 
-        /**
-         * @brief Construct and immediately bind to strIfaceName.
-         * @param strIfaceName      Interface name, e.g. "eth0".
-         * @param defaultDestMac    Default destination MAC for writes (broadcast if omitted).
-         * @param u16EtherType      EtherType to bind/send with (0 = use RAWETH_DEFAULT_ETHERTYPE).
-         * @param bPromiscuous      Put the interface into promiscuous mode while open.
-         * @param strIdentityLabel  Display text for the GUI comm-dump panel (see
-         *                          describeConnection()), supplied separately from
-         *                          strIfaceName by the caller — e.g. "eth0" or a
-         *                          friendlier interface name.
-         */
-        explicit RawEth(const std::string& strIfaceName,
-                        const MacAddr& defaultDestMac = RAWETH_BROADCAST_MAC,
-                        uint16_t u16EtherType = 0,
-                        bool bPromiscuous = false,
-                        const std::string& strIdentityLabel = {})
-            : m_strIdentityLabel(strIdentityLabel)
-        {
-            open(strIfaceName, defaultDestMac, u16EtherType, bPromiscuous);
+    virtual ~RawEth()
+    {
+        close();
+    }
+
+    /**
+     * @brief Resolve strIfaceName, open an AF_PACKET/SOCK_RAW socket, and
+     *        bind it to that interface + EtherType.
+     *
+     * @param strIfaceName    Interface name, e.g. "eth0".
+     * @param defaultDestMac  Default destination MAC used when xtra_params
+     *                        does not override it (broadcast if omitted).
+     * @param u16EtherType    EtherType to bind/send with (0 = use RAWETH_DEFAULT_ETHERTYPE).
+     * @param bPromiscuous    Put the interface into promiscuous mode while open;
+     *                        restored to its prior state on close().
+     * @return Status::SUCCESS or an error code.
+     */
+    Status open(const std::string &strIfaceName,
+                const MacAddr &defaultDestMac = RAWETH_BROADCAST_MAC,
+                uint16_t u16EtherType         = 0,
+                bool bPromiscuous             = false);
+
+    /**
+     * @brief Close the socket, restoring promiscuous mode if this driver set it.
+     * @return Status::SUCCESS.
+     */
+    Status close();
+
+    /**
+     * @brief Check whether the socket is open (bound).
+     * @return true if the socket fd is valid.
+     */
+    bool is_open() const override;
+
+    /**
+     * @brief The interface's own MAC address, used as the source MAC on writes.
+     *        Only valid while open (all-zero otherwise).
+     */
+    MacAddr local_mac() const;
+
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     *
+     * xtra_params empty: "<label> \u2192 <default dest MAC>".
+     * xtra_params non-empty: parsed the same way tout_write() parses it (via
+     * resolve_destination()), so the label reflects the ACTUAL destination
+     * MAC/EtherType this exchange used — including silently falling back to
+     * the default on a malformed override, exactly like tout_write() does.
+     */
+    CommDetails describeConnection(std::string_view xtra_params = {}) const override
+    {
+        MacAddr destMac    = m_defaultDestMac;
+        uint16_t etherType = m_u16EtherType;
+        if (!xtra_params.empty()) {
+            resolve_destination(xtra_params, destMac, etherType);
         }
 
-        virtual ~RawEth()
-        {
-            close();
-        }
+        char macStr[18];
+        std::snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+                      destMac[0], destMac[1], destMac[2], destMac[3], destMac[4], destMac[5]);
 
-        /**
-         * @brief Resolve strIfaceName, open an AF_PACKET/SOCK_RAW socket, and
-         *        bind it to that interface + EtherType.
-         *
-         * @param strIfaceName    Interface name, e.g. "eth0".
-         * @param defaultDestMac  Default destination MAC used when xtra_params
-         *                        does not override it (broadcast if omitted).
-         * @param u16EtherType    EtherType to bind/send with (0 = use RAWETH_DEFAULT_ETHERTYPE).
-         * @param bPromiscuous    Put the interface into promiscuous mode while open;
-         *                        restored to its prior state on close().
-         * @return Status::SUCCESS or an error code.
-         */
-        Status open(const std::string& strIfaceName,
-                   const MacAddr& defaultDestMac = RAWETH_BROADCAST_MAC,
-                   uint16_t u16EtherType = 0,
-                   bool bPromiscuous = false);
+        char label[k_labelSize];
+        std::snprintf(label, sizeof(label), "%s \xe2\x86\x92 %s/%04X",
+                      m_strIdentityLabel.c_str(), macStr, etherType);
+        return commdump_details(CommFamily::NET, label);
+    }
 
-        /**
-         * @brief Close the socket, restoring promiscuous mode if this driver set it.
-         * @return Status::SUCCESS.
-         */
-        Status close();
+    /**
+     * @brief Unified read interface supporting multiple operation modes.
+     *
+     * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
+     * @param buffer          Buffer to receive the frame PAYLOAD into (no L2 header).
+     * @param options         Read operation configuration.
+     * @param xtra_params     Unused by tout_read() — see class docs. Any
+     *                        non-empty value is logged and otherwise ignored.
+     * @return ReadResult containing status, bytes read, and terminator found flag.
+     *
+     * @details
+     * - ReadMode::Exact:          One recvfrom(2); one frame's payload, up to buffer.size().
+     * - ReadMode::UntilDelimiter: Accumulate payload bytes across frames until delimiter found.
+     * - ReadMode::UntilToken:     KMP search across streamed frame payloads; bytes_read = 0.
+     */
+    ReadResult tout_read(uint32_t u32ReadTimeout,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Check whether the socket is open (bound).
-         * @return true if the socket fd is valid.
-         */
-        bool is_open() const override;
+    /**
+     * @brief Unified write interface. Sends buffer as one frame's payload.
+     *
+     * @param u32WriteTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
+     * @param buffer           Frame payload to send (max RAWETH_MAX_PAYLOAD bytes).
+     * @param xtra_params      Optional per-call destination MAC / EtherType
+     *                         override; see class docs for format.
+     * @return WriteResult containing status and bytes written (payload bytes, not framed bytes).
+     */
+    WriteResult tout_write(uint32_t u32WriteTimeout,
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief The interface's own MAC address, used as the source MAC on writes.
-         *        Only valid while open (all-zero otherwise).
-         */
-        MacAddr local_mac() const;
+private:
+    int m_iHandle            = -1;                       /**< AF_PACKET socket file descriptor.        */
+    int m_iIfIndex           = -1;                       /**< Interface index (SIOCGIFINDEX).          */
+    MacAddr m_ownMac         = {};                       /**< This interface's own MAC address.        */
+    MacAddr m_defaultDestMac = RAWETH_BROADCAST_MAC;     /**< Default destination MAC. */
+    uint16_t m_u16EtherType  = RAWETH_DEFAULT_ETHERTYPE; /**< Bound/default EtherType. */
+    bool m_bPromiscSetByUs   = false;                    /**< Whether open() enabled promiscuous mode. */
+    mutable std::mutex m_mutex;                          /**< Protects concurrent access.               */
+    std::string m_strIdentityLabel;                      /**< GUI comm-dump display label, see describeConnection(). */
 
-        /**
-         * @brief Describe this connection for the GUI comm-dump panel.
-         *
-         * xtra_params empty: "<label> \u2192 <default dest MAC>".
-         * xtra_params non-empty: parsed the same way tout_write() parses it (via
-         * resolve_destination()), so the label reflects the ACTUAL destination
-         * MAC/EtherType this exchange used — including silently falling back to
-         * the default on a malformed override, exactly like tout_write() does.
-         */
-        CommDetails describeConnection(std::string_view xtra_params = {}) const override
-        {
-            MacAddr  destMac    = m_defaultDestMac;
-            uint16_t etherType  = m_u16EtherType;
-            if (!xtra_params.empty()) {
-                resolve_destination(xtra_params, destMac, etherType);
-            }
+    // -----------------------------------------------------------------------
+    // Internal transport primitives
+    // -----------------------------------------------------------------------
 
-            char macStr[18];
-            std::snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
-                          destMac[0], destMac[1], destMac[2], destMac[3], destMac[4], destMac[5]);
+    /**
+     * @brief Receive exactly one frame in one poll(2) + recvfrom(2) pair,
+     * strip the L2 header, and copy up to buffer.size() bytes of the
+     * payload into buffer. szBytesRead is set to the number of payload
+     * bytes actually copied (which may be less than the frame's full
+     * payload if buffer is smaller).
+     */
+    Status timeout_read(uint32_t u32ReadTimeout,
+                        std::span<uint8_t> buffer,
+                        size_t &szBytesRead,
+                        std::stop_token stop_tok = {}) const;
 
-            char label[k_labelSize];
-            std::snprintf(label, sizeof(label), "%s \xe2\x86\x92 %s/%04X",
-                          m_strIdentityLabel.c_str(), macStr, etherType);
-            return commdump_details(CommFamily::NET, label);
-        }
+    /**
+     * @brief Accumulate received frame payloads until cDelimiter is found
+     * or the buffer is full. Null-terminates on Status::SUCCESS.
+     */
+    Status timeout_read_until(uint32_t u32ReadTimeout,
+                              std::span<uint8_t> buffer,
+                              uint8_t cDelimiter,
+                              size_t &szBytesRead,
+                              std::stop_token stop_tok = {}) const;
 
-        /**
-         * @brief Unified read interface supporting multiple operation modes.
-         *
-         * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
-         * @param buffer          Buffer to receive the frame PAYLOAD into (no L2 header).
-         * @param options         Read operation configuration.
-         * @param xtra_params     Unused by tout_read() — see class docs. Any
-         *                        non-empty value is logged and otherwise ignored.
-         * @return ReadResult containing status, bytes read, and terminator found flag.
-         *
-         * @details
-         * - ReadMode::Exact:          One recvfrom(2); one frame's payload, up to buffer.size().
-         * - ReadMode::UntilDelimiter: Accumulate payload bytes across frames until delimiter found.
-         * - ReadMode::UntilToken:     KMP search across streamed frame payloads; bytes_read = 0.
-         */
-        ReadResult tout_read(uint32_t u32ReadTimeout,
-                             std::span<uint8_t> buffer,
-                             const ReadOptions& options,
-                             std::string_view xtra_params = {},
-                             std::stop_token stop_tok = {}) const override;
-
-        /**
-         * @brief Unified write interface. Sends buffer as one frame's payload.
-         *
-         * @param u32WriteTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
-         * @param buffer           Frame payload to send (max RAWETH_MAX_PAYLOAD bytes).
-         * @param xtra_params      Optional per-call destination MAC / EtherType
-         *                         override; see class docs for format.
-         * @return WriteResult containing status and bytes written (payload bytes, not framed bytes).
-         */
-        WriteResult tout_write(uint32_t u32WriteTimeout,
-                               std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {},
-                               std::stop_token stop_tok = {}) const override;
-
-    private:
-
-        int                m_iHandle              = -1;    /**< AF_PACKET socket file descriptor.        */
-        int                m_iIfIndex             = -1;    /**< Interface index (SIOCGIFINDEX).          */
-        MacAddr            m_ownMac               = {};    /**< This interface's own MAC address.        */
-        MacAddr            m_defaultDestMac       = RAWETH_BROADCAST_MAC; /**< Default destination MAC. */
-        uint16_t           m_u16EtherType         = RAWETH_DEFAULT_ETHERTYPE; /**< Bound/default EtherType. */
-        bool               m_bPromiscSetByUs      = false; /**< Whether open() enabled promiscuous mode. */
-        mutable std::mutex m_mutex;                        /**< Protects concurrent access.               */
-        std::string        m_strIdentityLabel;             /**< GUI comm-dump display label, see describeConnection(). */
-
-        // -----------------------------------------------------------------------
-        // Internal transport primitives
-        // -----------------------------------------------------------------------
-
-        /**
-         * @brief Receive exactly one frame in one poll(2) + recvfrom(2) pair,
-         * strip the L2 header, and copy up to buffer.size() bytes of the
-         * payload into buffer. szBytesRead is set to the number of payload
-         * bytes actually copied (which may be less than the frame's full
-         * payload if buffer is smaller).
-         */
-        Status timeout_read(uint32_t u32ReadTimeout,
-                            std::span<uint8_t> buffer,
-                            size_t& szBytesRead,
-                            std::stop_token stop_tok = {}) const;
-
-        /**
-         * @brief Accumulate received frame payloads until cDelimiter is found
-         * or the buffer is full. Null-terminates on Status::SUCCESS.
-         */
-        Status timeout_read_until(uint32_t u32ReadTimeout,
-                                  std::span<uint8_t> buffer,
-                                  uint8_t cDelimiter,
-                                  size_t& szBytesRead,
+    /**
+     * @brief Stream frame payloads off the socket, applying the KMP
+     * algorithm to detect the token sequence.
+     */
+    Status timeout_wait_for_token(uint32_t u32ReadTimeout,
+                                  std::span<const uint8_t> token,
+                                  bool useBuffer,
                                   std::stop_token stop_tok = {}) const;
 
-        /**
-         * @brief Stream frame payloads off the socket, applying the KMP
-         * algorithm to detect the token sequence.
-         */
-        Status timeout_wait_for_token(uint32_t u32ReadTimeout,
-                                      std::span<const uint8_t> token,
-                                      bool useBuffer,
-                                      std::stop_token stop_tok = {}) const;
+    /**
+     * @brief Build one Ethernet frame (dest MAC + own MAC + EtherType +
+     * payload) and send it as a single, poll(2)-bounded sendto(2),
+     * retrying on EAGAIN until u32WriteTimeout elapses.
+     */
+    Status timeout_write(uint32_t u32WriteTimeout,
+                         std::span<const uint8_t> buffer,
+                         const MacAddr &destMac,
+                         uint16_t u16EtherType,
+                         size_t &szBytesWritten,
+                         std::stop_token stop_tok = {}) const;
 
-        /**
-         * @brief Build one Ethernet frame (dest MAC + own MAC + EtherType +
-         * payload) and send it as a single, poll(2)-bounded sendto(2),
-         * retrying on EAGAIN until u32WriteTimeout elapses.
-         */
-        Status timeout_write(uint32_t u32WriteTimeout,
-                             std::span<const uint8_t> buffer,
-                             const MacAddr& destMac,
-                             uint16_t u16EtherType,
-                             size_t& szBytesWritten,
-                             std::stop_token stop_tok = {}) const;
+    /**
+     * @brief Parse an xtra_params override string ("AA:BB:CC:DD:EE:FF" or
+     * "AA:BB:CC:DD:EE:FF/0800") into a destination MAC and EtherType.
+     * Falls back to the configured defaults (and logs a WARNING) on any
+     * parse failure rather than failing the call.
+     */
+    void resolve_destination(std::string_view xtra_params,
+                             MacAddr &outDestMac,
+                             uint16_t &outEtherType) const;
 
-        /**
-         * @brief Parse an xtra_params override string ("AA:BB:CC:DD:EE:FF" or
-         * "AA:BB:CC:DD:EE:FF/0800") into a destination MAC and EtherType.
-         * Falls back to the configured defaults (and logs a WARNING) on any
-         * parse failure rather than failing the call.
-         */
-        void resolve_destination(std::string_view xtra_params,
-                                 MacAddr& outDestMac,
-                                 uint16_t& outEtherType) const;
+    // -----------------------------------------------------------------------
+    // KMP helpers (identical strategy to the UART / I2C / SPI / CAN / TCP drivers)
+    // -----------------------------------------------------------------------
 
-        // -----------------------------------------------------------------------
-        // KMP helpers (identical strategy to the UART / I2C / SPI / CAN / TCP drivers)
-        // -----------------------------------------------------------------------
+    /** @brief Run KMP stream matching over bytes received from successive frames. */
+    Status kmp_stream_match(std::span<const uint8_t> token,
+                            const std::vector<int> &viLps,
+                            uint32_t u32Timeout,
+                            bool bReturnOnTimeout,
+                            bool useBuffer,
+                            std::stop_token stop_tok = {}) const;
 
-        /** @brief Run KMP stream matching over bytes received from successive frames. */
-        Status kmp_stream_match(std::span<const uint8_t> token,
-                                const std::vector<int>& viLps,
-                                uint32_t u32Timeout,
-                                bool bReturnOnTimeout,
-                                bool useBuffer,
-                                std::stop_token stop_tok = {}) const;
-
-        /** @brief Build the KMP failure-function table for @p pattern. */
-        void build_kmp_table(std::span<const uint8_t> pattern,
-                             size_t szLength,
-                             std::vector<int>& viLps) const;
+    /** @brief Build the KMP failure-function table for @p pattern. */
+    void build_kmp_table(std::span<const uint8_t> pattern,
+                         size_t szLength,
+                         std::vector<int> &viLps) const;
 };
-
 
 #endif // U_RAWETH_DRIVER_H

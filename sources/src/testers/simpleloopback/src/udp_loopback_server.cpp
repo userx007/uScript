@@ -41,84 +41,82 @@
 //     recvfrom() call returns.
 
 #include <algorithm>
+#include <arpa/inet.h>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <string>
-
-#include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
 
-namespace
+namespace {
+constexpr int DEFAULT_PORT         = 5000;
+constexpr const char *DEFAULT_BIND = "::";
+// Matches UDP_MAX_DGRAM_LEN in uUdp.hpp — the IPv4 theoretical payload
+// ceiling (65535 - 8-byte UDP header - 20-byte IP header) — so no
+// legally-sized datagram is ever truncated on receipt.
+constexpr size_t RECV_BUFFER_SIZE  = 65507;
+// A datagram can be up to RECV_BUFFER_SIZE bytes — unlike a CAN frame's
+// 8 bytes, printing every byte would flood the terminal. Cap the
+// console dump and note how much was left out, same idea as
+// CommDumpModel's preview truncation in the GUI.
+constexpr size_t DUMP_MAX_BYTES    = 64;
+
+volatile sig_atomic_t g_stop       = 0;
+
+void on_signal(int /*sig*/)
 {
-    constexpr int    DEFAULT_PORT   = 5000;
-    constexpr const char* DEFAULT_BIND = "::";
-    // Matches UDP_MAX_DGRAM_LEN in uUdp.hpp — the IPv4 theoretical payload
-    // ceiling (65535 - 8-byte UDP header - 20-byte IP header) — so no
-    // legally-sized datagram is ever truncated on receipt.
-    constexpr size_t RECV_BUFFER_SIZE = 65507;
-    // A datagram can be up to RECV_BUFFER_SIZE bytes — unlike a CAN frame's
-    // 8 bytes, printing every byte would flood the terminal. Cap the
-    // console dump and note how much was left out, same idea as
-    // CommDumpModel's preview truncation in the GUI.
-    constexpr size_t DUMP_MAX_BYTES = 64;
+    g_stop = 1;
+}
 
-    volatile sig_atomic_t g_stop = 0;
+// Format a sockaddr as "host:port" for logging. Best-effort — falls back
+// to "?" fields if getnameinfo() fails.
+std::string peer_to_string(const struct sockaddr_storage &addr, socklen_t addrLen)
+{
+    char szHost[NI_MAXHOST] = "?";
+    char szPort[NI_MAXSERV] = "?";
 
-    void on_signal(int /*sig*/)
-    {
-        g_stop = 1;
+    ::getnameinfo(reinterpret_cast<const struct sockaddr *>(&addr), addrLen,
+                  szHost, sizeof(szHost), szPort, sizeof(szPort),
+                  NI_NUMERICHOST | NI_NUMERICSERV);
+
+    return std::string(szHost) + ":" + szPort;
+}
+
+/** Print one UDP datagram in a candump-like table row: DIR, PEER
+ *  (host:port), LEN, and a hex dump of the data — the UDP analogue of
+ *  kvcan_loopback.c's print_frame(), with the peer address in place of
+ *  CAN's ID/DLC. Called for both the as-received RX datagram and the TX
+ *  datagram as it's echoed back, same as kvcan's print_frame(prefix,
+ *  &frame) being called on both sides of the loopback.
+ */
+void print_datagram(const char *prefix, const std::string &peer, const uint8_t *data, size_t len)
+{
+    std::printf("%-4s  %-24s  %-6zu ", prefix, peer.c_str(), len);
+
+    const size_t shown = std::min(len, DUMP_MAX_BYTES);
+    for (size_t i = 0; i < shown; ++i) {
+        std::printf("%02X ", data[i]);
     }
-
-    // Format a sockaddr as "host:port" for logging. Best-effort — falls back
-    // to "?" fields if getnameinfo() fails.
-    std::string peer_to_string(const struct sockaddr_storage& addr, socklen_t addrLen)
-    {
-        char szHost[NI_MAXHOST] = "?";
-        char szPort[NI_MAXSERV] = "?";
-
-        ::getnameinfo(reinterpret_cast<const struct sockaddr*>(&addr), addrLen,
-                      szHost, sizeof(szHost), szPort, sizeof(szPort),
-                      NI_NUMERICHOST | NI_NUMERICSERV);
-
-        return std::string(szHost) + ":" + szPort;
+    if (len > shown) {
+        std::printf("... (+%zu more bytes)", len - shown);
     }
-
-    /** Print one UDP datagram in a candump-like table row: DIR, PEER
-     *  (host:port), LEN, and a hex dump of the data — the UDP analogue of
-     *  kvcan_loopback.c's print_frame(), with the peer address in place of
-     *  CAN's ID/DLC. Called for both the as-received RX datagram and the TX
-     *  datagram as it's echoed back, same as kvcan's print_frame(prefix,
-     *  &frame) being called on both sides of the loopback.
-     */
-    void print_datagram(const char* prefix, const std::string& peer, const uint8_t* data, size_t len)
-    {
-        std::printf("%-4s  %-24s  %-6zu ", prefix, peer.c_str(), len);
-
-        const size_t shown = std::min(len, DUMP_MAX_BYTES);
-        for (size_t i = 0; i < shown; ++i)
-            std::printf("%02X ", data[i]);
-        if (len > shown)
-            std::printf("... (+%zu more bytes)", len - shown);
-        std::printf("\n");
-        std::fflush(stdout);
-    }
+    std::printf("\n");
+    std::fflush(stdout);
+}
 } // namespace
 
-
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-    const int         iPort     = (argc > 1) ? std::atoi(argv[1]) : DEFAULT_PORT;
+    const int iPort             = (argc > 1) ? std::atoi(argv[1]) : DEFAULT_PORT;
     const std::string strBindTo = (argc > 2) ? argv[2] : DEFAULT_BIND;
 
-    if (iPort <= 0 || iPort > 65535)
-    {
+    if (iPort <= 0 || iPort > 65535) {
         std::fprintf(stderr, "Invalid port: %s\n", (argc > 1) ? argv[1] : "");
         return 1;
     }
@@ -128,35 +126,32 @@ int main(int argc, char** argv)
     // blocking calls by default, which would swallow Ctrl+C until the next
     // datagram arrived.
     struct sigaction sSigAction = {};
-    sSigAction.sa_handler = on_signal;
-    sSigAction.sa_flags   = 0; // no SA_RESTART
+    sSigAction.sa_handler       = on_signal;
+    sSigAction.sa_flags         = 0; // no SA_RESTART
     ::sigemptyset(&sSigAction.sa_mask);
     ::sigaction(SIGINT, &sSigAction, nullptr);
     ::sigaction(SIGTERM, &sSigAction, nullptr);
 
-    struct addrinfo sHints = {};
-    sHints.ai_family   = AF_UNSPEC;
-    sHints.ai_socktype = SOCK_DGRAM;
-    sHints.ai_protocol = IPPROTO_UDP;
-    sHints.ai_flags    = AI_PASSIVE;
+    struct addrinfo sHints    = {};
+    sHints.ai_family          = AF_UNSPEC;
+    sHints.ai_socktype        = SOCK_DGRAM;
+    sHints.ai_protocol        = IPPROTO_UDP;
+    sHints.ai_flags           = AI_PASSIVE;
 
-    struct addrinfo* pResult = nullptr;
+    struct addrinfo *pResult  = nullptr;
     const std::string strPort = std::to_string(iPort);
 
-    const int iGaiRc = ::getaddrinfo(strBindTo.c_str(), strPort.c_str(), &sHints, &pResult);
-    if (iGaiRc != 0 || pResult == nullptr)
-    {
+    const int iGaiRc          = ::getaddrinfo(strBindTo.c_str(), strPort.c_str(), &sHints, &pResult);
+    if (iGaiRc != 0 || pResult == nullptr) {
         std::fprintf(stderr, "getaddrinfo(%s) failed: %s\n",
                      strBindTo.c_str(), ::gai_strerror(iGaiRc));
         return 1;
     }
 
     int sockFd = -1;
-    for (struct addrinfo* pAi = pResult; pAi != nullptr; pAi = pAi->ai_next)
-    {
+    for (struct addrinfo *pAi = pResult; pAi != nullptr; pAi = pAi->ai_next) {
         sockFd = ::socket(pAi->ai_family, pAi->ai_socktype, pAi->ai_protocol);
-        if (sockFd < 0)
-        {
+        if (sockFd < 0) {
             continue;
         }
 
@@ -165,14 +160,12 @@ int main(int argc, char** argv)
 
         // If we bound "::" (dual-stack wildcard), also accept IPv4 datagrams
         // (e.g. sent to 127.0.0.1) on the same socket.
-        if (pAi->ai_family == AF_INET6)
-        {
+        if (pAi->ai_family == AF_INET6) {
             int iV6Only = 0;
             ::setsockopt(sockFd, IPPROTO_IPV6, IPV6_V6ONLY, &iV6Only, sizeof(iV6Only));
         }
 
-        if (::bind(sockFd, pAi->ai_addr, pAi->ai_addrlen) == 0)
-        {
+        if (::bind(sockFd, pAi->ai_addr, pAi->ai_addrlen) == 0) {
             break; // bound successfully
         }
 
@@ -181,32 +174,28 @@ int main(int argc, char** argv)
     }
     ::freeaddrinfo(pResult);
 
-    if (sockFd < 0)
-    {
+    if (sockFd < 0) {
         std::fprintf(stderr, "Failed to bind to %s:%d, errno=%d (%s)\n",
                      strBindTo.c_str(), iPort, errno, std::strerror(errno));
         return 1;
     }
 
     std::printf("udp_loopback_server listening on [%s]:%d (Ctrl+C to stop)\n",
-               strBindTo.c_str(), iPort);
+                strBindTo.c_str(), iPort);
     std::printf("%-4s  %-24s  %-6s  %s\n", "DIR", "PEER", "LEN", "DATA");
     std::printf("--------------------------------------------------------------------------------\n");
 
     static uint8_t buffer[RECV_BUFFER_SIZE];
 
-    while (!g_stop)
-    {
+    while (!g_stop) {
         struct sockaddr_storage sSenderAddr = {};
-        socklen_t               szSenderLen = sizeof(sSenderAddr);
+        socklen_t szSenderLen               = sizeof(sSenderAddr);
 
-        const ssize_t nRecv = ::recvfrom(sockFd, buffer, sizeof(buffer), 0,
-                                         reinterpret_cast<struct sockaddr*>(&sSenderAddr),
-                                         &szSenderLen);
-        if (nRecv < 0)
-        {
-            if (errno == EINTR)
-            {
+        const ssize_t nRecv                 = ::recvfrom(sockFd, buffer, sizeof(buffer), 0,
+                                                         reinterpret_cast<struct sockaddr *>(&sSenderAddr),
+                                                         &szSenderLen);
+        if (nRecv < 0) {
+            if (errno == EINTR) {
                 continue; // likely our own signal handler firing
             }
             std::fprintf(stderr, "recvfrom() failed, errno=%d (%s)\n", errno, std::strerror(errno));
@@ -217,23 +206,18 @@ int main(int argc, char** argv)
         print_datagram("RX", strPeer, buffer, static_cast<size_t>(nRecv));
 
         const ssize_t nSent = ::sendto(sockFd, buffer, static_cast<size_t>(nRecv), 0,
-                                       reinterpret_cast<struct sockaddr*>(&sSenderAddr),
+                                       reinterpret_cast<struct sockaddr *>(&sSenderAddr),
                                        szSenderLen);
-        if (nSent < 0)
-        {
+        if (nSent < 0) {
             // Log and keep serving — a single bad send (e.g. an async ICMP
             // "port unreachable" from an earlier datagram to a since-gone
             // peer) shouldn't take the whole loopback server down.
             std::fprintf(stderr, "[%s] sendto() failed, errno=%d (%s)\n",
                          strPeer.c_str(), errno, std::strerror(errno));
-        }
-        else if (nSent != nRecv)
-        {
+        } else if (nSent != nRecv) {
             std::fprintf(stderr, "[%s] short sendto(): sent %zd of %zd bytes\n",
                          strPeer.c_str(), nSent, nRecv);
-        }
-        else
-        {
+        } else {
             print_datagram("TX", strPeer, buffer, static_cast<size_t>(nSent));
         }
     }

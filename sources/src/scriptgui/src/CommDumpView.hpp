@@ -1,5 +1,5 @@
 #pragma once
-#include "CommDumpModel.hpp"   // needed for CommDumpModel::PendingRecord (m_pendingQueue member)
+#include "CommDumpModel.hpp" // needed for CommDumpModel::PendingRecord (m_pendingQueue member)
 
 #include <QByteArray>
 #include <QFrame>
@@ -77,13 +77,18 @@ public:
     // so this panel's Timestamp column stays on the same time base as the
     // Log panel's.
     void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
-                    const QByteArray &data);
+                   const QByteArray &data);
 
     void clear();
     void setDumpFont(const QFont &font);
 
 public slots:
-    void setAutoScroll(bool on) { m_autoScroll = on; }
+
+    void setAutoScroll(bool on)
+    {
+        m_autoScroll = on;
+    }
+
     void setTreeFont(const QFont &font);
 
 private slots:
@@ -152,11 +157,11 @@ private:
     // an unattended very-long or very-high-rate capture can't run the
     // process out of memory. 0 would mean unlimited (the model's own
     // default) — deliberately not used here.
-    static constexpr int kDefaultMaxRecords = 200'000;
+    static constexpr int kDefaultMaxRecords   = 200'000;
     // How long a burst of incoming records is allowed to accumulate before
     // being flushed as one batch. Short enough that "live" traces still feel
     // live; long enough to meaningfully coalesce a fast burst.
-    static constexpr int kFlushIntervalMs = 30;
+    static constexpr int kFlushIntervalMs     = 30;
     // Safety valve: if the queue grows past this many *pending* (not yet
     // flushed) records before the timer fires, flush immediately instead of
     // letting the queue itself become an unbounded buffer during a
@@ -167,22 +172,22 @@ private:
     QTimer *m_flushTimer;
 
     CommDumpModel *m_model;
-    QTreeView     *m_tree;
-    QLabel        *m_titleLabel;
-    QLabel        *m_countLabel;
-    QComboBox     *m_dirFilterCb;      // All / Rx only / Tx only
-    QToolButton   *m_pluginFilterBtn;  // dropdown: checkbox per known plugin
-    QMenu         *m_pluginMenu;
-    QHash<QString, QAction *> m_pluginActions;   // plugin name -> its checkable action
-    QCheckBox     *m_asciiCb;          // toggles the ASCII column on/off
-    QCheckBox     *m_autoScrollCb;
-    QCheckBox     *m_collapsedCb;      // one row per (Plugin,Details), updated in place — see setCollapsedMode()
-    QToolButton   *m_saveBtn;          // dropdown: Save All / Save Filtered Only
-    QMenu         *m_saveMenu;
-    QPushButton   *m_loadBtn;
-    QPushButton   *m_clearBtn;
-    QMenu         *m_treeContextMenu;  // right-click menu: Copy / Select All / Expand All / Collapse All
-    bool           m_autoScroll = true;
+    QTreeView *m_tree;
+    QLabel *m_titleLabel;
+    QLabel *m_countLabel;
+    QComboBox *m_dirFilterCb;       // All / Rx only / Tx only
+    QToolButton *m_pluginFilterBtn; // dropdown: checkbox per known plugin
+    QMenu *m_pluginMenu;
+    QHash<QString, QAction *> m_pluginActions; // plugin name -> its checkable action
+    QCheckBox *m_asciiCb;                      // toggles the ASCII column on/off
+    QCheckBox *m_autoScrollCb;
+    QCheckBox *m_collapsedCb; // one row per (Plugin,Details), updated in place — see setCollapsedMode()
+    QToolButton *m_saveBtn;   // dropdown: Save All / Save Filtered Only
+    QMenu *m_saveMenu;
+    QPushButton *m_loadBtn;
+    QPushButton *m_clearBtn;
+    QMenu *m_treeContextMenu; // right-click menu: Copy / Select All / Expand All / Collapse All
+    bool m_autoScroll               = true;
 
     // Proportion of the tree's base font size used for the full hex-dump
     // child row (e.g. 0.8 = 80%). This is the single source of truth for

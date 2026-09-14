@@ -1,7 +1,8 @@
+#include "slcan_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
 #include "slcan_frame_driver.hpp"
-#include "slcan_plugin.hpp"
 #include "slcan_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -13,10 +14,10 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <memory>
 #include <optional>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <string_view>
@@ -27,20 +28,18 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED SLCANPlugin *pluginEntry()
 {
-    EXPORTED SLCANPlugin* pluginEntry()
-    {
-        return new SLCANPlugin();
-    }
+    return new SLCANPlugin();
+}
 
-    EXPORTED void pluginExit( SLCANPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(SLCANPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -49,31 +48,29 @@ extern "C"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about the plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if plugin initialization fails.
-  *
-  * \note Usage example:
-  *       SLCAN.INFO
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about the plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if plugin initialization fails.
+ *
+ * \note Usage example:
+ *       SLCAN.INFO
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_INFO(const std::string &args, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -177,64 +174,59 @@ bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current SLCAN parameters at runtime.
-  *
-  * \note Any subset of parameters can be specified; omitted keys retain their current values.
-  *
-  * \note Usage example:
-  *       SLCAN.CONFIG i=/dev/ttyACM0 p=115200 b=6 x=0x123 r=2000 w=2000 s=64
-  *       SLCAN.CONFIG i=/dev/ttyACM0 b=4 x=0x18DAF100
-  *
-  * \param[in] args  [i=device] [p=uart_baud] [b=bitrate] [y=fd_rate] [m=mode] [a=auto_retx]
-  *                  [z=fd_brs] [x=tx_id] [r=read_tout] [w=write_tout] [s=recv_bufsize]
-  *
-  * \return true if parameters were updated successfully, false otherwise
-*/
+ * \brief CONFIG command implementation; overwrite the current SLCAN parameters at runtime.
+ *
+ * \note Any subset of parameters can be specified; omitted keys retain their current values.
+ *
+ * \note Usage example:
+ *       SLCAN.CONFIG i=/dev/ttyACM0 p=115200 b=6 x=0x123 r=2000 w=2000 s=64
+ *       SLCAN.CONFIG i=/dev/ttyACM0 b=4 x=0x18DAF100
+ *
+ * \param[in] args  [i=device] [p=uart_baud] [b=bitrate] [y=fd_rate] [m=mode] [a=auto_retx]
+ *                  [z=fd_brs] [x=tx_id] [r=read_tout] [w=write_tout] [s=recv_bufsize]
+ *
+ * \return true if parameters were updated successfully, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_CONFIG (const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_CONFIG(const std::string &args, std::stop_token st) const
 {
     return generic_can_set_params<SLCANPlugin>(this, args);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief FILTER command implementation; install the adapter's acceptance filters.
-  *
-  * \note Filters are stored in m_oStdFilter/m_oExtFilter and (re)applied every time a CMD
-  *       or SCRIPT opens a new channel — they must be sent while the channel is closed, so
-  *       there is no equivalent of KVCAN's "apply to the already-open socket" here. Calling
-  *       FILTER with an empty argument clears both slots (accept everything).
-  *
-  * \note Usage example:
-  *       SLCAN.FILTER 0x100:0x7FF
-  *       SLCAN.FILTER 0x100:0x7FF,0x18DAF100:0x1FFFFFFF
-  *       SLCAN.FILTER
-  *
-  * \param[in] args  comma-separated list of <id>:<mask> pairs (max one std + one ext), or empty to clear
-  *
-  * \return true on success, false on parse error
-*/
+ * \brief FILTER command implementation; install the adapter's acceptance filters.
+ *
+ * \note Filters are stored in m_oStdFilter/m_oExtFilter and (re)applied every time a CMD
+ *       or SCRIPT opens a new channel — they must be sent while the channel is closed, so
+ *       there is no equivalent of KVCAN's "apply to the already-open socket" here. Calling
+ *       FILTER with an empty argument clears both slots (accept everything).
+ *
+ * \note Usage example:
+ *       SLCAN.FILTER 0x100:0x7FF
+ *       SLCAN.FILTER 0x100:0x7FF,0x18DAF100:0x1FFFFFFF
+ *       SLCAN.FILTER
+ *
+ * \param[in] args  comma-separated list of <id>:<mask> pairs (max one std + one ext), or empty to clear
+ *
+ * \return true on success, false on parse error
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_FILTER (const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_FILTER(const std::string &args, std::stop_token st) const
 {
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
-    if (false == m_ParseFilters(args))
-    {
+    if (false == m_ParseFilters(args)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(args));
         return false;
     }
@@ -246,26 +238,25 @@ bool SLCANPlugin::m_SLCAN_FILTER (const std::string &args, std::stop_token st) c
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation; execute a single send/receive operation over SLCAN.
-  *
-  * \note The UART is opened, the bus parameters/filters are pushed and the CAN channel is
-  *       opened for the duration of the call; everything is closed automatically on return
-  *       (RAII, via SLCAN's destructor — see m_OpenAndConfigure).
-  *
-  * \note Usage example:
-  *       SLCAN.CMD > H\"AABBCCDD\" | H\"06\"
-  *       SLCAN.CMD < \"Ready\" | \"Go!\"
-  *
-  * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CMD command implementation; execute a single send/receive operation over SLCAN.
+ *
+ * \note The UART is opened, the bus parameters/filters are pushed and the CAN channel is
+ *       opened for the duration of the call; everything is closed automatically on return
+ *       (RAII, via SLCAN's destructor — see m_OpenAndConfigure).
+ *
+ * \note Usage example:
+ *       SLCAN.CMD > H\"AABBCCDD\" | H\"06\"
+ *       SLCAN.CMD < \"Ready\" | \"Go!\"
+ *
+ * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_CMD (const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_CMD(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
@@ -285,31 +276,31 @@ bool SLCANPlugin::m_SLCAN_CMD (const std::string &args, std::stop_token st) cons
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_read(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation; execute a multi-command script file over SLCAN.
-  *
-  * \note The SLCAN channel is opened once for the lifetime of the script and closed on return.
-  *       Blank lines and lines starting with '#' are skipped. Execution stops at the first
-  *       failing line, or immediately if a stop is requested via the stop_token.
-  *
-  * \note Usage example:
-  *       SLCAN.SCRIPT obd_sequence.txt
-  *       SLCAN.SCRIPT uds_session.txt 10
-  *
-  * \param[in] args  filename [delay_ms]
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief SCRIPT command implementation; execute a multi-command script file over SLCAN.
+ *
+ * \note The SLCAN channel is opened once for the lifetime of the script and closed on return.
+ *       Blank lines and lines starting with '#' are skipped. Execution stops at the first
+ *       failing line, or immediately if a stop is requested via the stop_token.
+ *
+ * \note Usage example:
+ *       SLCAN.SCRIPT obd_sequence.txt
+ *       SLCAN.SCRIPT uds_session.txt 10
+ *
+ * \param[in] args  filename [delay_ms]
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_SCRIPT (const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_SCRIPT(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
@@ -323,37 +314,37 @@ bool SLCANPlugin::m_SLCAN_SCRIPT (const std::string &args, std::stop_token st) c
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_read(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic SLCAN messages.
-  *
-  * \note The SLCAN channel is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). Each entry's optional "id" is the CAN id (decimal or
-  *       0x-hex, same syntax SLCANFrameDriver::tout_write()'s xtra_params already accepts — an
-  *       empty id falls back to the TX id set via CONFIG) and "val" is the payload as a plain
-  *       hex string (e.g. "AABBCCDD").
-  *
-  * \note This bypasses TP-segmented transport on purpose — same rationale as KVCAN's CYCLIC: a
-  *       cyclic message is by definition a single, self-contained frame per tick.
-  *
-  * \note Usage example:
-  *       SLCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
-  *       SLCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic SLCAN messages.
+ *
+ * \note The SLCAN channel is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). Each entry's optional "id" is the CAN id (decimal or
+ *       0x-hex, same syntax SLCANFrameDriver::tout_write()'s xtra_params already accepts — an
+ *       empty id falls back to the TX id set via CONFIG) and "val" is the payload as a plain
+ *       hex string (e.g. "AABBCCDD").
+ *
+ * \note This bypasses TP-segmented transport on purpose — same rationale as KVCAN's CYCLIC: a
+ *       cyclic message is by definition a single, self-contained frame per tick.
+ *
+ * \note Usage example:
+ *       SLCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
+ *       SLCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_CYCLIC (const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_CYCLIC(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
@@ -370,13 +361,13 @@ bool SLCANPlugin::m_SLCAN_CYCLIC (const std::string &args, std::stop_token st) c
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse a comma-separated "<id>:<mask>" filter string into the adapter's single
-  *        standard-filter and single extended-filter slots. Both id and mask fields accept
-  *        decimal or 0x-prefixed hex values. Example: "0x100:0x7FF,0x18DAF100:0x1FFFFFFF"
-*/
+ * \brief Parse a comma-separated "<id>:<mask>" filter string into the adapter's single
+ *        standard-filter and single extended-filter slots. Both id and mask fields accept
+ *        decimal or 0x-prefixed hex values. Example: "0x100:0x7FF,0x18DAF100:0x1FFFFFFF"
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_ParseFilters(const std::string& strFilters) const
+bool SLCANPlugin::m_ParseFilters(const std::string &strFilters) const
 {
     // SocketCAN-style frame-ID flag bit, reused here only to recognise an
     // explicitly-flagged extended id; the adapter's f/F commands take plain
@@ -397,8 +388,7 @@ bool SLCANPlugin::m_ParseFilters(const std::string& strFilters) const
     std::vector<std::string> vstrEntries;
     ustring::tokenize(strFilters, ',', vstrEntries);
 
-    for (const auto& strEntry : vstrEntries)
-    {
+    for (const auto &strEntry : vstrEntries) {
         // Split each entry on ':' to separate id from mask
         std::vector<std::string> vstrParts;
         ustring::tokenize(strEntry, ':', vstrParts);
@@ -440,30 +430,29 @@ bool SLCANPlugin::m_ParseFilters(const std::string& strFilters) const
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
                           LOG_STRING("Filter id > 0x7FF without CAN_EFF_FLAG — treating as extended:"); LOG_STRING(strEntry));
             }
-            m_oExtFilter = std::make_pair(static_cast<uint32_t>(u32Id  & CAN_EFF_MASK),
-                                           static_cast<uint32_t>(u32Mask & CAN_EFF_MASK));
+            m_oExtFilter = std::make_pair(static_cast<uint32_t>(u32Id & CAN_EFF_MASK),
+                                          static_cast<uint32_t>(u32Mask & CAN_EFF_MASK));
         } else {
             if (true == m_oStdFilter.has_value()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("Only one standard filter slot is supported by the adapter:"); LOG_STRING(strEntry));
                 return false;
             }
-            m_oStdFilter = std::make_pair(static_cast<uint16_t>(u32Id  & CAN_SFF_MASK),
-                                           static_cast<uint16_t>(u32Mask & CAN_SFF_MASK));
+            m_oStdFilter = std::make_pair(static_cast<uint16_t>(u32Id & CAN_SFF_MASK),
+                                          static_cast<uint16_t>(u32Mask & CAN_SFF_MASK));
         }
     }
 
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Open the UART, push bit rate / FD rate / mode / auto-retx / filters while the
-  *        channel is closed (the adapter rejects those commands otherwise — see
-  *        uSlcan.cpp's set_bitrate()/set_mode()/… INVALID_PARAM checks), then open the
-  *        CAN channel itself.
-*/
+ * \brief Open the UART, push bit rate / FD rate / mode / auto-retx / filters while the
+ *        channel is closed (the adapter rejects those commands otherwise — see
+ *        uSlcan.cpp's set_bitrate()/set_mode()/… INVALID_PARAM checks), then open the
+ *        CAN channel itself.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
 std::shared_ptr<SLCANFrameDriver> SLCANPlugin::m_OpenAndConfigure(void) const
@@ -536,4 +525,3 @@ std::shared_ptr<SLCANFrameDriver> SLCANPlugin::m_OpenAndConfigure(void) const
 
     return shpDriver;
 }
-

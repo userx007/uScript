@@ -12,12 +12,11 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <signal.h>
 #include <string>
 #include <vector>
-#include <signal.h>
 
-namespace loopback
-{
+namespace loopback {
 
 // Set by the SIGINT/SIGTERM handler installed in main(). Every blocking
 // call in every channel (read/recv/accept/...) must check this after an
@@ -40,8 +39,8 @@ void install_signal_handlers();
 struct Message
 {
     std::vector<uint8_t> data;
-    bool     has_can_id = false;
-    uint32_t can_id     = 0;
+    bool has_can_id = false;
+    uint32_t can_id = 0;
 };
 
 // ---- logging -------------------------------------------------------
@@ -70,22 +69,24 @@ inline void log_err(const std::string &tag, const std::string &msg)
 // channel, matching the format the original uart/tcp/udp/raw-eth tools
 // already printed.
 inline void dump_bytes(const std::string &chan_tag, const char *dir,
-                        const uint8_t *buf, size_t len)
+                       const uint8_t *buf, size_t len)
 {
     std::printf("%-10s %-8s [%zu] ", chan_tag.c_str(), dir, len);
-    for (size_t i = 0; i < len; i++)
+    for (size_t i = 0; i < len; i++) {
         std::printf("%02X ", buf[i]);
+    }
     std::printf("\n");
     std::fflush(stdout);
 }
 
 // candump-style "DIR  ID  [DLC] XX XX ..." dump used by the CAN channel.
 inline void dump_can(const std::string &chan_tag, const char *dir,
-                      uint32_t can_id, const uint8_t *buf, size_t len)
+                     uint32_t can_id, const uint8_t *buf, size_t len)
 {
     std::printf("%-10s %-8s %03X  [%zu] ", chan_tag.c_str(), dir, can_id, len);
-    for (size_t i = 0; i < len; i++)
+    for (size_t i = 0; i < len; i++) {
         std::printf("%02X ", buf[i]);
+    }
     std::printf("\n");
     std::fflush(stdout);
 }

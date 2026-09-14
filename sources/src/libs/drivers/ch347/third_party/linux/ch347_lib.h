@@ -3,138 +3,145 @@
 
 #pragma pack(1)
 
-#define ERR_INVAL	-1
-#define ERR_RANGE	-2
-#define ERR_IOCTL	-3
+#define ERR_INVAL             -1
+#define ERR_RANGE             -2
+#define ERR_IOCTL             -3
 
-#define CH347_SPI_MAX_FREQ 60e6
-#define CH347_SPI_MIN_FREQ 218750
+#define CH347_SPI_MAX_FREQ    60e6
+#define CH347_SPI_MIN_FREQ    218750
 
-#define IRQ_TYPE_NONE	      0
+#define IRQ_TYPE_NONE         0
 #define IRQ_TYPE_EDGE_RISING  1
 #define IRQ_TYPE_EDGE_FALLING 2
 #define IRQ_TYPE_EDGE_BOTH    (IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_EDGE_RISING)
 
 #ifndef ENUM_EEPROM_TYPE
 typedef enum _EEPROM_TYPE {
-	ID_24C01,
-	ID_24C02,
-	ID_24C04,
-	ID_24C08,
-	ID_24C16,
-	ID_24C32,
-	ID_24C64,
-	ID_24C128,
-	ID_24C256,
-	ID_24C512,
-	ID_24C1024,
-	ID_24C2048,
-	ID_24C4096
+    ID_24C01,
+    ID_24C02,
+    ID_24C04,
+    ID_24C08,
+    ID_24C16,
+    ID_24C32,
+    ID_24C64,
+    ID_24C128,
+    ID_24C256,
+    ID_24C512,
+    ID_24C1024,
+    ID_24C2048,
+    ID_24C4096
 } EEPROM_TYPE;
+
 #define ENUM_EEPROM_TYPE
 #endif
 
 #ifndef ENUM_CHIP_TYPE
 typedef enum _CHIP_TYPE {
-	CHIP_CH341 = 0,
-	CHIP_CH347T = 1,
-	CHIP_CH347F = 2,
-	CHIP_CH339W = 3,
-	CHIP_CH346C = 4,
+    CHIP_CH341  = 0,
+    CHIP_CH347T = 1,
+    CHIP_CH347F = 2,
+    CHIP_CH339W = 3,
+    CHIP_CH346C = 4,
 } CHIP_TYPE;
+
 #define ENUM_CHIP_TYPE
 #endif
 
 #ifndef ENUM_FUNCTYPE
 typedef enum {
-	TYPE_TTY = 0,
-	TYPE_HID,
-	TYPE_VCP,
+    TYPE_TTY = 0,
+    TYPE_HID,
+    TYPE_VCP,
 } FUNCTYPE;
+
 #define ENUM_FUNCTYPE
 #endif
 
 /* SPI setting structure */
-typedef struct _SPI_CONFIG {
-	uint8_t iMode; /* 0-3: SPI Mode0/1/2/3 */
-	uint8_t iClock; /* 0: 60MHz, 1: 30MHz, 2: 15MHz, 3: 7.5MHz, 4: 3.75MHz, 5: 1.875MHz, 6: 937.5KHz，7: 468.75KHz */
-	uint8_t iByteOrder;		/* 0: LSB, 1: MSB */
-	uint16_t iSpiWriteReadInterval; /* SPI read and write interval, unit: us */
-	uint8_t iSpiOutDefaultData;	/* SPI output data by default while read */
-	uint32_t iChipSelect;		/* SPI chip select, BIT7：CS1 control, BIT15：CS2 control */
-	uint8_t CS1Polarity;		/* BIT0：CS1 polar control, 0：low active, 1：high active */
-	uint8_t CS2Polarity;		/* BIT0：CS2 polar control, 0：low active, 1：high active */
-	uint16_t iIsAutoDeativeCS;	/* automatically undo the CS after operation completed */
-	uint16_t iActiveDelay;		/* delay time of read and write operation after setting CS, unit: us */
-	uint32_t iDelayDeactive;	/* delay time of read and write operation after canceling CS, unit: us */
+typedef struct _SPI_CONFIG
+{
+    uint8_t iMode;                  /* 0-3: SPI Mode0/1/2/3 */
+    uint8_t iClock;                 /* 0: 60MHz, 1: 30MHz, 2: 15MHz, 3: 7.5MHz, 4: 3.75MHz, 5: 1.875MHz, 6: 937.5KHz，7: 468.75KHz */
+    uint8_t iByteOrder;             /* 0: LSB, 1: MSB */
+    uint16_t iSpiWriteReadInterval; /* SPI read and write interval, unit: us */
+    uint8_t iSpiOutDefaultData;     /* SPI output data by default while read */
+    uint32_t iChipSelect;           /* SPI chip select, BIT7：CS1 control, BIT15：CS2 control */
+    uint8_t CS1Polarity;            /* BIT0：CS1 polar control, 0：low active, 1：high active */
+    uint8_t CS2Polarity;            /* BIT0：CS2 polar control, 0：low active, 1：high active */
+    uint16_t iIsAutoDeativeCS;      /* automatically undo the CS after operation completed */
+    uint16_t iActiveDelay;          /* delay time of read and write operation after setting CS, unit: us */
+    uint32_t iDelayDeactive;        /* delay time of read and write operation after canceling CS, unit: us */
 } mSpiCfgS, *mPSpiCfgS;
 
 /* SPI Init structure definition */
-typedef struct _SPI_InitTypeDef {
-	uint16_t SPI_Direction;		/* Specifies the SPI unidirectional or bidirectional data mode.
-                                       This parameter can be a value of @ref SPI_data_direction */
-	uint16_t SPI_Mode;		/* Specifies the SPI operating mode.
-                                       This parameter can be a value of @ref SPI_mode */
-	uint16_t SPI_DataSize;		/* Specifies the SPI data size.
-                                       This parameter can be a value of @ref SPI_data_size */
-	uint16_t SPI_CPOL;		/* Specifies the serial clock steady state.
-                                       This parameter can be a value of @ref SPI_Clock_Polarity */
-	uint16_t SPI_CPHA;		/* Specifies the clock active edge for the bit capture.
-                                       This parameter can be a value of @ref SPI_Clock_Phase */
-	uint16_t SPI_NSS;		/* Specifies whether the NSS signal is managed by
-                                       hardware (NSS pin) or by software using the SSI bit.
-                                       This parameter can be a value of @ref SPI_Slave_Select_management */
-	uint16_t SPI_BaudRatePrescaler; /* Specifies the Baud Rate prescaler value which will be
+typedef struct _SPI_InitTypeDef
+{
+    uint16_t SPI_Direction;         /* Specifies the SPI unidirectional or bidirectional data mode.
+                                           This parameter can be a value of @ref SPI_data_direction */
+    uint16_t SPI_Mode;              /* Specifies the SPI operating mode.
+                                               This parameter can be a value of @ref SPI_mode */
+    uint16_t SPI_DataSize;          /* Specifies the SPI data size.
+                                           This parameter can be a value of @ref SPI_data_size */
+    uint16_t SPI_CPOL;              /* Specifies the serial clock steady state.
+                                               This parameter can be a value of @ref SPI_Clock_Polarity */
+    uint16_t SPI_CPHA;              /* Specifies the clock active edge for the bit capture.
+                                               This parameter can be a value of @ref SPI_Clock_Phase */
+    uint16_t SPI_NSS;               /* Specifies whether the NSS signal is managed by
+                                               hardware (NSS pin) or by software using the SSI bit.
+                                               This parameter can be a value of @ref SPI_Slave_Select_management */
+    uint16_t SPI_BaudRatePrescaler; /* Specifies the Baud Rate prescaler value which will be
                                        used to configure the transmit and receive SCK clock.
                                        This parameter can be a value of @ref SPI_BaudRate_Prescaler.
                                        @note The communication clock is derived from the master
                                              clock. The slave clock does not need to be set. */
-	uint16_t SPI_FirstBit;		/* Specifies whether data transfers start from MSB or LSB bit.
-                                       This parameter can be a value of @ref SPI_MSB_LSB_transmission */
-	uint16_t SPI_CRCPolynomial;	/* Specifies the polynomial used for the CRC calculation. */
+    uint16_t SPI_FirstBit;          /* Specifies whether data transfers start from MSB or LSB bit.
+                                           This parameter can be a value of @ref SPI_MSB_LSB_transmission */
+    uint16_t SPI_CRCPolynomial;     /* Specifies the polynomial used for the CRC calculation. */
 } SPI_InitTypeDef;
 
-typedef struct _StreamUSBCFG {
-	SPI_InitTypeDef SPIInitCfg;
-	uint16_t SpiWriteReadInterval; /* SPI read and write interval, unit: us */
-	uint8_t SpiOutDefaultData;     /* SPI output data by default while read */
-	uint8_t OtherCfg;	       /* misc option
-                                    BIT7: CS1 polar control, 0：low active, 1：high active
-                                    BIT6：CS2 polar control, 0：low active, 1：high active
-                                    BIT5：I2C clock stretch control, 0：disable 1: enable
-                                    BIT4：generates NACK or not when read the last byte for I2C operation
-                                    BIT3-0：reserved
-                                   */
-	uint8_t Reserved[4];	       /* reserved */
+typedef struct _StreamUSBCFG
+{
+    SPI_InitTypeDef SPIInitCfg;
+    uint16_t SpiWriteReadInterval; /* SPI read and write interval, unit: us */
+    uint8_t SpiOutDefaultData;     /* SPI output data by default while read */
+    uint8_t OtherCfg;              /* misc option
+                                        BIT7: CS1 polar control, 0：low active, 1：high active
+                                        BIT6：CS2 polar control, 0：low active, 1：high active
+                                        BIT5：I2C clock stretch control, 0：disable 1: enable
+                                        BIT4：generates NACK or not when read the last byte for I2C operation
+                                        BIT3-0：reserved
+                                       */
+    uint8_t Reserved[4];           /* reserved */
 } StreamHwCfgS, *PStreamHwCfgS;
 
-typedef struct _DEV_INFOR {
-	int fd;		   /* device file descriptor */
-	FUNCTYPE FuncType; /* 0: TTY uart device(/dev/tty*), 1: HID device(/dev/hidraw*), 2: Vendor device(/dev/ch34xpis*) */
-	char DeviceID[64];	     /* USB\VID_xxxx&PID_xxxx */
-	uint8_t ChipMode;	     /* work mode
-                                  0: Mode0(UART0/UART1)
-                                  1: Mode1(UART1+SPI+I2C)
-                                  2: Mode2(HID UART1+SPI+I2C)
-                                  3: Mode3(UART1+JTAG+I2C)
-                                 */
-	uint16_t BulkOutEndpMaxSize; /* bulk out endpoint sise */
-	uint16_t BulkInEndpMaxSize;  /* bulk in endpoint size */
-	uint8_t UsbSpeedType;	     /* USB speed, 0: FS, 1:HS, 2:SS */
-	uint8_t CH347IfNum;	     /* USB interface: 0:UART, 1:SPI/I2C/JTAG/GPIO */
-	char ProductString[64];	     /* USB product string */
-	char ManufacturerString[64]; /* USB manufacturer string */
-	uint32_t WriteTimeout;	     /* USB write timeout */
-	uint32_t ReadTimeout;	     /* USB read timeout */
-	uint8_t FirewareVer;	     /* firmware version */
-	uint32_t CmdDataMaxSize;
+typedef struct _DEV_INFOR
+{
+    int fd;                      /* device file descriptor */
+    FUNCTYPE FuncType;           /* 0: TTY uart device(/dev/tty*), 1: HID device(/dev/hidraw*), 2: Vendor device(/dev/ch34xpis*) */
+    char DeviceID[64];           /* USB\VID_xxxx&PID_xxxx */
+    uint8_t ChipMode;            /* work mode
+                                      0: Mode0(UART0/UART1)
+                                      1: Mode1(UART1+SPI+I2C)
+                                      2: Mode2(HID UART1+SPI+I2C)
+                                      3: Mode3(UART1+JTAG+I2C)
+                                     */
+    uint16_t BulkOutEndpMaxSize; /* bulk out endpoint sise */
+    uint16_t BulkInEndpMaxSize;  /* bulk in endpoint size */
+    uint8_t UsbSpeedType;        /* USB speed, 0: FS, 1:HS, 2:SS */
+    uint8_t CH347IfNum;          /* USB interface: 0:UART, 1:SPI/I2C/JTAG/GPIO */
+    char ProductString[64];      /* USB product string */
+    char ManufacturerString[64]; /* USB manufacturer string */
+    uint32_t WriteTimeout;       /* USB write timeout */
+    uint32_t ReadTimeout;        /* USB read timeout */
+    uint8_t FirewareVer;         /* firmware version */
+    uint32_t CmdDataMaxSize;
 
-	mSpiCfgS dllUserSpiCfg;
-	StreamHwCfgS dllHwCfg;
+    mSpiCfgS dllUserSpiCfg;
+    StreamHwCfgS dllHwCfg;
 
-	int CMDPKT_DATA_MAX_BITS;
-	int MaxBitsPerBulk;
-	int MaxBytesPerBulk;
+    int CMDPKT_DATA_MAX_BITS;
+    int MaxBitsPerBulk;
+    int MaxBytesPerBulk;
 
 } mDeviceInforS, *mPDeviceInforS;
 
@@ -249,7 +256,7 @@ extern bool CH347SPI_SetAutoCS(int fd, bool disable);
 /**
  * CH347SPI_SetDataBits - SPI data bits setting
  * @fd: file descriptor of device
- * @iDataBits: 0: 8bit, 1: 16bit 
+ * @iDataBits: 0: 8bit, 1: 16bit
  *
  * The function return true if successful, false if fail.
  */
@@ -322,7 +329,7 @@ extern bool CH347SPI_Read(int fd, bool ignoreCS, uint8_t iChipSelect, int iLengt
 extern bool CH347SPI_WriteRead(int fd, bool ignoreCS, uint8_t iChipSelect, int iLength, void *ioBuffer);
 
 /**
- * CH347Jtag_Reset - Reset Tap Status, more than six consecutive TCK and TMS is high 
+ * CH347Jtag_Reset - Reset Tap Status, more than six consecutive TCK and TMS is high
  * 					will set the state machine to the Test-Logic Reset state.
  * @fd: file descriptor of device
  *
@@ -394,7 +401,7 @@ extern bool CH347Jtag_TmsChange(int fd, uint8_t *tmsValue, uint32_t Step, uint32
  * @DataBits: data bits to be transmitted
  * @DataBitsNb: number of bits to be transmitted
  * @IsRead: whether to read data
- * 
+ *
  * The function return true if successful, false if fail.
  */
 extern bool CH347Jtag_IoScan(int fd, uint8_t *DataBits, uint32_t DataBitsNb, bool IsRead);
@@ -407,7 +414,7 @@ extern bool CH347Jtag_IoScan(int fd, uint8_t *DataBits, uint32_t DataBitsNb, boo
  * @DataBitsNb: number of bits to be transmitted
  * @IsRead: whether to read data
  * @IsLastPkt: whether the last package
- * 
+ *
  * The function return true if successful, false if fail.
  */
 extern bool CH347Jtag_IoScanT(int fd, uint8_t *DataBits, uint32_t DataBitsNb, bool IsRead, bool IsLastPkt);
@@ -427,7 +434,7 @@ extern bool CH347Jtag_IoScanT(int fd, uint8_t *DataBits, uint32_t DataBitsNb, bo
  * The function return true if successful, false if fail.
  */
 extern bool CH347Jtag_WriteRead(int fd, bool IsDR, int iWriteBitLength, void *iWriteBitBuffer, uint32_t *oReadBitLength,
-				void *oReadBitBuffer);
+                                void *oReadBitBuffer);
 
 /**
  * CH347Jtag_WriteRead_Fast - JTAG IR/DR data read and write in batches for multi-byte continuous operation. Exp: JTAG firmware download operation. Hardware has a 4K buffer, such as write then read, the length should not exceed 4096 bytes. The buffer size can be adjusted.
@@ -443,7 +450,7 @@ extern bool CH347Jtag_WriteRead(int fd, bool IsDR, int iWriteBitLength, void *iW
  * The function return true if successful, false if fail.
  */
 extern bool CH347Jtag_WriteRead_Fast(int fd, bool IsDR, int iWriteLength, void *iWriteBuffer, uint32_t *oReadLength,
-				     void *oReadBuffer);
+                                     void *oReadBuffer);
 
 /**
  * CH347Jtag_SwitchTapState - switch JTAG state machine
@@ -616,7 +623,7 @@ extern bool CH347Uart_Close(int fd);
  * The function return true if successful, false if fail.
  */
 extern bool CH347Uart_GetCfg(int fd, uint32_t *BaudRate, uint8_t *ByteSize, uint8_t *Parity, uint8_t *StopBits,
-			     uint8_t *ByteTimeout);
+                             uint8_t *ByteTimeout);
 
 /**
  * CH347Uart_Init - uart setting
@@ -643,7 +650,7 @@ extern bool CH347Uart_GetCfg(int fd, uint32_t *BaudRate, uint8_t *ByteSize, uint
  * The function return true if successful, false if fail.
  */
 extern bool CH347Uart_Init(int fd, int BaudRate, uint8_t ByteSize, uint8_t Parity, uint8_t StopBits,
-			   uint8_t ByteTimeout);
+                           uint8_t ByteTimeout);
 
 /**
  * CH347Uart_Read - read for uart operation
@@ -752,7 +759,7 @@ extern bool CH347StreamI2C(int fd, int iWriteLength, void *iWriteBuffer, int iRe
  * The function return true if successful, false if fail.
  */
 extern bool CH347StreamI2C_RetAck(int fd, int iWriteLength, void *iWriteBuffer, int iReadLength, void *oReadBuffer,
-				  int *retAck);
+                                  int *retAck);
 
 /**
  * CH347ReadEEPROM - read data from eeprom

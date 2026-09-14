@@ -11,6 +11,7 @@
  *   - INI parameter loading
  */
 #include "ft4232_plugin.hpp"
+
 #include "PluginExport.hpp"
 #include "private/ft4232_setup.hpp"
 #include "uLogger.hpp"
@@ -23,36 +24,34 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+#undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR   "FT4232      |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR  "FT4232      |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
-extern "C"
+extern "C" {
+EXPORTED FT4232Plugin *pluginEntry()
 {
-    EXPORTED FT4232Plugin* pluginEntry()
-    {
-        return new FT4232Plugin();
-    }
+    return new FT4232Plugin();
+}
 
-    EXPORTED void pluginExit(FT4232Plugin* ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(FT4232Plugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   INIT / CLEANUP                                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::doInit(void* /*pvUserData*/)
+bool FT4232Plugin::doInit(void * /*pvUserData*/)
 {
     // Propagate INI defaults into pending config structs
     m_sSpiCfg.clockHz   = m_sIniValues.u32SpiClockHz;
@@ -64,7 +63,7 @@ bool FT4232Plugin::doInit(void* /*pvUserData*/)
     m_sUartCfg.baudRate = m_sIniValues.u32UartBaudRate;
     m_sUartCfg.channel  = m_sIniValues.eUartChannel;
 
-    m_bIsInitialized = true;
+    m_bIsInitialized    = true;
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Initialized — device index:"); LOG_UINT32(m_sIniValues.u8DeviceIndex);
@@ -75,10 +74,22 @@ bool FT4232Plugin::doInit(void* /*pvUserData*/)
 
 void FT4232Plugin::doCleanup()
 {
-    if (m_pSPI)  { m_pSPI->close();  m_pSPI.reset();  }
-    if (m_pI2C)  { m_pI2C->close();  m_pI2C.reset();  }
-    if (m_pGPIO) { m_pGPIO->close(); m_pGPIO.reset(); }
-    if (m_pUART) { m_pUART->close(); m_pUART.reset(); }
+    if (m_pSPI) {
+        m_pSPI->close();
+        m_pSPI.reset();
+    }
+    if (m_pI2C) {
+        m_pI2C->close();
+        m_pI2C.reset();
+    }
+    if (m_pGPIO) {
+        m_pGPIO->close();
+        m_pGPIO.reset();
+    }
+    if (m_pUART) {
+        m_pUART->close();
+        m_pUART.reset();
+    }
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
 }
@@ -87,16 +98,14 @@ void FT4232Plugin::doCleanup()
 //              TOP-LEVEL COMMAND HANDLERS                                     //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_FT4232_INFO(const std::string& args, std::stop_token st ) const
+bool FT4232Plugin::m_FT4232_INFO(const std::string &args, std::stop_token st) const
 {
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -330,51 +339,47 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string& args, std::stop_token st ) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
-
     return true;
 }
 
 // SPI / I2C / GPIO / UART each route straight into their module dispatch map
 
-bool FT4232Plugin::m_FT4232_SPI(const std::string& args, std::stop_token st ) const
+bool FT4232Plugin::m_FT4232_SPI(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "SPI", args, st);
 }
 
-bool FT4232Plugin::m_FT4232_I2C(const std::string& args, std::stop_token st ) const
+bool FT4232Plugin::m_FT4232_I2C(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "I2C", args, st);
 }
 
-bool FT4232Plugin::m_FT4232_GPIO(const std::string& args, std::stop_token st ) const
+bool FT4232Plugin::m_FT4232_GPIO(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "GPIO", args, st);
 }
 
-bool FT4232Plugin::m_FT4232_UART(const std::string& args, std::stop_token st ) const
+bool FT4232Plugin::m_FT4232_UART(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "UART", args, st);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; override one or more ini parameters at runtime
-  *
-  * \note Usage example: <br>
-  *       FT4232.CONFIG spf=2000000 a=0x51 baud=921600
-  *
-  * \param[in] args space-separated key=value tokens (see inc/private/ft4232_setup.hpp)
-  *
-  * \return true if processing succeeded, false otherwise
-*/
+ * \brief CONFIG command implementation; override one or more ini parameters at runtime
+ *
+ * \note Usage example: <br>
+ *       FT4232.CONFIG spf=2000000 a=0x51 baud=921600
+ *
+ * \param[in] args space-separated key=value tokens (see inc/private/ft4232_setup.hpp)
+ *
+ * \return true if processing succeeded, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool FT4232Plugin::m_FT4232_CONFIG ( const std::string &args, std::stop_token st ) const
+bool FT4232Plugin::m_FT4232_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     return generic_ft4232_set_params(this, args);
-
 }
-

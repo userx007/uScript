@@ -36,24 +36,24 @@ class Hydrabus;
  * auto [freq, duty] = utils.read_frequency();
  * @endcode
  */
-class Utils {
+class Utils
+{
 
 public:
-
     /**
      * @param hydrabus Open, BBIO-enabled Hydrabus instance.
      */
     explicit Utils(std::shared_ptr<Hydrabus> hydrabus);
 
-    Utils(const Utils&)            = delete;
+    Utils(const Utils &)            = delete;
 
-    Utils& operator=(const Utils&) = delete;
+    Utils &operator=(const Utils &) = delete;
 
-    Utils(Utils&&)                 = default;
+    Utils(Utils &&)                 = default;
 
-    Utils& operator=(Utils&&)      = default;
+    Utils &operator=(Utils &&)      = default;
 
-    ~Utils()                       = default;
+    ~Utils()                        = default;
 
     // -------------------------------------------------------------------------
     // ADC
@@ -108,10 +108,9 @@ public:
     void close();
 
 private:
-
     std::shared_ptr<Hydrabus> _hydrabus;
 };
 
 } // namespace HydraHAL
 
-#endif //HYDRABUS_UTILS_HPP
+#endif // HYDRABUS_UTILS_HPP

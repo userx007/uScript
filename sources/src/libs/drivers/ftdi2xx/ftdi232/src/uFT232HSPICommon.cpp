@@ -11,9 +11,9 @@
 #include "uFT232HSPI.hpp"
 #include "uLogger.hpp"
 
-#include <stdint.h>
 #include <cstring>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string_view>
 #include <vector>
@@ -23,21 +23,20 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT232H_SPI  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "FT232H_SPI  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // open / close
 // ============================================================================
 
-FT232HSPI::Status FT232HSPI::open(const SpiConfig& config, uint8_t u8DeviceIndex)
+FT232HSPI::Status FT232HSPI::open(const SpiConfig &config, uint8_t u8DeviceIndex)
 {
     if (is_open()) {
         close();
@@ -45,7 +44,9 @@ FT232HSPI::Status FT232HSPI::open(const SpiConfig& config, uint8_t u8DeviceIndex
 
     // Open the physical device handle
     auto s = open_device(u8DeviceIndex);
-    if (s != Status::SUCCESS) return s;
+    if (s != Status::SUCCESS) {
+        return s;
+    }
 
     // Purge any stale data
     mpsse_purge();
@@ -69,12 +70,11 @@ FT232HSPI::Status FT232HSPI::close()
     return FT232HBase::close();
 }
 
-
 // ============================================================================
 // configure_mpsse_spi
 // ============================================================================
 
-FT232HSPI::Status FT232HSPI::configure_mpsse_spi(const SpiConfig& config)
+FT232HSPI::Status FT232HSPI::configure_mpsse_spi(const SpiConfig &config)
 {
     // Resolve shift commands for the requested mode
     switch (config.mode) {
@@ -93,31 +93,35 @@ FT232HSPI::Status FT232HSPI::configure_mpsse_spi(const SpiConfig& config)
 
     if (config.bitOrder == BitOrder::LsbFirst) {
         m_cmdWrite |= 0x08u;
-        m_cmdRead  |= 0x08u;
-        m_cmdXfer  |= 0x08u;
+        m_cmdRead |= 0x08u;
+        m_cmdXfer |= 0x08u;
     }
 
     // CS idle level depends on polarity
     bool csIdleHigh = (config.csPolarity == CsPolarity::ActiveLow);
 
     // SCK idle level depends on CPOL (Mode2/Mode3 = high)
-    bool sckIdle = (config.mode == SpiMode::Mode2 ||
-                    config.mode == SpiMode::Mode3);
+    bool sckIdle    = (config.mode == SpiMode::Mode2 ||
+                       config.mode == SpiMode::Mode3);
 
     // Build initial pin state
-    m_pinDir   = 0x0Bu; // SCK+MOSI+CS = outputs; MISO = input
-    m_pinValue = 0x00u;
-    if (sckIdle)   m_pinValue |= 0x01u;           // ADBUS0 = SCK
-    if (csIdleHigh) m_pinValue |= config.csPin;
+    m_pinDir        = 0x0Bu; // SCK+MOSI+CS = outputs; MISO = input
+    m_pinValue      = 0x00u;
+    if (sckIdle) {
+        m_pinValue |= 0x01u; // ADBUS0 = SCK
+    }
+    if (csIdleHigh) {
+        m_pinValue |= config.csPin;
+    }
 
     // Compute clock divisor
     uint32_t divisor = (CLOCK_BASE_HZ / 2u / config.clockHz) - 1u;
 
     std::vector<uint8_t> init;
     init.reserve(16);
-    init.push_back(MPSSE_DIS_DIV5);          // 60 MHz base clock
-    init.push_back(MPSSE_DIS_3PHASE);        // SPI: no 3-phase clocking
-    init.push_back(MPSSE_DIS_ADAPTIVE);      // disable adaptive clocking
+    init.push_back(MPSSE_DIS_DIV5);     // 60 MHz base clock
+    init.push_back(MPSSE_DIS_3PHASE);   // SPI: no 3-phase clocking
+    init.push_back(MPSSE_DIS_ADAPTIVE); // disable adaptive clocking
     init.push_back(MPSSE_LOOPBACK_OFF);
     init.push_back(MPSSE_SET_CLK_DIV);
     init.push_back(static_cast<uint8_t>(divisor & 0xFFu));
@@ -129,7 +133,6 @@ FT232HSPI::Status FT232HSPI::configure_mpsse_spi(const SpiConfig& config)
     return mpsse_write(init.data(), init.size());
 }
 
-
 // ============================================================================
 // CS helpers
 // ============================================================================
@@ -138,33 +141,41 @@ FT232HSPI::Status FT232HSPI::apply_pin_state(bool csActive) const
 {
     uint8_t val = m_pinValue;
     if (csActive) {
-        if (m_config.csPolarity == CsPolarity::ActiveLow)
+        if (m_config.csPolarity == CsPolarity::ActiveLow) {
             val &= static_cast<uint8_t>(~m_config.csPin);
-        else
+        } else {
             val |= m_config.csPin;
+        }
     } else {
-        if (m_config.csPolarity == CsPolarity::ActiveLow)
+        if (m_config.csPolarity == CsPolarity::ActiveLow) {
             val |= m_config.csPin;
-        else
+        } else {
             val &= static_cast<uint8_t>(~m_config.csPin);
+        }
     }
-    uint8_t cmd[3] = { MPSSE_SET_BITS_LOW, val, m_pinDir };
+    uint8_t cmd[3] = {MPSSE_SET_BITS_LOW, val, m_pinDir};
     return mpsse_write(cmd, 3);
 }
 
-FT232HSPI::Status FT232HSPI::cs_assert()   const { return apply_pin_state(true);  }
-FT232HSPI::Status FT232HSPI::cs_deassert() const { return apply_pin_state(false); }
+FT232HSPI::Status FT232HSPI::cs_assert() const
+{
+    return apply_pin_state(true);
+}
 
+FT232HSPI::Status FT232HSPI::cs_deassert() const
+{
+    return apply_pin_state(false);
+}
 
 // ============================================================================
 // Core transfer helpers
 // ============================================================================
 
 FT232HSPI::Status FT232HSPI::spi_write_raw(std::span<const uint8_t> data,
-                                             size_t& bytesWritten) const
+                                           size_t &bytesWritten) const
 {
-    bytesWritten = 0;
-    size_t len = data.size();
+    bytesWritten      = 0;
+    size_t len        = data.size();
     uint16_t lenField = static_cast<uint16_t>(len - 1u);
 
     std::vector<uint8_t> cmd;
@@ -175,17 +186,19 @@ FT232HSPI::Status FT232HSPI::spi_write_raw(std::span<const uint8_t> data,
     cmd.insert(cmd.end(), data.begin(), data.end());
 
     auto s = mpsse_write(cmd.data(), cmd.size());
-    if (s == Status::SUCCESS) bytesWritten = len;
+    if (s == Status::SUCCESS) {
+        bytesWritten = len;
+    }
     return s;
 }
 
 FT232HSPI::Status FT232HSPI::spi_read_raw(std::span<uint8_t> data,
-                                            size_t& bytesRead,
-                                            uint32_t timeoutMs,
-                                            std::stop_token stop_tok) const
+                                          size_t &bytesRead,
+                                          uint32_t timeoutMs,
+                                          std::stop_token stop_tok) const
 {
-    bytesRead = 0;
-    size_t len = data.size();
+    bytesRead         = 0;
+    size_t len        = data.size();
     uint16_t lenField = static_cast<uint16_t>(len - 1u);
 
     uint8_t cmd[4];
@@ -195,20 +208,22 @@ FT232HSPI::Status FT232HSPI::spi_read_raw(std::span<uint8_t> data,
     cmd[3] = MPSSE_SEND_IMMEDIATE;
 
     auto s = mpsse_write(cmd, 4);
-    if (s != Status::SUCCESS) return s;
+    if (s != Status::SUCCESS) {
+        return s;
+    }
     // 0 == infinite timeout: forwarded to mpsse_read() unchanged, which now
     // blocks indefinitely rather than substituting a default.
     return mpsse_read(data.data(), len, timeoutMs, bytesRead, stop_tok);
 }
 
 FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
-                                            std::span<uint8_t>       rxBuf,
-                                            size_t& bytesXferd,
-                                            uint32_t timeoutMs,
-                                            std::stop_token stop_tok) const
+                                          std::span<uint8_t> rxBuf,
+                                          size_t &bytesXferd,
+                                          uint32_t timeoutMs,
+                                          std::stop_token stop_tok) const
 {
-    bytesXferd = 0;
-    size_t len = txBuf.size();
+    bytesXferd        = 0;
+    size_t len        = txBuf.size();
     uint16_t lenField = static_cast<uint16_t>(len - 1u);
 
     std::vector<uint8_t> cmd;
@@ -220,11 +235,12 @@ FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
     cmd.push_back(MPSSE_SEND_IMMEDIATE);
 
     auto s = mpsse_write(cmd.data(), cmd.size());
-    if (s != Status::SUCCESS) return s;
+    if (s != Status::SUCCESS) {
+        return s;
+    }
     // 0 == infinite timeout: forwarded to mpsse_read() unchanged.
     return mpsse_read(rxBuf.data(), len, timeoutMs, bytesXferd, stop_tok);
 }
-
 
 // ============================================================================
 // ICommDriver interface
@@ -232,18 +248,21 @@ FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
 
 FT232HSPI::WriteResult
 FT232HSPI::tout_write(uint32_t /*u32WriteTimeout*/,
-                       std::span<const uint8_t> buffer,
-                       std::string_view         /*xtra_params*/,
-                       std::stop_token /*stop_tok*/) const
+                      std::span<const uint8_t> buffer,
+                      std::string_view /*xtra_params*/,
+                      std::stop_token /*stop_tok*/) const
 {
     WriteResult r;
     r.status        = Status::RETVAL_NOT_SET;
     r.bytes_written = 0;
 
-    if (auto s = cs_assert(); s != Status::SUCCESS) { r.status = s; return r; }
+    if (auto s = cs_assert(); s != Status::SUCCESS) {
+        r.status = s;
+        return r;
+    }
 
-    size_t written = 0;
-    r.status = spi_write_raw(buffer, written);
+    size_t written  = 0;
+    r.status        = spi_write_raw(buffer, written);
     r.bytes_written = written;
 
     cs_deassert();
@@ -252,20 +271,23 @@ FT232HSPI::tout_write(uint32_t /*u32WriteTimeout*/,
 
 FT232HSPI::ReadResult
 FT232HSPI::tout_read(uint32_t u32ReadTimeout,
-                      std::span<uint8_t> buffer,
-                      const ReadOptions& /*options*/,
-                      std::string_view   /*xtra_params*/,
-                      std::stop_token stop_tok) const
+                     std::span<uint8_t> buffer,
+                     const ReadOptions & /*options*/,
+                     std::string_view /*xtra_params*/,
+                     std::stop_token stop_tok) const
 {
     ReadResult r;
     r.status     = Status::RETVAL_NOT_SET;
     r.bytes_read = 0;
 
-    if (auto s = cs_assert(); s != Status::SUCCESS) { r.status = s; return r; }
+    if (auto s = cs_assert(); s != Status::SUCCESS) {
+        r.status = s;
+        return r;
+    }
 
-    size_t got = 0;
+    size_t got   = 0;
     // 0 == infinite timeout: forwarded to spi_read_raw() unchanged.
-    r.status = spi_read_raw(buffer, got, u32ReadTimeout, stop_tok);
+    r.status     = spi_read_raw(buffer, got, u32ReadTimeout, stop_tok);
     r.bytes_read = got;
 
     cs_deassert();
@@ -274,9 +296,9 @@ FT232HSPI::tout_read(uint32_t u32ReadTimeout,
 
 FT232HSPI::TransferResult
 FT232HSPI::spi_transfer(std::span<const uint8_t> txBuf,
-                         std::span<uint8_t>       rxBuf,
-                         uint32_t u32TimeoutMs,
-                         std::stop_token stop_tok) const
+                        std::span<uint8_t> rxBuf,
+                        uint32_t u32TimeoutMs,
+                        std::stop_token stop_tok) const
 {
     TransferResult r;
 
@@ -286,10 +308,13 @@ FT232HSPI::spi_transfer(std::span<const uint8_t> txBuf,
         return r;
     }
 
-    if (auto s = cs_assert(); s != Status::SUCCESS) { r.status = s; return r; }
+    if (auto s = cs_assert(); s != Status::SUCCESS) {
+        r.status = s;
+        return r;
+    }
 
-    size_t xferd = 0;
-    r.status = spi_xfer_raw(txBuf, rxBuf, xferd, u32TimeoutMs, stop_tok);
+    size_t xferd   = 0;
+    r.status       = spi_xfer_raw(txBuf, rxBuf, xferd, u32TimeoutMs, stop_tok);
     r.bytes_xfered = xferd;
 
     cs_deassert();

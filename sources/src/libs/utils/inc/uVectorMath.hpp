@@ -3,30 +3,30 @@
 
 #include "uLogger.hpp"
 
-#include <string>
-#include <vector>
-#include <sstream>
-#include <iomanip>
-#include <stdexcept>
-#include <iostream>
-#include <unordered_map>
-#include <functional>
-#include <limits>
 #include <cmath>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "VECTOR_MATH |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "VECTOR_MATH |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //                     CLASS IMPLEMENTATION                      //
@@ -36,14 +36,24 @@ class VectorMath
 {
 public:
     enum class IntOp {
-        Add, Sub, Mul, Div, Mod,           // Arithmetic
-        BitAnd, BitOr, BitXor,             // Bitwise
-        ShiftLeft, ShiftRight,             // Shifts
+        Add,
+        Sub,
+        Mul,
+        Div,
+        Mod, // Arithmetic
+        BitAnd,
+        BitOr,
+        BitXor, // Bitwise
+        ShiftLeft,
+        ShiftRight, // Shifts
         Invalid
     };
 
     enum class DoubleOp {
-        Add, Sub, Mul, Div,
+        Add,
+        Sub,
+        Mul,
+        Div,
         Invalid
     };
 
@@ -53,10 +63,10 @@ public:
     }
 
     // Public interface for uint64_t math
-    bool mathInteger(const std::vector<std::string>& v1,
-                     const std::vector<std::string>& v2,
-                     const std::string& rule,
-                     std::vector<std::string>& result,
+    bool mathInteger(const std::vector<std::string> &v1,
+                     const std::vector<std::string> &v2,
+                     const std::string &rule,
+                     std::vector<std::string> &result,
                      bool bHexResult = false) const
     {
         result.clear();
@@ -68,17 +78,17 @@ public:
         }
 
         if (v1.size() != v2.size()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                     LOG_STRING("Vector size mismatch: ");
-                     LOG_SIZET(v1.size()); LOG_STRING(" vs "); LOG_SIZET(v2.size()));
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Vector size mismatch: ");
+                      LOG_SIZET(v1.size()); LOG_STRING(" vs "); LOG_SIZET(v2.size()));
             return false;
         }
 
         // Parse operation once
         IntOp op = parseIntOp(rule);
         if (op == IntOp::Invalid) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                     LOG_STRING("Invalid integer operation: "); LOG_STRING(rule));
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Invalid integer operation: "); LOG_STRING(rule));
             return false;
         }
 
@@ -93,12 +103,12 @@ public:
                 uint64_t r = computeUInt64(a, b, op);
 
                 result.push_back(formatUint64(r, bHexResult));
-            } catch (const std::exception& ex) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                         LOG_STRING("Integer error at index "); LOG_SIZET(i);
-                         LOG_STRING(": "); LOG_STRING(ex.what());
-                         LOG_STRING(" (values: '"); LOG_STRING(v1[i]);
-                         LOG_STRING("', '"); LOG_STRING(v2[i]); LOG_STRING("')"));
+            } catch (const std::exception &ex) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Integer error at index "); LOG_SIZET(i);
+                          LOG_STRING(": "); LOG_STRING(ex.what());
+                          LOG_STRING(" (values: '"); LOG_STRING(v1[i]);
+                          LOG_STRING("', '"); LOG_STRING(v2[i]); LOG_STRING("')"));
                 return false;
             }
         }
@@ -107,10 +117,10 @@ public:
     }
 
     // Public interface for double math
-    bool mathDouble(const std::vector<std::string>& v1,
-                    const std::vector<std::string>& v2,
-                    const std::string& rule,
-                    std::vector<std::string>& result,
+    bool mathDouble(const std::vector<std::string> &v1,
+                    const std::vector<std::string> &v2,
+                    const std::string &rule,
+                    std::vector<std::string> &result,
                     int precision = 15) const
     {
         result.clear();
@@ -122,17 +132,17 @@ public:
         }
 
         if (v1.size() != v2.size()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                     LOG_STRING("Vector size mismatch: ");
-                     LOG_SIZET(v1.size()); LOG_STRING(" vs "); LOG_SIZET(v2.size()));
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Vector size mismatch: ");
+                      LOG_SIZET(v1.size()); LOG_STRING(" vs "); LOG_SIZET(v2.size()));
             return false;
         }
 
         // Parse operation once
         DoubleOp op = parseDoubleOp(rule);
         if (op == DoubleOp::Invalid) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                     LOG_STRING("Invalid double operation: "); LOG_STRING(rule));
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Invalid double operation: "); LOG_STRING(rule));
             return false;
         }
 
@@ -152,12 +162,12 @@ public:
                 }
 
                 result.push_back(formatDouble(r, precision));
-            } catch (const std::exception& ex) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                         LOG_STRING("Double error at index "); LOG_SIZET(i);
-                         LOG_STRING(": "); LOG_STRING(ex.what());
-                         LOG_STRING(" (values: '"); LOG_STRING(v1[i]);
-                         LOG_STRING("', '"); LOG_STRING(v2[i]); LOG_STRING("')"));
+            } catch (const std::exception &ex) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Double error at index "); LOG_SIZET(i);
+                          LOG_STRING(": "); LOG_STRING(ex.what());
+                          LOG_STRING(" (values: '"); LOG_STRING(v1[i]);
+                          LOG_STRING("', '"); LOG_STRING(v2[i]); LOG_STRING("')"));
                 return false;
             }
         }
@@ -173,38 +183,38 @@ private:
     void initializeOperatorMaps()
     {
         // Integer operations (both forms map to same operation)
-        int_ops_["+"]   = int_ops_["+="]  = IntOp::Add;
-        int_ops_["-"]   = int_ops_["-="]  = IntOp::Sub;
-        int_ops_["*"]   = int_ops_["*="]  = IntOp::Mul;
-        int_ops_["/"]   = int_ops_["/="]  = IntOp::Div;
-        int_ops_["%"]   = int_ops_["%="]  = IntOp::Mod;
-        int_ops_["&"]   = int_ops_["&="]  = IntOp::BitAnd;
-        int_ops_["|"]   = int_ops_["|="]  = IntOp::BitOr;
-        int_ops_["^"]   = int_ops_["^="]  = IntOp::BitXor;
-        int_ops_["<<"]  = int_ops_["<<="] = IntOp::ShiftLeft;
-        int_ops_[">>"]  = int_ops_[">>="] = IntOp::ShiftRight;
+        int_ops_["+"] = int_ops_["+="] = IntOp::Add;
+        int_ops_["-"] = int_ops_["-="] = IntOp::Sub;
+        int_ops_["*"] = int_ops_["*="] = IntOp::Mul;
+        int_ops_["/"] = int_ops_["/="] = IntOp::Div;
+        int_ops_["%"] = int_ops_["%="] = IntOp::Mod;
+        int_ops_["&"] = int_ops_["&="] = IntOp::BitAnd;
+        int_ops_["|"] = int_ops_["|="] = IntOp::BitOr;
+        int_ops_["^"] = int_ops_["^="] = IntOp::BitXor;
+        int_ops_["<<"] = int_ops_["<<="] = IntOp::ShiftLeft;
+        int_ops_[">>"] = int_ops_[">>="] = IntOp::ShiftRight;
 
         // Double operations
-        double_ops_["+"]  = double_ops_["+="] = DoubleOp::Add;
-        double_ops_["-"]  = double_ops_["-="] = DoubleOp::Sub;
-        double_ops_["*"]  = double_ops_["*="] = DoubleOp::Mul;
-        double_ops_["/"]  = double_ops_["/="] = DoubleOp::Div;
+        double_ops_["+"] = double_ops_["+="] = DoubleOp::Add;
+        double_ops_["-"] = double_ops_["-="] = DoubleOp::Sub;
+        double_ops_["*"] = double_ops_["*="] = DoubleOp::Mul;
+        double_ops_["/"] = double_ops_["/="] = DoubleOp::Div;
     }
 
-    IntOp parseIntOp(const std::string& rule) const
+    IntOp parseIntOp(const std::string &rule) const
     {
         auto it = int_ops_.find(rule);
         return (it != int_ops_.end()) ? it->second : IntOp::Invalid;
     }
 
-    DoubleOp parseDoubleOp(const std::string& rule) const
+    DoubleOp parseDoubleOp(const std::string &rule) const
     {
         auto it = double_ops_.find(rule);
         return (it != double_ops_.end()) ? it->second : DoubleOp::Invalid;
     }
 
     // Parsing utilities
-    uint64_t parseUint64(const std::string& s) const
+    uint64_t parseUint64(const std::string &s) const
     {
         if (s.empty()) {
             throw std::invalid_argument("Empty string");
@@ -215,17 +225,17 @@ private:
             throw std::invalid_argument("Negative number not allowed: " + s);
         }
 
-        size_t idx = 0;
+        size_t idx   = 0;
         uint64_t val = std::stoull(s, &idx, 10);
-        
+
         if (idx != s.length()) {
             throw std::invalid_argument("Invalid uint64 string: " + s);
         }
-        
+
         return val;
     }
 
-    double parseDouble(const std::string& s) const
+    double parseDouble(const std::string &s) const
     {
         if (s.empty()) {
             throw std::invalid_argument("Empty string");
@@ -233,7 +243,7 @@ private:
 
         size_t idx = 0;
         double val = std::stod(s, &idx);
-        
+
         if (idx != s.length()) {
             throw std::invalid_argument("Invalid double string: " + s);
         }
@@ -241,7 +251,7 @@ private:
         if (!std::isfinite(val)) {
             throw std::invalid_argument("Non-finite value: " + s);
         }
-        
+
         return val;
     }
 
@@ -267,59 +277,59 @@ private:
     uint64_t computeUInt64(uint64_t a, uint64_t b, IntOp op) const
     {
         switch (op) {
-            case IntOp::Add:
-                if (a > std::numeric_limits<uint64_t>::max() - b) {
-                    throw std::overflow_error("Addition overflow");
-                }
-                return a + b;
+        case IntOp::Add:
+            if (a > std::numeric_limits<uint64_t>::max() - b) {
+                throw std::overflow_error("Addition overflow");
+            }
+            return a + b;
 
-            case IntOp::Sub:
-                if (a < b) {
-                    throw std::underflow_error("Subtraction underflow (result would be negative)");
-                }
-                return a - b;
+        case IntOp::Sub:
+            if (a < b) {
+                throw std::underflow_error("Subtraction underflow (result would be negative)");
+            }
+            return a - b;
 
-            case IntOp::Mul:
-                if (b != 0 && a > std::numeric_limits<uint64_t>::max() / b) {
-                    throw std::overflow_error("Multiplication overflow");
-                }
-                return a * b;
+        case IntOp::Mul:
+            if (b != 0 && a > std::numeric_limits<uint64_t>::max() / b) {
+                throw std::overflow_error("Multiplication overflow");
+            }
+            return a * b;
 
-            case IntOp::Div:
-                if (b == 0) {
-                    throw std::domain_error("Division by zero");
-                }
-                return a / b;
+        case IntOp::Div:
+            if (b == 0) {
+                throw std::domain_error("Division by zero");
+            }
+            return a / b;
 
-            case IntOp::Mod:
-                if (b == 0) {
-                    throw std::domain_error("Modulo by zero");
-                }
-                return a % b;
+        case IntOp::Mod:
+            if (b == 0) {
+                throw std::domain_error("Modulo by zero");
+            }
+            return a % b;
 
-            case IntOp::BitAnd:
-                return a & b;
+        case IntOp::BitAnd:
+            return a & b;
 
-            case IntOp::BitOr:
-                return a | b;
+        case IntOp::BitOr:
+            return a | b;
 
-            case IntOp::BitXor:
-                return a ^ b;
+        case IntOp::BitXor:
+            return a ^ b;
 
-            case IntOp::ShiftLeft:
-                if (b >= 64) {
-                    throw std::domain_error("Shift amount >= 64 (undefined behavior)");
-                }
-                return a << b;
+        case IntOp::ShiftLeft:
+            if (b >= 64) {
+                throw std::domain_error("Shift amount >= 64 (undefined behavior)");
+            }
+            return a << b;
 
-            case IntOp::ShiftRight:
-                if (b >= 64) {
-                    throw std::domain_error("Shift amount >= 64 (undefined behavior)");
-                }
-                return a >> b;
+        case IntOp::ShiftRight:
+            if (b >= 64) {
+                throw std::domain_error("Shift amount >= 64 (undefined behavior)");
+            }
+            return a >> b;
 
-            default:
-                throw std::logic_error("Invalid operation (should never reach here)");
+        default:
+            throw std::logic_error("Invalid operation (should never reach here)");
         }
     }
 
@@ -327,30 +337,28 @@ private:
     double computeDouble(double a, double b, DoubleOp op) const
     {
         switch (op) {
-            case DoubleOp::Add:
-                return a + b;
+        case DoubleOp::Add:
+            return a + b;
 
-            case DoubleOp::Sub:
-                return a - b;
+        case DoubleOp::Sub:
+            return a - b;
 
-            case DoubleOp::Mul:
-                return a * b;
+        case DoubleOp::Mul:
+            return a * b;
 
-            case DoubleOp::Div:
-                if (b == 0.0) {
-                    throw std::domain_error("Division by zero");
-                }
-                return a / b;
+        case DoubleOp::Div:
+            if (b == 0.0) {
+                throw std::domain_error("Division by zero");
+            }
+            return a / b;
 
-            default:
-                throw std::logic_error("Invalid operation (should never reach here)");
+        default:
+            throw std::logic_error("Invalid operation (should never reach here)");
         }
     }
 };
 
-#endif //UVECTORMATH_HPP
-
-
+#endif // UVECTORMATH_HPP
 
 ///////////////////////////////////////////////////////////////////////
 // USAGE:

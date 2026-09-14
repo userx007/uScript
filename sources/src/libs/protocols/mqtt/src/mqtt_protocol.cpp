@@ -23,7 +23,7 @@ std::vector<uint8_t> MqttProtocol::encodeVarInt(uint32_t value)
     return bytes;
 }
 
-uint32_t MqttProtocol::decodeVarInt(const std::vector<uint8_t>& data, size_t& offset)
+uint32_t MqttProtocol::decodeVarInt(const std::vector<uint8_t> &data, size_t &offset)
 {
     uint32_t value = 0;
     int multiplier = 1;
@@ -45,23 +45,31 @@ uint32_t MqttProtocol::decodeVarInt(const std::vector<uint8_t>& data, size_t& of
 // Builders
 // -----------------------------------------------------------------------
 
-std::vector<uint8_t> MqttProtocol::buildConnect(const ConnectParams& params) const
+std::vector<uint8_t> MqttProtocol::buildConnect(const ConnectParams &params) const
 {
     const bool hasUser = !params.username.empty();
     const bool hasPass = hasUser && !params.password.empty();
     const bool hasWill = !params.willTopic.empty();
 
-    uint8_t flags = 0;
-    if (hasUser) flags |= 0x80;
-    if (hasPass) flags |= 0x40;
+    uint8_t flags      = 0;
+    if (hasUser) {
+        flags |= 0x80;
+    }
+    if (hasPass) {
+        flags |= 0x40;
+    }
     if (hasWill) {
         flags |= 0x04;
         flags |= static_cast<uint8_t>((params.willQos & 0x03) << 3);
-        if (params.willRetain) flags |= 0x20;
+        if (params.willRetain) {
+            flags |= 0x20;
+        }
     }
-    if (params.cleanSession) flags |= 0x02;
+    if (params.cleanSession) {
+        flags |= 0x02;
+    }
 
-    const std::string clientId = params.clientId.empty() ? "mqtt_client_" : params.clientId;
+    const std::string clientId            = params.clientId.empty() ? "mqtt_client_" : params.clientId;
 
     static const std::string protocolName = "MQTT";
     std::vector<uint8_t> varHeader;
@@ -100,7 +108,7 @@ std::vector<uint8_t> MqttProtocol::buildConnect(const ConnectParams& params) con
         payload.insert(payload.end(), params.password.begin(), params.password.end());
     }
 
-    const size_t remainingLen = varHeader.size() + payload.size();
+    const size_t remainingLen        = varHeader.size() + payload.size();
     std::vector<uint8_t> remLenBytes = encodeVarInt(remainingLen);
 
     std::vector<uint8_t> packet;
@@ -114,16 +122,16 @@ std::vector<uint8_t> MqttProtocol::buildConnect(const ConnectParams& params) con
 
 std::vector<uint8_t> MqttProtocol::buildDisconnect() const
 {
-    return { kDisconnect, 0x00 };
+    return {kDisconnect, 0x00};
 }
 
 std::vector<uint8_t> MqttProtocol::buildPingReq() const
 {
-    return { kPingReq, 0x00 };
+    return {kPingReq, 0x00};
 }
 
-std::vector<uint8_t> MqttProtocol::buildPublish(const std::string& topic, const std::string& payload,
-                                                 uint8_t qos, bool retain, uint16_t* pOutPacketId)
+std::vector<uint8_t> MqttProtocol::buildPublish(const std::string &topic, const std::string &payload,
+                                                uint8_t qos, bool retain, uint16_t *pOutPacketId)
 {
     qos &= 0x03;
 
@@ -156,25 +164,25 @@ std::vector<uint8_t> MqttProtocol::buildPublish(const std::string& topic, const 
 
 std::vector<uint8_t> MqttProtocol::buildPubAck(uint16_t packetId) const
 {
-    return { kPubAck, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF) };
+    return {kPubAck, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
 std::vector<uint8_t> MqttProtocol::buildPubRec(uint16_t packetId) const
 {
-    return { kPubRec, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF) };
+    return {kPubRec, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
 std::vector<uint8_t> MqttProtocol::buildPubRel(uint16_t packetId) const
 {
-    return { kPubRel, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF) };
+    return {kPubRel, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
 std::vector<uint8_t> MqttProtocol::buildPubComp(uint16_t packetId) const
 {
-    return { kPubComp, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF) };
+    return {kPubComp, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
-std::vector<uint8_t> MqttProtocol::buildSubscribe(const std::string& topic, uint8_t qos, uint16_t* pOutPacketId)
+std::vector<uint8_t> MqttProtocol::buildSubscribe(const std::string &topic, uint8_t qos, uint16_t *pOutPacketId)
 {
     const uint16_t packetId = m_allocatePacketId();
 
@@ -198,7 +206,7 @@ std::vector<uint8_t> MqttProtocol::buildSubscribe(const std::string& topic, uint
     return packet;
 }
 
-std::vector<uint8_t> MqttProtocol::buildUnsubscribe(const std::string& topic, uint16_t* pOutPacketId)
+std::vector<uint8_t> MqttProtocol::buildUnsubscribe(const std::string &topic, uint16_t *pOutPacketId)
 {
     const uint16_t packetId = m_allocatePacketId();
 
@@ -225,7 +233,7 @@ std::vector<uint8_t> MqttProtocol::buildUnsubscribe(const std::string& topic, ui
 // Decoders
 // -----------------------------------------------------------------------
 
-MqttProtocol::ConnAckResult MqttProtocol::decodeConnAck(const std::vector<uint8_t>& packet) const
+MqttProtocol::ConnAckResult MqttProtocol::decodeConnAck(const std::vector<uint8_t> &packet) const
 {
     ConnAckResult result;
     if (packetType(packet) != kConnAck) {
@@ -242,7 +250,7 @@ MqttProtocol::ConnAckResult MqttProtocol::decodeConnAck(const std::vector<uint8_
     return result;
 }
 
-MqttProtocol::SubAckResult MqttProtocol::decodeSubAck(const std::vector<uint8_t>& packet) const
+MqttProtocol::SubAckResult MqttProtocol::decodeSubAck(const std::vector<uint8_t> &packet) const
 {
     SubAckResult result;
     if (packetType(packet) != kSubAck) {
@@ -259,7 +267,7 @@ MqttProtocol::SubAckResult MqttProtocol::decodeSubAck(const std::vector<uint8_t>
     return result;
 }
 
-bool MqttProtocol::decodeSimpleAck(const std::vector<uint8_t>& packet, uint16_t* pOutPacketId)
+bool MqttProtocol::decodeSimpleAck(const std::vector<uint8_t> &packet, uint16_t *pOutPacketId)
 {
     size_t offset = 1;
     decodeVarInt(packet, offset); // skip Remaining Length
@@ -272,7 +280,7 @@ bool MqttProtocol::decodeSimpleAck(const std::vector<uint8_t>& packet, uint16_t*
     return true;
 }
 
-MqttProtocol::PublishMessage MqttProtocol::decodePublish(const std::vector<uint8_t>& packet) const
+MqttProtocol::PublishMessage MqttProtocol::decodePublish(const std::vector<uint8_t> &packet) const
 {
     PublishMessage msg;
     if (!isPublish(packet)) {
@@ -280,11 +288,11 @@ MqttProtocol::PublishMessage MqttProtocol::decodePublish(const std::vector<uint8
     }
 
     const uint8_t header = packet[0];
-    msg.dup    = (header & 0x08) != 0;
-    msg.qos    = (header >> 1) & 0x03;
-    msg.retain = (header & 0x01) != 0;
+    msg.dup              = (header & 0x08) != 0;
+    msg.qos              = (header >> 1) & 0x03;
+    msg.retain           = (header & 0x01) != 0;
 
-    size_t offset = 1;
+    size_t offset        = 1;
     decodeVarInt(packet, offset); // skip Remaining Length
 
     if (offset + 2 > packet.size()) {
@@ -295,7 +303,7 @@ MqttProtocol::PublishMessage MqttProtocol::decodePublish(const std::vector<uint8
     if (offset + topicLen > packet.size()) {
         return msg;
     }
-    msg.topic.assign(reinterpret_cast<const char*>(packet.data() + offset), topicLen);
+    msg.topic.assign(reinterpret_cast<const char *>(packet.data() + offset), topicLen);
     offset += topicLen;
 
     if (msg.qos > 0) {
@@ -308,6 +316,6 @@ MqttProtocol::PublishMessage MqttProtocol::decodePublish(const std::vector<uint8
 
     // Everything left is the payload — PUBLISH has no length prefix of its
     // own for it; it's simply "whatever remains".
-    msg.payload.assign(reinterpret_cast<const char*>(packet.data() + offset), packet.size() - offset);
+    msg.payload.assign(reinterpret_cast<const char *>(packet.data() + offset), packet.size() - offset);
     return msg;
 }

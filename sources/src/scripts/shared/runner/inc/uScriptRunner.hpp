@@ -1,31 +1,30 @@
 #ifndef U_SCRIPT_RUNNER_HPP
 #define U_SCRIPT_RUNNER_HPP
 
-#include "IScriptRunner.hpp"
-#include "IScriptReader.hpp"
-#include "IScriptValidator.hpp"
 #include "IScriptInterpreter.hpp"
-#include "uScriptDataTypes.hpp"
+#include "IScriptReader.hpp"
+#include "IScriptRunner.hpp"
+#include "IScriptValidator.hpp"
 #include "uLogger.hpp"
+#include "uScriptDataTypes.hpp"
 
-#include <vector>
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "SCR_RUN     |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "SCR_RUN     |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                    CLASS DECLARATION / DEFINITION                           //
@@ -33,26 +32,25 @@
 
 /**
  * @brief Basic script runner without communication driver dependency
- * 
+ *
  * Coordinates script reading, validation, and interpretation for scripts
  * that don't require device communication.
- * 
+ *
  * @tparam TScriptEntries Type representing script entries/commands
  */
-template<typename TScriptEntries>
+template <typename TScriptEntries>
 class ScriptRunner : public IScriptRunner
 {
 public:
-
     /**
      * @brief Construct a basic script runner
      * @param shpScriptReader Script reader component
      * @param shvScriptValidator Script validator component
      * @param shvScriptInterpreter Script interpreter component (Level 1)
      */
-    explicit ScriptRunner( std::shared_ptr<IScriptReader> shpScriptReader,
-                           std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
-                           std::shared_ptr<IScriptInterpreter<TScriptEntries>> shvScriptInterpreter )
+    explicit ScriptRunner(std::shared_ptr<IScriptReader> shpScriptReader,
+                          std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
+                          std::shared_ptr<IScriptInterpreter<TScriptEntries>> shvScriptInterpreter)
         : m_shpScriptReader(std::move(shpScriptReader))
         , m_shpScriptValidator(std::move(shvScriptValidator))
         , m_shpScriptInterpreter(std::move(shvScriptInterpreter))
@@ -64,7 +62,7 @@ public:
 
         do {
 
-            // validation phase 
+            // validation phase
             if (!bRealExec) {
                 LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Reading"); LOG_STRING(pstrCallCtx));
                 if (false == m_shpScriptReader->readScript(m_vRawScriptLines)) {
@@ -84,7 +82,7 @@ public:
                     break;
                 }
 
-            // execution phase    
+                // execution phase
             } else {
                 LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Interpreting"); LOG_STRING(pstrCallCtx));
                 if (false == m_shpScriptInterpreter->interpretScript(m_sScriptEntries, true)) {
@@ -95,24 +93,19 @@ public:
 
             bRetVal = true;
 
-        } while(false);
+        } while (false);
 
         return bRetVal;
-
     }
 
 protected:
-
     std::shared_ptr<IScriptReader> m_shpScriptReader;
     std::shared_ptr<IScriptValidator<TScriptEntries>> m_shpScriptValidator;
     std::shared_ptr<IScriptInterpreter<TScriptEntries>> m_shpScriptInterpreter;
 
 private:
-
     std::vector<ScriptRawLine> m_vRawScriptLines;
     TScriptEntries m_sScriptEntries;
-
-
 };
 
 #endif // U_SCRIPT_RUNNER_HPP

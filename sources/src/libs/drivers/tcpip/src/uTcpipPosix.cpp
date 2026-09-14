@@ -1,49 +1,47 @@
 #include "uLogger.hpp"
 #include "uTcpip.hpp"
 
-#include <errno.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <poll.h>
-#include <stdint.h>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <algorithm>
 #include <chrono>
 #include <compare>
 #include <cstring>
+#include <errno.h>
+#include <fcntl.h>
 #include <mutex>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <poll.h>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
+#include <sys/socket.h>
+#include <unistd.h>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "TCPIP_DRV   |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "TCPIP_DRV   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // OPEN / CLOSE
 // ============================================================================
 
-TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout)
+TCPIP::Status TCPIP::open(const std::string &strHost, uint16_t u16Port, uint32_t u32ConnectTimeout)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (strHost.empty() || u16Port == 0)
-    {
+    if (strHost.empty() || u16Port == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Invalid parameter: empty host or port 0"));
         return Status::INVALID_PARAM;
@@ -53,17 +51,16 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
 
     // Resolve host (numeric IPv4/IPv6 literal or DNS name) to one or more
     // candidate addresses.
-    struct addrinfo sHints = {};
-    sHints.ai_family   = AF_UNSPEC;
-    sHints.ai_socktype = SOCK_STREAM;
-    sHints.ai_protocol = IPPROTO_TCP;
+    struct addrinfo sHints    = {};
+    sHints.ai_family          = AF_UNSPEC;
+    sHints.ai_socktype        = SOCK_STREAM;
+    sHints.ai_protocol        = IPPROTO_TCP;
 
-    struct addrinfo* pResult = nullptr;
+    struct addrinfo *pResult  = nullptr;
     const std::string strPort = std::to_string(u16Port);
 
-    const int iGaiRc = ::getaddrinfo(strHost.c_str(), strPort.c_str(), &sHints, &pResult);
-    if (iGaiRc != 0 || pResult == nullptr)
-    {
+    const int iGaiRc          = ::getaddrinfo(strHost.c_str(), strPort.c_str(), &sHints, &pResult);
+    if (iGaiRc != 0 || pResult == nullptr) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("getaddrinfo("); LOG_STRING(strHost.c_str());
                   LOG_STRING(") failed:"); LOG_STRING(::gai_strerror(iGaiRc)));
@@ -74,11 +71,9 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
 
     // Try each candidate address in turn (e.g. a hostname that resolves to
     // both IPv6 and IPv4) until one connects, or the list is exhausted.
-    for (struct addrinfo* pAi = pResult; pAi != nullptr; pAi = pAi->ai_next)
-    {
+    for (struct addrinfo *pAi = pResult; pAi != nullptr; pAi = pAi->ai_next) {
         const int iSock = ::socket(pAi->ai_family, pAi->ai_socktype, pAi->ai_protocol);
-        if (iSock < 0)
-        {
+        if (iSock < 0) {
             continue;
         }
 
@@ -88,8 +83,7 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
         ::fcntl(iSock, F_SETFL, iFlags | O_NONBLOCK);
 
         const int iConnRc = ::connect(iSock, pAi->ai_addr, pAi->ai_addrlen);
-        if (iConnRc == 0)
-        {
+        if (iConnRc == 0) {
             // Connected immediately (e.g. loopback). Restore blocking mode —
             // later recv()/send() calls are guarded by their own poll(2), so
             // a blocking socket is safe and simpler there.
@@ -99,8 +93,7 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
             break;
         }
 
-        if (errno != EINPROGRESS)
-        {
+        if (errno != EINPROGRESS) {
             const int err = errno;
             LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("connect() failed immediately, errno:"); LOG_INT(err));
@@ -109,13 +102,12 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
         }
 
         struct pollfd sPollFd;
-        sPollFd.fd      = iSock;
-        sPollFd.events  = POLLOUT;
-        sPollFd.revents = 0;
+        sPollFd.fd        = iSock;
+        sPollFd.events    = POLLOUT;
+        sPollFd.revents   = 0;
 
         const int iPollRc = ::poll(&sPollFd, 1, static_cast<int>(u32Timeout));
-        if (iPollRc <= 0)
-        {
+        if (iPollRc <= 0) {
             ::close(iSock);
             eResult = (iPollRc == 0) ? Status::WRITE_TIMEOUT : Status::PORT_ACCESS;
             continue;
@@ -124,10 +116,9 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
         // poll() returning writable does not by itself mean connect()
         // succeeded — check SO_ERROR to distinguish success from a
         // completed-but-failed connection (e.g. ECONNREFUSED).
-        int       iSockErr    = 0;
+        int iSockErr           = 0;
         socklen_t szSockErrLen = sizeof(iSockErr);
-        if (::getsockopt(iSock, SOL_SOCKET, SO_ERROR, &iSockErr, &szSockErrLen) < 0 || iSockErr != 0)
-        {
+        if (::getsockopt(iSock, SOL_SOCKET, SO_ERROR, &iSockErr, &szSockErrLen) < 0 || iSockErr != 0) {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("connect() completed with error:"); LOG_INT(iSockErr));
             ::close(iSock);
@@ -143,8 +134,7 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
 
     ::freeaddrinfo(pResult);
 
-    if (eResult != Status::SUCCESS)
-    {
+    if (eResult != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to connect to "); LOG_STRING(strHost.c_str());
                   LOG_STRING(":"); LOG_STRING(strPort.c_str()));
@@ -155,8 +145,7 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
     // style exchanges (mirroring how the UART/I2C/SPI/CAN drivers are used),
     // so batching small writes to wait for an ACK only adds latency.
     int iNoDelay = 1;
-    if (::setsockopt(m_iHandle, IPPROTO_TCP, TCP_NODELAY, &iNoDelay, sizeof(iNoDelay)) < 0)
-    {
+    if (::setsockopt(m_iHandle, IPPROTO_TCP, TCP_NODELAY, &iNoDelay, sizeof(iNoDelay)) < 0) {
         // Not fatal — proceed without it.
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("TCP_NODELAY not supported, ignoring"));
     }
@@ -169,13 +158,11 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
     return Status::SUCCESS;
 }
 
-
 TCPIP::Status TCPIP::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (m_iHandle >= 0)
-    {
+    if (m_iHandle >= 0) {
         ::close(m_iHandle);
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("Socket closed, handle:"); LOG_INT(m_iHandle));
@@ -185,7 +172,6 @@ TCPIP::Status TCPIP::close()
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // INTERNAL READ PRIMITIVE
 // One poll(2) + recv(2) pair. bytes_read is set to the number of bytes
@@ -193,12 +179,11 @@ TCPIP::Status TCPIP::close()
 // ============================================================================
 
 TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
-                          std::span<uint8_t> buffer,
-                          size_t& szBytesRead,
-                          std::stop_token stop_tok) const
+                                  std::span<uint8_t> buffer,
+                                  size_t &szBytesRead,
+                                  std::stop_token stop_tok) const
 {
-    if (buffer.empty())
-    {
+    if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_read: invalid parameter"));
         return Status::INVALID_PARAM;
     }
@@ -206,67 +191,57 @@ TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
     szBytesRead = 0;
 
     struct pollfd sPollFd;
-    sPollFd.fd      = m_iHandle;
-    sPollFd.events  = POLLIN;
-    sPollFd.revents = 0;
+    sPollFd.fd                 = m_iHandle;
+    sPollFd.events             = POLLIN;
+    sPollFd.revents            = 0;
 
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
     // poll in bounded slices so a stop request can be observed promptly
     // instead of only at the end of the (possibly infinite) wait.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite = (u32ReadTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+    const bool bInfinite       = (u32ReadTimeout == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    int iPollResult = 0;
-    while (true)
-    {
-        if (stop_tok.stop_requested())
-        {
+    int iPollResult            = 0;
+    while (true) {
+        if (stop_tok.stop_requested()) {
             return Status::READ_TIMEOUT;
         }
 
         int iSliceMs = kPollSliceMs;
-        if (!bInfinite)
-        {
+        if (!bInfinite) {
             const auto remaining = tDeadline - std::chrono::steady_clock::now();
-            if (remaining <= std::chrono::milliseconds(0))
-            {
+            if (remaining <= std::chrono::milliseconds(0)) {
                 return Status::READ_TIMEOUT;
             }
             iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                          std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         iPollResult = ::poll(&sPollFd, 1, iSliceMs);
-        if (iPollResult < 0)
-        {
+        if (iPollResult < 0) {
             const int err = errno;
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
             return Status::READ_ERROR;
         }
-        if (iPollResult > 0)
-        {
+        if (iPollResult > 0) {
             break;
         }
         // iPollResult == 0: this slice timed out, loop again.
     }
 
-    if (sPollFd.revents & (POLLERR | POLLHUP))
-    {
+    if (sPollFd.revents & (POLLERR | POLLHUP)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("timeout_read: peer closed or reset the connection"));
         return Status::READ_ERROR;
     }
 
     const ssize_t nbytes = ::recv(m_iHandle, buffer.data(), buffer.size(), 0);
-    if (nbytes < 0)
-    {
+    if (nbytes < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("recv() failed, errno:"); LOG_INT(err));
         return Status::READ_ERROR;
-    }
-    else if (nbytes == 0)
-    {
+    } else if (nbytes == 0) {
         // Orderly shutdown by the peer (recv() returning 0 on a stream
         // socket means EOF, not "no data available"). This is the only
         // place the caller-visible READ_ERROR below gets explained, so it
@@ -285,7 +260,6 @@ TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // INTERNAL WRITE PRIMITIVE
 // Loops over send(2), re-polling for POLLOUT between short writes, until the
@@ -293,35 +267,31 @@ TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
 // ============================================================================
 
 TCPIP::Status TCPIP::timeout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer,
-                           size_t& szBytesWritten,
-                           std::stop_token stop_tok) const
+                                   std::span<const uint8_t> buffer,
+                                   size_t &szBytesWritten,
+                                   std::stop_token stop_tok) const
 {
-    if (buffer.empty())
-    {
+    if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_write: invalid parameter"));
         return Status::INVALID_PARAM;
     }
 
-    szBytesWritten = 0;
+    szBytesWritten             = 0;
 
     // 0 == infinite timeout: never time out the overall write. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite = (u32WriteTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() +
-                           std::chrono::milliseconds(u32WriteTimeout);
+    const bool bInfinite       = (u32WriteTimeout == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() +
+                                 std::chrono::milliseconds(u32WriteTimeout);
 
-    while (szBytesWritten < buffer.size())
-    {
-        if (stop_tok.stop_requested())
-        {
+    while (szBytesWritten < buffer.size()) {
+        if (stop_tok.stop_requested()) {
             return Status::WRITE_TIMEOUT;
         }
 
         const auto tNow = std::chrono::steady_clock::now();
-        if (!bInfinite && tNow >= tDeadline)
-        {
+        if (!bInfinite && tNow >= tDeadline) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("timeout_write: overall timeout elapsed, bytes sent:");
                       LOG_UINT32(static_cast<uint32_t>(szBytesWritten)));
@@ -329,32 +299,27 @@ TCPIP::Status TCPIP::timeout_write(uint32_t u32WriteTimeout,
         }
 
         int iPollTimeout = -1;
-        if (!bInfinite)
-        {
+        if (!bInfinite) {
             const auto remainingMs =
                 std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow).count();
             iPollTimeout = static_cast<int>(remainingMs);
         }
 
         struct pollfd sPollFd;
-        sPollFd.fd      = m_iHandle;
-        sPollFd.events  = POLLOUT;
-        sPollFd.revents = 0;
+        sPollFd.fd            = m_iHandle;
+        sPollFd.events        = POLLOUT;
+        sPollFd.revents       = 0;
 
         const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
-        if (iPollResult < 0)
-        {
+        if (iPollResult < 0) {
             const int err = errno;
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
             return Status::WRITE_ERROR;
-        }
-        else if (iPollResult == 0)
-        {
+        } else if (iPollResult == 0) {
             return Status::WRITE_TIMEOUT;
         }
 
-        if (sPollFd.revents & (POLLERR | POLLHUP))
-        {
+        if (sPollFd.revents & (POLLERR | POLLHUP)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("timeout_write: peer closed or reset the connection"));
             return Status::WRITE_ERROR;
@@ -366,10 +331,8 @@ TCPIP::Status TCPIP::timeout_write(uint32_t u32WriteTimeout,
                                       buffer.data() + szBytesWritten,
                                       buffer.size() - szBytesWritten,
                                       MSG_NOSIGNAL);
-        if (nbytes < 0)
-        {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
+        if (nbytes < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 continue; // Spurious wakeup — re-poll for POLLOUT.
             }
             const int err = errno;

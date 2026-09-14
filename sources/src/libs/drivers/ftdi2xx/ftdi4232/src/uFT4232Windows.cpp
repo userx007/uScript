@@ -14,31 +14,28 @@
 // FT_* types, FT_OK, FT_Open, FT_Write etc. come from this header.
 // The MPSSE_* opcode byte constants are NOT from FTD2XX — they are
 // defined in FT4232Base.hpp based on FTDI AN_108.
-#include <ftd2xx.h>
-
-#include <cstring>
-#include <string>
 #include <chrono>
+#include <cstring>
+#include <ftd2xx.h>
+#include <string>
 #include <thread>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT4232_BASE |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "FT4232_BASE |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // Convenience cast
-#define FT_HDL (static_cast<FT_HANDLE>(m_hDevice))
-
+#define FT_HDL  (static_cast<FT_HANDLE>(m_hDevice))
 
 // ============================================================================
 // Destructor
@@ -48,7 +45,6 @@ FT4232Base::~FT4232Base()
 {
     FT4232Base::close();
 }
-
 
 // ============================================================================
 // open_device
@@ -68,8 +64,7 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
     // FTD2XX device list: the n-th chip occupies indices [n*4, n*4+3].
     // Channels A and B are indices 0 and 1 of that chip's block.
     //
-    DWORD ftIndex = static_cast<DWORD>(u8DeviceIndex) * 4u
-                    + static_cast<DWORD>(channel);  // Channel::A=0, Channel::B=1
+    DWORD ftIndex = static_cast<DWORD>(u8DeviceIndex) * 4u + static_cast<DWORD>(channel); // Channel::A=0, Channel::B=1
 
     // Verify the device at that index actually has the expected VID/PID.
     {
@@ -79,8 +74,8 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
         // FT_GetDeviceInfoDetail fills info for the device at ftIndex.
         // Type FT_DEVICE_4232H = 9 in the FTD2XX SDK.
         DWORD flags, type, devId, locId;
-        char  serialNum[16] = {0};
-        char  description[64] = {0};
+        char serialNum[16]   = {0};
+        char description[64] = {0};
         FT_HANDLE tempHandle = nullptr;
 
         FT_STATUS infoStatus = FT_GetDeviceInfoDetail(
@@ -96,7 +91,7 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
 
         // devId encodes VID in high word, PID in low word.
         uint16_t vid = static_cast<uint16_t>((devId >> 16) & 0xFFFFu);
-        uint16_t pid = static_cast<uint16_t>( devId        & 0xFFFFu);
+        uint16_t pid = static_cast<uint16_t>(devId & 0xFFFFu);
         if (vid != FT4232H_VID || pid != FT4232H_PID) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Device at ftIndex"); LOG_UINT32(ftIndex);
@@ -121,7 +116,7 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
     FT_ResetDevice(handle);
 
     // Step 2: Set USB parameters
-    FT_SetUSBParameters(handle, 65536, 65536);  // read/write transfer sizes
+    FT_SetUSBParameters(handle, 65536, 65536); // read/write transfer sizes
 
     // Step 3: Configure timeouts (generous; the common layer manages its own)
     FT_SetTimeouts(handle,
@@ -153,7 +148,7 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
     // Step 8: Flush any stale data
     FT_Purge(handle, FT_PURGE_RX | FT_PURGE_TX);
 
-    m_hDevice = static_cast<void*>(handle);
+    m_hDevice = static_cast<void *>(handle);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT4232H opened: channel="); LOG_UINT32(static_cast<uint8_t>(channel));
@@ -162,7 +157,6 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
 
     return Status::SUCCESS;
 }
-
 
 // ============================================================================
 // close / is_open
@@ -178,7 +172,6 @@ FT4232Base::Status FT4232Base::close()
     return Status::SUCCESS;
 }
 
-
 bool FT4232Base::is_open() const
 {
     if (!m_hDevice) {
@@ -188,7 +181,6 @@ bool FT4232Base::is_open() const
     return true;
 }
 
-
 // ============================================================================
 // MPSSE transport primitives
 // ============================================================================
@@ -196,15 +188,15 @@ bool FT4232Base::is_open() const
 /**
  * @brief Write raw MPSSE command bytes via FT_Write
  */
-FT4232Base::Status FT4232Base::mpsse_write(const uint8_t* buf, size_t len) const
+FT4232Base::Status FT4232Base::mpsse_write(const uint8_t *buf, size_t len) const
 {
     if (!buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
-    DWORD written = 0;
+    DWORD written    = 0;
     FT_STATUS ftStat = FT_Write(FT_HDL,
-                                const_cast<LPVOID>(static_cast<const void*>(buf)),
+                                const_cast<LPVOID>(static_cast<const void *>(buf)),
                                 static_cast<DWORD>(len),
                                 &written);
 
@@ -223,31 +215,29 @@ FT4232Base::Status FT4232Base::mpsse_write(const uint8_t* buf, size_t len) const
     return Status::SUCCESS;
 }
 
-
 /**
  * @brief Read response bytes via FT_Read with a timeout
  *
  * FT_GetQueueStatus is polled until enough bytes are available or the
  * timeout expires, then FT_Read fetches them all in one call.
  */
-FT4232Base::Status FT4232Base::mpsse_read(uint8_t* buf, size_t len,
-                                           uint32_t timeoutMs,
-                                           size_t& bytesRead,
-                                           std::stop_token stop_tok) const
+FT4232Base::Status FT4232Base::mpsse_read(uint8_t *buf, size_t len,
+                                          uint32_t timeoutMs,
+                                          size_t &bytesRead,
+                                          std::stop_token stop_tok) const
 {
     if (!buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
-    bytesRead = 0;
+    bytesRead            = 0;
 
     // 0 == infinite timeout: never expire this poll loop.
     const bool bInfinite = (timeoutMs == 0);
-    auto deadline = std::chrono::steady_clock::now()
-                    + std::chrono::milliseconds(timeoutMs);
+    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
     while (bytesRead < len) {
-        DWORD queued = 0;
+        DWORD queued     = 0;
         FT_STATUS ftStat = FT_GetQueueStatus(FT_HDL, &queued);
         if (ftStat != FT_OK) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -258,7 +248,7 @@ FT4232Base::Status FT4232Base::mpsse_read(uint8_t* buf, size_t len,
         if (queued > 0) {
             DWORD toRead = std::min(static_cast<DWORD>(len - bytesRead), queued);
             DWORD got    = 0;
-            ftStat = FT_Read(FT_HDL, buf + bytesRead, toRead, &got);
+            ftStat       = FT_Read(FT_HDL, buf + bytesRead, toRead, &got);
             if (ftStat != FT_OK) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("FT_Read() failed, status="); LOG_UINT32(ftStat));
@@ -283,7 +273,6 @@ FT4232Base::Status FT4232Base::mpsse_read(uint8_t* buf, size_t len,
 
     return Status::SUCCESS;
 }
-
 
 /**
  * @brief Purge device RX and TX FIFOs

@@ -40,148 +40,138 @@
 //     call returns.
 
 #include <algorithm>
+#include <arpa/inet.h>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <string>
-
-#include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <signal.h>
+#include <string>
 #include <sys/socket.h>
 #include <unistd.h>
 
-namespace
+namespace {
+constexpr int DEFAULT_PORT         = 5000;
+constexpr const char *DEFAULT_BIND = "::";
+constexpr size_t RECV_CHUNK_SIZE   = 4096;
+constexpr int LISTEN_BACKLOG       = 8;
+// A TCP chunk can be up to RECV_CHUNK_SIZE bytes — unlike a CAN frame's
+// 8 bytes, printing every byte would flood the terminal. Cap the
+// console dump and note how much was left out, same idea as
+// CommDumpModel's preview truncation in the GUI.
+constexpr size_t DUMP_MAX_BYTES    = 64;
+
+volatile sig_atomic_t g_stop       = 0;
+
+void on_signal(int /*sig*/)
 {
-    constexpr int         DEFAULT_PORT    = 5000;
-    constexpr const char* DEFAULT_BIND    = "::";
-    constexpr size_t       RECV_CHUNK_SIZE = 4096;
-    constexpr int          LISTEN_BACKLOG  = 8;
-    // A TCP chunk can be up to RECV_CHUNK_SIZE bytes — unlike a CAN frame's
-    // 8 bytes, printing every byte would flood the terminal. Cap the
-    // console dump and note how much was left out, same idea as
-    // CommDumpModel's preview truncation in the GUI.
-    constexpr size_t DUMP_MAX_BYTES = 64;
+    g_stop = 1;
+}
 
-    volatile sig_atomic_t g_stop = 0;
+// Format a sockaddr as "host:port" for logging. Best-effort — falls back
+// to "?" fields if getnameinfo() fails.
+std::string peer_to_string(const struct sockaddr_storage &addr, socklen_t addrLen)
+{
+    char szHost[NI_MAXHOST] = "?";
+    char szPort[NI_MAXSERV] = "?";
 
-    void on_signal(int /*sig*/)
-    {
-        g_stop = 1;
+    ::getnameinfo(reinterpret_cast<const struct sockaddr *>(&addr), addrLen,
+                  szHost, sizeof(szHost), szPort, sizeof(szPort),
+                  NI_NUMERICHOST | NI_NUMERICSERV);
+
+    return std::string(szHost) + ":" + szPort;
+}
+
+/** Print one TCP chunk in a candump-like table row: DIR, PEER (host:port),
+ *  LEN, and a hex dump of the data — the TCP analogue of
+ *  kvcan_loopback.c's print_frame(), with the peer address in place of
+ *  CAN's ID/DLC. Called for both the as-received RX chunk and the TX
+ *  chunk as it's echoed back, same as kvcan's print_frame(prefix, &frame)
+ *  being called on both sides of the loopback.
+ */
+void print_chunk(const char *prefix, const std::string &peer, const uint8_t *data, size_t len)
+{
+    std::printf("%-4s  %-24s  %-6zu ", prefix, peer.c_str(), len);
+
+    const size_t shown = std::min(len, DUMP_MAX_BYTES);
+    for (size_t i = 0; i < shown; ++i) {
+        std::printf("%02X ", data[i]);
     }
-
-    // Format a sockaddr as "host:port" for logging. Best-effort — falls back
-    // to "?" fields if getnameinfo() fails.
-    std::string peer_to_string(const struct sockaddr_storage& addr, socklen_t addrLen)
-    {
-        char szHost[NI_MAXHOST] = "?";
-        char szPort[NI_MAXSERV] = "?";
-
-        ::getnameinfo(reinterpret_cast<const struct sockaddr*>(&addr), addrLen,
-                      szHost, sizeof(szHost), szPort, sizeof(szPort),
-                      NI_NUMERICHOST | NI_NUMERICSERV);
-
-        return std::string(szHost) + ":" + szPort;
+    if (len > shown) {
+        std::printf("... (+%zu more bytes)", len - shown);
     }
+    std::printf("\n");
+    std::fflush(stdout);
+}
 
-    /** Print one TCP chunk in a candump-like table row: DIR, PEER (host:port),
-     *  LEN, and a hex dump of the data — the TCP analogue of
-     *  kvcan_loopback.c's print_frame(), with the peer address in place of
-     *  CAN's ID/DLC. Called for both the as-received RX chunk and the TX
-     *  chunk as it's echoed back, same as kvcan's print_frame(prefix, &frame)
-     *  being called on both sides of the loopback.
-     */
-    void print_chunk(const char* prefix, const std::string& peer, const uint8_t* data, size_t len)
-    {
-        std::printf("%-4s  %-24s  %-6zu ", prefix, peer.c_str(), len);
-
-        const size_t shown = std::min(len, DUMP_MAX_BYTES);
-        for (size_t i = 0; i < shown; ++i)
-            std::printf("%02X ", data[i]);
-        if (len > shown)
-            std::printf("... (+%zu more bytes)", len - shown);
-        std::printf("\n");
-        std::fflush(stdout);
-    }
-
-    // Send the whole buffer, looping over short writes. Returns false on
-    // error or if the peer went away mid-send.
-    bool send_all(int fd, const uint8_t* data, size_t len)
-    {
-        size_t sent = 0;
-        while (sent < len)
-        {
-            const ssize_t n = ::send(fd, data + sent, len - sent, MSG_NOSIGNAL);
-            if (n < 0)
-            {
-                if (errno == EINTR)
-                {
-                    continue;
-                }
-                std::fprintf(stderr, "send() failed, errno=%d (%s)\n", errno, std::strerror(errno));
-                return false;
+// Send the whole buffer, looping over short writes. Returns false on
+// error or if the peer went away mid-send.
+bool send_all(int fd, const uint8_t *data, size_t len)
+{
+    size_t sent = 0;
+    while (sent < len) {
+        const ssize_t n = ::send(fd, data + sent, len - sent, MSG_NOSIGNAL);
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
             }
-            sent += static_cast<size_t>(n);
+            std::fprintf(stderr, "send() failed, errno=%d (%s)\n", errno, std::strerror(errno));
+            return false;
         }
-        return true;
+        sent += static_cast<size_t>(n);
     }
+    return true;
+}
 
-    // Serve one client connection: echo bytes until it disconnects or an
-    // error occurs. Returns when the connection ends.
-    void serve_client(int clientFd, const std::string& strPeer)
-    {
-        uint8_t buffer[RECV_CHUNK_SIZE];
-        size_t  totalBytes = 0;
+// Serve one client connection: echo bytes until it disconnects or an
+// error occurs. Returns when the connection ends.
+void serve_client(int clientFd, const std::string &strPeer)
+{
+    uint8_t buffer[RECV_CHUNK_SIZE];
+    size_t totalBytes = 0;
 
-        while (!g_stop)
-        {
-            const ssize_t n = ::recv(clientFd, buffer, sizeof(buffer), 0);
-            if (n < 0)
-            {
-                if (errno == EINTR)
-                {
-                    continue;
-                }
-                std::fprintf(stderr, "[%s] recv() failed, errno=%d (%s)\n",
-                             strPeer.c_str(), errno, std::strerror(errno));
-                break;
+    while (!g_stop) {
+        const ssize_t n = ::recv(clientFd, buffer, sizeof(buffer), 0);
+        if (n < 0) {
+            if (errno == EINTR) {
+                continue;
             }
-            if (n == 0)
-            {
-                // Orderly shutdown by the peer.
-                std::printf("[%s] client closed the connection (echoed %zu bytes total)\n",
-                           strPeer.c_str(), totalBytes);
-                break;
-            }
-
-            const size_t szReceived = static_cast<size_t>(n);
-            totalBytes += szReceived;
-
-            print_chunk("RX", strPeer, buffer, szReceived);
-
-            if (!send_all(clientFd, buffer, szReceived))
-            {
-                std::fprintf(stderr, "[%s] failed to echo bytes back, dropping connection\n",
-                             strPeer.c_str());
-                break;
-            }
-
-            print_chunk("TX", strPeer, buffer, szReceived);
+            std::fprintf(stderr, "[%s] recv() failed, errno=%d (%s)\n",
+                         strPeer.c_str(), errno, std::strerror(errno));
+            break;
         }
+        if (n == 0) {
+            // Orderly shutdown by the peer.
+            std::printf("[%s] client closed the connection (echoed %zu bytes total)\n",
+                        strPeer.c_str(), totalBytes);
+            break;
+        }
+
+        const size_t szReceived = static_cast<size_t>(n);
+        totalBytes += szReceived;
+
+        print_chunk("RX", strPeer, buffer, szReceived);
+
+        if (!send_all(clientFd, buffer, szReceived)) {
+            std::fprintf(stderr, "[%s] failed to echo bytes back, dropping connection\n",
+                         strPeer.c_str());
+            break;
+        }
+
+        print_chunk("TX", strPeer, buffer, szReceived);
     }
+}
 } // namespace
 
-
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
-    const int         iPort     = (argc > 1) ? std::atoi(argv[1]) : DEFAULT_PORT;
+    const int iPort             = (argc > 1) ? std::atoi(argv[1]) : DEFAULT_PORT;
     const std::string strBindTo = (argc > 2) ? argv[2] : DEFAULT_BIND;
 
-    if (iPort <= 0 || iPort > 65535)
-    {
+    if (iPort <= 0 || iPort > 65535) {
         std::fprintf(stderr, "Invalid port: %s\n", (argc > 1) ? argv[1] : "");
         return 1;
     }
@@ -193,8 +183,8 @@ int main(int argc, char** argv)
     // arrives. Use sigaction() directly with SA_RESTART OFF so blocking
     // calls actually return EINTR.
     struct sigaction sSigAction = {};
-    sSigAction.sa_handler = on_signal;
-    sSigAction.sa_flags   = 0; // no SA_RESTART
+    sSigAction.sa_handler       = on_signal;
+    sSigAction.sa_flags         = 0; // no SA_RESTART
     ::sigemptyset(&sSigAction.sa_mask);
     ::sigaction(SIGINT, &sSigAction, nullptr);
     ::sigaction(SIGTERM, &sSigAction, nullptr);
@@ -202,29 +192,26 @@ int main(int argc, char** argv)
 
     // Resolve the bind address (supports "::", "0.0.0.0", or a specific
     // literal) the same way the ETH driver resolves its target host.
-    struct addrinfo sHints = {};
-    sHints.ai_family   = AF_UNSPEC;
-    sHints.ai_socktype = SOCK_STREAM;
-    sHints.ai_protocol = IPPROTO_TCP;
-    sHints.ai_flags    = AI_PASSIVE;
+    struct addrinfo sHints    = {};
+    sHints.ai_family          = AF_UNSPEC;
+    sHints.ai_socktype        = SOCK_STREAM;
+    sHints.ai_protocol        = IPPROTO_TCP;
+    sHints.ai_flags           = AI_PASSIVE;
 
-    struct addrinfo* pResult = nullptr;
+    struct addrinfo *pResult  = nullptr;
     const std::string strPort = std::to_string(iPort);
 
-    const int iGaiRc = ::getaddrinfo(strBindTo.c_str(), strPort.c_str(), &sHints, &pResult);
-    if (iGaiRc != 0 || pResult == nullptr)
-    {
+    const int iGaiRc          = ::getaddrinfo(strBindTo.c_str(), strPort.c_str(), &sHints, &pResult);
+    if (iGaiRc != 0 || pResult == nullptr) {
         std::fprintf(stderr, "getaddrinfo(%s) failed: %s\n",
                      strBindTo.c_str(), ::gai_strerror(iGaiRc));
         return 1;
     }
 
     int listenFd = -1;
-    for (struct addrinfo* pAi = pResult; pAi != nullptr; pAi = pAi->ai_next)
-    {
+    for (struct addrinfo *pAi = pResult; pAi != nullptr; pAi = pAi->ai_next) {
         listenFd = ::socket(pAi->ai_family, pAi->ai_socktype, pAi->ai_protocol);
-        if (listenFd < 0)
-        {
+        if (listenFd < 0) {
             continue;
         }
 
@@ -233,14 +220,12 @@ int main(int argc, char** argv)
 
         // If we bound "::" (dual-stack wildcard), also accept IPv4 clients
         // (e.g. connections to 127.0.0.1) on the same socket.
-        if (pAi->ai_family == AF_INET6)
-        {
+        if (pAi->ai_family == AF_INET6) {
             int iV6Only = 0;
             ::setsockopt(listenFd, IPPROTO_IPV6, IPV6_V6ONLY, &iV6Only, sizeof(iV6Only));
         }
 
-        if (::bind(listenFd, pAi->ai_addr, pAi->ai_addrlen) == 0)
-        {
+        if (::bind(listenFd, pAi->ai_addr, pAi->ai_addrlen) == 0) {
             break; // bound successfully
         }
 
@@ -249,37 +234,32 @@ int main(int argc, char** argv)
     }
     ::freeaddrinfo(pResult);
 
-    if (listenFd < 0)
-    {
+    if (listenFd < 0) {
         std::fprintf(stderr, "Failed to bind to %s:%d, errno=%d (%s)\n",
                      strBindTo.c_str(), iPort, errno, std::strerror(errno));
         return 1;
     }
 
-    if (::listen(listenFd, LISTEN_BACKLOG) < 0)
-    {
+    if (::listen(listenFd, LISTEN_BACKLOG) < 0) {
         std::fprintf(stderr, "listen() failed, errno=%d (%s)\n", errno, std::strerror(errno));
         ::close(listenFd);
         return 1;
     }
 
     std::printf("eth_loopback_server listening on [%s]:%d (Ctrl+C to stop)\n",
-               strBindTo.c_str(), iPort);
+                strBindTo.c_str(), iPort);
     std::printf("%-4s  %-24s  %-6s  %s\n", "DIR", "PEER", "LEN", "DATA");
     std::printf("--------------------------------------------------------------------------------\n");
 
-    while (!g_stop)
-    {
+    while (!g_stop) {
         struct sockaddr_storage sClientAddr = {};
-        socklen_t               szClientLen = sizeof(sClientAddr);
+        socklen_t szClientLen               = sizeof(sClientAddr);
 
-        const int clientFd = ::accept(listenFd,
-                                      reinterpret_cast<struct sockaddr*>(&sClientAddr),
-                                      &szClientLen);
-        if (clientFd < 0)
-        {
-            if (errno == EINTR)
-            {
+        const int clientFd                  = ::accept(listenFd,
+                                                       reinterpret_cast<struct sockaddr *>(&sClientAddr),
+                                                       &szClientLen);
+        if (clientFd < 0) {
+            if (errno == EINTR) {
                 continue; // likely our own signal handler firing
             }
             std::fprintf(stderr, "accept() failed, errno=%d (%s)\n", errno, std::strerror(errno));

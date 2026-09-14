@@ -1,31 +1,32 @@
 #ifndef I_PLUGIN_DATA_TYPES_HPP
 #define I_PLUGIN_DATA_TYPES_HPP
 
-#include <string>
-#include <vector>
-#include <unordered_map>
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #ifdef _WIN32
-    #include <windows.h>
+#include <windows.h>
 #endif
 
 // forward declaration
-class  PluginInterface;
+class PluginInterface;
 struct LogBuffer;
 
 // definition of pointer to plugin interface
 using PluginInterfacePtr = std::shared_ptr<PluginInterface>;
 
 #ifdef _WIN32
-    using LibHandle = HMODULE;
+using LibHandle = HMODULE;
 #else
-    using LibHandle = void*;
+using LibHandle = void *;
 #endif
 
 // information to be set to a plugin
-struct PluginDataSet {
-    std::shared_ptr<LogBuffer>  shpLogger;
+struct PluginDataSet
+{
+    std::shared_ptr<LogBuffer> shpLogger;
     std::unordered_map<std::string, std::string> mapSettings;
 
     // Runtime identity of this plugin instance, as known to the script
@@ -41,25 +42,24 @@ struct PluginDataSet {
     std::string strInstanceName;
 };
 
-
 // information to be extracted from a plugin
-struct PluginDataGet {
-    std::string                         strPluginVersion;
-    std::vector<std::string>            vstrPluginCommands;
-    std::unordered_map<std::string,bool> mapBlockingCommands;  // cmd name → true if endless-loop capable
+struct PluginDataGet
+{
+    std::string strPluginVersion;
+    std::vector<std::string> vstrPluginCommands;
+    std::unordered_map<std::string, bool> mapBlockingCommands; // cmd name → true if endless-loop capable
 };
-
 
 // script plugin definition
-struct PluginDataType {
-    std::string                 strPluginName;
-    std::string                 strPluginVersRule;
-    std::string                 strPluginVersRequested;
-    PluginInterfacePtr          shptrPluginEntryPoint;
-    LibHandle                   hLibHandle;
-    PluginDataGet               sGetParams;
-    PluginDataSet               sSetParams;
+struct PluginDataType
+{
+    std::string strPluginName;
+    std::string strPluginVersRule;
+    std::string strPluginVersRequested;
+    PluginInterfacePtr shptrPluginEntryPoint;
+    LibHandle hLibHandle;
+    PluginDataGet sGetParams;
+    PluginDataSet sSetParams;
 };
-
 
 #endif /* I_PLUGIN_DATA_TYPES_HPP */

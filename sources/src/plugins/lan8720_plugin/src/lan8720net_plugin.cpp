@@ -1,5 +1,6 @@
-#include "PluginExport.hpp"
 #include "lan8720net_plugin.hpp"
+
+#include "PluginExport.hpp"
 #include "lan8720net_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -20,27 +21,25 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED Lan8720NetPlugin *pluginEntry()
 {
-    EXPORTED Lan8720NetPlugin* pluginEntry()
-    {
-        return new Lan8720NetPlugin();
-    }
+    return new Lan8720NetPlugin();
+}
 
-    EXPORTED void pluginExit( Lan8720NetPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(Lan8720NetPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 // Driver factory                                                              //
 /////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<Lan8720Net> Lan8720NetPlugin::m_OpenDriver (void) const
+std::shared_ptr<Lan8720Net> Lan8720NetPlugin::m_OpenDriver(void) const
 {
     if (m_strServerIp.empty() || m_u16ServerPort == 0U) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Server IP/Port not configured"));
@@ -65,32 +64,30 @@ std::shared_ptr<Lan8720Net> Lan8720NetPlugin::m_OpenDriver (void) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about the plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if plugin initialization fails.
-  *
-  * \note Usage example:
-  *       LAN8720NET.INFO
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about the plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if plugin initialization fails.
+ *
+ * \note Usage example:
+ *       LAN8720NET.INFO
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool Lan8720NetPlugin::m_LAN8720NET_INFO(const std::string& args, std::stop_token st) const
+bool Lan8720NetPlugin::m_LAN8720NET_INFO(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -136,19 +133,18 @@ bool Lan8720NetPlugin::m_LAN8720NET_INFO(const std::string& args, std::stop_toke
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command: apply default-peer/timeout/buffer-size settings
-  *        at runtime, using the same key=value grammar as the ini-backed
-  *        m_LocalSetParams()
-  *
-*/
+ * \brief CONFIG command: apply default-peer/timeout/buffer-size settings
+ *        at runtime, using the same key=value grammar as the ini-backed
+ *        m_LocalSetParams()
+ *
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool Lan8720NetPlugin::m_LAN8720NET_CONFIG(const std::string& args, std::stop_token st) const
+bool Lan8720NetPlugin::m_LAN8720NET_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
@@ -158,7 +154,7 @@ bool Lan8720NetPlugin::m_LAN8720NET_CONFIG(const std::string& args, std::stop_to
 /*--------------------------------------------------------------------------------------------------------*/
 /* LAN8720NET.CMD                                                                                         */
 /*--------------------------------------------------------------------------------------------------------*/
-bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string& args, std::stop_token st) const
+bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
@@ -170,7 +166,7 @@ bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string& args, std::stop_token
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string& args, std::stop_token st) const
+bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
@@ -182,27 +178,26 @@ bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string& args, std::stop_to
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic LAN8720NET messages.
-  *
-  * \note The connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). LAN8720NET is a single-peer stream with no addressable
-  *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
-  *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
-  *
-  * \note Usage example:
-  *       LAN8720NET.CYCLIC 100 AABBCCDD, 250 06
-  *       LAN8720NET.CYCLIC 100 AABBCCDD, 250 06 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic LAN8720NET messages.
+ *
+ * \note The connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). LAN8720NET is a single-peer stream with no addressable
+ *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
+ *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+ *
+ * \note Usage example:
+ *       LAN8720NET.CYCLIC 100 AABBCCDD, 250 06
+ *       LAN8720NET.CYCLIC 100 AABBCCDD, 250 06 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool Lan8720NetPlugin::m_LAN8720NET_CYCLIC(const std::string& args, std::stop_token st) const
+bool Lan8720NetPlugin::m_LAN8720NET_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 

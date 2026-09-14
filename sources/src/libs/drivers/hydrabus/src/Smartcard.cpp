@@ -1,4 +1,5 @@
 #include "Smartcard.hpp"
+
 #include "Hydrabus.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
@@ -10,15 +11,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_SMCARD|"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_SMCARD|"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
@@ -37,7 +37,7 @@ Smartcard::Smartcard(std::shared_ptr<Hydrabus> hydrabus)
 // ---------------------------------------------------------------------------
 
 std::optional<std::vector<uint8_t>> Smartcard::write_read(
-        std::span<const uint8_t> data, size_t read_len, std::stop_token stop_tok)
+    std::span<const uint8_t> data, size_t read_len, std::stop_token stop_tok)
 {
     _write_byte(0b00000100, stop_tok);
     _write_u16_be(static_cast<uint16_t>(data.size()), stop_tok);
@@ -57,7 +57,9 @@ std::optional<std::vector<uint8_t>> Smartcard::write_read(
         return std::nullopt;
     }
 
-    if (read_len == 0) return std::vector<uint8_t>{};
+    if (read_len == 0) {
+        return std::vector<uint8_t>{};
+    }
     return _read(read_len, stop_tok);
 }
 
@@ -87,11 +89,14 @@ std::vector<uint8_t> Smartcard::get_atr(std::stop_token stop_tok)
 // RST pin
 // ---------------------------------------------------------------------------
 
-int Smartcard::get_rst() const { return _rst; }
+int Smartcard::get_rst() const
+{
+    return _rst;
+}
 
 bool Smartcard::set_rst(int level)
 {
-    level = level & 1;
+    level       = level & 1;
     uint8_t cmd = static_cast<uint8_t>(0b00000010 | level);
     _write_byte(cmd);
 
@@ -107,10 +112,25 @@ bool Smartcard::set_rst(int level)
 // Configuration
 // ---------------------------------------------------------------------------
 
-uint32_t Smartcard::get_baud()      const { return _baud; }
-uint8_t  Smartcard::get_prescaler() const { return _prescaler; }
-uint8_t  Smartcard::get_guardtime() const { return _guardtime; }
-bool     Smartcard::get_pullup()    const { return (_config & 0b100) != 0; }
+uint32_t Smartcard::get_baud() const
+{
+    return _baud;
+}
+
+uint8_t Smartcard::get_prescaler() const
+{
+    return _prescaler;
+}
+
+uint8_t Smartcard::get_guardtime() const
+{
+    return _guardtime;
+}
+
+bool Smartcard::get_pullup() const
+{
+    return (_config & 0b100) != 0;
+}
 
 bool Smartcard::set_baud(uint32_t baud)
 {
@@ -150,10 +170,11 @@ bool Smartcard::set_guardtime(uint8_t value)
 
 bool Smartcard::set_pullup(bool enable)
 {
-    if (enable)
-        _config = static_cast<uint8_t>(_config |  (1 << 2));
-    else
+    if (enable) {
+        _config = static_cast<uint8_t>(_config | (1 << 2));
+    } else {
         _config = static_cast<uint8_t>(_config & ~(1 << 2));
+    }
     return _configure_port();
 }
 
@@ -165,7 +186,7 @@ bool Smartcard::_configure_port()
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting config"));
         return false;
     }
-    set_rst(_rst);   // re-apply RST state after reconfigure
+    set_rst(_rst); // re-apply RST state after reconfigure
     return true;
 }
 

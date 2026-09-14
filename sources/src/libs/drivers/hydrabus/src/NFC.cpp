@@ -4,22 +4,21 @@
 
 namespace HydraHAL {
 class Hydrabus;
-}  // namespace HydraHAL
+} // namespace HydraHAL
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_NFC   |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_NFC   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
@@ -35,7 +34,10 @@ NFC::NFC(std::shared_ptr<Hydrabus> hydrabus)
 // RF field
 // ---------------------------------------------------------------------------
 
-bool NFC::get_rf() const { return _rf; }
+bool NFC::get_rf() const
+{
+    return _rf;
+}
 
 void NFC::set_rf(bool on, std::stop_token stop_tok)
 {
@@ -48,7 +50,10 @@ void NFC::set_rf(bool on, std::stop_token stop_tok)
 // Mode
 // ---------------------------------------------------------------------------
 
-NFC::Mode NFC::get_mode() const { return _mode; }
+NFC::Mode NFC::get_mode() const
+{
+    return _mode;
+}
 
 void NFC::set_mode(Mode mode, std::stop_token stop_tok)
 {

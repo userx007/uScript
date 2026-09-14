@@ -1,59 +1,58 @@
 #include "grpc_driver.hpp"
+
 #include "uGuiNotify.hpp"
 #include "uLogger.hpp"
 
+#include <algorithm>
+#include <cctype>
+#include <cstring>
+#include <fstream>
 #include <google/protobuf/descriptor.h>
 #include <grpcpp/impl/client_unary_call.h>
 #include <grpcpp/impl/rpc_method.h>
 #include <grpcpp/security/credentials.h>
 #include <grpcpp/support/status.h>
-#include <algorithm>
-#include <cctype>
-#include <cstring>
-#include <fstream>
 #include <sstream>
 #include <utility>
 
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 #define LOG_HDR "GRPC_DRV    |"
 
-static constexpr const char* kPluginNameForDump = "GRPC";
+static constexpr const char *kPluginNameForDump = "GRPC";
 
 // -----------------------------------------------------------------------
 // send()->receive() handoff on the same thread — see class doc comment
 // (grpc_driver.hpp) for why thread_local, not a plain member; the same
 // reasoning as MqttDriver's tl_bAwaitingAck/tl_pendingAckType.
 // -----------------------------------------------------------------------
-namespace
-{
-    thread_local bool        tl_bResponsePending = false;
-    thread_local std::string tl_strPendingResponseJson;
-}
+namespace {
+thread_local bool tl_bResponsePending = false;
+thread_local std::string tl_strPendingResponseJson;
+} // namespace
 
 GrpcDriver::GrpcDriver(Config config)
     : m_config(std::move(config))
 {
 }
 
-namespace
+namespace {
+bool readFileIntoString(const std::string &path, std::string &out)
 {
-    bool readFileIntoString(const std::string& path, std::string& out)
-    {
-        if (path.empty()) {
-            return true; // optional file — leaving `out` untouched is fine
-        }
-        std::ifstream in(path, std::ios::binary);
-        if (!in) {
-            return false;
-        }
-        std::ostringstream ss;
-        ss << in.rdbuf();
-        out = ss.str();
-        return true;
+    if (path.empty()) {
+        return true; // optional file — leaving `out` untouched is fine
     }
+    std::ifstream in(path, std::ios::binary);
+    if (!in) {
+        return false;
+    }
+    std::ostringstream ss;
+    ss << in.rdbuf();
+    out = ss.str();
+    return true;
 }
+} // namespace
 
 bool GrpcDriver::open()
 {
@@ -83,10 +82,10 @@ bool GrpcDriver::open()
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read TLS cert/key file(s)"));
             return false;
         }
-        sslOpts.pem_root_certs = caCert;       // empty = grpc++'s default trust roots
-        sslOpts.pem_cert_chain = clientCert;   // empty = no client certificate offered
+        sslOpts.pem_root_certs  = caCert;     // empty = grpc++'s default trust roots
+        sslOpts.pem_cert_chain  = clientCert; // empty = no client certificate offered
         sslOpts.pem_private_key = clientKey;
-        creds = grpc::SslCredentials(sslOpts);
+        creds                   = grpc::SslCredentials(sslOpts);
     } else {
         creds = grpc::InsecureChannelCredentials();
     }
@@ -97,24 +96,24 @@ bool GrpcDriver::open()
     }
 
     const std::string target = m_config.host + ":" + std::to_string(m_config.port);
-    m_channel = grpc::CreateChannel(target, creds);
+    m_channel                = grpc::CreateChannel(target, creds);
     if (!m_channel) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("grpc::CreateChannel failed for"); LOG_STRING(target));
         return false;
     }
 
-    m_strIdentityLabel = std::string("grpc://") + target + (m_config.useTls ? " (tls)" : "");
+    m_strIdentityLabel  = std::string("grpc://") + target + (m_config.useTls ? " (tls)" : "");
 
     // Channels connect lazily by design; force one connection attempt now
     // so a bad host/port/TLS setup is reported by CONFIG/open() instead of
     // silently surfacing as a timeout on the first CALL.
     const auto deadline = std::chrono::system_clock::now() +
-                           std::chrono::milliseconds(m_config.connectTimeoutMs);
+                          std::chrono::milliseconds(m_config.connectTimeoutMs);
     if (!m_channel->WaitForConnected(deadline)) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No connection yet to"); LOG_STRING(target);
-            LOG_STRING("within connectTimeoutMs — channel will keep retrying in the background "
-                       "(grpc++'s normal reconnect behaviour); continuing, first CALL may block "
-                       "up to its own call timeout"));
+                  LOG_STRING("within connectTimeoutMs — channel will keep retrying in the background "
+                             "(grpc++'s normal reconnect behaviour); continuing, first CALL may block "
+                             "up to its own call timeout"));
     }
 
     return true;
@@ -134,25 +133,30 @@ CommDetails GrpcDriver::describeConnection(std::string_view xtra_params) const
 }
 
 ICommDriver::WriteResult GrpcDriver::tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                                 std::string_view xtra_params,
-                                                 std::stop_token /*stop_tok*/) const
+                                                std::string_view xtra_params,
+                                                std::stop_token /*stop_tok*/) const
 {
-    (void)u32WriteTimeout; (void)buffer; (void)xtra_params;
+    (void)u32WriteTimeout;
+    (void)buffer;
+    (void)xtra_params;
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_write() is not supported — use GRPC.CMD > CALL ..."));
     return ICommDriver::WriteResult{ICommDriver::Status::OPERATION_FAILED, 0};
 }
 
 ICommDriver::ReadResult GrpcDriver::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                                               const ICommDriver::ReadOptions& options,
-                                               std::string_view xtra_params,
-                                               std::stop_token /*stop_tok*/) const
+                                              const ICommDriver::ReadOptions &options,
+                                              std::string_view xtra_params,
+                                              std::stop_token /*stop_tok*/) const
 {
-    (void)u32ReadTimeout; (void)buffer; (void)options; (void)xtra_params;
+    (void)u32ReadTimeout;
+    (void)buffer;
+    (void)options;
+    (void)xtra_params;
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read() is not supported — use GRPC.CMD <"));
     return ICommDriver::ReadResult{ICommDriver::Status::OPERATION_FAILED, 0, false};
 }
 
-void GrpcDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string>& outTokens)
+void GrpcDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens)
 {
     outTokens.clear();
 
@@ -161,21 +165,27 @@ void GrpcDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<s
     while (len > 0 && dataSpan[len - 1] == 0) {
         --len;
     }
-    std::string text(reinterpret_cast<const char*>(dataSpan.data()), len);
+    std::string text(reinterpret_cast<const char *>(dataSpan.data()), len);
 
-    size_t i = 0;
+    size_t i       = 0;
     const size_t n = text.size();
     while (i < n) {
-        while (i < n && std::isspace(static_cast<unsigned char>(text[i]))) ++i;
-        if (i >= n) break;
+        while (i < n && std::isspace(static_cast<unsigned char>(text[i]))) {
+            ++i;
+        }
+        if (i >= n) {
+            break;
+        }
         size_t start = i;
-        while (i < n && !std::isspace(static_cast<unsigned char>(text[i]))) ++i;
+        while (i < n && !std::isspace(static_cast<unsigned char>(text[i]))) {
+            ++i;
+        }
         outTokens.push_back(text.substr(start, i - start));
     }
 }
 
 ICommDriver::WriteResult GrpcDriver::send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                           std::string_view xtra_params, std::stop_token stop_tok) const
+                                          std::string_view xtra_params, std::stop_token stop_tok) const
 {
     (void)u32WriteTimeout; // send() uses its own configured callTimeoutMs — see class doc comment
     ICommDriver::WriteResult result;
@@ -197,7 +207,7 @@ ICommDriver::WriteResult GrpcDriver::send(uint32_t u32WriteTimeout, std::span<co
 
     std::string verb = tokens[0];
     std::transform(verb.begin(), verb.end(), verb.begin(),
-                    [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+                   [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
 
     if (verb == "FINISH") {
         return m_Finish(xtra_params);
@@ -214,7 +224,7 @@ ICommDriver::WriteResult GrpcDriver::send(uint32_t u32WriteTimeout, std::span<co
         result.status = ICommDriver::Status::INVALID_PARAM;
         return result;
     }
-    const std::string& methodPath = tokens[1];
+    const std::string &methodPath = tokens[1];
 
     // Everything after the method path, rejoined with single spaces — the
     // JSON request body may itself contain spaces, so (like MQTT's PUBLISH
@@ -224,12 +234,14 @@ ICommDriver::WriteResult GrpcDriver::send(uint32_t u32WriteTimeout, std::span<co
     // class doc comment, so this is real JSON, unmodified.
     std::string jsonBody;
     for (size_t i = 2; i < tokens.size(); ++i) {
-        if (i > 2) jsonBody += ' ';
+        if (i > 2) {
+            jsonBody += ' ';
+        }
         jsonBody += tokens[i];
     }
 
     std::string err;
-    const auto* method = m_protocol.resolveMethod(methodPath, err);
+    const auto *method = m_protocol.resolveMethod(methodPath, err);
     if (!method) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CALL"); LOG_STRING(methodPath); LOG_STRING(":"); LOG_STRING(err));
         result.status = ICommDriver::Status::INVALID_PARAM;
@@ -248,9 +260,9 @@ ICommDriver::WriteResult GrpcDriver::send(uint32_t u32WriteTimeout, std::span<co
     return m_CallUnary(method, methodPath, jsonBody, xtra_params, stop_tok);
 }
 
-ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodDescriptor* method,
-                                                  const std::string& methodPath, const std::string& jsonBody,
-                                                  std::string_view xtra_params, std::stop_token stop_tok) const
+ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodDescriptor *method,
+                                                 const std::string &methodPath, const std::string &jsonBody,
+                                                 std::string_view xtra_params, std::stop_token stop_tok) const
 {
     ICommDriver::WriteResult result;
     std::string err;
@@ -258,15 +270,15 @@ ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodD
     auto request = m_protocol.newRequestMessage(method);
     if (!m_protocol.parseJsonIntoMessage(jsonBody, *request, err)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CALL"); LOG_STRING(methodPath);
-            LOG_STRING(": bad JSON request:"); LOG_STRING(err));
+                  LOG_STRING(": bad JSON request:"); LOG_STRING(err));
         result.status = ICommDriver::Status::INVALID_PARAM;
         return result;
     }
 
     if (gui_mode_active()) {
         gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params), CommDir::Tx,
-                              reinterpret_cast<const uint8_t*>(jsonBody.data()),
-                              static_cast<uint32_t>(jsonBody.size()));
+                             reinterpret_cast<const uint8_t *>(jsonBody.data()),
+                             static_cast<uint32_t>(jsonBody.size()));
     }
 
     grpc::ClientContext ctx;
@@ -287,7 +299,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodD
     const std::string wirePath = std::string{"/"} + std::string{method->service()->full_name()} + std::string{"/"} + std::string{method->name()};
 
     grpc::internal::RpcMethod rpcMethod(wirePath.c_str(), grpc::internal::RpcMethod::NORMAL_RPC);
-    auto response = m_protocol.newResponseMessage(method);
+    auto response           = m_protocol.newResponseMessage(method);
 
     grpc::Status callStatus = grpc::internal::BlockingUnaryCall<google::protobuf::Message, google::protobuf::Message>(
         m_channel.get(), rpcMethod, &ctx, *request, response.get());
@@ -301,7 +313,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodD
             return result;
         }
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CALL"); LOG_STRING(methodPath); LOG_STRING("failed:");
-            LOG_STRING(callStatus.error_message()));
+                  LOG_STRING(callStatus.error_message()));
         result.status = ICommDriver::Status::OPERATION_FAILED;
         return result;
     }
@@ -309,28 +321,28 @@ ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodD
     std::string responseJson;
     if (!m_protocol.messageToJson(*response, responseJson)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CALL"); LOG_STRING(methodPath);
-            LOG_STRING(": failed to render response as JSON:"); LOG_STRING(responseJson));
+                  LOG_STRING(": failed to render response as JSON:"); LOG_STRING(responseJson));
         result.status = ICommDriver::Status::PROTOCOL_ERROR;
         return result;
     }
 
     if (gui_mode_active()) {
         gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params), CommDir::Rx,
-                              reinterpret_cast<const uint8_t*>(responseJson.data()),
-                              static_cast<uint32_t>(responseJson.size()));
+                             reinterpret_cast<const uint8_t *>(responseJson.data()),
+                             static_cast<uint32_t>(responseJson.size()));
     }
 
     tl_strPendingResponseJson = std::move(responseJson);
-    tl_bResponsePending = true;
+    tl_bResponsePending       = true;
 
-    result.status = ICommDriver::Status::SUCCESS;
-    result.bytes_written = jsonBody.size();
+    result.status             = ICommDriver::Status::SUCCESS;
+    result.bytes_written      = jsonBody.size();
     return result;
 }
 
-ICommDriver::WriteResult GrpcDriver::m_CallServerStreaming(const google::protobuf::MethodDescriptor* method,
-                                                             const std::string& methodPath, const std::string& jsonBody,
-                                                             std::string_view xtra_params, std::stop_token /*stop_tok*/) const
+ICommDriver::WriteResult GrpcDriver::m_CallServerStreaming(const google::protobuf::MethodDescriptor *method,
+                                                           const std::string &methodPath, const std::string &jsonBody,
+                                                           std::string_view xtra_params, std::stop_token /*stop_tok*/) const
 {
     ICommDriver::WriteResult result;
     std::string err;
@@ -338,15 +350,15 @@ ICommDriver::WriteResult GrpcDriver::m_CallServerStreaming(const google::protobu
     auto request = m_protocol.newRequestMessage(method);
     if (!m_protocol.parseJsonIntoMessage(jsonBody, *request, err)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CALL"); LOG_STRING(methodPath);
-            LOG_STRING(": bad JSON request:"); LOG_STRING(err));
+                  LOG_STRING(": bad JSON request:"); LOG_STRING(err));
         result.status = ICommDriver::Status::INVALID_PARAM;
         return result;
     }
 
     if (gui_mode_active()) {
         gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params), CommDir::Tx,
-                              reinterpret_cast<const uint8_t*>(jsonBody.data()),
-                              static_cast<uint32_t>(jsonBody.size()));
+                             reinterpret_cast<const uint8_t *>(jsonBody.data()),
+                             static_cast<uint32_t>(jsonBody.size()));
     }
 
     const std::string wirePath = std::string{"/"} + std::string{method->service()->full_name()} + std::string{"/"} + std::string{method->name()};
@@ -361,16 +373,16 @@ ICommDriver::WriteResult GrpcDriver::m_CallServerStreaming(const google::protobu
     m_pServerStreamReader.reset(grpc::internal::ClientReaderFactory<google::protobuf::Message>::Create(
         m_channel.get(), rpcMethod, m_pStreamContext.get(), *request));
     m_strActiveStreamMethodPath = methodPath;
-    m_pActiveStreamMethod = method;
+    m_pActiveStreamMethod       = method;
 
-    result.status = ICommDriver::Status::SUCCESS;
-    result.bytes_written = jsonBody.size();
+    result.status               = ICommDriver::Status::SUCCESS;
+    result.bytes_written        = jsonBody.size();
     return result;
 }
 
-ICommDriver::WriteResult GrpcDriver::m_CallClientStreaming(const google::protobuf::MethodDescriptor* method,
-                                                             const std::string& methodPath, const std::string& jsonBody,
-                                                             std::string_view xtra_params, std::stop_token /*stop_tok*/) const
+ICommDriver::WriteResult GrpcDriver::m_CallClientStreaming(const google::protobuf::MethodDescriptor *method,
+                                                           const std::string &methodPath, const std::string &jsonBody,
+                                                           std::string_view xtra_params, std::stop_token /*stop_tok*/) const
 {
     ICommDriver::WriteResult result;
     std::string err;
@@ -384,44 +396,44 @@ ICommDriver::WriteResult GrpcDriver::m_CallClientStreaming(const google::protobu
         // m_AbandonActiveStreamLocked()'s doc comment: any new CALL starts
         // from a clean slate): open a fresh client-streaming call.
         m_AbandonActiveStreamLocked();
-        m_pStreamContext = std::make_unique<grpc::ClientContext>();
+        m_pStreamContext        = std::make_unique<grpc::ClientContext>();
         m_pClientStreamResponse = m_protocol.newResponseMessage(method);
         grpc::internal::RpcMethod rpcMethod(wirePath.c_str(), grpc::internal::RpcMethod::CLIENT_STREAMING);
         m_pClientStreamWriter.reset(grpc::internal::ClientWriterFactory<google::protobuf::Message>::Create(
             m_channel.get(), rpcMethod, m_pStreamContext.get(), m_pClientStreamResponse.get()));
         m_strActiveStreamMethodPath = methodPath;
-        m_pActiveStreamMethod = method;
+        m_pActiveStreamMethod       = method;
     }
 
     auto request = m_protocol.newRequestMessage(method);
     if (!m_protocol.parseJsonIntoMessage(jsonBody, *request, err)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CALL"); LOG_STRING(methodPath);
-            LOG_STRING(": bad JSON request:"); LOG_STRING(err));
+                  LOG_STRING(": bad JSON request:"); LOG_STRING(err));
         result.status = ICommDriver::Status::INVALID_PARAM;
         return result;
     }
 
     if (gui_mode_active()) {
         gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params), CommDir::Tx,
-                              reinterpret_cast<const uint8_t*>(jsonBody.data()),
-                              static_cast<uint32_t>(jsonBody.size()));
+                             reinterpret_cast<const uint8_t *>(jsonBody.data()),
+                             static_cast<uint32_t>(jsonBody.size()));
     }
 
     if (!m_pClientStreamWriter->Write(*request)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CALL"); LOG_STRING(methodPath);
-            LOG_STRING(": Write() failed — the stream is already closing/closed"));
+                  LOG_STRING(": Write() failed — the stream is already closing/closed"));
         result.status = ICommDriver::Status::OPERATION_FAILED;
         return result;
     }
 
-    result.status = ICommDriver::Status::SUCCESS;
+    result.status        = ICommDriver::Status::SUCCESS;
     result.bytes_written = jsonBody.size();
     return result;
 }
 
-ICommDriver::WriteResult GrpcDriver::m_CallBidiStreaming(const google::protobuf::MethodDescriptor* method,
-                                                           const std::string& methodPath, const std::string& jsonBody,
-                                                           std::string_view xtra_params, std::stop_token /*stop_tok*/) const
+ICommDriver::WriteResult GrpcDriver::m_CallBidiStreaming(const google::protobuf::MethodDescriptor *method,
+                                                         const std::string &methodPath, const std::string &jsonBody,
+                                                         std::string_view xtra_params, std::stop_token /*stop_tok*/) const
 {
     ICommDriver::WriteResult result;
     std::string err;
@@ -443,31 +455,31 @@ ICommDriver::WriteResult GrpcDriver::m_CallBidiStreaming(const google::protobuf:
         m_pBidiStream.reset(grpc::internal::ClientReaderWriterFactory<google::protobuf::Message, google::protobuf::Message>::Create(
             m_channel.get(), rpcMethod, m_pStreamContext.get()));
         m_strActiveStreamMethodPath = methodPath;
-        m_pActiveStreamMethod = method;
+        m_pActiveStreamMethod       = method;
     }
 
     auto request = m_protocol.newRequestMessage(method);
     if (!m_protocol.parseJsonIntoMessage(jsonBody, *request, err)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CALL"); LOG_STRING(methodPath);
-            LOG_STRING(": bad JSON request:"); LOG_STRING(err));
+                  LOG_STRING(": bad JSON request:"); LOG_STRING(err));
         result.status = ICommDriver::Status::INVALID_PARAM;
         return result;
     }
 
     if (gui_mode_active()) {
         gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params), CommDir::Tx,
-                              reinterpret_cast<const uint8_t*>(jsonBody.data()),
-                              static_cast<uint32_t>(jsonBody.size()));
+                             reinterpret_cast<const uint8_t *>(jsonBody.data()),
+                             static_cast<uint32_t>(jsonBody.size()));
     }
 
     if (!m_pBidiStream->Write(*request)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CALL"); LOG_STRING(methodPath);
-            LOG_STRING(": Write() failed — the stream is already closing/closed"));
+                  LOG_STRING(": Write() failed — the stream is already closing/closed"));
         result.status = ICommDriver::Status::OPERATION_FAILED;
         return result;
     }
 
-    result.status = ICommDriver::Status::SUCCESS;
+    result.status        = ICommDriver::Status::SUCCESS;
     result.bytes_written = jsonBody.size();
     return result;
 }
@@ -487,18 +499,18 @@ ICommDriver::WriteResult GrpcDriver::m_Finish(std::string_view xtra_params) cons
         // reports the RPC's overall status.
         if (!m_pBidiStream->WritesDone()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FINISH"); LOG_STRING(m_strActiveStreamMethodPath);
-                LOG_STRING(": WritesDone() failed"));
+                      LOG_STRING(": WritesDone() failed"));
             result.status = ICommDriver::Status::OPERATION_FAILED;
             return result;
         }
-        result.status = ICommDriver::Status::SUCCESS;
+        result.status        = ICommDriver::Status::SUCCESS;
         result.bytes_written = 0;
         return result;
     }
 
     if (!m_pClientStreamWriter) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(
-            "FINISH with no active client- or bidi-streaming CALL (CALL such a method first)"));
+                      "FINISH with no active client- or bidi-streaming CALL (CALL such a method first)"));
         result.status = ICommDriver::Status::INVALID_PARAM;
         return result;
     }
@@ -509,7 +521,7 @@ ICommDriver::WriteResult GrpcDriver::m_Finish(std::string_view xtra_params) cons
 
     if (!callStatus.ok()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FINISH"); LOG_STRING(methodPath); LOG_STRING("failed:");
-            LOG_STRING(callStatus.error_message()));
+                  LOG_STRING(callStatus.error_message()));
         m_ResetStreamStateLocked(); // WritesDone()+Finish() already called above — don't call them again
         result.status = ICommDriver::Status::OPERATION_FAILED;
         return result;
@@ -518,7 +530,7 @@ ICommDriver::WriteResult GrpcDriver::m_Finish(std::string_view xtra_params) cons
     std::string responseJson;
     if (!m_protocol.messageToJson(*m_pClientStreamResponse, responseJson)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FINISH"); LOG_STRING(methodPath);
-            LOG_STRING(": failed to render response as JSON:"); LOG_STRING(responseJson));
+                  LOG_STRING(": failed to render response as JSON:"); LOG_STRING(responseJson));
         m_ResetStreamStateLocked();
         result.status = ICommDriver::Status::PROTOCOL_ERROR;
         return result;
@@ -526,15 +538,15 @@ ICommDriver::WriteResult GrpcDriver::m_Finish(std::string_view xtra_params) cons
 
     if (gui_mode_active()) {
         gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params), CommDir::Rx,
-                              reinterpret_cast<const uint8_t*>(responseJson.data()),
-                              static_cast<uint32_t>(responseJson.size()));
+                             reinterpret_cast<const uint8_t *>(responseJson.data()),
+                             static_cast<uint32_t>(responseJson.size()));
     }
 
     m_strStreamPendingResponseJson = std::move(responseJson);
-    m_bStreamResponsePending = true;
+    m_bStreamResponsePending       = true;
     m_ResetStreamStateLocked(); // the writer/context are spent — only the pending JSON above survives
 
-    result.status = ICommDriver::Status::SUCCESS;
+    result.status        = ICommDriver::Status::SUCCESS;
     result.bytes_written = 0;
     return result;
 }
@@ -568,9 +580,9 @@ void GrpcDriver::m_ResetStreamStateLocked() const
 }
 
 ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                             const ICommDriver::ReadOptions& options,
-                                             std::string_view xtra_params,
-                                             std::stop_token stop_tok) const
+                                            const ICommDriver::ReadOptions &options,
+                                            std::string_view xtra_params,
+                                            std::stop_token stop_tok) const
 {
     (void)u32ReadTimeout; // no per-read timeout on the sync API — see class doc comment's "Server streaming"
     ICommDriver::ReadResult result;
@@ -587,8 +599,8 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         // comment's "Matching the response"). Use R'pattern' or an exact
         // '...' match instead.
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(
-            "This receive mode needs a live byte-stream scan, which GrpcDriver doesn't do — "
-            "use R'pattern' or an exact '...' match instead of T'...'/X'...'/L'...'/S'...'/F'...'"));
+                      "This receive mode needs a live byte-stream scan, which GrpcDriver doesn't do — "
+                      "use R'pattern' or an exact '...' match instead of T'...'/X'...'/L'...'/S'...'/F'...'"));
         result.status = ICommDriver::Status::INVALID_PARAM;
         return result;
     }
@@ -603,9 +615,9 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         // in this codebase (e.g. MqttDriver::receive() for a PUBLISH
         // payload): dataSpan gets exactly the bytes received, nothing
         // appended. See class doc comment's "Matching the response".
-        const size_t len = std::min(dataSpan.size(), tl_strPendingResponseJson.size());
+        const size_t len    = std::min(dataSpan.size(), tl_strPendingResponseJson.size());
         std::memcpy(dataSpan.data(), tl_strPendingResponseJson.data(), len);
-        result.status = ICommDriver::Status::SUCCESS;
+        result.status     = ICommDriver::Status::SUCCESS;
         result.bytes_read = len;
         return result;
     }
@@ -616,9 +628,9 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         // A FINISHed client-stream's response — see class doc comment's
         // "Client streaming".
         m_bStreamResponsePending = false;
-        const size_t len = std::min(dataSpan.size(), m_strStreamPendingResponseJson.size());
+        const size_t len         = std::min(dataSpan.size(), m_strStreamPendingResponseJson.size());
         std::memcpy(dataSpan.data(), m_strStreamPendingResponseJson.data(), len);
-        result.status = ICommDriver::Status::SUCCESS;
+        result.status     = ICommDriver::Status::SUCCESS;
         result.bytes_read = len;
         return result;
     }
@@ -635,9 +647,11 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         // same mutex, so it could never actually interrupt an in-flight
         // Read() from another thread; calling TryCancel() directly on a
         // pointer captured before the blocking call sidesteps that entirely.
-        grpc::ClientContext* pStopCtx = m_pStreamContext.get();
+        grpc::ClientContext *pStopCtx = m_pStreamContext.get();
         std::stop_callback onStop(stop_tok, [pStopCtx]() {
-            if (pStopCtx) pStopCtx->TryCancel();
+            if (pStopCtx) {
+                pStopCtx->TryCancel();
+            }
         });
 
         auto response = m_protocol.newResponseMessage(m_pActiveStreamMethod);
@@ -645,21 +659,21 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
             std::string responseJson;
             if (!m_protocol.messageToJson(*response, responseJson)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Server-stream"); LOG_STRING(m_strActiveStreamMethodPath);
-                    LOG_STRING(": failed to render message as JSON:"); LOG_STRING(responseJson));
+                          LOG_STRING(": failed to render message as JSON:"); LOG_STRING(responseJson));
                 result.status = ICommDriver::Status::PROTOCOL_ERROR;
                 return result;
             }
 
             if (gui_mode_active()) {
                 gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params), CommDir::Rx,
-                                      reinterpret_cast<const uint8_t*>(responseJson.data()),
-                                      static_cast<uint32_t>(responseJson.size()));
+                                     reinterpret_cast<const uint8_t *>(responseJson.data()),
+                                     static_cast<uint32_t>(responseJson.size()));
             }
 
             // No trailing NUL — see class doc comment's "Matching the response".
             const size_t len = std::min(dataSpan.size(), responseJson.size());
             std::memcpy(dataSpan.data(), responseJson.data(), len);
-            result.status = ICommDriver::Status::SUCCESS;
+            result.status     = ICommDriver::Status::SUCCESS;
             result.bytes_read = len;
             return result;
         }
@@ -669,7 +683,7 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         // done either way, so forget it regardless of the outcome.
         const std::string methodPath = m_strActiveStreamMethodPath;
         const bool bWasStopRequested = stop_tok.stop_requested();
-        grpc::Status callStatus = m_pServerStreamReader->Finish();
+        grpc::Status callStatus      = m_pServerStreamReader->Finish();
         m_ResetStreamStateLocked(); // Finish() already called just above — don't call it again
 
         if (bWasStopRequested) {
@@ -684,7 +698,7 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
 
         if (!callStatus.ok()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Server-stream"); LOG_STRING(methodPath); LOG_STRING("failed:");
-                LOG_STRING(callStatus.error_message()));
+                      LOG_STRING(callStatus.error_message()));
             result.status = ICommDriver::Status::OPERATION_FAILED;
             return result;
         }
@@ -693,7 +707,7 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         // empty-but-not-an-error result a script can check for — see class
         // doc comment's "Server streaming".
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Server-stream"); LOG_STRING(methodPath); LOG_STRING("ended"));
-        result.status = ICommDriver::Status::SUCCESS;
+        result.status     = ICommDriver::Status::SUCCESS;
         result.bytes_read = 0;
         return result;
     }
@@ -701,9 +715,11 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
     if (m_pBidiStream) {
         // Same pattern as server-streaming above, just on the bidi stream —
         // see class doc comment's "Bidirectional streaming".
-        grpc::ClientContext* pStopCtx = m_pStreamContext.get();
+        grpc::ClientContext *pStopCtx = m_pStreamContext.get();
         std::stop_callback onStop(stop_tok, [pStopCtx]() {
-            if (pStopCtx) pStopCtx->TryCancel();
+            if (pStopCtx) {
+                pStopCtx->TryCancel();
+            }
         });
 
         auto response = m_protocol.newResponseMessage(m_pActiveStreamMethod);
@@ -711,20 +727,20 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
             std::string responseJson;
             if (!m_protocol.messageToJson(*response, responseJson)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Bidi-stream"); LOG_STRING(m_strActiveStreamMethodPath);
-                    LOG_STRING(": failed to render message as JSON:"); LOG_STRING(responseJson));
+                          LOG_STRING(": failed to render message as JSON:"); LOG_STRING(responseJson));
                 result.status = ICommDriver::Status::PROTOCOL_ERROR;
                 return result;
             }
 
             if (gui_mode_active()) {
                 gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params), CommDir::Rx,
-                                      reinterpret_cast<const uint8_t*>(responseJson.data()),
-                                      static_cast<uint32_t>(responseJson.size()));
+                                     reinterpret_cast<const uint8_t *>(responseJson.data()),
+                                     static_cast<uint32_t>(responseJson.size()));
             }
 
             const size_t len = std::min(dataSpan.size(), responseJson.size());
             std::memcpy(dataSpan.data(), responseJson.data(), len);
-            result.status = ICommDriver::Status::SUCCESS;
+            result.status     = ICommDriver::Status::SUCCESS;
             result.bytes_read = len;
             return result;
         }
@@ -733,7 +749,7 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         // errored) — either way, Finish() tells us which.
         const std::string methodPath = m_strActiveStreamMethodPath;
         const bool bWasStopRequested = stop_tok.stop_requested();
-        grpc::Status callStatus = m_pBidiStream->Finish();
+        grpc::Status callStatus      = m_pBidiStream->Finish();
         m_ResetStreamStateLocked(); // Finish() already called just above — don't call it again
 
         if (bWasStopRequested) {
@@ -743,20 +759,20 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
 
         if (!callStatus.ok()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Bidi-stream"); LOG_STRING(methodPath); LOG_STRING("failed:");
-                LOG_STRING(callStatus.error_message()));
+                      LOG_STRING(callStatus.error_message()));
             result.status = ICommDriver::Status::OPERATION_FAILED;
             return result;
         }
 
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Bidi-stream"); LOG_STRING(methodPath); LOG_STRING("ended"));
-        result.status = ICommDriver::Status::SUCCESS;
+        result.status     = ICommDriver::Status::SUCCESS;
         result.bytes_read = 0;
         return result;
     }
 
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(
-        "GRPC.CMD < with nothing outstanding (no preceding unary CALL, open server/bidi stream, or "
-        "FINISHed client-stream on this driver)"));
+                  "GRPC.CMD < with nothing outstanding (no preceding unary CALL, open server/bidi stream, or "
+                  "FINISHed client-stream on this driver)"));
     result.status = ICommDriver::Status::INVALID_PARAM;
     return result;
 }

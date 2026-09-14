@@ -42,7 +42,6 @@
 // piece of *script* syntax on both sides live here.
 // ─────────────────────────────────────────────────────────────────────────────
 
-
 // ── Identifier ─────────────────────────────────────────────────────────────
 // A macro/array/variable name, a LABEL name, or a GOTO/REPEAT/END_REPEAT/
 // BREAK/CONTINUE loop-label reference. Leading underscore allowed.
@@ -52,7 +51,7 @@
 //                        m_isEndRepeat, m_isBreak, m_isContinue
 //   frontend          : NAME ?=/[=/:=  ·  LABEL name  ·  GOTO target  ·
 //                        REPEAT's own loop-label  ·  END_REPEAT's label
-#define SCRIPT_RX_IDENT                     "[A-Za-z_][A-Za-z0-9_]*"
+#define SCRIPT_RX_IDENT            "[A-Za-z_][A-Za-z0-9_]*"
 
 // ── LOAD_PLUGIN's plugin-type name ───────────────────────────────────────────
 // Deliberately narrower than SCRIPT_RX_IDENT: the first character must be a
@@ -64,7 +63,7 @@
 //                        SCRIPT_RX_IDENT (allowing a leading '_') and so could
 //                        highlight a LOAD_PLUGIN argument the interpreter
 //                        would actually reject.
-#define SCRIPT_RX_PLUGIN_TYPE_NAME          "[A-Za-z][A-Za-z0-9_]*"
+#define SCRIPT_RX_PLUGIN_TYPE_NAME "[A-Za-z][A-Za-z0-9_]*"
 
 // ── Optional plugin-instance suffix:  :N ─────────────────────────────────────
 // N is a positive integer with no leading zero (UART:1, UART:2, ... — not
@@ -73,7 +72,7 @@
 //   frontend          : PLUGIN.COMMAND highlighter, LOAD_PLUGIN argument
 //                        highlighter, and both comm-script filename rules
 //                        (PLUGIN.SCRIPT <file> / PLUGIN.COMMAND script <file>)
-#define SCRIPT_RX_INSTANCE_SUFFIX           "(?::[1-9][0-9]*)?"
+#define SCRIPT_RX_INSTANCE_SUFFIX  "(?::[1-9][0-9]*)?"
 
 // ── Uppercase identifier:  PLUGIN name / COMMAND name ────────────────────────
 // The "PLUGIN[:N].COMMAND" grammar requires both sides of the '.' to be
@@ -81,7 +80,7 @@
 //   uScriptSyntax.hpp : m_isVariableMacro (command target), m_isCommand
 //   frontend          : PLUGIN.COMMAND highlighter, both comm-script filename
 //                        rules
-#define SCRIPT_RX_UPPER_IDENT               "[A-Z][A-Z0-9_]*"
+#define SCRIPT_RX_UPPER_IDENT      "[A-Z][A-Z0-9_]*"
 
 // ── Macro reference:  $name  or  $name.SIZE ──────────────────────────────────
 // The optional ".SIZE" suffix is an array-size reference (NAME must be a
@@ -93,7 +92,7 @@
 //   uScriptSyntax.hpp : m_isRepeat's <begin>/<end>/<step> macro alternative
 //   frontend          : addMacroVariableRule()'s bare $VAR rule, and the same
 //                        REPEAT range macro alternative
-#define SCRIPT_RX_MACRO_REF                 "\\$[A-Za-z_][A-Za-z0-9_]*(?:\\.SIZE(?![A-Za-z0-9_]))?"
+#define SCRIPT_RX_MACRO_REF        "\\$[A-Za-z_][A-Za-z0-9_]*(?:\\.SIZE(?![A-Za-z0-9_]))?"
 
 // ── REPEAT range value token:  signed hex/bin/oct/dec/float literal ─────────
 // One <begin>/<end>/<step> token in REPEAT's counted/ranged form (the macro-
@@ -104,7 +103,7 @@
 //   uScriptSyntax.hpp : m_isRepeat's strNumTok (literal alternative)
 //   frontend          : the REPEAT-range highlighter's numTok (literal
 //                        alternative)
-#define SCRIPT_RX_NUMERIC_TOKEN             \
+#define SCRIPT_RX_NUMERIC_TOKEN                            \
     "(?:[+-]?(?:0[xX][0-9A-Fa-f]+|0[bB][01]+|0[oO][0-7]+|" \
     "(?:[0-9]+\\.[0-9]*|\\.[0-9]+|[0-9]+)(?:[eE][+-]?[0-9]+)?))"
 
@@ -113,7 +112,7 @@
 // before the range-value list begins.
 //   uScriptSyntax.hpp : m_isRepeat's "counted" pattern prefix
 //   frontend          : the REPEAT-range highlighter's `prefix`
-#define SCRIPT_RX_REPEAT_PREFIX             \
+#define SCRIPT_RX_REPEAT_PREFIX \
     "^(?:" SCRIPT_RX_IDENT "\\s*\\?=\\s*)?REPEAT\\s+" SCRIPT_RX_IDENT "\\s+"
 
 // ── DELAY time units ──────────────────────────────────────────────────────────
@@ -121,7 +120,7 @@
 //   frontend          : CommScriptHighlighter's delay-unit rule (the set is
 //                        identical; only the alternative order differs, which
 //                        doesn't affect matching)
-#define SCRIPT_RX_TIME_UNITS                "(us|ms|sec)"
+#define SCRIPT_RX_TIME_UNITS          "(us|ms|sec)"
 
 // ── LOAD_PLUGIN's version-comparator literal:  v1.2.3.4 ─────────────────────
 // Exactly four dot-separated groups — this is the ABI version compared with
@@ -132,6 +131,6 @@
 //                        any 2-or-more-part "v#.#..." shape (so it would
 //                        colour "v1.2" or "v1.2.3.4.5" too, neither of which
 //                        the interpreter actually accepts here).
-#define SCRIPT_RX_LOAD_PLUGIN_VERSION        "v\\d+\\.\\d+\\.\\d+\\.\\d+"
+#define SCRIPT_RX_LOAD_PLUGIN_VERSION "v\\d+\\.\\d+\\.\\d+\\.\\d+"
 
 #endif /* USHARED_SCRIPT_REGEX_HPP */

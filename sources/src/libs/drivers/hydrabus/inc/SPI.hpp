@@ -3,11 +3,11 @@
 
 #include "Protocol.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <optional>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <vector>
 
@@ -33,10 +33,10 @@ class Hydrabus;
  * spi.set_cs(1);                              // deassert CS
  * @endcode
  */
-class SPI : public Protocol {
+class SPI : public Protocol
+{
 
 public:
-
     // -------------------------------------------------------------------------
     // Speed constants (match HydraFW bit patterns)
     // -------------------------------------------------------------------------
@@ -74,7 +74,7 @@ public:
     /**
      * @brief Get the current CS pin state (0 = low / asserted, 1 = high).
      */
-    int  get_cs() const;
+    int get_cs() const;
 
     /**
      * @brief Set the CS pin state.
@@ -112,10 +112,10 @@ public:
      * @return Read bytes, or empty optional on error.
      */
     std::optional<std::vector<uint8_t>> write_read(
-            std::span<const uint8_t> data,
-            size_t                   read_len,
-            bool                     manual_cs = false,
-            std::stop_token          stop_tok = {});
+        std::span<const uint8_t> data,
+        size_t read_len,
+        bool manual_cs           = false,
+        std::stop_token stop_tok = {});
 
     /**
      * @brief Write bytes (discards any MISO data).
@@ -148,7 +148,7 @@ public:
     // ---- Clock polarity (CPOL) -----------------------------------------------
 
     /** @return 0 = idle low, 1 = idle high. */
-    int  get_polarity() const;
+    int get_polarity() const;
 
     /** @param value 0 or 1. @return true on success. */
     bool set_polarity(int value);
@@ -156,7 +156,7 @@ public:
     // ---- Clock phase (CPHA) --------------------------------------------------
 
     /** @return 0 = first edge, 1 = second edge. */
-    int  get_phase() const;
+    int get_phase() const;
 
     /** @param value 0 or 1. @return true on success. */
     bool set_phase(int value);
@@ -164,21 +164,20 @@ public:
     // ---- SPI peripheral selector --------------------------------------------
 
     /** @return 1 = SPI1 (faster, up to 42 MHz), 0 = SPI2. */
-    int  get_device() const;
+    int get_device() const;
 
     /** @param value 0 = SPI2, 1 = SPI1. @return true on success. */
     bool set_device(int value);
 
 private:
-
     bool _configure_port();
 
     static constexpr uint8_t DEFAULT_CONFIG = 0b011; ///< SPI1, CPOL=0, CPHA=1
 
     uint8_t _config{DEFAULT_CONFIG};
-    int     _cs_val{1};                              ///< Cached CS state
+    int _cs_val{1}; ///< Cached CS state
 };
 
 } // namespace HydraHAL
 
-#endif //HYDRABUS_SPI_HPP
+#endif // HYDRABUS_SPI_HPP

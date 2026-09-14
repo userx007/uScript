@@ -2,14 +2,14 @@
 #include "uDigisparkSPI.hpp"
 #include "uLogger.hpp"
 
-#include <hidapi/hidapi.h>
-#include <stdint.h>
 #include <algorithm>
 #include <chrono>
 #include <compare>
 #include <cstring>
+#include <hidapi/hidapi.h>
 #include <mutex>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -17,19 +17,18 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "SPI_BRIDGE  |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR  "SPI_BRIDGE  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /** hidapi write needs a leading Report-ID byte (0x00 for single-report devices). */
 static constexpr size_t HID_REPORT_ID_SIZE = 1;
 static constexpr size_t HID_WRITE_SIZE     = SPIBridge::SPI_PKT_SIZE + HID_REPORT_ID_SIZE;
-
 
 // ============================================================================
 // LIFECYCLE  (Linux / hidapi)
@@ -39,22 +38,19 @@ ICommDriver::Status SPIBridge::open(uint16_t u16Vid, uint16_t u16Pid)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (m_pDevice != nullptr)
-    {
+    if (m_pDevice != nullptr) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("open: device already open"));
         return Status::SUCCESS;
     }
 
-    if (hid_init() != 0)
-    {
+    if (hid_init() != 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("open: hid_init() failed"));
         return Status::PORT_ACCESS;
     }
 
     m_pDevice = hid_open(u16Vid, u16Pid, nullptr);
-    if (m_pDevice == nullptr)
-    {
-        const wchar_t* pErrMsg = hid_error(nullptr);
+    if (m_pDevice == nullptr) {
+        const wchar_t *pErrMsg = hid_error(nullptr);
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("open: hid_open() failed VID="); LOG_HEX16(u16Vid);
                   LOG_STRING("PID="); LOG_HEX16(u16Pid));
@@ -73,13 +69,11 @@ ICommDriver::Status SPIBridge::open(uint16_t u16Vid, uint16_t u16Pid)
     return Status::SUCCESS;
 }
 
-
 ICommDriver::Status SPIBridge::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (m_pDevice != nullptr)
-    {
+    if (m_pDevice != nullptr) {
         hid_close(m_pDevice);
         m_pDevice = nullptr;
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("close: HID device closed"));
@@ -88,7 +82,6 @@ ICommDriver::Status SPIBridge::close()
     hid_exit();
     return Status::SUCCESS;
 }
-
 
 // ============================================================================
 // LOW-LEVEL HID TRANSPORT  (Linux / hidapi)
@@ -106,21 +99,19 @@ ICommDriver::Status SPIBridge::close()
  */
 ICommDriver::Status SPIBridge::hid_pkt_send(std::span<const uint8_t> payload) const
 {
-    if (payload.size() != SPI_PKT_SIZE)
-    {
+    if (payload.size() != SPI_PKT_SIZE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("hid_pkt_send: wrong payload size"); LOG_UINT32(payload.size()));
         return Status::INVALID_PARAM;
     }
 
     uint8_t writeBuf[HID_WRITE_SIZE] = {};
-    writeBuf[0] = 0x00;  // Report-ID
+    writeBuf[0]                      = 0x00; // Report-ID
     std::memcpy(&writeBuf[1], payload.data(), SPI_PKT_SIZE);
 
     int iRet = hid_write(m_pDevice, writeBuf, HID_WRITE_SIZE);
-    if (iRet < 0)
-    {
-        const wchar_t* pErrMsg = hid_error(m_pDevice);
+    if (iRet < 0) {
+        const wchar_t *pErrMsg = hid_error(m_pDevice);
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("hid_pkt_send: hid_write() failed ret="); LOG_INT(iRet));
         (void)pErrMsg;
@@ -132,7 +123,6 @@ ICommDriver::Status SPIBridge::hid_pkt_send(std::span<const uint8_t> payload) co
 
     return Status::SUCCESS;
 }
-
 
 /**
  * @brief Receive one 8-byte HID response packet from the firmware.
@@ -146,11 +136,10 @@ ICommDriver::Status SPIBridge::hid_pkt_send(std::span<const uint8_t> payload) co
  * @return Status::SUCCESS, Status::READ_TIMEOUT or Status::READ_ERROR
  */
 ICommDriver::Status SPIBridge::hid_pkt_recv(std::span<uint8_t> packet,
-                                           uint32_t           u32Timeout,
-                                           std::stop_token    stop_tok) const
+                                            uint32_t u32Timeout,
+                                            std::stop_token stop_tok) const
 {
-    if (packet.size() < SPI_PKT_SIZE)
-    {
+    if (packet.size() < SPI_PKT_SIZE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("hid_pkt_recv: packet buffer too small"); LOG_UINT32(packet.size()));
         return Status::INVALID_PARAM;
@@ -161,44 +150,38 @@ ICommDriver::Status SPIBridge::hid_pkt_recv(std::span<uint8_t> packet,
     // this codebase — retry in bounded slices instead of a single
     // indefinite (-1) or long call, checking stop_tok between attempts.
     constexpr int kSliceMs = 200;
-    const bool bInfinite = (u32Timeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32Timeout);
+    const bool bInfinite   = (u32Timeout == 0);
+    const auto tDeadline   = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32Timeout);
 
-    int iRet = 0;
-    while (true)
-    {
-        if (stop_tok.stop_requested())
-        {
+    int iRet               = 0;
+    while (true) {
+        if (stop_tok.stop_requested()) {
             return Status::READ_TIMEOUT;
         }
 
         int iSliceMs = kSliceMs;
-        if (!bInfinite)
-        {
+        if (!bInfinite) {
             const auto remaining = tDeadline - std::chrono::steady_clock::now();
-            if (remaining <= std::chrono::milliseconds(0))
-            {
+            if (remaining <= std::chrono::milliseconds(0)) {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
                           LOG_STRING("hid_pkt_recv: timeout after"); LOG_UINT32(u32Timeout); LOG_STRING("ms"));
                 return Status::READ_TIMEOUT;
             }
             iSliceMs = static_cast<int>(std::min<int64_t>(kSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                          std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         iRet = hid_read_timeout(m_pDevice,
                                 packet.data(),
                                 SPI_PKT_SIZE,
                                 iSliceMs);
-        if (iRet != 0)
-        {
+        if (iRet != 0) {
             break;
         }
     }
 
-    if (iRet < 0)
-    {
-        const wchar_t* pErrMsg = hid_error(m_pDevice);
+    if (iRet < 0) {
+        const wchar_t *pErrMsg = hid_error(m_pDevice);
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("hid_pkt_recv: hid_read_timeout() failed ret="); LOG_INT(iRet));
         (void)pErrMsg;

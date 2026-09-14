@@ -50,14 +50,14 @@ public:
      * @return true if a full transfer (expedited or segmented) completed.
      */
     static bool serve_download(const ICommDriver &bus, std::string_view rxId, std::string_view txId,
-                                uint32_t timeoutMs, std::vector<uint8_t> &outData);
+                               uint32_t timeoutMs, std::vector<uint8_t> &outData);
 
     /**
      * @brief Answers exactly one Upload (client receive()) transaction.
      * @param data  Bytes to serve back to the client, verbatim.
      */
     static bool serve_upload(const ICommDriver &bus, std::string_view rxId, std::string_view txId,
-                              uint32_t timeoutMs, const std::vector<uint8_t> &data);
+                             uint32_t timeoutMs, const std::vector<uint8_t> &data);
 
     /**
      * @brief Answers exactly one transaction, Download OR Upload, whichever
@@ -88,8 +88,8 @@ public:
      * @return true if a full transaction (either direction) completed.
      */
     static bool serve_one(const ICommDriver &bus, std::string_view rxId, std::string_view txId,
-                           uint32_t timeoutMs, std::vector<uint8_t> &stored,
-                           const std::function<void(bool isDownload)> &onDirectionKnown = {});
+                          uint32_t timeoutMs, std::vector<uint8_t> &stored,
+                          const std::function<void(bool isDownload)> &onDirectionKnown = {});
 };
 
 #endif // CAN_TP_SDO_LOOPBACK_SERVER_HPP

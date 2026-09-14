@@ -7,13 +7,13 @@
  * FTD2XX device list: FT4232H presents 4 interfaces, stride = 4.
  *   ftIndex = u8DeviceIndex * 4 + channel   (C=2, D=3)
  */
-#include "uFT4232UART.hpp"
 #include "FT4232Base.hpp"
+#include "uFT4232UART.hpp"
 #include "uLogger.hpp"
 
-#include <ftd2xx.h>
 #include <algorithm>
 #include <chrono>
+#include <ftd2xx.h>
 #include <thread>
 #include <vector>
 
@@ -22,35 +22,33 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT4232_UART |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "FT4232_UART |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
-#define FT_HDL (static_cast<FT_HANDLE>(m_hDevice))
-
+#define FT_HDL  (static_cast<FT_HANDLE>(m_hDevice))
 
 // ============================================================================
 // open_device
 // ============================================================================
 
 FT4232UART::Status FT4232UART::open_device(FT4232Base::Channel channel,
-                                            uint8_t             u8DeviceIndex)
+                                           uint8_t u8DeviceIndex)
 {
     // Channel C=2, D=3; stride = 4 interfaces per chip
-    const DWORD ftIndex = static_cast<DWORD>(u8DeviceIndex) * 4u
-                          + static_cast<DWORD>(channel);
+    const DWORD ftIndex = static_cast<DWORD>(u8DeviceIndex) * 4u + static_cast<DWORD>(channel);
 
     // ── VID/PID verification ──────────────────────────────────────────────
     {
-        DWORD     flags = 0, type = 0, devId = 0, locId = 0;
-        char      serialNum[16]   = {0};
-        char      description[64] = {0};
-        FT_HANDLE tempHandle      = nullptr;
+        DWORD flags = 0, type = 0, devId = 0, locId = 0;
+        char serialNum[16]   = {0};
+        char description[64] = {0};
+        FT_HANDLE tempHandle = nullptr;
 
         if (FT_GetDeviceInfoDetail(ftIndex, &flags, &type, &devId, &locId,
                                    serialNum, description, &tempHandle) != FT_OK) {
@@ -61,7 +59,7 @@ FT4232UART::Status FT4232UART::open_device(FT4232Base::Channel channel,
         }
 
         const uint16_t vid = static_cast<uint16_t>((devId >> 16) & 0xFFFFu);
-        const uint16_t pid = static_cast<uint16_t>( devId        & 0xFFFFu);
+        const uint16_t pid = static_cast<uint16_t>(devId & 0xFFFFu);
 
         if (vid != FT4232Base::FT4232H_VID || pid != FT4232Base::FT4232H_PID) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -86,7 +84,7 @@ FT4232UART::Status FT4232UART::open_device(FT4232Base::Channel channel,
     FT_SetLatencyTimer(handle, 1u);
     FT_Purge(handle, FT_PURGE_RX | FT_PURGE_TX);
 
-    m_hDevice = static_cast<void*>(handle);
+    m_hDevice = static_cast<void *>(handle);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT4232H UART opened, channel=");
@@ -97,12 +95,11 @@ FT4232UART::Status FT4232UART::open_device(FT4232Base::Channel channel,
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // apply_config
 // ============================================================================
 
-FT4232UART::Status FT4232UART::apply_config(const UartConfig& config) const
+FT4232UART::Status FT4232UART::apply_config(const UartConfig &config) const
 {
     if (FT_SetBaudRate(FT_HDL, static_cast<DWORD>(config.baudRate)) != FT_OK) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -111,9 +108,9 @@ FT4232UART::Status FT4232UART::apply_config(const UartConfig& config) const
     }
 
     if (FT_SetDataCharacteristics(FT_HDL,
-                                   static_cast<UCHAR>(config.dataBits),
-                                   static_cast<UCHAR>(config.stopBits),
-                                   static_cast<UCHAR>(config.parity)) != FT_OK) {
+                                  static_cast<UCHAR>(config.dataBits),
+                                  static_cast<UCHAR>(config.stopBits),
+                                  static_cast<UCHAR>(config.parity)) != FT_OK) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FT_SetDataCharacteristics() failed"));
         return Status::PORT_ACCESS;
     }
@@ -129,15 +126,14 @@ FT4232UART::Status FT4232UART::apply_config(const UartConfig& config) const
                    FT4232UART::FT4232_UART_WRITE_DEFAULT_TIMEOUT);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("UART cfg: baud=");  LOG_UINT32(config.baudRate);
-              LOG_STRING(" data=");  LOG_UINT32(config.dataBits);
-              LOG_STRING(" stop=");  LOG_UINT32(config.stopBits);
-              LOG_STRING(" par=");   LOG_UINT32(config.parity);
-              LOG_STRING(" flow=");  LOG_UINT32(config.hwFlowCtrl ? 1u : 0u));
+              LOG_STRING("UART cfg: baud="); LOG_UINT32(config.baudRate);
+              LOG_STRING(" data="); LOG_UINT32(config.dataBits);
+              LOG_STRING(" stop="); LOG_UINT32(config.stopBits);
+              LOG_STRING(" par="); LOG_UINT32(config.parity);
+              LOG_STRING(" flow="); LOG_UINT32(config.hwFlowCtrl ? 1u : 0u));
 
     return Status::SUCCESS;
 }
-
 
 // ============================================================================
 // close
@@ -145,8 +141,9 @@ FT4232UART::Status FT4232UART::apply_config(const UartConfig& config) const
 
 FT4232UART::Status FT4232UART::close()
 {
-    if (!m_hDevice)
+    if (!m_hDevice) {
         return Status::SUCCESS;
+    }
 
     FT_Close(FT_HDL);
     m_hDevice = nullptr;
@@ -155,33 +152,39 @@ FT4232UART::Status FT4232UART::close()
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // tout_write
 // ============================================================================
 
-FT4232UART::WriteResult FT4232UART::tout_write(uint32_t                 u32WriteTimeout,
-                                                std::span<const uint8_t> buffer,
-                                                std::string_view         /*xtra_params*/,
-                                                std::stop_token stop_tok) const
+FT4232UART::WriteResult FT4232UART::tout_write(uint32_t u32WriteTimeout,
+                                               std::span<const uint8_t> buffer,
+                                               std::string_view /*xtra_params*/,
+                                               std::stop_token stop_tok) const
 {
     WriteResult result;
-    if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
-    if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_written = 0; return result; }
+    if (!m_hDevice) {
+        result.status = Status::PORT_ACCESS;
+        return result;
+    }
+    if (buffer.empty()) {
+        result.status        = Status::SUCCESS;
+        result.bytes_written = 0;
+        return result;
+    }
 
     // 0 == infinite timeout: forwarded through unchanged.
-    const uint32_t timeoutMs = u32WriteTimeout;
+    const uint32_t timeoutMs     = u32WriteTimeout;
     // FT_SetTimeouts has no native infinite value; a 0 write timeout is
     // interpreted by D2XX as "don't wait", not "wait forever", so map our
     // 0 == infinite convention to a practically-infinite sentinel here.
     const DWORD dwFtWriteTimeout = (timeoutMs == 0) ? 0xFFFFFFFEu : timeoutMs;
     FT_SetTimeouts(FT_HDL, FT4232_UART_READ_DEFAULT_TIMEOUT, dwFtWriteTimeout);
 
-    DWORD written = 0;
-    FT_STATUS ftStat = FT_Write(FT_HDL,
-                                 const_cast<LPVOID>(static_cast<const void*>(buffer.data())),
-                                 static_cast<DWORD>(buffer.size()),
-                                 &written);
+    DWORD written        = 0;
+    FT_STATUS ftStat     = FT_Write(FT_HDL,
+                                    const_cast<LPVOID>(static_cast<const void *>(buffer.data())),
+                                    static_cast<DWORD>(buffer.size()),
+                                    &written);
 
     result.bytes_written = static_cast<size_t>(written);
 
@@ -198,23 +201,29 @@ FT4232UART::WriteResult FT4232UART::tout_write(uint32_t                 u32Write
     return result;
 }
 
-
 // ============================================================================
 // tout_read
 // ============================================================================
 
-FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
-                                              std::span<uint8_t> buffer,
-                                              const ReadOptions& options,
-                                              std::string_view   /*xtra_params*/,
-                                              std::stop_token stop_tok) const
+FT4232UART::ReadResult FT4232UART::tout_read(uint32_t u32ReadTimeout,
+                                             std::span<uint8_t> buffer,
+                                             const ReadOptions &options,
+                                             std::string_view /*xtra_params*/,
+                                             std::stop_token stop_tok) const
 {
     ReadResult result;
-    if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
-    if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_read = 0; return result; }
+    if (!m_hDevice) {
+        result.status = Status::PORT_ACCESS;
+        return result;
+    }
+    if (buffer.empty()) {
+        result.status     = Status::SUCCESS;
+        result.bytes_read = 0;
+        return result;
+    }
 
     // 0 == infinite timeout: forwarded through unchanged.
-    const uint32_t timeoutMs = u32ReadTimeout;
+    const uint32_t timeoutMs    = u32ReadTimeout;
     // FT_SetTimeouts has no native infinite value; a 0 read timeout is
     // interpreted by D2XX as "don't wait", not "wait forever", so map our
     // 0 == infinite convention to a practically-infinite sentinel here (the
@@ -225,19 +234,20 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
 
     // 0 == infinite timeout: never expire this poll loop.
     const bool bInfinite = (timeoutMs == 0);
-    const auto deadline = std::chrono::steady_clock::now()
-                          + std::chrono::milliseconds(timeoutMs);
+    const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
-    auto read_one = [&](uint8_t& byte) -> bool {
+    auto read_one        = [&](uint8_t &byte) -> bool {
         while (true) {
             DWORD queued = 0;
             if (FT_GetQueueStatus(FT_HDL, &queued) != FT_OK) {
-                result.status = Status::READ_ERROR; return false;
+                result.status = Status::READ_ERROR;
+                return false;
             }
             if (queued > 0) {
                 DWORD got = 0;
                 if (FT_Read(FT_HDL, &byte, 1u, &got) != FT_OK || got == 0) {
-                    result.status = Status::READ_ERROR; return false;
+                    result.status = Status::READ_ERROR;
+                    return false;
                 }
                 return true;
             }
@@ -245,7 +255,8 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
                 return false;
             }
             if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
-                result.status = Status::READ_TIMEOUT; return false;
+                result.status = Status::READ_TIMEOUT;
+                return false;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
@@ -258,14 +269,16 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
         while (result.bytes_read < buffer.size()) {
             DWORD queued = 0;
             if (FT_GetQueueStatus(FT_HDL, &queued) != FT_OK) {
-                result.status = Status::READ_ERROR; return result;
+                result.status = Status::READ_ERROR;
+                return result;
             }
             if (queued > 0) {
                 DWORD toRead = static_cast<DWORD>(
                     std::min(static_cast<size_t>(queued), buffer.size() - result.bytes_read));
                 DWORD got = 0;
                 if (FT_Read(FT_HDL, buffer.data() + result.bytes_read, toRead, &got) != FT_OK) {
-                    result.status = Status::READ_ERROR; return result;
+                    result.status = Status::READ_ERROR;
+                    return result;
                 }
                 result.bytes_read += got;
             } else {
@@ -276,7 +289,8 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING("read timeout: wanted="); LOG_UINT32(buffer.size());
                               LOG_STRING(" got="); LOG_UINT32(result.bytes_read));
-                    result.status = Status::READ_TIMEOUT; return result;
+                    result.status = Status::READ_TIMEOUT;
+                    return result;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
@@ -288,39 +302,59 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
     case ReadMode::UntilDelimiter: {
         while (result.bytes_read < buffer.size()) {
             uint8_t byte = 0;
-            if (!read_one(byte)) return result;
+            if (!read_one(byte)) {
+                return result;
+            }
             buffer[result.bytes_read++] = byte;
-            if (byte == options.delimiter) { result.status = Status::SUCCESS; return result; }
+            if (byte == options.delimiter) {
+                result.status = Status::SUCCESS;
+                return result;
+            }
         }
         result.status = Status::READ_ERROR;
         break;
     }
 
     case ReadMode::UntilToken: {
-        const auto& token = options.token;
-        if (token.empty()) { result.status = Status::INVALID_PARAM; return result; }
+        const auto &token = options.token;
+        if (token.empty()) {
+            result.status = Status::INVALID_PARAM;
+            return result;
+        }
 
         std::vector<size_t> fail(token.size(), 0u);
         for (size_t i = 1; i < token.size(); ++i) {
             size_t j = fail[i - 1];
-            while (j > 0 && token[i] != token[j]) j = fail[j - 1];
-            if (token[i] == token[j]) ++j;
+            while (j > 0 && token[i] != token[j]) {
+                j = fail[j - 1];
+            }
+            if (token[i] == token[j]) {
+                ++j;
+            }
             fail[i] = j;
         }
 
         size_t matched = 0;
         while (result.bytes_read < buffer.size()) {
             uint8_t byte = 0;
-            if (!read_one(byte)) return result;
+            if (!read_one(byte)) {
+                return result;
+            }
             buffer[result.bytes_read++] = byte;
-            while (matched > 0 && byte != token[matched]) matched = fail[matched - 1];
-            if (byte == token[matched]) ++matched;
-            if (matched == token.size()) { result.status = Status::SUCCESS; return result; }
+            while (matched > 0 && byte != token[matched]) {
+                matched = fail[matched - 1];
+            }
+            if (byte == token[matched]) {
+                ++matched;
+            }
+            if (matched == token.size()) {
+                result.status = Status::SUCCESS;
+                return result;
+            }
         }
         result.status = Status::READ_ERROR;
         break;
     }
-
     }
     return result;
 }

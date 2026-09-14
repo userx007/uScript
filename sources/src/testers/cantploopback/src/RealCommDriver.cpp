@@ -1,27 +1,26 @@
 #include "RealCommDriver.hpp"
 
-#include <fcntl.h>
-#include <linux/can/raw.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <unistd.h>
 #include <algorithm>
 #include <chrono>
 #include <compare>
 #include <cstdio>
 #include <cstring>
 #include <exception>
+#include <fcntl.h>
+#include <linux/can/raw.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <unistd.h>
 
-namespace
-{
-    // Legacy fixed ids kept only so any old caller still spelling out "A2B"/"B2A"
-    // keeps working; every other xtra_params value is parsed as a CAN id below.
-    constexpr uint32_t kIdA2B_CAN = 0x100;
-    constexpr uint32_t kIdB2A_CAN = 0x200;
-}
+namespace {
+// Legacy fixed ids kept only so any old caller still spelling out "A2B"/"B2A"
+// keeps working; every other xtra_params value is parsed as a CAN id below.
+constexpr uint32_t kIdA2B_CAN = 0x100;
+constexpr uint32_t kIdB2A_CAN = 0x200;
+} // namespace
 
-RealCommDriver::RealCommDriver(const std::string& interfaceName)
+RealCommDriver::RealCommDriver(const std::string &interfaceName)
     : m_interface(interfaceName)
 {
     init(interfaceName);
@@ -35,7 +34,7 @@ RealCommDriver::~RealCommDriver()
     }
 }
 
-bool RealCommDriver::init(const std::string& iface)
+bool RealCommDriver::init(const std::string &iface)
 {
     m_socket = ::socket(PF_CAN, SOCK_RAW, CAN_RAW);
     if (m_socket < 0) {
@@ -55,10 +54,10 @@ bool RealCommDriver::init(const std::string& iface)
     }
 
     ::memset(&addr, 0, sizeof(addr));
-    addr.can_family = AF_CAN;
+    addr.can_family  = AF_CAN;
     addr.can_ifindex = ifr.ifr_ifindex;
 
-    if (::bind(m_socket, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+    if (::bind(m_socket, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         std::perror("bind");
         ::close(m_socket);
         m_socket = -1;
@@ -107,10 +106,12 @@ CommDetails RealCommDriver::describeConnection(std::string_view /*xtra_params*/)
 
 void RealCommDriver::reset()
 {
-    if (m_socket < 0) return;
+    if (m_socket < 0) {
+        return;
+    }
     struct can_filter rfilter[1];
     ::memset(rfilter, 0, sizeof(rfilter));
-    rfilter[0].can_id = 0;
+    rfilter[0].can_id   = 0;
     rfilter[0].can_mask = 0;
     ::setsockopt(m_socket, SOL_CAN_RAW, CAN_RAW_FILTER, rfilter, sizeof(rfilter));
 }
@@ -118,8 +119,12 @@ void RealCommDriver::reset()
 uint32_t RealCommDriver::parse_can_id(std::string_view xtra_params) const
 {
     // Legacy tokens from the in-memory loopback test vocabulary.
-    if (xtra_params == "A2B") return kIdA2B_CAN;
-    if (xtra_params == "B2A") return kIdB2A_CAN;
+    if (xtra_params == "A2B") {
+        return kIdA2B_CAN;
+    }
+    if (xtra_params == "B2A") {
+        return kIdB2A_CAN;
+    }
 
     // General case: xtra_params is the CAN id itself, as hex — with or
     // without a "0x"/"0X" prefix — e.g. "7E0", "0x7E0", "18DA10F1". This is
@@ -128,29 +133,23 @@ uint32_t RealCommDriver::parse_can_id(std::string_view xtra_params) const
     // can-utils tools like cansend spell CAN ids on the command line.
     std::string s(xtra_params);
     size_t start = 0;
-    if (s.size() > 1 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X'))
-    {
+    if (s.size() > 1 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
         start = 2;
     }
 
-    if (start >= s.size())
-    {
+    if (start >= s.size()) {
         std::fprintf(stderr, "RealCommDriver: empty CAN id '%s', defaulting to 0\n", s.c_str());
         return 0;
     }
 
-    try
-    {
-        size_t consumed = 0;
+    try {
+        size_t consumed  = 0;
         unsigned long id = std::stoul(s.substr(start), &consumed, 16);
-        if (start + consumed != s.size())
-        {
+        if (start + consumed != s.size()) {
             std::fprintf(stderr, "RealCommDriver: trailing garbage in CAN id '%s'\n", s.c_str());
         }
         return static_cast<uint32_t>(id);
-    }
-    catch (const std::exception&)
-    {
+    } catch (const std::exception &) {
         std::fprintf(stderr, "RealCommDriver: invalid CAN id '%s', defaulting to 0\n", s.c_str());
         return 0;
     }
@@ -163,21 +162,22 @@ ICommDriver::WriteResult RealCommDriver::tout_write(
     std::stop_token stop_tok) const
 {
     WriteResult result;
-    result.status = Status::SUCCESS;
+    result.status  = Status::SUCCESS;
 
     uint32_t canId = parse_can_id(xtra_params);
 
     struct can_frame frame;
     ::memset(&frame, 0, sizeof(frame));
     frame.can_id = canId;
-    if (canId > CAN_SFF_MASK)
-    {
+    if (canId > CAN_SFF_MASK) {
         // Doesn't fit in an 11-bit standard id: send as 29-bit extended.
         frame.can_id = (canId & CAN_EFF_MASK) | CAN_EFF_FLAG;
     }
     frame.can_dlc = std::min(data.size(), static_cast<size_t>(8));
 
-    if (frame.can_dlc == 0) return result;
+    if (frame.can_dlc == 0) {
+        return result;
+    }
 
     ::memcpy(frame.data, data.data(), frame.can_dlc);
 
@@ -187,8 +187,8 @@ ICommDriver::WriteResult RealCommDriver::tout_write(
     // (e.g. uCh341Windows.cpp, uCandlelight.cpp) for drivers whose native
     // wait primitive isn't itself stop_token-aware.
     constexpr long kSliceUs = 200000; // 200ms
-    const bool bInfinite = (u32WriteTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32WriteTimeout);
+    const bool bInfinite    = (u32WriteTimeout == 0);
+    const auto tDeadline    = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32WriteTimeout);
 
     while (true) {
         if (stop_tok.stop_requested()) {
@@ -204,7 +204,7 @@ ICommDriver::WriteResult RealCommDriver::tout_write(
                 return result;
             }
             sliceUs = std::min<long>(kSliceUs,
-                std::chrono::duration_cast<std::chrono::microseconds>(remaining).count());
+                                     std::chrono::duration_cast<std::chrono::microseconds>(remaining).count());
         }
 
         struct timeval tv;
@@ -216,8 +216,13 @@ ICommDriver::WriteResult RealCommDriver::tout_write(
         FD_SET(m_socket, &writefds);
 
         int ret = ::select(m_socket + 1, nullptr, &writefds, nullptr, &tv);
-        if (ret > 0) break;   // writable
-        if (ret < 0) { result.status = Status::WRITE_ERROR; return result; }
+        if (ret > 0) {
+            break; // writable
+        }
+        if (ret < 0) {
+            result.status = Status::WRITE_ERROR;
+            return result;
+        }
         // ret == 0: this slice timed out — loop again (or exit above if the
         // overall deadline/stop request caught up).
     }
@@ -235,13 +240,13 @@ ICommDriver::WriteResult RealCommDriver::tout_write(
 ICommDriver::ReadResult RealCommDriver::tout_read(
     uint32_t u32ReadTimeout,
     std::span<uint8_t> buffer,
-    const ReadOptions& opts,
+    const ReadOptions &opts,
     std::string_view xtra_params,
     std::stop_token stop_tok) const
 {
     ReadResult result;
 
-    uint32_t filterId = parse_can_id(xtra_params);
+    uint32_t filterId   = parse_can_id(xtra_params);
     const bool extended = filterId > CAN_SFF_MASK;
 
     // Set filter for this read. RECV_OWN_MSGS is disabled (see init()), so
@@ -263,8 +268,8 @@ ICommDriver::ReadResult RealCommDriver::tout_read(
     // can't be woken from another thread, so stop_tok is checked between
     // slices instead.
     constexpr long kSliceUs = 200000; // 200ms
-    const bool bInfinite = (u32ReadTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+    const bool bInfinite    = (u32ReadTimeout == 0);
+    const auto tDeadline    = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
     while (true) {
         if (stop_tok.stop_requested()) {
@@ -280,7 +285,7 @@ ICommDriver::ReadResult RealCommDriver::tout_read(
                 return result;
             }
             sliceUs = std::min<long>(kSliceUs,
-                std::chrono::duration_cast<std::chrono::microseconds>(remaining).count());
+                                     std::chrono::duration_cast<std::chrono::microseconds>(remaining).count());
         }
 
         struct timeval tv;
@@ -292,8 +297,13 @@ ICommDriver::ReadResult RealCommDriver::tout_read(
         FD_SET(m_socket, &readfds);
 
         int ret = ::select(m_socket + 1, &readfds, nullptr, nullptr, &tv);
-        if (ret > 0) break;   // readable
-        if (ret < 0) { result.status = Status::READ_ERROR; return result; }
+        if (ret > 0) {
+            break; // readable
+        }
+        if (ret < 0) {
+            result.status = Status::READ_ERROR;
+            return result;
+        }
         // ret == 0: this slice timed out — loop again (or exit above if the
         // overall deadline/stop request caught up).
     }
@@ -317,14 +327,14 @@ ICommDriver::ReadResult RealCommDriver::tout_read(
     }
     const uint32_t idMask = extended ? CAN_EFF_MASK : CAN_SFF_MASK;
     if ((frame.can_id & idMask) != (filterId & idMask)) {
-         result.status = Status::READ_TIMEOUT;
-         return result;
+        result.status = Status::READ_TIMEOUT;
+        return result;
     }
 
     size_t len = std::min(static_cast<size_t>(frame.can_dlc), buffer.size());
     ::memcpy(buffer.data(), frame.data, len);
 
-    result.status = Status::SUCCESS;
+    result.status     = Status::SUCCESS;
     result.bytes_read = len;
 
     return result;

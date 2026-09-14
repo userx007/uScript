@@ -1,4 +1,5 @@
 #include "uScriptInterpreter.hpp"
+
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "uCalculator.hpp"
@@ -41,15 +42,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "CORE_SCR_I  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "CORE_SCR_I  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL CONSTANTS                                  //
@@ -78,15 +78,16 @@ namespace {
 // arrIndex/arrDirection are the array-source equivalent of current/direction,
 // used only by nextGeneratorArraySample(). rng backs RANDOM, in both the
 // range form (nextGeneratorSample) and the array form (nextGeneratorArraySample).
-struct GeneratorSampleState {
-    double       current      = 0.0;  // SAWTOOTH/TRIANGLE/SQUARE: last emitted value. EXP/LOG: normalised [0,1) phase carrier.
-    int          direction    = 1;    // TRIANGLE ping-pong: +1 rising, -1 falling
-    double       phaseDeg     = 0.0;  // SINE: accumulated phase, degrees, wrapped at 360
-    uint64_t     ticksAtLevel = 0;    // SQUARE: ticks spent at the current level so far
-    size_t       arrIndex     = 0;    // array source: index of the last emitted element
-    int          arrDirection = 1;    // array source TRIANGLE ping-pong: +1 forward, -1 backward
-    std::vector<size_t> arrShuffleOrder;   // array source RANDOM: current shuffled permutation of indices
-    size_t               arrShufflePos = 0; // array source RANDOM: position within arrShuffleOrder
+struct GeneratorSampleState
+{
+    double current        = 0.0;              // SAWTOOTH/TRIANGLE/SQUARE: last emitted value. EXP/LOG: normalised [0,1) phase carrier.
+    int direction         = 1;                // TRIANGLE ping-pong: +1 rising, -1 falling
+    double phaseDeg       = 0.0;              // SINE: accumulated phase, degrees, wrapped at 360
+    uint64_t ticksAtLevel = 0;                // SQUARE: ticks spent at the current level so far
+    size_t arrIndex       = 0;                // array source: index of the last emitted element
+    int arrDirection      = 1;                // array source TRIANGLE ping-pong: +1 forward, -1 backward
+    std::vector<size_t> arrShuffleOrder;      // array source RANDOM: current shuffled permutation of indices
+    size_t arrShufflePos = 0;                 // array source RANDOM: position within arrShuffleOrder
     std::mt19937 rng{std::random_device{}()}; // RANDOM (range or array source)
 };
 
@@ -97,74 +98,86 @@ struct GeneratorSampleState {
 // in m_executeCommand); SQUARE/SINE/EXP/LOG use dStep as documented in
 // GeneratorWaveform's doc comment (uScriptDataTypes.hpp).
 double nextGeneratorSample(GeneratorWaveform eWaveform, double dMin, double dMax, double dStep,
-                            double dK, GeneratorSampleState& state) noexcept
+                           double dK, GeneratorSampleState &state) noexcept
 {
     switch (eWaveform) {
 
-        case GeneratorWaveform::SAWTOOTH: {
-            state.current += dStep;
-            if ((dStep >= 0.0 && state.current > dMax) ||
-                (dStep <  0.0 && state.current < dMax)) {
-                state.current = dMin;
-            }
-            return state.current;
+    case GeneratorWaveform::SAWTOOTH: {
+        state.current += dStep;
+        if ((dStep >= 0.0 && state.current > dMax) ||
+            (dStep < 0.0 && state.current < dMax)) {
+            state.current = dMin;
         }
+        return state.current;
+    }
 
-        case GeneratorWaveform::TRIANGLE: {
-            // Clamp against the numeric low/high bound rather than assuming
-            // dMax > dMin, so a reversed range (begin > end) ping-pongs
-            // exactly the same as a forward one — only the seeded initial
-            // direction (state.direction, set by the caller) differs.
-            const double dLow  = std::min(dMin, dMax);
-            const double dHigh = std::max(dMin, dMax);
-            state.current += dStep * state.direction;
-            if (state.current >= dHigh) { state.current = dHigh; state.direction = -1; }
-            if (state.current <= dLow)  { state.current = dLow;  state.direction =  1; }
-            return state.current;
+    case GeneratorWaveform::TRIANGLE: {
+        // Clamp against the numeric low/high bound rather than assuming
+        // dMax > dMin, so a reversed range (begin > end) ping-pongs
+        // exactly the same as a forward one — only the seeded initial
+        // direction (state.direction, set by the caller) differs.
+        const double dLow  = std::min(dMin, dMax);
+        const double dHigh = std::max(dMin, dMax);
+        state.current += dStep * state.direction;
+        if (state.current >= dHigh) {
+            state.current   = dHigh;
+            state.direction = -1;
         }
+        if (state.current <= dLow) {
+            state.current   = dLow;
+            state.direction = 1;
+        }
+        return state.current;
+    }
 
-        case GeneratorWaveform::SQUARE: {
-            // dStep is reinterpreted as "ticks to hold each level" (a positive
-            // integer, already checked at validation/resolution time).
-            // Assumes state.current was seeded to dMin by the caller (see the
-            // GeneratorStatement launch code in m_executeCommand). Order of
-            // dMin/dMax doesn't matter here — it just toggles between the
-            // two configured levels.
-            if (++state.ticksAtLevel >= static_cast<uint64_t>(dStep)) {
-                state.current = (state.current == dMin) ? dMax : dMin;
-                state.ticksAtLevel = 0;
-            }
-            return state.current;
+    case GeneratorWaveform::SQUARE: {
+        // dStep is reinterpreted as "ticks to hold each level" (a positive
+        // integer, already checked at validation/resolution time).
+        // Assumes state.current was seeded to dMin by the caller (see the
+        // GeneratorStatement launch code in m_executeCommand). Order of
+        // dMin/dMax doesn't matter here — it just toggles between the
+        // two configured levels.
+        if (++state.ticksAtLevel >= static_cast<uint64_t>(dStep)) {
+            state.current      = (state.current == dMin) ? dMax : dMin;
+            state.ticksAtLevel = 0;
         }
+        return state.current;
+    }
 
-        case GeneratorWaveform::SINE: {
-            const double dMid = (dMin + dMax) / 2.0;
-            const double dAmp = (dMax - dMin) / 2.0;
-            state.phaseDeg += dStep;
-            if (state.phaseDeg >= 360.0) { state.phaseDeg = std::fmod(state.phaseDeg, 360.0); }
-            return dMid + dAmp * std::sin(state.phaseDeg * M_PI / 180.0);
+    case GeneratorWaveform::SINE: {
+        const double dMid = (dMin + dMax) / 2.0;
+        const double dAmp = (dMax - dMin) / 2.0;
+        state.phaseDeg += dStep;
+        if (state.phaseDeg >= 360.0) {
+            state.phaseDeg = std::fmod(state.phaseDeg, 360.0);
         }
+        return dMid + dAmp * std::sin(state.phaseDeg * M_PI / 180.0);
+    }
 
-        case GeneratorWaveform::EXP: {
-            double t = state.current + dStep / (dMax - dMin);
-            if (t > 1.0) { t -= 1.0; }
-            state.current = t;
-            return dMin + (dMax - dMin) * ((std::exp(dK * t) - 1.0) / (std::exp(dK) - 1.0));
+    case GeneratorWaveform::EXP: {
+        double t = state.current + dStep / (dMax - dMin);
+        if (t > 1.0) {
+            t -= 1.0;
         }
+        state.current = t;
+        return dMin + (dMax - dMin) * ((std::exp(dK * t) - 1.0) / (std::exp(dK) - 1.0));
+    }
 
-        case GeneratorWaveform::LOG: {
-            double t = state.current + dStep / (dMax - dMin);
-            if (t > 1.0) { t -= 1.0; }
-            state.current = t;
-            return dMin + (dMax - dMin) * std::log1p(dK * t);
+    case GeneratorWaveform::LOG: {
+        double t = state.current + dStep / (dMax - dMin);
+        if (t > 1.0) {
+            t -= 1.0;
         }
+        state.current = t;
+        return dMin + (dMax - dMin) * std::log1p(dK * t);
+    }
 
-        case GeneratorWaveform::RANDOM: {
-            const double dLow  = std::min(dMin, dMax);
-            const double dHigh = std::max(dMin, dMax);
-            std::uniform_real_distribution<double> dist(dLow, dHigh);
-            return dist(state.rng);
-        }
+    case GeneratorWaveform::RANDOM: {
+        const double dLow  = std::min(dMin, dMax);
+        const double dHigh = std::max(dMin, dMax);
+        std::uniform_real_distribution<double> dist(dLow, dHigh);
+        return dist(state.rng);
+    }
     }
     return dMin; // unreachable — silences -Wreturn-type on some compilers
 }
@@ -175,8 +188,8 @@ double nextGeneratorSample(GeneratorWaveform eWaveform, double dMin, double dMax
 // and re-guaranteed at resolution time — m_resolveGeneratorRange). Only
 // SAWTOOTH/LINEAR, TRIANGLE and RANDOM are ever passed in (every other
 // waveform is rejected for an array source at validation time).
-double nextGeneratorArraySample(GeneratorWaveform eWaveform, const std::vector<double>& vValues,
-                                 GeneratorSampleState& state) noexcept
+double nextGeneratorArraySample(GeneratorWaveform eWaveform, const std::vector<double> &vValues,
+                                GeneratorSampleState &state) noexcept
 {
     const size_t n = vValues.size();
 
@@ -201,11 +214,19 @@ double nextGeneratorArraySample(GeneratorWaveform eWaveform, const std::vector<d
         const double dVal = vValues[state.arrIndex];
         if (n > 1) {
             if (state.arrDirection > 0) {
-                if (state.arrIndex + 1 >= n) { state.arrDirection = -1; state.arrIndex -= 1; }
-                else                         { state.arrIndex += 1; }
+                if (state.arrIndex + 1 >= n) {
+                    state.arrDirection = -1;
+                    state.arrIndex -= 1;
+                } else {
+                    state.arrIndex += 1;
+                }
             } else {
-                if (state.arrIndex == 0) { state.arrDirection = 1; state.arrIndex = 1; }
-                else                      { state.arrIndex -= 1; }
+                if (state.arrIndex == 0) {
+                    state.arrDirection = 1;
+                    state.arrIndex     = 1;
+                } else {
+                    state.arrIndex -= 1;
+                }
             }
         }
         return dVal;
@@ -213,7 +234,7 @@ double nextGeneratorArraySample(GeneratorWaveform eWaveform, const std::vector<d
 
     // SAWTOOTH/LINEAR: sequential, wraps back to element 0 after the last one.
     const double dVal = vValues[state.arrIndex];
-    state.arrIndex = (state.arrIndex + 1) % n;
+    state.arrIndex    = (state.arrIndex + 1) % n;
     return dVal;
 }
 
@@ -230,8 +251,8 @@ std::string renderGeneratorValue(double dResult, HexOutputFormat eHexFormat)
     }
 
     const hexutils::Endianness eEndian = isHexFormatBigEndian(eHexFormat)
-                                              ? hexutils::Endianness::Big
-                                              : hexutils::Endianness::Little;
+                                             ? hexutils::Endianness::Big
+                                             : hexutils::Endianness::Little;
 
     if (isHexFormatFloatingPoint(eHexFormat)) {
         return isHexFormatSinglePrecision(eHexFormat)
@@ -249,12 +270,12 @@ std::string renderGeneratorValue(double dResult, HexOutputFormat eHexFormat)
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, bool bRealExec)
+bool ScriptInterpreter::interpretScript(ScriptEntriesType &sScriptEntries, bool bRealExec)
 {
     bool bRetVal = false;
 
     do {
-        if(false == bRealExec) {
+        if (false == bRealExec) {
 
             m_sScriptEntries = &sScriptEntries;
 
@@ -294,7 +315,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, bool 
 
         bRetVal = true;
 
-    } while(false);
+    } while (false);
 
     // Join all threads that are still running (covers both normal completion
     // and early exit via break).  m_joinAllThreads() signals stop_token on
@@ -316,7 +337,6 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, bool 
 
 } /* interpretScript()*/
 
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
@@ -325,10 +345,10 @@ bool ScriptInterpreter::listMacrosPlugins()
 {
     // Prints a header followed by every key:value pair in any string→string map.
     // Extracted to eliminate four structurally identical for_each blocks below.
-    auto printKVMap = [](const auto& map, const std::string& header) {
+    auto printKVMap = [](const auto &map, const std::string &header) {
         if (!map.empty()) {
             LOG_PRINT(LOG_EMPTY, LOG_STRING(header));
-            for (const auto& entry : map) {
+            for (const auto &entry : map) {
                 LOG_PRINT(LOG_EMPTY, LOG_STRING(entry.first); LOG_STRING(":"); LOG_STRING(entry.second));
             }
         }
@@ -339,15 +359,17 @@ bool ScriptInterpreter::listMacrosPlugins()
     if (!m_sScriptEntries->mapArrayMacros.empty()) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING(LOG_HEADER_ARRAYS));
         std::for_each(m_sScriptEntries->mapArrayMacros.begin(), m_sScriptEntries->mapArrayMacros.end(),
-            [](const auto& arr) {
-                std::ostringstream oss;
-                oss << arr.first << "[" << arr.second.size() << "]: ";
-                for (size_t k = 0; k < arr.second.size(); ++k) {
-                    if (k > 0) oss << ", ";
-                    oss << "[" << k << "]=" << arr.second[k];
-                }
-                LOG_PRINT(LOG_EMPTY, LOG_STRING(oss.str()));
-            });
+                      [](const auto &arr) {
+                          std::ostringstream oss;
+                          oss << arr.first << "[" << arr.second.size() << "]: ";
+                          for (size_t k = 0; k < arr.second.size(); ++k) {
+                              if (k > 0) {
+                                  oss << ", ";
+                              }
+                              oss << "[" << k << "]=" << arr.second[k];
+                          }
+                          LOG_PRINT(LOG_EMPTY, LOG_STRING(oss.str()));
+                      });
     }
 
     // Show runtime variable macro values — these are the values most recently
@@ -357,17 +379,16 @@ bool ScriptInterpreter::listMacrosPlugins()
     if (!m_sScriptEntries->vPlugins.empty()) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING(LOG_HEADER_PLUGINS));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
-            [&](auto& plugin) {
-                LOG_PRINT(LOG_EMPTY, LOG_STRING([&]{ std::ostringstream o; o << std::left << std::setw(12) << plugin.strPluginName; return o.str(); }()); 
-                    LOG_STRING(plugin.sGetParams.strPluginVersion); 
-                    LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands, ' ')));
-            });
+                      [&](auto &plugin) {
+                          LOG_PRINT(LOG_EMPTY, LOG_STRING([&] { std::ostringstream o; o << std::left << std::setw(12) << plugin.strPluginName; return o.str(); }());
+                                    LOG_STRING(plugin.sGetParams.strPluginVersion);
+                                    LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands, ' ')));
+                      });
     }
 
     return true;
 
 } /* listMacrosPlugins()*/
-
 
 /*-------------------------------------------------------------------------------
 
@@ -377,39 +398,38 @@ bool ScriptInterpreter::listCommands()
 {
     LOG_PRINT(LOG_EMPTY, LOG_STRING(LOG_HEADER_COMMANDS));
     std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
-        [&](const ScriptLine& data) {
-            std::visit([&data](const auto& command) {
-                using T = std::decay_t<decltype(command)>;
-                if constexpr (std::is_same_v<T, Command> || std::is_same_v<T, MacroCommand>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(command.strPlugin + "." + command.strCommand + " " + command.strParams));
-                }
-            }, data.command);
-        }
-    );
+                  [&](const ScriptLine &data) {
+                      std::visit([&data](const auto &command) {
+                          using T = std::decay_t<decltype(command)>;
+                          if constexpr (std::is_same_v<T, Command> || std::is_same_v<T, MacroCommand>) {
+                              LOG_PRINT(LOG_EMPTY, LOG_STRING(command.strPlugin + "." + command.strCommand + " " + command.strParams));
+                          }
+                      },
+                                 data.command);
+                  });
 
     return true;
 
 } /* listCommands() */
 
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::loadPlugin(const std::string& strPluginName, bool bInitEnable)
+bool ScriptInterpreter::loadPlugin(const std::string &strPluginName, bool bInitEnable)
 {
-    bool bRetVal = false;
+    bool bRetVal                      = false;
     std::string strPluginNameUppecase = ustring::touppercase(strPluginName);
 
     if (!m_pluginIsLoaded(strPluginNameUppecase)) {
-        PluginDataType command {
-            strPluginNameUppecase,          // strPluginName
-            "",                             // strPluginVersRule
-            "",                             // strPluginVersRequested
-            nullptr,                        // shptrPluginEntryPoint
-            nullptr,                        // hLibHandle
-            {},                             // sGetParams (empty PluginDataGet)
-            {}                              // sSetParams (empty PluginDataSet)
+        PluginDataType command{
+            strPluginNameUppecase, // strPluginName
+            "",                    // strPluginVersRule
+            "",                    // strPluginVersRequested
+            nullptr,               // shptrPluginEntryPoint
+            nullptr,               // hLibHandle
+            {},                    // sGetParams (empty PluginDataGet)
+            {}                     // sSetParams (empty PluginDataSet)
         };
 
         if (true == (bRetVal = m_loadPlugin(command, bInitEnable))) {
@@ -421,7 +441,6 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName, bool bInitE
 
 } /* loadPlugin() */
 
-
 /*-------------------------------------------------------------------------------
   m_mirrorToShellVarMacros — copy a named runtime variable into the shell-scope
   map so that its value persists across executeCmd() calls.
@@ -429,14 +448,13 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName, bool bInitE
   FORMAT_STMT, VARIABLE_MACRO) that runs through m_executeCommand.
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_mirrorToShellVarMacros(const std::string& strName)
+void ScriptInterpreter::m_mirrorToShellVarMacros(const std::string &strName)
 {
     auto [bFound, strValue] = m_getRuntimeVarMacro(strName);
     if (bFound) {
         m_ShellVarMacros[strName] = std::move(strValue);
     }
 } /* m_mirrorToShellVarMacros() */
-
 
 /*-------------------------------------------------------------------------------
   m_setRuntimeVarMacro() / m_getRuntimeVarMacro() - see declaration comment in
@@ -445,7 +463,7 @@ void ScriptInterpreter::m_mirrorToShellVarMacros(const std::string& strName)
   never race the main thread's reads/writes of the same unordered_map.
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_setRuntimeVarMacro(const std::string& strName, std::string strValue)
+void ScriptInterpreter::m_setRuntimeVarMacro(const std::string &strName, std::string strValue)
 {
     {
         std::lock_guard<std::mutex> lock(m_runtimeVarMutex);
@@ -459,7 +477,7 @@ void ScriptInterpreter::m_setRuntimeVarMacro(const std::string& strName, std::st
     uvolatile::VolatileMacroStore::instance().set(strName, std::move(strValue));
 } /* m_setRuntimeVarMacro() */
 
-std::pair<bool, std::string> ScriptInterpreter::m_getRuntimeVarMacro(const std::string& strName)
+std::pair<bool, std::string> ScriptInterpreter::m_getRuntimeVarMacro(const std::string &strName)
 {
     std::lock_guard<std::mutex> lock(m_runtimeVarMutex);
     auto it = m_RuntimeVarMacros.find(strName);
@@ -469,7 +487,6 @@ std::pair<bool, std::string> ScriptInterpreter::m_getRuntimeVarMacro(const std::
     return {false, {}};
 } /* m_getRuntimeVarMacro() */
 
-
 /*-------------------------------------------------------------------------------
   m_dispatchShellLine — wrap a pre-built command variant in a shell-origin
   ScriptLine (iLineNumber = 0) and execute it immediately (bRealExec = true).
@@ -478,11 +495,10 @@ std::pair<bool, std::string> ScriptInterpreter::m_getRuntimeVarMacro(const std::
 
 bool ScriptInterpreter::m_dispatchShellLine(decltype(ScriptLine::command) variant)
 {
-    ScriptLine data { 0, std::move(variant) };
+    ScriptLine data{0, std::move(variant)};
     size_t szDummyIndex = 0;
     return m_executeCommand(data, true, szDummyIndex);
 } /* m_dispatchShellLine() */
-
 
 /*-------------------------------------------------------------------------------
   m_buildStreamStatement — shared BITSTREAM/BYTESTREAM execution engine.
@@ -516,19 +532,25 @@ bool ScriptInterpreter::m_dispatchShellLine(decltype(ScriptLine::command) varian
   Returns false and logs a reason on any resolution/range/overlap error.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement& command, const std::string& lineNr,
-                                                std::string& strResultHex) noexcept
+bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, const std::string &lineNr,
+                                               std::string &strResultHex) noexcept
 {
-    const char* pszKind = command.bByteMode ? "BYTESTREAM" : "BITSTREAM";
+    const char *pszKind = command.bByteMode ? "BYTESTREAM" : "BITSTREAM";
 
-    struct ResolvedField { uint64_t offset; uint64_t length; uint64_t value; };
+    struct ResolvedField
+    {
+        uint64_t offset;
+        uint64_t length;
+        uint64_t value;
+    };
+
     std::vector<ResolvedField> vResolved;
     vResolved.reserve(command.vFields.size());
 
     // ── 1 & 2: resolve + range-check every field ──────────────────────────
-    for (const auto& field : command.vFields) {
+    for (const auto &field : command.vFields) {
 
-        auto resolveOne = [&](const std::string& strTpl, const char* pszWhich, uint64_t& out) -> bool {
+        auto resolveOne = [&](const std::string &strTpl, const char *pszWhich, uint64_t &out) -> bool {
             std::string strExpanded = strTpl;
             if (!m_replaceVariableMacros(strExpanded)) {
                 return false; // fatal: constant array index out of range, already logged
@@ -544,9 +566,15 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement& command, c
         };
 
         uint64_t rawOffset = 0, length = 0, value = 0;
-        if (!resolveOne(field.strOffsetTpl, "offset", rawOffset)) return false;
-        if (!resolveOne(field.strLengthTpl, "length", length))   return false;
-        if (!resolveOne(field.strValueTpl,  "value",  value))    return false;
+        if (!resolveOne(field.strOffsetTpl, "offset", rawOffset)) {
+            return false;
+        }
+        if (!resolveOne(field.strLengthTpl, "length", length)) {
+            return false;
+        }
+        if (!resolveOne(field.strValueTpl, "value", value)) {
+            return false;
+        }
 
         if (length == 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
@@ -559,8 +587,8 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement& command, c
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": length"); LOG_UINT64(length);
                       LOG_STRING(command.bByteMode
-                                  ? "exceeds 8 bits (a BYTESTREAM field cannot cross a byte boundary — use BITSTREAM for that)"
-                                  : "exceeds 64 bits (maximum supported field width)"));
+                                     ? "exceeds 8 bits (a BYTESTREAM field cannot cross a byte boundary — use BITSTREAM for that)"
+                                     : "exceeds 64 bits (maximum supported field width)"));
             return false;
         }
 
@@ -598,11 +626,11 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement& command, c
 
     // ── 3. Size the output buffer ──────────────────────────────────────────
     uint64_t maxOffset = 0;
-    for (const auto& f : vResolved) {
+    for (const auto &f : vResolved) {
         maxOffset = std::max(maxOffset, f.offset);
     }
-    const uint64_t szTotalBits  = maxOffset + 1;
-    const size_t   szTotalBytes = static_cast<size_t>((szTotalBits + 7) / 8);
+    const uint64_t szTotalBits              = maxOffset + 1;
+    const size_t szTotalBytes               = static_cast<size_t>((szTotalBits + 7) / 8);
 
     static constexpr size_t kMaxStreamBytes = 65536; // sanity cap against a typo'd huge offset
     if (szTotalBytes > kMaxStreamBytes) {
@@ -617,7 +645,7 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement& command, c
     std::vector<int64_t> vOwner(static_cast<size_t>(szTotalBits), -1); // -1 = unclaimed, else field index
 
     for (size_t idx = 0; idx < vResolved.size(); ++idx) {
-        const auto&    f        = vResolved[idx];
+        const auto &f           = vResolved[idx];
         const uint64_t firstBit = f.offset - f.length + 1; // this field's MSB, globally
 
         for (uint64_t b = 0; b < f.length; ++b) {
@@ -635,7 +663,7 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement& command, c
 
             // value's bit (length-1-b) -> this global bit, MSB-first across the field.
             if ((f.value >> (f.length - 1 - b)) & 1ULL) {
-                const size_t   szByteIdx  = static_cast<size_t>(bitIndex / 8);
+                const size_t szByteIdx    = static_cast<size_t>(bitIndex / 8);
                 const unsigned uBitInByte = static_cast<unsigned>(bitIndex % 8); // 0 = MSB of the byte
                 vBytes[szByteIdx] |= static_cast<uint8_t>(0x80u >> uBitInByte);
             }
@@ -647,7 +675,7 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement& command, c
         std::reverse(vBytes.begin(), vBytes.end());
     } else if (command.eReverse == StreamReverseMode::REVERSE_BIT) {
         std::reverse(vBytes.begin(), vBytes.end());
-        for (auto& b : vBytes) {
+        for (auto &b : vBytes) {
             b = static_cast<uint8_t>(((b & 0xF0u) >> 4) | ((b & 0x0Fu) << 4));
             b = static_cast<uint8_t>(((b & 0xCCu) >> 2) | ((b & 0x33u) << 2));
             b = static_cast<uint8_t>(((b & 0xAAu) >> 1) | ((b & 0x55u) << 1));
@@ -665,12 +693,12 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement& command, c
 
 } // m_buildStreamStatement()
 
-bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement& command, const std::string& lineNr,
-                                                   std::string& strResultDecimal) noexcept
+bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &command, const std::string &lineNr,
+                                                  std::string &strResultDecimal) noexcept
 {
-    const char* pszKind = command.bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
+    const char *pszKind = command.bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
 
-    auto resolveOne = [&](const std::string& strTpl, const char* pszWhich, uint64_t& out) -> bool {
+    auto resolveOne     = [&](const std::string &strTpl, const char *pszWhich, uint64_t &out) -> bool {
         std::string strExpanded = strTpl;
         if (!m_replaceVariableMacros(strExpanded)) {
             return false; // fatal: constant array index out of range, already logged
@@ -703,13 +731,19 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement& comm
     //       offset either way — everything from here on is identical for
     //       both keywords, exactly like m_buildStreamStatement()'s own
     //       BYTESTREAM->BITSTREAM offset translation ──────────────────────
-    uint64_t offset = 0;
+    uint64_t offset             = 0;
     if (!command.bByteMode) {
-        if (!resolveOne(command.strBitOffsetTpl, "bit_offset", offset)) return false;
+        if (!resolveOne(command.strBitOffsetTpl, "bit_offset", offset)) {
+            return false;
+        }
     } else {
         uint64_t byteOffset = 0, bitInByte = 0;
-        if (!resolveOne(command.strByteOffsetTpl, "byte_offset", byteOffset)) return false;
-        if (!resolveOne(command.strBitOffsetTpl,  "bit_offset",  bitInByte))  return false;
+        if (!resolveOne(command.strByteOffsetTpl, "byte_offset", byteOffset)) {
+            return false;
+        }
+        if (!resolveOne(command.strBitOffsetTpl, "bit_offset", bitInByte)) {
+            return false;
+        }
 
         if (bitInByte > 7) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
@@ -726,7 +760,9 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement& comm
     }
 
     uint64_t szValueSize = 0;
-    if (!resolveOne(command.strValueSizeTpl, "value_size", szValueSize)) return false;
+    if (!resolveOne(command.strValueSizeTpl, "value_size", szValueSize)) {
+        return false;
+    }
 
     if (szValueSize == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
@@ -775,13 +811,13 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement& comm
     // Extract MSB-first — the exact inverse of m_buildStreamStatement()'s
     // own MSB-first write (see its step 4).
     const uint64_t firstBit = offset - szValueSize + 1;
-    uint64_t        result   = 0;
+    uint64_t result         = 0;
     for (uint64_t b = 0; b < szValueSize; ++b) {
         const uint64_t bitIndex   = firstBit + b;
-        const size_t   szByteIdx  = static_cast<size_t>(bitIndex / 8);
+        const size_t szByteIdx    = static_cast<size_t>(bitIndex / 8);
         const unsigned uBitInByte = static_cast<unsigned>(bitIndex % 8); // 0 = MSB of the byte
-        const bool     bBitSet    = (vBytes[szByteIdx] & static_cast<uint8_t>(0x80u >> uBitInByte)) != 0;
-        result = (result << 1) | (bBitSet ? 1ULL : 0ULL);
+        const bool bBitSet        = (vBytes[szByteIdx] & static_cast<uint8_t>(0x80u >> uBitInByte)) != 0;
+        result                    = (result << 1) | (bBitSet ? 1ULL : 0ULL);
     }
 
     strResultDecimal = std::to_string(result);
@@ -794,12 +830,12 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement& comm
 
 } // m_buildStreamValStatement()
 
-bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayStatement& command, const std::string& lineNr,
-                                                         std::vector<std::string>& vResultsDecimal) noexcept
+bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayStatement &command, const std::string &lineNr,
+                                                       std::vector<std::string> &vResultsDecimal) noexcept
 {
-    const char* pszKind = command.bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
+    const char *pszKind = command.bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
 
-    auto resolveOne = [&](const std::string& strTpl, const char* pszWhich, size_t idx, uint64_t& out) -> bool {
+    auto resolveOne     = [&](const std::string &strTpl, const char *pszWhich, size_t idx, uint64_t &out) -> bool {
         std::string strExpanded = strTpl;
         if (!m_replaceVariableMacros(strExpanded)) {
             return false; // fatal: constant array index out of range, already logged
@@ -837,15 +873,21 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
     vResultsDecimal.reserve(command.vFields.size());
 
     for (size_t idx = 0; idx < command.vFields.size(); ++idx) {
-        const auto& f = command.vFields[idx];
+        const auto &f   = command.vFields[idx];
 
         uint64_t offset = 0;
         if (!command.bByteMode) {
-            if (!resolveOne(f.strBitOffsetTpl, "bit_offset", idx, offset)) return false;
+            if (!resolveOne(f.strBitOffsetTpl, "bit_offset", idx, offset)) {
+                return false;
+            }
         } else {
             uint64_t byteOffset = 0, bitInByte = 0;
-            if (!resolveOne(f.strByteOffsetTpl, "byte_offset", idx, byteOffset)) return false;
-            if (!resolveOne(f.strBitOffsetTpl,  "bit_offset",  idx, bitInByte))  return false;
+            if (!resolveOne(f.strByteOffsetTpl, "byte_offset", idx, byteOffset)) {
+                return false;
+            }
+            if (!resolveOne(f.strBitOffsetTpl, "bit_offset", idx, bitInByte)) {
+                return false;
+            }
 
             if (bitInByte > 7) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
@@ -864,7 +906,9 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
         }
 
         uint64_t szValueSize = 0;
-        if (!resolveOne(f.strValueSizeTpl, "value_size", idx, szValueSize)) return false;
+        if (!resolveOne(f.strValueSizeTpl, "value_size", idx, szValueSize)) {
+            return false;
+        }
 
         if (szValueSize == 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
@@ -912,13 +956,13 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
 
         // Extract MSB-first — same as m_buildStreamValStatement()'s own step.
         const uint64_t firstBit = offset - szValueSize + 1;
-        uint64_t        result   = 0;
+        uint64_t result         = 0;
         for (uint64_t b = 0; b < szValueSize; ++b) {
             const uint64_t bitIndex   = firstBit + b;
-            const size_t   szByteIdx  = static_cast<size_t>(bitIndex / 8);
+            const size_t szByteIdx    = static_cast<size_t>(bitIndex / 8);
             const unsigned uBitInByte = static_cast<unsigned>(bitIndex % 8); // 0 = MSB of the byte
-            const bool     bBitSet    = (vBytes[szByteIdx] & static_cast<uint8_t>(0x80u >> uBitInByte)) != 0;
-            result = (result << 1) | (bBitSet ? 1ULL : 0ULL);
+            const bool bBitSet        = (vBytes[szByteIdx] & static_cast<uint8_t>(0x80u >> uBitInByte)) != 0;
+            result                    = (result << 1) | (bBitSet ? 1ULL : 0ULL);
         }
 
         vResultsDecimal.push_back(std::to_string(result));
@@ -932,12 +976,11 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
 
 } // m_buildStreamValArrayStatement()
 
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::executeCmd(const std::string& strCommand)
+bool ScriptInterpreter::executeCmd(const std::string &strCommand)
 {
     bool bRetVal = true;
 
@@ -950,267 +993,264 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
     ScriptCommandValidator validator;
 
     if (true == validator.validateCommand(0, strCommandTemp, token)) {
-        switch(token) {
+        switch (token) {
 
-            case Token::CONSTANT_MACRO : {
+        case Token::CONSTANT_MACRO: {
+            std::vector<std::string> vstrTokens;
+            ustring::tokenize(strCommandTemp, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
+
+            if (vstrTokens.size() == 2) {
+                // cmacroname := cmacroval                         | cmacroname |  cmacroval   |
+                auto aRetVal = m_sScriptEntries->mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
+                if (false == aRetVal.second) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("cmacro already exists:"); LOG_STRING(vstrTokens[0]));
+                    bRetVal = false;
+                }
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid cmacro"));
+                bRetVal = false;
+            }
+            break;
+        }
+
+        case Token::VARIABLE_MACRO: {
+            std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR, SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
+            std::vector<std::string> vstrTokens;
+            ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
+            const size_t szSize = vstrTokens.size();
+
+            if ((szSize == 3) || (szSize == 4)) {
+                std::string strParams = (szSize == 4) ? vstrTokens[3] : "";
+                const bool bThreaded  = extractIsThreaded(strParams);
+                bRetVal               = m_dispatchShellLine(
+                    MacroCommand{vstrTokens[1], vstrTokens[2], strParams, vstrTokens[0], bThreaded});
+                // For the sequential (non-threaded) case, m_executeCommand already
+                // wrote the result into m_RuntimeVarMacros synchronously by the time
+                // m_dispatchShellLine() returns; mirror it to m_ShellVarMacros so it
+                // persists across executeCmd calls.
+                // For the threaded case (?= ... &) there is nothing to mirror yet -
+                // the background thread keeps updating m_RuntimeVarMacros directly,
+                // which m_replaceVariableMacros() already consults ahead of
+                // m_ShellVarMacros, so later executeCmd() calls transparently see
+                // whatever value is current at the time they run.
+                if (!bThreaded && !vstrTokens[0].empty()) {
+                    m_mirrorToShellVarMacros(vstrTokens[0]);
+                }
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid vmacro"));
+                bRetVal = false;
+            }
+
+            break;
+        }
+
+        case Token::COMMAND: {
+            std::vector<std::string> vstrDelimiters{SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
+            std::vector<std::string> vstrTokens;
+            ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
+            if (vstrTokens.size() >= 2) {
+                std::string strParams = (vstrTokens.size() == 3) ? vstrTokens[2] : "";
+                const bool bThreaded  = extractIsThreaded(strParams);
+                bRetVal               = m_dispatchShellLine(
+                    Command{vstrTokens[0], vstrTokens[1], strParams, bThreaded});
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command"));
+                bRetVal = false;
+            }
+            break;
+        }
+
+        case Token::PRINT_STMT: {
+            std::string strText = strCommandTemp;
+            ustring::stripPrefix(strText, kPrintPrefix);
+            bRetVal = m_dispatchShellLine(PrintStatement{strText});
+            break;
+        }
+
+        case Token::MATH_STMT: {
+            // Format: <n> ?= MATH <expression>  ->  tokens: [ name, "MATH <expr>" ]
+            {
+                std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR};
                 std::vector<std::string> vstrTokens;
-                ustring::tokenize(strCommandTemp, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
-
+                ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
                 if (vstrTokens.size() == 2) {
-                    // cmacroname := cmacroval                         | cmacroname |  cmacroval   |
-                    auto aRetVal = m_sScriptEntries->mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
+                    std::string strExpr = vstrTokens[1];
+                    ustring::stripPrefix(strExpr, kMathPrefix);
+                    bRetVal = m_dispatchShellLine(MathStatement{vstrTokens[0], strExpr});
+                    m_mirrorToShellVarMacros(vstrTokens[0]);
+                } else {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid MATH_STMT"));
+                    bRetVal = false;
+                }
+            }
+            break;
+        }
+
+        case Token::BITSTREAM_STMT:
+        case Token::BYTESTREAM_STMT: {
+            // parseStreamStatement() does the whole "<n> ?= KEYWORD ..." split
+            // itself (name / fields / optional REVERSE_BIT|REVERSE_BYTE) — see
+            // uStreamStatementParser.hpp, shared with ScriptValidator so this
+            // interactive form can never drift from the compiled-script one.
+            const bool bByteMode         = (token == Token::BYTESTREAM_STMT);
+            const std::string strKeyword = bByteMode ? "BYTESTREAM" : "BITSTREAM";
+
+            StreamStatement sStmt;
+            std::string strError;
+            if (parseStreamStatement(strKeyword, strCommandTemp, sStmt, strError)) {
+                sStmt.bByteMode           = bByteMode;
+                const std::string strName = sStmt.strName;
+                bRetVal                   = m_dispatchShellLine(std::move(sStmt));
+                m_mirrorToShellVarMacros(strName);
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strError));
+                bRetVal = false;
+            }
+            break;
+        }
+
+        case Token::BITSTREAMVAL_STMT:
+        case Token::BYTESTREAMVAL_STMT: {
+            // Same shared-parser pattern as BITSTREAM_STMT/BYTESTREAM_STMT
+            // just above, using parseStreamValStatement() instead.
+            const bool bByteMode         = (token == Token::BYTESTREAMVAL_STMT);
+            const std::string strKeyword = bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
+
+            StreamValStatement sStmt;
+            std::string strError;
+            if (parseStreamValStatement(strKeyword, bByteMode, strCommandTemp, sStmt, strError)) {
+                const std::string strName = sStmt.strName;
+                bRetVal                   = m_dispatchShellLine(std::move(sStmt));
+                m_mirrorToShellVarMacros(strName);
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strError));
+                bRetVal = false;
+            }
+            break;
+        }
+
+        case Token::BITSTREAMVAL_ARRAY_STMT:
+        case Token::BYTESTREAMVAL_ARRAY_STMT: {
+            // Same shared-parser pattern as BITSTREAMVAL_STMT/
+            // BYTESTREAMVAL_STMT just above, using
+            // parseStreamValArrayStatement() instead. No
+            // m_mirrorToShellVarMacros() call: unlike the scalar form,
+            // the result is written straight into mapArrayMacros (an
+            // array macro, not a runtime variable macro) by the
+            // StreamValArrayStatement execution branch — same reason
+            // ARRAY_MACRO's own shell case above doesn't mirror either.
+            const bool bByteMode         = (token == Token::BYTESTREAMVAL_ARRAY_STMT);
+            const std::string strKeyword = bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
+
+            StreamValArrayStatement sStmt;
+            std::string strError;
+            if (parseStreamValArrayStatement(strKeyword, bByteMode, strCommandTemp, sStmt, strError)) {
+                bRetVal = m_dispatchShellLine(std::move(sStmt));
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strError));
+                bRetVal = false;
+            }
+            break;
+        }
+
+        case Token::VAR_MACRO_INIT: {
+            // Format: <n> ?= <value template>  ->  tokens: [ name, valueTpl ]
+            {
+                std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR};
+                std::vector<std::string> vstrTokens;
+                ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
+                if (vstrTokens.size() == 2) {
+                    bRetVal = m_dispatchShellLine(VarMacroInit{vstrTokens[0], vstrTokens[1]});
+                    m_mirrorToShellVarMacros(vstrTokens[0]);
+                } else {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid VAR_MACRO_INIT"));
+                    bRetVal = false;
+                }
+            }
+            break;
+        }
+
+        case Token::FORMAT_STMT: {
+            // Format: <n> ?= FORMAT <input> | <pattern>  ->  tokens: [ name, "FORMAT <input>", pattern ]
+            {
+                std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR, STRING_SEPARATOR_PIPE};
+                std::vector<std::string> vstrTokens;
+
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("FORMAT_STMT strCommandTemp=["); LOG_STRING(strCommandTemp); LOG_STRING("]"));
+
+                ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
+                if (vstrTokens.size() == 3) {
+                    std::string strInput = vstrTokens[1];
+                    ustring::stripPrefix(strInput, kFmtPrefix);
+                    bRetVal = m_dispatchShellLine(FormatStatement{vstrTokens[0], strInput, vstrTokens[2]});
+                    m_mirrorToShellVarMacros(vstrTokens[0]);
+                } else {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid FORMAT_STMT"));
+                    bRetVal = false;
+                }
+            }
+            break;
+        }
+
+        case Token::ARRAY_MACRO: {
+            // Format validated by ScriptCommandValidator:
+            //   <name> := [ val0, val1, ... ]
+            // Tokenize on ':=' to get [ name, "[ val0, val1, ... ]" ]
+            // then strip brackets and split on ',' to build the vector.
+            {
+                std::vector<std::string> vstrDelimiters{SCRIPT_CONSTANT_MACRO_SEPARATOR};
+                std::vector<std::string> vstrTokens;
+                ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
+                if (vstrTokens.size() == 2) {
+                    const std::string &strName = vstrTokens[0];
+                    std::string strContent     = vstrTokens[1];
+
+                    // Strip surrounding '[' ... ']' (validator guarantees they exist).
+                    const auto szOpen          = strContent.find('[');
+                    const auto szClose         = strContent.rfind(']');
+                    if (szOpen != std::string::npos && szClose != std::string::npos && szClose > szOpen) {
+                        strContent = strContent.substr(szOpen + 1, szClose - szOpen - 1);
+                    }
+
+                    // Split on ',' to obtain individual element strings.
+                    std::vector<std::string> vstrElements;
+                    ustring::tokenize(strContent, ",", vstrElements);
+
+                    // Trim whitespace from every element.
+                    for (auto &elem : vstrElements) {
+                        ustring::trim(elem);
+                    }
+
+                    // Register (or overwrite) the array in the shared map.
+                    auto aRetVal = m_sScriptEntries->mapArrayMacros.emplace(strName, vstrElements);
                     if (false == aRetVal.second) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("cmacro already exists:"); LOG_STRING(vstrTokens[0]));
-                        bRetVal = false;
-                    }
-                } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid cmacro"));
-                    bRetVal = false;
-                }
-                break;
-            }
-
-            case Token::VARIABLE_MACRO : {
-                std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR, SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
-                std::vector<std::string> vstrTokens;
-                ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
-                const size_t szSize = vstrTokens.size();
-
-                if ((szSize == 3) || (szSize == 4)) {
-                    std::string strParams = (szSize == 4) ? vstrTokens[3] : "";
-                    const bool bThreaded = extractIsThreaded(strParams);
-                    bRetVal = m_dispatchShellLine(
-                        MacroCommand{vstrTokens[1], vstrTokens[2], strParams, vstrTokens[0], bThreaded}
-                    );
-                    // For the sequential (non-threaded) case, m_executeCommand already
-                    // wrote the result into m_RuntimeVarMacros synchronously by the time
-                    // m_dispatchShellLine() returns; mirror it to m_ShellVarMacros so it
-                    // persists across executeCmd calls.
-                    // For the threaded case (?= ... &) there is nothing to mirror yet -
-                    // the background thread keeps updating m_RuntimeVarMacros directly,
-                    // which m_replaceVariableMacros() already consults ahead of
-                    // m_ShellVarMacros, so later executeCmd() calls transparently see
-                    // whatever value is current at the time they run.
-                    if (!bThreaded && !vstrTokens[0].empty()) {
-                        m_mirrorToShellVarMacros(vstrTokens[0]);
-                    }
-                } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid vmacro"));
-                    bRetVal = false;
-                }
-
-                break;
-            }
-
-            case Token::COMMAND : {
-                std::vector<std::string> vstrDelimiters{SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
-                std::vector<std::string> vstrTokens;
-                ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
-                if (vstrTokens.size() >= 2) {
-                    std::string strParams = (vstrTokens.size() == 3) ? vstrTokens[2] : "";
-                    const bool bThreaded = extractIsThreaded(strParams);
-                    bRetVal = m_dispatchShellLine(
-                        Command{vstrTokens[0], vstrTokens[1], strParams, bThreaded}
-                    );
-                } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command"));
-                    bRetVal = false;
-                }
-                break;
-            }
-
-            case Token::PRINT_STMT : {
-                std::string strText = strCommandTemp;
-                ustring::stripPrefix(strText, kPrintPrefix);
-                bRetVal = m_dispatchShellLine(PrintStatement{ strText });
-                break;
-            }
-
-            case Token::MATH_STMT : {
-                // Format: <n> ?= MATH <expression>  ->  tokens: [ name, "MATH <expr>" ]
-                {
-                    std::vector<std::string> vstrDelimiters{ SCRIPT_VARIABLE_MACRO_SEPARATOR };
-                    std::vector<std::string> vstrTokens;
-                    ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
-                    if (vstrTokens.size() == 2) {
-                        std::string strExpr = vstrTokens[1];
-                        ustring::stripPrefix(strExpr, kMathPrefix);
-                        bRetVal = m_dispatchShellLine(MathStatement{ vstrTokens[0], strExpr });
-                        m_mirrorToShellVarMacros(vstrTokens[0]);
+                        // Array already exists — update its value in-place.
+                        aRetVal.first->second = vstrElements;
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                                  LOG_STRING("ARRAY_MACRO updated:"); LOG_STRING(strName);
+                                  LOG_STRING("size="); LOG_STRING(std::to_string(vstrElements.size())));
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid MATH_STMT"));
-                        bRetVal = false;
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                                  LOG_STRING("ARRAY_MACRO created:"); LOG_STRING(strName);
+                                  LOG_STRING("size="); LOG_STRING(std::to_string(vstrElements.size())));
                     }
-                }
-                break;
-            }
-
-            case Token::BITSTREAM_STMT :
-            case Token::BYTESTREAM_STMT : {
-                // parseStreamStatement() does the whole "<n> ?= KEYWORD ..." split
-                // itself (name / fields / optional REVERSE_BIT|REVERSE_BYTE) — see
-                // uStreamStatementParser.hpp, shared with ScriptValidator so this
-                // interactive form can never drift from the compiled-script one.
-                const bool        bByteMode = (token == Token::BYTESTREAM_STMT);
-                const std::string strKeyword = bByteMode ? "BYTESTREAM" : "BITSTREAM";
-
-                StreamStatement sStmt;
-                std::string     strError;
-                if (parseStreamStatement(strKeyword, strCommandTemp, sStmt, strError)) {
-                    sStmt.bByteMode = bByteMode;
-                    const std::string strName = sStmt.strName;
-                    bRetVal = m_dispatchShellLine(std::move(sStmt));
-                    m_mirrorToShellVarMacros(strName);
                 } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strError));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid ARRAY_MACRO"));
                     bRetVal = false;
                 }
-                break;
             }
+            break;
+        }
 
-            case Token::BITSTREAMVAL_STMT :
-            case Token::BYTESTREAMVAL_STMT : {
-                // Same shared-parser pattern as BITSTREAM_STMT/BYTESTREAM_STMT
-                // just above, using parseStreamValStatement() instead.
-                const bool        bByteMode = (token == Token::BYTESTREAMVAL_STMT);
-                const std::string strKeyword = bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
-
-                StreamValStatement sStmt;
-                std::string        strError;
-                if (parseStreamValStatement(strKeyword, bByteMode, strCommandTemp, sStmt, strError)) {
-                    const std::string strName = sStmt.strName;
-                    bRetVal = m_dispatchShellLine(std::move(sStmt));
-                    m_mirrorToShellVarMacros(strName);
-                } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strError));
-                    bRetVal = false;
-                }
-                break;
-            }
-
-            case Token::BITSTREAMVAL_ARRAY_STMT :
-            case Token::BYTESTREAMVAL_ARRAY_STMT : {
-                // Same shared-parser pattern as BITSTREAMVAL_STMT/
-                // BYTESTREAMVAL_STMT just above, using
-                // parseStreamValArrayStatement() instead. No
-                // m_mirrorToShellVarMacros() call: unlike the scalar form,
-                // the result is written straight into mapArrayMacros (an
-                // array macro, not a runtime variable macro) by the
-                // StreamValArrayStatement execution branch — same reason
-                // ARRAY_MACRO's own shell case above doesn't mirror either.
-                const bool        bByteMode = (token == Token::BYTESTREAMVAL_ARRAY_STMT);
-                const std::string strKeyword = bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
-
-                StreamValArrayStatement sStmt;
-                std::string             strError;
-                if (parseStreamValArrayStatement(strKeyword, bByteMode, strCommandTemp, sStmt, strError)) {
-                    bRetVal = m_dispatchShellLine(std::move(sStmt));
-                } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strError));
-                    bRetVal = false;
-                }
-                break;
-            }
-
-            case Token::VAR_MACRO_INIT : {
-                // Format: <n> ?= <value template>  ->  tokens: [ name, valueTpl ]
-                {
-                    std::vector<std::string> vstrDelimiters{ SCRIPT_VARIABLE_MACRO_SEPARATOR };
-                    std::vector<std::string> vstrTokens;
-                    ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
-                    if (vstrTokens.size() == 2) {
-                        bRetVal = m_dispatchShellLine(VarMacroInit{ vstrTokens[0], vstrTokens[1] });
-                        m_mirrorToShellVarMacros(vstrTokens[0]);
-                    } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid VAR_MACRO_INIT"));
-                        bRetVal = false;
-                    }
-                }
-                break;
-            }
-
-            case Token::FORMAT_STMT : {
-                // Format: <n> ?= FORMAT <input> | <pattern>  ->  tokens: [ name, "FORMAT <input>", pattern ]
-                {
-                    std::vector<std::string> vstrDelimiters{ SCRIPT_VARIABLE_MACRO_SEPARATOR, STRING_SEPARATOR_PIPE };
-                    std::vector<std::string> vstrTokens;
-
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("FORMAT_STMT strCommandTemp=["); LOG_STRING(strCommandTemp); LOG_STRING("]"));
-
-                    ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
-                    if (vstrTokens.size() == 3) {
-                        std::string strInput = vstrTokens[1];
-                        ustring::stripPrefix(strInput, kFmtPrefix);
-                        bRetVal = m_dispatchShellLine(FormatStatement{ vstrTokens[0], strInput, vstrTokens[2] });
-                        m_mirrorToShellVarMacros(vstrTokens[0]);
-                    } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid FORMAT_STMT"));
-                        bRetVal = false;
-                    }
-                }
-                break;
-            }
-
-            case Token::ARRAY_MACRO : {
-                // Format validated by ScriptCommandValidator:
-                //   <name> := [ val0, val1, ... ]
-                // Tokenize on ':=' to get [ name, "[ val0, val1, ... ]" ]
-                // then strip brackets and split on ',' to build the vector.
-                {
-                    std::vector<std::string> vstrDelimiters{ SCRIPT_CONSTANT_MACRO_SEPARATOR };
-                    std::vector<std::string> vstrTokens;
-                    ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
-                    if (vstrTokens.size() == 2) {
-                        const std::string& strName    = vstrTokens[0];
-                        std::string        strContent = vstrTokens[1];
-
-                        // Strip surrounding '[' ... ']' (validator guarantees they exist).
-                        const auto szOpen  = strContent.find('[');
-                        const auto szClose = strContent.rfind(']');
-                        if (szOpen != std::string::npos && szClose != std::string::npos && szClose > szOpen) {
-                            strContent = strContent.substr(szOpen + 1, szClose - szOpen - 1);
-                        }
-
-                        // Split on ',' to obtain individual element strings.
-                        std::vector<std::string> vstrElements;
-                        ustring::tokenize(strContent, ",", vstrElements);
-
-                        // Trim whitespace from every element.
-                        for (auto& elem : vstrElements) {
-                            ustring::trim(elem);
-                        }
-
-                        // Register (or overwrite) the array in the shared map.
-                        auto aRetVal = m_sScriptEntries->mapArrayMacros.emplace(strName, vstrElements);
-                        if (false == aRetVal.second) {
-                            // Array already exists — update its value in-place.
-                            aRetVal.first->second = vstrElements;
-                            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                                      LOG_STRING("ARRAY_MACRO updated:"); LOG_STRING(strName);
-                                      LOG_STRING("size="); LOG_STRING(std::to_string(vstrElements.size())));
-                        } else {
-                            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                                      LOG_STRING("ARRAY_MACRO created:"); LOG_STRING(strName);
-                                      LOG_STRING("size="); LOG_STRING(std::to_string(vstrElements.size())));
-                        }
-                    } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid ARRAY_MACRO"));
-                        bRetVal = false;
-                    }
-                }
-                break;
-            }
-
-            default: {
-                break;
-            }
+        default: {
+            break;
+        }
         };
     }
 
     return bRetVal;
 
 } /* executeCmd() */
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                       PRIVATE INTERFACES                                    //
@@ -1228,7 +1268,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
   here rather than throughout m_executeCommand / m_runEndRepeat.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_evaluateCondition(const std::string& strCondition, bool& result) noexcept
+bool ScriptInterpreter::m_evaluateCondition(const std::string &strCondition, bool &result) noexcept
 {
     std::string strExpr = strCondition;
     ustring::stripPrefix(strExpr, kEvalPrefix);
@@ -1244,21 +1284,19 @@ bool ScriptInterpreter::m_evaluateCondition(const std::string& strCondition, boo
 
 } /* m_evaluateCondition() */
 
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable)
+bool ScriptInterpreter::m_loadPlugin(PluginDataType &command, bool bInitEnable)
 {
     bool bRetVal = false;
 
     do {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Loading :"); LOG_STRING(command.strPluginName));
-        
+
         auto [handle, error] = m_PluginLoader(command.strPluginName);
-        if (!(handle.first && handle.second))
-        {
+        if (!(handle.first && handle.second)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING("-> loading failed"));
             if (error) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(error.value().message));
@@ -1269,7 +1307,7 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable)
         }
 
         // Transfer the pointers to the internal storage
-        command.hLibHandle = std::move(handle.first);
+        command.hLibHandle            = std::move(handle.first);
         command.shptrPluginEntryPoint = std::move(handle.second);
 
         // Retrieve data from plugin
@@ -1290,7 +1328,7 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable)
             }
         }
 
-        command.sSetParams.shpLogger = getLogger();
+        command.sSetParams.shpLogger       = getLogger();
 
         // Runtime instance identity (e.g. "UART" or "UART:1") — see the doc
         // comment on PluginDataSet::strInstanceName. command.strPluginName
@@ -1330,17 +1368,17 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable)
         }
 
         // Lambda to print plugin info
-        auto printPluginInfo =  [](const std::string& name, const std::string& version, const std::vector<std::string>& vs) {
+        auto printPluginInfo = [](const std::string &name, const std::string &version, const std::vector<std::string> &vs) {
             std::ostringstream oss;
             oss << name << "| v" << version << " | ";
-            for (const auto& cmd : vs) {
+            for (const auto &cmd : vs) {
                 oss << cmd << " ";
             }
             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(oss.str()); LOG_STRING("| loaded"));
         };
         printPluginInfo(command.strPluginName, command.sGetParams.strPluginVersion, command.sGetParams.vstrPluginCommands);
 
-        // if explicitly requested, perform also the plugin initialization and enabling 
+        // if explicitly requested, perform also the plugin initialization and enabling
         if (bInitEnable) {
             if (false == command.shptrPluginEntryPoint->doInit((true == command.shptrPluginEntryPoint->isPrivileged()) ? this : nullptr)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to initialize plugin:"); LOG_STRING(command.strPluginName));
@@ -1355,22 +1393,20 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable)
 
         bRetVal = true;
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
 
 } /* m_loadPlugin() */
 
-
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_pluginIsLoaded(const std::string& strPluginName) noexcept
+bool ScriptInterpreter::m_pluginIsLoaded(const std::string &strPluginName) noexcept
 {
-    auto it = std::find_if(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
-        [&strPluginName](const PluginDataType& p) { return p.strPluginName == strPluginName; });
+    auto it     = std::find_if(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
+                               [&strPluginName](const PluginDataType &p) { return p.strPluginName == strPluginName; });
 
     bool bFound = (it != m_sScriptEntries->vPlugins.end());
     if (bFound) {
@@ -1381,8 +1417,6 @@ bool ScriptInterpreter::m_pluginIsLoaded(const std::string& strPluginName) noexc
 
 } /* m_pluginIsLoaded() */
 
-
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
@@ -1391,7 +1425,7 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
 {
     bool bRetVal = true;
 
-    for (auto& command : m_sScriptEntries->vPlugins) {
+    for (auto &command : m_sScriptEntries->vPlugins) {
         if (false == m_loadPlugin(command, false)) {
             bRetVal = false;
             break;
@@ -1403,8 +1437,6 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
     return bRetVal;
 
 } /* m_loadPlugins() */
-
-
 
 /*-------------------------------------------------------------------------------
   Scan vCommands for instanced plugin references (PLUGIN:N) whose base PLUGIN
@@ -1418,26 +1450,30 @@ void ScriptInterpreter::m_autoInstantiatePlugins() noexcept
 {
     // Collect all unique instanced plugin names used by commands.
     std::set<std::string> usedInstances;
-    for (const auto& line : m_sScriptEntries->vCommands) {
-        std::visit([&usedInstances](const auto& item) {
+    for (const auto &line : m_sScriptEntries->vCommands) {
+        std::visit([&usedInstances](const auto &item) {
             using T = std::decay_t<decltype(item)>;
             if constexpr (std::is_same_v<T, Command> || std::is_same_v<T, MacroCommand>) {
-                const auto& name = item.strPlugin;
-                if (name.find(':') != std::string::npos)
+                const auto &name = item.strPlugin;
+                if (name.find(':') != std::string::npos) {
                     usedInstances.insert(name);
+                }
             }
-        }, line.command);
+        },
+                   line.command);
     }
 
-    for (const auto& instanceName : usedInstances) {
+    for (const auto &instanceName : usedInstances) {
         // Skip if already registered (e.g. user wrote LOAD_PLUGIN UART:1 explicitly)
-        if (m_pluginIsLoaded(instanceName)) continue;
+        if (m_pluginIsLoaded(instanceName)) {
+            continue;
+        }
 
         // Find the base plugin (e.g. "UART" for "UART:1")
         const std::string baseName = instanceName.substr(0, instanceName.find(':'));
-        auto baseIt = std::find_if(
+        auto baseIt                = std::find_if(
             m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
-            [&baseName](const PluginDataType& p) { return p.strPluginName == baseName; });
+            [&baseName](const PluginDataType &p) { return p.strPluginName == baseName; });
 
         if (baseIt == m_sScriptEntries->vPlugins.end()) {
             // Base not loaded — m_validatePlugins already caught this; skip silently.
@@ -1458,9 +1494,9 @@ void ScriptInterpreter::m_autoInstantiatePlugins() noexcept
         // Use the same 4-arg constructor form as the validator's m_HandleLoadPlugin.
         m_sScriptEntries->vPlugins.emplace_back(
             instanceName,
-            versRule,        // copied before reallocation — baseIt is now potentially dangling
+            versRule, // copied before reallocation — baseIt is now potentially dangling
             versRequested,
-            nullptr   // shptrPluginEntryPoint — filled by m_loadPlugin
+            nullptr // shptrPluginEntryPoint — filled by m_loadPlugin
         );
 
         // Load the instance (opens the .so again via dlopen and reads [INSTANCE] INI section).
@@ -1474,15 +1510,15 @@ void ScriptInterpreter::m_autoInstantiatePlugins() noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_crossCheckCommands () noexcept
+bool ScriptInterpreter::m_crossCheckCommands() noexcept
 {
     bool bRetVal = true;
 
     // Build the per-plugin command-set index once for this check.
     m_buildPluginCommandIndex();
 
-    for (const auto& data : m_sScriptEntries->vCommands) {
-        std::visit([this, &bRetVal, &data](const auto & command) {
+    for (const auto &data : m_sScriptEntries->vCommands) {
+        std::visit([this, &bRetVal, &data](const auto &command) {
             using T = std::decay_t<decltype(command)>;
             if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
                 auto pluginIt = m_pluginCmdIndex.find(command.strPlugin);
@@ -1490,54 +1526,51 @@ bool ScriptInterpreter::m_crossCheckCommands () noexcept
                     if (pluginIt->second.count(command.strCommand) == 0) {
                         auto lineNr = ustring::fmtLineNr(data.iLineNumber);
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                                LOG_STRING("Command") 
-                                LOG_STRING(command.strCommand);
-                                LOG_STRING("unsupported by plugin"); 
-                                LOG_STRING(command.strPlugin));
+                                  LOG_STRING("Command")
+                                      LOG_STRING(command.strCommand);
+                                  LOG_STRING("unsupported by plugin");
+                                  LOG_STRING(command.strPlugin));
                         bRetVal = false;
                     }
                 }
             }
-        }, data.command);
+        },
+                   data.command);
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; 
-            LOG_STRING("Commands availability"); 
-            LOG_STRING(bRetVal ? "ok" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR;
+              LOG_STRING("Commands availability");
+              LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
 } /* m_crossCheckCommands() */
 
-
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_initPlugins () noexcept
+bool ScriptInterpreter::m_initPlugins() noexcept
 {
     bool bRetVal = true;
 
-    for (const auto& plugin : m_sScriptEntries->vPlugins) {
+    for (const auto &plugin : m_sScriptEntries->vPlugins) {
         if (false == plugin.shptrPluginEntryPoint->doInit((true == plugin.shptrPluginEntryPoint->isPrivileged()) ? this : nullptr)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Failed to initialize plugin:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Failed to initialize plugin:");
                       LOG_STRING(plugin.strPluginName));
             bRetVal = false;
             break;
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; 
-                LOG_STRING("Plugins initialization"); 
-                LOG_STRING(bRetVal ? "ok" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR;
+              LOG_STRING("Plugins initialization");
+              LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
 } /* m_initPlugins() */
-
-
 
 /*-------------------------------------------------------------------------------
 
@@ -1545,7 +1578,7 @@ bool ScriptInterpreter::m_initPlugins () noexcept
 
 bool ScriptInterpreter::m_enablePlugins() noexcept
 {
-    for (auto& plugin : m_sScriptEntries->vPlugins) {
+    for (auto &plugin : m_sScriptEntries->vPlugins) {
         if (!plugin.shptrPluginEntryPoint->doEnable()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Failed to enable plugin:");
@@ -1562,20 +1595,19 @@ bool ScriptInterpreter::m_enablePlugins() noexcept
 
 } /* m_enablePlugins() */
 
-
 /*-------------------------------------------------------------------------------
  * Traverse the command list in reverse to resolve macros using their most recently assigned values.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_replaceVariableMacros(std::string& input, bool bDeferRuntimeVarMacros)
+bool ScriptInterpreter::m_replaceVariableMacros(std::string &input, bool bDeferRuntimeVarMacros)
 {
-    /* 
+    /*
     Extended pattern — four forms:
        $NAME.$indexmacro  → array element access, variable index   (groups 1=NAME  2=indexmacro)
        $NAME.N            → array element access, constant index   (groups 1=NAME  4=N)
        $NAME.SIZE         → array size access                      (groups 1=NAME  3="SIZE")
        $NAME              → regular macro lookup   (group  1=NAME, groups 2/3/4 empty)
-    
+
      The \.\$ in the optional suffix means a literal dot followed by a literal
      dollar sign, ensuring that $NAME.$indexmacro is consumed as a single match
      rather than two consecutive matches. SIZE is matched as a literal
@@ -1584,7 +1616,7 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string& input, bool bDeferR
      index alternative (group 4) is a plain run of decimal digits, guarded by
      the same kind of negative lookahead as SIZE so that "$NAME.12abc" is not
      mis-consumed as index "12abc".
-    
+
      Returns false only when a CONSTANT array index (the $NAME.N form) is out
      of range: that is a script-authoring error the author could have caught
      before running (unlike a variable index, whose value is only known at
@@ -1599,12 +1631,10 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string& input, bool bDeferR
     /* Helper: resolve a single bare macro name through all scope tiers.
       Returns the resolved string, or an empty optional if not found. */
 
-    auto resolveName = [&](const std::string& name) -> std::pair<bool, std::string> {
-
+    auto resolveName = [&](const std::string &name) -> std::pair<bool, std::string> {
         // Loop-scoped macros — innermost first
         for (auto scopeIt = m_loopStateStack.rbegin();
-             scopeIt != m_loopStateStack.rend(); ++scopeIt)
-        {
+             scopeIt != m_loopStateStack.rend(); ++scopeIt) {
             auto loopIt = scopeIt->mapLoopMacros.find(name);
             if (loopIt != scopeIt->mapLoopMacros.end()) {
                 return {true, loopIt->second};
@@ -1655,14 +1685,14 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string& input, bool bDeferR
         while (std::regex_search(searchStart, input.cend(), match, macroPattern)) {
             result.append(match.prefix());
 
-            const std::string macroName    = match[1].str();
-            const bool        hasIndex     = match[2].matched;
-            const bool        hasSize      = match[3].matched;
-            const bool        hasConstIndex = match[4].matched;
-            const std::string indexName    = hasIndex ? match[2].str() : "";
-            const std::string constIndex   = hasConstIndex ? match[4].str() : "";
+            const std::string macroName  = match[1].str();
+            const bool hasIndex          = match[2].matched;
+            const bool hasSize           = match[3].matched;
+            const bool hasConstIndex     = match[4].matched;
+            const std::string indexName  = hasIndex ? match[2].str() : "";
+            const std::string constIndex = hasConstIndex ? match[4].str() : "";
 
-            bool found = false;
+            bool found                   = false;
 
             if (hasSize) {
                 // Array size access: $macroName.SIZE ----
@@ -1787,7 +1817,7 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string& input, bool bDeferR
                 // reached when the array's bare name appears with no such suffix.
                 auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
                 if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
-                    const auto& vElements = arrIt->second;
+                    const auto &vElements = arrIt->second;
                     for (size_t i = 0; i < vElements.size(); ++i) {
                         if (i > 0) {
                             result.append(", ");
@@ -1819,8 +1849,6 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string& input, bool bDeferR
 
 } /* m_replaceVariableMacros() */
 
-
-
 /*-------------------------------------------------------------------------------
   m_initLoopIterIndex — write iteration counter "0" into the loop's own macro
   scope on first entry.  Called by both RepeatTimes and RepeatUntil handlers
@@ -1828,13 +1856,13 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string& input, bool bDeferR
   No-op when strVarMacroName is empty (loop has no capture variable).
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_initLoopIterIndex(LoopState& state) noexcept
+void ScriptInterpreter::m_initLoopIterIndex(LoopState &state) noexcept
 {
     if (!state.strVarMacroName.empty()) {
-        const std::string strVal = state.bIsUntil
-            ? "0"
-            : (state.bRangeIsInteger ? std::to_string(state.llCurrent)
-                                      : formatRepeatDouble(state.dCurrent));
+        const std::string strVal                   = state.bIsUntil
+                                                         ? "0"
+                                                         : (state.bRangeIsInteger ? std::to_string(state.llCurrent)
+                                                                                  : formatRepeatDouble(state.dCurrent));
         state.mapLoopMacros[state.strVarMacroName] = strVal;
         LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                   LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName);
@@ -1842,14 +1870,13 @@ void ScriptInterpreter::m_initLoopIterIndex(LoopState& state) noexcept
     }
 } /* m_initLoopIterIndex() */
 
-
 /*-------------------------------------------------------------------------------
   m_advanceLoopIterIndex — increment the iteration counter and update the
   loop-scope macro.  Called by m_runEndRepeat on each loop-back.
   No-op when strVarMacroName is empty.
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_advanceLoopIterIndex(LoopState& state) noexcept
+void ScriptInterpreter::m_advanceLoopIterIndex(LoopState &state) noexcept
 {
     ++state.uIterationCount;
 
@@ -1859,8 +1886,13 @@ void ScriptInterpreter::m_advanceLoopIterIndex(LoopState& state) noexcept
         // 0-based iteration counter, as before.
         strVal = std::to_string(state.uIterationCount);
     } else {
-        if (state.bRangeIsInteger) { state.llCurrent += state.llStep; strVal = std::to_string(state.llCurrent); }
-        else                       { state.dCurrent  += state.dStep;  strVal = formatRepeatDouble(state.dCurrent); }
+        if (state.bRangeIsInteger) {
+            state.llCurrent += state.llStep;
+            strVal = std::to_string(state.llCurrent);
+        } else {
+            state.dCurrent += state.dStep;
+            strVal = formatRepeatDouble(state.dCurrent);
+        }
     }
 
     if (!state.strVarMacroName.empty()) {
@@ -1871,7 +1903,6 @@ void ScriptInterpreter::m_advanceLoopIterIndex(LoopState& state) noexcept
     }
 } /* m_advanceLoopIterIndex() */
 
-
 /*-------------------------------------------------------------------------------
   m_runEndRepeat — shared END_REPEAT logic.
   Called from the normal END_REPEAT path and from the CONTINUE_LOOP path.
@@ -1879,9 +1910,9 @@ void ScriptInterpreter::m_advanceLoopIterIndex(LoopState& state) noexcept
   May modify iIndex (loop-back) or pop the stack (loop done).
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
+void ScriptInterpreter::m_runEndRepeat(size_t &iIndex, bool &bRetVal) noexcept
 {
-    LoopState& state = m_loopStateStack.back();
+    LoopState &state           = m_loopStateStack.back();
 
     // Save values used in post-pop log lines before any pop_back().
     const std::string strLabel = state.strLabel;
@@ -1891,10 +1922,10 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
         // REPEAT range — loop back only if the *next* value (current + step)
         // would still satisfy the range predicate implied by step's sign.
         const bool bHasNext = state.bRangeIsInteger
-            ? (state.llStep > 0 ? (state.llCurrent + state.llStep <  state.llEnd)
-                                 : (state.llCurrent + state.llStep >  state.llEnd))
-            : (state.dStep  > 0 ? (state.dCurrent  + state.dStep  <  state.dEnd)
-                                 : (state.dCurrent  + state.dStep  >  state.dEnd));
+                                  ? (state.llStep > 0 ? (state.llCurrent + state.llStep < state.llEnd)
+                                                      : (state.llCurrent + state.llStep > state.llEnd))
+                                  : (state.dStep > 0 ? (state.dCurrent + state.dStep < state.dEnd)
+                                                     : (state.dCurrent + state.dStep > state.dEnd));
 
         LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                   LOG_STRING("REPEAT"); LOG_STRING(strLabel);
@@ -1909,7 +1940,7 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
         }
     } else {
 
-        // REPEAT UNTIL 
+        // REPEAT UNTIL
         // Copy the condition template before any macro expansion (do not mutate it).
         std::string strCondExpanded = state.strCondition;
         if (!m_replaceVariableMacros(strCondExpanded)) {
@@ -1938,7 +1969,6 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
 
 } /* m_runEndRepeat() */
 
-
 /*-------------------------------------------------------------------------------
   m_harvestFinishedThreads — erase ThreadEntry objects whose "done" flag is
   true (the thread lambda has already returned).
@@ -1951,13 +1981,12 @@ void ScriptInterpreter::m_harvestFinishedThreads() noexcept
 {
     m_threads.erase(
         std::remove_if(m_threads.begin(), m_threads.end(),
-            [](const ThreadEntry& e) {
-                return e.done->load(std::memory_order_acquire);
-            }),
+                       [](const ThreadEntry &e) {
+                           return e.done->load(std::memory_order_acquire);
+                       }),
         m_threads.end());
 
 } /* m_harvestFinishedThreads() */
-
 
 /*-------------------------------------------------------------------------------
   m_joinAllThreads — signal stop on all active threads then join each one.
@@ -1982,7 +2011,7 @@ void ScriptInterpreter::m_joinAllThreads() noexcept
 
         // Signal stop on all threads before joining any, so they can begin
         // winding down cooperatively in parallel.
-        for (auto& entry : m_threads) {
+        for (auto &entry : m_threads) {
             entry.thread.request_stop();
         }
 
@@ -1990,7 +2019,7 @@ void ScriptInterpreter::m_joinAllThreads() noexcept
         m_busyPlugins.clear();
     }
 
-    for (auto& entry : toJoin) {
+    for (auto &entry : toJoin) {
         if (entry.thread.joinable()) {
             entry.thread.join();
         }
@@ -1999,7 +2028,6 @@ void ScriptInterpreter::m_joinAllThreads() noexcept
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("All threads joined."));
 
 } /* m_joinAllThreads() */
-
 
 /*-------------------------------------------------------------------------------
   m_stopNamedGenerator — stop (request_stop + join) and erase the named
@@ -2018,7 +2046,7 @@ void ScriptInterpreter::m_joinAllThreads() noexcept
   point of keying by name in the first place.
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_stopNamedGenerator(const std::string& strName) noexcept
+void ScriptInterpreter::m_stopNamedGenerator(const std::string &strName) noexcept
 {
     GeneratorThreadEntry entry;
     bool bFound = false;
@@ -2027,7 +2055,7 @@ void ScriptInterpreter::m_stopNamedGenerator(const std::string& strName) noexcep
         std::lock_guard<std::mutex> lock(m_generatorMutex);
         auto it = m_generatorThreads.find(strName);
         if (it != m_generatorThreads.end()) {
-            entry  = std::move(it->second);
+            entry = std::move(it->second);
             m_generatorThreads.erase(it);
             bFound = true;
         }
@@ -2043,7 +2071,6 @@ void ScriptInterpreter::m_stopNamedGenerator(const std::string& strName) noexcep
 
 } /* m_stopNamedGenerator() */
 
-
 /*-------------------------------------------------------------------------------
   m_stopAllGenerators — stop and erase every currently running generator
   thread. Used by the bare "GENERATOR STOP ALL" command and by
@@ -2058,14 +2085,14 @@ void ScriptInterpreter::m_stopAllGenerators() noexcept
 
     {
         std::lock_guard<std::mutex> lock(m_generatorMutex);
-        for (auto& kv : m_generatorThreads) {
+        for (auto &kv : m_generatorThreads) {
             kv.second.thread.request_stop();
         }
         toJoin = std::move(m_generatorThreads);
         m_generatorThreads.clear();
     }
 
-    for (auto& kv : toJoin) {
+    for (auto &kv : toJoin) {
         if (kv.second.thread.joinable()) {
             kv.second.thread.join();
         }
@@ -2077,7 +2104,6 @@ void ScriptInterpreter::m_stopAllGenerators() noexcept
 
 } /* m_stopAllGenerators() */
 
-
 /*-------------------------------------------------------------------------------
   Execute a single IR command.
 
@@ -2086,20 +2112,20 @@ void ScriptInterpreter::m_stopAllGenerators() noexcept
   caller's unconditional ++iIndex lands at the correct body-start address.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size_t& iIndex) noexcept
+bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_t &iIndex) noexcept
 {
-    bool bRetVal = true;
+    bool bRetVal          = true;
     bool bIsPluginCommand = false;
-    auto lineNr = ustring::fmtLineNr(data.iLineNumber);
-    const int  lineNo = data.iLineNumber;   // captured by value into the visit lambda below
+    auto lineNr           = ustring::fmtLineNr(data.iLineNumber);
+    const int lineNo      = data.iLineNumber; // captured by value into the visit lambda below
 
     // Notify the GUI front-end which main-script line is about to execute.
     // In CLI mode g_gui_mode is false so this is a single branch-not-taken.
     if (bRealExec) {
-		gui_notify_exec_main(data.iLineNumber);
-	}
+        gui_notify_exec_main(data.iLineNumber);
+    }
 
-    std::visit([this, bRealExec, lineNo, &lineNr, &bIsPluginCommand, &bRetVal, &iIndex](auto& command) {
+    std::visit([this, bRealExec, lineNo, &lineNr, &bIsPluginCommand, &bRetVal, &iIndex](auto &command) {
         using T = std::decay_t<decltype(command)>;
 
         /*-----------------------------------------------------------------
@@ -2109,9 +2135,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
             if (m_eSkipReason == SkipReason::NONE) {
                 bIsPluginCommand = true;
-                for (auto& plugin : m_sScriptEntries->vPlugins) {
+                for (auto &plugin : m_sScriptEntries->vPlugins) {
                     if (command.strPlugin == plugin.strPluginName) {
-                        if(bRealExec) { // real execution
+                        if (bRealExec) { // real execution
 
                             // Expand macros onto a copy on the MAIN THREAD before any
                             // thread is created.  The thread receives only the already-
@@ -2125,7 +2151,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             // in uCommandExec.hpp for the cached/un-cached split this enables.
                             // Every other command keeps today's behaviour exactly: fully
                             // resolved once, right here, before dispatch.
-                            const bool bIsCyclic = (command.strCommand == "CYCLIC");
+                            const bool bIsCyclic          = (command.strCommand == "CYCLIC");
                             std::string strExpandedParams = command.strParams;
                             if (!m_replaceVariableMacros(strExpandedParams, bIsCyclic)) {
                                 bRetVal = false; // fatal: constant array index out of range, already logged
@@ -2140,16 +2166,16 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                     std::lock_guard<std::mutex> lock(m_threadsMutex);
                                     if (m_busyPlugins.count(command.strPlugin)) {
                                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                                            LOG_STRING("Cannot launch thread: plugin already has an active thread:");
-                                            LOG_STRING(command.strPlugin));
+                                                  LOG_STRING("Cannot launch thread: plugin already has an active thread:");
+                                                  LOG_STRING(command.strPlugin));
                                         bRetVal = false;
                                         break;
                                     }
                                 }
 
                                 LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
-                                    LOG_STRING("Launching thread for:");
-                                    LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
+                                          LOG_STRING("Launching thread for:");
+                                          LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
 
                                 // Shared done-flag: set by thread on exit; read by harvest/join.
                                 auto doneFlag = std::make_shared<std::atomic<bool>>(false);
@@ -2170,9 +2196,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                      }(),
                                      lineNo,
                                      doneFlag,
-                                     this]
-                                    (std::stop_token st) mutable
-                                    {
+                                     this](std::stop_token st) mutable {
                                         // Pass the stop_token into doDispatch so the plugin
                                         // can poll st.stop_requested() inside its own loop
                                         // and return early when cancellation is requested.
@@ -2204,8 +2228,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                                 while (!st.stop_requested()) {
                                                     if (!sPluginEntryPoint->doDispatch(strCommand, strParams, st)) {
                                                         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                                            LOG_STRING("Threaded var-capture command failed, stopping loop:");
-                                                            LOG_STRING(strPlugin + "." + strCommand));
+                                                                  LOG_STRING("Threaded var-capture command failed, stopping loop:");
+                                                                  LOG_STRING(strPlugin + "." + strCommand));
                                                         break;
                                                     }
                                                     const std::string strValue = sPluginEntryPoint->getData();
@@ -2219,8 +2243,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                                     if (!strValue.empty()) {
                                                         m_setRuntimeVarMacro(strVarMacroName, strValue);
                                                         LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                                                            LOG_STRING("VAR["); LOG_STRING(strVarMacroName);
-                                                            LOG_STRING("]->["); LOG_STRING(strValue); LOG_STRING("]"));
+                                                                  LOG_STRING("VAR["); LOG_STRING(strVarMacroName);
+                                                                  LOG_STRING("]->["); LOG_STRING(strValue); LOG_STRING("]"));
                                                     }
                                                     sPluginEntryPoint->resetData();
                                                 }
@@ -2239,12 +2263,11 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                         gui_notify_thread_done(lineNo);
                                         // Signal harvest that this entry is reclaimable.
                                         doneFlag->store(true, std::memory_order_release);
-                                    }
-                                );
+                                    });
 
                                 {
                                     std::lock_guard<std::mutex> lock(m_threadsMutex);
-                                    m_harvestFinishedThreads();  // prune completed entries first
+                                    m_harvestFinishedThreads(); // prune completed entries first
                                     m_busyPlugins.insert(command.strPlugin);
                                     m_threads.push_back(ThreadEntry{std::move(t), doneFlag});
                                 }
@@ -2255,30 +2278,30 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                 }
 
                                 LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
-                                    LOG_STRING("Thread launched ok:"); LOG_STRING(command.strPlugin));
+                                          LOG_STRING("Thread launched ok:"); LOG_STRING(command.strPlugin));
 
                             } else {
                                 // ---- Sequential dispatch (bThreaded=false) ----
-                                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                    LOG_STRING("Exec:"); 
-                                    LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
+                                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                                          LOG_STRING("Exec:");
+                                          LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                                 {
                                     utime::Timer timer(std::string(lineNr.data()) + " Command");
                                     if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, strExpandedParams, uexec::getStopToken())) {
-                                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                            LOG_STRING("Failed executing"); 
-                                            LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams)); 
-                                            bRetVal = false;
+                                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                                  LOG_STRING("Failed executing");
+                                                  LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
+                                        bRetVal = false;
                                         break;
                                     } else { // execution succeeded, update the value of the associated macro if any
                                         if constexpr (std::is_same_v<T, MacroCommand>) {
                                             const std::string strValue = plugin.shptrPluginEntryPoint->getData();
                                             m_setRuntimeVarMacro(command.strVarMacroName, strValue);
-                                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                                LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); 
-                                                LOG_STRING("]->[") 
-                                                LOG_STRING(strValue); 
-                                                LOG_STRING("]"));
+                                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                                                      LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName);
+                                                      LOG_STRING("]->[")
+                                                          LOG_STRING(strValue);
+                                                      LOG_STRING("]"));
                                             plugin.shptrPluginEntryPoint->resetData();
                                         }
                                     }
@@ -2288,10 +2311,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             utime::delay_ms(m_szDelay); /* delay between the commands execution */
 
                         } else { // only for validation purposes
-                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                    LOG_STRING("Validate:"); 
-                                    LOG_STRING(command.strPlugin + "." + command.strCommand); 
-                                    LOG_STRING(command.strParams));
+                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                                      LOG_STRING("Validate:");
+                                      LOG_STRING(command.strPlugin + "." + command.strCommand);
+                                      LOG_STRING(command.strParams));
                             // Tell any downstream plugin command (in particular a *_CMD
                             // handler's ucmdexec::generic_cmd() -> CommScriptCommandInterpreter)
                             // that this is a dry-run dispatch, so it validates argument
@@ -2301,10 +2324,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             // of a doDispatch() parameter.
                             uexec::DryRunScope dryRunScope(true);
                             if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
-                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                    LOG_STRING("Failed validating"); 
-                                    LOG_STRING(command.strPlugin + "." + command.strCommand); 
-                                    LOG_STRING(command.strParams));
+                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                          LOG_STRING("Failed validating");
+                                          LOG_STRING(command.strPlugin + "." + command.strCommand);
+                                          LOG_STRING(command.strParams));
                                 bRetVal = false;
                                 break;
                             }
@@ -2312,19 +2335,19 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     }
                 }
             } else {
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                    LOG_STRING("Skipped:"); LOG_STRING(command.strPlugin); 
-                    LOG_STRING(command.strCommand); LOG_STRING("args["); 
-                    LOG_STRING(command.strParams); LOG_STRING("]"));
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("Skipped:"); LOG_STRING(command.strPlugin);
+                          LOG_STRING(command.strCommand); LOG_STRING("args[");
+                          LOG_STRING(command.strParams); LOG_STRING("]"));
             }
 
-        /*-----------------------------------------------------------------
-            IF/GOTO condition
-        -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                IF/GOTO condition
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, Condition>) {
-            if(bRealExec) {
-                if(m_eSkipReason == SkipReason::NONE) {
+            if (bRealExec) {
+                if (m_eSkipReason == SkipReason::NONE) {
                     // Expand variable macros on a copy — constant macros were already
                     // substituted at validation time, but $vmacros are only known at
                     // runtime and must be resolved here before the evaluator sees them.
@@ -2340,45 +2363,45 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                         if (true == beResult) {
                             m_strSkipUntilLabel = command.strLabelName;
                             m_eSkipReason       = SkipReason::GOTO;
-                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                LOG_STRING("Start skipping to label:"); 
-                                LOG_STRING(m_strSkipUntilLabel));
+                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                                      LOG_STRING("Start skipping to label:");
+                                      LOG_STRING(m_strSkipUntilLabel));
                         }
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                            LOG_STRING("Failed to evaluate condition:"); 
-                            LOG_STRING(strCondExpanded));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("Failed to evaluate condition:");
+                                  LOG_STRING(strCondExpanded));
                         bRetVal = false;
                     }
                 } else {
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                        LOG_STRING("Skipped:"); 
-                        LOG_STRING("[IF ..] GOTO:"); 
-                        LOG_STRING(command.strLabelName));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("Skipped:");
+                              LOG_STRING("[IF ..] GOTO:");
+                              LOG_STRING(command.strLabelName));
                 }
             }
 
-        /*-----------------------------------------------------------------
-            GOTO/IF target label
-        -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                GOTO/IF target label
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, Label>) {
-            if(bRealExec) {
+            if (bRealExec) {
                 if (m_strSkipUntilLabel == command.strLabelName &&
-                    m_eSkipReason       == SkipReason::GOTO) {
+                    m_eSkipReason == SkipReason::GOTO) {
                     m_strSkipUntilLabel.clear();
                     m_eSkipReason = SkipReason::NONE;
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                        LOG_STRING("Stop skipping at label:"); 
-                        LOG_STRING(command.strLabelName));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("Stop skipping at label:");
+                              LOG_STRING(command.strLabelName));
                 }
             }
 
-        /*-----------------------------------------------------------------
-            REPEAT_TIMES — push loop state on first entry
-         (on loop-back iterations the caller jumps to iIndex+1, i.e. the
-         first body command, so this node is only executed once per loop)
-        -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                REPEAT_TIMES — push loop state on first entry
+             (on loop-back iterations the caller jumps to iIndex+1, i.e. the
+             first body command, so this node is only executed once per loop)
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, RepeatTimes>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
@@ -2393,8 +2416,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                 // Does [begin, end) contain at least one value when stepping by step?
                 const bool bHasIter = range.bIsInteger
-                    ? (range.llStep > 0 ? (range.llBegin < range.llEnd) : (range.llBegin > range.llEnd))
-                    : (range.dStep  > 0 ? (range.dBegin  < range.dEnd)  : (range.dBegin  > range.dEnd));
+                                          ? (range.llStep > 0 ? (range.llBegin < range.llEnd) : (range.llBegin > range.llEnd))
+                                          : (range.dStep > 0 ? (range.dBegin < range.dEnd) : (range.dBegin > range.dEnd));
 
                 if (!bHasIter) {
                     // Empty range — skip the whole loop body without pushing a
@@ -2413,14 +2436,18 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING(command.strLabel));
 
                 LoopState state{};
-                state.strLabel        = command.strLabel;
-                state.szBeginIndex    = iIndex;
-                state.bIsUntil        = false;
-                state.strVarMacroName = command.strVarMacroName;
-                state.uIterationCount = 0U;
-                state.bRangeIsInteger = range.bIsInteger;
-                state.llCurrent = range.llBegin; state.llEnd = range.llEnd; state.llStep = range.llStep;
-                state.dCurrent  = range.dBegin;  state.dEnd  = range.dEnd;  state.dStep  = range.dStep;
+                state.strLabel             = command.strLabel;
+                state.szBeginIndex         = iIndex;
+                state.bIsUntil             = false;
+                state.strVarMacroName      = command.strVarMacroName;
+                state.uIterationCount      = 0U;
+                state.bRangeIsInteger      = range.bIsInteger;
+                state.llCurrent            = range.llBegin;
+                state.llEnd                = range.llEnd;
+                state.llStep               = range.llStep;
+                state.dCurrent             = range.dBegin;
+                state.dEnd                 = range.dEnd;
+                state.dStep                = range.dStep;
                 state.delayAnchorTime      = std::chrono::steady_clock::now();
                 state.llDelayAccumulatedUs = 0;
 
@@ -2429,26 +2456,26 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 m_initLoopIterIndex(m_loopStateStack.back());
             }
 
-        /*-----------------------------------------------------------------
-            REPEAT_UNTIL — push loop state on first entry
-         -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                REPEAT_UNTIL — push loop state on first entry
+             -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, RepeatUntil>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                          LOG_STRING("REPEAT UNTIL start:"); 
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("REPEAT UNTIL start:");
                           LOG_STRING(command.strLabel);
-                          LOG_STRING("cond:"); 
+                          LOG_STRING("cond:");
                           LOG_STRING(command.strCondition));
 
                 LoopState state{};
-                state.strLabel        = command.strLabel;
-                state.szBeginIndex    = iIndex;
-                state.bIsUntil        = true;
-                state.strCondition    = command.strCondition;
-                state.strVarMacroName = command.strVarMacroName;
-                state.uIterationCount = 0U;
-                state.bRangeIsInteger = true; // unused for UNTIL loops
+                state.strLabel             = command.strLabel;
+                state.szBeginIndex         = iIndex;
+                state.bIsUntil             = true;
+                state.strCondition         = command.strCondition;
+                state.strVarMacroName      = command.strVarMacroName;
+                state.uIterationCount      = 0U;
+                state.bRangeIsInteger      = true; // unused for UNTIL loops
                 state.delayAnchorTime      = std::chrono::steady_clock::now();
                 state.llDelayAccumulatedUs = 0;
 
@@ -2457,27 +2484,27 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 m_initLoopIterIndex(m_loopStateStack.back());
             }
 
-        /*-----------------------------------------------------------------
-            END_REPEAT
-        
-         Four cases depending on m_eSkipReason:
-        
-           NONE         — normal execution: call m_runEndRepeat.
-        
-           GOTO         — a GOTO skip is in flight toward a LABEL node;
-                          this END_REPEAT is transparent (no state change).
-        
-           BREAK_LOOP   — unwinding toward the named target.
-                          Always pop the innermost LoopState.
-                          If this IS the target: clear skip, resume after node.
-                          If this is NOT the target: keep skipping outward.
-        
-           CONTINUE_LOOP— same incremental unwind, but when the target is
-                          reached: do NOT pop — call m_runEndRepeat instead
-                          so the loop decides whether to loop-back or exit.
-        
-         During dry-run (bRealExec == false) the node is always a no-op.
-        -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                END_REPEAT
+
+             Four cases depending on m_eSkipReason:
+
+               NONE         — normal execution: call m_runEndRepeat.
+
+               GOTO         — a GOTO skip is in flight toward a LABEL node;
+                              this END_REPEAT is transparent (no state change).
+
+               BREAK_LOOP   — unwinding toward the named target.
+                              Always pop the innermost LoopState.
+                              If this IS the target: clear skip, resume after node.
+                              If this is NOT the target: keep skipping outward.
+
+               CONTINUE_LOOP— same incremental unwind, but when the target is
+                              reached: do NOT pop — call m_runEndRepeat instead
+                              so the loop decides whether to loop-back or exit.
+
+             During dry-run (bRealExec == false) the node is always a no-op.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, RepeatEnd>) {
             if (bRealExec) {
@@ -2485,8 +2512,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 if (m_eSkipReason == SkipReason::NONE) {
                     // ---- Normal execution path ----
                     if (m_loopStateStack.empty() || m_loopStateStack.back().strLabel != command.strLabel) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                  LOG_STRING("END_REPEAT: unexpected label or empty stack:"); 
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("END_REPEAT: unexpected label or empty stack:");
                                   LOG_STRING(command.strLabel));
                         bRetVal = false;
                         return;
@@ -2500,8 +2527,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     // (never pushed), so there is nothing to pop.
                     if (!m_loopStateStack.empty() &&
                         m_loopStateStack.back().strLabel == command.strLabel) {
-                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                  LOG_STRING("BREAK: unwinding loop:"); 
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("BREAK: unwinding loop:");
                                   LOG_STRING(command.strLabel));
                         m_loopStateStack.pop_back();
                     }
@@ -2509,8 +2536,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                         // Target reached — resume after this END_REPEAT with no loop-back.
                         m_strSkipUntilLabel.clear();
                         m_eSkipReason = SkipReason::NONE;
-                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                  LOG_STRING("BREAK: exited loop:"); 
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("BREAK: exited loop:");
                                   LOG_STRING(command.strLabel));
                     }
 
@@ -2521,8 +2548,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                         // i.e. its label matches the current stack back.
                         if (!m_loopStateStack.empty() &&
                             m_loopStateStack.back().strLabel == command.strLabel) {
-                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                      LOG_STRING("CONTINUE: unwinding inner loop:"); 
+                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                                      LOG_STRING("CONTINUE: unwinding inner loop:");
                                       LOG_STRING(command.strLabel));
                             m_loopStateStack.pop_back();
                         }
@@ -2530,8 +2557,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                         // Target reached — clear skip, keep LoopState alive, run loop logic.
                         m_strSkipUntilLabel.clear();
                         m_eSkipReason = SkipReason::NONE;
-                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                  LOG_STRING("CONTINUE: resuming at END_REPEAT:"); 
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("CONTINUE: resuming at END_REPEAT:");
                                   LOG_STRING(command.strLabel));
                         m_runEndRepeat(iIndex, bRetVal);
                     }
@@ -2539,42 +2566,42 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 // SkipReason::GOTO — transparent, do nothing.
             }
 
-        /*-----------------------------------------------------------------
-            BREAK <loop-label>
-         Skip forward to END_REPEAT of the named loop; all intermediate
-         loops are unwound by the END_REPEAT handler above.
-         -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                BREAK <loop-label>
+             Skip forward to END_REPEAT of the named loop; all intermediate
+             loops are unwound by the END_REPEAT handler above.
+             -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, LoopBreak>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                          LOG_STRING("BREAK:"); 
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("BREAK:");
                           LOG_STRING(command.strLabel));
                 m_strSkipUntilLabel = command.strLabel;
                 m_eSkipReason       = SkipReason::BREAK_LOOP;
             }
 
-        /*-----------------------------------------------------------------
-            CONTINUE <loop-label>
-         Skip forward to END_REPEAT of the named loop, which then runs its
-         normal loop-back or exit logic.
-        -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                CONTINUE <loop-label>
+             Skip forward to END_REPEAT of the named loop, which then runs its
+             normal loop-back or exit logic.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, LoopContinue>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                          LOG_STRING("CONTINUE:"); 
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("CONTINUE:");
                           LOG_STRING(command.strLabel));
                 m_strSkipUntilLabel = command.strLabel;
                 m_eSkipReason       = SkipReason::CONTINUE_LOOP;
             }
 
-        /*-----------------------------------------------------------------
-            PRINT [text]
-         Expand all $macros in the stored text template and emit one log
-         line.  An empty template produces a blank line.
-         No plugin is involved — this is a native interpreter statement.
-        -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                PRINT [text]
+             Expand all $macros in the stored text template and emit one log
+             line.  An empty template produces a blank line.
+             No plugin is involved — this is a native interpreter statement.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, PrintStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
@@ -2587,30 +2614,30 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING(strExpanded));
             }
 
-        /*-----------------------------------------------------------------
-            DELAY <value> <unit>
-         Pause execution for the requested duration.
-         Value and unit are pre-resolved at validation time — no parsing
-         needed here.  The dry-run pass silently skips DELAY nodes so that
-         argument validation is not slowed down by actual sleeps.
-         Skipped (GOTO / BREAK / CONTINUE) DELAY nodes are also no-ops.
+            /*-----------------------------------------------------------------
+                DELAY <value> <unit>
+             Pause execution for the requested duration.
+             Value and unit are pre-resolved at validation time — no parsing
+             needed here.  The dry-run pass silently skips DELAY nodes so that
+             argument validation is not slowed down by actual sleeps.
+             Skipped (GOTO / BREAK / CONTINUE) DELAY nodes are also no-ops.
 
-         Inside an active REPEAT loop (m_loopStateStack non-empty), the
-         delay is anchored to that loop's LoopState::delayAnchorTime
-         (see its doc comment) instead of sleeping the raw requested
-         duration each time: this cancels out the loop body's own
-         execution overhead so the loop's long-run average period matches
-         what the script asked for, rather than drifting later every
-         iteration. Outside any loop, a plain utime::delay_*() sleep is
-         used exactly as before — there is nothing to anchor against.
-        -----------------------------------------------------------------*/
+             Inside an active REPEAT loop (m_loopStateStack non-empty), the
+             delay is anchored to that loop's LoopState::delayAnchorTime
+             (see its doc comment) instead of sleeping the raw requested
+             duration each time: this cancels out the loop body's own
+             execution overhead so the loop's long-run average period matches
+             what the script asked for, rather than drifting later every
+             iteration. Outside any loop, a plain utime::delay_*() sleep is
+             used exactly as before — there is nothing to anchor against.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, DelayStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                const std::string strUnit = (command.eUnit == DelayUnit::US)  ? "us"  :
-                                            (command.eUnit == DelayUnit::MS)  ? "ms"  : "sec";
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                          LOG_STRING("DELAY:"); 
+                const std::string strUnit = (command.eUnit == DelayUnit::US) ? "us" : (command.eUnit == DelayUnit::MS) ? "ms"
+                                                                                                                       : "sec";
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("DELAY:");
                           LOG_STRING(std::to_string(command.szValue));
                           LOG_STRING(strUnit));
 
@@ -2618,43 +2645,55 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     // Anchored delay — see LoopState::delayAnchorTime doc comment.
                     int64_t llRequestedUs = 0;
                     switch (command.eUnit) {
-                        case DelayUnit::US:  llRequestedUs = static_cast<int64_t>(command.szValue);              break;
-                        case DelayUnit::MS:  llRequestedUs = static_cast<int64_t>(command.szValue) * 1000LL;      break;
-                        case DelayUnit::SEC: llRequestedUs = static_cast<int64_t>(command.szValue) * 1000000LL;   break;
+                    case DelayUnit::US:
+                        llRequestedUs = static_cast<int64_t>(command.szValue);
+                        break;
+                    case DelayUnit::MS:
+                        llRequestedUs = static_cast<int64_t>(command.szValue) * 1000LL;
+                        break;
+                    case DelayUnit::SEC:
+                        llRequestedUs = static_cast<int64_t>(command.szValue) * 1000000LL;
+                        break;
                     }
 
-                    LoopState& loopState = m_loopStateStack.back();
+                    LoopState &loopState = m_loopStateStack.back();
                     loopState.llDelayAccumulatedUs += llRequestedUs;
 
                     const auto target = loopState.delayAnchorTime +
-                                         std::chrono::microseconds(loopState.llDelayAccumulatedUs);
-                    const auto now = std::chrono::steady_clock::now();
+                                        std::chrono::microseconds(loopState.llDelayAccumulatedUs);
+                    const auto now    = std::chrono::steady_clock::now();
                     if (target > now) {
                         std::this_thread::sleep_for(target - now);
                     } else {
                         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-                                  LOG_STRING("DELAY: loop running behind schedule by"); 
+                                  LOG_STRING("DELAY: loop running behind schedule by");
                                   LOG_STRING(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(now - target).count()));
                                   LOG_STRING("us — skipping sleep, not catching up in one jump"));
                     }
                 } else {
                     switch (command.eUnit) {
-                        case DelayUnit::US:  utime::delay_us(command.szValue);      break;
-                        case DelayUnit::MS:  utime::delay_ms(command.szValue);      break;
-                        case DelayUnit::SEC: utime::delay_seconds(command.szValue); break;
+                    case DelayUnit::US:
+                        utime::delay_us(command.szValue);
+                        break;
+                    case DelayUnit::MS:
+                        utime::delay_ms(command.szValue);
+                        break;
+                    case DelayUnit::SEC:
+                        utime::delay_seconds(command.szValue);
+                        break;
                     }
                 }
             }
 
-        /*-----------------------------------------------------------------
-            name ?= <string value>
-         Expand $macros in the value template and write the result into
-         m_RuntimeVarMacros.  This makes the value immediately visible to
-         all subsequent $macro lookups at tier 2 — exactly the same as a
-         successful MacroCommand dispatch.
-         During the dry-run pass the node is silently ignored (no expansion,
-         no write), consistent with the two-pass model used by plugin commands.
-        -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                name ?= <string value>
+             Expand $macros in the value template and write the result into
+             m_RuntimeVarMacros.  This makes the value immediately visible to
+             all subsequent $macro lookups at tier 2 — exactly the same as a
+             successful MacroCommand dispatch.
+             During the dry-run pass the node is silently ignored (no expansion,
+             no write), consistent with the two-pass model used by plugin commands.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, VarMacroInit>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
@@ -2668,19 +2707,18 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 // unified condition evaluator and store "TRUE" or "FALSE".
                 std::string strEvalCheck = strExpanded;
                 ustring::stripPrefix(strEvalCheck, kEvalPrefix);
-                if (strEvalCheck.size() < strExpanded.size())
-                {
+                if (strEvalCheck.size() < strExpanded.size()) {
                     bool bEvalResult = false;
                     if (m_evaluateCondition(strExpanded, bEvalResult)) {
                         strExpanded = bEvalResult ? "TRUE" : "FALSE";
-                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                  LOG_STRING("EVAL result for VAR_INIT ["); 
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("EVAL result for VAR_INIT [");
                                   LOG_STRING(command.strName);
-                                  LOG_STRING("] -> ["); 
+                                  LOG_STRING("] -> [");
                                   LOG_STRING(strExpanded); LOG_STRING("]"));
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                  LOG_STRING("EVAL failed for VAR_INIT ["); 
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("EVAL failed for VAR_INIT [");
                                   LOG_STRING(command.strName);
                                   LOG_STRING("]"));
                         bRetVal = false;
@@ -2689,31 +2727,31 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 }
 
                 m_setRuntimeVarMacro(command.strName, strExpanded);
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING("VAR_INIT ["); LOG_STRING(command.strName);
-                          LOG_STRING("]->["); 
+                          LOG_STRING("]->[");
                           LOG_STRING(strExpanded); LOG_STRING("]"));
             }
 
-        /*-----------------------------------------------------------------
-            name ?= FORMAT input | format_pattern
-        
-         1. Expand $macros in both input and format templates.
-         2. Tokenise the expanded input by whitespace → items[0..N-1].
-         3. Walk the format template character by character:
-              - '%' followed by a decimal digit → substitute items[digit]
-              - '%' at end of template          → error (caught at validation)
-              - any other char                  → copy verbatim
-         4. Store the assembled string in m_RuntimeVarMacros[name].
-        
-         Out-of-range index (digit >= number of input tokens) is a runtime
-         error: logged and the command fails so the script is aborted.
-        -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                name ?= FORMAT input | format_pattern
+
+             1. Expand $macros in both input and format templates.
+             2. Tokenise the expanded input by whitespace → items[0..N-1].
+             3. Walk the format template character by character:
+                  - '%' followed by a decimal digit → substitute items[digit]
+                  - '%' at end of template          → error (caught at validation)
+                  - any other char                  → copy verbatim
+             4. Store the assembled string in m_RuntimeVarMacros[name].
+
+             Out-of-range index (digit >= number of input tokens) is a runtime
+             error: logged and the command fails so the script is aborted.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, FormatStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
 
-                // macro expansion 
+                // macro expansion
                 std::string strInput  = command.strInputTpl;
                 std::string strFormat = command.strFormatTpl;
                 if (!m_replaceVariableMacros(strInput) || !m_replaceVariableMacros(strFormat)) {
@@ -2733,7 +2771,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 const size_t szNrItems = vItems.size();
 
                 if (szNrItems == 0) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                               LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
                               LOG_STRING("]: input expanded to empty — no items to substitute"));
                     bRetVal = false;
@@ -2749,8 +2787,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     if (c == '%') {
                         // Validator guarantees a digit follows, but guard anyway.
                         if (i + 1 >= strFormat.size()) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                      LOG_STRING("FORMAT ["); 
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                      LOG_STRING("FORMAT [");
                                       LOG_STRING(command.strName);
                                       LOG_STRING("]: '%' at end of expanded format template"));
                             bRetVal = false;
@@ -2758,10 +2796,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                         }
                         const char cIdx = strFormat[++i];
                         if (!std::isdigit(static_cast<unsigned char>(cIdx))) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                      LOG_STRING("FORMAT ["); 
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                      LOG_STRING("FORMAT [");
                                       LOG_STRING(command.strName);
-                                      LOG_STRING("]: '%"); 
+                                      LOG_STRING("]: '%");
                                       LOG_STRING(std::string(1, cIdx));
                                       LOG_STRING("' — index character is not a digit"));
                             bRetVal = false;
@@ -2769,13 +2807,13 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                         }
                         const size_t uiIndex = static_cast<size_t>(cIdx - '0');
                         if (uiIndex >= szNrItems) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                      LOG_STRING("FORMAT ["); 
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                      LOG_STRING("FORMAT [");
                                       LOG_STRING(command.strName);
-                                      LOG_STRING("]: index %"); 
+                                      LOG_STRING("]: index %");
                                       LOG_STRING(std::string(1, cIdx));
                                       LOG_STRING("out of range (input has");
-                                      LOG_SIZET(szNrItems); 
+                                      LOG_SIZET(szNrItems);
                                       LOG_STRING("items)"));
                             bRetVal = false;
                             return;
@@ -2788,73 +2826,73 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                 // store result
                 m_setRuntimeVarMacro(command.strName, strResult);
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                          LOG_STRING("FORMAT ["); 
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("FORMAT [");
                           LOG_STRING(command.strName);
-                          LOG_STRING("]->["); 
-                          LOG_STRING(strResult); 
+                          LOG_STRING("]->[");
+                          LOG_STRING(strResult);
                           LOG_STRING("]"));
             }
 
-        /*-----------------------------------------------------------------
-            name ?= MATH <expression> [| HEX[_<width>][_<endian>]]
-        
-         1. Expand $macros in the expression template.
-         2. Feed the expanded string to Calculator::evaluate().
-         3. Convert the returned double to a clean string:
-              - Integer-valued results print without a decimal point (5, not 5.0)
-              - Floating-point results use up to 15 significant digits with
-                trailing zeros stripped (3.14159, not 3.141590000000000)
-         4. If a "| HEX..." post-processor was requested, overwrite that string
-            with a fixed-width, zero-padded hex rendering of the integer result
-            instead (see HexOutputFormat in uScriptDataTypes.hpp).
-         5. Store the final string result in m_RuntimeVarMacros[name].
-        
-         The Calculator variable map (m_mathVars) is persistent for the
-         lifetime of this ScriptInterpreter instance, so intra-expression
-         assignments  (e.g.  MATH x = 5 + 3)  survive across MATH statements
-         and are accessible in later evaluations as plain identifiers.
-        
-         During the dry-run pass (bRealExec == false) the node is silently
-         ignored — consistent with VarMacroInit and FormatStatement.
-         -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                name ?= MATH <expression> [| HEX[_<width>][_<endian>]]
+
+             1. Expand $macros in the expression template.
+             2. Feed the expanded string to Calculator::evaluate().
+             3. Convert the returned double to a clean string:
+                  - Integer-valued results print without a decimal point (5, not 5.0)
+                  - Floating-point results use up to 15 significant digits with
+                    trailing zeros stripped (3.14159, not 3.141590000000000)
+             4. If a "| HEX..." post-processor was requested, overwrite that string
+                with a fixed-width, zero-padded hex rendering of the integer result
+                instead (see HexOutputFormat in uScriptDataTypes.hpp).
+             5. Store the final string result in m_RuntimeVarMacros[name].
+
+             The Calculator variable map (m_mathVars) is persistent for the
+             lifetime of this ScriptInterpreter instance, so intra-expression
+             assignments  (e.g.  MATH x = 5 + 3)  survive across MATH statements
+             and are accessible in later evaluations as plain identifiers.
+
+             During the dry-run pass (bRealExec == false) the node is silently
+             ignored — consistent with VarMacroInit and FormatStatement.
+             -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, MathStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
 
-                // macro expansion 
+                // macro expansion
                 std::string strExpr = command.strExprTpl;
                 if (!m_replaceVariableMacros(strExpr)) {
                     bRetVal = false; // fatal: constant array index out of range, already logged
                     return;
                 }
 
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                          LOG_STRING("MATH ["); 
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("MATH [");
                           LOG_STRING(command.strName);
-                          LOG_STRING("] expr=["); 
-                          LOG_STRING(strExpr); 
+                          LOG_STRING("] expr=[");
+                          LOG_STRING(strExpr);
                           LOG_STRING("]"));
 
-                // evaluate 
+                // evaluate
                 double dResult = 0.0;
                 try {
                     Calculator calc(strExpr, m_mathVars);
                     dResult = calc.evaluate();
-                } catch (const std::exception& ex) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                              LOG_STRING("MATH ["); 
+                } catch (const std::exception &ex) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("MATH [");
                               LOG_STRING(command.strName);
-                              LOG_STRING("]: evaluation failed:"); 
+                              LOG_STRING("]: evaluation failed:");
                               LOG_STRING(ex.what());
-                              LOG_STRING("expr=["); 
-                              LOG_STRING(strExpr); 
+                              LOG_STRING("expr=[");
+                              LOG_STRING(strExpr);
                               LOG_STRING("]"));
                     bRetVal = false;
                     return;
                 }
 
-                // double -> string 
+                // double -> string
                 // Use defaultfloat + 15 significant digits so integer results
                 // print cleanly (5, not 5.000000) and precision is preserved.
                 std::string strResult;
@@ -2879,21 +2917,21 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 //      HEX_FLOAT_BE: -1.0 → "BF800000"
                 if (command.eHexFormat != HexOutputFormat::NONE) {
                     const hexutils::Endianness eEndian = isHexFormatBigEndian(command.eHexFormat)
-                                                              ? hexutils::Endianness::Big
-                                                              : hexutils::Endianness::Little;
+                                                             ? hexutils::Endianness::Big
+                                                             : hexutils::Endianness::Little;
 
                     if (isHexFormatFloatingPoint(command.eHexFormat)) {
                         strResult = isHexFormatSinglePrecision(command.eHexFormat)
                                         ? hexutils::floatToHexStringFixed(static_cast<float>(dResult), eEndian)
                                         : hexutils::doubleToHexStringFixed(dResult, eEndian);
                     } else {
-                        const uint64_t uVal = static_cast<uint64_t>(static_cast<int64_t>(dResult));
+                        const uint64_t uVal      = static_cast<uint64_t>(static_cast<int64_t>(dResult));
                         const size_t szByteWidth = getHexFormatByteWidth(command.eHexFormat);
-                        strResult = hexutils::intToHexStringFixed(uVal, szByteWidth, eEndian);
+                        strResult                = hexutils::intToHexStringFixed(uVal, szByteWidth, eEndian);
                     }
 
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-                              LOG_STRING("MATH HEX ["); 
+                              LOG_STRING("MATH HEX [");
                               LOG_STRING(command.strName);
                               LOG_STRING("] format=[");
                               LOG_STRING(getHexFormatName(command.eHexFormat));
@@ -2903,30 +2941,30 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                 // store result
                 m_setRuntimeVarMacro(command.strName, strResult);
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                          LOG_STRING("MATH ["); 
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("MATH [");
                           LOG_STRING(command.strName);
-                          LOG_STRING("]->["); 
-                          LOG_STRING(strResult); 
+                          LOG_STRING("]->[");
+                          LOG_STRING(strResult);
                           LOG_STRING("]"));
             }
 
-        /*-----------------------------------------------------------------
-            name ?= BITSTREAM  offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
-            name ?= BYTESTREAM byte_offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
+            /*-----------------------------------------------------------------
+                name ?= BITSTREAM  offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
+                name ?= BYTESTREAM byte_offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
 
-         All the actual work (macro expansion, numeric resolution, range/
-         overlap checking, packing, REVERSE_BIT/REVERSE_BYTE, hexlify) lives
-         in m_buildStreamStatement() — see its doc comment and
-         StreamStatement's doc comment in uScriptDataTypes.hpp for the exact
-         algorithm and bit-numbering convention. Store the hexlified result
-         in m_RuntimeVarMacros[name], same as every other "name ?= ..."
-         built-in (MATH, FORMAT, VAR_INIT).
+             All the actual work (macro expansion, numeric resolution, range/
+             overlap checking, packing, REVERSE_BIT/REVERSE_BYTE, hexlify) lives
+             in m_buildStreamStatement() — see its doc comment and
+             StreamStatement's doc comment in uScriptDataTypes.hpp for the exact
+             algorithm and bit-numbering convention. Store the hexlified result
+             in m_RuntimeVarMacros[name], same as every other "name ?= ..."
+             built-in (MATH, FORMAT, VAR_INIT).
 
-         Skipped during the dry-run validation pass (bRealExec == false) and
-         inside any active GOTO/BREAK/CONTINUE skip region, consistent with
-         MathStatement/FormatStatement.
-        -----------------------------------------------------------------*/
+             Skipped during the dry-run validation pass (bRealExec == false) and
+             inside any active GOTO/BREAK/CONTINUE skip region, consistent with
+             MathStatement/FormatStatement.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, StreamStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
@@ -2946,22 +2984,22 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING("]"));
             }
 
-        /*-----------------------------------------------------------------
-            name ?= <hex_source> | BITSTREAMVAL  bit_offset:value_size
-            name ?= <hex_source> | BYTESTREAMVAL byte_offset:bit_offset:value_size
+            /*-----------------------------------------------------------------
+                name ?= <hex_source> | BITSTREAMVAL  bit_offset:value_size
+                name ?= <hex_source> | BYTESTREAMVAL byte_offset:bit_offset:value_size
 
-         The read-side counterpart of the StreamStatement branch just above.
-         All the actual work (macro expansion, hex decode, numeric
-         resolution, range checking, extraction) lives in
-         m_buildStreamValStatement() — see its doc comment and
-         StreamValStatement's doc comment in uScriptDataTypes.hpp for the
-         exact algorithm. Store the decimal uint64_t result in
-         m_RuntimeVarMacros[name], same convention as MathStatement.
+             The read-side counterpart of the StreamStatement branch just above.
+             All the actual work (macro expansion, hex decode, numeric
+             resolution, range checking, extraction) lives in
+             m_buildStreamValStatement() — see its doc comment and
+             StreamValStatement's doc comment in uScriptDataTypes.hpp for the
+             exact algorithm. Store the decimal uint64_t result in
+             m_RuntimeVarMacros[name], same convention as MathStatement.
 
-         Skipped during the dry-run validation pass (bRealExec == false) and
-         inside any active GOTO/BREAK/CONTINUE skip region, consistent with
-         MathStatement/FormatStatement/StreamStatement.
-        -----------------------------------------------------------------*/
+             Skipped during the dry-run validation pass (bRealExec == false) and
+             inside any active GOTO/BREAK/CONTINUE skip region, consistent with
+             MathStatement/FormatStatement/StreamStatement.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, StreamValStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
@@ -2981,28 +3019,28 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING("]"));
             }
 
-        /*-----------------------------------------------------------------
-            name [= <hex_source> | BITSTREAMVAL  bit_offset1:value_size1 [...]
-            name [= <hex_source> | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
+            /*-----------------------------------------------------------------
+                name [= <hex_source> | BITSTREAMVAL  bit_offset1:value_size1 [...]
+                name [= <hex_source> | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
 
-         The array counterpart of the StreamValStatement branch just above.
-         All the actual work (macro expansion, hex decode, numeric
-         resolution, range checking, extraction — once per field, against
-         the one shared source) lives in m_buildStreamValArrayStatement() —
-         see its doc comment and StreamValArrayStatement's doc comment in
-         uScriptDataTypes.hpp for the exact algorithm. Every decimal
-         uint64_t result is stored, in field order, as an element of
-         mapArrayMacros[name] — overwriting the placeholder entry
-         ScriptValidator::m_HandleStreamValArrayStmt() registered at
-         validation time (see that function's own doc comment) — so the
-         usual array-macro access machinery ($name.SIZE, $name.$idx,
-         $name.N) works unmodified against the result, exactly as if `name`
-         had been declared with a literal "name [= v0, v1, ...".
+             The array counterpart of the StreamValStatement branch just above.
+             All the actual work (macro expansion, hex decode, numeric
+             resolution, range checking, extraction — once per field, against
+             the one shared source) lives in m_buildStreamValArrayStatement() —
+             see its doc comment and StreamValArrayStatement's doc comment in
+             uScriptDataTypes.hpp for the exact algorithm. Every decimal
+             uint64_t result is stored, in field order, as an element of
+             mapArrayMacros[name] — overwriting the placeholder entry
+             ScriptValidator::m_HandleStreamValArrayStmt() registered at
+             validation time (see that function's own doc comment) — so the
+             usual array-macro access machinery ($name.SIZE, $name.$idx,
+             $name.N) works unmodified against the result, exactly as if `name`
+             had been declared with a literal "name [= v0, v1, ...".
 
-         Skipped during the dry-run validation pass (bRealExec == false) and
-         inside any active GOTO/BREAK/CONTINUE skip region, consistent with
-         MathStatement/FormatStatement/StreamStatement/StreamValStatement.
-        -----------------------------------------------------------------*/
+             Skipped during the dry-run validation pass (bRealExec == false) and
+             inside any active GOTO/BREAK/CONTINUE skip region, consistent with
+             MathStatement/FormatStatement/StreamStatement/StreamValStatement.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, StreamValArrayStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
@@ -3021,22 +3059,22 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING("element(s)"));
             }
 
-        /*-----------------------------------------------------------------
-            BREAKPOINT [label]
-        
-         Suspends script execution and waits for user input via CheckContinue.
-        
-           a/A  → confirm abort (y/Y) → bRetVal = false → script aborts
-           Space → skip this breakpoint, continue normally
-           other → continue normally
-        
-         The optional label template is $macro-expanded at runtime so that
-         loop indices and variable values are reflected in the log output.
-        
-         Skipped silently during the dry-run validation pass (bRealExec == false)
-         and inside any active GOTO / BREAK / CONTINUE skip region — exactly
-         consistent with DELAY and PRINT behaviour.
-        -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                BREAKPOINT [label]
+
+             Suspends script execution and waits for user input via CheckContinue.
+
+               a/A  → confirm abort (y/Y) → bRetVal = false → script aborts
+               Space → skip this breakpoint, continue normally
+               other → continue normally
+
+             The optional label template is $macro-expanded at runtime so that
+             loop indices and variable values are reflected in the log output.
+
+             Skipped silently during the dry-run validation pass (bRealExec == false)
+             and inside any active GOTO / BREAK / CONTINUE skip region — exactly
+             consistent with DELAY and PRINT behaviour.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
@@ -3048,7 +3086,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     return;
                 }
 
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING("BREAKPOINT hit:");
                           LOG_STRING(strLabel.empty() ? "<no label>" : strLabel));
 
@@ -3056,7 +3094,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 const bool bOk = checkContinue(strLabel);
 
                 if (!bOk) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                               LOG_STRING("BREAKPOINT: script aborted by user"));
                     bRetVal = false;
                 }
@@ -3067,29 +3105,29 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 // the Space key simply acts as "continue" for BREAKPOINT.
             }
 
-        /*-----------------------------------------------------------------
-            name ?= GENERATOR <count> <unit> begin:end:step[:k] | WAVEFORM [| ENCODING]
-            name ?= GENERATOR <count> <unit> elem1,elem2,...    | WAVEFORM [| ENCODING]
-            name ?= GENERATOR STOP
+            /*-----------------------------------------------------------------
+                name ?= GENERATOR <count> <unit> begin:end:step[:k] | WAVEFORM [| ENCODING]
+                name ?= GENERATOR <count> <unit> elem1,elem2,...    | WAVEFORM [| ENCODING]
+                name ?= GENERATOR STOP
 
-            Every non-STOP call unconditionally stops any generator thread
-            already running for `command.strName` first (m_stopNamedGenerator,
-            a no-op if none is running) — this IS the "restart on recall"
-            behaviour GeneratorStatement's doc comment describes; bStop is
-            simply the case where nothing relaunches afterward.
+                Every non-STOP call unconditionally stops any generator thread
+                already running for `command.strName` first (m_stopNamedGenerator,
+                a no-op if none is running) — this IS the "restart on recall"
+                behaviour GeneratorStatement's doc comment describes; bStop is
+                simply the case where nothing relaunches afterward.
 
-            begin/end/step/k (or every array element) are resolved once,
-            right here (m_resolveGeneratorRange), then captured BY VALUE into
-            the thread lambda — the thread itself never touches interpreter
-            macro-expansion state, same pattern the "&"-threaded MacroCommand
-            dispatch above uses (expand on the main thread first, hand the
-            thread only already-resolved data).
+                begin/end/step/k (or every array element) are resolved once,
+                right here (m_resolveGeneratorRange), then captured BY VALUE into
+                the thread lambda — the thread itself never touches interpreter
+                macro-expansion state, same pattern the "&"-threaded MacroCommand
+                dispatch above uses (expand on the main thread first, hand the
+                thread only already-resolved data).
 
-            The thread sleeps via std::condition_variable_any::wait_for(lock,
-            stop_token, duration, pred) rather than a plain sleep_for(), so
-            GENERATOR STOP / a restart wakes it immediately instead of after
-            up to one full tick interval.
-        -----------------------------------------------------------------*/
+                The thread sleeps via std::condition_variable_any::wait_for(lock,
+                stop_token, duration, pred) rather than a plain sleep_for(), so
+                GENERATOR STOP / a restart wakes it immediately instead of after
+                up to one full tick interval.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
@@ -3112,38 +3150,36 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                               LOG_STRING("us waveform=["); LOG_STRING(getGeneratorWaveformName(command.eWaveform));
                               LOG_STRING("]"));
 
-                    auto doneFlag = std::make_shared<std::atomic<bool>>(false);
+                    auto doneFlag                     = std::make_shared<std::atomic<bool>>(false);
 
-                    const std::string        strName     = command.strName;
-                    const uint64_t            uIntervalUs = command.uIntervalUs;
-                    const GeneratorWaveform   eWaveform   = command.eWaveform;
-                    const HexOutputFormat     eHexFormat  = command.eHexFormat;
+                    const std::string strName         = command.strName;
+                    const uint64_t uIntervalUs        = command.uIntervalUs;
+                    const GeneratorWaveform eWaveform = command.eWaveform;
+                    const HexOutputFormat eHexFormat  = command.eHexFormat;
 
                     std::jthread t;
 
                     if (range.bIsArraySource) {
                         const std::vector<double> vValues = range.vArrayValues;
 
-                        t = std::jthread(
-                            [this, strName, uIntervalUs, eWaveform, eHexFormat, vValues, doneFlag]
-                            (std::stop_token st) mutable
-                        {
-                            GeneratorSampleState state; // arrIndex=0, arrDirection=1 — start at element 0, walking forward
+                        t                                 = std::jthread(
+                            [this, strName, uIntervalUs, eWaveform, eHexFormat, vValues, doneFlag](std::stop_token st) mutable {
+                                GeneratorSampleState state; // arrIndex=0, arrDirection=1 — start at element 0, walking forward
 
-                            std::mutex                   cvMutex;
-                            std::condition_variable_any  cv;
+                                std::mutex cvMutex;
+                                std::condition_variable_any cv;
 
-                            while (!st.stop_requested()) {
-                                const double dSample = nextGeneratorArraySample(eWaveform, vValues, state);
-                                m_setRuntimeVarMacro(strName, renderGeneratorValue(dSample, eHexFormat));
+                                while (!st.stop_requested()) {
+                                    const double dSample = nextGeneratorArraySample(eWaveform, vValues, state);
+                                    m_setRuntimeVarMacro(strName, renderGeneratorValue(dSample, eHexFormat));
 
-                                std::unique_lock<std::mutex> lk(cvMutex);
-                                cv.wait_for(lk, st, std::chrono::microseconds(uIntervalUs),
-                                            [&st] { return st.stop_requested(); });
-                            }
+                                    std::unique_lock<std::mutex> lk(cvMutex);
+                                    cv.wait_for(lk, st, std::chrono::microseconds(uIntervalUs),
+                                                [&st] { return st.stop_requested(); });
+                                }
 
-                            doneFlag->store(true, std::memory_order_release);
-                        });
+                                doneFlag->store(true, std::memory_order_release);
+                            });
                     } else {
                         const double dBegin = range.dBegin, dEnd = range.dEnd, dK = range.dK;
 
@@ -3155,38 +3191,38 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                         // SQUARE/SINE/EXP/LOG keep using the magnitude directly
                         // (their formulas already fold in begin/end's own
                         // sign where direction actually matters).
-                        const int    iDir       = (dEnd >= dBegin) ? 1 : -1;
-                        const double dStepMag   = std::fabs(range.dStep);
-                        const double dStep      = (eWaveform == GeneratorWaveform::SAWTOOTH)
-                                                       ? (dStepMag * iDir) : dStepMag;
+                        const int iDir        = (dEnd >= dBegin) ? 1 : -1;
+                        const double dStepMag = std::fabs(range.dStep);
+                        const double dStep    = (eWaveform == GeneratorWaveform::SAWTOOTH)
+                                                    ? (dStepMag * iDir)
+                                                    : dStepMag;
 
-                        t = std::jthread(
-                            [this, strName, uIntervalUs, eWaveform, eHexFormat, dBegin, dEnd, dStep, dK, iDir, doneFlag]
-                            (std::stop_token st) mutable
-                        {
-                            GeneratorSampleState state;
-                            // SAWTOOTH/TRIANGLE/SQUARE track the emitted value itself in
-                            // `current`, seeded at dBegin; EXP/LOG instead track a normalised
-                            // [0,1) phase carrier in `current`, seeded at 0.0 — see
-                            // nextGeneratorSample()'s per-waveform doc comments above.
-                            state.current   = (eWaveform == GeneratorWaveform::EXP || eWaveform == GeneratorWaveform::LOG)
-                                                  ? 0.0 : dBegin;
-                            state.direction = iDir; // TRIANGLE's initial ping-pong direction: towards dEnd
+                        t                     = std::jthread(
+                            [this, strName, uIntervalUs, eWaveform, eHexFormat, dBegin, dEnd, dStep, dK, iDir, doneFlag](std::stop_token st) mutable {
+                                GeneratorSampleState state;
+                                // SAWTOOTH/TRIANGLE/SQUARE track the emitted value itself in
+                                // `current`, seeded at dBegin; EXP/LOG instead track a normalised
+                                // [0,1) phase carrier in `current`, seeded at 0.0 — see
+                                // nextGeneratorSample()'s per-waveform doc comments above.
+                                state.current   = (eWaveform == GeneratorWaveform::EXP || eWaveform == GeneratorWaveform::LOG)
+                                                      ? 0.0
+                                                      : dBegin;
+                                state.direction = iDir; // TRIANGLE's initial ping-pong direction: towards dEnd
 
-                            std::mutex                   cvMutex;
-                            std::condition_variable_any  cv;
+                                std::mutex cvMutex;
+                                std::condition_variable_any cv;
 
-                            while (!st.stop_requested()) {
-                                const double dSample = nextGeneratorSample(eWaveform, dBegin, dEnd, dStep, dK, state);
-                                m_setRuntimeVarMacro(strName, renderGeneratorValue(dSample, eHexFormat));
+                                while (!st.stop_requested()) {
+                                    const double dSample = nextGeneratorSample(eWaveform, dBegin, dEnd, dStep, dK, state);
+                                    m_setRuntimeVarMacro(strName, renderGeneratorValue(dSample, eHexFormat));
 
-                                std::unique_lock<std::mutex> lk(cvMutex);
-                                cv.wait_for(lk, st, std::chrono::microseconds(uIntervalUs),
-                                            [&st] { return st.stop_requested(); });
-                            }
+                                    std::unique_lock<std::mutex> lk(cvMutex);
+                                    cv.wait_for(lk, st, std::chrono::microseconds(uIntervalUs),
+                                                [&st] { return st.stop_requested(); });
+                                }
 
-                            doneFlag->store(true, std::memory_order_release);
-                        });
+                                doneFlag->store(true, std::memory_order_release);
+                            });
                     }
 
                     std::lock_guard<std::mutex> lock(m_generatorMutex);
@@ -3194,9 +3230,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 }
             }
 
-        /*-----------------------------------------------------------------
-            GENERATOR STOP ALL — bare command, stops every running generator.
-        -----------------------------------------------------------------*/
+            /*-----------------------------------------------------------------
+                GENERATOR STOP ALL — bare command, stops every running generator.
+            -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
@@ -3204,12 +3240,13 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("GENERATOR STOP ALL"));
             }
         }
-    }, data.command);
+    },
+               data.command);
 
     if (bRealExec && m_eSkipReason == SkipReason::NONE && bIsPluginCommand) {
         LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(lineNr.data());
-                LOG_STRING("Command execution");
-                LOG_STRING(bRetVal ? "ok" : "failed"));
+                  LOG_STRING("Command execution");
+                  LOG_STRING(bRetVal ? "ok" : "failed"));
     }
 
     // Notify the GUI front-end when real execution fails on this line so it
@@ -3224,8 +3261,6 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
 } /* m_executeCommand()*/
 
-
-
 /*-------------------------------------------------------------------------------
   Build a per-plugin command-name lookup used by m_crossCheckCommands.
 -------------------------------------------------------------------------------*/
@@ -3234,15 +3269,14 @@ void ScriptInterpreter::m_buildPluginCommandIndex() noexcept
 {
     m_pluginCmdIndex.clear();
 
-    for (const auto& plugin : m_sScriptEntries->vPlugins) {
-        auto& cmdSet = m_pluginCmdIndex[plugin.strPluginName];
-        for (const auto& cmd : plugin.sGetParams.vstrPluginCommands) {
+    for (const auto &plugin : m_sScriptEntries->vPlugins) {
+        auto &cmdSet = m_pluginCmdIndex[plugin.strPluginName];
+        for (const auto &cmd : plugin.sGetParams.vstrPluginCommands) {
             cmdSet.insert(cmd);
         }
     }
 
 } /*m_buildPluginCommandIndex()*/
-
 
 /*-------------------------------------------------------------------------------
   Index-based execution loop.
@@ -3251,7 +3285,7 @@ void ScriptInterpreter::m_buildPluginCommandIndex() noexcept
   correct next-iteration address.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
+bool ScriptInterpreter::m_executeCommands(bool bRealExec) noexcept
 {
     bool bRetVal = true;
 
@@ -3264,8 +3298,8 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
         m_RuntimeVarMacros.clear();
     }
 
-    auto& vCommands = m_sScriptEntries->vCommands;
-    size_t i = 0;
+    auto &vCommands = m_sScriptEntries->vCommands;
+    size_t i        = 0;
 
     while (i < vCommands.size()) {
         // Graceful-stop check: once per top-level loop iteration. Since
@@ -3292,27 +3326,25 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
         ++i;
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; 
-        LOG_STRING("Commands"); 
-        LOG_STRING(bRealExec ? "execution" : "validation"); 
-        LOG_STRING(bRetVal ? "ok" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR;
+              LOG_STRING("Commands");
+              LOG_STRING(bRealExec ? "execution" : "validation");
+              LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
 } /* m_executeCommands() */
 
-
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes& rep, ResolvedRepeatRange& out) noexcept
+bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes &rep, ResolvedRepeatRange &out) noexcept
 {
     // Resolve one bound: literal values were already parsed/typed at
     // validation time; "$macroname" bounds are expanded and (re-)parsed now.
-    auto resolveOne = [&](const RepeatRangeValue& val, bool& bIsInt,
-                           long long& llOut, double& dOut) -> bool {
+    auto resolveOne = [&](const RepeatRangeValue &val, bool &bIsInt,
+                          long long &llOut, double &dOut) -> bool {
         if (!val.bIsMacro) {
             bIsInt = val.bIsInteger;
             llOut  = val.llValue;
@@ -3332,23 +3364,31 @@ bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes& rep, ResolvedRep
         return true;
     };
 
-    bool      bBeginInt = true, bEndInt = true, bStepInt = true;
+    bool bBeginInt = true, bEndInt = true, bStepInt = true;
     long long llBegin = 0, llEnd = 0, llStep = 1;
-    double    dBegin  = 0.0, dEnd = 0.0, dStep = 1.0;
+    double dBegin = 0.0, dEnd = 0.0, dStep = 1.0;
 
-    if (!resolveOne(rep.begin, bBeginInt, llBegin, dBegin)) { return false; }
-    if (!resolveOne(rep.end,   bEndInt,   llEnd,   dEnd))   { return false; }
-    if (!resolveOne(rep.step,  bStepInt,  llStep,  dStep))  { return false; }
+    if (!resolveOne(rep.begin, bBeginInt, llBegin, dBegin)) {
+        return false;
+    }
+    if (!resolveOne(rep.end, bEndInt, llEnd, dEnd)) {
+        return false;
+    }
+    if (!resolveOne(rep.step, bStepInt, llStep, dStep)) {
+        return false;
+    }
 
-    out.bIsInteger = bBeginInt && bEndInt && bStepInt;
+    out.bIsInteger         = bBeginInt && bEndInt && bStepInt;
 
     // Mirror both representations regardless of bIsInteger, using the exact
     // integer value where available so integer-only ranges keep full 64-bit
     // precision even though a double copy also exists.
-    out.llBegin = llBegin; out.llEnd = llEnd; out.llStep = llStep;
-    out.dBegin  = bBeginInt ? static_cast<double>(llBegin) : dBegin;
-    out.dEnd    = bEndInt   ? static_cast<double>(llEnd)   : dEnd;
-    out.dStep   = bStepInt  ? static_cast<double>(llStep)  : dStep;
+    out.llBegin            = llBegin;
+    out.llEnd              = llEnd;
+    out.llStep             = llStep;
+    out.dBegin             = bBeginInt ? static_cast<double>(llBegin) : dBegin;
+    out.dEnd               = bEndInt ? static_cast<double>(llEnd) : dEnd;
+    out.dStep              = bStepInt ? static_cast<double>(llStep) : dStep;
 
     const bool bStepIsZero = out.bIsInteger ? (out.llStep == 0) : (out.dStep == 0.0);
     if (bStepIsZero) {
@@ -3365,9 +3405,9 @@ bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes& rep, ResolvedRep
   doc comment (uScriptInterpreter.hpp) for exactly when this runs.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement& gen, ResolvedGeneratorRange& out) noexcept
+bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement &gen, ResolvedGeneratorRange &out) noexcept
 {
-    auto resolveOne = [&](const RepeatRangeValue& val, double& dOut) -> bool {
+    auto resolveOne = [&](const RepeatRangeValue &val, double &dOut) -> bool {
         if (!val.bIsMacro) {
             dOut = val.bIsInteger ? static_cast<double>(val.llValue) : val.dValue;
             return true;
@@ -3376,9 +3416,9 @@ bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement& gen, R
         if (!m_replaceVariableMacros(strExpanded)) {
             return false; // fatal: constant array index out of range, already logged
         }
-        bool      bIsInt = true;
-        long long llVal  = 0;
-        double    dVal   = 0.0;
+        bool bIsInt     = true;
+        long long llVal = 0;
+        double dVal     = 0.0;
         if (!parseRepeatNumber(strExpanded, bIsInt, llVal, dVal)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("GENERATOR ["); LOG_STRING(gen.strName);
@@ -3395,9 +3435,11 @@ bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement& gen, R
 
     if (gen.bIsArraySource) {
         out.vArrayValues.reserve(gen.vArrayValues.size());
-        for (const auto& elem : gen.vArrayValues) {
+        for (const auto &elem : gen.vArrayValues) {
             double dVal = 0.0;
-            if (!resolveOne(elem, dVal)) { return false; }
+            if (!resolveOne(elem, dVal)) {
+                return false;
+            }
             out.vArrayValues.push_back(dVal);
         }
         if (out.vArrayValues.empty()) {
@@ -3414,13 +3456,21 @@ bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement& gen, R
         return true;
     }
 
-    if (!resolveOne(gen.begin, out.dBegin)) { return false; }
-    if (!resolveOne(gen.end,   out.dEnd))   { return false; }
-    if (!resolveOne(gen.step,  out.dStep))  { return false; }
+    if (!resolveOne(gen.begin, out.dBegin)) {
+        return false;
+    }
+    if (!resolveOne(gen.end, out.dEnd)) {
+        return false;
+    }
+    if (!resolveOne(gen.step, out.dStep)) {
+        return false;
+    }
 
     out.bHasK = gen.bHasK;
     out.dK    = 0.0;
-    if (gen.bHasK && !resolveOne(gen.k, out.dK)) { return false; }
+    if (gen.bHasK && !resolveOne(gen.k, out.dK)) {
+        return false;
+    }
 
     if (out.dEnd == out.dBegin) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -3463,7 +3513,8 @@ std::string ScriptInterpreter::executableDir()
 
 #elif defined(__linux__)
     return std::filesystem::read_symlink("/proc/self/exe")
-               .parent_path().string();
+        .parent_path()
+        .string();
 
 #elif defined(__APPLE__)
     char path[PATH_MAX];
@@ -3474,11 +3525,11 @@ std::string ScriptInterpreter::executableDir()
 #elif defined(__FreeBSD__)
     char path[PATH_MAX];
     size_t len = sizeof(path);
-    int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+    int mib[]  = {CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1};
     sysctl(mib, 4, path, &len, nullptr, 0);
     return std::filesystem::path(path).parent_path().string();
 
 #else
-    #error "Unsupported platform"
+#error "Unsupported platform"
 #endif
 }

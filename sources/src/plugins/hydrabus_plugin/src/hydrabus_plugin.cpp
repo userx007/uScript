@@ -11,6 +11,7 @@
  *   - INI parameter loading
  */
 #include "hydrabus_plugin.hpp"
+
 #include "AUXPin.hpp"
 #include "Hydrabus.hpp"
 #include "PluginExport.hpp"
@@ -36,34 +37,32 @@ class ICommDriver;
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED HydrabusPlugin *pluginEntry()
 {
-    EXPORTED HydrabusPlugin* pluginEntry()
-    {
-        return new HydrabusPlugin();
-    }
+    return new HydrabusPlugin();
+}
 
-    EXPORTED void pluginExit(HydrabusPlugin* ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(HydrabusPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   INIT / CLEANUP                                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::doInit(void* /*pvUserData*/)
+bool HydrabusPlugin::doInit(void * /*pvUserData*/)
 {
     if (m_sIniValues.strUartPort.empty() || m_sIniValues.u32UartBaudrate == 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                LOG_STRING("Missing UART settings: Port["); 
-                LOG_STRING(m_sIniValues.strUartPort); 
-                LOG_STRING("] Baudrate:"); 
-                LOG_UINT32(m_sIniValues.u32UartBaudrate));
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("Missing UART settings: Port[");
+                  LOG_STRING(m_sIniValues.strUartPort);
+                  LOG_STRING("] Baudrate:");
+                  LOG_UINT32(m_sIniValues.u32UartBaudrate));
         return false;
     }
 
@@ -71,23 +70,23 @@ bool HydrabusPlugin::doInit(void* /*pvUserData*/)
 
     if (!drvUart.is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                LOG_STRING("Failed to open UART port ["); 
-                LOG_STRING(m_sIniValues.strUartPort);
-                LOG_STRING("] Baudrate:"); 
-                LOG_UINT32(m_sIniValues.u32UartBaudrate));
+                  LOG_STRING("Failed to open UART port [");
+                  LOG_STRING(m_sIniValues.strUartPort);
+                  LOG_STRING("] Baudrate:");
+                  LOG_UINT32(m_sIniValues.u32UartBaudrate));
         return false;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Initialized port ["); 
-                LOG_STRING(m_sIniValues.strUartPort);
-                LOG_STRING("] Baudrate:"); 
-                LOG_UINT32(m_sIniValues.u32UartBaudrate));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Initialized port [");
+              LOG_STRING(m_sIniValues.strUartPort);
+              LOG_STRING("] Baudrate:");
+              LOG_UINT32(m_sIniValues.u32UartBaudrate));
 
     // Wrap the UART driver in a shared_ptr for HydraHAL
-    auto drvPtr = std::shared_ptr<const ICommDriver>(&drvUart, [](const ICommDriver*){});
+    auto drvPtr = std::shared_ptr<const ICommDriver>(&drvUart, [](const ICommDriver *) {});
     try {
         m_pHydrabus = std::make_shared<HydraHAL::Hydrabus>(drvPtr);
-    } catch (const std::invalid_argument& e) {
+    } catch (const std::invalid_argument &e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to create Hydrabus instance:"); LOG_STRING(e.what()));
         drvUart.close();
@@ -95,7 +94,7 @@ bool HydrabusPlugin::doInit(void* /*pvUserData*/)
     }
 
     m_bIsInitialized = true;
-    
+
     return true;
 }
 
@@ -114,15 +113,14 @@ void HydrabusPlugin::doCleanup()
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args, std::stop_token st ) const
+bool HydrabusPlugin::m_Hydrabus_INFO(const std::string &args, std::stop_token st) const
 {
     if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -131,7 +129,7 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: HydraBus multi-protocol interface (SPI/I2C/UART/1-Wire/RawWire/SWD/Smartcard/NFC/MMC/SDIO)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Port:"); LOG_STRING(m_sIniValues.strUartPort);
-                         LOG_STRING("  Baud:"); LOG_UINT32(m_sIniValues.u32UartBaudrate));
+              LOG_STRING("  Baud:"); LOG_UINT32(m_sIniValues.u32UartBaudrate));
 
     // ── MODE ──────────────────────────────────────────────────────────────
     LOG_SEP();
@@ -564,49 +562,48 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
-
     return true;
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; override one or more ini parameters at runtime
-  *
-  * \note Usage example: <br>
-  *       HYDRABUS.CONFIG p=/dev/ttyACM0 b=115200 r=2000
-  *
-  * \param[in] args space-separated key=value tokens (see inc/private/hydrabus_setup.hpp)
-  *
-  * \return true if processing succeeded, false otherwise
-*/
+ * \brief CONFIG command implementation; override one or more ini parameters at runtime
+ *
+ * \note Usage example: <br>
+ *       HYDRABUS.CONFIG p=/dev/ttyACM0 b=115200 r=2000
+ *
+ * \param[in] args space-separated key=value tokens (see inc/private/hydrabus_setup.hpp)
+ *
+ * \return true if processing succeeded, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool HydrabusPlugin::m_Hydrabus_CONFIG ( const std::string &args, std::stop_token st ) const
+bool HydrabusPlugin::m_Hydrabus_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     return generic_hydrabus_set_params(this, args);
-
 }
 
-bool HydrabusPlugin::m_Hydrabus_MODE(const std::string& args, std::stop_token st ) const
+bool HydrabusPlugin::m_Hydrabus_MODE(const std::string &args, std::stop_token st) const
 {
     if (args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("MODE requires an argument"));
         return false;
     }
-    if (!m_bIsEnabled) return true;
+    if (!m_bIsEnabled) {
+        return true;
+    }
 
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Available modes:"));
-        for (const auto& m : m_mapModes) {
+        for (const auto &m : m_mapModes) {
             LOG_PRINT(LOG_EMPTY, LOG_STRING("  -"); LOG_STRING(m.first));
         }
         return true;
     }
 
-    return const_cast<HydrabusPlugin*>(this)->m_enter_mode(args);
+    return const_cast<HydrabusPlugin *>(this)->m_enter_mode(args);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -617,7 +614,7 @@ bool HydrabusPlugin::m_Hydrabus_MODE(const std::string& args, std::stop_token st
 //                   INI ACCESSOR (friend)                                     //
 //-----------------------------------------------------------------------------//
 
-const HydrabusPlugin::IniValues* getAccessIniValues(const HydrabusPlugin& obj)
+const HydrabusPlugin::IniValues *getAccessIniValues(const HydrabusPlugin &obj)
 {
     return &obj.m_sIniValues;
 }
@@ -634,7 +631,10 @@ void HydrabusPlugin::m_exit_mode() const
     if (m_pHydrabus && m_eMode != Mode::None) {
         // Attempt a graceful BBIO reset (20 × 0x00).
         // Ignore any errors – we are tearing down regardless.
-        try { m_pHydrabus->enter_bbio(); } catch (...) {}
+        try {
+            m_pHydrabus->enter_bbio();
+        } catch (...) {
+        }
     }
 
     m_pSPI.reset();
@@ -650,7 +650,7 @@ void HydrabusPlugin::m_exit_mode() const
     m_eMode = Mode::None;
 }
 
-bool HydrabusPlugin::m_enter_mode(const std::string& modeName)
+bool HydrabusPlugin::m_enter_mode(const std::string &modeName)
 {
     if (!m_pHydrabus) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Plugin not initialized"));
@@ -668,44 +668,44 @@ bool HydrabusPlugin::m_enter_mode(const std::string& modeName)
 
     try {
         if (modeName == "spi") {
-            m_pSPI   = std::make_unique<HydraHAL::SPI>(m_pHydrabus);
-            m_eMode  = Mode::SPI;
+            m_pSPI  = std::make_unique<HydraHAL::SPI>(m_pHydrabus);
+            m_eMode = Mode::SPI;
         } else if (modeName == "i2c") {
-            m_pI2C   = std::make_unique<HydraHAL::I2C>(m_pHydrabus);
-            m_eMode  = Mode::I2C;
+            m_pI2C  = std::make_unique<HydraHAL::I2C>(m_pHydrabus);
+            m_eMode = Mode::I2C;
         } else if (modeName == "uart") {
-            m_pUART  = std::make_unique<HydraHAL::UART>(m_pHydrabus);
-            m_eMode  = Mode::UART;
+            m_pUART = std::make_unique<HydraHAL::UART>(m_pHydrabus);
+            m_eMode = Mode::UART;
         } else if (modeName == "onewire") {
-            m_pOneWire  = std::make_unique<HydraHAL::OneWire>(m_pHydrabus);
-            m_eMode     = Mode::OneWire;
+            m_pOneWire = std::make_unique<HydraHAL::OneWire>(m_pHydrabus);
+            m_eMode    = Mode::OneWire;
         } else if (modeName == "rawwire") {
-            m_pRawWire  = std::make_unique<HydraHAL::RawWire>(m_pHydrabus);
-            m_eMode     = Mode::RawWire;
+            m_pRawWire = std::make_unique<HydraHAL::RawWire>(m_pHydrabus);
+            m_eMode    = Mode::RawWire;
         } else if (modeName == "swd") {
-            m_pSWD   = std::make_unique<HydraHAL::SWD>(m_pHydrabus);
-            m_eMode  = Mode::SWD;
+            m_pSWD  = std::make_unique<HydraHAL::SWD>(m_pHydrabus);
+            m_eMode = Mode::SWD;
         } else if (modeName == "smartcard") {
             m_pSmartcard = std::make_unique<HydraHAL::Smartcard>(m_pHydrabus);
             m_eMode      = Mode::Smartcard;
         } else if (modeName == "nfc") {
-            m_pNFC   = std::make_unique<HydraHAL::NFC>(m_pHydrabus);
-            m_eMode  = Mode::NFC;
+            m_pNFC  = std::make_unique<HydraHAL::NFC>(m_pHydrabus);
+            m_eMode = Mode::NFC;
         } else if (modeName == "mmc") {
-            m_pMMC   = std::make_unique<HydraHAL::MMC>(m_pHydrabus);
-            m_eMode  = Mode::MMC;
+            m_pMMC  = std::make_unique<HydraHAL::MMC>(m_pHydrabus);
+            m_eMode = Mode::MMC;
         } else if (modeName == "sdio") {
-            m_pSDIO  = std::make_unique<HydraHAL::SDIO>(m_pHydrabus);
-            m_eMode  = Mode::SDIO;
+            m_pSDIO = std::make_unique<HydraHAL::SDIO>(m_pHydrabus);
+            m_eMode = Mode::SDIO;
         } else if (modeName == "bbio") {
-            m_eMode = Mode::None;   // BBIO entry already done above
+            m_eMode = Mode::None; // BBIO entry already done above
             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Returned to BBIO"));
             return true;
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown mode:"); LOG_STRING(modeName));
             return false;
         }
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to enter mode"); LOG_STRING(modeName);
                   LOG_STRING(":"); LOG_STRING(e.what()));
@@ -721,26 +721,27 @@ bool HydrabusPlugin::m_enter_mode(const std::string& modeName)
 //              PROTOCOL INSTANCE ACCESSORS                                    //
 //-----------------------------------------------------------------------------//
 
-#define PROTO_GETTER(Name, Type, field, modeval)                            \
-HydraHAL::Type* HydrabusPlugin::m_##field() const {                         \
-    if (m_eMode != Mode::modeval || !m_p##Name) {                           \
-        LOG_PRINT(LOG_ERROR, LOG_HDR;                                       \
-                  LOG_STRING("Not in " #Type " mode – call MODE " #field)); \
-        return nullptr;                                                     \
-    }                                                                       \
-    return m_p##Name.get();                                                 \
-}
+#define PROTO_GETTER(Name, Type, field, modeval)                                \
+    HydraHAL::Type *HydrabusPlugin::m_##field() const                           \
+    {                                                                           \
+        if (m_eMode != Mode::modeval || !m_p##Name) {                           \
+            LOG_PRINT(LOG_ERROR, LOG_HDR;                                       \
+                      LOG_STRING("Not in " #Type " mode – call MODE " #field)); \
+            return nullptr;                                                     \
+        }                                                                       \
+        return m_p##Name.get();                                                 \
+    }
 
-PROTO_GETTER(SPI,       SPI,       spi,       SPI)
-PROTO_GETTER(I2C,       I2C,       i2c,       I2C)
-PROTO_GETTER(UART,      UART,      uart,      UART)
-PROTO_GETTER(OneWire,   OneWire,   onewire,   OneWire)
-PROTO_GETTER(RawWire,   RawWire,   rawwire,   RawWire)
-PROTO_GETTER(SWD,       SWD,       swd,       SWD)
+PROTO_GETTER(SPI, SPI, spi, SPI)
+PROTO_GETTER(I2C, I2C, i2c, I2C)
+PROTO_GETTER(UART, UART, uart, UART)
+PROTO_GETTER(OneWire, OneWire, onewire, OneWire)
+PROTO_GETTER(RawWire, RawWire, rawwire, RawWire)
+PROTO_GETTER(SWD, SWD, swd, SWD)
 PROTO_GETTER(Smartcard, Smartcard, smartcard, Smartcard)
-PROTO_GETTER(NFC,       NFC,       nfc,       NFC)
-PROTO_GETTER(MMC,       MMC,       mmc,       MMC)
-PROTO_GETTER(SDIO,      SDIO,      sdio,      SDIO)
+PROTO_GETTER(NFC, NFC, nfc, NFC)
+PROTO_GETTER(MMC, MMC, mmc, MMC)
+PROTO_GETTER(SDIO, SDIO, sdio, SDIO)
 
 #undef PROTO_GETTER
 
@@ -748,15 +749,15 @@ PROTO_GETTER(SDIO,      SDIO,      sdio,      SDIO)
 //              MAP ACCESSORS                                                  //
 //-----------------------------------------------------------------------------//
 
-ModuleCommandsMap<HydrabusPlugin>*
-HydrabusPlugin::getModuleCmdsMap(const std::string& m) const
+ModuleCommandsMap<HydrabusPlugin> *
+HydrabusPlugin::getModuleCmdsMap(const std::string &m) const
 {
     auto it = m_mapCommandsMaps.find(m);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
-ModuleSpeedMap*
-HydrabusPlugin::getModuleSpeedsMap(const std::string& m) const
+ModuleSpeedMap *
+HydrabusPlugin::getModuleSpeedsMap(const std::string &m) const
 {
     auto it = m_mapSpeedsMaps.find(m);
     return (it != m_mapSpeedsMaps.end()) ? it->second : nullptr;
@@ -766,24 +767,32 @@ HydrabusPlugin::getModuleSpeedsMap(const std::string& m) const
 //              setModuleSpeed                                                 //
 //-----------------------------------------------------------------------------//
 
-bool HydrabusPlugin::setModuleSpeed(const std::string& module, size_t index) const
+bool HydrabusPlugin::setModuleSpeed(const std::string &module, size_t index) const
 {
     if (module == "SPI") {
-        auto* p = m_spi();
-        if (!p) return false;
+        auto *p = m_spi();
+        if (!p) {
+            return false;
+        }
         return p->set_speed(static_cast<HydraHAL::SPI::Speed>(index));
     }
     if (module == "I2C") {
-        auto* p = m_i2c();
-        if (!p) return false;
+        auto *p = m_i2c();
+        if (!p) {
+            return false;
+        }
         return p->set_speed(static_cast<HydraHAL::I2C::Speed>(index));
     }
     if (module == "RAWWIRE") {
-        auto* p = m_rawwire();
-        if (!p) return false;
+        auto *p = m_rawwire();
+        if (!p) {
+            return false;
+        }
         // Map index 0-3 to Hz values matching HydraHAL::RawWire::set_speed()
         static constexpr uint32_t hz[] = {5000, 50000, 100000, 1000000};
-        if (index >= 4) return false;
+        if (index >= 4) {
+            return false;
+        }
         return p->set_speed(hz[index]);
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No speed map for module:"); LOG_STRING(module));
@@ -794,8 +803,8 @@ bool HydrabusPlugin::setModuleSpeed(const std::string& module, size_t index) con
 //              AUX HELPER (shared)                                            //
 //-----------------------------------------------------------------------------//
 
-bool HydrabusPlugin::m_handle_aux_common(const std::string& args,
-                                          HydraHAL::Protocol* proto, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_aux_common(const std::string &args,
+                                         HydraHAL::Protocol *proto, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: aux [0-3] [in|out|pp] [0|1]"));
@@ -803,12 +812,16 @@ bool HydrabusPlugin::m_handle_aux_common(const std::string& args,
         LOG_PRINT(LOG_EMPTY, LOG_STRING("        aux 1 in      – set AUX1 as input"));
         return true;
     }
-    if (!proto) return false;
+    if (!proto) {
+        return false;
+    }
 
     // Parse: "N [in|out|pp] [0|1]"
     std::vector<std::string> parts;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
-    if (parts.empty()) return false;
+    if (parts.empty()) {
+        return false;
+    }
 
     size_t idx = 0;
     if (!numeric::str2sizet(parts[0], idx) || idx > 3) {
@@ -817,20 +830,25 @@ bool HydrabusPlugin::m_handle_aux_common(const std::string& args,
     }
 
     try {
-        auto& pin = proto->aux(idx);
+        auto &pin = proto->aux(idx);
 
         if (parts.size() >= 2) {
-            if      (parts[1] == "in")  { pin.set_direction(HydraHAL::AUXPin::Direction::Input);  }
-            else if (parts[1] == "out") { pin.set_direction(HydraHAL::AUXPin::Direction::Output); }
-            else if (parts[1] == "pp")  { pin.set_pullup(1); }
-            else {
+            if (parts[1] == "in") {
+                pin.set_direction(HydraHAL::AUXPin::Direction::Input);
+            } else if (parts[1] == "out") {
+                pin.set_direction(HydraHAL::AUXPin::Direction::Output);
+            } else if (parts[1] == "pp") {
+                pin.set_pullup(1);
+            } else {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown direction:"); LOG_STRING(parts[1]));
                 return false;
             }
         }
         if (parts.size() >= 3) {
             uint8_t v = 0;
-            if (!numeric::str2uint8(parts[2], v)) return false;
+            if (!numeric::str2uint8(parts[2], v)) {
+                return false;
+            }
             pin.set_value(v);
         }
 
@@ -838,16 +856,14 @@ bool HydrabusPlugin::m_handle_aux_common(const std::string& args,
                   LOG_STRING("AUX"); LOG_SIZET(idx);
                   LOG_STRING("dir="); LOG_UINT8(static_cast<uint8_t>(pin.get_direction()));
                   LOG_STRING("val="); LOG_UINT8(static_cast<uint8_t>(pin.get_value())));
-    } catch (const std::out_of_range& e) {
+    } catch (const std::out_of_range &e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("AUX pin error:"); LOG_STRING(e.what()));
         return false;
     }
     return true;
 }
 
-
-
-bool getEnabledStatus(const HydrabusPlugin& obj)
+bool getEnabledStatus(const HydrabusPlugin &obj)
 {
     return obj.m_bIsEnabled;
 

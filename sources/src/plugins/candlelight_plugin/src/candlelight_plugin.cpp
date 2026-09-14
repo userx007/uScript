@@ -1,7 +1,8 @@
+#include "candlelight_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
 #include "candlelight_frame_driver.hpp"
-#include "candlelight_plugin.hpp"
 #include "candlelight_setup.hpp"
 #include "uCandlelight.hpp"
 #include "uCommScriptClient.hpp"
@@ -14,9 +15,9 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <memory>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <string_view>
@@ -26,22 +27,19 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED CandlelightPlugin *pluginEntry()
 {
-    EXPORTED CandlelightPlugin* pluginEntry()
-    {
-        return new CandlelightPlugin();
-    }
-
-    EXPORTED void pluginExit( CandlelightPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
-    }
+    return new CandlelightPlugin();
 }
 
+EXPORTED void pluginExit(CandlelightPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
+    }
+}
+}
 
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
@@ -49,31 +47,29 @@ extern "C"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about the plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if plugin initialization fails.
-  *
-  * \note Usage example:
-  *       CANDLELIGHT.INFO
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about the plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if plugin initialization fails.
+ *
+ * \note Usage example:
+ *       CANDLELIGHT.INFO
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CandlelightPlugin::m_CANDLELIGHT_INFO (const std::string &args, std::stop_token st) const
+bool CandlelightPlugin::m_CANDLELIGHT_INFO(const std::string &args, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -185,62 +181,57 @@ bool CandlelightPlugin::m_CANDLELIGHT_INFO (const std::string &args, std::stop_t
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current Candlelight parameters at runtime.
-  *
-  * \note Any subset of parameters can be specified; omitted keys retain their current values.
-  *
-  * \note Usage example:
-  *       CANDLELIGHT.CONFIG vid=0x1209 pid=0x2323 b=500000 x=0x123 r=2000 w=2000 s=8
-  *
-  * \param[in] args  see m_CANDLELIGHT_INFO()'s CONFIG section for the full key list
-  *
-  * \return true if parameters were updated successfully, false otherwise
-*/
+ * \brief CONFIG command implementation; overwrite the current Candlelight parameters at runtime.
+ *
+ * \note Any subset of parameters can be specified; omitted keys retain their current values.
+ *
+ * \note Usage example:
+ *       CANDLELIGHT.CONFIG vid=0x1209 pid=0x2323 b=500000 x=0x123 r=2000 w=2000 s=8
+ *
+ * \param[in] args  see m_CANDLELIGHT_INFO()'s CONFIG section for the full key list
+ *
+ * \return true if parameters were updated successfully, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CandlelightPlugin::m_CANDLELIGHT_CONFIG (const std::string &args, std::stop_token st) const
+bool CandlelightPlugin::m_CANDLELIGHT_CONFIG(const std::string &args, std::stop_token st) const
 {
     return generic_can_set_params<CandlelightPlugin>(this, args);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief FILTER command implementation; install the software acceptance-filter list.
-  *
-  * \note Filters are stored in m_vecFilters and applied to every frame received by
-  *       CandlelightFrameDriver::tout_read() — see this file's class doc comment for why this is
-  *       purely software, unlike SLCAN/UCAN's hardware filter slots. Calling FILTER with an empty
-  *       argument clears the list (accept everything).
-  *
-  * \note Usage example:
-  *       CANDLELIGHT.FILTER 0x100:0x7FF
-  *       CANDLELIGHT.FILTER 0x100:0x7FF,0x200:0x7FF,0x18DAF100:0x1FFFFFFF
-  *       CANDLELIGHT.FILTER
-  *
-  * \param[in] args  comma-separated list of <id>:<mask> pairs (any number), or empty to clear
-  *
-  * \return true on success, false on parse error
-*/
+ * \brief FILTER command implementation; install the software acceptance-filter list.
+ *
+ * \note Filters are stored in m_vecFilters and applied to every frame received by
+ *       CandlelightFrameDriver::tout_read() — see this file's class doc comment for why this is
+ *       purely software, unlike SLCAN/UCAN's hardware filter slots. Calling FILTER with an empty
+ *       argument clears the list (accept everything).
+ *
+ * \note Usage example:
+ *       CANDLELIGHT.FILTER 0x100:0x7FF
+ *       CANDLELIGHT.FILTER 0x100:0x7FF,0x200:0x7FF,0x18DAF100:0x1FFFFFFF
+ *       CANDLELIGHT.FILTER
+ *
+ * \param[in] args  comma-separated list of <id>:<mask> pairs (any number), or empty to clear
+ *
+ * \return true on success, false on parse error
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CandlelightPlugin::m_CANDLELIGHT_FILTER (const std::string &args, std::stop_token st) const
+bool CandlelightPlugin::m_CANDLELIGHT_FILTER(const std::string &args, std::stop_token st) const
 {
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
-    if (false == m_ParseFilters(args))
-    {
+    if (false == m_ParseFilters(args)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(args));
         return false;
     }
@@ -251,26 +242,25 @@ bool CandlelightPlugin::m_CANDLELIGHT_FILTER (const std::string &args, std::stop
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation; execute a single send/receive operation over Candlelight.
-  *
-  * \note The USB device is opened, bit timing/mode/filters are pushed and the CAN channel is
-  *       opened for the duration of the call; everything is closed automatically on return
-  *       (RAII, via Candlelight's destructor — see m_OpenAndConfigure).
-  *
-  * \note Usage example:
-  *       CANDLELIGHT.CMD > H\"AABBCCDD\" | H\"06\"
-  *       CANDLELIGHT.CMD < \"Ready\" | \"Go!\"
-  *
-  * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CMD command implementation; execute a single send/receive operation over Candlelight.
+ *
+ * \note The USB device is opened, bit timing/mode/filters are pushed and the CAN channel is
+ *       opened for the duration of the call; everything is closed automatically on return
+ *       (RAII, via Candlelight's destructor — see m_OpenAndConfigure).
+ *
+ * \note Usage example:
+ *       CANDLELIGHT.CMD > H\"AABBCCDD\" | H\"06\"
+ *       CANDLELIGHT.CMD < \"Ready\" | \"Go!\"
+ *
+ * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CandlelightPlugin::m_CANDLELIGHT_CMD (const std::string &args, std::stop_token st) const
+bool CandlelightPlugin::m_CANDLELIGHT_CMD(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
@@ -290,31 +280,31 @@ bool CandlelightPlugin::m_CANDLELIGHT_CMD (const std::string &args, std::stop_to
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_read(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation; execute a multi-command script file over Candlelight.
-  *
-  * \note The Candlelight channel is opened once for the lifetime of the script and closed on return.
-  *       Blank lines and lines starting with '#' are skipped. Execution stops at the first
-  *       failing line, or immediately if a stop is requested via the stop_token.
-  *
-  * \note Usage example:
-  *       CANDLELIGHT.SCRIPT obd_sequence.txt
-  *       CANDLELIGHT.SCRIPT uds_session.txt 10
-  *
-  * \param[in] args  filename [delay_ms]
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief SCRIPT command implementation; execute a multi-command script file over Candlelight.
+ *
+ * \note The Candlelight channel is opened once for the lifetime of the script and closed on return.
+ *       Blank lines and lines starting with '#' are skipped. Execution stops at the first
+ *       failing line, or immediately if a stop is requested via the stop_token.
+ *
+ * \note Usage example:
+ *       CANDLELIGHT.SCRIPT obd_sequence.txt
+ *       CANDLELIGHT.SCRIPT uds_session.txt 10
+ *
+ * \param[in] args  filename [delay_ms]
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CandlelightPlugin::m_CANDLELIGHT_SCRIPT (const std::string &args, std::stop_token st) const
+bool CandlelightPlugin::m_CANDLELIGHT_SCRIPT(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
@@ -328,37 +318,37 @@ bool CandlelightPlugin::m_CANDLELIGHT_SCRIPT (const std::string &args, std::stop
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_read(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic Candlelight messages.
-  *
-  * \note The Candlelight channel is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). Each entry's optional "id" is the CAN id (decimal or
-  *       0x-hex, same syntax CandlelightFrameDriver::tout_write()'s xtra_params already accepts — an
-  *       empty id falls back to the TX id set via CONFIG) and "val" is the payload as a plain
-  *       hex string (e.g. "AABBCCDD").
-  *
-  * \note This bypasses TP-segmented transport on purpose — same rationale as KVCAN's CYCLIC: a
-  *       cyclic message is by definition a single, self-contained frame per tick.
-  *
-  * \note Usage example:
-  *       CANDLELIGHT.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
-  *       CANDLELIGHT.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic Candlelight messages.
+ *
+ * \note The Candlelight channel is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). Each entry's optional "id" is the CAN id (decimal or
+ *       0x-hex, same syntax CandlelightFrameDriver::tout_write()'s xtra_params already accepts — an
+ *       empty id falls back to the TX id set via CONFIG) and "val" is the payload as a plain
+ *       hex string (e.g. "AABBCCDD").
+ *
+ * \note This bypasses TP-segmented transport on purpose — same rationale as KVCAN's CYCLIC: a
+ *       cyclic message is by definition a single, self-contained frame per tick.
+ *
+ * \note Usage example:
+ *       CANDLELIGHT.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
+ *       CANDLELIGHT.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CandlelightPlugin::m_CANDLELIGHT_CYCLIC (const std::string &args, std::stop_token st) const
+bool CandlelightPlugin::m_CANDLELIGHT_CYCLIC(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
@@ -375,13 +365,13 @@ bool CandlelightPlugin::m_CANDLELIGHT_CYCLIC (const std::string &args, std::stop
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse a comma-separated "<id>:<mask>" filter string into the software filter list.
-  *        Both id and mask fields accept decimal or 0x-prefixed hex values.
-  *        Example: "0x100:0x7FF,0x200:0x7FF,0x18DAF100:0x1FFFFFFF"
-*/
+ * \brief Parse a comma-separated "<id>:<mask>" filter string into the software filter list.
+ *        Both id and mask fields accept decimal or 0x-prefixed hex values.
+ *        Example: "0x100:0x7FF,0x200:0x7FF,0x18DAF100:0x1FFFFFFF"
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CandlelightPlugin::m_ParseFilters(const std::string& strFilters) const
+bool CandlelightPlugin::m_ParseFilters(const std::string &strFilters) const
 {
     // SocketCAN-style frame-ID flag bit, reused here only to recognise an
     // explicitly-flagged extended id — Candlelight's software filter entries
@@ -402,8 +392,7 @@ bool CandlelightPlugin::m_ParseFilters(const std::string& strFilters) const
     std::vector<std::string> vstrEntries;
     ustring::tokenize(strFilters, ',', vstrEntries);
 
-    for (const auto& strEntry : vstrEntries)
-    {
+    for (const auto &strEntry : vstrEntries) {
         // Split each entry on ':' to separate id from mask
         std::vector<std::string> vstrParts;
         ustring::tokenize(strEntry, ':', vstrParts);
@@ -442,22 +431,21 @@ bool CandlelightPlugin::m_ParseFilters(const std::string& strFilters) const
 
         CandlelightFrameDriver::FilterEntry entry{};
         entry.is_extended = bExtended;
-        entry.id           = u32Id   & (bExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
-        entry.mask         = u32Mask & (bExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
+        entry.id          = u32Id & (bExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
+        entry.mask        = u32Mask & (bExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
         m_vecFilters.push_back(entry);
     }
 
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Open the USB device, push bit timing / mode while the channel is closed (the
-  *        adapter rejects those commands otherwise — see uCandlelight.cpp's
-  *        set_bittiming()/set_data_bittiming() INVALID_PARAM checks), install the software
-  *        filter list, then open the CAN channel itself.
-*/
+ * \brief Open the USB device, push bit timing / mode while the channel is closed (the
+ *        adapter rejects those commands otherwise — see uCandlelight.cpp's
+ *        set_bittiming()/set_data_bittiming() INVALID_PARAM checks), install the software
+ *        filter list, then open the CAN channel itself.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
 std::shared_ptr<CandlelightFrameDriver> CandlelightPlugin::m_OpenAndConfigure(void) const
@@ -485,7 +473,7 @@ std::shared_ptr<CandlelightFrameDriver> CandlelightPlugin::m_OpenAndConfigure(vo
     // bitrate/sample-point calculator — see setCanPropSeg() etc.'s doc comment.
     if (true == m_bRawTimingSet) {
         if (ICommDriver::Status::SUCCESS != shpDriver->set_bittiming(
-                m_u32PropSeg, m_u32PhaseSeg1, m_u32PhaseSeg2, m_u32Sjw, m_u32Brp, m_u32WriteTimeout)) {
+                                                m_u32PropSeg, m_u32PhaseSeg1, m_u32PhaseSeg2, m_u32Sjw, m_u32Brp, m_u32WriteTimeout)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to set raw CAN bit timing"));
             return nullptr;
         }

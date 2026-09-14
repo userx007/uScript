@@ -46,6 +46,7 @@
  * is called anywhere in slcan_plugin/.
  */
 #include "uSlcan.hpp"
+
 #include "uLogger.hpp"
 #include "uUart.hpp"
 
@@ -61,39 +62,53 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "SLCAN_DRV   |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "SLCAN_DRV   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // DLC ↔ length tables  (CAN-FD ISO 11898-1)
 // ============================================================================
 
 static constexpr std::array<uint8_t, 16> DLC_TO_LEN_TABLE = {
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64
-};
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64};
 
 uint8_t SLCAN::dlc_to_len(uint8_t dlc)
 {
-    if (dlc >= DLC_TO_LEN_TABLE.size()) return 64;
+    if (dlc >= DLC_TO_LEN_TABLE.size()) {
+        return 64;
+    }
     return DLC_TO_LEN_TABLE[dlc];
 }
 
 uint8_t SLCAN::len_to_dlc(uint8_t len)
 {
-    if (len <= 8)  return len;
-    if (len <= 12) return 9;
-    if (len <= 16) return 10;
-    if (len <= 20) return 11;
-    if (len <= 24) return 12;
-    if (len <= 32) return 13;
-    if (len <= 48) return 14;
+    if (len <= 8) {
+        return len;
+    }
+    if (len <= 12) {
+        return 9;
+    }
+    if (len <= 16) {
+        return 10;
+    }
+    if (len <= 20) {
+        return 11;
+    }
+    if (len <= 24) {
+        return 12;
+    }
+    if (len <= 32) {
+        return 13;
+    }
+    if (len <= 48) {
+        return 14;
+    }
     return 15;
 }
 
@@ -108,14 +123,20 @@ static inline char nibble_to_hex(uint8_t v)
 
 static inline int hex_to_nibble(char c)
 {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
-    if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    }
+    if (c >= 'A' && c <= 'F') {
+        return 10 + (c - 'A');
+    }
+    if (c >= 'a' && c <= 'f') {
+        return 10 + (c - 'a');
+    }
     return -1;
 }
 
 /** Write @p digits hex characters representing the lower bits of @p value into @p buf. */
-static size_t write_hex(uint8_t* buf, uint32_t value, int digits)
+static size_t write_hex(uint8_t *buf, uint32_t value, int digits)
 {
     for (int i = digits - 1; i >= 0; --i) {
         buf[i] = static_cast<uint8_t>(nibble_to_hex(value & 0x0F));
@@ -125,12 +146,14 @@ static size_t write_hex(uint8_t* buf, uint32_t value, int digits)
 }
 
 /** Parse @p digits hex characters from @p src into @p out; returns false on bad char. */
-static bool read_hex(const uint8_t* src, int digits, uint32_t& out)
+static bool read_hex(const uint8_t *src, int digits, uint32_t &out)
 {
     out = 0;
     for (int i = 0; i < digits; ++i) {
         int n = hex_to_nibble(static_cast<char>(src[i]));
-        if (n < 0) return false;
+        if (n < 0) {
+            return false;
+        }
         out = (out << 4) | static_cast<uint32_t>(n);
     }
     return true;
@@ -140,7 +163,7 @@ static bool read_hex(const uint8_t* src, int digits, uint32_t& out)
 // Construction / destruction
 // ============================================================================
 
-SLCAN::SLCAN(const std::string& device, uint32_t speed, const std::string& strIdentityLabel)
+SLCAN::SLCAN(const std::string &device, uint32_t speed, const std::string &strIdentityLabel)
     : m_uart(std::make_shared<UART>())
     , m_strIdentityLabel(strIdentityLabel)
 {
@@ -159,7 +182,7 @@ SLCAN::~SLCAN()
 // Port management
 // ============================================================================
 
-ICommDriver::Status SLCAN::open(const std::string& device, uint32_t speed)
+ICommDriver::Status SLCAN::open(const std::string &device, uint32_t speed)
 {
     if (!m_uart) {
         m_uart = std::make_shared<UART>();
@@ -173,7 +196,9 @@ ICommDriver::Status SLCAN::open(const std::string& device, uint32_t speed)
 
 ICommDriver::Status SLCAN::close()
 {
-    if (!m_uart) return Status::SUCCESS;
+    if (!m_uart) {
+        return Status::SUCCESS;
+    }
     return m_uart->close();
 }
 
@@ -186,7 +211,7 @@ bool SLCAN::is_open() const
 // Internal UART helpers
 // ============================================================================
 
-ICommDriver::Status SLCAN::uart_write(const uint8_t* data, size_t len, uint32_t timeout_ms, std::stop_token stop_tok) const
+ICommDriver::Status SLCAN::uart_write(const uint8_t *data, size_t len, uint32_t timeout_ms, std::stop_token stop_tok) const
 {
     if (!m_uart || !m_uart->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("uart_write: port not open"));
@@ -199,8 +224,8 @@ ICommDriver::Status SLCAN::uart_write(const uint8_t* data, size_t len, uint32_t 
     return res.status;
 }
 
-ICommDriver::Status SLCAN::uart_read_line(uint8_t* buf, size_t buf_size,
-                                           size_t& out_len, uint32_t timeout_ms, std::stop_token stop_tok) const
+ICommDriver::Status SLCAN::uart_read_line(uint8_t *buf, size_t buf_size,
+                                          size_t &out_len, uint32_t timeout_ms, std::stop_token stop_tok) const
 {
     if (!m_uart || !m_uart->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("uart_read_line: port not open"));
@@ -211,10 +236,10 @@ ICommDriver::Status SLCAN::uart_read_line(uint8_t* buf, size_t buf_size,
     opts.mode      = ReadMode::UntilDelimiter;
     opts.delimiter = SLCAN_CR;
 
-    auto res = m_uart->tout_read(timeout_ms,
-                                  std::span<uint8_t>(buf, buf_size),
-                                  opts, {}, stop_tok);
-    out_len = res.bytes_read;
+    auto res       = m_uart->tout_read(timeout_ms,
+                                       std::span<uint8_t>(buf, buf_size),
+                                       opts, {}, stop_tok);
+    out_len        = res.bytes_read;
     return res.status;
 }
 
@@ -236,18 +261,20 @@ ICommDriver::Status SLCAN::send_command(std::string_view cmd, uint32_t timeout_m
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CMD >> "); LOG_STRING(std::string(cmd).c_str()));
 
     Status s = uart_write(tx.data(), cmd.size() + 1, timeout_ms);
-    if (s != Status::SUCCESS) return s;
+    if (s != Status::SUCCESS) {
+        return s;
+    }
 
     // Read one-byte ACK: CR (success) or BEL (failure)
     // The adapter echoes CR on success, 0x07 on failure.
     // We read until delimiter=CR or a single-byte read.
     uint8_t ack = 0;
-    size_t  got = 0;
+    size_t got  = 0;
     ReadOptions ro;
     ro.mode      = ReadMode::Exact;
     ro.delimiter = SLCAN_CR;
-    auto res = m_uart->tout_read(timeout_ms, std::span<uint8_t>(&ack, 1), ro);
-    got = res.bytes_read;
+    auto res     = m_uart->tout_read(timeout_ms, std::span<uint8_t>(&ack, 1), ro);
+    got          = res.bytes_read;
 
     if (res.status != Status::SUCCESS || got == 0) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("ACK read failed: "); LOG_STRING(to_string(res.status).c_str()));
@@ -266,23 +293,29 @@ ICommDriver::Status SLCAN::send_command(std::string_view cmd, uint32_t timeout_m
 // send_command_get_response  — write cmd+CR and read text back until CR
 // ============================================================================
 
-ICommDriver::Status SLCAN::send_command_get_response(std::string_view cmd, std::string& resp,
-                                                      uint32_t timeout_ms)
+ICommDriver::Status SLCAN::send_command_get_response(std::string_view cmd, std::string &resp,
+                                                     uint32_t timeout_ms)
 {
     std::array<uint8_t, 64> tx{};
-    if (cmd.size() + 1 > tx.size()) return Status::INVALID_PARAM;
+    if (cmd.size() + 1 > tx.size()) {
+        return Status::INVALID_PARAM;
+    }
     std::memcpy(tx.data(), cmd.data(), cmd.size());
     tx[cmd.size()] = SLCAN_CR;
 
-    Status s = uart_write(tx.data(), cmd.size() + 1, timeout_ms);
-    if (s != Status::SUCCESS) return s;
+    Status s       = uart_write(tx.data(), cmd.size() + 1, timeout_ms);
+    if (s != Status::SUCCESS) {
+        return s;
+    }
 
     std::array<uint8_t, 128> rx{};
     size_t got = 0;
-    s = uart_read_line(rx.data(), rx.size(), got, timeout_ms);
-    if (s != Status::SUCCESS) return s;
+    s          = uart_read_line(rx.data(), rx.size(), got, timeout_ms);
+    if (s != Status::SUCCESS) {
+        return s;
+    }
 
-    resp.assign(reinterpret_cast<char*>(rx.data()), got);
+    resp.assign(reinterpret_cast<char *>(rx.data()), got);
     return Status::SUCCESS;
 }
 
@@ -306,7 +339,7 @@ ICommDriver::Status SLCAN::set_bitrate(CanBitrate rate, uint32_t timeout_ms)
 }
 
 ICommDriver::Status SLCAN::set_bitrate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
-                                               uint32_t timeout_ms)
+                                              uint32_t timeout_ms)
 {
     if (m_channel_open) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("set_bitrate_custom called with channel open"));
@@ -332,7 +365,7 @@ ICommDriver::Status SLCAN::set_fd_data_rate(CanFdDataRate rate, uint32_t timeout
 }
 
 ICommDriver::Status SLCAN::set_fd_data_rate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
-                                                    uint32_t timeout_ms)
+                                                   uint32_t timeout_ms)
 {
     if (m_channel_open) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("set_fd_data_rate_custom called with channel open"));
@@ -446,9 +479,9 @@ ICommDriver::Status SLCAN::close_channel(uint32_t timeout_ms)
     // send_command(). This also means a truly bad/rejected Close cannot be
     // distinguished from a good one at the protocol level — same limitation
     // every other SLCAN host implementation has.
-    std::array<uint8_t, 2> tx{ static_cast<uint8_t>('C'), SLCAN_CR };
-    Status s = uart_write(tx.data(), tx.size(), timeout_ms);
-    m_channel_open = false;   // mark closed even on error to avoid loops
+    std::array<uint8_t, 2> tx{static_cast<uint8_t>('C'), SLCAN_CR};
+    Status s       = uart_write(tx.data(), tx.size(), timeout_ms);
+    m_channel_open = false; // mark closed even on error to avoid loops
     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CAN channel closed"));
     return s;
 }
@@ -457,12 +490,12 @@ ICommDriver::Status SLCAN::close_channel(uint32_t timeout_ms)
 // Diagnostic queries
 // ============================================================================
 
-ICommDriver::Status SLCAN::get_version(std::string& version, uint32_t timeout_ms)
+ICommDriver::Status SLCAN::get_version(std::string &version, uint32_t timeout_ms)
 {
     return send_command_get_response("V", version, timeout_ms);
 }
 
-ICommDriver::Status SLCAN::get_error_state(std::string& error_str, uint32_t timeout_ms)
+ICommDriver::Status SLCAN::get_error_state(std::string &error_str, uint32_t timeout_ms)
 {
     return send_command_get_response("E", error_str, timeout_ms);
 }
@@ -471,12 +504,14 @@ ICommDriver::Status SLCAN::get_error_state(std::string& error_str, uint32_t time
 // Frame encoding (static)
 // ============================================================================
 
-size_t SLCAN::encode_frame(const CanFrame& frame, std::span<uint8_t> out)
+size_t SLCAN::encode_frame(const CanFrame &frame, std::span<uint8_t> out)
 {
-    if (out.size() < SLCAN_MAX_FRAME_LEN) return 0;
+    if (out.size() < SLCAN_MAX_FRAME_LEN) {
+        return 0;
+    }
 
-    uint8_t* p = out.data();
-    size_t   n = 0;
+    uint8_t *p = out.data();
+    size_t n   = 0;
 
     // Select command character
     char cmd;
@@ -523,7 +558,7 @@ size_t SLCAN::encode_frame(const CanFrame& frame, std::span<uint8_t> out)
         uint8_t data_len = frame.is_canfd ? dlc_to_len(dlc) : frame.len;
         for (uint8_t i = 0; i < data_len; ++i) {
             p[n++] = static_cast<uint8_t>(nibble_to_hex((frame.data[i] >> 4) & 0x0F));
-            p[n++] = static_cast<uint8_t>(nibble_to_hex( frame.data[i]       & 0x0F));
+            p[n++] = static_cast<uint8_t>(nibble_to_hex(frame.data[i] & 0x0F));
         }
     }
 
@@ -535,44 +570,97 @@ size_t SLCAN::encode_frame(const CanFrame& frame, std::span<uint8_t> out)
 // Frame decoding (static)
 // ============================================================================
 
-bool SLCAN::decode_rx_frame(const uint8_t* line, size_t len, CanFrame& frame)
+bool SLCAN::decode_rx_frame(const uint8_t *line, size_t len, CanFrame &frame)
 {
-    if (!line || len < 5) return false;
+    if (!line || len < 5) {
+        return false;
+    }
 
     // Strip trailing CR / whitespace
-    while (len > 0 && (line[len-1] == '\r' || line[len-1] == '\n' || line[len-1] == 0)) {
+    while (len > 0 && (line[len - 1] == '\r' || line[len - 1] == '\n' || line[len - 1] == 0)) {
         --len;
     }
-    if (len < 4) return false;
-
-    char   cmd         = static_cast<char>(line[0]);
-    bool   is_extended = false;
-    bool   is_remote   = false;
-    bool   is_canfd    = false;
-    bool   brs         = false;
-    int    id_digits   = 0;
-
-    switch (cmd) {
-        case 't': is_extended=false; is_remote=false; is_canfd=false; id_digits=3; break;
-        case 'T': is_extended=true;  is_remote=false; is_canfd=false; id_digits=8; break;
-        case 'r': is_extended=false; is_remote=true;  is_canfd=false; id_digits=3; break;
-        case 'R': is_extended=true;  is_remote=true;  is_canfd=false; id_digits=8; break;
-        case 'd': is_extended=false; is_remote=false; is_canfd=true;  brs=false;   id_digits=3; break;
-        case 'D': is_extended=true;  is_remote=false; is_canfd=true;  brs=false;   id_digits=8; break;
-        case 'b': is_extended=false; is_remote=false; is_canfd=true;  brs=true;    id_digits=3; break;
-        case 'B': is_extended=true;  is_remote=false; is_canfd=true;  brs=true;    id_digits=8; break;
-        default:  return false;
+    if (len < 4) {
+        return false;
     }
 
-    const uint8_t* pos = line + 1;
+    char cmd         = static_cast<char>(line[0]);
+    bool is_extended = false;
+    bool is_remote   = false;
+    bool is_canfd    = false;
+    bool brs         = false;
+    int id_digits    = 0;
+
+    switch (cmd) {
+    case 't':
+        is_extended = false;
+        is_remote   = false;
+        is_canfd    = false;
+        id_digits   = 3;
+        break;
+    case 'T':
+        is_extended = true;
+        is_remote   = false;
+        is_canfd    = false;
+        id_digits   = 8;
+        break;
+    case 'r':
+        is_extended = false;
+        is_remote   = true;
+        is_canfd    = false;
+        id_digits   = 3;
+        break;
+    case 'R':
+        is_extended = true;
+        is_remote   = true;
+        is_canfd    = false;
+        id_digits   = 8;
+        break;
+    case 'd':
+        is_extended = false;
+        is_remote   = false;
+        is_canfd    = true;
+        brs         = false;
+        id_digits   = 3;
+        break;
+    case 'D':
+        is_extended = true;
+        is_remote   = false;
+        is_canfd    = true;
+        brs         = false;
+        id_digits   = 8;
+        break;
+    case 'b':
+        is_extended = false;
+        is_remote   = false;
+        is_canfd    = true;
+        brs         = true;
+        id_digits   = 3;
+        break;
+    case 'B':
+        is_extended = true;
+        is_remote   = false;
+        is_canfd    = true;
+        brs         = true;
+        id_digits   = 8;
+        break;
+    default:
+        return false;
+    }
+
+    const uint8_t *pos = line + 1;
     size_t remaining   = len - 1;
 
-    if (remaining < static_cast<size_t>(id_digits + 1)) return false;
+    if (remaining < static_cast<size_t>(id_digits + 1)) {
+        return false;
+    }
 
     // Parse ID
     uint32_t id = 0;
-    if (!read_hex(pos, id_digits, id)) return false;
-    pos       += id_digits;
+    if (!read_hex(pos, id_digits, id)) {
+        return false;
+    }
+    pos += id_digits;
     remaining -= id_digits;
 
     // Parse DLC character
@@ -596,10 +684,14 @@ bool SLCAN::decode_rx_frame(const uint8_t* line, size_t len, CanFrame& frame)
     // Parse data bytes (not for remote frames)
     std::array<uint8_t, 64> data{};
     if (!is_remote) {
-        if (remaining < static_cast<size_t>(data_len * 2)) return false;
+        if (remaining < static_cast<size_t>(data_len * 2)) {
+            return false;
+        }
         for (uint8_t i = 0; i < data_len; ++i) {
             uint32_t byte_val = 0;
-            if (!read_hex(pos, 2, byte_val)) return false;
+            if (!read_hex(pos, 2, byte_val)) {
+                return false;
+            }
             data[i] = static_cast<uint8_t>(byte_val);
             pos += 2;
         }
@@ -622,7 +714,7 @@ bool SLCAN::decode_rx_frame(const uint8_t* line, size_t len, CanFrame& frame)
 // send_frame
 // ============================================================================
 
-ICommDriver::Status SLCAN::send_frame(const CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok)
+ICommDriver::Status SLCAN::send_frame(const CanFrame &frame, uint32_t timeout_ms, std::stop_token stop_tok)
 {
     if (!m_channel_open) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("send_frame: channel not open"));
@@ -640,17 +732,19 @@ ICommDriver::Status SLCAN::send_frame(const CanFrame& frame, uint32_t timeout_ms
               LOG_STRING("TX id="); LOG_HEX32(frame.id);
               LOG_STRING(" len="); LOG_UINT8(frame.len);
               LOG_STRING(frame.is_extended ? " EXT" : " STD");
-              LOG_STRING(frame.is_canfd    ? " CANFD" : " CAN");
-              LOG_STRING(frame.brs         ? " BRS" : ""));
+              LOG_STRING(frame.is_canfd ? " CANFD" : " CAN");
+              LOG_STRING(frame.brs ? " BRS" : ""));
 
     // Write the encoded ASCII frame
     Status ws = uart_write(tx.data(), n, timeout_ms, stop_tok);
-    if (ws != Status::SUCCESS) return ws;
+    if (ws != Status::SUCCESS) {
+        return ws;
+    }
 
     // Read single ACK byte
     uint8_t ack = 0;
     ReadOptions ro;
-    ro.mode = ReadMode::Exact;
+    ro.mode  = ReadMode::Exact;
     auto res = m_uart->tout_read(timeout_ms, std::span<uint8_t>(&ack, 1), ro, {}, stop_tok);
 
     if (res.status != Status::SUCCESS || res.bytes_read == 0) {
@@ -668,12 +762,12 @@ ICommDriver::Status SLCAN::send_frame(const CanFrame& frame, uint32_t timeout_ms
 // receive_frame
 // ============================================================================
 
-ICommDriver::Status SLCAN::receive_frame(CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok)
+ICommDriver::Status SLCAN::receive_frame(CanFrame &frame, uint32_t timeout_ms, std::stop_token stop_tok)
 {
     std::array<uint8_t, SLCAN_RX_BUF_LEN> buf{};
     size_t got = 0;
 
-    Status s = uart_read_line(buf.data(), buf.size(), got, timeout_ms, stop_tok);
+    Status s   = uart_read_line(buf.data(), buf.size(), got, timeout_ms, stop_tok);
     if (s != Status::SUCCESS) {
         if (s == Status::READ_TIMEOUT) {
             return Status::READ_TIMEOUT;
@@ -691,7 +785,7 @@ ICommDriver::Status SLCAN::receive_frame(CanFrame& frame, uint32_t timeout_ms, s
               LOG_STRING("RX id="); LOG_HEX32(frame.id);
               LOG_STRING(" len="); LOG_UINT8(frame.len);
               LOG_STRING(frame.is_extended ? " EXT" : " STD");
-              LOG_STRING(frame.is_canfd    ? " CANFD" : " CAN"));
+              LOG_STRING(frame.is_canfd ? " CANFD" : " CAN"));
 
     return Status::SUCCESS;
 }
@@ -701,10 +795,10 @@ ICommDriver::Status SLCAN::receive_frame(CanFrame& frame, uint32_t timeout_ms, s
 // ============================================================================
 
 SLCAN::ReadResult SLCAN::tout_read(uint32_t u32ReadTimeout,
-                                    std::span<uint8_t> buffer,
-                                    const ReadOptions& /*options*/,
-                                    std::string_view   /*xtra_params*/,
-                                    std::stop_token /*stop_tok*/) const
+                                   std::span<uint8_t> buffer,
+                                   const ReadOptions & /*options*/,
+                                   std::string_view /*xtra_params*/,
+                                   std::stop_token /*stop_tok*/) const
 {
     ReadResult result;
 
@@ -715,20 +809,20 @@ SLCAN::ReadResult SLCAN::tout_read(uint32_t u32ReadTimeout,
 
     // Delegate: read one SLCAN line (until CR) into the caller's buffer
     ReadOptions ro;
-    ro.mode      = ReadMode::UntilDelimiter;
-    ro.delimiter = SLCAN_CR;
+    ro.mode                 = ReadMode::UntilDelimiter;
+    ro.delimiter            = SLCAN_CR;
 
-    auto res = m_uart->tout_read(u32ReadTimeout, buffer, ro);
-    result.status          = res.status;
-    result.bytes_read      = res.bytes_read;
+    auto res                = m_uart->tout_read(u32ReadTimeout, buffer, ro);
+    result.status           = res.status;
+    result.bytes_read       = res.bytes_read;
     result.found_terminator = res.found_terminator;
     return result;
 }
 
 SLCAN::WriteResult SLCAN::tout_write(uint32_t u32WriteTimeout,
-                                      std::span<const uint8_t> buffer,
-                                      std::string_view /*xtra_params*/,
-                                      std::stop_token /*stop_tok*/) const
+                                     std::span<const uint8_t> buffer,
+                                     std::string_view /*xtra_params*/,
+                                     std::stop_token /*stop_tok*/) const
 {
     WriteResult result;
 
@@ -737,7 +831,7 @@ SLCAN::WriteResult SLCAN::tout_write(uint32_t u32WriteTimeout,
         return result;
     }
 
-    auto res = m_uart->tout_write(u32WriteTimeout, buffer);
+    auto res             = m_uart->tout_write(u32WriteTimeout, buffer);
     result.status        = res.status;
     result.bytes_written = res.bytes_written;
     return result;

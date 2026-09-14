@@ -16,8 +16,9 @@ MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
             MICROSHELL CLASS DEFINITION
 ==============================================================================*/
 
-class Microshell {
-  public:
+class Microshell
+{
+public:
     static Microshell *getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt);
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     static std::shared_ptr<Microshell> getShellSharedPtr(uShellInst_s *psShellInst, const char *pstrPromptExt);
@@ -27,7 +28,7 @@ class Microshell {
     bool Execute(const char *pstrCommand);
 #endif /* (1 == uSHELL_SUPPORTS_COMMAND_AS_PARAMETER) */
 
-  private:
+private:
     Microshell(uShellInst_s *psShellInst, const char *pstrPromptExt);
     /* shell core private functions */
     static void m_Init(const char *pstrPromptExt);
@@ -204,13 +205,16 @@ class Microshell {
     static constexpr const char *m_pstrTokenSeparator = " ";
 
     /* data types related */
-#define  uSHELL_DATA_TYPES_TABLE_BEGIN      enum typemarks_e {
-#define  uSHELL_DATA_TYPE(a, b)                 uSHELL_TYPE_##a,
-#define  uSHELL_DATA_TYPES_TABLE_END        uSHELL_TYPE_LAST };
+#define uSHELL_DATA_TYPES_TABLE_BEGIN enum typemarks_e {
+#define uSHELL_DATA_TYPE(a, b)        uSHELL_TYPE_##a,
+#define uSHELL_DATA_TYPES_TABLE_END \
+    uSHELL_TYPE_LAST                \
+    }                               \
+    ;
 #include uSHELL_DATA_TYPES_CONFIG_FILE
-#undef   uSHELL_DATA_TYPES_TABLE_BEGIN
-#undef   uSHELL_DATA_TYPE
-#undef   uSHELL_DATA_TYPES_TABLE_END
+#undef uSHELL_DATA_TYPES_TABLE_BEGIN
+#undef uSHELL_DATA_TYPE
+#undef uSHELL_DATA_TYPES_TABLE_END
 
 #if (1 == uSHELL_IMPLEMENTS_COMMAND_HELP)
     static const char m_vstrTypeMarks[uSHELL_TYPE_LAST];
@@ -219,13 +223,16 @@ class Microshell {
 
     /* prompt related */
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
-#define  uSHELL_PROMPT_TABLE_BEGIN      enum prompti_e {
-#define  uSHELL_PROMPT_CELL(a, b, c)        uSHELL_PROMPTI_##a,
-#define  uSHELL_PROMPT_TABLE_END        uSHELL_PROMPTI_LAST };
+#define uSHELL_PROMPT_TABLE_BEGIN   enum prompti_e {
+#define uSHELL_PROMPT_CELL(a, b, c) uSHELL_PROMPTI_##a,
+#define uSHELL_PROMPT_TABLE_END \
+    uSHELL_PROMPTI_LAST         \
+    }                           \
+    ;
 #include uSHELL_PROMPT_CONFIG_FILE
-#undef   uSHELL_PROMPT_TABLE_BEGIN
-#undef   uSHELL_PROMPT_CELL
-#undef   uSHELL_PROMPT_TABLE_END
+#undef uSHELL_PROMPT_TABLE_BEGIN
+#undef uSHELL_PROMPT_CELL
+#undef uSHELL_PROMPT_TABLE_END
 
     static char m_pstrPrompt[uSHELL_PROMPTI_LAST + 1];
     static const char m_pstrPromptInfo[uSHELL_PROMPTI_LAST + 1];

@@ -1,34 +1,33 @@
 #include "CP2112Base.hpp"
 #include "uLogger.hpp"
 
-#include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <stdint.h>
-#include <unistd.h>
 #include <algorithm>
 #include <chrono>
 #include <compare>
 #include <cstdio>
 #include <cstring>
-#include <stop_token>
+#include <errno.h>
+#include <fcntl.h>
 #include <linux/hidraw.h>
+#include <poll.h>
+#include <stdint.h>
+#include <stop_token>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "CP2112_BASE |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "CP2112_BASE |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // CP2112Base destructor
@@ -40,7 +39,6 @@ CP2112Base::~CP2112Base()
     // don't accidentally call into a partially-destroyed subclass.
     CP2112Base::close();
 }
-
 
 // ============================================================================
 // open_device  — enumerate /dev/hidraw* and open the n-th CP2112
@@ -72,13 +70,12 @@ CP2112Base::Status CP2112Base::open_device(uint8_t u8DeviceIndex)
         return Status::PORT_ACCESS;
     }
 
-    if (static_cast<uint16_t>(info.vendor)  != CP2112_VID ||
-        static_cast<uint16_t>(info.product) != CP2112_PID)
-    {
+    if (static_cast<uint16_t>(info.vendor) != CP2112_VID ||
+        static_cast<uint16_t>(info.product) != CP2112_PID) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Device at"); LOG_STRING(path);
                   LOG_STRING("is not CP2112: VID ="); LOG_HEX16(info.vendor);
-                  LOG_STRING("PID =");                LOG_HEX16(info.product));
+                  LOG_STRING("PID ="); LOG_HEX16(info.product));
         ::close(fd);
         return Status::PORT_ACCESS;
     }
@@ -86,7 +83,7 @@ CP2112Base::Status CP2112Base::open_device(uint8_t u8DeviceIndex)
     m_hDevice = fd;
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("CP2112 opened: fd ="); LOG_INT(m_hDevice);
-              LOG_STRING("hidraw =");            LOG_UINT8(u8DeviceIndex));
+              LOG_STRING("hidraw ="); LOG_UINT8(u8DeviceIndex));
     return Status::SUCCESS;
 }
 
@@ -104,7 +101,6 @@ CP2112Base::Status CP2112Base::close()
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // is_open
 // ============================================================================
@@ -118,12 +114,11 @@ bool CP2112Base::is_open() const
     return true;
 }
 
-
 // ============================================================================
 // HID primitives
 // ============================================================================
 
-CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t* buf, size_t len) const
+CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t *buf, size_t len) const
 {
     if (!buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
@@ -141,8 +136,7 @@ CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t* buf, size_t len) c
     return Status::SUCCESS;
 }
 
-
-CP2112Base::Status CP2112Base::hid_get_feature(uint8_t* buf, size_t len) const
+CP2112Base::Status CP2112Base::hid_get_feature(uint8_t *buf, size_t len) const
 {
     if (!buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
@@ -160,8 +154,7 @@ CP2112Base::Status CP2112Base::hid_get_feature(uint8_t* buf, size_t len) const
     return Status::SUCCESS;
 }
 
-
-CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t* buf, size_t len) const
+CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t *buf, size_t len) const
 {
     if (!buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
@@ -183,11 +176,10 @@ CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t* buf, size_t le
     return Status::SUCCESS;
 }
 
-
-CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t* buf, size_t len,
-                                                   uint32_t timeoutMs,
-                                                   size_t& bytesRead,
-                                                   std::stop_token stop_tok) const
+CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t *buf, size_t len,
+                                                  uint32_t timeoutMs,
+                                                  size_t &bytesRead,
+                                                  std::stop_token stop_tok) const
 {
     if (!buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
@@ -196,17 +188,17 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t* buf, size_t len,
     bytesRead = 0;
 
     struct pollfd pfd;
-    pfd.fd      = m_hDevice;
-    pfd.events  = POLLIN;
-    pfd.revents = 0;
+    pfd.fd                     = m_hDevice;
+    pfd.events                 = POLLIN;
+    pfd.revents                = 0;
 
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite = (timeoutMs == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite       = (timeoutMs == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
-    int pollRet = 0;
+    int pollRet                = 0;
     while (true) {
         if (stop_tok.stop_requested()) {
             return Status::READ_TIMEOUT;
@@ -219,7 +211,7 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t* buf, size_t len,
                 return Status::READ_TIMEOUT;
             }
             pollSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                             std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         pollRet = poll(&pfd, 1, pollSliceMs);

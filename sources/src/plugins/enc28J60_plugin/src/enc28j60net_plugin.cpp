@@ -1,5 +1,6 @@
-#include "PluginExport.hpp"
 #include "enc28j60net_plugin.hpp"
+
+#include "PluginExport.hpp"
 #include "enc28j60net_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -20,27 +21,25 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED Enc28J60NetPlugin *pluginEntry()
 {
-    EXPORTED Enc28J60NetPlugin* pluginEntry()
-    {
-        return new Enc28J60NetPlugin();
-    }
+    return new Enc28J60NetPlugin();
+}
 
-    EXPORTED void pluginExit( Enc28J60NetPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(Enc28J60NetPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 // Driver factory
 /////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<Enc28J60Net> Enc28J60NetPlugin::m_OpenDriver (void) const
+std::shared_ptr<Enc28J60Net> Enc28J60NetPlugin::m_OpenDriver(void) const
 {
     if (m_strServerIp.empty() || m_u16ServerPort == 0U) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Server IP/Port not configured"));
@@ -63,20 +62,18 @@ std::shared_ptr<Enc28J60Net> Enc28J60NetPlugin::m_OpenDriver (void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string& args, std::stop_token st) const
+bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -122,18 +119,17 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string& args, std::stop_to
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
-bool Enc28J60NetPlugin::m_ENC28J60NET_CONFIG(const std::string& args, std::stop_token st) const
+bool Enc28J60NetPlugin::m_ENC28J60NET_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
     return generic_enc28j60net_set_params(this, args);
 }
 
-bool Enc28J60NetPlugin::m_ENC28J60NET_CMD(const std::string& args, std::stop_token st) const
+bool Enc28J60NetPlugin::m_ENC28J60NET_CMD(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
@@ -145,7 +141,7 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_CMD(const std::string& args, std::stop_tok
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string& args, std::stop_token st) const
+bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
@@ -157,27 +153,26 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string& args, std::stop_
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic ENC28J60NET messages.
-  *
-  * \note The connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). ENC28J60NET is a single-peer stream with no
-  *       addressable channels, so each entry's optional "id" is never sent on the wire — omit
-  *       it — and "val" is the payload as a plain hex string (e.g. "AABBCCDD").
-  *
-  * \note Usage example:
-  *       ENC28J60NET.CYCLIC 100 AABBCCDD, 250 06
-  *       ENC28J60NET.CYCLIC 100 AABBCCDD, 250 06 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic ENC28J60NET messages.
+ *
+ * \note The connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). ENC28J60NET is a single-peer stream with no
+ *       addressable channels, so each entry's optional "id" is never sent on the wire — omit
+ *       it — and "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+ *
+ * \note Usage example:
+ *       ENC28J60NET.CYCLIC 100 AABBCCDD, 250 06
+ *       ENC28J60NET.CYCLIC 100 AABBCCDD, 250 06 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool Enc28J60NetPlugin::m_ENC28J60NET_CYCLIC(const std::string& args, std::stop_token st) const
+bool Enc28J60NetPlugin::m_ENC28J60NET_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 

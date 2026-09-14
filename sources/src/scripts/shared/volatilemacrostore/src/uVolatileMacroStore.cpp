@@ -1,7 +1,6 @@
 #include "uVolatileMacroStore.hpp"
 
-namespace uvolatile
-{
+namespace uvolatile {
 
 // Exactly one definition process-wide: this translation unit is compiled
 // into the uVolatileMacroStore SHARED library (see CMakeLists.txt next to
@@ -13,7 +12,7 @@ namespace uvolatile
 // links against this same .so, so they all get the same function-local
 // static below instead of each image growing its own private copy. See the
 // header's rationale comment for the full "why" of this split.
-VolatileMacroStore& VolatileMacroStore::instance()
+VolatileMacroStore &VolatileMacroStore::instance()
 {
     static VolatileMacroStore sInstance;
     return sInstance;

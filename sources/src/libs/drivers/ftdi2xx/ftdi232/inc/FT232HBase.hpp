@@ -3,9 +3,9 @@
 
 #include "ICommDriver.hpp"
 
-#include <stop_token>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
+#include <stop_token>
 #include <string>
 #include <vector>
 
@@ -44,111 +44,109 @@
  */
 class FT232HBase
 {
-    public:
+public:
+    using Status                                           = ICommDriver::Status;
 
-        using Status = ICommDriver::Status;
+    // ── Device identity ──────────────────────────────────────────────────
+    static constexpr uint16_t FT232H_VID                   = 0x0403u; ///< FTDI VID (all variants)
+    static constexpr uint16_t FT232H_PID                   = 0x6014u; ///< FT232H PID
 
-        // ── Device identity ──────────────────────────────────────────────────
-        static constexpr uint16_t FT232H_VID = 0x0403u; ///< FTDI VID (all variants)
-        static constexpr uint16_t FT232H_PID = 0x6014u; ///< FT232H PID
+    // ── Timeouts ─────────────────────────────────────────────────────────
+    static constexpr uint32_t FT232H_READ_DEFAULT_TIMEOUT  = 5000u; ///< ms
+    static constexpr uint32_t FT232H_WRITE_DEFAULT_TIMEOUT = 5000u; ///< ms
 
-        // ── Timeouts ─────────────────────────────────────────────────────────
-        static constexpr uint32_t FT232H_READ_DEFAULT_TIMEOUT  = 5000u; ///< ms
-        static constexpr uint32_t FT232H_WRITE_DEFAULT_TIMEOUT = 5000u; ///< ms
+    FT232HBase()                                           = default;
+    virtual ~FT232HBase();
 
-        FT232HBase() = default;
-        virtual ~FT232HBase();
+    // Non-copyable
+    FT232HBase(const FT232HBase &)            = delete;
+    FT232HBase &operator=(const FT232HBase &) = delete;
 
-        // Non-copyable
-        FT232HBase(const FT232HBase&)            = delete;
-        FT232HBase& operator=(const FT232HBase&) = delete;
+    /** True if the device handle is open and ready */
+    bool is_open() const;
 
-        /** True if the device handle is open and ready */
-        bool is_open() const;
+    /**
+     * @brief Close the device handle
+     *
+     * Safe to call more than once. Subclasses that need pre-close cleanup
+     * should override this, perform their cleanup, then call
+     * FT232HBase::close().
+     */
+    virtual Status close();
 
-        /**
-         * @brief Close the device handle
-         *
-         * Safe to call more than once. Subclasses that need pre-close cleanup
-         * should override this, perform their cleanup, then call
-         * FT232HBase::close().
-         */
-        virtual Status close();
+protected:
+    std::string m_strIdentityLabel; ///< GUI comm-dump display label; set by the concrete
+                                    ///< sibling's constructor (I2C/SPI), see describeConnection()
 
-    protected:
+    /** @copydoc FT2232Base::describeBase — single-channel, so no variant suffix. */
+    CommDetails describeBase(CommFamily family) const
+    {
+        return commdump_details(family, m_strIdentityLabel.empty() ? "FT232H" : m_strIdentityLabel);
+    }
 
-        std::string m_strIdentityLabel;   ///< GUI comm-dump display label; set by the concrete
-                                           ///< sibling's constructor (I2C/SPI), see describeConnection()
+    // ── MPSSE command opcodes ────────────────────────────────────────────
+    //
+    // Source: FTDI AN_108 — Command Processor for MPSSE and MCU Host Bus
+    //
+    static constexpr uint8_t MPSSE_SET_BITS_LOW   = 0x80u; ///< Set ADBUS[7:0] value+direction
+    static constexpr uint8_t MPSSE_GET_BITS_LOW   = 0x81u; ///< Read ADBUS[7:0] → 1 byte
+    static constexpr uint8_t MPSSE_SET_BITS_HIGH  = 0x82u; ///< Set ACBUS[7:0] value+direction
+    static constexpr uint8_t MPSSE_GET_BITS_HIGH  = 0x83u; ///< Read ACBUS[7:0] → 1 byte
+    static constexpr uint8_t MPSSE_LOOPBACK_OFF   = 0x85u; ///< Disable internal loopback
+    static constexpr uint8_t MPSSE_SET_CLK_DIV    = 0x86u; ///< Set TCK divisor (2 bytes follow)
+    static constexpr uint8_t MPSSE_SEND_IMMEDIATE = 0x87u; ///< Flush MPSSE TX buffer to USB
+    static constexpr uint8_t MPSSE_DIS_DIV5       = 0x8Au; ///< Select 60 MHz base clock
+    static constexpr uint8_t MPSSE_EN_DIV5        = 0x8Bu; ///< Select 12 MHz base clock (unused)
+    static constexpr uint8_t MPSSE_EN_3PHASE      = 0x8Cu; ///< Enable  3-phase clocking (I²C)
+    static constexpr uint8_t MPSSE_DIS_3PHASE     = 0x8Du; ///< Disable 3-phase clocking
+    static constexpr uint8_t MPSSE_DIS_ADAPTIVE   = 0x97u; ///< Disable adaptive clocking
 
-        /** @copydoc FT2232Base::describeBase — single-channel, so no variant suffix. */
-        CommDetails describeBase(CommFamily family) const
-        {
-            return commdump_details(family, m_strIdentityLabel.empty() ? "FT232H" : m_strIdentityLabel);
-        }
+    // ── MPSSE SPI serial shift commands (AN_108 §3.3) ───────────────────
+    static constexpr uint8_t MPSSE_SPI_WRITE_NRE  = 0x11u; ///< Write, -ve edge out (Modes 0/3)
+    static constexpr uint8_t MPSSE_SPI_WRITE_PRE  = 0x10u; ///< Write, +ve edge out (Modes 1/2)
+    static constexpr uint8_t MPSSE_SPI_READ_PRE   = 0x20u; ///< Read,  +ve edge in  (Modes 0/3)
+    static constexpr uint8_t MPSSE_SPI_READ_NRE   = 0x24u; ///< Read,  -ve edge in  (Modes 1/2)
+    static constexpr uint8_t MPSSE_SPI_XFER_NRE   = 0x31u; ///< Full-duplex (Modes 0/3)
+    static constexpr uint8_t MPSSE_SPI_XFER_PRE   = 0x34u; ///< Full-duplex (Modes 1/2)
 
-        // ── MPSSE command opcodes ────────────────────────────────────────────
-        //
-        // Source: FTDI AN_108 — Command Processor for MPSSE and MCU Host Bus
-        //
-        static constexpr uint8_t MPSSE_SET_BITS_LOW   = 0x80u; ///< Set ADBUS[7:0] value+direction
-        static constexpr uint8_t MPSSE_GET_BITS_LOW   = 0x81u; ///< Read ADBUS[7:0] → 1 byte
-        static constexpr uint8_t MPSSE_SET_BITS_HIGH  = 0x82u; ///< Set ACBUS[7:0] value+direction
-        static constexpr uint8_t MPSSE_GET_BITS_HIGH  = 0x83u; ///< Read ACBUS[7:0] → 1 byte
-        static constexpr uint8_t MPSSE_LOOPBACK_OFF   = 0x85u; ///< Disable internal loopback
-        static constexpr uint8_t MPSSE_SET_CLK_DIV    = 0x86u; ///< Set TCK divisor (2 bytes follow)
-        static constexpr uint8_t MPSSE_SEND_IMMEDIATE = 0x87u; ///< Flush MPSSE TX buffer to USB
-        static constexpr uint8_t MPSSE_DIS_DIV5       = 0x8Au; ///< Select 60 MHz base clock
-        static constexpr uint8_t MPSSE_EN_DIV5        = 0x8Bu; ///< Select 12 MHz base clock (unused)
-        static constexpr uint8_t MPSSE_EN_3PHASE      = 0x8Cu; ///< Enable  3-phase clocking (I²C)
-        static constexpr uint8_t MPSSE_DIS_3PHASE     = 0x8Du; ///< Disable 3-phase clocking
-        static constexpr uint8_t MPSSE_DIS_ADAPTIVE   = 0x97u; ///< Disable adaptive clocking
+    // ── FT232H clock base ─────────────────────────────────────────────────
+    static constexpr uint32_t CLOCK_BASE_HZ       = 60000000u; ///< Always 60 MHz after DIS_DIV5
 
-        // ── MPSSE SPI serial shift commands (AN_108 §3.3) ───────────────────
-        static constexpr uint8_t MPSSE_SPI_WRITE_NRE = 0x11u; ///< Write, -ve edge out (Modes 0/3)
-        static constexpr uint8_t MPSSE_SPI_WRITE_PRE = 0x10u; ///< Write, +ve edge out (Modes 1/2)
-        static constexpr uint8_t MPSSE_SPI_READ_PRE  = 0x20u; ///< Read,  +ve edge in  (Modes 0/3)
-        static constexpr uint8_t MPSSE_SPI_READ_NRE  = 0x24u; ///< Read,  -ve edge in  (Modes 1/2)
-        static constexpr uint8_t MPSSE_SPI_XFER_NRE  = 0x31u; ///< Full-duplex (Modes 0/3)
-        static constexpr uint8_t MPSSE_SPI_XFER_PRE  = 0x34u; ///< Full-duplex (Modes 1/2)
+    // ── Platform device handle ────────────────────────────────────────────
+    //
+    // Stored as void* to avoid leaking libftdi1 / FTD2XX headers.
+    //   Linux   : struct ftdi_context*
+    //   Windows : FT_HANDLE  (itself a void*)
+    //
+    // nullptr means device is not open.
+    //
+    void *m_hDevice                               = nullptr;
 
-        // ── FT232H clock base ─────────────────────────────────────────────────
-        static constexpr uint32_t CLOCK_BASE_HZ = 60000000u; ///< Always 60 MHz after DIS_DIV5
+    // ── Device open ───────────────────────────────────────────────────────
 
-        // ── Platform device handle ────────────────────────────────────────────
-        //
-        // Stored as void* to avoid leaking libftdi1 / FTD2XX headers.
-        //   Linux   : struct ftdi_context*
-        //   Windows : FT_HANDLE  (itself a void*)
-        //
-        // nullptr means device is not open.
-        //
-        void* m_hDevice = nullptr;
+    /**
+     * @brief Enumerate FT232H devices and open the MPSSE handle
+     *
+     * @param u8DeviceIndex Zero-based index among connected FT232H chips
+     */
+    Status open_device(uint8_t u8DeviceIndex);
 
-        // ── Device open ───────────────────────────────────────────────────────
+    // ── MPSSE transport primitives — implemented in platform .cpp files ──
 
-        /**
-         * @brief Enumerate FT232H devices and open the MPSSE handle
-         *
-         * @param u8DeviceIndex Zero-based index among connected FT232H chips
-         */
-        Status open_device(uint8_t u8DeviceIndex);
+    /** Write raw MPSSE command bytes to the device */
+    Status mpsse_write(const uint8_t *buf, size_t len) const;
 
-        // ── MPSSE transport primitives — implemented in platform .cpp files ──
+    /**
+     * Read response bytes queued by GET_BITS / shift-in commands
+     * @param timeoutMs  ms before returning READ_TIMEOUT
+     * @param bytesRead  actual bytes received
+     */
+    Status mpsse_read(uint8_t *buf, size_t len,
+                      uint32_t timeoutMs, size_t &bytesRead,
+                      std::stop_token stop_tok = {}) const;
 
-        /** Write raw MPSSE command bytes to the device */
-        Status mpsse_write(const uint8_t* buf, size_t len) const;
-
-        /**
-         * Read response bytes queued by GET_BITS / shift-in commands
-         * @param timeoutMs  ms before returning READ_TIMEOUT
-         * @param bytesRead  actual bytes received
-         */
-        Status mpsse_read(uint8_t* buf, size_t len,
-                          uint32_t timeoutMs, size_t& bytesRead,
-                          std::stop_token stop_tok = {}) const;
-
-        /** Discard any pending bytes in the device RX/TX FIFOs */
-        Status mpsse_purge() const;
+    /** Discard any pending bytes in the device RX/TX FIFOs */
+    Status mpsse_purge() const;
 };
 
 #endif // FT232H_BASE_HPP

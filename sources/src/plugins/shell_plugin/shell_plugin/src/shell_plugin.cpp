@@ -1,4 +1,5 @@
 #include "shell_plugin.hpp"
+
 #include "uGuiNotify.hpp"
 #include "ushell_core.h"
 #include "ushell_core_datatypes.h"
@@ -12,51 +13,49 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED ShellPlugin *pluginEntry()
 {
-    EXPORTED ShellPlugin* pluginEntry()
-    {
-        return new ShellPlugin();
-    }
-
-    EXPORTED void pluginExit( ShellPlugin *ptrPlugin )
-    {
-        if (nullptr != ptrPlugin ) {
-            delete ptrPlugin;
-        }
-    }
+    return new ShellPlugin();
 }
 
+EXPORTED void pluginExit(ShellPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
+    }
+}
+}
 
 ///////////////////////////////////////////////////////////////////
 //                          COMMAND HANDLERS                     //
 ///////////////////////////////////////////////////////////////////
 
 /**
-  * \brief RUN command implementation; launches an interactive shell session.
-  *        The session blocks until the user exits the shell.
-  *
-  * \note Usage example: <br>
-  *       SHELL.RUN
-  *
-  * \param[in] args unused (no arguments expected)
-  *
-  * \return true if succeeded, false otherwise
-*/
+ * \brief RUN command implementation; launches an interactive shell session.
+ *        The session blocks until the user exits the shell.
+ *
+ * \note Usage example: <br>
+ *       SHELL.RUN
+ *
+ * \param[in] args unused (no arguments expected)
+ *
+ * \return true if succeeded, false otherwise
+ */
 
-bool ShellPlugin::m_Shell_RUN( const std::string &args , std::stop_token st ) const
+bool ShellPlugin::m_Shell_RUN(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
 
-        if (!args.empty() ) {
+        if (!args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled ) {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -89,41 +88,38 @@ bool ShellPlugin::m_Shell_RUN( const std::string &args , std::stop_token st ) co
         // implementation here..
         bRetVal = true;
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
-
 }
 
-
-
 /**
-  * \brief INFO command implementation; shows details about plugin and
-  *        describe the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if the plugin initialization fails
-  *
-  * \note Usage example: <br>
-  *       SHELL.INFO
-  *
-  * \param[in] pstrArgs NULL (NULL means that no arguments are provided to this function)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about plugin and
+ *        describe the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if the plugin initialization fails
+ *
+ * \note Usage example: <br>
+ *       SHELL.INFO
+ *
+ * \param[in] pstrArgs NULL (NULL means that no arguments are provided to this function)
+ *
+ * \return true on success, false otherwise
+ */
 
-bool ShellPlugin::m_Shell_INFO ( const std::string &args , std::stop_token st ) const
+bool ShellPlugin::m_Shell_INFO(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
 
         // expected no arguments
-        if (!args.empty() ) {
+        if (!args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled ) {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -140,10 +136,7 @@ bool ShellPlugin::m_Shell_INFO ( const std::string &args , std::stop_token st ) 
 
         bRetVal = true;
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
-
 }
-
-

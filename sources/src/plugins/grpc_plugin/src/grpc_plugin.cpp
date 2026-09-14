@@ -1,4 +1,5 @@
 #include "grpc_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
 #include "private/grpc_setup.hpp"
@@ -17,22 +18,20 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
-  * \brief The plugin's entry points
-*/
-extern "C"
+ * \brief The plugin's entry points
+ */
+extern "C" {
+EXPORTED GrpcPlugin *pluginEntry()
 {
-    EXPORTED GrpcPlugin* pluginEntry()
-    {
-        return new GrpcPlugin();
-    }
+    return new GrpcPlugin();
+}
 
-    EXPORTED void pluginExit( GrpcPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(GrpcPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 // -----------------------------------------------------------------------
@@ -56,14 +55,14 @@ std::shared_ptr<GrpcDriver> GrpcPlugin::m_OpenDriver(void) const
 
     GrpcDriver::Config cfg;
     cfg.host             = m_strHost;
-    cfg.port              = m_u16Port;
-    cfg.useTls             = m_bUseTls;
-    cfg.caCertPath         = m_strTlsCaPath;
-    cfg.clientCertPath     = m_strTlsCertPath;
-    cfg.clientKeyPath      = m_strTlsKeyPath;
-    cfg.authToken          = m_strAuthToken;
-    cfg.callTimeoutMs      = m_u32CallTimeout;
-    cfg.connectTimeoutMs   = m_u32ConnectTimeout;
+    cfg.port             = m_u16Port;
+    cfg.useTls           = m_bUseTls;
+    cfg.caCertPath       = m_strTlsCaPath;
+    cfg.clientCertPath   = m_strTlsCertPath;
+    cfg.clientKeyPath    = m_strTlsKeyPath;
+    cfg.authToken        = m_strAuthToken;
+    cfg.callTimeoutMs    = m_u32CallTimeout;
+    cfg.connectTimeoutMs = m_u32ConnectTimeout;
 
     // Resolved against ARTEFACTS_PATH exactly like SCRIPT resolves
     // scriptpathname (see ucmdexec::generic_script()) — a relative d= value
@@ -97,9 +96,10 @@ std::shared_ptr<GrpcDriver> GrpcPlugin::m_OpenDriver(void) const
 // -----------------------------------------------------------------------
 // GRPC.INFO — see class doc comment (grpc_plugin.hpp)
 // -----------------------------------------------------------------------
-bool GrpcPlugin::m_GRPC_INFO(const std::string& args, std::stop_token st) const
+bool GrpcPlugin::m_GRPC_INFO(const std::string &args, std::stop_token st) const
 {
-    (void)args; (void)st;
+    (void)args;
+    (void)st;
     resetData();
     std::ostringstream oss;
     oss << GRPC_PLUGIN_NAME " v" << m_strVersion
@@ -113,9 +113,9 @@ bool GrpcPlugin::m_GRPC_INFO(const std::string& args, std::stop_token st) const
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(GRPC_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: gRPC calls (unary, server-streaming, client-streaming, bidi) against an arbitrary "
-                                     "service, resolved at runtime from a compiled descriptor set (no per-service recompilation)"));
+                                    "service, resolved at runtime from a compiled descriptor set (no per-service recompilation)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Architecture: GrpcProtocol (descriptors/JSON, no I/O) / grpc++ (real driver, "
-                                     "undecorated) / GrpcDriver (protocol+driver glue, ICommDriver) / this plugin (CONFIG + wiring only)"));
+                                    "undecorated) / GrpcDriver (protocol+driver glue, ICommDriver) / this plugin (CONFIG + wiring only)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the server, TLS, descriptor set and timeout parameters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : h=host p=port d=descriptorset.protoset [t=tls] [ca=capath] [crt=certpath] [key=keypath]"));
@@ -183,14 +183,13 @@ bool GrpcPlugin::m_GRPC_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
 // -----------------------------------------------------------------------
 // GRPC.CONFIG — see class doc comment (grpc_plugin.hpp)
 // -----------------------------------------------------------------------
-bool GrpcPlugin::m_GRPC_CONFIG(const std::string& args, std::stop_token st) const
+bool GrpcPlugin::m_GRPC_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -203,7 +202,7 @@ bool GrpcPlugin::m_GRPC_CONFIG(const std::string& args, std::stop_token st) cons
 // GRPC.CMD — see class doc comment (grpc_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool GrpcPlugin::m_GRPC_CMD(const std::string& args, std::stop_token st) const
+bool GrpcPlugin::m_GRPC_CMD(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -218,16 +217,17 @@ bool GrpcPlugin::m_GRPC_CMD(const std::string& args, std::stop_token st) const
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const GrpcDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const GrpcDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const GrpcDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
 
 // -----------------------------------------------------------------------
 // GRPC.SCRIPT — see class doc comment (grpc_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool GrpcPlugin::m_GRPC_SCRIPT(const std::string& args, std::stop_token st) const
+bool GrpcPlugin::m_GRPC_SCRIPT(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -239,28 +239,29 @@ bool GrpcPlugin::m_GRPC_SCRIPT(const std::string& args, std::stop_token st) cons
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const GrpcDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const GrpcDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const GrpcDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief periodic unary polling — see grpc_driver.hpp's "CYCLIC" for how a multi-field
-  *        request body (a comma inside '...') is handled correctly by the quote-aware
-  *        entry-list split.
-  *
-  * \note Usage example:
-  *       GRPC.CYCLIC 1000:> 'CALL greeter.Greeter/Greet2 {"name":"Zoe","greeting":"Hi"}' | R'.*'
-  *       GRPC.CYCLIC 1000:> 'CALL greeter.Greeter/Greet2 {"name":"Zoe","greeting":"Hi"}' | R'.*' &
-  *
-  * \param[in] args  "time1:val1, time2:val2, ..." (see ucmdexec::parseCyclicArray())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief periodic unary polling — see grpc_driver.hpp's "CYCLIC" for how a multi-field
+ *        request body (a comma inside '...') is handled correctly by the quote-aware
+ *        entry-list split.
+ *
+ * \note Usage example:
+ *       GRPC.CYCLIC 1000:> 'CALL greeter.Greeter/Greet2 {"name":"Zoe","greeting":"Hi"}' | R'.*'
+ *       GRPC.CYCLIC 1000:> 'CALL greeter.Greeter/Greet2 {"name":"Zoe","greeting":"Hi"}' | R'.*' &
+ *
+ * \param[in] args  "time1:val1, time2:val2, ..." (see ucmdexec::parseCyclicArray())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool GrpcPlugin::m_GRPC_CYCLIC(const std::string& args, std::stop_token st) const
+bool GrpcPlugin::m_GRPC_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -271,7 +272,7 @@ bool GrpcPlugin::m_GRPC_CYCLIC(const std::string& args, std::stop_token st) cons
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const GrpcDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const GrpcDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const GrpcDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
         });
 }

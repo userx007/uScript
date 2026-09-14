@@ -77,31 +77,30 @@
  *     raw_tout_read() — never back through the TP-aware entry points.
  */
 
-#include "uSlcan.hpp"
 #include "ICommDriver.hpp"
-#include "uNumeric.hpp"
 #include "uGuiNotify.hpp"
+#include "uNumeric.hpp"
+#include "uSlcan.hpp"
 
 // Generic, driver-independent multi-frame transport library (see
 // can_tp/README.md). Only depends on ICommDriver, so it's reused verbatim
 // here — the same headers/objects already back the KVCAN plugin.
 #include "ITransportProtocol.hpp"
-#include "TpFactory.hpp"
 #include "TpConfig.hpp"
+#include "TpFactory.hpp"
 
-#include <span>
-#include <string_view>
-#include <cstdint>
-#include <cstdio>
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
+#include <cstdio>
 #include <memory>
+#include <span>
 #include <stop_token>
+#include <string_view>
 
 class SLCANFrameDriver : public ICommDriver
 {
 public:
-
     /// SocketCAN canid_t convention, shared by the TX id and the xtra_params
     /// override parsing in both tout_write() and tout_read().
     static constexpr uint32_t CAN_EFF_FLAG = 0x80000000U;
@@ -122,12 +121,12 @@ public:
      *                         "SLCAN:1" — see PluginDataSet::strInstanceName).
      *                         Falls back to plain "SLCAN" when empty.
      */
-    SLCANFrameDriver(const std::string& strDevice,
-                     uint32_t           u32UartBaud,
-                     uint32_t           u32TxId,
-                     bool               bFdBrs,
-                     const std::string& strIdentityLabel = {},
-                     const std::string& strInstanceName = {})
+    SLCANFrameDriver(const std::string &strDevice,
+                     uint32_t u32UartBaud,
+                     uint32_t u32TxId,
+                     bool bFdBrs,
+                     const std::string &strIdentityLabel = {},
+                     const std::string &strInstanceName  = {})
         : m_slcan(strDevice, u32UartBaud)
         , m_u32TxId(u32TxId)
         , m_bFdBrs(bFdBrs)
@@ -145,7 +144,6 @@ public:
     }
 
 private:
-
     /**
      * \brief Build a CanFrame from the effective TX id and the payload bytes,
      *        then delegate to SLCAN::send_frame(frame, u32Timeout).
@@ -174,15 +172,15 @@ private:
      *        Must be const — CommScriptCommandInterpreter holds
      *        shared_ptr<const TDriver>; m_slcan is mutable to allow this.
      */
-    WriteResult raw_tout_write(uint32_t                 u32Timeout,
+    WriteResult raw_tout_write(uint32_t u32Timeout,
                                std::span<const uint8_t> dataSpan,
-                               std::string_view         xtra_params = {},
-                               std::stop_token          stop_tok = {}) const
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok     = {}) const
     {
         static constexpr size_t CLASSIC_MAX_LEN = 8U;
         static constexpr size_t FD_MAX_LEN      = 64U;
 
-        WriteResult res{};   // default-initialised: status is non-SUCCESS
+        WriteResult res{}; // default-initialised: status is non-SUCCESS
 
         if (dataSpan.size() > FD_MAX_LEN) {
             return res;
@@ -211,7 +209,6 @@ private:
     }
 
 public:
-
     /**
      * \brief Transmit @p dataSpan over the CAN channel.
      *
@@ -231,10 +228,10 @@ public:
      *        TP branch below can't be cancelled early, same known limitation as every
      *        other RawIo-based driver in this codebase.
      */
-    WriteResult tout_write(uint32_t                 u32Timeout,
+    WriteResult tout_write(uint32_t u32Timeout,
                            std::span<const uint8_t> dataSpan,
-                           std::string_view         xtra_params = {},
-                           std::stop_token          stop_tok = {}) const override
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override
     {
         if (TpProtocol::NONE == m_eTpProtocol) {
             return raw_tout_write(u32Timeout, dataSpan, xtra_params, stop_tok);
@@ -256,7 +253,6 @@ public:
     }
 
 private:
-
     /**
      * \brief Delegate to SLCAN::receive_frame(frame, remaining_timeout), looping
      *        (within the overall u32Timeout budget) until a frame matching the
@@ -296,22 +292,20 @@ private:
      *        by the adapter's CR terminator, so receive_frame() always returns
      *        exactly one complete decoded frame regardless of mode.
      */
-    ReadResult raw_tout_read(uint32_t           u32Timeout,
+    ReadResult raw_tout_read(uint32_t u32Timeout,
                              std::span<uint8_t> dataSpan,
-                             std::string_view   xtra_params = {},
-                             std::stop_token    stop_tok = {}) const
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok     = {}) const
     {
-        ReadResult res{};   // default-initialised: status is non-SUCCESS
+        ReadResult res{}; // default-initialised: status is non-SUCCESS
 
-        bool     bWantId  = false;
-        bool     bWantExt = false;
+        bool bWantId       = false;
+        bool bWantExt      = false;
         uint32_t u32WantId = 0;
 
-        if (!xtra_params.empty())
-        {
+        if (!xtra_params.empty()) {
             uint32_t u32Parsed = 0;
-            if (numeric::str2uint32(xtra_params, u32Parsed))
-            {
+            if (numeric::str2uint32(xtra_params, u32Parsed)) {
                 bWantId   = true;
                 bWantExt  = (u32Parsed & CAN_EFF_FLAG) != 0U;
                 u32WantId = u32Parsed & (bWantExt ? CAN_EFF_MASK : CAN_SFF_MASK);
@@ -320,18 +314,17 @@ private:
 
         const auto tStart = std::chrono::steady_clock::now();
 
-        while (true)
-        {
+        while (true) {
             if (stop_tok.stop_requested()) {
                 return res; // status stays non-SUCCESS
             }
 
             uint32_t u32Remaining = u32Timeout;
 
-            if (bWantId)
-            {
+            if (bWantId) {
                 const auto i64ElapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                              std::chrono::steady_clock::now() - tStart).count();
+                                              std::chrono::steady_clock::now() - tStart)
+                                              .count();
                 if (i64ElapsedMs >= static_cast<int64_t>(u32Timeout)) {
                     return res; // overall budget exhausted — status stays non-SUCCESS
                 }
@@ -357,14 +350,13 @@ private:
 
             res.bytes_read       = szCopyLen;
             res.status           = ICommDriver::Status::SUCCESS;
-            res.found_terminator = true;   // one complete frame received
+            res.found_terminator = true; // one complete frame received
 
             return res;
         }
     }
 
 public:
-
     /**
      * \brief Receive into @p dataSpan.
      *
@@ -387,11 +379,11 @@ public:
      *        stop_tok only reaches the TpProtocol::NONE path, same known
      *        ITransportProtocol limitation noted on tout_write() above.
      */
-    ReadResult tout_read(uint32_t           u32Timeout,
+    ReadResult tout_read(uint32_t u32Timeout,
                          std::span<uint8_t> dataSpan,
-                         const ReadOptions& options,
-                         std::string_view   xtra_params = {},
-                         std::stop_token    stop_tok = {}) const override
+                         const ReadOptions &options,
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok     = {}) const override
     {
         if (TpProtocol::NONE == m_eTpProtocol) {
             return raw_tout_read(u32Timeout, dataSpan, xtra_params, stop_tok);
@@ -476,7 +468,7 @@ public:
     }
 
     /** \brief Tuning parameters (block size, STmin, timeouts, ...) for set_tp_protocol(). */
-    void set_tp_config(const TpConfig& cfg)
+    void set_tp_config(const TpConfig &cfg)
     {
         m_sTpConfig = cfg;
     }
@@ -505,8 +497,8 @@ public:
      */
     CommDetails describeConnection(std::string_view xtra_params = {}) const override
     {
-        const uint32_t id  = resolveTxId(xtra_params);
-        const bool     ext = (id & CAN_EFF_FLAG) != 0U;
+        const uint32_t id = resolveTxId(xtra_params);
+        const bool ext    = (id & CAN_EFF_FLAG) != 0U;
         char label[k_labelSize];
         std::snprintf(label, sizeof(label), "%s id=0x%X%s",
                       m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel.c_str(),
@@ -515,7 +507,6 @@ public:
     }
 
 private:
-
     /**
      * \brief Resolve the effective TX CAN id for one exchange: xtra_params
      *        (decimal or "0x"-prefixed hex, CAN_EFF_FLAG bit 31 set →
@@ -527,11 +518,9 @@ private:
     {
         uint32_t u32EffectiveTxId = m_u32TxId;
 
-        if (!xtra_params.empty())
-        {
+        if (!xtra_params.empty()) {
             uint32_t u32Override = 0;
-            if (numeric::str2uint32(xtra_params, u32Override))
-            {
+            if (numeric::str2uint32(xtra_params, u32Override)) {
                 u32EffectiveTxId = u32Override;
             }
             // else: xtra_params wasn't a valid CAN id — silently fall back to
@@ -549,11 +538,9 @@ private:
      */
     uint32_t resolveRxId(std::string_view xtra_params) const
     {
-        if (!xtra_params.empty())
-        {
+        if (!xtra_params.empty()) {
             uint32_t u32Override = 0;
-            if (numeric::str2uint32(xtra_params, u32Override))
-            {
+            if (numeric::str2uint32(xtra_params, u32Override)) {
                 return u32Override;
             }
         }
@@ -573,9 +560,14 @@ private:
     class RawIo final : public ICommDriver
     {
     public:
-        explicit RawIo(const SLCANFrameDriver& owner) : m_owner(owner) {}
+        explicit RawIo(const SLCANFrameDriver &owner)
+            : m_owner(owner)
+        {}
 
-        bool is_open() const override { return m_owner.is_open(); }
+        bool is_open() const override
+        {
+            return m_owner.is_open();
+        }
 
         CommDetails describeConnection(std::string_view xtra_params = {}) const override
         {
@@ -590,14 +582,14 @@ private:
         }
 
         ReadResult tout_read(uint32_t u32Timeout, std::span<uint8_t> dataSpan,
-                             const ReadOptions& /*options*/, std::string_view xtra_params = {},
+                             const ReadOptions & /*options*/, std::string_view xtra_params = {},
                              std::stop_token /*stop_tok*/ = {}) const override
         {
             return m_owner.raw_tout_read(u32Timeout, dataSpan, xtra_params);
         }
 
     private:
-        const SLCANFrameDriver& m_owner;
+        const SLCANFrameDriver &m_owner;
     };
 
     /**
@@ -621,21 +613,20 @@ private:
                       m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel.c_str(),
                       u32Id, bExtended ? " (ext)" : "");
         gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::CAN, label),
-                              dir, data.data(), static_cast<uint32_t>(data.size()));
+                             dir, data.data(), static_cast<uint32_t>(data.size()));
     }
 
 private:
-
-    mutable SLCAN m_slcan;   ///< Underlying driver (mutable: send/receive_frame are non-const in SLCAN)
-    uint32_t      m_u32TxId; ///< CAN TX frame ID (SocketCAN canid_t convention)
-    bool          m_bFdBrs;  ///< BRS flag for outgoing CAN-FD frames
-    std::string   m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
-    std::string   m_strInstanceName;   ///< GUI comm-dump "Plugin" column identity, see dumpFrame()
+    mutable SLCAN m_slcan;          ///< Underlying driver (mutable: send/receive_frame are non-const in SLCAN)
+    uint32_t m_u32TxId;             ///< CAN TX frame ID (SocketCAN canid_t convention)
+    bool m_bFdBrs;                  ///< BRS flag for outgoing CAN-FD frames
+    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
+    std::string m_strInstanceName;  ///< GUI comm-dump "Plugin" column identity, see dumpFrame()
 
     TpProtocol m_eTpProtocol = TpProtocol::NONE; ///< see set_tp_protocol()
-    TpConfig   m_sTpConfig;                      ///< see set_tp_config()
-    bool       m_bRxIdSet = false;               ///< true once set_rx_id() has been called
-    uint32_t   m_u32RxId  = 0U;                  ///< see set_rx_id() / resolveRxId()
+    TpConfig m_sTpConfig;                        ///< see set_tp_config()
+    bool m_bRxIdSet    = false;                  ///< true once set_rx_id() has been called
+    uint32_t m_u32RxId = 0U;                     ///< see set_rx_id() / resolveRxId()
 
     RawIo m_rawIo{*this}; ///< frame-level ICommDriver view used by the TP library; see RawIo above
 };

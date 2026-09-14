@@ -60,8 +60,8 @@
 // Shared stdint pull-in (both paths need it before the vendor headers)
 // ============================================================================
 #include <cstdint>
-#include <cstdlib>   // strtoul
-#include <cstring>   // strstr
+#include <cstdlib> // strtoul
+#include <cstring> // strstr
 
 #ifdef _WIN32
 // ============================================================================
@@ -69,15 +69,14 @@
 // ============================================================================
 
 #ifndef WIN32_LEAN_AND_MEAN
-#  define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
 #ifndef NOMINMAX
-#  define NOMINMAX
+#define NOMINMAX
 #endif
-#include <windows.h>
 #include "CH347DLL.H"
 
-
+#include <windows.h>
 
 // CH347DLL.H defines min/max as plain 2-argument macros unconditionally
 // (only guarded by #ifndef, so #define NOMINMAX does NOT help here).
@@ -85,43 +84,43 @@
 // 3-argument overloads and zero-argument static members.
 // Purge them immediately so every subsequent standard header is clean.
 #ifdef min
-#  undef min
+#undef min
 #endif
 #ifdef max
-#  undef max
+#undef max
 #endif
 
 // ────────────────────────────────────────────────────────────────────────────
 // Handle type
 // ────────────────────────────────────────────────────────────────────────────
-using CH347_HANDLE = ULONG;
+using CH347_HANDLE                                 = ULONG;
 static constexpr CH347_HANDLE CH347_INVALID_HANDLE = static_cast<CH347_HANDLE>(-1);
 
 // ────────────────────────────────────────────────────────────────────────────
 // IRQ type constants – mirror the Linux macro names used throughout the driver
 // ────────────────────────────────────────────────────────────────────────────
 #ifndef IRQ_TYPE_NONE
-#  define IRQ_TYPE_NONE          0u
-#  define IRQ_TYPE_EDGE_RISING   1u
-#  define IRQ_TYPE_EDGE_FALLING  2u
-#  define IRQ_TYPE_EDGE_BOTH     (IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_EDGE_RISING)
+#define IRQ_TYPE_NONE         0u
+#define IRQ_TYPE_EDGE_RISING  1u
+#define IRQ_TYPE_EDGE_FALLING 2u
+#define IRQ_TYPE_EDGE_BOTH    (IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_EDGE_RISING)
 #endif
 
 // ────────────────────────────────────────────────────────────────────────────
 // Error sentinel macros (Linux ERR_* names used by callers)
 // ────────────────────────────────────────────────────────────────────────────
 #ifndef ERR_INVAL
-#  define ERR_INVAL  (-1)
-#  define ERR_RANGE  (-2)
-#  define ERR_IOCTL  (-3)
+#define ERR_INVAL (-1)
+#define ERR_RANGE (-2)
+#define ERR_IOCTL (-3)
 #endif
 
 // ────────────────────────────────────────────────────────────────────────────
 // SPI limits (Linux macro names)
 // ────────────────────────────────────────────────────────────────────────────
 #ifndef CH347_SPI_MAX_FREQ
-#  define CH347_SPI_MAX_FREQ 60000000.0
-#  define CH347_SPI_MIN_FREQ 218750.0
+#define CH347_SPI_MAX_FREQ 60000000.0
+#define CH347_SPI_MIN_FREQ 218750.0
 #endif
 
 // ============================================================================
@@ -151,14 +150,16 @@ inline ULONG win_cs(bool ignoreCS, uint8_t iChipSelect) noexcept
  */
 static inline CH347_HANDLE CH347_OpenDevice_Compat(const char *strDevice) noexcept
 {
-    char   *end  = nullptr;
-    ULONG   idx  = 0;
-    if (strDevice && *strDevice)
+    char *end = nullptr;
+    ULONG idx = 0;
+    if (strDevice && *strDevice) {
         idx = static_cast<ULONG>(std::strtoul(strDevice, &end, 10));
+    }
 
     HANDLE h = ::CH347OpenDevice(idx);
-    if (h == INVALID_HANDLE_VALUE || h == nullptr)
+    if (h == INVALID_HANDLE_VALUE || h == nullptr) {
         return CH347_INVALID_HANDLE;
+    }
     return idx;
 }
 
@@ -168,8 +169,8 @@ static inline bool CH347_CloseDevice_Compat(CH347_HANDLE idx) noexcept
 }
 
 // Remap the Linux function names used throughout driver code
-#define CH347OpenDevice   CH347_OpenDevice_Compat
-#define CH347CloseDevice  CH347_CloseDevice_Compat
+#define CH347OpenDevice  CH347_OpenDevice_Compat
+#define CH347CloseDevice CH347_CloseDevice_Compat
 
 // ============================================================================
 // Timeout
@@ -189,13 +190,15 @@ static inline bool CH34xSetTimeout(CH347_HANDLE idx,
 // ============================================================================
 /// Maps Linux CH34x_GetChipVersion → Windows CH347GetVersion (bcdDevice byte).
 static inline bool CH34x_GetChipVersion(CH347_HANDLE idx,
-                                        uint8_t     *version) noexcept
+                                        uint8_t *version) noexcept
 {
     UCHAR drv = 0, dll = 0, bcd = 0, chip = 0;
-    if (!::CH347GetVersion(idx, &drv, &dll, &bcd, &chip))
+    if (!::CH347GetVersion(idx, &drv, &dll, &bcd, &chip)) {
         return false;
-    if (version)
+    }
+    if (version) {
         *version = static_cast<uint8_t>(bcd);
+    }
     return true;
 }
 
@@ -206,18 +209,22 @@ static inline bool CH34x_GetChipVersion(CH347_HANDLE idx,
  * packed (VID << 16 | PID) value used by Linux callers.
  */
 static inline bool CH34X_GetDeviceID(CH347_HANDLE idx,
-                                     uint32_t    *id) noexcept
+                                     uint32_t *id) noexcept
 {
     mDeviceInforS info{};
-    if (!::CH347GetDeviceInfor(idx, &info))
+    if (!::CH347GetDeviceInfor(idx, &info)) {
         return false;
-    if (id)
-    {
-        uint32_t    vid   = 0, pid = 0;
+    }
+    if (id) {
+        uint32_t vid = 0, pid = 0;
         const char *vid_p = std::strstr(info.DeviceID, "VID_");
         const char *pid_p = std::strstr(info.DeviceID, "PID_");
-        if (vid_p) vid = static_cast<uint32_t>(std::strtoul(vid_p + 4, nullptr, 16));
-        if (pid_p) pid = static_cast<uint32_t>(std::strtoul(pid_p + 4, nullptr, 16));
+        if (vid_p) {
+            vid = static_cast<uint32_t>(std::strtoul(vid_p + 4, nullptr, 16));
+        }
+        if (pid_p) {
+            pid = static_cast<uint32_t>(std::strtoul(pid_p + 4, nullptr, 16));
+        }
         *id = (vid << 16) | pid;
     }
     return true;
@@ -237,27 +244,31 @@ static inline bool CH347SPI_Init_Compat(CH347_HANDLE idx, mSpiCfgS *cfg) noexcep
 {
     return ::CH347SPI_Init(idx, cfg) != FALSE;
 }
+
 #define CH347SPI_Init CH347SPI_Init_Compat
 
 static inline bool CH347SPI_GetCfg_Compat(CH347_HANDLE idx, mSpiCfgS *cfg) noexcept
 {
     return ::CH347SPI_GetCfg(idx, cfg) != FALSE;
 }
+
 #define CH347SPI_GetCfg CH347SPI_GetCfg_Compat
 
 static inline bool CH347SPI_SetFrequency_Compat(CH347_HANDLE idx,
-                                                uint32_t     iHz) noexcept
+                                                uint32_t iHz) noexcept
 {
     return ::CH347SPI_SetFrequency(idx, static_cast<ULONG>(iHz)) != FALSE;
 }
+
 #define CH347SPI_SetFrequency CH347SPI_SetFrequency_Compat
 
 static inline bool CH347SPI_SetDataBits_Compat(CH347_HANDLE idx,
-                                               uint8_t      iDataBits) noexcept
+                                               uint8_t iDataBits) noexcept
 {
     return ::CH347SPI_SetDataBits(idx,
                                   static_cast<UCHAR>(iDataBits)) != FALSE;
 }
+
 #define CH347SPI_SetDataBits CH347SPI_SetDataBits_Compat
 
 /**
@@ -272,16 +283,17 @@ static inline bool CH347SPI_SetDataBits_Compat(CH347_HANDLE idx,
  * @return Always true.
  */
 static inline bool CH347SPI_SetAutoCS(CH347_HANDLE /*idx*/,
-                                      bool         /*disable*/) noexcept
+                                      bool /*disable*/) noexcept
 {
     return true; // no-op – see doxygen above
 }
 
 static inline bool CH347SPI_ChangeCS_Compat(CH347_HANDLE idx,
-                                            uint8_t      iStatus) noexcept
+                                            uint8_t iStatus) noexcept
 {
     return ::CH347SPI_ChangeCS(idx, static_cast<UCHAR>(iStatus)) != FALSE;
 }
+
 #define CH347SPI_ChangeCS CH347SPI_ChangeCS_Compat
 
 /**
@@ -291,11 +303,11 @@ static inline bool CH347SPI_ChangeCS_Compat(CH347_HANDLE idx,
  * Windows packs them: iChipSelect bit7 = 0 → ignore; bit7 = 1 → assert.
  */
 static inline bool CH347SPI_Write(CH347_HANDLE idx,
-                                  bool         ignoreCS,
-                                  uint8_t      iChipSelect,
-                                  int          iLength,
-                                  int          iWriteStep,
-                                  void        *ioBuffer) noexcept
+                                  bool ignoreCS,
+                                  uint8_t iChipSelect,
+                                  int iLength,
+                                  int iWriteStep,
+                                  void *ioBuffer) noexcept
 {
     return ::CH347SPI_Write(idx,
                             ch347_compat_detail::win_cs(ignoreCS, iChipSelect),
@@ -306,10 +318,10 @@ static inline bool CH347SPI_Write(CH347_HANDLE idx,
 
 /// @copydoc CH347SPI_Write – full-duplex variant.
 static inline bool CH347SPI_WriteRead(CH347_HANDLE idx,
-                                      bool         ignoreCS,
-                                      uint8_t      iChipSelect,
-                                      int          iLength,
-                                      void        *ioBuffer) noexcept
+                                      bool ignoreCS,
+                                      uint8_t iChipSelect,
+                                      int iLength,
+                                      void *ioBuffer) noexcept
 {
     return ::CH347SPI_WriteRead(idx,
                                 ch347_compat_detail::win_cs(ignoreCS, iChipSelect),
@@ -335,16 +347,17 @@ static inline bool CH347I2C_SetStretch(CH347_HANDLE idx, bool enable) noexcept
  *        Windows CH347I2C_SetDriverMode (different function name).
  */
 static inline bool CH347I2C_SetDriveMode(CH347_HANDLE idx,
-                                          uint8_t      mode) noexcept
+                                         uint8_t mode) noexcept
 {
     return ::CH347I2C_SetDriverMode(idx, static_cast<UCHAR>(mode)) != FALSE;
 }
 
 static inline bool CH347I2C_SetIgnoreNack_Compat(CH347_HANDLE idx,
-                                                  uint8_t      mode) noexcept
+                                                 uint8_t mode) noexcept
 {
     return ::CH347I2C_SetIgnoreNack(idx, static_cast<UCHAR>(mode)) != FALSE;
 }
+
 #define CH347I2C_SetIgnoreNack CH347I2C_SetIgnoreNack_Compat
 
 static inline bool CH347I2C_SetDelaymS(CH347_HANDLE idx, int iDelay) noexcept
@@ -353,22 +366,21 @@ static inline bool CH347I2C_SetDelaymS(CH347_HANDLE idx, int iDelay) noexcept
 }
 
 static inline bool CH347I2C_SetAckClk_DelayuS(CH347_HANDLE idx,
-                                               int          iDelay) noexcept
+                                              int iDelay) noexcept
 {
     return ::CH347I2C_SetAckClk_DelayuS(idx,
-                                         static_cast<ULONG>(iDelay)) != FALSE;
+                                        static_cast<ULONG>(iDelay)) != FALSE;
 }
 
 static inline bool CH347StreamI2C(CH347_HANDLE idx,
-                                  int          iWriteLength,
-                                  void        *iWriteBuffer,
-                                  int          iReadLength,
-                                  void        *oReadBuffer) noexcept
+                                  int iWriteLength,
+                                  void *iWriteBuffer,
+                                  int iReadLength,
+                                  void *oReadBuffer) noexcept
 {
     return ::CH347StreamI2C(idx,
                             static_cast<ULONG>(iWriteLength), iWriteBuffer,
-                            static_cast<ULONG>(iReadLength),  oReadBuffer)
-           != FALSE;
+                            static_cast<ULONG>(iReadLength), oReadBuffer) != FALSE;
 }
 
 /**
@@ -376,29 +388,30 @@ static inline bool CH347StreamI2C(CH347_HANDLE idx,
  *        Windows CH347StreamI2C_RetACK (different capitalisation).
  */
 static inline bool CH347StreamI2C_RetAck(CH347_HANDLE idx,
-                                          int          iWriteLength,
-                                          void        *iWriteBuffer,
-                                          int          iReadLength,
-                                          void        *oReadBuffer,
-                                          int         *retAck) noexcept
+                                         int iWriteLength,
+                                         void *iWriteBuffer,
+                                         int iReadLength,
+                                         void *oReadBuffer,
+                                         int *retAck) noexcept
 {
     ULONG ack = 0;
-    bool  ok  = ::CH347StreamI2C_RetACK(idx,
-                                         static_cast<ULONG>(iWriteLength),
-                                         iWriteBuffer,
-                                         static_cast<ULONG>(iReadLength),
-                                         oReadBuffer,
-                                         &ack) != FALSE;
-    if (retAck)
+    bool ok   = ::CH347StreamI2C_RetACK(idx,
+                                        static_cast<ULONG>(iWriteLength),
+                                        iWriteBuffer,
+                                        static_cast<ULONG>(iReadLength),
+                                        oReadBuffer,
+                                        &ack) != FALSE;
+    if (retAck) {
         *retAck = static_cast<int>(ack);
+    }
     return ok;
 }
 
 static inline bool CH347ReadEEPROM(CH347_HANDLE idx,
-                                   EEPROM_TYPE  iEepromID,
-                                   int          iAddr,
-                                   int          iLength,
-                                   uint8_t     *oBuffer) noexcept
+                                   EEPROM_TYPE iEepromID,
+                                   int iAddr,
+                                   int iLength,
+                                   uint8_t *oBuffer) noexcept
 {
     return ::CH347ReadEEPROM(idx, iEepromID,
                              static_cast<ULONG>(iAddr),
@@ -407,10 +420,10 @@ static inline bool CH347ReadEEPROM(CH347_HANDLE idx,
 }
 
 static inline bool CH347WriteEEPROM(CH347_HANDLE idx,
-                                    EEPROM_TYPE  iEepromID,
-                                    int          iAddr,
-                                    int          iLength,
-                                    uint8_t     *iBuffer) noexcept
+                                    EEPROM_TYPE iEepromID,
+                                    int iAddr,
+                                    int iLength,
+                                    uint8_t *iBuffer) noexcept
 {
     return ::CH347WriteEEPROM(idx, iEepromID,
                               static_cast<ULONG>(iAddr),
@@ -422,29 +435,35 @@ static inline bool CH347WriteEEPROM(CH347_HANDLE idx,
 // GPIO
 // ============================================================================
 static inline bool CH347GPIO_Get_Compat(CH347_HANDLE idx,
-                                        uint8_t     *iDir,
-                                        uint8_t     *iData) noexcept
+                                        uint8_t *iDir,
+                                        uint8_t *iData) noexcept
 {
     UCHAR d = 0, v = 0;
-    bool  ok = ::CH347GPIO_Get(idx, &d, &v) != FALSE;
+    bool ok = ::CH347GPIO_Get(idx, &d, &v) != FALSE;
     if (ok) {
-        if (iDir)  *iDir  = static_cast<uint8_t>(d);
-        if (iData) *iData = static_cast<uint8_t>(v);
+        if (iDir) {
+            *iDir = static_cast<uint8_t>(d);
+        }
+        if (iData) {
+            *iData = static_cast<uint8_t>(v);
+        }
     }
     return ok;
 }
+
 #define CH347GPIO_Get CH347GPIO_Get_Compat
 
 static inline bool CH347GPIO_Set_Compat(CH347_HANDLE idx,
-                                        uint8_t      iEnable,
-                                        uint8_t      iSetDirOut,
-                                        uint8_t      iSetDataOut) noexcept
+                                        uint8_t iEnable,
+                                        uint8_t iSetDirOut,
+                                        uint8_t iSetDataOut) noexcept
 {
     return ::CH347GPIO_Set(idx,
                            static_cast<UCHAR>(iEnable),
                            static_cast<UCHAR>(iSetDirOut),
                            static_cast<UCHAR>(iSetDataOut)) != FALSE;
 }
+
 #define CH347GPIO_Set CH347GPIO_Set_Compat
 
 /**
@@ -467,10 +486,10 @@ static inline bool CH347GPIO_Set_Compat(CH347_HANDLE idx,
  *        CH347SetIntRoutine() directly with both INT0 and INT1 configured.
  */
 static inline bool CH347GPIO_IRQ_Set(CH347_HANDLE idx,
-                                     uint8_t      pinIndex,
-                                     bool         enable,
-                                     uint8_t      irqType,
-                                     void        *handler) noexcept
+                                     uint8_t pinIndex,
+                                     bool enable,
+                                     uint8_t irqType,
+                                     void *handler) noexcept
 {
     // > 7 disables the interrupt source in the Windows DLL
     const UCHAR Int0Pin  = enable
@@ -482,10 +501,9 @@ static inline bool CH347GPIO_IRQ_Set(CH347_HANDLE idx,
     return ::CH347SetIntRoutine(
                idx,
                Int0Pin, Int0Mode,
-               0xFF,    0,           // INT1 disabled
+               0xFF, 0, // INT1 disabled
                enable ? reinterpret_cast<mPCH347_INT_ROUTINE>(handler)
-                      : nullptr)
-           != FALSE;
+                      : nullptr) != FALSE;
 }
 
 // ============================================================================
@@ -506,25 +524,27 @@ static inline bool CH347GPIO_IRQ_Set(CH347_HANDLE idx,
 //   [4]  tck_state : last TCK phase marker  (0x00 or 0x10)
 //   [8]  flag      : set to 1 after CH347Jtag_ClockTms
 //   [12] base_pins : persistent pin-state byte (TDI etc.)
-struct CH347_JtagPinState_t {
-    uint32_t tms_state  = 0;
-    uint32_t tck_state  = 0;
-    uint32_t flag       = 0;
-    uint32_t base_pins  = 0;
+struct CH347_JtagPinState_t
+{
+    uint32_t tms_state = 0;
+    uint32_t tck_state = 0;
+    uint32_t flag      = 0;
+    uint32_t base_pins = 0;
 };
+
 inline CH347_JtagPinState_t CH347_JtagPinState{};
 
 /// Change TMS on the rising edge of TCK to shift the TAP state machine.
 /// Appends two bytes (TCK-low then TCK-high) to BitBangPkt[BI..BI+1].
 /// @return Updated byte index (BI + 2).
-static inline uint32_t CH347Jtag_ClockTms(uint8_t  *BitBangPkt,
-                                           uint32_t  Tms,
-                                           uint32_t  BI) noexcept
+static inline uint32_t CH347Jtag_ClockTms(uint8_t *BitBangPkt,
+                                          uint32_t Tms,
+                                          uint32_t BI) noexcept
 {
-    const uint8_t tms_bit  = (Tms == 1u) ? 0x02u : 0x00u;
-    const uint8_t base     = static_cast<uint8_t>(CH347_JtagPinState.base_pins);
-    BitBangPkt[BI++] = (base | tms_bit) | 0x10u;   // TCK low  (bit4 = framing)
-    BitBangPkt[BI++] = (base | tms_bit) | 0x11u;   // TCK high (bit0 = TCK, bit4)
+    const uint8_t tms_bit        = (Tms == 1u) ? 0x02u : 0x00u;
+    const uint8_t base           = static_cast<uint8_t>(CH347_JtagPinState.base_pins);
+    BitBangPkt[BI++]             = (base | tms_bit) | 0x10u; // TCK low  (bit4 = framing)
+    BitBangPkt[BI++]             = (base | tms_bit) | 0x11u; // TCK high (bit0 = TCK, bit4)
     CH347_JtagPinState.tms_state = tms_bit;
     CH347_JtagPinState.tck_state = 0x10u;
     CH347_JtagPinState.flag      = 1u;
@@ -533,8 +553,8 @@ static inline uint32_t CH347Jtag_ClockTms(uint8_t  *BitBangPkt,
 
 /// Ensure TCK is left low after a sequence; appends one idle byte.
 /// @return Updated byte index (BI + 1).
-static inline uint32_t CH347Jtag_IdleClock(uint8_t  *BitBangPkt,
-                                            uint32_t  BI) noexcept
+static inline uint32_t CH347Jtag_IdleClock(uint8_t *BitBangPkt,
+                                           uint32_t BI) noexcept
 {
     // Reconstruct the idle pin byte from saved state (mirrors Linux logic).
     const uint8_t tms_part = (CH347_JtagPinState.tms_state != 0u)
@@ -543,7 +563,7 @@ static inline uint32_t CH347Jtag_IdleClock(uint8_t  *BitBangPkt,
     const uint8_t tck_part = (CH347_JtagPinState.tck_state != 0u)
                                  ? 0x10u
                                  : static_cast<uint8_t>(CH347_JtagPinState.base_pins);
-    BitBangPkt[BI++] = tms_part | tck_part;
+    BitBangPkt[BI++]       = tms_part | tck_part;
     return BI;
 }
 
@@ -552,21 +572,24 @@ static inline uint32_t CH347Jtag_IdleClock(uint8_t  *BitBangPkt,
 // ============================================================================
 // Same _Compat + #define pattern as SPI/GPIO above – see note there.
 static inline bool CH347Jtag_INIT_Compat(CH347_HANDLE idx,
-                                          uint8_t      iClockRate) noexcept
+                                         uint8_t iClockRate) noexcept
 {
     return ::CH347Jtag_INIT(idx, static_cast<UCHAR>(iClockRate)) != FALSE;
 }
+
 #define CH347Jtag_INIT CH347Jtag_INIT_Compat
 
 static inline bool CH347Jtag_GetCfg_Compat(CH347_HANDLE idx,
-                                             uint8_t     *ClockRate) noexcept
+                                           uint8_t *ClockRate) noexcept
 {
-    UCHAR r  = 0;
-    bool  ok = ::CH347Jtag_GetCfg(idx, &r) != FALSE;
-    if (ok && ClockRate)
+    UCHAR r = 0;
+    bool ok = ::CH347Jtag_GetCfg(idx, &r) != FALSE;
+    if (ok && ClockRate) {
         *ClockRate = static_cast<uint8_t>(r);
+    }
     return ok;
 }
+
 #define CH347Jtag_GetCfg CH347Jtag_GetCfg_Compat
 
 /**
@@ -581,6 +604,7 @@ static inline int CH347Jtag_Reset_Compat(CH347_HANDLE idx) noexcept
 {
     return ::CH347Jtag_SwitchTapStateEx(idx, 0) != FALSE ? 0 : -1;
 }
+
 #define CH347Jtag_Reset CH347Jtag_Reset_Compat
 
 /**
@@ -591,31 +615,33 @@ static inline int CH347Jtag_Reset_Compat(CH347_HANDLE idx) noexcept
  * bool-parameter shim.  Wrap and rename following the standard pattern.
  */
 static inline bool CH347Jtag_ResetTrst_Compat(CH347_HANDLE idx,
-                                               bool         highLevel) noexcept
+                                              bool highLevel) noexcept
 {
     return ::CH347Jtag_ResetTrst(idx, highLevel ? TRUE : FALSE) != FALSE;
 }
+
 #define CH347Jtag_ResetTrst CH347Jtag_ResetTrst_Compat
 
 /// Maps Linux CH347Jtag_SwitchTapState → Windows CH347Jtag_SwitchTapStateEx.
 /// (The Windows DLL also exports a no-index CH347Jtag_SwitchTapState(UCHAR)
 /// which has a different parameter count – no conflict, but keep explicit.)
 static inline bool CH347Jtag_SwitchTapState(CH347_HANDLE idx,
-                                             uint8_t      tapState) noexcept
+                                            uint8_t tapState) noexcept
 {
     return ::CH347Jtag_SwitchTapStateEx(idx,
-                                         static_cast<UCHAR>(tapState)) != FALSE;
+                                        static_cast<UCHAR>(tapState)) != FALSE;
 }
 
 static inline bool CH347Jtag_TmsChange_Compat(CH347_HANDLE idx,
-                                               uint8_t     *tmsValue,
-                                               uint32_t     Step,
-                                               uint32_t     Skip) noexcept
+                                              uint8_t *tmsValue,
+                                              uint32_t Step,
+                                              uint32_t Skip) noexcept
 {
     return ::CH347Jtag_TmsChange(idx, tmsValue,
-                                  static_cast<ULONG>(Step),
-                                  static_cast<ULONG>(Skip)) != FALSE;
+                                 static_cast<ULONG>(Step),
+                                 static_cast<ULONG>(Skip)) != FALSE;
 }
+
 #define CH347Jtag_TmsChange CH347Jtag_TmsChange_Compat
 
 /**
@@ -626,98 +652,109 @@ static inline bool CH347Jtag_TmsChange_Compat(CH347_HANDLE idx,
  * The shim translates bool→BOOL and delegates directly.
  */
 static inline bool CH347Jtag_IoScanT_Compat(CH347_HANDLE idx,
-                                              uint8_t     *DataBits,
-                                              uint32_t     DataBitsNb,
-                                              bool         IsRead,
-                                              bool         IsLastPkt) noexcept
+                                            uint8_t *DataBits,
+                                            uint32_t DataBitsNb,
+                                            bool IsRead,
+                                            bool IsLastPkt) noexcept
 {
     return ::CH347Jtag_IoScanT(idx, DataBits,
-                                static_cast<ULONG>(DataBitsNb),
-                                IsRead    ? TRUE : FALSE,
-                                IsLastPkt ? TRUE : FALSE) != FALSE;
+                               static_cast<ULONG>(DataBitsNb),
+                               IsRead ? TRUE : FALSE,
+                               IsLastPkt ? TRUE : FALSE) != FALSE;
 }
+
 #define CH347Jtag_IoScanT CH347Jtag_IoScanT_Compat
 
 static inline bool CH347Jtag_ByteWriteDR_Compat(CH347_HANDLE idx,
-                                                  int          iWriteLength,
-                                                  void        *iWriteBuffer) noexcept
+                                                int iWriteLength,
+                                                void *iWriteBuffer) noexcept
 {
     return ::CH347Jtag_ByteWriteDR(idx,
-                                    static_cast<ULONG>(iWriteLength),
-                                    iWriteBuffer) != FALSE;
+                                   static_cast<ULONG>(iWriteLength),
+                                   iWriteBuffer) != FALSE;
 }
+
 #define CH347Jtag_ByteWriteDR CH347Jtag_ByteWriteDR_Compat
 
 static inline bool CH347Jtag_ByteReadDR_Compat(CH347_HANDLE idx,
-                                                 uint32_t    *oReadLength,
-                                                 void        *oReadBuffer) noexcept
+                                               uint32_t *oReadLength,
+                                               void *oReadBuffer) noexcept
 {
-    ULONG l  = oReadLength ? *oReadLength : 0;
-    bool  ok = ::CH347Jtag_ByteReadDR(idx, &l, oReadBuffer) != FALSE;
-    if (ok && oReadLength)
+    ULONG l = oReadLength ? *oReadLength : 0;
+    bool ok = ::CH347Jtag_ByteReadDR(idx, &l, oReadBuffer) != FALSE;
+    if (ok && oReadLength) {
         *oReadLength = static_cast<uint32_t>(l);
+    }
     return ok;
 }
+
 #define CH347Jtag_ByteReadDR CH347Jtag_ByteReadDR_Compat
 
 static inline bool CH347Jtag_ByteWriteIR_Compat(CH347_HANDLE idx,
-                                                  int          iWriteLength,
-                                                  void        *iWriteBuffer) noexcept
+                                                int iWriteLength,
+                                                void *iWriteBuffer) noexcept
 {
     return ::CH347Jtag_ByteWriteIR(idx,
-                                    static_cast<ULONG>(iWriteLength),
-                                    iWriteBuffer) != FALSE;
+                                   static_cast<ULONG>(iWriteLength),
+                                   iWriteBuffer) != FALSE;
 }
+
 #define CH347Jtag_ByteWriteIR CH347Jtag_ByteWriteIR_Compat
 
 static inline bool CH347Jtag_ByteReadIR_Compat(CH347_HANDLE idx,
-                                                 uint32_t    *oReadLength,
-                                                 void        *oReadBuffer) noexcept
+                                               uint32_t *oReadLength,
+                                               void *oReadBuffer) noexcept
 {
-    ULONG l  = oReadLength ? *oReadLength : 0;
-    bool  ok = ::CH347Jtag_ByteReadIR(idx, &l, oReadBuffer) != FALSE;
-    if (ok && oReadLength)
+    ULONG l = oReadLength ? *oReadLength : 0;
+    bool ok = ::CH347Jtag_ByteReadIR(idx, &l, oReadBuffer) != FALSE;
+    if (ok && oReadLength) {
         *oReadLength = static_cast<uint32_t>(l);
+    }
     return ok;
 }
+
 #define CH347Jtag_ByteReadIR CH347Jtag_ByteReadIR_Compat
 
 static inline bool CH347Jtag_WriteRead_Compat(CH347_HANDLE idx,
-                                               bool         IsDR,
-                                               int          iWriteBitLength,
-                                               void        *iWriteBitBuffer,
-                                               uint32_t    *oReadBitLength,
-                                               void        *oReadBitBuffer) noexcept
+                                              bool IsDR,
+                                              int iWriteBitLength,
+                                              void *iWriteBitBuffer,
+                                              uint32_t *oReadBitLength,
+                                              void *oReadBitBuffer) noexcept
 {
-    ULONG l  = oReadBitLength ? *oReadBitLength : 0;
-    bool  ok = ::CH347Jtag_WriteRead(idx,
-                                      IsDR ? TRUE : FALSE,
-                                      static_cast<ULONG>(iWriteBitLength),
-                                      iWriteBitBuffer,
-                                      &l, oReadBitBuffer) != FALSE;
-    if (ok && oReadBitLength)
+    ULONG l = oReadBitLength ? *oReadBitLength : 0;
+    bool ok = ::CH347Jtag_WriteRead(idx,
+                                    IsDR ? TRUE : FALSE,
+                                    static_cast<ULONG>(iWriteBitLength),
+                                    iWriteBitBuffer,
+                                    &l, oReadBitBuffer) != FALSE;
+    if (ok && oReadBitLength) {
         *oReadBitLength = static_cast<uint32_t>(l);
+    }
     return ok;
 }
+
 #define CH347Jtag_WriteRead CH347Jtag_WriteRead_Compat
 
 static inline bool CH347Jtag_WriteRead_Fast_Compat(CH347_HANDLE idx,
-                                                    bool         IsDR,
-                                                    int          iWriteLength,
-                                                    void        *iWriteBuffer,
-                                                    uint32_t    *oReadLength,
-                                                    void        *oReadBuffer) noexcept
+                                                   bool IsDR,
+                                                   int iWriteLength,
+                                                   void *iWriteBuffer,
+                                                   uint32_t *oReadLength,
+                                                   void *oReadBuffer) noexcept
 {
-    ULONG l  = oReadLength ? *oReadLength : 0;
-    bool  ok = ::CH347Jtag_WriteRead_Fast(idx,
-                                           IsDR ? TRUE : FALSE,
-                                           static_cast<ULONG>(iWriteLength),
-                                           iWriteBuffer,
-                                           &l, oReadBuffer) != FALSE;
-    if (ok && oReadLength)
+    ULONG l = oReadLength ? *oReadLength : 0;
+    bool ok = ::CH347Jtag_WriteRead_Fast(idx,
+                                         IsDR ? TRUE : FALSE,
+                                         static_cast<ULONG>(iWriteLength),
+                                         iWriteBuffer,
+                                         &l, oReadBuffer) != FALSE;
+    if (ok && oReadLength) {
         *oReadLength = static_cast<uint32_t>(l);
+    }
     return ok;
 }
+
 #define CH347Jtag_WriteRead_Fast CH347Jtag_WriteRead_Fast_Compat
 
 // CH347Jtag_ClockTms / CH347Jtag_IdleClock operate on a local packet buffer
@@ -731,7 +768,7 @@ static inline bool CH347Jtag_WriteRead_Fast_Compat(CH347_HANDLE idx,
 #include "ch347_lib.h"
 
 /// Unified handle type (file descriptor on Linux).
-using CH347_HANDLE = int;
+using CH347_HANDLE                                 = int;
 
 /// Sentinel value for an invalid / un-opened handle.
 static constexpr CH347_HANDLE CH347_INVALID_HANDLE = -1;

@@ -1,38 +1,47 @@
 #ifndef UARGS_PARSER_EXT_HPP
 #define UARGS_PARSER_EXT_HPP
 
+#include <algorithm>
+#include <iostream>
+#include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-#include <optional>
-#include <iostream>
-#include <sstream>
-#include <algorithm>
 
 class CommandLineParser
 {
 public:
-    struct ParseResult {
+    struct ParseResult
+    {
         bool success = true;
         std::vector<std::string> errors;
-        operator bool() const { return success; }
+
+        operator bool() const
+        {
+            return success;
+        }
     };
 
-    enum class OptionType { String, Flag, Int, Float };
+    enum class OptionType { String,
+                            Flag,
+                            Int,
+                            Float };
 
     CommandLineParser(std::string description = "")
-        : description_(std::move(description)) {}
+        : description_(std::move(description))
+    {}
 
     // Add an option with comprehensive configuration
     void add_option(std::string long_flag, std::string short_flag = "",
                     std::string help = "", bool required = false,
                     std::string default_value = "",
-                    OptionType type = OptionType::String)
+                    OptionType type           = OptionType::String)
     {
         OptionConfig config{std::move(long_flag), std::move(short_flag),
-                           std::move(help), std::move(default_value),
-                           required, type};
+                            std::move(help), std::move(default_value),
+                            required, type};
         options_[config.long_flag] = config;
         if (!config.short_flag.empty()) {
             short_to_long_[config.short_flag] = config.long_flag;
@@ -51,14 +60,14 @@ public:
     ParseResult parse(int argc, const char *argv[])
     {
         ParseResult result;
-        
+
         // Clear previous parse state (CRITICAL BUG FIX)
         parsed_options_.clear();
         positional_args_.clear();
         positional_args_.reserve(argc);
-        
+
         // Apply defaults
-        for (const auto& [flag, config] : options_) {
+        for (const auto &[flag, config] : options_) {
             if (!config.default_value.empty()) {
                 parsed_options_[flag] = config.default_value;
             }
@@ -78,15 +87,15 @@ public:
                 }
 
                 std::string flag = std::string(arg.substr(2));
-                auto it = options_.find(flag);
+                auto it          = options_.find(flag);
                 if (it == options_.end()) {
                     result.errors.push_back("Unknown option: --" + flag);
                     result.success = false;
                     current_flag.clear();
                     continue;
                 }
-                current_flag = std::move(flag);
-                current_type = it->second.type;
+                current_flag                  = std::move(flag);
+                current_type                  = it->second.type;
                 parsed_options_[current_flag] = (current_type == OptionType::Flag) ? "true" : "";
             }
             // Handle short flags (-f)
@@ -96,15 +105,15 @@ public:
                 }
 
                 std::string short_flag = std::string(arg.substr(1));
-                auto it = short_to_long_.find(short_flag);
+                auto it                = short_to_long_.find(short_flag);
                 if (it == short_to_long_.end()) {
                     result.errors.push_back("Unknown option: -" + short_flag);
                     result.success = false;
                     current_flag.clear();
                     continue;
                 }
-                current_flag = it->second;
-                current_type = options_[current_flag].type;
+                current_flag                  = it->second;
+                current_type                  = options_[current_flag].type;
                 parsed_options_[current_flag] = (current_type == OptionType::Flag) ? "true" : "";
             }
             // Handle values
@@ -126,7 +135,7 @@ public:
         }
 
         // Validate required options
-        for (const auto& [flag, config] : options_) {
+        for (const auto &[flag, config] : options_) {
             if (config.required && parsed_options_.count(flag) == 0) {
                 result.errors.push_back("Required option missing: --" + flag);
                 result.success = false;
@@ -134,11 +143,11 @@ public:
         }
 
         // Type validation
-        for (const auto& [flag, value] : parsed_options_) {
+        for (const auto &[flag, value] : parsed_options_) {
             auto it = options_.find(flag);
             if (it != options_.end() && !validate_type(value, it->second.type)) {
                 result.errors.push_back("Invalid value for --" + flag +
-                                      ": expected " + type_name(it->second.type));
+                                        ": expected " + type_name(it->second.type));
                 result.success = false;
             }
         }
@@ -147,66 +156,72 @@ public:
     }
 
     // Check if option was provided
-    bool has(const std::string& key) const 
-    { 
-        return parsed_options_.count(key) > 0; 
+    bool has(const std::string &key) const
+    {
+        return parsed_options_.count(key) > 0;
     }
 
     // Get string value
-    std::optional<std::string> get(const std::string& key) const
+    std::optional<std::string> get(const std::string &key) const
     {
         auto it = parsed_options_.find(key);
         return (it != parsed_options_.end()) ? std::optional(it->second) : std::nullopt;
     }
 
     // Get string value with default
-    std::string get_or(const std::string& key, const std::string& default_value) const
+    std::string get_or(const std::string &key, const std::string &default_value) const
     {
         auto it = parsed_options_.find(key);
         return (it != parsed_options_.end()) ? it->second : default_value;
     }
 
     // Get boolean value (TYPE-SAFE)
-    bool get_flag(const std::string& key) const
+    bool get_flag(const std::string &key) const
     {
         auto it = parsed_options_.find(key);
         if (it != parsed_options_.end()) {
-            const std::string& val = it->second;
+            const std::string &val = it->second;
             return val == "true" || val == "1" || val == "yes";
         }
         return false;
     }
 
     // Get integer value (TYPE-SAFE)
-    std::optional<int> get_int(const std::string& key) const
+    std::optional<int> get_int(const std::string &key) const
     {
         auto it = parsed_options_.find(key);
         if (it != parsed_options_.end()) {
-            try { return std::stoi(it->second); }
-            catch (...) { return std::nullopt; }
+            try {
+                return std::stoi(it->second);
+            } catch (...) {
+                return std::nullopt;
+            }
         }
         return std::nullopt;
     }
 
     // Get float value (TYPE-SAFE)
-    std::optional<float> get_float(const std::string& key) const
+    std::optional<float> get_float(const std::string &key) const
     {
         auto it = parsed_options_.find(key);
         if (it != parsed_options_.end()) {
-            try { return std::stof(it->second); }
-            catch (...) { return std::nullopt; }
+            try {
+                return std::stof(it->second);
+            } catch (...) {
+                return std::nullopt;
+            }
         }
         return std::nullopt;
     }
 
     // Get positional arguments
-    const std::vector<std::string>& get_positional() const 
-    { 
-        return positional_args_; 
+    const std::vector<std::string> &get_positional() const
+    {
+        return positional_args_;
     }
 
     // Print formatted usage information (IMPROVED FORMATTING)
-    void print_usage(const std::string& program_name = "") const
+    void print_usage(const std::string &program_name = "") const
     {
         if (!description_.empty()) {
             std::cout << description_ << "\n\n";
@@ -216,13 +231,15 @@ public:
             std::cout << "Usage: " << program_name << " [OPTIONS]\n\n";
         }
 
-        if (options_.empty()) return;
+        if (options_.empty()) {
+            return;
+        }
 
         std::cout << "Options:\n";
-        
+
         // Find max width for alignment
         size_t max_width = 0;
-        for (const auto& [flag, config] : options_) {
+        for (const auto &[flag, config] : options_) {
             size_t width = flag.length() + 4;
             if (!config.short_flag.empty()) {
                 width += config.short_flag.length() + 4;
@@ -231,56 +248,57 @@ public:
         }
 
         // Print each option
-        for (const auto& [flag, config] : options_) {
+        for (const auto &[flag, config] : options_) {
             std::ostringstream oss;
             oss << "  --" << flag;
             if (!config.short_flag.empty()) {
                 oss << ", -" << config.short_flag;
             }
-            
+
             std::string flags_str = oss.str();
             std::cout << flags_str;
-            
+
             if (flags_str.length() < max_width) {
                 std::cout << std::string(max_width - flags_str.length(), ' ');
             }
-            
+
             std::cout << "  " << config.help;
-            
+
             if (config.type != OptionType::Flag && config.type != OptionType::String) {
                 std::cout << " [" << type_name(config.type) << "]";
             }
-            
+
             if (!config.default_value.empty()) {
                 std::cout << " (default: " << config.default_value << ")";
             }
-            
+
             if (config.required) {
                 std::cout << " [REQUIRED]";
             }
-            
+
             std::cout << "\n";
         }
     }
 
     // Print errors from parse result
-    static void print_errors(const ParseResult& result, std::ostream& out = std::cerr)
+    static void print_errors(const ParseResult &result, std::ostream &out = std::cerr)
     {
         if (!result.success && !result.errors.empty()) {
             out << "Parsing errors:\n";
-            for (const auto& error : result.errors) {
+            for (const auto &error : result.errors) {
                 out << "  - " << error << "\n";
             }
         }
     }
 
 private:
-    struct OptionConfig {
+    struct OptionConfig
+    {
         std::string long_flag;
         std::string short_flag;
         std::string help;
         std::string default_value;
-        bool required = false;
+        bool required   = false;
         OptionType type = OptionType::String;
     };
 
@@ -291,21 +309,23 @@ private:
     }
 
     // Validate value matches expected type
-    static bool validate_type(const std::string& value, OptionType type)
+    static bool validate_type(const std::string &value, OptionType type)
     {
-        if (value.empty()) return true;
-        
+        if (value.empty()) {
+            return true;
+        }
+
         try {
             switch (type) {
-                case OptionType::String:
-                case OptionType::Flag:
-                    return true;
-                case OptionType::Int:
-                    std::stoi(value);
-                    return true;
-                case OptionType::Float:
-                    std::stof(value);
-                    return true;
+            case OptionType::String:
+            case OptionType::Flag:
+                return true;
+            case OptionType::Int:
+                std::stoi(value);
+                return true;
+            case OptionType::Float:
+                std::stof(value);
+                return true;
             }
         } catch (...) {
             return false;
@@ -317,10 +337,14 @@ private:
     static std::string type_name(OptionType type)
     {
         switch (type) {
-            case OptionType::String: return "string";
-            case OptionType::Flag: return "flag";
-            case OptionType::Int: return "int";
-            case OptionType::Float: return "float";
+        case OptionType::String:
+            return "string";
+        case OptionType::Flag:
+            return "flag";
+        case OptionType::Int:
+            return "int";
+        case OptionType::Float:
+            return "float";
         }
         return "unknown";
     }
@@ -334,8 +358,6 @@ private:
 
 #endif // UARGS_PARSER_EXT_HPP
 
-
-
 ///////////////////////////////////////////////////////////////////////
 // USAGE:
 ///////////////////////////////////////////////////////////////////////
@@ -343,26 +365,26 @@ private:
 /*
 int main(int argc, const char* argv[]) {
     CommandLineParser parser("My awesome tool");
-    
+
     parser.add_option("input", "i", "Input file", true);
     parser.add_option("output", "o", "Output file", false, "out.txt");
-    parser.add_option("threads", "t", "Thread count", false, "4", 
+    parser.add_option("threads", "t", "Thread count", false, "4",
                      CommandLineParser::OptionType::Int);
     parser.add_flag("verbose", "v", "Enable verbose output");
-    
+
     auto result = parser.parse(argc, argv);
-    
+
     if (!result) {
         CommandLineParser::print_errors(result);
         parser.print_usage(argv[0]);
         return 1;
     }
-    
+
     // Type-safe access
     auto input = parser.get("input").value();
     int threads = parser.get_int("threads").value_or(1);
     bool verbose = parser.get_flag("verbose");
-    
+
     return 0;
 }
 

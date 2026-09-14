@@ -1,7 +1,7 @@
 #include "IScriptInterpreterShell.hpp"
 
-#include <stdio.h>
 #include <optional>
+#include <stdio.h>
 #include <string>
 #include <vector>
 
@@ -24,10 +24,10 @@
 #include <utility>
 
 #if defined(_MSC_VER)
-    #include <dirent_vs.h>
+#include <dirent_vs.h>
 #else
-    #include <dirent.h>
-    #include <unistd.h>
+#include <dirent.h>
+#include <unistd.h>
 #endif
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
 
@@ -51,29 +51,24 @@ static std::filesystem::path executableDir()
 //            INTERNAL INTERFACES                                //
 ///////////////////////////////////////////////////////////////////
 
-static int privListPlugins          (const char *pstrCaption, const char *pstrPath, const char *pstrExtension);
-static int privListScriptItems      (void);
-static int privListScriptCommands   (void);
-static int privLoadScriptPlugin     (const char *pstrPluginName);
-static int privExecScriptCommand    (const char *pstrCommand);
-static std::string adaptInputLine   (const std::string& line);
-
+static int privListPlugins(const char *pstrCaption, const char *pstrPath, const char *pstrExtension);
+static int privListScriptItems(void);
+static int privListScriptCommands(void);
+static int privLoadScriptPlugin(const char *pstrPluginName);
+static int privExecScriptCommand(const char *pstrCommand);
+static std::string adaptInputLine(const std::string &line);
 
 ///////////////////////////////////////////////////////////////////
 //            EXPORTED VARIABLES DECLARATION                     //
 ///////////////////////////////////////////////////////////////////
 
-
 #if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)
 extern void *pvLocalUserData;
 #endif /* (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA) */
 
-
 ///////////////////////////////////////////////////////////////////
 //            USER COMMANDS IMPLEMENTATION                       //
 ///////////////////////////////////////////////////////////////////
-
-
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 /*------------------------------------------------------------
@@ -90,13 +85,12 @@ int list(void)
 
 } /* list() */
 
-
 /*------------------------------------------------------------
  * load the plugin
 ------------------------------------------------------------*/
 int pload(char *pstrPluginName)
 {
-    int iRetVal = 0; // success
+    int iRetVal                   = 0; // success
     const std::string pluginsPath = (executableDir() / SHELL_PLUGINS_PATH).string();
     PluginLoaderFunctor<uShellInst_s> loader(PluginPathGenerator(pluginsPath, PLUGIN_PREFIX, SHELL_PLUGIN_EXTENSION),
                                              PluginEntryPointResolver(SHELL_PLUGIN_ENTRY_POINT_NAME, SHELL_PLUGIN_EXIT_POINT_NAME));
@@ -108,8 +102,8 @@ int pload(char *pstrPluginName)
     } else {
         uSHELL_LOG(ULOG_INFO, "Plugin loaded successfully!");
 
-        auto typedPtr = std::static_pointer_cast<uShellInst_s>(handle.second);
-        uShellInst_s* rawPtr = typedPtr.get();
+        auto typedPtr                         = std::static_pointer_cast<uShellInst_s>(handle.second);
+        uShellInst_s *rawPtr                  = typedPtr.get();
 
         /* continue execution with the valid shell instance */
         std::shared_ptr<Microshell> pShellPtr = Microshell::getShellSharedPtr(rawPtr, pstrPluginName);
@@ -125,57 +119,50 @@ int pload(char *pstrPluginName)
 
 #endif /* (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES) */
 
-
 ///////////////////////////////////////////////////////////////////
 //               USER SHORTCUTS HANDLERS                         //
 ///////////////////////////////////////////////////////////////////
 
-
 #if (1 == uSHELL_IMPLEMENTS_USER_SHORTCUTS)
 
-void uShellUserHandleShortcut_Dot( const char *pstrArgs )
+void uShellUserHandleShortcut_Dot(const char *pstrArgs)
 {
-    char *pstrArg = (char*)pstrArgs;
+    char *pstrArg = (char *)pstrArgs;
 
     do {
 
         // case: [..args] => load a plugin
-        if( '.' == *pstrArg )
-        {
+        if ('.' == *pstrArg) {
             ++pstrArg;
             // skip the spaces
-            while((uSHELL_KEY_SPACE == *pstrArg) && ('\0' != *pstrArg)) { ++pstrArg; }
-            if( '\0' == *pstrArg )
-            {
-                uSHELL_PRINTF("[..] plugin name not provided!\n");
+            while ((uSHELL_KEY_SPACE == *pstrArg) && ('\0' != *pstrArg)) {
+                ++pstrArg;
             }
-            else
-            {
+            if ('\0' == *pstrArg) {
+                uSHELL_PRINTF("[..] plugin name not provided!\n");
+            } else {
                 uSHELL_PRINTF("[..] loading plugin [%s]\n", pstrArg);
-                privLoadScriptPlugin( pstrArg );
+                privLoadScriptPlugin(pstrArg);
             }
             break;
         }
 
         // case: [.l] => list the script macros and plugins
-        if( ('l' == *pstrArg) && ('\0' == *(pstrArg + 1)) )
-        {
+        if (('l' == *pstrArg) && ('\0' == *(pstrArg + 1))) {
             uSHELL_PRINTF("[.l] list script items\n");
             privListScriptItems();
             break;
         }
 
         // case: [.l] => list the script commands
-        if( ('c' == *pstrArg) && ('\0' == *(pstrArg + 1)) )
-        {
+        if (('c' == *pstrArg) && ('\0' == *(pstrArg + 1))) {
             uSHELL_PRINTF("[.c] list script commands\n");
             privListScriptCommands();
             break;
         }
 
         // case: [.h] => show the help
-        if( ('h' == *pstrArg) && ('\0' == *(pstrArg + 1)) )
-        {
+        if (('h' == *pstrArg) && ('\0' == *(pstrArg + 1))) {
             uSHELL_PRINTF("\t[.h] help\n");
             uSHELL_PRINTF("\t[.l] list script macros and plugins\n");
             uSHELL_PRINTF("\t[.c] list script commands\n");
@@ -184,23 +171,21 @@ void uShellUserHandleShortcut_Dot( const char *pstrArgs )
             break;
         }
 
-        //default [.args] declare a macro or execute a command
+        // default [.args] declare a macro or execute a command
         privExecScriptCommand(adaptInputLine(pstrArg).c_str());
 
-    } while(false);
+    } while (false);
 
 } /* uShellUserHandleShortcut_Dot() */
 
-
 /******************************************************************************/
-void uShellUserHandleShortcut_Slash( const char *pstrArgs )
+void uShellUserHandleShortcut_Slash(const char *pstrArgs)
 {
     uSHELL_LOG(ULOG_WARNING, "[/] registered but not implemented | args[%s] ", pstrArgs);
 
 } /* uShellUserHandleShortcut_Slash() */
 
 #endif /*(1 == uSHELL_IMPLEMENTS_USER_SHORTCUTS)*/
-
 
 ///////////////////////////////////////////////////////////////////
 //               PRIVATE IMPLEMENTATION                          //
@@ -210,31 +195,29 @@ void uShellUserHandleShortcut_Slash( const char *pstrArgs )
  * list the available plugins
 ------------------------------------------------------------*/
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
-static int privListPlugins (const char *pstrCaption, const char *pstrPath, const char *pstrExtension)
+static int privListPlugins(const char *pstrCaption, const char *pstrPath, const char *pstrExtension)
 {
-    #define MAX_WORKBUFFER_SIZE    128U
+#define MAX_WORKBUFFER_SIZE 128U
     char vstrPluginPathName[MAX_WORKBUFFER_SIZE] = {0};
-    struct dirent *entry = nullptr;
+    struct dirent *entry                         = nullptr;
 
     // Resolve the relative plugin folder against the executable's directory so
     // that opendir() works regardless of the process CWD (which is set to the
     // script's directory by the Qt front-end).
-    const std::string absPath = (executableDir() / pstrPath).string();
-    DIR *dir = opendir(absPath.c_str());
+    const std::string absPath                    = (executableDir() / pstrPath).string();
+    DIR *dir                                     = opendir(absPath.c_str());
 
     uSHELL_LOG(ULOG_INFO, "--- %s plugins ---", pstrCaption);
 
-    if (nullptr == dir) 
-    {
+    if (nullptr == dir) {
         uSHELL_LOG(ULOG_ERROR, "Failed to open the plugins folder [%s]", pstrPath);
         return 1;
     }
 
-    while ((entry = readdir(dir)) != nullptr) 
-    {
+    while ((entry = readdir(dir)) != nullptr) {
         if (strstr(entry->d_name, pstrExtension) != nullptr) {
             size_t name_len = strlen(entry->d_name);
-            size_t ext_len = strlen(pstrExtension);
+            size_t ext_len  = strlen(pstrExtension);
 
             // Ensure safe modification of string
             if (name_len > ext_len) {
@@ -257,14 +240,13 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
 } /* privListPlugins() */
 #endif /* (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES) */
 
-
 /*------------------------------------------------------------
  * list the script items
 ------------------------------------------------------------*/
-static int privListScriptItems (void)
+static int privListScriptItems(void)
 {
-    if( nullptr != pvLocalUserData ) {
-        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
+    if (nullptr != pvLocalUserData) {
+        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType> *>(pvLocalUserData);
         pScript->listMacrosPlugins();
     }
 
@@ -272,15 +254,13 @@ static int privListScriptItems (void)
 
 } /* privListScriptItems() */
 
-
-
 /*------------------------------------------------------------
  * list the script commands
 ------------------------------------------------------------*/
-static int privListScriptCommands (void)
+static int privListScriptCommands(void)
 {
-    if( nullptr != pvLocalUserData ) {
-        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
+    if (nullptr != pvLocalUserData) {
+        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType> *>(pvLocalUserData);
         pScript->listCommands();
     }
 
@@ -288,15 +268,13 @@ static int privListScriptCommands (void)
 
 } /* privListScriptCommands() */
 
-
-
 /*------------------------------------------------------------
  * load the script plugin provided by name
 ------------------------------------------------------------*/
-int privLoadScriptPlugin (const char* pstrPluginName)
+int privLoadScriptPlugin(const char *pstrPluginName)
 {
-    if( nullptr != pvLocalUserData ) {
-        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
+    if (nullptr != pvLocalUserData) {
+        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType> *>(pvLocalUserData);
         pScript->loadPlugin(pstrPluginName, true);
     }
 
@@ -304,15 +282,14 @@ int privLoadScriptPlugin (const char* pstrPluginName)
 
 } /* privLoadScriptPlugin() */
 
-
 /*------------------------------------------------------------
  * execute a script command
 ------------------------------------------------------------*/
-static int privExecScriptCommand (const char *pstrCommand)
+static int privExecScriptCommand(const char *pstrCommand)
 {
     uSHELL_PRINTF("[.] executing [%s]\n", pstrCommand);
-    if( nullptr != pvLocalUserData ) {
-        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
+    if (nullptr != pvLocalUserData) {
+        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType> *>(pvLocalUserData);
         pScript->executeCmd(pstrCommand);
     }
 
@@ -320,20 +297,21 @@ static int privExecScriptCommand (const char *pstrCommand)
 
 } /* privExecScriptCommand() */
 
-
 /*------------------------------------------------------------
  * adapt the input to match the script expected format (upprecases in some cases)
 ------------------------------------------------------------*/
-std::string adaptInputLine(const std::string& line) 
+std::string adaptInputLine(const std::string &line)
 {
     // Normalize: ensure spaces around := and ?= so tokenizer sees them as separate tokens
     std::string normalized = ustring::replace_all(line, "?=", " ?= ");
     ustring::replace_all_inplace(normalized, ":=", " := ");
 
-    auto tokens = ustring::tokenize(normalized);     // split on whitespace
-    if (tokens.empty()) return line;
+    auto tokens = ustring::tokenize(normalized); // split on whitespace
+    if (tokens.empty()) {
+        return line;
+    }
 
-    auto upperDot = [](std::string& tok) {
+    auto upperDot = [](std::string &tok) {
         auto [lhs, rhs] = ustring::splitAtFirst(tok, '.');
         if (!rhs.empty()) {
             ustring::touppercase(lhs);
@@ -341,26 +319,28 @@ std::string adaptInputLine(const std::string& line)
             tok = lhs + '.' + rhs;
         }
     };
-    auto isKeyword = [](const std::string& s) {
+    auto isKeyword = [](const std::string &s) {
         const auto u = ustring::touppercase(s);
         return u == "PRINT" || u == "FORMAT" || u == "MATH";
     };
 
-    if (tokens.size() > 1 && tokens[1] == "?=") {   
+    if (tokens.size() > 1 && tokens[1] == "?=") {
         if (tokens.size() > 2) {
-            if (ustring::containsChar(tokens[2], '.'))
+            if (ustring::containsChar(tokens[2], '.')) {
                 upperDot(tokens[2]);
-            else if (isKeyword(tokens[2]))
+            } else if (isKeyword(tokens[2])) {
                 ustring::touppercase(tokens[2]);
+            }
         }
     } else if (tokens.size() > 1 && tokens[1] == ":=") {
         // don't change anything
-    } else {                                         
-        if (ustring::containsChar(tokens[0], '.'))
+    } else {
+        if (ustring::containsChar(tokens[0], '.')) {
             upperDot(tokens[0]);
-        else
+        } else {
             ustring::touppercase(tokens[0]);
+        }
     }
     return ustring::joinStrings(tokens, ' ');
-    
+
 } /* adaptInputLine() */

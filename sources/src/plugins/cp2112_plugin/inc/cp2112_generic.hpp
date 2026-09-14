@@ -2,33 +2,33 @@
 #define CP2112_GENERIC_HPP
 #include "ICommDriver.hpp"
 #include "uCommScriptClient.hpp"
-#include "uLogger.hpp"
-#include "uString.hpp"
-#include "uHexlify.hpp"
-#include "uNumeric.hpp"
 #include "uFile.hpp"
+#include "uHexlify.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uString.hpp"
 
-#include <vector>
-#include <map>
-#include <span>
-#include <string>
 #include <cstdint>
 #include <fstream>
+#include <map>
+#include <span>
 #include <stop_token>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "CP2112_GEN  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR                  "CP2112_GEN  |"
+#define LOG_HDR                 LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //              CP2112-SPECIFIC SIZE CONSTANTS                                 //
@@ -36,28 +36,28 @@
 
 // Default chunk size for wrrdf write AND read phases.
 // Must be <= CP2112::MAX_I2C_READ_LEN (512) or the driver returns INVALID_PARAM.
-#define CP2112_WRITE_CHUNK_SIZE  ((size_t)(512U))
+#define CP2112_WRITE_CHUNK_SIZE ((size_t)(512U))
 
 // Upper bound for a single generic_write_data call.
 // The CP2112 has no hard write limit (driver auto-chunks at 61 B per HID
 // report), but 4 KB is a generous and realistic ceiling for an I2C bridge.
-#define CP2112_BULK_MAX_BYTES    ((size_t)(4096U))
+#define CP2112_BULK_MAX_BYTES   ((size_t)(4096U))
 
 ///////////////////////////////////////////////////////////////////
 //              LOCAL DEFINES AND DATA TYPES                     //
 ///////////////////////////////////////////////////////////////////
 
 template <typename T>
-using MCFP = bool (T::*)(const std::string& args, std::stop_token st) const;
+using MCFP = bool (T::*)(const std::string &args, std::stop_token st) const;
 
 template <typename T>
 using ModuleCommandsMap = std::map<const std::string, MCFP<T>>;
 
-using ModuleSpeedMap = std::map<const std::string, const size_t>;
-using SpeedsMapsMap  = std::map<const std::string, ModuleSpeedMap*>;
+using ModuleSpeedMap    = std::map<const std::string, const size_t>;
+using SpeedsMapsMap     = std::map<const std::string, ModuleSpeedMap *>;
 
 template <typename T>
-using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T>*>;
+using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T> *>;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                 GENERIC TEMPLATE HELPERS                                    //
@@ -67,23 +67,23 @@ using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T>*>;
    generic_module_list_commands
 ============================================================ */
 template <typename T>
-bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
+bool generic_module_list_commands(const T *pOwner, const std::string &strModule)
 {
     // dry validation ends here
     if (!pOwner->isEnabled()) {
         return true;
     }
 
-    ModuleCommandsMap<T>* pMap = pOwner->getModuleCmdsMap(strModule);
+    ModuleCommandsMap<T> *pMap = pOwner->getModuleCmdsMap(strModule);
     if (pMap && !pMap->empty()) {
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": available commands:"));
-        for (const auto& cmd : *pMap) {
+        for (const auto &cmd : *pMap) {
             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("  -"); LOG_STRING(cmd.first));
         }
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": no commands available"));
     }
-    
+
     return true;
 }
 
@@ -91,14 +91,14 @@ bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
    generic_module_dispatch  (named cmd + args already split)
 ============================================================ */
 template <typename T>
-bool generic_module_dispatch(const T* pOwner,
-                              const std::string& strModule,
-                              const std::string& strCmd,
-                              const std::string& args,
-                              std::stop_token st = {})
+bool generic_module_dispatch(const T *pOwner,
+                             const std::string &strModule,
+                             const std::string &strCmd,
+                             const std::string &args,
+                             std::stop_token st = {})
 {
-    ModuleCommandsMap<T>* pMap = pOwner->getModuleCmdsMap(strModule);
-    auto it = pMap->find(strCmd);
+    ModuleCommandsMap<T> *pMap = pOwner->getModuleCmdsMap(strModule);
+    auto it                    = pMap->find(strCmd);
     if (it != pMap->end()) {
         return (pOwner->*it->second)(args, st);
     }
@@ -110,10 +110,10 @@ bool generic_module_dispatch(const T* pOwner,
    generic_module_dispatch  (single "cmd args" string)
 ============================================================ */
 template <typename T>
-bool generic_module_dispatch(const T* pOwner,
-                              const std::string& strModule,
-                              const std::string& args,
-                              std::stop_token st = {})
+bool generic_module_dispatch(const T *pOwner,
+                             const std::string &strModule,
+                             const std::string &args,
+                             std::stop_token st = {})
 {
     std::vector<std::string> parts;
     ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
@@ -125,7 +125,7 @@ bool generic_module_dispatch(const T* pOwner,
 
     // Single-token commands that take no arguments
     if (parts.size() == 1) {
-        const std::string& cmd = parts[0];
+        const std::string &cmd = parts[0];
         if (cmd == "help" || cmd == "close" || cmd == "scan" || cmd == "read") {
 
             // dry validation ends here
@@ -133,7 +133,7 @@ bool generic_module_dispatch(const T* pOwner,
                 return true;
             }
 
-            return generic_module_dispatch<T>(pOwner, strModule, cmd, "", st);                
+            return generic_module_dispatch<T>(pOwner, strModule, cmd, "", st);
         }
     }
 
@@ -149,11 +149,11 @@ bool generic_module_dispatch(const T* pOwner,
    generic_module_set_speed
 ============================================================ */
 template <typename T>
-bool generic_module_set_speed(const T* pOwner,
-                               const std::string& strModule,
-                               const std::string& args)
+bool generic_module_set_speed(const T *pOwner,
+                              const std::string &strModule,
+                              const std::string &args)
 {
-    const ModuleSpeedMap* pSpeedMap = pOwner->getModuleSpeedsMap(strModule);
+    const ModuleSpeedMap *pSpeedMap = pOwner->getModuleSpeedsMap(strModule);
     if (!pSpeedMap) {
         size_t hz = 0;
         if (!numeric::str2sizet(args, hz)) {
@@ -166,7 +166,7 @@ bool generic_module_set_speed(const T* pOwner,
 
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING(strModule); LOG_STRING(": available speeds:"));
-        for (const auto& s : *pSpeedMap) {
+        for (const auto &s : *pSpeedMap) {
             std::string line = s.first + " -> " + std::to_string(s.second) + " Hz";
             LOG_PRINT(LOG_EMPTY, LOG_STRING(line));
         }
@@ -197,7 +197,7 @@ template <typename T>
 using WriteCbk = bool (T::*)(std::span<const uint8_t>) const;
 
 template <typename T>
-bool generic_write_data(const T* pOwner, const std::string& args, WriteCbk<T> cbk)
+bool generic_write_data(const T *pOwner, const std::string &args, WriteCbk<T> cbk)
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABBCC..  (hex bytes, up to 4096)"));
@@ -205,7 +205,9 @@ bool generic_write_data(const T* pOwner, const std::string& args, WriteCbk<T> cb
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data)) return false;
+    if (!hexutils::stringUnhexlify(args, data)) {
+        return false;
+    }
 
     if (data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected at least 1 byte"));
@@ -219,7 +221,7 @@ bool generic_write_data(const T* pOwner, const std::string& args, WriteCbk<T> cb
     // dry validation ends here
     if (!pOwner->isEnabled()) {
         return true;
-    }    
+    }
 
     return (pOwner->*cbk)(data);
 }
@@ -231,7 +233,7 @@ template <typename T>
 using WrRdCbk = bool (T::*)(std::span<const uint8_t>, size_t, std::stop_token) const;
 
 template <typename T>
-bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T> cbk, std::stop_token st = {})
+bool generic_write_read_data(const T *pOwner, const std::string &args, WrRdCbk<T> cbk, std::stop_token st = {})
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: [hexdata][:rdlen]  e.g. DEADBEEF:4 | :4 | DEADBEEF"));
@@ -248,7 +250,7 @@ bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T
     } else {
         std::vector<std::string> parts;
         ustring::tokenize(args, CHAR_SEPARATOR_COLON, parts);
-        
+
         if (parts.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid arguments"));
             return false;
@@ -268,7 +270,7 @@ bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T
     // dry validation ends here
     if (!pOwner->isEnabled()) {
         return true;
-    }    
+    }
 
     return (pOwner->*cbk)(request, readLen, st);
 }
@@ -280,11 +282,11 @@ bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T
    An explicit rdChunk > 512 is rejected before hitting the driver.
 ============================================================ */
 template <typename T>
-bool generic_write_read_file(const T* pOwner,
-                              const std::string& args,
-                              WrRdCbk<T> cbk,
-                              const std::string& artefactsPath,
-                              std::stop_token st = {})
+bool generic_write_read_file(const T *pOwner,
+                             const std::string &args,
+                             WrRdCbk<T> cbk,
+                             const std::string &artefactsPath,
+                             std::stop_token st = {})
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: filename[:wrchunk][:rdchunk]"));
@@ -337,27 +339,27 @@ bool generic_write_read_file(const T* pOwner,
 
     std::ifstream fin(path, std::ios::binary);
     if (!fin.is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File can't be open:"); LOG_STRING(path));        
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File can't be open:"); LOG_STRING(path));
         return false;
     }
 
     auto fileSize = ufile::getFileSize(path);
-    if(0 == fileSize) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File is empty:"); LOG_STRING(path));        
+    if (0 == fileSize) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File is empty:"); LOG_STRING(path));
         return false;
     }
 
     // dry validation ends here
     if (!pOwner->isEnabled()) {
         return true;
-    }    
+    }
 
     size_t nChunks  = static_cast<size_t>(fileSize / wrChunk);
     size_t lastSize = static_cast<size_t>(fileSize % wrChunk);
 
     for (size_t i = 0; i < nChunks; ++i) {
         std::vector<uint8_t> buf(wrChunk);
-        fin.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(wrChunk));
+        fin.read(reinterpret_cast<char *>(buf.data()), static_cast<std::streamsize>(wrChunk));
 
         if (!(pOwner->*cbk)(buf, rdChunk, st)) {
             return false;
@@ -365,7 +367,7 @@ bool generic_write_read_file(const T* pOwner,
     }
     if (lastSize > 0) {
         std::vector<uint8_t> buf(lastSize);
-        fin.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(lastSize));
+        fin.read(reinterpret_cast<char *>(buf.data()), static_cast<std::streamsize>(lastSize));
 
         if (!(pOwner->*cbk)(buf, std::min(rdChunk, lastSize), st)) {
             return false;
@@ -374,8 +376,6 @@ bool generic_write_read_file(const T* pOwner,
 
     return true;
 }
-
-
 
 /* ============================================================
    generic_execute_script  — execute a CommScriptClient script
@@ -390,15 +390,15 @@ bool generic_write_read_file(const T* pOwner,
 ============================================================ */
 template <typename TDriver>
 bool generic_execute_script(
-    TDriver*           pDriver,
-    const std::string& pluginName,
-    const std::string& scriptName,
-    const std::string& artefactsPath,
-    size_t             szMaxRecvSize,
-    uint32_t           u32ReadTimeout,
-    uint32_t           u32ScriptDelay,
-    bool               bEnabled,
-    std::stop_token    st = {})
+    TDriver *pDriver,
+    const std::string &pluginName,
+    const std::string &scriptName,
+    const std::string &artefactsPath,
+    size_t szMaxRecvSize,
+    uint32_t u32ReadTimeout,
+    uint32_t u32ScriptDelay,
+    bool bEnabled,
+    std::stop_token st = {})
 {
     if (bEnabled) {
         if (!pDriver || !pDriver->is_open()) {
@@ -420,7 +420,7 @@ bool generic_execute_script(
     auto spDriver = std::shared_ptr<TDriver>(std::shared_ptr<TDriver>{}, pDriver);
 
     try {
-        CommScriptClient<TDriver> client(strPath, 
+        CommScriptClient<TDriver> client(strPath,
                                          spDriver,
                                          pluginName,
                                          szMaxRecvSize,
@@ -430,9 +430,9 @@ bool generic_execute_script(
                                          typename CommScriptClient<TDriver>::RecvFunc{},
                                          st);
         return client.execute(bEnabled);
-    } catch (const std::bad_alloc& e) {
+    } catch (const std::bad_alloc &e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Out of memory allocating script client:"); LOG_STRING(e.what()));
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script execution failed:"); LOG_STRING(e.what()));
     }
     return false;

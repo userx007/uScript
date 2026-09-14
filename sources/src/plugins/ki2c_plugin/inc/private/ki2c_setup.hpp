@@ -2,8 +2,8 @@
 #define KI2C_SETUP_HPP
 #include "PluginSetup.hpp"
 #include "ki2c_plugin.hpp"
-#include "uPluginSettings.hpp"
 #include "uCommandExec.hpp"
+#include "uPluginSettings.hpp"
 
 #include <string>
 
@@ -12,26 +12,25 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "KI2C_P      |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR         "KI2C_P      |"
+#define LOG_HDR        LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  INI FILE CONFIGURATION ITEMS                               //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
-#define    KI2C_DEVICE        "I2C_DEVICE"
-#define    KI2C_ADDRESS       "I2C_ADDRESS"
-#define    READ_TIMEOUT       "READ_TIMEOUT"
-#define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
-#define    READ_BUF_SIZE      "READ_BUF_SIZE"
-
+#define ARTEFACTS_PATH "ARTEFACTS_PATH"
+#define KI2C_DEVICE    "I2C_DEVICE"
+#define KI2C_ADDRESS   "I2C_ADDRESS"
+#define READ_TIMEOUT   "READ_TIMEOUT"
+#define WRITE_TIMEOUT  "WRITE_TIMEOUT"
+#define READ_BUF_SIZE  "READ_BUF_SIZE"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  CONFIGURATION INTERFACES                                   //
@@ -39,12 +38,12 @@
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief processing of the plugin specific settings.
-  *
-  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
-  * same setter surface the CONFIG command uses so an ini file
-  * and a runtime CONFIG command are always interpreted identically
-*/
+ * \brief processing of the plugin specific settings.
+ *
+ * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+ * same setter surface the CONFIG command uses so an ini file
+ * and a runtime CONFIG command are always interpreted identically
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
@@ -60,18 +59,18 @@ bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
     PluginSettingsBinder sSettings;
     sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(KI2C_DEVICE,    m_strKI2CDevice);
-    sSettings.Bind(KI2C_ADDRESS,   m_u8KI2CAddress);
-    sSettings.Bind(READ_TIMEOUT,   m_u32ReadTimeout);
-    sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE,  m_u32ReadBufferSize);
+    sSettings.Bind(KI2C_DEVICE, m_strKI2CDevice);
+    sSettings.Bind(KI2C_ADDRESS, m_u8KI2CAddress);
+    sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE, m_u32ReadBufferSize);
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     return sSettings.Apply(psSetParams->mapSettings,
-        [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-        });
+                           [](const std::string &strKey, const std::string &strRawValue) {
+                               LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+                           });
 
 } /* m_LocalSetParams() */
 
@@ -83,19 +82,19 @@ bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
  * \param[in] args    space-separated key=value pairs
  *                    (d=device  a=address  r=read_tout  w=write_tout  s=recv_bufsize)
  * \return true if processing succeeded, false otherwise
-*/
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename T>
-bool generic_i2c_set_params (const T *pOwner, const std::string &args)
+bool generic_i2c_set_params(const T *pOwner, const std::string &args)
 {
     static constexpr KVSetterEntry<T> table[] = {
-        { .key = "d",      .voidSetter = &T::setI2CDevice          },
-        { .key = "a",      .boolSetter = &T::setI2CAddress         },
-        { .key = "r",      .boolSetter = &T::setI2CReadTimeout     },
-        { .key = "w",      .boolSetter = &T::setI2CWriteTimeout    },
-        { .key = "s",      .boolSetter = &T::setI2CReadBufferSize  },
-        { .key = "raw",    .boolSetter = &T::setRawResult          },
-        { .key = "cached", .boolSetter = &T::setCyclicCached       },
+        {.key = "d", .voidSetter = &T::setI2CDevice},
+        {.key = "a", .boolSetter = &T::setI2CAddress},
+        {.key = "r", .boolSetter = &T::setI2CReadTimeout},
+        {.key = "w", .boolSetter = &T::setI2CWriteTimeout},
+        {.key = "s", .boolSetter = &T::setI2CReadBufferSize},
+        {.key = "raw", .boolSetter = &T::setRawResult},
+        {.key = "cached", .boolSetter = &T::setCyclicCached},
     };
 
     return generic_setup_params(pOwner, args, table, LT_HDR);

@@ -1,4 +1,5 @@
 #include "dds_typed_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
 #include "private/dds_typed_setup.hpp"
@@ -6,9 +7,9 @@
 #include "uLogger.hpp"
 #include "uString.hpp"
 
-#include <stddef.h>
 #include <span>
 #include <sstream>
+#include <stddef.h>
 #include <string_view>
 #include <vector>
 
@@ -16,46 +17,47 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED DdsTypedPlugin *pluginEntry()
 {
-    EXPORTED DdsTypedPlugin* pluginEntry()
-    {
-        return new DdsTypedPlugin();
-    }
+    return new DdsTypedPlugin();
+}
 
-    EXPORTED void pluginExit(DdsTypedPlugin *ptrPlugin)
-    {
-        if(nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(DdsTypedPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 // Driver factory
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace
+namespace {
+// Splits PRELOAD_PLUGINS="./a.so ; ./b.so" into {"./a.so", "./b.so"} —
+// deliberately local/one-off rather than pulling in a shared split
+// utility, same convention as DdsTypedDriver's own local tokenize()
+// helper (dds_typed_driver.cpp).
+std::vector<std::string> splitPreloadPaths(const std::string &csv)
 {
-    // Splits PRELOAD_PLUGINS="./a.so ; ./b.so" into {"./a.so", "./b.so"} —
-    // deliberately local/one-off rather than pulling in a shared split
-    // utility, same convention as DdsTypedDriver's own local tokenize()
-    // helper (dds_typed_driver.cpp).
-    std::vector<std::string> splitPreloadPaths(const std::string& csv)
-    {
-        std::vector<std::string> out;
-        size_t start = 0;
-        while (start <= csv.size()) {
-            const size_t sep = csv.find(';', start);
-            const std::string token = ustring::trim(csv.substr(start, sep == std::string::npos ? std::string::npos : sep - start));
-            if (!token.empty()) out.push_back(token);
-            if (sep == std::string::npos) break;
-            start = sep + 1;
+    std::vector<std::string> out;
+    size_t start = 0;
+    while (start <= csv.size()) {
+        const size_t sep        = csv.find(';', start);
+        const std::string token = ustring::trim(csv.substr(start, sep == std::string::npos ? std::string::npos : sep - start));
+        if (!token.empty()) {
+            out.push_back(token);
         }
-        return out;
+        if (sep == std::string::npos) {
+            break;
+        }
+        start = sep + 1;
     }
+    return out;
 }
+} // namespace
 
 std::shared_ptr<DdsTypedDriver> DdsTypedPlugin::m_OpenDriver(void) const
 {
@@ -80,7 +82,7 @@ std::shared_ptr<DdsTypedDriver> DdsTypedPlugin::m_OpenDriver(void) const
     cfg.strInstanceName        = m_strInstanceName;
     cfg.preloadPluginPaths     = splitPreloadPaths(m_strPreloadPlugins);
 
-    auto driver = std::make_shared<DdsTypedDriver>(cfg);
+    auto driver                = std::make_shared<DdsTypedDriver>(cfg);
     if (!driver->open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("DdsTypedDriver open failed — check DOMAIN/PARTICIPANT_ID aren't already bound by another process"));
         return nullptr;
@@ -94,9 +96,10 @@ std::shared_ptr<DdsTypedDriver> DdsTypedPlugin::m_OpenDriver(void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string& args, std::stop_token st) const
+bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &args, std::stop_token st) const
 {
-    (void)args; (void)st;
+    (void)args;
+    (void)st;
     resetData();
     std::ostringstream oss;
     oss << DDS_TYPED_PLUGIN_NAME " v" << m_strVersion
@@ -176,7 +179,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string& args, std::stop_token s
     return true;
 }
 
-bool DdsTypedPlugin::m_DDS_TYPED_CONFIG(const std::string& args, std::stop_token st) const
+bool DdsTypedPlugin::m_DDS_TYPED_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
@@ -193,7 +196,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_CONFIG(const std::string& args, std::stop_token
 // DDS_TYPED.CMD — see class doc comment (dds_typed_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool DdsTypedPlugin::m_DDS_TYPED_CMD(const std::string& args, std::stop_token st) const
+bool DdsTypedPlugin::m_DDS_TYPED_CMD(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -205,7 +208,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_CMD(const std::string& args, std::stop_token st
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->send(t, d, x, stop_tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->receive(t, b, o, x, stop_tok);
         },
         st);
@@ -215,7 +218,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_CMD(const std::string& args, std::stop_token st
 // DDS_TYPED.SCRIPT
 // -----------------------------------------------------------------------
 
-bool DdsTypedPlugin::m_DDS_TYPED_SCRIPT(const std::string& args, std::stop_token st) const
+bool DdsTypedPlugin::m_DDS_TYPED_SCRIPT(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -227,7 +230,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_SCRIPT(const std::string& args, std::stop_token
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->send(t, d, x, stop_tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->receive(t, b, o, x, stop_tok);
         },
         st);
@@ -237,7 +240,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_SCRIPT(const std::string& args, std::stop_token
 // DDS_TYPED.CYCLIC
 // -----------------------------------------------------------------------
 
-bool DdsTypedPlugin::m_DDS_TYPED_CYCLIC(const std::string& args, std::stop_token st) const
+bool DdsTypedPlugin::m_DDS_TYPED_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -248,7 +251,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_CYCLIC(const std::string& args, std::stop_token
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->send(t, d, x, stop_tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
             return drv->receive(t, b, o, x, stop_tok);
         });
 }

@@ -1,10 +1,10 @@
 #ifndef DEVICE_HANDLING_HPP
 #define DEVICE_HANDLING_HPP
 
-#include <vector>
-#include <string>
 #include <algorithm>
 #include <cstddef>
+#include <string>
+#include <vector>
 
 enum class OperationType {
     Insert,
@@ -15,8 +15,8 @@ class DeviceHandling
 {
 
 private:
-
-    struct DeviceEntry {
+    struct DeviceEntry
+    {
         std::string name;
         bool isRemoved = false; // renamed for clarity
     };
@@ -24,38 +24,41 @@ private:
     std::vector<DeviceEntry> deviceList;
     static constexpr std::size_t MaxListSize = 100;
 
-    int findItemIndex(const std::string& item) const {
+    int findItemIndex(const std::string &item) const
+    {
         auto it = std::find_if(deviceList.begin(), deviceList.end(),
-            [&item](const DeviceEntry& entry) {
-                return entry.name == item;
-            });
-        
+                               [&item](const DeviceEntry &entry) {
+                                   return entry.name == item;
+                               });
+
         if (it != deviceList.end()) {
             return static_cast<int>(std::distance(deviceList.begin(), it));
         }
         return -1;
     }
 
-    bool insertItem(const std::string& item) {
+    bool insertItem(const std::string &item)
+    {
         if (findItemIndex(item) == -1 && deviceList.size() < MaxListSize) {
-            deviceList.push_back({ item, false });
+            deviceList.push_back({item, false});
             return true;
         }
         return false;
     }
 
 public:
-
-    void init() {
+    void init()
+    {
         deviceList.clear();
     }
 
-    bool process(const std::string& input, std::string& output, OperationType opType) {
+    bool process(const std::string &input, std::string &output, OperationType opType)
+    {
         bool updated = false;
 
         if (opType == OperationType::Insert) {
             if (insertItem(input)) {
-                output = input;
+                output  = input;
                 updated = true;
             }
         } else {
@@ -68,11 +71,12 @@ public:
         return updated;
     }
 
-    bool getRemoved(std::string& output) {
+    bool getRemoved(std::string &output)
+    {
         auto it = std::find_if(deviceList.begin(), deviceList.end(),
-            [](const DeviceEntry& entry) {
-                return !entry.name.empty() && entry.isRemoved;
-            });
+                               [](const DeviceEntry &entry) {
+                                   return !entry.name.empty() && entry.isRemoved;
+                               });
 
         if (it != deviceList.end()) {
             output = it->name;
@@ -83,11 +87,12 @@ public:
         return false;
     }
 
-    bool getAdded(std::string& output) {
+    bool getAdded(std::string &output)
+    {
         auto it = std::find_if(deviceList.begin(), deviceList.end(),
-            [](const DeviceEntry& entry) {
-                return !entry.name.empty() && !entry.isRemoved;
-            });
+                               [](const DeviceEntry &entry) {
+                                   return !entry.name.empty() && !entry.isRemoved;
+                               });
 
         if (it != deviceList.end()) {
             output = it->name;
@@ -98,11 +103,12 @@ public:
         return false;
     }
 
-    void resetAllFlags() {
-        for (auto& entry : deviceList) {
+    void resetAllFlags()
+    {
+        for (auto &entry : deviceList) {
             entry.isRemoved = false;
         }
     }
 };
 
-#endif  //DEVICE_HANDLING_HPP
+#endif // DEVICE_HANDLING_HPP

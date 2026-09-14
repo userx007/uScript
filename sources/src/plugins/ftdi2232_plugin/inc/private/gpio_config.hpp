@@ -12,16 +12,16 @@
 //  FT2232D: only channel A supports MPSSE.                      //
 ///////////////////////////////////////////////////////////////////
 
-#define GPIO_COMMANDS_CONFIG_TABLE  \
-GPIO_CMD_RECORD( open   )           \
-GPIO_CMD_RECORD( close  )           \
-GPIO_CMD_RECORD( cfg    )           \
-GPIO_CMD_RECORD( dir    )           \
-GPIO_CMD_RECORD( write  )           \
-GPIO_CMD_RECORD( set    )           \
-GPIO_CMD_RECORD( clear  )           \
-GPIO_CMD_RECORD( toggle )           \
-GPIO_CMD_RECORD( read   )           \
-GPIO_CMD_RECORD( help   )
+#define GPIO_COMMANDS_CONFIG_TABLE \
+    GPIO_CMD_RECORD(open)          \
+    GPIO_CMD_RECORD(close)         \
+    GPIO_CMD_RECORD(cfg)           \
+    GPIO_CMD_RECORD(dir)           \
+    GPIO_CMD_RECORD(write)         \
+    GPIO_CMD_RECORD(set)           \
+    GPIO_CMD_RECORD(clear)         \
+    GPIO_CMD_RECORD(toggle)        \
+    GPIO_CMD_RECORD(read)          \
+    GPIO_CMD_RECORD(help)
 
 #endif // FT2232_GPIO_CONFIG_HPP

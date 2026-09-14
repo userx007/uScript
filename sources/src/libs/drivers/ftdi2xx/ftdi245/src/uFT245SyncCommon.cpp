@@ -2,10 +2,10 @@
 #include "uFT245Sync.hpp"
 #include "uLogger.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <algorithm>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string_view>
 #include <vector>
@@ -15,21 +15,20 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT245_SYNC  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "FT245_SYNC  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // open / close
 // ============================================================================
 
-FT245Sync::Status FT245Sync::open(const SyncConfig& config, uint8_t u8DeviceIndex)
+FT245Sync::Status FT245Sync::open(const SyncConfig &config, uint8_t u8DeviceIndex)
 {
     Status s = open_device(config.variant, config.fifoMode, u8DeviceIndex);
     if (s != Status::SUCCESS) {
@@ -53,15 +52,14 @@ FT245Sync::Status FT245Sync::close()
     return FT245Base::close();
 }
 
-
 // ============================================================================
 // PUBLIC UNIFIED INTERFACE  (ICommDriver)
 // ============================================================================
 
 FT245Sync::WriteResult FT245Sync::tout_write(uint32_t u32WriteTimeout,
                                              std::span<const uint8_t> buffer,
-                                             [[maybe_unused]]std::string_view xtra_params,
-                                             std::stop_token /*stop_tok*/) const 
+                                             [[maybe_unused]] std::string_view xtra_params,
+                                             std::stop_token /*stop_tok*/) const
 {
     WriteResult result;
 
@@ -83,14 +81,14 @@ FT245Sync::WriteResult FT245Sync::tout_write(uint32_t u32WriteTimeout,
     // 0 == infinite timeout, but this particular write path doesn't consult
     // it (see comment below) — fifo_write() uses a fixed platform-level
     // transfer timeout, not a caller-tunable one.
-    const uint32_t   timeout   = u32WriteTimeout;
+    const uint32_t timeout     = u32WriteTimeout;
     (void)timeout; // timeout enforced at platform layer
 
     size_t offset = 0;
 
     while (offset < buffer.size()) {
         const size_t chunk = std::min(buffer.size() - offset, MAX_CHUNK);
-        Status s = fifo_write(buffer.data() + offset, chunk);
+        Status s           = fifo_write(buffer.data() + offset, chunk);
 
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -100,7 +98,7 @@ FT245Sync::WriteResult FT245Sync::tout_write(uint32_t u32WriteTimeout,
             return result;
         }
 
-        offset               += chunk;
+        offset += chunk;
         result.bytes_written += chunk;
     }
 
@@ -108,12 +106,11 @@ FT245Sync::WriteResult FT245Sync::tout_write(uint32_t u32WriteTimeout,
     return result;
 }
 
-
-FT245Sync::ReadResult FT245Sync::tout_read( uint32_t u32ReadTimeout,
-                                            std::span<uint8_t> buffer,
-                                            const ReadOptions& options,
-                                            [[maybe_unused]]std::string_view xtra_params,
-                                            std::stop_token stop_tok) const
+FT245Sync::ReadResult FT245Sync::tout_read(uint32_t u32ReadTimeout,
+                                           std::span<uint8_t> buffer,
+                                           const ReadOptions &options,
+                                           [[maybe_unused]] std::string_view xtra_params,
+                                           std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -123,7 +120,7 @@ FT245Sync::ReadResult FT245Sync::tout_read( uint32_t u32ReadTimeout,
     }
 
     if (buffer.empty()) {
-        result.status    = Status::SUCCESS;
+        result.status     = Status::SUCCESS;
         result.bytes_read = 0;
         return result;
     }
@@ -132,104 +129,108 @@ FT245Sync::ReadResult FT245Sync::tout_read( uint32_t u32ReadTimeout,
     // indefinitely rather than substituting a default.
     const uint32_t timeout = u32ReadTimeout;
 
-    switch (options.mode)
-    {
-        // ── Exact: fill the entire buffer ─────────────────────────────────────
-        case ReadMode::Exact:
-        {
-            size_t bytesRead = 0;
-            result.status           = fifo_read(buffer.data(), buffer.size(),
-                                                timeout, bytesRead, stop_tok);
-            result.bytes_read       = bytesRead;
-            result.found_terminator = false;
-            break;
-        }
+    switch (options.mode) {
+    // ── Exact: fill the entire buffer ─────────────────────────────────────
+    case ReadMode::Exact: {
+        size_t bytesRead        = 0;
+        result.status           = fifo_read(buffer.data(), buffer.size(),
+                                            timeout, bytesRead, stop_tok);
+        result.bytes_read       = bytesRead;
+        result.found_terminator = false;
+        break;
+    }
 
-        // ── UntilDelimiter: accumulate until delimiter byte seen ───────────────
-        case ReadMode::UntilDelimiter:
-        {
-            if (buffer.size() < 2) {
-                result.status = Status::INVALID_PARAM;
-                break;
-            }
-
-            size_t pos    = 0;
-            result.status = Status::READ_TIMEOUT;
-
-            while (pos < buffer.size() - 1) {
-                uint8_t byte  = 0;
-                size_t  got   = 0;
-                Status  s     = fifo_read(&byte, 1, timeout, got, stop_tok);
-
-                if (s != Status::SUCCESS || got == 0) { result.status = s; break; }
-
-                if (byte == options.delimiter) {
-                    buffer[pos]             = '\0';
-                    result.found_terminator = true;
-                    result.status           = Status::SUCCESS;
-                    break;
-                }
-                buffer[pos++] = byte;
-            }
-
-            if (pos == buffer.size() - 1 && result.status == Status::READ_TIMEOUT) {
-                result.status = Status::BUFFER_OVERFLOW;
-            }
-
-            result.bytes_read = pos;
-            break;
-        }
-
-        // ── UntilToken: KMP search for byte sequence ───────────────────────────
-        case ReadMode::UntilToken:
-        {
-            if (options.token.empty()) {
-                result.status = Status::INVALID_PARAM;
-                break;
-            }
-
-            const auto& token = options.token;
-
-            // Build KMP failure table
-            std::vector<int> lps(token.size(), 0);
-            for (size_t i = 1, len = 0; i < token.size(); ) {
-                if (token[i] == token[len]) {
-                    lps[i++] = static_cast<int>(++len);
-                } else if (len != 0) {
-                    len = static_cast<size_t>(lps[len - 1]);
-                } else {
-                    lps[i++] = 0;
-                }
-            }
-
-            size_t matched = 0;
-            result.status  = Status::READ_TIMEOUT;
-
-            while (true) {
-                uint8_t byte = 0;
-                size_t  got  = 0;
-                Status  s    = fifo_read(&byte, 1, timeout, got, stop_tok);
-
-                if (s != Status::SUCCESS || got == 0) { result.status = s; break; }
-
-                while (matched > 0 && byte != token[matched]) {
-                    matched = static_cast<size_t>(lps[matched - 1]);
-                }
-                if (byte == token[matched]) { ++matched; }
-                if (matched == token.size()) {
-                    result.found_terminator = true;
-                    result.status           = Status::SUCCESS;
-                    break;
-                }
-            }
-
-            result.bytes_read = 0;
-            break;
-        }
-
-        default:
+    // ── UntilDelimiter: accumulate until delimiter byte seen ───────────────
+    case ReadMode::UntilDelimiter: {
+        if (buffer.size() < 2) {
             result.status = Status::INVALID_PARAM;
             break;
+        }
+
+        size_t pos    = 0;
+        result.status = Status::READ_TIMEOUT;
+
+        while (pos < buffer.size() - 1) {
+            uint8_t byte = 0;
+            size_t got   = 0;
+            Status s     = fifo_read(&byte, 1, timeout, got, stop_tok);
+
+            if (s != Status::SUCCESS || got == 0) {
+                result.status = s;
+                break;
+            }
+
+            if (byte == options.delimiter) {
+                buffer[pos]             = '\0';
+                result.found_terminator = true;
+                result.status           = Status::SUCCESS;
+                break;
+            }
+            buffer[pos++] = byte;
+        }
+
+        if (pos == buffer.size() - 1 && result.status == Status::READ_TIMEOUT) {
+            result.status = Status::BUFFER_OVERFLOW;
+        }
+
+        result.bytes_read = pos;
+        break;
+    }
+
+    // ── UntilToken: KMP search for byte sequence ───────────────────────────
+    case ReadMode::UntilToken: {
+        if (options.token.empty()) {
+            result.status = Status::INVALID_PARAM;
+            break;
+        }
+
+        const auto &token = options.token;
+
+        // Build KMP failure table
+        std::vector<int> lps(token.size(), 0);
+        for (size_t i = 1, len = 0; i < token.size();) {
+            if (token[i] == token[len]) {
+                lps[i++] = static_cast<int>(++len);
+            } else if (len != 0) {
+                len = static_cast<size_t>(lps[len - 1]);
+            } else {
+                lps[i++] = 0;
+            }
+        }
+
+        size_t matched = 0;
+        result.status  = Status::READ_TIMEOUT;
+
+        while (true) {
+            uint8_t byte = 0;
+            size_t got   = 0;
+            Status s     = fifo_read(&byte, 1, timeout, got, stop_tok);
+
+            if (s != Status::SUCCESS || got == 0) {
+                result.status = s;
+                break;
+            }
+
+            while (matched > 0 && byte != token[matched]) {
+                matched = static_cast<size_t>(lps[matched - 1]);
+            }
+            if (byte == token[matched]) {
+                ++matched;
+            }
+            if (matched == token.size()) {
+                result.found_terminator = true;
+                result.status           = Status::SUCCESS;
+                break;
+            }
+        }
+
+        result.bytes_read = 0;
+        break;
+    }
+
+    default:
+        result.status = Status::INVALID_PARAM;
+        break;
     }
 
     return result;

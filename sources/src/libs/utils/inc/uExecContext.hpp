@@ -1,12 +1,12 @@
 #ifndef U_EXEC_CONTEXT_HPP
 #define U_EXEC_CONTEXT_HPP
 
-#include <string>
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <stop_token>
+#include <string>
 #include <thread>
-#include <chrono>
-#include <atomic>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                                  RATIONALE                                  //
@@ -49,7 +49,7 @@
 namespace uexec {
 
 namespace detail {
-    inline thread_local bool t_bDryRun = false;
+inline thread_local bool t_bDryRun = false;
 }
 
 /**
@@ -87,8 +87,8 @@ public:
         detail::t_bDryRun = m_bPrev;
     }
 
-    DryRunScope(const DryRunScope&) = delete;
-    DryRunScope& operator=(const DryRunScope&) = delete;
+    DryRunScope(const DryRunScope &)            = delete;
+    DryRunScope &operator=(const DryRunScope &) = delete;
 
 private:
     bool m_bPrev;
@@ -144,24 +144,24 @@ private:
 namespace uexec {
 
 namespace detail {
-    inline std::string t_strStopFlagPath;
+inline std::string t_strStopFlagPath;
 
-    // Backs getStopToken(). Requested from the watcher thread below the
-    // moment the flag file appears — independent of whatever the
-    // interpreter's own script-execution loop happens to be doing, which is
-    // the whole point: a thread wedged inside a single blocking driver call
-    // (e.g. a READ with an infinite timeout) never returns to its own
-    // per-line isStopRequested() poll on its own, so something outside that
-    // loop has to notice and flip this token instead.
-    inline std::stop_source t_stopSource;
+// Backs getStopToken(). Requested from the watcher thread below the
+// moment the flag file appears — independent of whatever the
+// interpreter's own script-execution loop happens to be doing, which is
+// the whole point: a thread wedged inside a single blocking driver call
+// (e.g. a READ with an infinite timeout) never returns to its own
+// per-line isStopRequested() poll on its own, so something outside that
+// loop has to notice and flip this token instead.
+inline std::stop_source t_stopSource;
 
-    // Started once by setStopFlagFilePath() (a no-op if never called, i.e.
-    // running standalone from the CLI without the GUI). Polls the flag file
-    // on its own cadence and calls request_stop() the instant it appears,
-    // then exits — a std::jthread so it's automatically joined at process
-    // teardown via its own destructor.
-    inline std::jthread t_watcherThread;
-}
+// Started once by setStopFlagFilePath() (a no-op if never called, i.e.
+// running standalone from the CLI without the GUI). Polls the flag file
+// on its own cadence and calls request_stop() the instant it appears,
+// then exits — a std::jthread so it's automatically joined at process
+// teardown via its own destructor.
+inline std::jthread t_watcherThread;
+} // namespace detail
 
 /**
  * \brief Called once at startup with the path from the SCRIPT_STOP_FLAG_FILE
@@ -171,7 +171,7 @@ namespace detail {
  *        thread is started (getStopToken() still returns a valid but
  *        never-requested token, so callers need no special-casing either way).
  */
-inline void setStopFlagFilePath(const std::string& strPath)
+inline void setStopFlagFilePath(const std::string &strPath)
 {
     detail::t_strStopFlagPath = strPath;
 

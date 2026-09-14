@@ -44,13 +44,13 @@
  * For fine-grained single-pin control use the non-virtual helper API below.
  */
 
-#include "ch347_compat.h"   // platform-unified CH347 API + CH347_HANDLE
 #include "ICommDriver.hpp"
+#include "ch347_compat.h" // platform-unified CH347 API + CH347_HANDLE
 
-#include <string>
-#include <span>
 #include <cstdint>
 #include <functional>
+#include <span>
+#include <string>
 
 // ---------------------------------------------------------------------------
 // GPIO pin identifiers
@@ -71,7 +71,7 @@ enum GpioPin : uint8_t {
 
 /** Edge type for interrupt configuration. */
 enum class GpioIrqEdge : uint8_t {
-    None    = IRQ_TYPE_NONE,         /**< No interrupt (disable) */
+    None    = IRQ_TYPE_NONE, /**< No interrupt (disable) */
     Rising  = IRQ_TYPE_EDGE_RISING,
     Falling = IRQ_TYPE_EDGE_FALLING,
     Both    = IRQ_TYPE_EDGE_BOTH,
@@ -89,20 +89,20 @@ public:
     // Constants
     // -----------------------------------------------------------------------
 
-    static constexpr size_t   GPIO_BUFFER_SIZE            = 3;    /**< Bytes in write buffer */
-    static constexpr size_t   GPIO_READ_BUFFER_SIZE       = 2;    /**< Bytes in read  buffer */
-    static constexpr uint32_t GPIO_READ_DEFAULT_TIMEOUT   = 1000; /**< ms */
-    static constexpr uint32_t GPIO_WRITE_DEFAULT_TIMEOUT  = 1000; /**< ms */
+    static constexpr size_t GPIO_BUFFER_SIZE             = 3;    /**< Bytes in write buffer */
+    static constexpr size_t GPIO_READ_BUFFER_SIZE        = 2;    /**< Bytes in read  buffer */
+    static constexpr uint32_t GPIO_READ_DEFAULT_TIMEOUT  = 1000; /**< ms */
+    static constexpr uint32_t GPIO_WRITE_DEFAULT_TIMEOUT = 1000; /**< ms */
 
-    static constexpr uint8_t BUF_IDX_ENABLE = 0; /**< Enable mask index   */
-    static constexpr uint8_t BUF_IDX_DIR    = 1; /**< Direction mask index */
-    static constexpr uint8_t BUF_IDX_DATA   = 2; /**< Data mask index      */
+    static constexpr uint8_t BUF_IDX_ENABLE              = 0; /**< Enable mask index   */
+    static constexpr uint8_t BUF_IDX_DIR                 = 1; /**< Direction mask index */
+    static constexpr uint8_t BUF_IDX_DATA                = 2; /**< Data mask index      */
 
     // -----------------------------------------------------------------------
     // Construction / destruction
     // -----------------------------------------------------------------------
 
-    CH347GPIO() = default;
+    CH347GPIO()                                          = default;
 
     /**
      * @brief Construct and immediately open the GPIO interface.
@@ -112,21 +112,25 @@ public:
      *                         describeConnection()), supplied separately from
      *                         strDevice — e.g. "/dev/ch34xpis0".
      */
-    explicit CH347GPIO(const std::string& strDevice, const std::string& strIdentityLabel = {})
-        : m_iHandle(CH347_INVALID_HANDLE), m_strIdentityLabel(strIdentityLabel)
+    explicit CH347GPIO(const std::string &strDevice, const std::string &strIdentityLabel = {})
+        : m_iHandle(CH347_INVALID_HANDLE)
+        , m_strIdentityLabel(strIdentityLabel)
     {
         open(strDevice);
     }
 
-    virtual ~CH347GPIO() { close(); }
+    virtual ~CH347GPIO()
+    {
+        close();
+    }
 
     // -----------------------------------------------------------------------
     // Lifecycle
     // -----------------------------------------------------------------------
 
-    Status open(const std::string& strDevice);
+    Status open(const std::string &strDevice);
     Status close();
-    bool   is_open() const override;
+    bool is_open() const override;
 
     /**
      * @brief Describe this connection for the GUI comm-dump panel.
@@ -135,7 +139,7 @@ public:
     CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
     {
         return commdump_details(CommFamily::OTHER,
-                                 m_strIdentityLabel.empty() ? "CH347 GPIO" : m_strIdentityLabel);
+                                m_strIdentityLabel.empty() ? "CH347 GPIO" : m_strIdentityLabel);
     }
 
     // -----------------------------------------------------------------------
@@ -156,10 +160,10 @@ public:
      * @return ReadResult { status, 2, false }
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t>  buffer,
-                         const ReadOptions& options,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
                          std::string_view xtra_params = {},
-                         std::stop_token stop_tok = {}) const override;
+                         std::stop_token stop_tok     = {}) const override;
 
     /**
      * @brief Set GPIO pin directions and output levels.
@@ -176,8 +180,7 @@ public:
     WriteResult tout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
                            std::string_view xtra_params = {},
-                           std::stop_token stop_tok = {}) const override;
-
+                           std::stop_token stop_tok     = {}) const override;
 
     // -----------------------------------------------------------------------
     // Single-pin helpers (non-virtual, preferred for application code)
@@ -197,7 +200,7 @@ public:
      * @param pinMask  GpioPin bitmask of pins to read
      * @param level    Receives the raw data bitmask (masked by pinMask)
      */
-    Status pin_read(uint8_t pinMask, uint8_t& level) const;
+    Status pin_read(uint8_t pinMask, uint8_t &level) const;
 
     /**
      * @brief Set the direction of one or more pins without changing levels.
@@ -235,7 +238,7 @@ public:
      *                  function.
      * @return Status
      */
-    Status irq_set(uint8_t pinIndex, GpioIrqEdge edge, void* handler) const;
+    Status irq_set(uint8_t pinIndex, GpioIrqEdge edge, void *handler) const;
 
     /**
      * @brief Disable a previously configured GPIO interrupt.
@@ -245,7 +248,7 @@ public:
 
 private:
     CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
-    std::string  m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
+    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 };
 
 #endif // U_CH347_GPIO_DRIVER_H

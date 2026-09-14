@@ -7,14 +7,17 @@
 #pragma warning(disable : 4710)
 #endif
 
-class TerminalRAII {
+class TerminalRAII
+{
 private:
     HANDLE hConsole;
 
     // Private class for error handling, only accessible inside TerminalRAII
-    class WindowsError {
+    class WindowsError
+    {
     public:
-        static const char *getErrorMessage() {
+        static const char *getErrorMessage()
+        {
             static char errorMsg[256]; // Persistent buffer
             DWORD errorCode = GetLastError();
             if (errorCode == 0) {
@@ -30,7 +33,8 @@ private:
 
 public:
     // Acquire the console handle and enable VT mode
-    TerminalRAII() {
+    TerminalRAII()
+    {
         hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
         if (hConsole == INVALID_HANDLE_VALUE) {
             uSHELL_PRINTF("Invalid handle for console output\n");
@@ -53,8 +57,11 @@ public:
     }
 
     // Automatically clear the terminal on object destruction
-    ~TerminalRAII() {
-        if (!hConsole) return;
+    ~TerminalRAII()
+    {
+        if (!hConsole) {
+            return;
+        }
 
         COORD coordScreen = {0, 0};
         DWORD cCharsWritten;

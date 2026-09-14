@@ -1,27 +1,27 @@
 #ifndef PLUGIN_OPERATIONS_HPP
 #define PLUGIN_OPERATIONS_HPP
 
-#include "uSharedConfig.hpp"
 #include "uBoolEvaluator.hpp"
 #include "uLogger.hpp"
+#include "uSharedConfig.hpp"
 
-#include <string>
 #include <map>
 #include <stop_token>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "PLUGIN_OPS  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "PLUGIN_OPS  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //                 EXTERN DATA DECLARATIONS                      //
@@ -37,8 +37,7 @@ struct PluginDataGet;
  * \brief template based definition of the command handler function pointer
  */
 template <typename T>
-using MFP = bool (T::*)( const std::string&, std::stop_token ) const;
-
+using MFP = bool (T::*)(const std::string &, std::stop_token) const;
 
 /**
  * \brief Per-command entry: handler function pointer + blocking flag.
@@ -48,11 +47,11 @@ using MFP = bool (T::*)( const std::string&, std::stop_token ) const;
  * bBlocking = false → command always returns in finite time (default).
  */
 template <typename T>
-struct PluginCommandEntry {
+struct PluginCommandEntry
+{
     MFP<T> handler;
-    bool   bBlocking;
+    bool bBlocking;
 };
-
 
 /**
  * \brief Map of command name → PluginCommandEntry
@@ -60,11 +59,9 @@ struct PluginCommandEntry {
 template <typename T>
 using PluginCommandsMap = std::map<const std::string, PluginCommandEntry<T>>;
 
-
 ///////////////////////////////////////////////////////////////////
 //                 PUBLIC INTERFACES DEFINITIONS                 //
 ///////////////////////////////////////////////////////////////////
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -78,10 +75,10 @@ using PluginCommandsMap = std::map<const std::string, PluginCommandEntry<T>>;
 /*--------------------------------------------------------------------------------------------------------*/
 
 template <typename T>
-bool generic_dispatch( const T *pOwner, const std::string& strCmd,
-                       const std::string& strParams, std::stop_token st = {} )
+bool generic_dispatch(const T *pOwner, const std::string &strCmd,
+                      const std::string &strParams, std::stop_token st = {})
 {
-    bool bRetVal = true;
+    bool bRetVal                                           = true;
 
     typename PluginCommandsMap<T>::const_iterator itPlugin = pOwner->getMap()->find(strCmd);
 
@@ -92,14 +89,14 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd,
         if ((true == bIsInitialized) || (true == bIsFaultTolerant)) {
             if (false == bIsInitialized) {
                 LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strCmd);
-                    LOG_STRING(": Plugin not initialized but in fault tolerant mode -> run accepted"));
+                          LOG_STRING(": Plugin not initialized but in fault tolerant mode -> run accepted"));
             }
             // Forward stop_token to the handler
             bRetVal = (pOwner->*(itPlugin->second.handler))(strParams, st);
 
             if ((false == bRetVal) && (true == bIsFaultTolerant)) {
                 LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strCmd);
-                    LOG_STRING(": Execution failed but in fault tolerant mode -> continue"));
+                          LOG_STRING(": Execution failed but in fault tolerant mode -> continue"));
                 bRetVal = true;
             }
         } else {
@@ -109,7 +106,7 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd,
     } else {
         bRetVal = false;
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command");
-            LOG_STRING(strCmd); LOG_STRING("not supported by plugin"));
+                  LOG_STRING(strCmd); LOG_STRING("not supported by plugin"));
     }
 
     if ((false == bRetVal) && (pOwner->isFaultTolerant())) {
@@ -119,7 +116,6 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd,
 
     return bRetVal;
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -132,9 +128,9 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd,
 /*--------------------------------------------------------------------------------------------------------*/
 
 template <typename T>
-void generic_getparams( const T *pOwner, PluginDataGet *psGetParams )
+void generic_getparams(const T *pOwner, PluginDataGet *psGetParams)
 {
-    for (const auto& entry : *pOwner->getMap()) {
+    for (const auto &entry : *pOwner->getMap()) {
         psGetParams->vstrPluginCommands.push_back(entry.first);
         if (entry.second.bBlocking) {
             psGetParams->mapBlockingCommands.emplace(entry.first, true);
@@ -143,7 +139,6 @@ void generic_getparams( const T *pOwner, PluginDataGet *psGetParams )
     psGetParams->strPluginVersion.assign(pOwner->getVersion());
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * \brief template based generic setParams — unchanged from original
@@ -151,8 +146,8 @@ void generic_getparams( const T *pOwner, PluginDataGet *psGetParams )
 /*--------------------------------------------------------------------------------------------------------*/
 
 template <typename T>
-bool generic_setparams( const T *pOwner, const PluginDataSet *psSetParams,
-                        bool *pbIsFaultTolerant, bool *pbIsPrivileged )
+bool generic_setparams(const T *pOwner, const PluginDataSet *psSetParams,
+                       bool *pbIsFaultTolerant, bool *pbIsPrivileged)
 {
     bool bRetVal = true;
 
@@ -163,14 +158,14 @@ bool generic_setparams( const T *pOwner, const PluginDataSet *psSetParams,
             if (psSetParams->mapSettings.count(PLUGIN_INI_FAULT_TOLERANT) > 0) {
                 BoolExprEvaluator beEvaluator;
                 if (true == (bRetVal = beEvaluator.evaluate(
-                        psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT),
-                        *pbIsFaultTolerant))) {
+                                 psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT),
+                                 *pbIsFaultTolerant))) {
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("FaultTolerant :");
-                        LOG_BOOL(*pbIsFaultTolerant));
+                              LOG_BOOL(*pbIsFaultTolerant));
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
-                        LOG_STRING("Failed to evaluate boolean value for");
-                        LOG_STRING(PLUGIN_INI_FAULT_TOLERANT));
+                              LOG_STRING("Failed to evaluate boolean value for");
+                              LOG_STRING(PLUGIN_INI_FAULT_TOLERANT));
                     bRetVal = false;
                     break;
                 }
@@ -179,25 +174,24 @@ bool generic_setparams( const T *pOwner, const PluginDataSet *psSetParams,
             if (psSetParams->mapSettings.count(PLUGIN_INI_PRIVILEGED) > 0) {
                 BoolExprEvaluator beEvaluator;
                 if (true == (bRetVal = beEvaluator.evaluate(
-                        psSetParams->mapSettings.at(PLUGIN_INI_PRIVILEGED),
-                        *pbIsPrivileged))) {
+                                 psSetParams->mapSettings.at(PLUGIN_INI_PRIVILEGED),
+                                 *pbIsPrivileged))) {
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Privileged :");
-                        LOG_BOOL(*pbIsPrivileged));
+                              LOG_BOOL(*pbIsPrivileged));
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
-                        LOG_STRING("Failed to evaluate boolean value for");
-                        LOG_STRING(PLUGIN_INI_PRIVILEGED));
+                              LOG_STRING("Failed to evaluate boolean value for");
+                              LOG_STRING(PLUGIN_INI_PRIVILEGED));
                     bRetVal = false;
                     break;
                 }
             }
-        } while(false);
+        } while (false);
     } else {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("No specific settings in .ini (empty)"));
     }
 
     return bRetVal;
 }
-
 
 #endif /* PLUGIN_OPERATIONS_HPP */

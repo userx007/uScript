@@ -1,4 +1,5 @@
 #include "UART.hpp"
+
 #include "Support.hpp"
 #include "uLogger.hpp"
 
@@ -7,22 +8,21 @@
 
 namespace HydraHAL {
 class Hydrabus;
-}  // namespace HydraHAL
+} // namespace HydraHAL
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_UART  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_UART  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
@@ -71,15 +71,19 @@ bool UART::bulk_write(std::span<const uint8_t> data, std::stop_token stop_tok)
 
 bool UART::write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
-    const uint8_t* ptr = data.data();
-    size_t         rem = data.size();
+    const uint8_t *ptr = data.data();
+    size_t rem         = data.size();
 
     while (rem > 0) {
         size_t chunk = std::min(rem, size_t{16});
-        if (!bulk_write({ptr, chunk}, stop_tok)) return false;
+        if (!bulk_write({ptr, chunk}, stop_tok)) {
+            return false;
+        }
         ptr += chunk;
         rem -= chunk;
-        if (stop_tok.stop_requested()) break;
+        if (stop_tok.stop_requested()) {
+            break;
+        }
     }
     return true;
 }

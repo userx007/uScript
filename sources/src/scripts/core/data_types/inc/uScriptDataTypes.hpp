@@ -2,17 +2,16 @@
 #define SCRIPTDATATYPES_HPP
 #include "uNumeric.hpp"
 
+#include <sstream>
 #include <string>
-#include <vector>
-#include <variant>
 #include <unordered_map>
 #include <unordered_set>
-#include <sstream>
+#include <variant>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                               DATATYPES                                     //
 /////////////////////////////////////////////////////////////////////////////////
-
 
 // forward declaration
 struct PluginDataType;
@@ -33,11 +32,10 @@ struct PluginDataType;
 // backs constructs like "VAL ?= UART.CMD < &" (keep receiving and updating
 // VAL for as long as the script/thread runs).
 // ---------------------------------------------------------------------------
-inline bool extractIsThreaded(std::string& strParams)
+inline bool extractIsThreaded(std::string &strParams)
 {
     if (strParams.size() >= 2 &&
-        strParams.compare(strParams.size() - 2, 2, " &") == 0)
-    {
+        strParams.compare(strParams.size() - 2, 2, " &") == 0) {
         strParams.erase(strParams.size() - 2);
         return true;
     }
@@ -46,31 +44,31 @@ inline bool extractIsThreaded(std::string& strParams)
 
 // Tokens type
 enum class Token {
-    LOAD_PLUGIN,    // LOAD_PLUGIN UART [<= v1.0.1.3]
-    CONSTANT_MACRO, // PORT := COM3
-    ARRAY_MACRO,    // NAME [= elem1, elem2, ...
-    VARIABLE_MACRO, // RESULT ?= UART.READ <args>
-    COMMAND,        // UART.WRITE <args>
-    IF_GOTO_LABEL,  // IF <cond> GOTO <label>
-    LABEL,          // LABEL <label>
-    REPEAT,         // REPEAT <label> <count>  |  REPEAT <label> UNTIL <condition>
-    END_REPEAT,     // END_REPEAT <label>
-    BREAK_LOOP,     // BREAK    <loop-label>
-    CONTINUE_LOOP,  // CONTINUE <loop-label>
-    PRINT_STMT,     // PRINT <text>
-    DELAY_STMT,     // DELAY    <value> <unit>   (us | ms | sec)
-    BREAKPOINT_STMT,// BREAKPOINT [label]           (interactive suspend)
-    MATH_STMT,      // name ?= MATH <expression>   (arithmetic evaluator)
-    VAR_MACRO_INIT, // name ?=  <string value> (direct initialisation)
-    FORMAT_STMT,    // name ?= FORMAT input | format_pattern
-    BITSTREAM_STMT, // name ?= BITSTREAM  offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
-    BYTESTREAM_STMT,// name ?= BYTESTREAM byte_offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
-    BITSTREAMVAL_STMT, // name ?= hex_source | BITSTREAMVAL  bit_offset:value_size
-    BYTESTREAMVAL_STMT,// name ?= hex_source | BYTESTREAMVAL byte_offset:bit_offset:value_size
-    BITSTREAMVAL_ARRAY_STMT, // name [= hex_source | BITSTREAMVAL  bit_offset1:value_size1 [bit_offset2:value_size2 ...]
-    BYTESTREAMVAL_ARRAY_STMT,// name [= hex_source | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
-    GENERATOR_STMT,          // name ?= GENERATOR <count> <unit> min:max:step[:k] | WAVEFORM [| ENCODING]  |  name ?= GENERATOR STOP
-    GENERATOR_STOP_ALL_STMT, // GENERATOR STOP ALL (bare command — stops every running generator)
+    LOAD_PLUGIN,              // LOAD_PLUGIN UART [<= v1.0.1.3]
+    CONSTANT_MACRO,           // PORT := COM3
+    ARRAY_MACRO,              // NAME [= elem1, elem2, ...
+    VARIABLE_MACRO,           // RESULT ?= UART.READ <args>
+    COMMAND,                  // UART.WRITE <args>
+    IF_GOTO_LABEL,            // IF <cond> GOTO <label>
+    LABEL,                    // LABEL <label>
+    REPEAT,                   // REPEAT <label> <count>  |  REPEAT <label> UNTIL <condition>
+    END_REPEAT,               // END_REPEAT <label>
+    BREAK_LOOP,               // BREAK    <loop-label>
+    CONTINUE_LOOP,            // CONTINUE <loop-label>
+    PRINT_STMT,               // PRINT <text>
+    DELAY_STMT,               // DELAY    <value> <unit>   (us | ms | sec)
+    BREAKPOINT_STMT,          // BREAKPOINT [label]           (interactive suspend)
+    MATH_STMT,                // name ?= MATH <expression>   (arithmetic evaluator)
+    VAR_MACRO_INIT,           // name ?=  <string value> (direct initialisation)
+    FORMAT_STMT,              // name ?= FORMAT input | format_pattern
+    BITSTREAM_STMT,           // name ?= BITSTREAM  offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
+    BYTESTREAM_STMT,          // name ?= BYTESTREAM byte_offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
+    BITSTREAMVAL_STMT,        // name ?= hex_source | BITSTREAMVAL  bit_offset:value_size
+    BYTESTREAMVAL_STMT,       // name ?= hex_source | BYTESTREAMVAL byte_offset:bit_offset:value_size
+    BITSTREAMVAL_ARRAY_STMT,  // name [= hex_source | BITSTREAMVAL  bit_offset1:value_size1 [bit_offset2:value_size2 ...]
+    BYTESTREAMVAL_ARRAY_STMT, // name [= hex_source | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
+    GENERATOR_STMT,           // name ?= GENERATOR <count> <unit> min:max:step[:k] | WAVEFORM [| ENCODING]  |  name ?= GENERATOR STOP
+    GENERATOR_STOP_ALL_STMT,  // GENERATOR STOP ALL (bare command — stops every running generator)
     INVALID
 };
 
@@ -79,32 +77,37 @@ enum class Token {
 // iLineNumber is the 1-based line number in the original .script file so that
 // every downstream component (validator, frontend) can refer back to it.
 // ---------------------------------------------------------------------------
-struct ScriptRawLine {
-    int         iLineNumber = 0;
+struct ScriptRawLine
+{
+    int iLineNumber = 0;
     std::string strContent;
 };
 
-struct MacroCommand {
+struct MacroCommand
+{
     std::string strPlugin;
     std::string strCommand;
     std::string strParams;
     std::string strVarMacroName;
-    bool        bThreaded = false;
+    bool bThreaded = false;
 };
 
-struct Command {
+struct Command
+{
     std::string strPlugin;
     std::string strCommand;
     std::string strParams;
-    bool        bThreaded = false;
+    bool bThreaded = false;
 };
 
-struct Condition {
+struct Condition
+{
     std::string strCondition;
     std::string strLabelName;
 };
 
-struct Label {
+struct Label
+{
     std::string strLabelName;
 };
 
@@ -125,12 +128,13 @@ struct Label {
 // only meaningful when bIsMacro is false (deferred macro/array-size values
 // are re-typed at runtime, see parseRepeatNumber()).
 // ---------------------------------------------------------------------------
-struct RepeatRangeValue {
-    std::string strExpr;             // raw literal text, or "$macroname" (deferred)
-    bool        bIsMacro   = false;  // true => strExpr is "$macroname", resolved at runtime
-    bool        bIsInteger = true;   // true => integer literal; false => floating-point literal
-    long long   llValue    = 0;      // resolved integer value (valid when !bIsMacro && bIsInteger)
-    double      dValue     = 0.0;    // resolved double  value (valid when !bIsMacro && !bIsInteger)
+struct RepeatRangeValue
+{
+    std::string strExpr;       // raw literal text, or "$macroname" (deferred)
+    bool bIsMacro     = false; // true => strExpr is "$macroname", resolved at runtime
+    bool bIsInteger   = true;  // true => integer literal; false => floating-point literal
+    long long llValue = 0;     // resolved integer value (valid when !bIsMacro && bIsInteger)
+    double dValue     = 0.0;   // resolved double  value (valid when !bIsMacro && !bIsInteger)
 };
 
 // Repeat over the numeric range [begin, end) with the given step; body is delimited
@@ -152,12 +156,13 @@ struct RepeatRangeValue {
 // variable macro at the start of every iteration and is accessible via
 // $strVarMacroName. When all of begin/end/step resolve to integers the value
 // is rendered as a plain integer string; otherwise it is rendered as a double.
-struct RepeatTimes {
-    std::string      strLabel;
-    RepeatRangeValue begin;          // defaults to literal "0" when only <end> is given
+struct RepeatTimes
+{
+    std::string strLabel;
+    RepeatRangeValue begin; // defaults to literal "0" when only <end> is given
     RepeatRangeValue end;
-    RepeatRangeValue step;           // defaults to literal "1" when no <step> is given
-    std::string      strVarMacroName;    // iteration-value capture macro (empty = no capture)
+    RepeatRangeValue step;       // defaults to literal "1" when no <step> is given
+    std::string strVarMacroName; // iteration-value capture macro (empty = no capture)
 };
 
 // ---------------------------------------------------------------------------
@@ -176,7 +181,7 @@ struct RepeatTimes {
 // recognised before the prefix so "-0x10" parses correctly. This matches the
 // grammar this function has always documented, so the delegation is behaviour-
 // preserving for this file.
-inline bool tryParseRepeatInteger(const std::string& strTok, long long& outValue) noexcept
+inline bool tryParseRepeatInteger(const std::string &strTok, long long &outValue) noexcept
 {
     return numeric::string_to_signed<long long>(strTok, outValue);
 }
@@ -190,9 +195,11 @@ inline bool tryParseRepeatInteger(const std::string& strTok, long long& outValue
 // is hex-float notation (e.g. "0x1.8p3"), which str2double's istringstream-
 // based parser does not accept — irrelevant here since REPEAT range literals
 // never use hex floats (hex notation is reserved for the integer path).
-inline bool tryParseRepeatDouble(const std::string& strTok, double& outValue) noexcept
+inline bool tryParseRepeatDouble(const std::string &strTok, double &outValue) noexcept
 {
-    if (strTok.empty()) { return false; }
+    if (strTok.empty()) {
+        return false;
+    }
     return numeric::str2double(strTok, outValue);
 }
 
@@ -201,8 +208,8 @@ inline bool tryParseRepeatDouble(const std::string& strTok, double& outValue) no
 // hex/binary/octal are always integers; a plain decimal token is an integer
 // unless it contains a '.' or an exponent, in which case it is a double.
 // Returns false if the token matches neither notation.
-inline bool parseRepeatNumber(const std::string& strTok, bool& bIsInteger,
-                               long long& llOut, double& dOut) noexcept
+inline bool parseRepeatNumber(const std::string &strTok, bool &bIsInteger,
+                              long long &llOut, double &dOut) noexcept
 {
     // Delegates prefix detection to numeric::has_explicit_base_prefix (uNumeric.hpp) rather than
     // re-deriving it by hand — same unified grammar tryParseRepeatInteger now consumes below.
@@ -216,7 +223,7 @@ inline bool parseRepeatNumber(const std::string& strTok, bool& bIsInteger,
     }
 
     const bool bLooksFloat = (strTok.find('.') != std::string::npos) ||
-                              (strTok.find_first_of("eE") != std::string::npos);
+                             (strTok.find_first_of("eE") != std::string::npos);
 
     if (!bLooksFloat && tryParseRepeatInteger(strTok, llOut)) {
         bIsInteger = true;
@@ -246,30 +253,34 @@ inline std::string formatRepeatDouble(double dValue) noexcept
 // The condition is evaluated at END_REPEAT after each iteration.
 // strVarMacroName: if non-empty, an internal 0-based iteration counter is written to this
 // variable macro at the start of each iteration and is accessible via $strVarMacroName.
-struct RepeatUntil {
+struct RepeatUntil
+{
     std::string strLabel;
-    std::string strCondition;       // raw expression (may contain $macros, expanded at run time)
-    std::string strVarMacroName;    // iteration-counter capture macro (empty = no capture)
+    std::string strCondition;    // raw expression (may contain $macros, expanded at run time)
+    std::string strVarMacroName; // iteration-counter capture macro (empty = no capture)
 };
 
 // Closing marker shared by both REPEAT counted and REPEAT UNTIL.
-struct RepeatEnd {
+struct RepeatEnd
+{
     std::string strLabel;
 };
 
 // BREAK <loop-label>
 // Immediately exits the named enclosing loop. All loops between the current
 // innermost and the named target are also unwound (their LoopStates are popped).
-struct LoopBreak {
-    std::string strLabel;       // label of the enclosing loop to exit
+struct LoopBreak
+{
+    std::string strLabel; // label of the enclosing loop to exit
 };
 
 // CONTINUE <loop-label>
 // Skips the remainder of the current body and resumes at END_REPEAT of the
 // named enclosing loop, which runs its normal exit-or-loop-back logic.
 // All loops between the current innermost and the target are also unwound.
-struct LoopContinue {
-    std::string strLabel;       // label of the enclosing loop to continue
+struct LoopContinue
+{
+    std::string strLabel; // label of the enclosing loop to continue
 };
 
 // PRINT <text>
@@ -278,8 +289,9 @@ struct LoopContinue {
 // is performed at runtime immediately before output, so volatile macro values
 // and loop index macros are always reflected correctly.
 // An empty PRINT (bare keyword with no text) prints a blank line.
-struct PrintStatement {
-    std::string strText;        // raw text template (may contain $macros)
+struct PrintStatement
+{
+    std::string strText; // raw text template (may contain $macros)
 };
 
 // name ?= <string value>
@@ -291,9 +303,10 @@ struct PrintStatement {
 // An empty value is valid and initialises the macro to an empty string.
 // Like MacroCommand, writes to m_RuntimeVarMacros at execution time, so the
 // value is immediately visible to all subsequent $macro lookups.
-struct VarMacroInit {
-    std::string strName;        // macro name (identifier)
-    std::string strValueTpl;    // raw value template (may contain $macros)
+struct VarMacroInit
+{
+    std::string strName;     // macro name (identifier)
+    std::string strValueTpl; // raw value template (may contain $macros)
 };
 
 // name ?= FORMAT input | format_pattern
@@ -304,23 +317,27 @@ struct VarMacroInit {
 // Both the input and the format template may contain $macros; expansion is
 // deferred to execution time.
 // Stores the result string in m_RuntimeVarMacros[strName].
-struct FormatStatement {
-    std::string strName;        // destination macro name (identifier)
-    std::string strInputTpl;    // raw input template   (may contain $macros)
-    std::string strFormatTpl;   // raw format template  (may contain $macros and %N)
+struct FormatStatement
+{
+    std::string strName;      // destination macro name (identifier)
+    std::string strInputTpl;  // raw input template   (may contain $macros)
+    std::string strFormatTpl; // raw format template  (may contain $macros and %N)
 };
 
 // Time unit for a DELAY statement.
-enum class DelayUnit { US, MS, SEC };
+enum class DelayUnit { US,
+                       MS,
+                       SEC };
 
 // DELAY <value> <unit>
 // Native busy-wait / sleep — no plugin required.
 // The value and unit are fully resolved at validation time; the interpreter
 // simply calls the appropriate utime::delay_* function.
 // Syntax:   DELAY 300 ms   |   DELAY 50 us   |   DELAY 2 sec
-struct DelayStatement {
-    size_t    szValue;   // delay amount (>= 1)
-    DelayUnit eUnit;     // US | MS | SEC
+struct DelayStatement
+{
+    size_t szValue;  // delay amount (>= 1)
+    DelayUnit eUnit; // US | MS | SEC
 };
 
 // Output format requested by an optional "| HEX..." MATH post-processor.
@@ -335,12 +352,18 @@ struct DelayStatement {
 enum class HexOutputFormat {
     NONE,
     HEX_8,
-    HEX_16_LE,  HEX_16_BE,
-    HEX_32_LE,  HEX_32_BE,
-    HEX_64_LE,  HEX_64_BE,
-    HEX_128_LE, HEX_128_BE,
-    HEX_FLOAT_LE,  HEX_FLOAT_BE,
-    HEX_DOUBLE_LE, HEX_DOUBLE_BE
+    HEX_16_LE,
+    HEX_16_BE,
+    HEX_32_LE,
+    HEX_32_BE,
+    HEX_64_LE,
+    HEX_64_BE,
+    HEX_128_LE,
+    HEX_128_BE,
+    HEX_FLOAT_LE,
+    HEX_FLOAT_BE,
+    HEX_DOUBLE_LE,
+    HEX_DOUBLE_BE
 };
 
 // name ?= MATH <expression>
@@ -372,9 +395,10 @@ enum class HexOutputFormat {
 //           result ?= MATH 255          | HEX_16_LE      (-> "FF00")
 //           result ?= MATH -1.0         | HEX_FLOAT_BE   (-> "BF800000")
 //           result ?= MATH pi           | HEX_DOUBLE_LE  (-> raw IEEE-754 binary64 bytes, little-endian)
-struct MathStatement {
-    std::string     strName;       // destination macro name (identifier)
-    std::string     strExprTpl;    // raw expression template (may contain $macros)
+struct MathStatement
+{
+    std::string strName;    // destination macro name (identifier)
+    std::string strExprTpl; // raw expression template (may contain $macros)
     HexOutputFormat eHexFormat = HexOutputFormat::NONE;
 };
 
@@ -394,7 +418,13 @@ struct MathStatement {
 // (ping-pong through the elements) and RANDOM (uniform pick of one element)
 // are meaningful — SINE/SQUARE/EXP/LOG are rejected for array sources at
 // validation time (ScriptValidator::m_HandleGeneratorStmt()).
-enum class GeneratorWaveform { SAWTOOTH, TRIANGLE, SINE, SQUARE, EXP, LOG, RANDOM };
+enum class GeneratorWaveform { SAWTOOTH,
+                               TRIANGLE,
+                               SINE,
+                               SQUARE,
+                               EXP,
+                               LOG,
+                               RANDOM };
 
 // name ?= GENERATOR <count> <unit> <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
 // name ?= GENERATOR <count> <unit> <elem1>,<elem2>,...                | WAVEFORM [| ENCODING]
@@ -509,17 +539,18 @@ enum class GeneratorWaveform { SAWTOOTH, TRIANGLE, SINE, SQUARE, EXP, LOG, RANDO
 // then (stops that one name's generator thread; every other field is
 // default-initialised and unused). See GeneratorStopAllStatement below for
 // the bare, no-destination "GENERATOR STOP ALL" form.
-struct GeneratorStatement {
-    std::string       strName;                       // destination macro name (identifier)
-    bool              bStop        = false;           // true => "val ?= GENERATOR STOP"
-    uint64_t          uIntervalUs  = 0;                // tick interval, normalised to microseconds (DELAY-style)
-    bool              bIsArraySource = false;          // true => vArrayValues drives the generator, begin/end/step unused
-    RepeatRangeValue  begin, end, step;                 // deferred $macro-capable, resolved once at (re)launch. Meaningful only when !bIsArraySource
-    std::vector<RepeatRangeValue> vArrayValues;         // >= 1 element, each deferred $macro-capable. Meaningful only when bIsArraySource
-    bool              bHasK        = false;            // true => the optional 4th range field (k) was present
-    RepeatRangeValue  k;                                // curve-steepness constant; only meaningful when bHasK
-    GeneratorWaveform eWaveform    = GeneratorWaveform::SAWTOOTH;
-    HexOutputFormat   eHexFormat   = HexOutputFormat::NONE;
+struct GeneratorStatement
+{
+    std::string strName;                        // destination macro name (identifier)
+    bool bStop           = false;               // true => "val ?= GENERATOR STOP"
+    uint64_t uIntervalUs = 0;                   // tick interval, normalised to microseconds (DELAY-style)
+    bool bIsArraySource  = false;               // true => vArrayValues drives the generator, begin/end/step unused
+    RepeatRangeValue begin, end, step;          // deferred $macro-capable, resolved once at (re)launch. Meaningful only when !bIsArraySource
+    std::vector<RepeatRangeValue> vArrayValues; // >= 1 element, each deferred $macro-capable. Meaningful only when bIsArraySource
+    bool bHasK = false;                         // true => the optional 4th range field (k) was present
+    RepeatRangeValue k;                         // curve-steepness constant; only meaningful when bHasK
+    GeneratorWaveform eWaveform = GeneratorWaveform::SAWTOOTH;
+    HexOutputFormat eHexFormat  = HexOutputFormat::NONE;
 };
 
 // GENERATOR STOP ALL — bare command (no destination macro, no "?="),
@@ -529,24 +560,28 @@ struct GeneratorStatement {
 // running at that point in the script — enforced at validation time by the
 // same START/STOP pairing pass GeneratorStatement's STOP form uses (see
 // ScriptValidator's generator-pairing validation).
-struct GeneratorStopAllStatement {
+struct GeneratorStopAllStatement
+{
 };
 
 // Post-processing mirror requested by an optional "| REVERSE_BIT" or
 // "| REVERSE_BYTE" suffix on a BITSTREAM/BYTESTREAM statement. Applied to
 // the fully-packed byte buffer, after every field has been written and
 // before it is hexlified. See StreamStatement below.
-enum class StreamReverseMode { NONE, REVERSE_BIT, REVERSE_BYTE };
+enum class StreamReverseMode { NONE,
+                               REVERSE_BIT,
+                               REVERSE_BYTE };
 
 // One "offset:length:value" field of a BITSTREAM/BYTESTREAM statement.
 // All three are stored as raw templates (may contain $macros — constant or
 // variable — resolved at execution time, same deferred-macro pattern as
 // MathStatement/FormatStatement/RepeatRangeValue) rather than pre-resolved,
 // since a variable macro's value is only known once the script is running.
-struct StreamField {
-    std::string strOffsetTpl;   // BITSTREAM: absolute bit offset. BYTESTREAM: byte offset.
-    std::string strLengthTpl;   // number of bits the value occupies
-    std::string strValueTpl;    // the value to store — must fit in strLengthTpl bits
+struct StreamField
+{
+    std::string strOffsetTpl; // BITSTREAM: absolute bit offset. BYTESTREAM: byte offset.
+    std::string strLengthTpl; // number of bits the value occupies
+    std::string strValueTpl;  // the value to store — must fit in strLengthTpl bits
 };
 
 // name ?= BITSTREAM  offset:length:value [offset:length:value ...] [| REVERSE_BIT|REVERSE_BYTE]
@@ -589,11 +624,12 @@ struct StreamField {
 // Field order in the statement is irrelevant — fields are sorted by offset
 // before packing, purely so the size/overlap logic has one canonical order
 // to reason about; it does not change the result.
-struct StreamStatement {
-    std::string             strName;              // destination macro name (identifier)
-    std::vector<StreamField> vFields;              // one or more offset:length:value fields
-    StreamReverseMode        eReverse = StreamReverseMode::NONE;
-    bool                     bByteMode = false;    // false = BITSTREAM, true = BYTESTREAM
+struct StreamStatement
+{
+    std::string strName;              // destination macro name (identifier)
+    std::vector<StreamField> vFields; // one or more offset:length:value fields
+    StreamReverseMode eReverse = StreamReverseMode::NONE;
+    bool bByteMode             = false; // false = BITSTREAM, true = BYTESTREAM
 };
 
 // name ?= <hex_source> | BITSTREAMVAL  <bit_offset>:<value_size>
@@ -648,13 +684,14 @@ struct StreamStatement {
 // single scalar and "[=" always yields an array — see parseStreamValStatement()
 // (uStreamStatementParser.hpp) which rejects a "?=" line with more than one
 // field.
-struct StreamValStatement {
+struct StreamValStatement
+{
     std::string strName;          // destination macro name (identifier)
     std::string strSourceTpl;     // hexlified source buffer (may contain $macros)
     std::string strByteOffsetTpl; // BYTESTREAMVAL only: byte offset. Empty for BITSTREAMVAL.
     std::string strBitOffsetTpl;  // BITSTREAMVAL: absolute bit offset. BYTESTREAMVAL: bit offset within the byte (0-7).
     std::string strValueSizeTpl;  // number of bits to extract (1-64)
-    bool        bByteMode = false;// false = BITSTREAMVAL, true = BYTESTREAMVAL
+    bool bByteMode = false;       // false = BITSTREAMVAL, true = BYTESTREAMVAL
 };
 
 // One "<bit_offset>:<value_size>" (BITSTREAMVAL) or
@@ -662,7 +699,8 @@ struct StreamValStatement {
 // StreamValArrayStatement. Same templates/conventions as StreamValStatement's
 // own strByteOffsetTpl/strBitOffsetTpl/strValueSizeTpl, just repeated once
 // per array element instead of exactly once per statement.
-struct StreamValField {
+struct StreamValField
+{
     std::string strByteOffsetTpl; // BYTESTREAMVAL only: byte offset. Empty for BITSTREAMVAL.
     std::string strBitOffsetTpl;  // BITSTREAMVAL: absolute bit offset. BYTESTREAMVAL: bit offset within the byte (0-7).
     std::string strValueSizeTpl;  // number of bits to extract (1-64)
@@ -690,11 +728,12 @@ struct StreamValField {
 // runtime variable macro; "name [= ..." (this struct) accepts any number of
 // fields >= 1 and always yields an array macro, even when it only has one
 // element — see parseStreamValArrayStatement() (uStreamStatementParser.hpp).
-struct StreamValArrayStatement {
-    std::string                 strName;      // destination array macro name (identifier)
-    std::string                 strSourceTpl; // hexlified source buffer (may contain $macros)
-    std::vector<StreamValField> vFields;      // one or more fields, extracted in order
-    bool                        bByteMode = false; // false = BITSTREAMVAL, true = BYTESTREAMVAL
+struct StreamValArrayStatement
+{
+    std::string strName;                 // destination array macro name (identifier)
+    std::string strSourceTpl;            // hexlified source buffer (may contain $macros)
+    std::vector<StreamValField> vFields; // one or more fields, extracted in order
+    bool bByteMode = false;              // false = BITSTREAMVAL, true = BYTESTREAMVAL
 };
 
 // BREAKPOINT [label]
@@ -711,8 +750,9 @@ struct StreamValArrayStatement {
 //
 // During the dry-run validation pass the node is silently skipped.
 // Inside a GOTO/BREAK/CONTINUE skip region it is also transparent.
-struct BreakpointStatement {
-    std::string strLabelTpl;  // optional label template (may contain $macros; may be empty)
+struct BreakpointStatement
+{
+    std::string strLabelTpl; // optional label template (may contain $macros; may be empty)
 };
 
 // ---------------------------------------------------------------------------
@@ -729,8 +769,9 @@ using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        StreamValStatement, StreamValArrayStatement,
                                        GeneratorStatement, GeneratorStopAllStatement>;
 
-struct ScriptLine {
-    int               iLineNumber = 0;
+struct ScriptLine
+{
+    int iLineNumber = 0;
     ScriptCommandType command;
 };
 
@@ -743,11 +784,12 @@ using PluginStorageType     = std::vector<PluginDataType>;
 // the $NAME.$index_macro syntax at runtime.
 using ArrayMacroStorageType = std::unordered_map<std::string, std::vector<std::string>>;
 
-struct ScriptEntries {
-    PluginStorageType     vPlugins;
-    MacroStorageType      mapMacros;
+struct ScriptEntries
+{
+    PluginStorageType vPlugins;
+    MacroStorageType mapMacros;
     ArrayMacroStorageType mapArrayMacros;
-    CommandsStorageType   vCommands;
+    CommandsStorageType vCommands;
 };
 
 using ScriptEntriesType = ScriptEntries;
@@ -756,37 +798,117 @@ using ScriptEntriesType = ScriptEntries;
 //                 DATATYPES LOGGING SUPPORT (type to string)                  //
 /////////////////////////////////////////////////////////////////////////////////
 
-inline const std::string& getTokenTypeName(Token type)
+inline const std::string &getTokenTypeName(Token type)
 {
-    switch(type)
-    {
-        case Token::LOAD_PLUGIN:    { static const std::string name = "LOAD_PLUGIN";    return name; }
-        case Token::CONSTANT_MACRO: { static const std::string name = "CONST_MACRO";    return name; }
-        case Token::ARRAY_MACRO:    { static const std::string name = "ARRAY_MACRO";    return name; }
-        case Token::VARIABLE_MACRO: { static const std::string name = "VAR_MACRO";      return name; }
-        case Token::COMMAND:        { static const std::string name = "COMMAND";        return name; }
-        case Token::IF_GOTO_LABEL:  { static const std::string name = "IF_GOTO_LABEL";  return name; }
-        case Token::LABEL:          { static const std::string name = "LABEL";          return name; }
-        case Token::REPEAT:         { static const std::string name = "REPEAT";         return name; }
-        case Token::END_REPEAT:     { static const std::string name = "END_REPEAT";     return name; }
-        case Token::BREAK_LOOP:     { static const std::string name = "BREAK";          return name; }
-        case Token::CONTINUE_LOOP:  { static const std::string name = "CONTINUE";       return name; }
-        case Token::PRINT_STMT:     { static const std::string name = "PRINT";          return name; }
-        case Token::DELAY_STMT:     { static const std::string name = "DELAY";          return name; }
-        case Token::BREAKPOINT_STMT:{ static const std::string name = "BREAKPOINT";     return name; }
-        case Token::MATH_STMT:      { static const std::string name = "MATH";           return name; }
-        case Token::VAR_MACRO_INIT: { static const std::string name = "VAR_MACRO_INIT"; return name; }
-        case Token::FORMAT_STMT:    { static const std::string name = "FORMAT";         return name; }
-        case Token::BITSTREAM_STMT: { static const std::string name = "BITSTREAM";      return name; }
-        case Token::BYTESTREAM_STMT:{ static const std::string name = "BYTESTREAM";     return name; }
-        case Token::BITSTREAMVAL_STMT:       { static const std::string name = "BITSTREAMVAL";        return name; }
-        case Token::BYTESTREAMVAL_STMT:      { static const std::string name = "BYTESTREAMVAL";       return name; }
-        case Token::BITSTREAMVAL_ARRAY_STMT: { static const std::string name = "BITSTREAMVAL_ARRAY";  return name; }
-        case Token::BYTESTREAMVAL_ARRAY_STMT:{ static const std::string name = "BYTESTREAMVAL_ARRAY"; return name; }
-        case Token::GENERATOR_STMT:          { static const std::string name = "GENERATOR";          return name; }
-        case Token::GENERATOR_STOP_ALL_STMT: { static const std::string name = "GENERATOR_STOP_ALL";  return name; }
-        case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
-        default:                    { static const std::string name = "UNKNOWN";        return name; }
+    switch (type) {
+    case Token::LOAD_PLUGIN: {
+        static const std::string name = "LOAD_PLUGIN";
+        return name;
+    }
+    case Token::CONSTANT_MACRO: {
+        static const std::string name = "CONST_MACRO";
+        return name;
+    }
+    case Token::ARRAY_MACRO: {
+        static const std::string name = "ARRAY_MACRO";
+        return name;
+    }
+    case Token::VARIABLE_MACRO: {
+        static const std::string name = "VAR_MACRO";
+        return name;
+    }
+    case Token::COMMAND: {
+        static const std::string name = "COMMAND";
+        return name;
+    }
+    case Token::IF_GOTO_LABEL: {
+        static const std::string name = "IF_GOTO_LABEL";
+        return name;
+    }
+    case Token::LABEL: {
+        static const std::string name = "LABEL";
+        return name;
+    }
+    case Token::REPEAT: {
+        static const std::string name = "REPEAT";
+        return name;
+    }
+    case Token::END_REPEAT: {
+        static const std::string name = "END_REPEAT";
+        return name;
+    }
+    case Token::BREAK_LOOP: {
+        static const std::string name = "BREAK";
+        return name;
+    }
+    case Token::CONTINUE_LOOP: {
+        static const std::string name = "CONTINUE";
+        return name;
+    }
+    case Token::PRINT_STMT: {
+        static const std::string name = "PRINT";
+        return name;
+    }
+    case Token::DELAY_STMT: {
+        static const std::string name = "DELAY";
+        return name;
+    }
+    case Token::BREAKPOINT_STMT: {
+        static const std::string name = "BREAKPOINT";
+        return name;
+    }
+    case Token::MATH_STMT: {
+        static const std::string name = "MATH";
+        return name;
+    }
+    case Token::VAR_MACRO_INIT: {
+        static const std::string name = "VAR_MACRO_INIT";
+        return name;
+    }
+    case Token::FORMAT_STMT: {
+        static const std::string name = "FORMAT";
+        return name;
+    }
+    case Token::BITSTREAM_STMT: {
+        static const std::string name = "BITSTREAM";
+        return name;
+    }
+    case Token::BYTESTREAM_STMT: {
+        static const std::string name = "BYTESTREAM";
+        return name;
+    }
+    case Token::BITSTREAMVAL_STMT: {
+        static const std::string name = "BITSTREAMVAL";
+        return name;
+    }
+    case Token::BYTESTREAMVAL_STMT: {
+        static const std::string name = "BYTESTREAMVAL";
+        return name;
+    }
+    case Token::BITSTREAMVAL_ARRAY_STMT: {
+        static const std::string name = "BITSTREAMVAL_ARRAY";
+        return name;
+    }
+    case Token::BYTESTREAMVAL_ARRAY_STMT: {
+        static const std::string name = "BYTESTREAMVAL_ARRAY";
+        return name;
+    }
+    case Token::GENERATOR_STMT: {
+        static const std::string name = "GENERATOR";
+        return name;
+    }
+    case Token::GENERATOR_STOP_ALL_STMT: {
+        static const std::string name = "GENERATOR_STOP_ALL";
+        return name;
+    }
+    case Token::INVALID: {
+        static const std::string name = "INVALID";
+        return name;
+    }
+    default: {
+        static const std::string name = "UNKNOWN";
+        return name;
+    }
     }
 }
 
@@ -798,25 +920,69 @@ inline const std::string& getTokenTypeName(Token type)
 // (uHexlify.hpp), which it already links against, to do the actual rendering.
 // ---------------------------------------------------------------------------
 
-inline const std::string& getHexFormatName(HexOutputFormat eFmt)
+inline const std::string &getHexFormatName(HexOutputFormat eFmt)
 {
-    switch(eFmt)
-    {
-        case HexOutputFormat::NONE:      { static const std::string name = "none";       return name; }
-        case HexOutputFormat::HEX_8:     { static const std::string name = "HEX_8";      return name; }
-        case HexOutputFormat::HEX_16_LE: { static const std::string name = "HEX_16_LE";  return name; }
-        case HexOutputFormat::HEX_16_BE: { static const std::string name = "HEX_16_BE";  return name; }
-        case HexOutputFormat::HEX_32_LE: { static const std::string name = "HEX_32_LE";  return name; }
-        case HexOutputFormat::HEX_32_BE: { static const std::string name = "HEX_32_BE";  return name; }
-        case HexOutputFormat::HEX_64_LE: { static const std::string name = "HEX_64_LE";  return name; }
-        case HexOutputFormat::HEX_64_BE: { static const std::string name = "HEX_64_BE";  return name; }
-        case HexOutputFormat::HEX_128_LE:{ static const std::string name = "HEX_128_LE"; return name; }
-        case HexOutputFormat::HEX_128_BE:{ static const std::string name = "HEX_128_BE"; return name; }
-        case HexOutputFormat::HEX_FLOAT_LE:  { static const std::string name = "HEX_FLOAT_LE";  return name; }
-        case HexOutputFormat::HEX_FLOAT_BE:  { static const std::string name = "HEX_FLOAT_BE";  return name; }
-        case HexOutputFormat::HEX_DOUBLE_LE: { static const std::string name = "HEX_DOUBLE_LE"; return name; }
-        case HexOutputFormat::HEX_DOUBLE_BE: { static const std::string name = "HEX_DOUBLE_BE"; return name; }
-        default:                         { static const std::string name = "UNKNOWN";    return name; }
+    switch (eFmt) {
+    case HexOutputFormat::NONE: {
+        static const std::string name = "none";
+        return name;
+    }
+    case HexOutputFormat::HEX_8: {
+        static const std::string name = "HEX_8";
+        return name;
+    }
+    case HexOutputFormat::HEX_16_LE: {
+        static const std::string name = "HEX_16_LE";
+        return name;
+    }
+    case HexOutputFormat::HEX_16_BE: {
+        static const std::string name = "HEX_16_BE";
+        return name;
+    }
+    case HexOutputFormat::HEX_32_LE: {
+        static const std::string name = "HEX_32_LE";
+        return name;
+    }
+    case HexOutputFormat::HEX_32_BE: {
+        static const std::string name = "HEX_32_BE";
+        return name;
+    }
+    case HexOutputFormat::HEX_64_LE: {
+        static const std::string name = "HEX_64_LE";
+        return name;
+    }
+    case HexOutputFormat::HEX_64_BE: {
+        static const std::string name = "HEX_64_BE";
+        return name;
+    }
+    case HexOutputFormat::HEX_128_LE: {
+        static const std::string name = "HEX_128_LE";
+        return name;
+    }
+    case HexOutputFormat::HEX_128_BE: {
+        static const std::string name = "HEX_128_BE";
+        return name;
+    }
+    case HexOutputFormat::HEX_FLOAT_LE: {
+        static const std::string name = "HEX_FLOAT_LE";
+        return name;
+    }
+    case HexOutputFormat::HEX_FLOAT_BE: {
+        static const std::string name = "HEX_FLOAT_BE";
+        return name;
+    }
+    case HexOutputFormat::HEX_DOUBLE_LE: {
+        static const std::string name = "HEX_DOUBLE_LE";
+        return name;
+    }
+    case HexOutputFormat::HEX_DOUBLE_BE: {
+        static const std::string name = "HEX_DOUBLE_BE";
+        return name;
+    }
+    default: {
+        static const std::string name = "UNKNOWN";
+        return name;
+    }
     }
 }
 
@@ -824,16 +990,29 @@ inline const std::string& getHexFormatName(HexOutputFormat eFmt)
 // Returns 0 for HexOutputFormat::NONE.
 inline size_t getHexFormatByteWidth(HexOutputFormat eFmt) noexcept
 {
-    switch(eFmt)
-    {
-        case HexOutputFormat::HEX_8:                                          return 1;
-        case HexOutputFormat::HEX_16_LE:  case HexOutputFormat::HEX_16_BE:    return 2;
-        case HexOutputFormat::HEX_32_LE:  case HexOutputFormat::HEX_32_BE:    return 4;
-        case HexOutputFormat::HEX_64_LE:  case HexOutputFormat::HEX_64_BE:    return 8;
-        case HexOutputFormat::HEX_128_LE: case HexOutputFormat::HEX_128_BE:   return 16;
-        case HexOutputFormat::HEX_FLOAT_LE:  case HexOutputFormat::HEX_FLOAT_BE:  return 4;
-        case HexOutputFormat::HEX_DOUBLE_LE: case HexOutputFormat::HEX_DOUBLE_BE: return 8;
-        default:                                                              return 0;
+    switch (eFmt) {
+    case HexOutputFormat::HEX_8:
+        return 1;
+    case HexOutputFormat::HEX_16_LE:
+    case HexOutputFormat::HEX_16_BE:
+        return 2;
+    case HexOutputFormat::HEX_32_LE:
+    case HexOutputFormat::HEX_32_BE:
+        return 4;
+    case HexOutputFormat::HEX_64_LE:
+    case HexOutputFormat::HEX_64_BE:
+        return 8;
+    case HexOutputFormat::HEX_128_LE:
+    case HexOutputFormat::HEX_128_BE:
+        return 16;
+    case HexOutputFormat::HEX_FLOAT_LE:
+    case HexOutputFormat::HEX_FLOAT_BE:
+        return 4;
+    case HexOutputFormat::HEX_DOUBLE_LE:
+    case HexOutputFormat::HEX_DOUBLE_BE:
+        return 8;
+    default:
+        return 0;
     }
 }
 
@@ -841,17 +1020,16 @@ inline size_t getHexFormatByteWidth(HexOutputFormat eFmt) noexcept
 // HEX_8 and NONE are not endian-specific and return false.
 inline bool isHexFormatBigEndian(HexOutputFormat eFmt) noexcept
 {
-    switch(eFmt)
-    {
-        case HexOutputFormat::HEX_16_BE:
-        case HexOutputFormat::HEX_32_BE:
-        case HexOutputFormat::HEX_64_BE:
-        case HexOutputFormat::HEX_128_BE:
-        case HexOutputFormat::HEX_FLOAT_BE:
-        case HexOutputFormat::HEX_DOUBLE_BE:
-            return true;
-        default:
-            return false;
+    switch (eFmt) {
+    case HexOutputFormat::HEX_16_BE:
+    case HexOutputFormat::HEX_32_BE:
+    case HexOutputFormat::HEX_64_BE:
+    case HexOutputFormat::HEX_128_BE:
+    case HexOutputFormat::HEX_FLOAT_BE:
+    case HexOutputFormat::HEX_DOUBLE_BE:
+        return true;
+    default:
+        return false;
     }
 }
 
@@ -862,15 +1040,14 @@ inline bool isHexFormatBigEndian(HexOutputFormat eFmt) noexcept
 // hexutils::intToHexStringFixed().
 inline bool isHexFormatFloatingPoint(HexOutputFormat eFmt) noexcept
 {
-    switch(eFmt)
-    {
-        case HexOutputFormat::HEX_FLOAT_LE:
-        case HexOutputFormat::HEX_FLOAT_BE:
-        case HexOutputFormat::HEX_DOUBLE_LE:
-        case HexOutputFormat::HEX_DOUBLE_BE:
-            return true;
-        default:
-            return false;
+    switch (eFmt) {
+    case HexOutputFormat::HEX_FLOAT_LE:
+    case HexOutputFormat::HEX_FLOAT_BE:
+    case HexOutputFormat::HEX_DOUBLE_LE:
+    case HexOutputFormat::HEX_DOUBLE_BE:
+        return true;
+    default:
+        return false;
     }
 }
 
@@ -888,18 +1065,41 @@ inline bool isHexFormatSinglePrecision(HexOutputFormat eFmt) noexcept
 // here, since it needs per-thread mutable state (current/direction/phaseDeg/
 // ticksAtLevel) this header has no business owning.
 // ---------------------------------------------------------------------------
-inline const std::string& getGeneratorWaveformName(GeneratorWaveform eWaveform)
+inline const std::string &getGeneratorWaveformName(GeneratorWaveform eWaveform)
 {
-    switch(eWaveform)
-    {
-        case GeneratorWaveform::SAWTOOTH: { static const std::string name = "SAWTOOTH"; return name; }
-        case GeneratorWaveform::TRIANGLE: { static const std::string name = "TRIANGLE"; return name; }
-        case GeneratorWaveform::SINE:     { static const std::string name = "SINE";     return name; }
-        case GeneratorWaveform::SQUARE:   { static const std::string name = "SQUARE";   return name; }
-        case GeneratorWaveform::EXP:      { static const std::string name = "EXP";      return name; }
-        case GeneratorWaveform::LOG:      { static const std::string name = "LOG";      return name; }
-        case GeneratorWaveform::RANDOM:   { static const std::string name = "RANDOM";   return name; }
-        default:                          { static const std::string name = "UNKNOWN";  return name; }
+    switch (eWaveform) {
+    case GeneratorWaveform::SAWTOOTH: {
+        static const std::string name = "SAWTOOTH";
+        return name;
+    }
+    case GeneratorWaveform::TRIANGLE: {
+        static const std::string name = "TRIANGLE";
+        return name;
+    }
+    case GeneratorWaveform::SINE: {
+        static const std::string name = "SINE";
+        return name;
+    }
+    case GeneratorWaveform::SQUARE: {
+        static const std::string name = "SQUARE";
+        return name;
+    }
+    case GeneratorWaveform::EXP: {
+        static const std::string name = "EXP";
+        return name;
+    }
+    case GeneratorWaveform::LOG: {
+        static const std::string name = "LOG";
+        return name;
+    }
+    case GeneratorWaveform::RANDOM: {
+        static const std::string name = "RANDOM";
+        return name;
+    }
+    default: {
+        static const std::string name = "UNKNOWN";
+        return name;
+    }
     }
 }
 

@@ -1,23 +1,23 @@
 #ifndef UINI_PARSER_EX_HPP
 #define UINI_PARSER_EX_HPP
 
+#include <algorithm>
+#include <cctype>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
-#include <fstream>
-#include <sstream>
-#include <stdexcept>
-#include <optional>
 #include <vector>
-#include <filesystem>
-#include <algorithm>
-#include <cctype>
-#include <functional>
 
 /**
  * @brief Enhanced INI file parser with variable interpolation support.
- * 
+ *
  * Features:
  * - Section-based configuration
  * - Variable interpolation: ${key} or ${section:key}
@@ -42,14 +42,14 @@ public:
     //  Construction
     // -----------------------------------------------------------------------
 
-    IniParserEx() = default;
+    IniParserEx()     = default;
 
     /**
      * @brief Constructor that loads from file.
      * @note On failure the object is left in the empty/default state; check
      *       load()'s return value or call empty() afterwards.
      */
-    explicit IniParserEx(const std::string& filename)
+    explicit IniParserEx(const std::string &filename)
     {
         (void)load(filename);
     }
@@ -58,10 +58,12 @@ public:
     //  Load
     // -----------------------------------------------------------------------
 
-    [[nodiscard]] bool load(const std::string& filename)
+    [[nodiscard]] bool load(const std::string &filename)
     {
         std::ifstream file(filename, std::ios::in);
-        if (!file.is_open()) return false;
+        if (!file.is_open()) {
+            return false;
+        }
         return loadFromStream(file);
     }
 
@@ -74,7 +76,7 @@ public:
      * into the including section, but only if that key was *not* set
      * explicitly — so explicit keys always win.
      */
-    [[nodiscard]] bool loadFromStream(std::istream& stream)
+    [[nodiscard]] bool loadFromStream(std::istream &stream)
     {
         iniData.clear();
 
@@ -87,12 +89,16 @@ public:
         while (std::getline(stream, line)) {
             std::string_view sv = trim(line);
 
-            if (sv.empty() || sv[0] == ';' || sv[0] == '#') continue;
+            if (sv.empty() || sv[0] == ';' || sv[0] == '#') {
+                continue;
+            }
 
             // Strip a trailing end-of-line comment, e.g. "PORT = COM2   # declare port"
             // or "[UART]  # uart plugin" - see stripInlineComment() for the rule used.
             sv = trim(stripInlineComment(sv));
-            if (sv.empty()) continue;
+            if (sv.empty()) {
+                continue;
+            }
 
             if (sv.front() == '[' && sv.back() == ']') {
                 // ── section header ──────────────────────────────────────────
@@ -121,7 +127,7 @@ public:
         return true;
     }
 
-    [[nodiscard]] bool loadFromString(const std::string& content)
+    [[nodiscard]] bool loadFromString(const std::string &content)
     {
         std::istringstream stream(content);
         return loadFromStream(stream);
@@ -131,19 +137,24 @@ public:
     //  Save
     // -----------------------------------------------------------------------
 
-    [[nodiscard]] bool save(const std::string& filename) const
+    [[nodiscard]] bool save(const std::string &filename) const
     {
         std::ofstream file(filename, std::ios::out | std::ios::trunc);
-        if (!file.is_open()) return false;
+        if (!file.is_open()) {
+            return false;
+        }
         return saveToStream(file);
     }
 
-    [[nodiscard]] bool saveToStream(std::ostream& stream) const
+    [[nodiscard]] bool saveToStream(std::ostream &stream) const
     {
-        for (const auto& [section, kvMap] : iniData) {
-            if (!section.empty()) stream << '[' << section << "]\n";
-            for (const auto& [key, value] : kvMap)
+        for (const auto &[section, kvMap] : iniData) {
+            if (!section.empty()) {
+                stream << '[' << section << "]\n";
+            }
+            for (const auto &[key, value] : kvMap) {
                 stream << key << '=' << value << '\n';
+            }
             stream << '\n';
         }
         return stream.good();
@@ -153,38 +164,50 @@ public:
     //  Read
     // -----------------------------------------------------------------------
 
-    [[nodiscard]] std::string getValue(const std::string& section,
-                                       const std::string& key,
-                                       const std::string& defaultValue = "",
-                                       int maxDepth = 10) const
+    [[nodiscard]] std::string getValue(const std::string &section,
+                                       const std::string &key,
+                                       const std::string &defaultValue = "",
+                                       int maxDepth                    = 10) const
     {
-        if (maxDepth <= 0) return defaultValue;
+        if (maxDepth <= 0) {
+            return defaultValue;
+        }
 
         auto secIt = iniData.find(section);
-        if (secIt == iniData.end()) return defaultValue;
+        if (secIt == iniData.end()) {
+            return defaultValue;
+        }
 
         auto keyIt = secIt->second.find(key);
-        if (keyIt == secIt->second.end()) return defaultValue;
+        if (keyIt == secIt->second.end()) {
+            return defaultValue;
+        }
 
         return resolveVariables(keyIt->second, section, maxDepth);
     }
 
-    [[nodiscard]] std::optional<std::string> getValueOpt(const std::string& section,
-                                                          const std::string& key,
-                                                          bool resolve = true) const
+    [[nodiscard]] std::optional<std::string> getValueOpt(const std::string &section,
+                                                         const std::string &key,
+                                                         bool resolve = true) const
     {
         auto secIt = iniData.find(section);
-        if (secIt == iniData.end()) return std::nullopt;
+        if (secIt == iniData.end()) {
+            return std::nullopt;
+        }
 
         auto keyIt = secIt->second.find(key);
-        if (keyIt == secIt->second.end()) return std::nullopt;
+        if (keyIt == secIt->second.end()) {
+            return std::nullopt;
+        }
 
-        if (resolve) return resolveVariables(keyIt->second, section, 10);
+        if (resolve) {
+            return resolveVariables(keyIt->second, section, 10);
+        }
         return keyIt->second;
     }
 
-    [[nodiscard]] std::optional<std::string> getRawValue(const std::string& section,
-                                                          const std::string& key) const
+    [[nodiscard]] std::optional<std::string> getRawValue(const std::string &section,
+                                                         const std::string &key) const
     {
         return getValueOpt(section, key, false);
     }
@@ -193,9 +216,9 @@ public:
     //  Write
     // -----------------------------------------------------------------------
 
-    void setValue(const std::string& section,
-                  const std::string& key,
-                  const std::string& value)
+    void setValue(const std::string &section,
+                  const std::string &key,
+                  const std::string &value)
     {
         iniData[section][key] = value;
     }
@@ -204,38 +227,47 @@ public:
     //  Section helpers
     // -----------------------------------------------------------------------
 
-    [[nodiscard]] bool getSection(const std::string& section, KeyValueMap& outMap) const
+    [[nodiscard]] bool getSection(const std::string &section, KeyValueMap &outMap) const
     {
         auto it = iniData.find(section);
-        if (it == iniData.end()) { outMap.clear(); return false; }
+        if (it == iniData.end()) {
+            outMap.clear();
+            return false;
+        }
         outMap = it->second;
         return true;
     }
 
-    [[nodiscard]] bool getResolvedSection(const std::string& section,
-                                          KeyValueMap& outMap,
+    [[nodiscard]] bool getResolvedSection(const std::string &section,
+                                          KeyValueMap &outMap,
                                           int maxDepth = 10) const
     {
         auto it = iniData.find(section);
-        if (it == iniData.end()) { outMap.clear(); return false; }
+        if (it == iniData.end()) {
+            outMap.clear();
+            return false;
+        }
 
         outMap.clear();
         outMap.reserve(it->second.size());
-        for (const auto& [key, value] : it->second)
+        for (const auto &[key, value] : it->second) {
             outMap[key] = resolveVariables(value, section, maxDepth);
+        }
         return true;
     }
 
-    [[nodiscard]] bool sectionExists(const std::string& section) const noexcept
+    [[nodiscard]] bool sectionExists(const std::string &section) const noexcept
     {
         return iniData.find(section) != iniData.end();
     }
 
-    [[nodiscard]] bool keyExists(const std::string& section,
-                                  const std::string& key) const noexcept
+    [[nodiscard]] bool keyExists(const std::string &section,
+                                 const std::string &key) const noexcept
     {
         auto secIt = iniData.find(section);
-        if (secIt == iniData.end()) return false;
+        if (secIt == iniData.end()) {
+            return false;
+        }
         return secIt->second.find(key) != secIt->second.end();
     }
 
@@ -243,30 +275,36 @@ public:
     {
         std::vector<std::string> sections;
         sections.reserve(iniData.size());
-        for (const auto& [sec, _] : iniData) sections.push_back(sec);
+        for (const auto &[sec, _] : iniData) {
+            sections.push_back(sec);
+        }
         return sections;
     }
 
-    [[nodiscard]] std::vector<std::string> getKeys(const std::string& section) const
+    [[nodiscard]] std::vector<std::string> getKeys(const std::string &section) const
     {
         std::vector<std::string> keys;
         auto it = iniData.find(section);
         if (it != iniData.end()) {
             keys.reserve(it->second.size());
-            for (const auto& [key, _] : it->second) keys.push_back(key);
+            for (const auto &[key, _] : it->second) {
+                keys.push_back(key);
+            }
         }
         return keys;
     }
 
-    bool removeSection(const std::string& section)
+    bool removeSection(const std::string &section)
     {
         return iniData.erase(section) > 0;
     }
 
-    bool removeKey(const std::string& section, const std::string& key)
+    bool removeKey(const std::string &section, const std::string &key)
     {
         auto it = iniData.find(section);
-        if (it != iniData.end()) return it->second.erase(key) > 0;
+        if (it != iniData.end()) {
+            return it->second.erase(key) > 0;
+        }
         return false;
     }
 
@@ -274,19 +312,31 @@ public:
     //  Misc
     // -----------------------------------------------------------------------
 
-    void clear() noexcept { iniData.clear(); }
+    void clear() noexcept
+    {
+        iniData.clear();
+    }
 
-    [[nodiscard]] size_t sectionCount() const noexcept { return iniData.size(); }
+    [[nodiscard]] size_t sectionCount() const noexcept
+    {
+        return iniData.size();
+    }
 
-    [[nodiscard]] size_t keyCount(const std::string& section) const noexcept
+    [[nodiscard]] size_t keyCount(const std::string &section) const noexcept
     {
         auto it = iniData.find(section);
         return (it != iniData.end()) ? it->second.size() : 0;
     }
 
-    [[nodiscard]] bool empty() const noexcept { return iniData.empty(); }
+    [[nodiscard]] bool empty() const noexcept
+    {
+        return iniData.empty();
+    }
 
-    [[nodiscard]] const SectionMap& data() const noexcept { return iniData; }
+    [[nodiscard]] const SectionMap &data() const noexcept
+    {
+        return iniData;
+    }
 
 private:
     SectionMap iniData;
@@ -306,10 +356,8 @@ private:
      */
     [[nodiscard]] static bool isSectionInclude(std::string_view sv) noexcept
     {
-        return sv.size() > 3                    // minimum: "${X}"
-            && sv[0] == '$' && sv[1] == '{'
-            && sv.back() == '}'
-            && sv.find('=') == std::string_view::npos;
+        return sv.size() > 3 // minimum: "${X}"
+               && sv[0] == '$' && sv[1] == '{' && sv.back() == '}' && sv.find('=') == std::string_view::npos;
     }
 
     /**
@@ -323,63 +371,75 @@ private:
      * only when the target section does not already have that key.
      */
     void resolveSectionIncludes(
-        const std::unordered_map<std::string, std::vector<std::string>>& includes)
+        const std::unordered_map<std::string, std::vector<std::string>> &includes)
     {
         std::unordered_set<std::string> resolved;
         std::unordered_set<std::string> inProgress; // cycle detection
 
         // Recursive lambda — resolves `section` fully before returning.
-        std::function<void(const std::string&)> resolve =
-            [&](const std::string& section)
-        {
-            if (resolved.count(section)) return;     // already done
-            if (!includes.count(section)) {          // no includes → nothing to do
-                resolved.insert(section);
-                return;
-            }
-            if (inProgress.count(section)) return;   // cycle detected, skip edge
-
-            inProgress.insert(section);
-
-            for (const auto& src : includes.at(section)) {
-                if (src == section) continue;        // self-include, skip
-
-                // Make sure the source section is itself fully resolved first
-                // (handles transitive / nested includes).
-                resolve(src);
-
-                auto srcIt = iniData.find(src);
-                if (srcIt == iniData.end()) continue; // referenced section missing
-
-                auto& target = iniData[section];
-                for (const auto& [key, value] : srcIt->second) {
-                    // emplace does nothing if the key already exists → explicit
-                    // keys defined in the target section always take precedence.
-                    target.emplace(key, value);
+        std::function<void(const std::string &)> resolve =
+            [&](const std::string &section) {
+                if (resolved.count(section)) {
+                    return; // already done
                 }
-            }
+                if (!includes.count(section)) { // no includes → nothing to do
+                    resolved.insert(section);
+                    return;
+                }
+                if (inProgress.count(section)) {
+                    return; // cycle detected, skip edge
+                }
 
-            inProgress.erase(section);
-            resolved.insert(section);
-        };
+                inProgress.insert(section);
 
-        for (const auto& [section, _] : includes)
+                for (const auto &src : includes.at(section)) {
+                    if (src == section) {
+                        continue; // self-include, skip
+                    }
+
+                    // Make sure the source section is itself fully resolved first
+                    // (handles transitive / nested includes).
+                    resolve(src);
+
+                    auto srcIt = iniData.find(src);
+                    if (srcIt == iniData.end()) {
+                        continue; // referenced section missing
+                    }
+
+                    auto &target = iniData[section];
+                    for (const auto &[key, value] : srcIt->second) {
+                        // emplace does nothing if the key already exists → explicit
+                        // keys defined in the target section always take precedence.
+                        target.emplace(key, value);
+                    }
+                }
+
+                inProgress.erase(section);
+                resolved.insert(section);
+            };
+
+        for (const auto &[section, _] : includes) {
             resolve(section);
+        }
     }
 
     [[nodiscard]] static constexpr std::string_view trim(std::string_view str) noexcept
     {
         size_t first = 0;
         while (first < str.size() &&
-               std::isspace(static_cast<unsigned char>(str[first])))
+               std::isspace(static_cast<unsigned char>(str[first]))) {
             ++first;
+        }
 
-        if (first == str.size()) return {};
+        if (first == str.size()) {
+            return {};
+        }
 
         size_t last = str.size();
         while (last > first &&
-               std::isspace(static_cast<unsigned char>(str[last - 1])))
+               std::isspace(static_cast<unsigned char>(str[last - 1]))) {
             --last;
+        }
 
         return str.substr(first, last - first);
     }
@@ -415,12 +475,13 @@ private:
         return str;
     }
 
-    [[nodiscard]] std::string resolveVariables(const std::string& value,
-                                               const std::string& currentSection,
+    [[nodiscard]] std::string resolveVariables(const std::string &value,
+                                               const std::string &currentSection,
                                                int maxDepth) const
     {
-        if (maxDepth <= 0 || value.find("${") == std::string::npos)
+        if (maxDepth <= 0 || value.find("${") == std::string::npos) {
             return value;
+        }
 
         std::string result;
         result.reserve(value.size());
@@ -443,7 +504,7 @@ private:
 
             std::string varName = value.substr(varStart + 2, varEnd - varStart - 2);
 
-            size_t colonPos = varName.find(':');
+            size_t colonPos     = varName.find(':');
             std::string varValue;
 
             if (colonPos != std::string::npos) {
@@ -468,17 +529,21 @@ private:
 //  Free helpers
 // ---------------------------------------------------------------------------
 
-[[nodiscard]] inline std::optional<IniParserEx> loadIniFile(const std::string& filename)
+[[nodiscard]] inline std::optional<IniParserEx> loadIniFile(const std::string &filename)
 {
     IniParserEx parser;
-    if (!parser.load(filename)) return std::nullopt;
+    if (!parser.load(filename)) {
+        return std::nullopt;
+    }
     return parser;
 }
 
-[[nodiscard]] inline std::optional<IniParserEx> parseIniString(const std::string& content)
+[[nodiscard]] inline std::optional<IniParserEx> parseIniString(const std::string &content)
 {
     IniParserEx parser;
-    if (!parser.loadFromString(content)) return std::nullopt;
+    if (!parser.loadFromString(content)) {
+        return std::nullopt;
+    }
     return parser;
 }
 

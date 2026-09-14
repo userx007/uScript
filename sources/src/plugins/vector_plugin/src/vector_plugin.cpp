@@ -1,34 +1,33 @@
-#include "uSharedConfig.hpp"
+#include "vector_plugin.hpp"
+
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-#include "vector_setup.hpp"
-#include "vector_plugin.hpp"
-#include "uPluginSettings.hpp"
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
-#include "uHexlify.hpp"
-#include "uVector.hpp"
 #include "uCommandExec.hpp"
+#include "uFile.hpp"
+#include "uHexlify.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+#include "uVector.hpp"
+#include "vector_setup.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED VectorPlugin *pluginEntry()
 {
-    EXPORTED VectorPlugin* pluginEntry()
-    {
-        return new VectorPlugin();
-    }
+    return new VectorPlugin();
+}
 
-    EXPORTED void pluginExit( VectorPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(VectorPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -37,29 +36,27 @@ extern "C"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about the plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if plugin initialization fails.
-  *
-  * \note Usage example:
-  *       VECTOR.INFO
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about the plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if plugin initialization fails.
+ *
+ * \note Usage example:
+ *       VECTOR.INFO
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_INFO (const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_INFO(const std::string &args, std::stop_token st) const
 {
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -207,59 +204,54 @@ bool VectorPlugin::m_VECTOR_INFO (const std::string &args, std::stop_token st) c
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current Vector parameters at runtime.
-  *
-  * \note Any subset of parameters can be specified; omitted keys retain their current values.
-  *       The channel is not reopened by CONFIG - changes take effect on the next CMD or SCRIPT call.
-  *
-  * \note Usage example:
-  *       VECTOR.CONFIG a=Vector_Plugin i=0 b=500000 x=0x7FF r=2000 w=2000 s=8
-  *
-  * \param[in] args  [a=app_name] [i=app_channel] [b=bitrate] [x=tx_id] [r=read_tout] [w=write_tout]
-  *                  [s=recv_bufsize] [e=extended]
-  *
-  * \return true if parameters were updated successfully, false otherwise
-*/
+ * \brief CONFIG command implementation; overwrite the current Vector parameters at runtime.
+ *
+ * \note Any subset of parameters can be specified; omitted keys retain their current values.
+ *       The channel is not reopened by CONFIG - changes take effect on the next CMD or SCRIPT call.
+ *
+ * \note Usage example:
+ *       VECTOR.CONFIG a=Vector_Plugin i=0 b=500000 x=0x7FF r=2000 w=2000 s=8
+ *
+ * \param[in] args  [a=app_name] [i=app_channel] [b=bitrate] [x=tx_id] [r=read_tout] [w=write_tout]
+ *                  [s=recv_bufsize] [e=extended]
+ *
+ * \return true if parameters were updated successfully, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_CONFIG (const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_CONFIG(const std::string &args, std::stop_token st) const
 {
     return generic_can_set_params<VectorPlugin>(this, args);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief FILTER command implementation; install software acceptance filters.
-  *        Identical grammar/semantics to PCAN.FILTER / KVCAN.FILTER.
-  *
-  * \note Usage example:
-  *       VECTOR.FILTER 0x100:0x7FF
-  *       VECTOR.FILTER 0x100:0x7FF,0x18DAF100:0x1FFFFFFF
-  *       VECTOR.FILTER
-  *
-  * \param[in] args  comma-separated list of <id>:<mask> pairs, or empty to clear
-  *
-  * \return true on success, false on parse error
-*/
+ * \brief FILTER command implementation; install software acceptance filters.
+ *        Identical grammar/semantics to PCAN.FILTER / KVCAN.FILTER.
+ *
+ * \note Usage example:
+ *       VECTOR.FILTER 0x100:0x7FF
+ *       VECTOR.FILTER 0x100:0x7FF,0x18DAF100:0x1FFFFFFF
+ *       VECTOR.FILTER
+ *
+ * \param[in] args  comma-separated list of <id>:<mask> pairs, or empty to clear
+ *
+ * \return true on success, false on parse error
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_FILTER (const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_FILTER(const std::string &args, std::stop_token st) const
 {
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
-    std::vector<std::pair<uint32_t,uint32_t>> vFilters;
+    std::vector<std::pair<uint32_t, uint32_t>> vFilters;
 
-    if (!args.empty())
-    {
-        if (false == m_ParseFilters(args, vFilters))
-        {
+    if (!args.empty()) {
+        if (false == m_ParseFilters(args, vFilters)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(args));
             return false;
         }
@@ -273,26 +265,25 @@ bool VectorPlugin::m_VECTOR_FILTER (const std::string &args, std::stop_token st)
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation; execute a single send/receive operation over Vector.
-  *
-  * \note The Vector channel is opened for the duration of the call and closed automatically on
-  *       return (RAII). Software acceptance filters stored in m_vFilters are passed as an RX
-  *       filter hint (first filter entry's id as xtra_params) to the driver's tout_read.
-  *
-  * \note Usage example:
-  *       VECTOR.CMD > H\"AABBCCDD\" | H\"06\"
-  *       VECTOR.CMD < \"Ready\" | \"Go!\"
-  *
-  * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CMD command implementation; execute a single send/receive operation over Vector.
+ *
+ * \note The Vector channel is opened for the duration of the call and closed automatically on
+ *       return (RAII). Software acceptance filters stored in m_vFilters are passed as an RX
+ *       filter hint (first filter entry's id as xtra_params) to the driver's tout_read.
+ *
+ * \note Usage example:
+ *       VECTOR.CMD > H\"AABBCCDD\" | H\"06\"
+ *       VECTOR.CMD < \"Ready\" | \"Go!\"
+ *
+ * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_CMD (const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_CMD(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
@@ -307,29 +298,29 @@ bool VectorPlugin::m_VECTOR_CMD (const std::string &args, std::stop_token st) co
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const Vector> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const Vector> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const Vector> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_read(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation; execute a multi-command script file over Vector.
-  *
-  * \note The Vector channel is opened once for the lifetime of the script and closed on return.
-  *
-  * \note Usage example:
-  *       VECTOR.SCRIPT obd_sequence.txt
-  *       VECTOR.SCRIPT uds_session.txt 10
-  *
-  * \param[in] args  filename [delay_ms]
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief SCRIPT command implementation; execute a multi-command script file over Vector.
+ *
+ * \note The Vector channel is opened once for the lifetime of the script and closed on return.
+ *
+ * \note Usage example:
+ *       VECTOR.SCRIPT obd_sequence.txt
+ *       VECTOR.SCRIPT uds_session.txt 10
+ *
+ * \param[in] args  filename [delay_ms]
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_SCRIPT (const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_SCRIPT(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
@@ -342,31 +333,31 @@ bool VectorPlugin::m_VECTOR_SCRIPT (const std::string &args, std::stop_token st)
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const Vector> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const Vector> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const Vector> drv, std::string_view x, std::stop_token tok) {
             return drv->tout_read(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic Vector messages.
-  *
-  * \note The Vector channel is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). Same argument grammar as PCAN.CYCLIC/KVCAN.CYCLIC.
-  *
-  * \note Usage example:
-  *       VECTOR.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
-  *       VECTOR.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic Vector messages.
+ *
+ * \note The Vector channel is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). Same argument grammar as PCAN.CYCLIC/KVCAN.CYCLIC.
+ *
+ * \note Usage example:
+ *       VECTOR.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
+ *       VECTOR.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_CYCLIC (const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_CYCLIC(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
@@ -377,36 +368,33 @@ bool VectorPlugin::m_VECTOR_CYCLIC (const std::string &args, std::stop_token st)
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief DEVICES command implementation; list every channel currently visible to XL-API,
-  *        independent of Vector Hardware Config and of whether anything is currently open.
-  *
-  * \note This takes no arguments. Useful for finding the exact hw=/serial=/name=/hwidx=/hwch=
-  *       values to feed CONFIG for direct device selection - see setDeviceHw() and friends.
-  *
-  * \note Usage example:
-  *       VECTOR.DEVICES
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success (even if zero channels are found), false on a malformed call
-*/
+ * \brief DEVICES command implementation; list every channel currently visible to XL-API,
+ *        independent of Vector Hardware Config and of whether anything is currently open.
+ *
+ * \note This takes no arguments. Useful for finding the exact hw=/serial=/name=/hwidx=/hwch=
+ *       values to feed CONFIG for direct device selection - see setDeviceHw() and friends.
+ *
+ * \note Usage example:
+ *       VECTOR.DEVICES
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success (even if zero channels are found), false on a malformed call
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_DEVICES (const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_DEVICES(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -424,8 +412,7 @@ bool VectorPlugin::m_VECTOR_DEVICES (const std::string &args, std::stop_token st
     LOG_SEP();
 
     uint32_t idx = 0;
-    for (const auto& ch : vChannels)
-    {
+    for (const auto &ch : vChannels) {
         char line[160];
         std::snprintf(line, sizeof(line), "%-4u %-31s %-11s %-5u %-5u %-10u %-6s %s",
                       idx++,
@@ -455,14 +442,14 @@ bool VectorPlugin::m_VECTOR_DEVICES (const std::string &args, std::stop_token st
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse a comma-separated "<id>:<mask>" filter string into a vector of (can_id, can_mask) pairs.
-  *        Identical to PCANPlugin::m_ParseFilters() - see that function's doc comment for the full
-  *        EFF/SFF flag fixup rationale.
-*/
+ * \brief Parse a comma-separated "<id>:<mask>" filter string into a vector of (can_id, can_mask) pairs.
+ *        Identical to PCANPlugin::m_ParseFilters() - see that function's doc comment for the full
+ *        EFF/SFF flag fixup rationale.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_ParseFilters(const std::string& strFilters,
-                                  std::vector<std::pair<uint32_t,uint32_t>>& vFilters) const
+bool VectorPlugin::m_ParseFilters(const std::string &strFilters,
+                                  std::vector<std::pair<uint32_t, uint32_t>> &vFilters) const
 {
     vFilters.clear();
 
@@ -475,8 +462,7 @@ bool VectorPlugin::m_ParseFilters(const std::string& strFilters,
     std::vector<std::string> vstrEntries;
     ustring::tokenize(strFilters, ',', vstrEntries);
 
-    for (const auto& strEntry : vstrEntries)
-    {
+    for (const auto &strEntry : vstrEntries) {
         std::vector<std::string> vstrParts;
         ustring::tokenize(strEntry, ':', vstrParts);
 
@@ -505,18 +491,18 @@ bool VectorPlugin::m_ParseFilters(const std::string& strFilters,
         can_mask |= flagsInId;
 
         if (can_id & CAN_EFF_FLAG) {
-            can_id   &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_EFF_MASK);
+            can_id &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_EFF_MASK);
             can_mask &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG | CAN_EFF_MASK);
         } else {
             if ((can_id & CAN_EFF_MASK) > CAN_SFF_MASK) {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
                           LOG_STRING("Filter id > 0x7FF without CAN_EFF_FLAG - setting EFF flag automatically:"); LOG_STRING(strEntry));
-                can_id   |= CAN_EFF_FLAG;
+                can_id |= CAN_EFF_FLAG;
                 can_mask |= CAN_EFF_FLAG;
-                can_id   &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_EFF_MASK);
+                can_id &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_EFF_MASK);
                 can_mask &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG | CAN_EFF_MASK);
             } else {
-                can_id   &= (CAN_RTR_FLAG | CAN_SFF_MASK);
+                can_id &= (CAN_RTR_FLAG | CAN_SFF_MASK);
                 can_mask &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG | CAN_SFF_MASK);
             }
         }
@@ -527,22 +513,21 @@ bool VectorPlugin::m_ParseFilters(const std::string& strFilters,
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Open the Vector channel with the current configuration and return a shared_ptr to
-  *        the Vector driver.
-  *
-  * \note If m_vFilters is non-empty, only its FIRST entry's id is forwarded to the driver
-  *       (Vector::setDefaultRxFilterId()) - see the note on m_ParseFilters(). setCanTxId()
-  *       keeps this in sync automatically: every CONFIG "x=" (or CAN_TX_ID ini entry) replaces
-  *       m_vFilters with one entry matching the new TX id.
-  *
-  *        Returns nullptr if the channel could not be opened (already logged by the driver).
-*/
+ * \brief Open the Vector channel with the current configuration and return a shared_ptr to
+ *        the Vector driver.
+ *
+ * \note If m_vFilters is non-empty, only its FIRST entry's id is forwarded to the driver
+ *       (Vector::setDefaultRxFilterId()) - see the note on m_ParseFilters(). setCanTxId()
+ *       keeps this in sync automatically: every CONFIG "x=" (or CAN_TX_ID ini entry) replaces
+ *       m_vFilters with one entry matching the new TX id.
+ *
+ *        Returns nullptr if the channel could not be opened (already logged by the driver).
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-std::shared_ptr<Vector> VectorPlugin::m_OpenAndConfigure (void) const
+std::shared_ptr<Vector> VectorPlugin::m_OpenAndConfigure(void) const
 {
     std::shared_ptr<Vector> shpDriver;
 
@@ -555,18 +540,17 @@ std::shared_ptr<Vector> VectorPlugin::m_OpenAndConfigure (void) const
     if (isUsingDirectSelection()) {
 
         Vector::DeviceSelector sel;
-        sel.i32HwType      = m_bDeviceHwSet ? static_cast<int32_t>(m_u32DeviceHw) : -1;
+        sel.i32HwType       = m_bDeviceHwSet ? static_cast<int32_t>(m_u32DeviceHw) : -1;
         sel.u32SerialNumber = m_u32DeviceSerial;
-        sel.strChannelName = m_strDeviceName;
-        sel.i32HwIndex     = m_bDeviceHwIndexSet ? static_cast<int32_t>(m_u32DeviceHwIndex) : -1;
-        sel.i32HwChannel   = m_bDeviceHwChannelSet ? static_cast<int32_t>(m_u32DeviceHwChannel) : -1;
+        sel.strChannelName  = m_strDeviceName;
+        sel.i32HwIndex      = m_bDeviceHwIndexSet ? static_cast<int32_t>(m_u32DeviceHwIndex) : -1;
+        sel.i32HwChannel    = m_bDeviceHwChannelSet ? static_cast<int32_t>(m_u32DeviceHwChannel) : -1;
 
-        shpDriver = std::make_shared<Vector>(
+        shpDriver           = std::make_shared<Vector>(
             sel, m_u32Bitrate, m_u32CanTxId, m_bExtended, m_bFd,
             m_strDeviceHw.empty() ? m_strDeviceName : m_strDeviceHw,
             m_strInstanceName,
-            fdOpts
-        );
+            fdOpts);
 
         if (!shpDriver->is_open()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -586,8 +570,7 @@ std::shared_ptr<Vector> VectorPlugin::m_OpenAndConfigure (void) const
             m_bFd,
             m_strAppName,
             m_strInstanceName,
-            fdOpts
-        );
+            fdOpts);
 
         if (!shpDriver->is_open()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;

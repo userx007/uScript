@@ -22,18 +22,17 @@
 // On Linux:  /usr/include/PCAN-Basic/PCANBasic.h  (or pcan.h for the older ioctl API)
 // On Windows: PCANBasic.h from the PCAN-Basic SDK
 #if defined(_WIN32)
-#  include <PCANBasic.h>
-   // PCANBasic.h's Windows branch (unlike its Linux branch, which pulls in
-   // pcan.h's own DWORD/WORD/BYTE definitions) assumes the including code
-   // has already brought in <windows.h> for those typedefs — every official
-   // PEAK-System example does `#include <windows.h>` before `#include
-   // <PCANBasic.h>`. uPcan.hpp is the first (and, transitively, only) place
-   // that pulls PCANBasic.h in, so that responsibility lands here.
-#  include <windows.h>
+#include <PCANBasic.h>
+// PCANBasic.h's Windows branch (unlike its Linux branch, which pulls in
+// pcan.h's own DWORD/WORD/BYTE definitions) assumes the including code
+// has already brought in <windows.h> for those typedefs — every official
+// PEAK-System example does `#include <windows.h>` before `#include
+// <PCANBasic.h>`. uPcan.hpp is the first (and, transitively, only) place
+// that pulls PCANBasic.h in, so that responsibility lands here.
+#include <windows.h>
 #else
-#  include <PCANBasic.h>    // same SDK layout on Linux when installed via peak-system packages
+#include <PCANBasic.h> // same SDK layout on Linux when installed via peak-system packages
 #endif
-
 
 /**
  * @brief PCAN-Basic driver wrapper implementing ICommDriver.
@@ -108,419 +107,449 @@
 class PCAN : public ICommDriver
 {
 
-    public:
+public:
+    // ------------------------------------------------------------------ //
+    //  Constants                                                           //
+    // ------------------------------------------------------------------ //
 
-        // ------------------------------------------------------------------ //
-        //  Constants                                                           //
-        // ------------------------------------------------------------------ //
+    static constexpr size_t PCAN_MAX_PAYLOAD             = 8;     ///< Classic CAN max payload bytes per frame.
+    static constexpr size_t PCAN_FD_MAX_PAYLOAD          = 64;    ///< CAN FD max payload bytes per frame.
+    static constexpr uint32_t PCAN_READ_DEFAULT_TIMEOUT  = 5000;  ///< Default RX timeout in milliseconds.
+    static constexpr uint32_t PCAN_WRITE_DEFAULT_TIMEOUT = 5000;  ///< Default TX timeout in milliseconds.
+    static constexpr uint32_t PCAN_DEFAULT_TX_ID         = 0x7FF; ///< Default TX CAN ID.
+    static constexpr uint32_t PCAN_DEFAULT_RX_FILTER_ID  = 0x000; ///< 0 = accept all (open filter).
 
-        static constexpr size_t   PCAN_MAX_PAYLOAD          = 8;     ///< Classic CAN max payload bytes per frame.
-        static constexpr size_t   PCAN_FD_MAX_PAYLOAD       = 64;    ///< CAN FD max payload bytes per frame.
-        static constexpr uint32_t PCAN_READ_DEFAULT_TIMEOUT  = 5000; ///< Default RX timeout in milliseconds.
-        static constexpr uint32_t PCAN_WRITE_DEFAULT_TIMEOUT = 5000; ///< Default TX timeout in milliseconds.
-        static constexpr uint32_t PCAN_DEFAULT_TX_ID         = 0x7FF; ///< Default TX CAN ID.
-        static constexpr uint32_t PCAN_DEFAULT_RX_FILTER_ID  = 0x000; ///< 0 = accept all (open filter).
+    /// SocketCAN canid_t convention used by every CAN plugin (KVCAN, SLCAN,
+    /// PCAN) for TX ids, RX filter ids, and xtra_params overrides: bit 31
+    /// set → 29-bit extended frame. PCANBasic's own TPCANMsg::ID field has
+    /// no such flag bit (extended-ness lives in MSGTYPE instead), so any
+    /// value in this convention must be normalised — flag stripped, data
+    /// bits masked to the legal range — before it reaches TPCANMsg::ID or
+    /// is compared against one. See sendFrame()/frameMatchesFilter().
+    static constexpr uint32_t CAN_EFF_FLAG               = 0x80000000U;
+    static constexpr uint32_t CAN_EFF_MASK               = 0x1FFFFFFFU;
+    static constexpr uint32_t CAN_SFF_MASK               = 0x000007FFU;
 
-        /// SocketCAN canid_t convention used by every CAN plugin (KVCAN, SLCAN,
-        /// PCAN) for TX ids, RX filter ids, and xtra_params overrides: bit 31
-        /// set → 29-bit extended frame. PCANBasic's own TPCANMsg::ID field has
-        /// no such flag bit (extended-ness lives in MSGTYPE instead), so any
-        /// value in this convention must be normalised — flag stripped, data
-        /// bits masked to the legal range — before it reaches TPCANMsg::ID or
-        /// is compared against one. See sendFrame()/frameMatchesFilter().
-        static constexpr uint32_t CAN_EFF_FLAG = 0x80000000U;
-        static constexpr uint32_t CAN_EFF_MASK = 0x1FFFFFFFU;
-        static constexpr uint32_t CAN_SFF_MASK = 0x000007FFU;
+    // ------------------------------------------------------------------ //
+    //  Construction / destruction                                          //
+    // ------------------------------------------------------------------ //
 
-        // ------------------------------------------------------------------ //
-        //  Construction / destruction                                          //
-        // ------------------------------------------------------------------ //
+    PCAN()                                               = default;
 
-        PCAN() = default;
+    /**
+     * @brief Convenience constructor — opens the channel immediately.
+     * @param strChannel       PCAN channel handle, decimal or "0x" hex string (e.g. "0x51").
+     * @param u32Bitrate       CAN bitrate in bps (e.g. 500000).
+     * @param u32TxId          Default TX CAN ID.
+     * @param bExtended        Force 29-bit extended frame format (auto-detected when false).
+     * @param bFD              Enable CAN FD mode.
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately —
+     *                         e.g. "PCAN-USB ch0".
+     * @param strInstanceName  Runtime instance identity for the GUI
+     *                         comm-dump panel's "Plugin" column (e.g.
+     *                         "PCAN" or "PCAN:1" — see
+     *                         PluginDataSet::strInstanceName). Falls back
+     *                         to plain "PCAN" when empty.
+     */
+    explicit PCAN(const std::string &strChannel,
+                  uint32_t u32Bitrate                 = 500000,
+                  uint32_t u32TxId                    = PCAN_DEFAULT_TX_ID,
+                  bool bExtended                      = false,
+                  bool bFD                            = false,
+                  const std::string &strIdentityLabel = {},
+                  const std::string &strInstanceName  = {})
+        : m_strIdentityLabel(strIdentityLabel)
+        , m_strInstanceName(strInstanceName.empty() ? "PCAN" : strInstanceName)
+    {
+        open(strChannel, u32Bitrate, u32TxId, bExtended, bFD);
+    }
 
-        /**
-         * @brief Convenience constructor — opens the channel immediately.
-         * @param strChannel       PCAN channel handle, decimal or "0x" hex string (e.g. "0x51").
-         * @param u32Bitrate       CAN bitrate in bps (e.g. 500000).
-         * @param u32TxId          Default TX CAN ID.
-         * @param bExtended        Force 29-bit extended frame format (auto-detected when false).
-         * @param bFD              Enable CAN FD mode.
-         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-         *                         describeConnection()), supplied separately —
-         *                         e.g. "PCAN-USB ch0".
-         * @param strInstanceName  Runtime instance identity for the GUI
-         *                         comm-dump panel's "Plugin" column (e.g.
-         *                         "PCAN" or "PCAN:1" — see
-         *                         PluginDataSet::strInstanceName). Falls back
-         *                         to plain "PCAN" when empty.
-         */
-        explicit PCAN(const std::string& strChannel,
-                      uint32_t           u32Bitrate  = 500000,
-                      uint32_t           u32TxId     = PCAN_DEFAULT_TX_ID,
-                      bool               bExtended   = false,
-                      bool               bFD         = false,
-                      const std::string& strIdentityLabel = {},
-                      const std::string& strInstanceName = {})
-            : m_strIdentityLabel(strIdentityLabel)
-            , m_strInstanceName(strInstanceName.empty() ? "PCAN" : strInstanceName)
-        {
-            open(strChannel, u32Bitrate, u32TxId, bExtended, bFD);
-        }
+    virtual ~PCAN()
+    {
+        close();
+    }
 
-        virtual ~PCAN()
-        {
-            close();
-        }
+    // ------------------------------------------------------------------ //
+    //  Lifecycle                                                           //
+    // ------------------------------------------------------------------ //
 
-        // ------------------------------------------------------------------ //
-        //  Lifecycle                                                           //
-        // ------------------------------------------------------------------ //
+    /**
+     * @brief Open and initialise the PCAN channel.
+     * @param strChannel  PCAN channel handle string (decimal or "0x" hex).
+     * @param u32Bitrate  CAN bitrate in bps.
+     * @param u32TxId     Default TX CAN ID used when xtra_params is empty.
+     * @param bExtended   Force 29-bit extended frame format.
+     * @param bFD         Enable CAN FD mode.
+     * @return Status::SUCCESS on success, appropriate error code otherwise.
+     */
+    Status open(const std::string &strChannel,
+                uint32_t u32Bitrate = 500000,
+                uint32_t u32TxId    = PCAN_DEFAULT_TX_ID,
+                bool bExtended      = false,
+                bool bFD            = false);
 
-        /**
-         * @brief Open and initialise the PCAN channel.
-         * @param strChannel  PCAN channel handle string (decimal or "0x" hex).
-         * @param u32Bitrate  CAN bitrate in bps.
-         * @param u32TxId     Default TX CAN ID used when xtra_params is empty.
-         * @param bExtended   Force 29-bit extended frame format.
-         * @param bFD         Enable CAN FD mode.
-         * @return Status::SUCCESS on success, appropriate error code otherwise.
-         */
-        Status open(const std::string& strChannel,
-                    uint32_t           u32Bitrate  = 500000,
-                    uint32_t           u32TxId     = PCAN_DEFAULT_TX_ID,
-                    bool               bExtended   = false,
-                    bool               bFD         = false);
+    /**
+     * @brief Uninitialise and release the PCAN channel.
+     * @return Status::SUCCESS always.
+     */
+    Status close();
 
-        /**
-         * @brief Uninitialise and release the PCAN channel.
-         * @return Status::SUCCESS always.
-         */
-        Status close();
+    /**
+     * @brief Check whether the channel is currently open.
+     */
+    bool is_open() const override;
 
-        /**
-         * @brief Check whether the channel is currently open.
-         */
-        bool is_open() const override;
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     *
+     * Reuses resolveTxId() — the exact same resolution tout_write() itself
+     * applies — so the label always reflects the CAN ID actually used,
+     * including any per-call xtra_params override.
+     */
+    CommDetails describeConnection(std::string_view xtra_params = {}) const override
+    {
+        const uint32_t id = resolveTxId(xtra_params);
+        const bool ext    = (id & CAN_EFF_FLAG) || m_bExtendedId || (id & CAN_EFF_MASK) > CAN_SFF_MASK;
+        char label[k_labelSize];
+        std::snprintf(label, sizeof(label), "%s id=0x%X%s",
+                      m_strIdentityLabel.empty() ? "PCAN" : m_strIdentityLabel.c_str(),
+                      id & CAN_EFF_MASK, ext ? " (ext)" : "");
+        return commdump_details(CommFamily::CAN, label);
+    }
 
-        /**
-         * @brief Describe this connection for the GUI comm-dump panel.
-         *
-         * Reuses resolveTxId() — the exact same resolution tout_write() itself
-         * applies — so the label always reflects the CAN ID actually used,
-         * including any per-call xtra_params override.
-         */
-        CommDetails describeConnection(std::string_view xtra_params = {}) const override
-        {
-            const uint32_t id = resolveTxId(xtra_params);
-            const bool     ext = (id & CAN_EFF_FLAG) || m_bExtendedId || (id & CAN_EFF_MASK) > CAN_SFF_MASK;
-            char label[k_labelSize];
-            std::snprintf(label, sizeof(label), "%s id=0x%X%s",
-                          m_strIdentityLabel.empty() ? "PCAN" : m_strIdentityLabel.c_str(),
-                          id & CAN_EFF_MASK, ext ? " (ext)" : "");
-            return commdump_details(CommFamily::CAN, label);
-        }
+    // ------------------------------------------------------------------ //
+    //  ICommDriver interface                                               //
+    // ------------------------------------------------------------------ //
 
-        // ------------------------------------------------------------------ //
-        //  ICommDriver interface                                               //
-        // ------------------------------------------------------------------ //
+    /**
+     * @brief Unified read interface — accumulates CAN frame payloads.
+     *
+     * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
+     * @param buffer          Destination byte buffer.
+     * @param options         ReadMode / delimiter / token configuration.
+     * @param xtra_params     Optional RX filter CAN ID override (decimal or "0x" hex).
+     *                        Empty string → use m_u32DefaultRxFilterId (accept all).
+     * @return ReadResult with status, bytes accumulated, and terminator flag.
+     */
+    ReadResult tout_read(uint32_t u32ReadTimeout,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Unified read interface — accumulates CAN frame payloads.
-         *
-         * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
-         * @param buffer          Destination byte buffer.
-         * @param options         ReadMode / delimiter / token configuration.
-         * @param xtra_params     Optional RX filter CAN ID override (decimal or "0x" hex).
-         *                        Empty string → use m_u32DefaultRxFilterId (accept all).
-         * @return ReadResult with status, bytes accumulated, and terminator flag.
-         */
-        ReadResult tout_read(uint32_t           u32ReadTimeout,
-                             std::span<uint8_t> buffer,
-                             const ReadOptions& options,
-                             std::string_view   xtra_params = {},
-                             std::stop_token stop_tok = {}) const override;
+    /**
+     * @brief Unified write interface — fragments payload into CAN frames.
+     *
+     * @param u32WriteTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout).
+     * @param buffer          Payload bytes to transmit.
+     * @param xtra_params     Optional TX CAN ID override (decimal or "0x" hex).
+     *                        Empty string → use m_u32DefaultTxId.
+     * @return WriteResult with status and total bytes written.
+     */
+    WriteResult tout_write(uint32_t u32WriteTimeout,
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Unified write interface — fragments payload into CAN frames.
-         *
-         * @param u32WriteTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout).
-         * @param buffer          Payload bytes to transmit.
-         * @param xtra_params     Optional TX CAN ID override (decimal or "0x" hex).
-         *                        Empty string → use m_u32DefaultTxId.
-         * @return WriteResult with status and total bytes written.
-         */
-        WriteResult tout_write(uint32_t                  u32WriteTimeout,
-                               std::span<const uint8_t>  buffer,
-                               std::string_view          xtra_params = {},
-                               std::stop_token stop_tok = {}) const override;
+    // ------------------------------------------------------------------ //
+    //  Configuration helpers                                               //
+    // ------------------------------------------------------------------ //
 
-        // ------------------------------------------------------------------ //
-        //  Configuration helpers                                               //
-        // ------------------------------------------------------------------ //
+    /** Set the default TX CAN ID used when xtra_params is empty. */
+    void setDefaultTxId(uint32_t u32Id)
+    {
+        m_u32DefaultTxId = u32Id;
+    }
 
-        /** Set the default TX CAN ID used when xtra_params is empty. */
-        void setDefaultTxId(uint32_t u32Id)          { m_u32DefaultTxId = u32Id; }
+    /** Set the default RX acceptance-filter CAN ID (0 = accept all). */
+    void setDefaultRxFilterId(uint32_t u32Id)
+    {
+        m_u32DefaultRxFilterId = u32Id;
+    }
 
-        /** Set the default RX acceptance-filter CAN ID (0 = accept all). */
-        void setDefaultRxFilterId(uint32_t u32Id)    { m_u32DefaultRxFilterId = u32Id; }
+    /** Force 29-bit extended frame format for all outgoing frames. */
+    void setExtendedId(bool bExt)
+    {
+        m_bExtendedId = bExt;
+    }
 
-        /** Force 29-bit extended frame format for all outgoing frames. */
-        void setExtendedId(bool bExt)                { m_bExtendedId = bExt; }
+    /** Query current default TX ID. */
+    uint32_t getDefaultTxId() const
+    {
+        return m_u32DefaultTxId;
+    }
 
-        /** Query current default TX ID. */
-        uint32_t getDefaultTxId()       const        { return m_u32DefaultTxId; }
+    /** Query current default RX filter ID. */
+    uint32_t getDefaultRxFilterId() const
+    {
+        return m_u32DefaultRxFilterId;
+    }
 
-        /** Query current default RX filter ID. */
-        uint32_t getDefaultRxFilterId() const        { return m_u32DefaultRxFilterId; }
+    /** Query PCAN channel handle (numeric). */
+    TPCANHandle getChannel() const
+    {
+        return m_hChannel;
+    }
 
-        /** Query PCAN channel handle (numeric). */
-        TPCANHandle getChannel()        const        { return m_hChannel; }
+    // ------------------------------------------------------------------ //
+    //  Transport-protocol configuration                                    //
+    // ------------------------------------------------------------------ //
 
-        // ------------------------------------------------------------------ //
-        //  Transport-protocol configuration                                    //
-        // ------------------------------------------------------------------ //
+    /**
+     * Select the multi-frame transport protocol tout_write()/tout_read()
+     * use for payloads that don't fit in a single frame.
+     * TpProtocol::NONE (default) preserves the original naive-fragmentation
+     * behaviour described in the class comment above.
+     */
+    void setTpProtocol(TpProtocol eProto)
+    {
+        m_eTpProtocol = eProto;
+    }
 
-        /**
-         * Select the multi-frame transport protocol tout_write()/tout_read()
-         * use for payloads that don't fit in a single frame.
-         * TpProtocol::NONE (default) preserves the original naive-fragmentation
-         * behaviour described in the class comment above.
-         */
-        void setTpProtocol(TpProtocol eProto)         { m_eTpProtocol = eProto; }
+    /** Tuning parameters (block size, STmin, timeouts, ...) for setTpProtocol(). */
+    void setTpConfig(const TpConfig &cfg)
+    {
+        m_sTpConfig = cfg;
+    }
 
-        /** Tuning parameters (block size, STmin, timeouts, ...) for setTpProtocol(). */
-        void setTpConfig(const TpConfig& cfg)         { m_sTpConfig = cfg; }
+    /**
+     * Set the id expected for incoming response/handshake frames when a
+     * segmented transport protocol is active. If never called, the
+     * effective rx id mirrors the default TX id (see resolveTpRxId()) —
+     * the same "single id, both directions" default KVCAN/SLCAN use.
+     * Distinct from setDefaultRxFilterId(): that one still governs the
+     * legacy naive-fragmentation read path (0 = accept-all); this one
+     * only affects TpProtocol::ISO_TP / ::J1939_TP.
+     */
+    void setTpRxId(uint32_t u32Id)
+    {
+        m_u32TpRxId  = u32Id;
+        m_bTpRxIdSet = true;
+    }
 
-        /**
-         * Set the id expected for incoming response/handshake frames when a
-         * segmented transport protocol is active. If never called, the
-         * effective rx id mirrors the default TX id (see resolveTpRxId()) —
-         * the same "single id, both directions" default KVCAN/SLCAN use.
-         * Distinct from setDefaultRxFilterId(): that one still governs the
-         * legacy naive-fragmentation read path (0 = accept-all); this one
-         * only affects TpProtocol::ISO_TP / ::J1939_TP.
-         */
-        void setTpRxId(uint32_t u32Id)                { m_u32TpRxId = u32Id; m_bTpRxIdSet = true; }
+private:
+    // ------------------------------------------------------------------ //
+    //  State                                                               //
+    // ------------------------------------------------------------------ //
 
-    private:
+    TPCANHandle m_hChannel          = PCAN_NONEBUS; ///< PCAN channel handle.
+    bool m_bOpen                    = false;        ///< True when the channel is initialised.
+    bool m_bFD                      = false;        ///< CAN FD mode flag.
+    bool m_bExtendedId              = false;        ///< Force 29-bit IDs.
+    uint32_t m_u32DefaultTxId       = PCAN_DEFAULT_TX_ID;
+    uint32_t m_u32DefaultRxFilterId = PCAN_DEFAULT_RX_FILTER_ID;
+    mutable std::mutex m_mutex;            ///< Protects concurrent access.
+    std::string m_strIdentityLabel;        ///< GUI comm-dump display label, see describeConnection().
+    std::string m_strInstanceName{"PCAN"}; ///< GUI comm-dump "Plugin" column identity, see dumpFrame().
 
-        // ------------------------------------------------------------------ //
-        //  State                                                               //
-        // ------------------------------------------------------------------ //
+    TpProtocol m_eTpProtocol = TpProtocol::NONE; ///< see setTpProtocol()
+    TpConfig m_sTpConfig;                        ///< see setTpConfig()
+    bool m_bTpRxIdSet    = false;                ///< true once setTpRxId() has been called
+    uint32_t m_u32TpRxId = 0U;                   ///< see setTpRxId() / resolveTpRxId()
 
-        TPCANHandle        m_hChannel            = PCAN_NONEBUS; ///< PCAN channel handle.
-        bool               m_bOpen               = false;         ///< True when the channel is initialised.
-        bool               m_bFD                 = false;         ///< CAN FD mode flag.
-        bool               m_bExtendedId         = false;         ///< Force 29-bit IDs.
-        uint32_t           m_u32DefaultTxId      = PCAN_DEFAULT_TX_ID;
-        uint32_t           m_u32DefaultRxFilterId = PCAN_DEFAULT_RX_FILTER_ID;
-        mutable std::mutex m_mutex;                               ///< Protects concurrent access.
-        std::string        m_strIdentityLabel;                    ///< GUI comm-dump display label, see describeConnection().
-        std::string        m_strInstanceName{"PCAN"};             ///< GUI comm-dump "Plugin" column identity, see dumpFrame().
+    // ------------------------------------------------------------------ //
+    //  Internal helpers                                                    //
+    // ------------------------------------------------------------------ //
 
-        TpProtocol m_eTpProtocol = TpProtocol::NONE; ///< see setTpProtocol()
-        TpConfig   m_sTpConfig;                      ///< see setTpConfig()
-        bool       m_bTpRxIdSet  = false;             ///< true once setTpRxId() has been called
-        uint32_t   m_u32TpRxId   = 0U;                ///< see setTpRxId() / resolveTpRxId()
+    /** Parse a decimal or "0x"-prefixed hex string to uint32_t. Returns false on error. */
+    static bool parseUint32(std::string_view sv, uint32_t &out);
 
-        // ------------------------------------------------------------------ //
-        //  Internal helpers                                                    //
-        // ------------------------------------------------------------------ //
+    /** Resolve the TX CAN ID: xtra_params overrides the default when non-empty. */
+    uint32_t resolveTxId(std::string_view xtra_params) const;
 
-        /** Parse a decimal or "0x"-prefixed hex string to uint32_t. Returns false on error. */
-        static bool parseUint32(std::string_view sv, uint32_t& out);
+    /** Resolve the RX filter CAN ID from xtra_params (0 = accept-all default). */
+    uint32_t resolveRxId(std::string_view xtra_params) const;
 
-        /** Resolve the TX CAN ID: xtra_params overrides the default when non-empty. */
-        uint32_t resolveTxId(std::string_view xtra_params) const;
+    /**
+     * Report one physical CAN frame to the GUI comm-dump panel — called
+     * from sendFrame() (Tx) and from every read loop, right after a
+     * frame has passed frameMatchesFilter()/the status-frame check
+     * (Rx), so every physical frame this driver puts on or takes off
+     * the bus gets its own accurate row: the original naive-fragmentation
+     * path (TpProtocol::NONE, still splits a payload across several
+     * frames with no framing bytes of its own) and a segmented
+     * transport's SF/FF/CF/FC frames (via RawIo) are covered by the
+     * exact same call site, with no special-casing needed here for
+     * which one is active. A no-op when gui_mode_active() is false.
+     */
+    void dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
 
-        /** Resolve the RX filter CAN ID from xtra_params (0 = accept-all default). */
-        uint32_t resolveRxId(std::string_view xtra_params) const;
+    /**
+     * Resolve the rx id used by a transport protocol to identify frames
+     * belonging to an incoming message: xtra_params when present and
+     * parseable, else m_u32TpRxId if setTpRxId() was called, else the
+     * default TX id (mirrors setCanTxId()'s single-id default on the
+     * KVCAN/SLCAN plugins). Deliberately distinct from resolveRxId():
+     * that one defaults to accept-all (0) for the legacy fragmentation
+     * path, which would be the wrong default for a protocol that needs
+     * a specific peer response id, not "everything".
+     */
+    uint32_t resolveTpRxId(std::string_view xtra_params) const;
 
-        /**
-         * Report one physical CAN frame to the GUI comm-dump panel — called
-         * from sendFrame() (Tx) and from every read loop, right after a
-         * frame has passed frameMatchesFilter()/the status-frame check
-         * (Rx), so every physical frame this driver puts on or takes off
-         * the bus gets its own accurate row: the original naive-fragmentation
-         * path (TpProtocol::NONE, still splits a payload across several
-         * frames with no framing bytes of its own) and a segmented
-         * transport's SF/FF/CF/FC frames (via RawIo) are covered by the
-         * exact same call site, with no special-casing needed here for
-         * which one is active. A no-op when gui_mode_active() is false.
-         */
-        void dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
+    /**
+     * @brief Check whether a received frame matches an RX filter id expressed
+     *        in the SocketCAN canid_t convention (bit 31 = CAN_EFF_FLAG).
+     *
+     *        u32RxFilterId == 0 means accept-all and always matches. Otherwise
+     *        the flag bit is stripped and the frame's own extended/standard
+     *        type (from msg.MSGTYPE) must agree with the filter's, in addition
+     *        to the numeric id matching — a standard-frame filter for id 0x100
+     *        must not accidentally match an extended frame whose 29-bit id
+     *        also happens to equal 0x100.
+     */
+    bool frameMatchesFilter(const TPCANMsg &msg, uint32_t u32RxFilterId) const;
 
-        /**
-         * Resolve the rx id used by a transport protocol to identify frames
-         * belonging to an incoming message: xtra_params when present and
-         * parseable, else m_u32TpRxId if setTpRxId() was called, else the
-         * default TX id (mirrors setCanTxId()'s single-id default on the
-         * KVCAN/SLCAN plugins). Deliberately distinct from resolveRxId():
-         * that one defaults to accept-all (0) for the legacy fragmentation
-         * path, which would be the wrong default for a protocol that needs
-         * a specific peer response id, not "everything".
-         */
-        uint32_t resolveTpRxId(std::string_view xtra_params) const;
+    /**
+     * @brief Map a PCAN error code to ICommDriver::Status.
+     */
+    static Status mapPcanError(TPCANStatus sts);
 
-        /**
-         * @brief Check whether a received frame matches an RX filter id expressed
-         *        in the SocketCAN canid_t convention (bit 31 = CAN_EFF_FLAG).
-         *
-         *        u32RxFilterId == 0 means accept-all and always matches. Otherwise
-         *        the flag bit is stripped and the frame's own extended/standard
-         *        type (from msg.MSGTYPE) must agree with the filter's, in addition
-         *        to the numeric id matching — a standard-frame filter for id 0x100
-         *        must not accidentally match an extended frame whose 29-bit id
-         *        also happens to equal 0x100.
-         */
-        bool frameMatchesFilter(const TPCANMsg& msg, uint32_t u32RxFilterId) const;
+    /**
+     * @brief Map a numeric bitrate (bps) to a PCAN_BAUD_xxx constant.
+     * @return PCAN_BAUD_500K etc., or 0 on unsupported value.
+     */
+    static TPCANBaudrate mapBitrate(uint32_t u32Bitrate);
 
-        /**
-         * @brief Map a PCAN error code to ICommDriver::Status.
-         */
-        static Status mapPcanError(TPCANStatus sts);
+    /**
+     * @brief Receive one CAN frame within the given timeout.
+     *
+     * Blocks for up to u32TimeoutMs milliseconds using the PCAN event handle
+     * (Windows) or a poll loop (Linux).  Fills `msg` and `ts` on success.
+     *
+     * @return Status::SUCCESS, Status::READ_TIMEOUT, or Status::READ_ERROR.
+     */
+    Status recvFrame(uint32_t u32TimeoutMs, TPCANMsg &msg, TPCANTimestamp &ts, std::stop_token stop_tok = {}) const;
 
-        /**
-         * @brief Map a numeric bitrate (bps) to a PCAN_BAUD_xxx constant.
-         * @return PCAN_BAUD_500K etc., or 0 on unsupported value.
-         */
-        static TPCANBaudrate mapBitrate(uint32_t u32Bitrate);
+    /**
+     * @brief Transmit one CAN frame with the given payload slice.
+     *
+     * @param u32Id         CAN ID for this frame.
+     * @param bExtended     Use 29-bit extended frame format.
+     * @param data          Up to PCAN_MAX_PAYLOAD bytes.
+     * @return Status::SUCCESS or Status::WRITE_ERROR.
+     */
+    Status sendFrame(uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
 
-        /**
-         * @brief Receive one CAN frame within the given timeout.
-         *
-         * Blocks for up to u32TimeoutMs milliseconds using the PCAN event handle
-         * (Windows) or a poll loop (Linux).  Fills `msg` and `ts` on success.
-         *
-         * @return Status::SUCCESS, Status::READ_TIMEOUT, or Status::READ_ERROR.
-         */
-        Status recvFrame(uint32_t u32TimeoutMs, TPCANMsg& msg, TPCANTimestamp& ts, std::stop_token stop_tok = {}) const;
+    // ------------------------------------------------------------------ //
+    //  Read-mode implementations                                           //
+    // ------------------------------------------------------------------ //
 
-        /**
-         * @brief Transmit one CAN frame with the given payload slice.
-         *
-         * @param u32Id         CAN ID for this frame.
-         * @param bExtended     Use 29-bit extended frame format.
-         * @param data          Up to PCAN_MAX_PAYLOAD bytes.
-         * @return Status::SUCCESS or Status::WRITE_ERROR.
-         */
-        Status sendFrame(uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
+    /** Accumulate exactly buffer.size() bytes from CAN frames. */
+    Status readExact(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
+                     size_t &szBytesRead, uint32_t u32RxFilterId,
+                     std::stop_token stop_tok = {}) const;
 
-        // ------------------------------------------------------------------ //
-        //  Read-mode implementations                                           //
-        // ------------------------------------------------------------------ //
-
-        /** Accumulate exactly buffer.size() bytes from CAN frames. */
-        Status readExact(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
-                         size_t& szBytesRead, uint32_t u32RxFilterId,
-                         std::stop_token stop_tok = {}) const;
-
-        /** Accumulate bytes until delimiter byte found; null-terminates. */
-        Status readUntilDelimiter(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
-                                  uint8_t cDelimiter, size_t& szBytesRead,
-                                  uint32_t u32RxFilterId,
-                                  std::stop_token stop_tok = {}) const;
-
-        /** Accumulate bytes until KMP token match. */
-        Status readUntilToken(uint32_t u32TimeoutMs,
-                              std::span<const uint8_t> token,
+    /** Accumulate bytes until delimiter byte found; null-terminates. */
+    Status readUntilDelimiter(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
+                              uint8_t cDelimiter, size_t &szBytesRead,
                               uint32_t u32RxFilterId,
                               std::stop_token stop_tok = {}) const;
 
-        /** Build KMP failure-function table. */
-        static void buildKmpTable(std::span<const uint8_t> pattern, std::vector<int>& viLps);
+    /** Accumulate bytes until KMP token match. */
+    Status readUntilToken(uint32_t u32TimeoutMs,
+                          std::span<const uint8_t> token,
+                          uint32_t u32RxFilterId,
+                          std::stop_token stop_tok = {}) const;
 
-        // ------------------------------------------------------------------ //
-        //  Transport-protocol dispatch internals                              //
-        // ------------------------------------------------------------------ //
+    /** Build KMP failure-function table. */
+    static void buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &viLps);
 
-        /**
-         * The original tout_write() body (naive fragmentation loop), minus
-         * the lock/open/empty-buffer checks the public override still does.
-         * ASSUMES m_mutex IS ALREADY HELD. Called directly for
-         * TpProtocol::NONE, and reused unmodified by RawIo (below) for a
-         * transport protocol's own single-frame sends, since a ≤maxPayload
-         * chunk makes the loop run exactly once.
-         */
-        WriteResult writeFragmented_locked(uint32_t                 u32WriteTimeout,
-                                           std::span<const uint8_t> buffer,
-                                           std::string_view         xtra_params) const;
+    // ------------------------------------------------------------------ //
+    //  Transport-protocol dispatch internals                              //
+    // ------------------------------------------------------------------ //
 
-        /**
-         * The original tout_read() body (ReadMode dispatch: Exact/
-         * UntilDelimiter/UntilToken), minus the lock/open checks the public
-         * override still does. ASSUMES m_mutex IS ALREADY HELD. Called
-         * directly for TpProtocol::NONE.
-         */
-        ReadResult readDispatch_locked(uint32_t           u32ReadTimeout,
-                                       std::span<uint8_t> buffer,
-                                       const ReadOptions& options,
-                                       std::string_view   xtra_params,
-                                       std::stop_token    stop_tok = {}) const;
+    /**
+     * The original tout_write() body (naive fragmentation loop), minus
+     * the lock/open/empty-buffer checks the public override still does.
+     * ASSUMES m_mutex IS ALREADY HELD. Called directly for
+     * TpProtocol::NONE, and reused unmodified by RawIo (below) for a
+     * transport protocol's own single-frame sends, since a ≤maxPayload
+     * chunk makes the loop run exactly once.
+     */
+    WriteResult writeFragmented_locked(uint32_t u32WriteTimeout,
+                                       std::span<const uint8_t> buffer,
+                                       std::string_view xtra_params) const;
 
-        /**
-         * Receive exactly one CAN frame's payload — whatever length it
-         * actually carries — into buffer. Distinct from readExact() (which
-         * keeps reading frames until buffer.size() bytes have accumulated):
-         * that aggregation is wrong for a transport protocol, whose SF/FF/
-         * CF/FC frames must each be read and interpreted individually.
-         * ASSUMES m_mutex IS ALREADY HELD. Used only by RawIo (below).
-         */
-        ReadResult readOneFrame_locked(uint32_t           u32TimeoutMs,
-                                       std::span<uint8_t> buffer,
-                                       std::string_view   xtra_params) const;
+    /**
+     * The original tout_read() body (ReadMode dispatch: Exact/
+     * UntilDelimiter/UntilToken), minus the lock/open checks the public
+     * override still does. ASSUMES m_mutex IS ALREADY HELD. Called
+     * directly for TpProtocol::NONE.
+     */
+    ReadResult readDispatch_locked(uint32_t u32ReadTimeout,
+                                   std::span<uint8_t> buffer,
+                                   const ReadOptions &options,
+                                   std::string_view xtra_params,
+                                   std::stop_token stop_tok = {}) const;
 
-        /**
-         * Minimal ICommDriver adapter exposing writeFragmented_locked()/
-         * readOneFrame_locked() to the can_tp library, so a transport
-         * protocol can drive individual physical frames without recursing
-         * back through the TP-aware tout_write()/tout_read() entry points
-         * or re-locking m_mutex (see the class-level comment for why this
-         * indirection exists). Never stores state of its own — just
-         * forwards to the owning PCAN instance — so it's cheap to keep as
-         * a permanent member.
-         *
-         * \note Every call into RawIo happens synchronously, on the same
-         * thread, from within a tout_write()/tout_read() call that already
-         * holds m_mutex — RawIo itself never locks.
-         */
-        class RawIo final : public ICommDriver
+    /**
+     * Receive exactly one CAN frame's payload — whatever length it
+     * actually carries — into buffer. Distinct from readExact() (which
+     * keeps reading frames until buffer.size() bytes have accumulated):
+     * that aggregation is wrong for a transport protocol, whose SF/FF/
+     * CF/FC frames must each be read and interpreted individually.
+     * ASSUMES m_mutex IS ALREADY HELD. Used only by RawIo (below).
+     */
+    ReadResult readOneFrame_locked(uint32_t u32TimeoutMs,
+                                   std::span<uint8_t> buffer,
+                                   std::string_view xtra_params) const;
+
+    /**
+     * Minimal ICommDriver adapter exposing writeFragmented_locked()/
+     * readOneFrame_locked() to the can_tp library, so a transport
+     * protocol can drive individual physical frames without recursing
+     * back through the TP-aware tout_write()/tout_read() entry points
+     * or re-locking m_mutex (see the class-level comment for why this
+     * indirection exists). Never stores state of its own — just
+     * forwards to the owning PCAN instance — so it's cheap to keep as
+     * a permanent member.
+     *
+     * \note Every call into RawIo happens synchronously, on the same
+     * thread, from within a tout_write()/tout_read() call that already
+     * holds m_mutex — RawIo itself never locks.
+     */
+    class RawIo final : public ICommDriver
+    {
+    public:
+        explicit RawIo(const PCAN &owner)
+            : m_owner(owner)
+        {}
+
+        // Reads m_bOpen directly rather than calling m_owner.is_open():
+        // that method takes m_mutex, and RawIo is only ever invoked from
+        // inside a tout_write()/tout_read() call that already holds it
+        // (nested classes have access to the enclosing class's private
+        // members, so this is just a lock-free field read).
+        bool is_open() const override
         {
-        public:
-            explicit RawIo(const PCAN& owner) : m_owner(owner) {}
+            return m_owner.m_bOpen;
+        }
 
-            // Reads m_bOpen directly rather than calling m_owner.is_open():
-            // that method takes m_mutex, and RawIo is only ever invoked from
-            // inside a tout_write()/tout_read() call that already holds it
-            // (nested classes have access to the enclosing class's private
-            // members, so this is just a lock-free field read).
-            bool is_open() const override { return m_owner.m_bOpen; }
+        CommDetails describeConnection(std::string_view xtra_params = {}) const override
+        {
+            return m_owner.describeConnection(xtra_params);
+        }
 
-            CommDetails describeConnection(std::string_view xtra_params = {}) const override
-            {
-                return m_owner.describeConnection(xtra_params);
-            }
+        WriteResult tout_write(uint32_t u32Timeout, std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok     = {}) const override
+        {
+            return m_owner.writeFragmented_locked(u32Timeout, buffer, xtra_params);
+        }
 
-            WriteResult tout_write(uint32_t u32Timeout, std::span<const uint8_t> buffer,
-                                   std::string_view xtra_params = {},
-                                   std::stop_token stop_tok = {}) const override
-            {
-                return m_owner.writeFragmented_locked(u32Timeout, buffer, xtra_params);
-            }
+        ReadResult tout_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
+                             const ReadOptions & /*options*/, std::string_view xtra_params = {},
+                             std::stop_token stop_tok = {}) const override
+        {
+            return m_owner.readOneFrame_locked(u32Timeout, buffer, xtra_params);
+        }
 
-            ReadResult tout_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                 const ReadOptions& /*options*/, std::string_view xtra_params = {},
-                                 std::stop_token stop_tok = {}) const override
-            {
-                return m_owner.readOneFrame_locked(u32Timeout, buffer, xtra_params);
-            }
+    private:
+        const PCAN &m_owner;
+    };
 
-        private:
-            const PCAN& m_owner;
-        };
-
-        RawIo m_rawIo{*this}; ///< frame-level ICommDriver view used by the TP library; see RawIo above
+    RawIo m_rawIo{*this}; ///< frame-level ICommDriver view used by the TP library; see RawIo above
 };
-
 
 #endif // U_PCAN_DRIVER_H

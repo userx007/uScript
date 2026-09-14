@@ -6,7 +6,7 @@
 
 namespace HydraHAL {
 
-class Hydrabus;   // forward declaration
+class Hydrabus; // forward declaration
 
 /**
  * @brief Auxiliary GPIO pin controller.
@@ -21,7 +21,8 @@ class Hydrabus;   // forward declaration
  * int v = spi.aux(1).get_value();
  * @endcode
  */
-class AUXPin {
+class AUXPin
+{
 public:
     enum class Direction : uint8_t {
         Output = 0,
@@ -42,7 +43,7 @@ public:
      * @brief Read the current logical level of the pin.
      * @return 0 or 1; -1 on communication error.
      */
-    int  get_value() const;
+    int get_value() const;
 
     /**
      * @brief Drive the pin to a logical level (pin must be configured as Output).
@@ -77,7 +78,7 @@ public:
      * @brief Query whether the internal pull-up resistor is enabled.
      * @return 1 = enabled, 0 = disabled, -1 on error.
      */
-    int  get_pullup() const;
+    int get_pullup() const;
 
     /**
      * @brief Enable or disable the internal pull-up.
@@ -93,8 +94,8 @@ private:
     /** @brief Read raw AUX value byte from device. */
     uint8_t _get_values() const;
 
-    int                        _number;
-    std::shared_ptr<Hydrabus>  _hydrabus;
+    int _number;
+    std::shared_ptr<Hydrabus> _hydrabus;
 };
 
 } // namespace HydraHAL

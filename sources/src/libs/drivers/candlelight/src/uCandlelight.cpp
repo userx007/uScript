@@ -11,16 +11,17 @@
  */
 
 #include "uCandlelight.hpp"
+
 #include "uLogger.hpp"
 #include "uSlcan.hpp"
 
-#include <libusb-1.0/libusb.h>
-#include <sys/types.h>
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <compare>
 #include <cstring>
+#include <libusb-1.0/libusb.h>
+#include <sys/types.h>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -28,14 +29,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "CANDLE_DRV  |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR  "CANDLE_DRV  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 namespace {
 
@@ -47,22 +48,30 @@ constexpr uint8_t USB_DIR_IN_VENDOR_IFACE  = 0xC1; // IN  | VENDOR | RECIPIENT_I
 ICommDriver::Status libusb_err_to_status(int rc)
 {
     switch (rc) {
-        case LIBUSB_SUCCESS:        return ICommDriver::Status::SUCCESS;
-        case LIBUSB_ERROR_TIMEOUT:  return ICommDriver::Status::READ_TIMEOUT;
-        case LIBUSB_ERROR_NO_DEVICE:
-        case LIBUSB_ERROR_ACCESS:
-        case LIBUSB_ERROR_NOT_FOUND: return ICommDriver::Status::PORT_ACCESS;
-        case LIBUSB_ERROR_PIPE:      return ICommDriver::Status::NACK;
-        case LIBUSB_ERROR_OVERFLOW:  return ICommDriver::Status::BUFFER_OVERFLOW;
-        case LIBUSB_ERROR_NO_MEM:    return ICommDriver::Status::OUT_OF_MEMORY;
-        case LIBUSB_ERROR_INVALID_PARAM: return ICommDriver::Status::INVALID_PARAM;
-        default:                     return ICommDriver::Status::OPERATION_FAILED;
+    case LIBUSB_SUCCESS:
+        return ICommDriver::Status::SUCCESS;
+    case LIBUSB_ERROR_TIMEOUT:
+        return ICommDriver::Status::READ_TIMEOUT;
+    case LIBUSB_ERROR_NO_DEVICE:
+    case LIBUSB_ERROR_ACCESS:
+    case LIBUSB_ERROR_NOT_FOUND:
+        return ICommDriver::Status::PORT_ACCESS;
+    case LIBUSB_ERROR_PIPE:
+        return ICommDriver::Status::NACK;
+    case LIBUSB_ERROR_OVERFLOW:
+        return ICommDriver::Status::BUFFER_OVERFLOW;
+    case LIBUSB_ERROR_NO_MEM:
+        return ICommDriver::Status::OUT_OF_MEMORY;
+    case LIBUSB_ERROR_INVALID_PARAM:
+        return ICommDriver::Status::INVALID_PARAM;
+    default:
+        return ICommDriver::Status::OPERATION_FAILED;
     }
 }
 
 // Little-endian field helpers (gs_usb wire values are always little-endian,
 // regardless of host byte order — see GsHostConfig's doc comment).
-inline void put_u32le(uint8_t* p, uint32_t v)
+inline void put_u32le(uint8_t *p, uint32_t v)
 {
     p[0] = static_cast<uint8_t>(v & 0xFF);
     p[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
@@ -70,25 +79,22 @@ inline void put_u32le(uint8_t* p, uint32_t v)
     p[3] = static_cast<uint8_t>((v >> 24) & 0xFF);
 }
 
-inline uint32_t get_u32le(const uint8_t* p)
+inline uint32_t get_u32le(const uint8_t *p)
 {
-    return static_cast<uint32_t>(p[0])
-         | (static_cast<uint32_t>(p[1]) << 8)
-         | (static_cast<uint32_t>(p[2]) << 16)
-         | (static_cast<uint32_t>(p[3]) << 24);
+    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) | (static_cast<uint32_t>(p[3]) << 24);
 }
 
 /// Byte-serialise the little-endian control-transfer structs by hand rather
 /// than relying on host struct layout matching the wire (portable across
 /// compilers/ABIs even though every field here happens to be uint32_t).
-void serialize_u32_struct(const uint32_t* fields, size_t count, uint8_t* out)
+void serialize_u32_struct(const uint32_t *fields, size_t count, uint8_t *out)
 {
     for (size_t i = 0; i < count; ++i) {
         put_u32le(out + i * 4, fields[i]);
     }
 }
 
-void deserialize_u32_struct(const uint8_t* in, uint32_t* fields, size_t count)
+void deserialize_u32_struct(const uint8_t *in, uint32_t *fields, size_t count)
 {
     for (size_t i = 0; i < count; ++i) {
         fields[i] = get_u32le(in + i * 4);
@@ -97,13 +103,12 @@ void deserialize_u32_struct(const uint8_t* in, uint32_t* fields, size_t count)
 
 } // namespace
 
-
 // ============================================================================
 // Construction / destruction
 // ============================================================================
 
 Candlelight::Candlelight(uint16_t vendor_id, uint16_t product_id, unsigned device_index,
-                         const std::string& strIdentityLabel)
+                         const std::string &strIdentityLabel)
     : m_strIdentityLabel(strIdentityLabel)
 {
     open(vendor_id, product_id, device_index);
@@ -131,8 +136,8 @@ ICommDriver::Status Candlelight::open(uint16_t vendor_id, uint16_t product_id, u
         return libusb_err_to_status(rc);
     }
 
-    libusb_device** list = nullptr;
-    ssize_t count = libusb_get_device_list(m_usbCtx, &list);
+    libusb_device **list = nullptr;
+    ssize_t count        = libusb_get_device_list(m_usbCtx, &list);
     if (count < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("libusb_get_device_list failed"));
         libusb_exit(m_usbCtx);
@@ -140,11 +145,13 @@ ICommDriver::Status Candlelight::open(uint16_t vendor_id, uint16_t product_id, u
         return libusb_err_to_status(static_cast<int>(count));
     }
 
-    libusb_device* match = nullptr;
-    unsigned seen = 0;
+    libusb_device *match = nullptr;
+    unsigned seen        = 0;
     for (ssize_t i = 0; i < count; ++i) {
         libusb_device_descriptor desc{};
-        if (libusb_get_device_descriptor(list[i], &desc) != LIBUSB_SUCCESS) continue;
+        if (libusb_get_device_descriptor(list[i], &desc) != LIBUSB_SUCCESS) {
+            continue;
+        }
         if (desc.idVendor == vendor_id && desc.idProduct == product_id) {
             if (seen == device_index) {
                 match = list[i];
@@ -174,9 +181,9 @@ ICommDriver::Status Candlelight::open(uint16_t vendor_id, uint16_t product_id, u
     // gs_usb is a single-interface vendor device (interface 0), bulk IN/OUT
     // pair auto-discovered from its endpoint descriptors rather than
     // hard-coded, since the exact endpoint numbers vary by firmware/MCU.
-    libusb_device* dev = libusb_get_device(m_usbHandle);
-    libusb_config_descriptor* cfg = nullptr;
-    rc = libusb_get_active_config_descriptor(dev, &cfg);
+    libusb_device *dev            = libusb_get_device(m_usbHandle);
+    libusb_config_descriptor *cfg = nullptr;
+    rc                            = libusb_get_active_config_descriptor(dev, &cfg);
     if (rc != LIBUSB_SUCCESS || !cfg) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("libusb_get_active_config_descriptor failed"));
         libusb_close(m_usbHandle);
@@ -186,16 +193,18 @@ ICommDriver::Status Candlelight::open(uint16_t vendor_id, uint16_t product_id, u
         return libusb_err_to_status(rc);
     }
 
-    m_epIn = 0;
-    m_epOut = 0;
+    m_epIn         = 0;
+    m_epOut        = 0;
     m_interfaceNum = 0;
     if (cfg->bNumInterfaces > 0 && cfg->interface[0].num_altsetting > 0) {
-        const libusb_interface_descriptor& iface = cfg->interface[0].altsetting[0];
-        m_interfaceNum = iface.bInterfaceNumber;
+        const libusb_interface_descriptor &iface = cfg->interface[0].altsetting[0];
+        m_interfaceNum                           = iface.bInterfaceNumber;
         for (int e = 0; e < iface.bNumEndpoints; ++e) {
-            const libusb_endpoint_descriptor& ep = iface.endpoint[e];
-            const uint8_t xferType = ep.bmAttributes & LIBUSB_TRANSFER_TYPE_MASK;
-            if (xferType != LIBUSB_TRANSFER_TYPE_BULK) continue;
+            const libusb_endpoint_descriptor &ep = iface.endpoint[e];
+            const uint8_t xferType               = ep.bmAttributes & LIBUSB_TRANSFER_TYPE_MASK;
+            if (xferType != LIBUSB_TRANSFER_TYPE_BULK) {
+                continue;
+            }
             if ((ep.bEndpointAddress & LIBUSB_ENDPOINT_DIR_MASK) == LIBUSB_ENDPOINT_IN) {
                 m_epIn = ep.bEndpointAddress;
             } else {
@@ -261,15 +270,17 @@ bool Candlelight::is_open() const
 // Internal USB control-transfer helpers
 // ============================================================================
 
-ICommDriver::Status Candlelight::ctrl_out(GsUsbBreq req, uint16_t value, const void* data, uint16_t len, uint32_t timeout_ms)
+ICommDriver::Status Candlelight::ctrl_out(GsUsbBreq req, uint16_t value, const void *data, uint16_t len, uint32_t timeout_ms)
 {
-    if (!is_open()) return Status::PORT_ACCESS;
+    if (!is_open()) {
+        return Status::PORT_ACCESS;
+    }
 
     int rc = libusb_control_transfer(m_usbHandle, USB_DIR_OUT_VENDOR_IFACE,
-                                      static_cast<uint8_t>(req), value,
-                                      static_cast<uint16_t>(m_interfaceNum),
-                                      const_cast<unsigned char*>(static_cast<const unsigned char*>(data)),
-                                      len, timeout_ms);
+                                     static_cast<uint8_t>(req), value,
+                                     static_cast<uint16_t>(m_interfaceNum),
+                                     const_cast<unsigned char *>(static_cast<const unsigned char *>(data)),
+                                     len, timeout_ms);
     if (rc < 0 || static_cast<uint16_t>(rc) != len) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("ctrl_out failed, breq="); LOG_UINT8(static_cast<uint8_t>(req)));
         return (rc == LIBUSB_ERROR_TIMEOUT) ? Status::WRITE_TIMEOUT : libusb_err_to_status(rc < 0 ? rc : LIBUSB_ERROR_IO);
@@ -277,15 +288,17 @@ ICommDriver::Status Candlelight::ctrl_out(GsUsbBreq req, uint16_t value, const v
     return Status::SUCCESS;
 }
 
-ICommDriver::Status Candlelight::ctrl_in(GsUsbBreq req, uint16_t value, void* data, uint16_t len, uint32_t timeout_ms)
+ICommDriver::Status Candlelight::ctrl_in(GsUsbBreq req, uint16_t value, void *data, uint16_t len, uint32_t timeout_ms)
 {
-    if (!is_open()) return Status::PORT_ACCESS;
+    if (!is_open()) {
+        return Status::PORT_ACCESS;
+    }
 
     int rc = libusb_control_transfer(m_usbHandle, USB_DIR_IN_VENDOR_IFACE,
-                                      static_cast<uint8_t>(req), value,
-                                      static_cast<uint16_t>(m_interfaceNum),
-                                      static_cast<unsigned char*>(data),
-                                      len, timeout_ms);
+                                     static_cast<uint8_t>(req), value,
+                                     static_cast<uint16_t>(m_interfaceNum),
+                                     static_cast<unsigned char *>(data),
+                                     len, timeout_ms);
     // A control IN transfer legitimately completing with fewer bytes than
     // wLength is normal USB behaviour (the device simply has less to say
     // than the host allowed room for) — NOT an error condition. This matters
@@ -326,7 +339,7 @@ ICommDriver::Status Candlelight::probe()
     // leaves hw_version safely defaulted to 0 rather than reading uninitialised
     // memory.
     uint8_t devCfgBuf[12] = {0};
-    s = ctrl_in(GsUsbBreq::DEVICE_CONFIG, 0, devCfgBuf, sizeof(devCfgBuf), CANDLELIGHT_DEFAULT_TIMEOUT);
+    s                     = ctrl_in(GsUsbBreq::DEVICE_CONFIG, 0, devCfgBuf, sizeof(devCfgBuf), CANDLELIGHT_DEFAULT_TIMEOUT);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("probe: DEVICE_CONFIG failed"));
         return s;
@@ -340,7 +353,7 @@ ICommDriver::Status Candlelight::probe()
 
     // BT_CONST (10x u32 = 40 bytes)
     uint8_t btConstBuf[40] = {0};
-    s = ctrl_in(GsUsbBreq::BT_CONST, 0, btConstBuf, sizeof(btConstBuf), CANDLELIGHT_DEFAULT_TIMEOUT);
+    s                      = ctrl_in(GsUsbBreq::BT_CONST, 0, btConstBuf, sizeof(btConstBuf), CANDLELIGHT_DEFAULT_TIMEOUT);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("probe: BT_CONST failed"));
         return s;
@@ -363,31 +376,31 @@ ICommDriver::Status Candlelight::probe()
     if (is_fd_supported()) {
         // BT_CONST_EXT (18x u32 = 72 bytes)
         uint8_t btConstExtBuf[72] = {0};
-        s = ctrl_in(GsUsbBreq::BT_CONST_EXT, 0, btConstExtBuf, sizeof(btConstExtBuf), CANDLELIGHT_DEFAULT_TIMEOUT);
+        s                         = ctrl_in(GsUsbBreq::BT_CONST_EXT, 0, btConstExtBuf, sizeof(btConstExtBuf), CANDLELIGHT_DEFAULT_TIMEOUT);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("probe: BT_CONST_EXT failed despite FD feature bit"));
             // Not fatal: proceed without confirmed FD data-phase limits.
         } else {
             uint32_t fields[18];
             deserialize_u32_struct(btConstExtBuf, fields, 18);
-            m_btConstExt.feature     = fields[0];
-            m_btConstExt.fclk_can    = fields[1];
-            m_btConstExt.tseg1_min   = fields[2];
-            m_btConstExt.tseg1_max   = fields[3];
-            m_btConstExt.tseg2_min   = fields[4];
-            m_btConstExt.tseg2_max   = fields[5];
-            m_btConstExt.sjw_max     = fields[6];
-            m_btConstExt.brp_min     = fields[7];
-            m_btConstExt.brp_max     = fields[8];
-            m_btConstExt.brp_inc     = fields[9];
-            m_btConstExt.dtseg1_min  = fields[10];
-            m_btConstExt.dtseg1_max  = fields[11];
-            m_btConstExt.dtseg2_min  = fields[12];
-            m_btConstExt.dtseg2_max  = fields[13];
-            m_btConstExt.dsjw_max    = fields[14];
-            m_btConstExt.dbrp_min    = fields[15];
-            m_btConstExt.dbrp_max    = fields[16];
-            m_btConstExt.dbrp_inc    = fields[17];
+            m_btConstExt.feature    = fields[0];
+            m_btConstExt.fclk_can   = fields[1];
+            m_btConstExt.tseg1_min  = fields[2];
+            m_btConstExt.tseg1_max  = fields[3];
+            m_btConstExt.tseg2_min  = fields[4];
+            m_btConstExt.tseg2_max  = fields[5];
+            m_btConstExt.sjw_max    = fields[6];
+            m_btConstExt.brp_min    = fields[7];
+            m_btConstExt.brp_max    = fields[8];
+            m_btConstExt.brp_inc    = fields[9];
+            m_btConstExt.dtseg1_min = fields[10];
+            m_btConstExt.dtseg1_max = fields[11];
+            m_btConstExt.dtseg2_min = fields[12];
+            m_btConstExt.dtseg2_max = fields[13];
+            m_btConstExt.dsjw_max   = fields[14];
+            m_btConstExt.dbrp_min   = fields[15];
+            m_btConstExt.dbrp_max   = fields[16];
+            m_btConstExt.dbrp_inc   = fields[17];
         }
     }
 
@@ -399,20 +412,20 @@ ICommDriver::Status Candlelight::probe()
 // ============================================================================
 
 ICommDriver::Status Candlelight::set_bittiming(uint32_t prop_seg, uint32_t phase_seg1, uint32_t phase_seg2,
-                                                uint32_t sjw, uint32_t brp, uint32_t timeout_ms)
+                                               uint32_t sjw, uint32_t brp, uint32_t timeout_ms)
 {
     if (m_channel_open) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("set_bittiming called with channel open"));
         return Status::INVALID_PARAM;
     }
-    uint32_t fields[5] = { prop_seg, phase_seg1, phase_seg2, sjw, brp };
+    uint32_t fields[5] = {prop_seg, phase_seg1, phase_seg2, sjw, brp};
     uint8_t buf[20];
     serialize_u32_struct(fields, 5, buf);
     return ctrl_out(GsUsbBreq::BITTIMING, 0, buf, sizeof(buf), timeout_ms);
 }
 
 ICommDriver::Status Candlelight::set_data_bittiming(uint32_t prop_seg, uint32_t phase_seg1, uint32_t phase_seg2,
-                                                     uint32_t sjw, uint32_t brp, uint32_t timeout_ms)
+                                                    uint32_t sjw, uint32_t brp, uint32_t timeout_ms)
 {
     if (m_channel_open) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("set_data_bittiming called with channel open"));
@@ -422,7 +435,7 @@ ICommDriver::Status Candlelight::set_data_bittiming(uint32_t prop_seg, uint32_t 
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_data_bittiming: device has no GS_CAN_FEATURE_FD"));
         return Status::INVALID_PARAM;
     }
-    uint32_t fields[5] = { prop_seg, phase_seg1, phase_seg2, sjw, brp };
+    uint32_t fields[5] = {prop_seg, phase_seg1, phase_seg2, sjw, brp};
     uint8_t buf[20];
     serialize_u32_struct(fields, 5, buf);
     return ctrl_out(GsUsbBreq::DATA_BITTIMING, 0, buf, sizeof(buf), timeout_ms);
@@ -444,44 +457,56 @@ bool calc_bittiming(uint32_t fclk_can, uint32_t bitrate_bps, double sample_point
                     uint32_t tseg1_min, uint32_t tseg1_max,
                     uint32_t tseg2_min, uint32_t tseg2_max,
                     uint32_t sjw_max, uint32_t brp_min, uint32_t brp_max, uint32_t brp_inc,
-                    uint32_t& out_prop_seg, uint32_t& out_phase_seg1, uint32_t& out_phase_seg2,
-                    uint32_t& out_sjw, uint32_t& out_brp)
+                    uint32_t &out_prop_seg, uint32_t &out_phase_seg1, uint32_t &out_phase_seg2,
+                    uint32_t &out_sjw, uint32_t &out_brp)
 {
-    if (bitrate_bps == 0 || fclk_can == 0) return false;
+    if (bitrate_bps == 0 || fclk_can == 0) {
+        return false;
+    }
 
-    bool found = false;
-    double bestErr = 1e18;
+    bool found       = false;
+    double bestErr   = 1e18;
     uint32_t bestBrp = 0, bestTseg1 = 0, bestTseg2 = 0;
 
     for (uint32_t brp = brp_min; brp <= brp_max; brp += (brp_inc ? brp_inc : 1)) {
         // Total time quanta per bit for this brp: tq_total = fclk / (brp * bitrate)
         // (1 sync quantum + tseg1 + tseg2 = tq_total; sync is fixed at 1 tq).
         const uint64_t denom = static_cast<uint64_t>(brp) * bitrate_bps;
-        if (denom == 0) continue;
-        if (fclk_can % denom != 0) continue; // must divide exactly - no bit-rate error tolerated
+        if (denom == 0) {
+            continue;
+        }
+        if (fclk_can % denom != 0) {
+            continue; // must divide exactly - no bit-rate error tolerated
+        }
         const uint64_t tqTotal = fclk_can / denom;
-        if (tqTotal < 3) continue; // need at least sync(1)+tseg1(1)+tseg2(1)
+        if (tqTotal < 3) {
+            continue; // need at least sync(1)+tseg1(1)+tseg2(1)
+        }
 
         const uint32_t segTotal = static_cast<uint32_t>(tqTotal - 1); // tseg1+tseg2
 
         // Try every tseg2 in range, derive tseg1 = segTotal - tseg2.
         for (uint32_t tseg2 = tseg2_min; tseg2 <= tseg2_max && tseg2 < segTotal; ++tseg2) {
             const uint32_t tseg1 = segTotal - tseg2;
-            if (tseg1 < tseg1_min || tseg1 > tseg1_max) continue;
+            if (tseg1 < tseg1_min || tseg1 > tseg1_max) {
+                continue;
+            }
 
             const double samplePoint = static_cast<double>(1 + tseg1) / static_cast<double>(tqTotal);
-            const double err = std::abs(samplePoint - sample_point);
+            const double err         = std::abs(samplePoint - sample_point);
             if (err < bestErr) {
-                bestErr = err;
-                bestBrp = brp;
+                bestErr   = err;
+                bestBrp   = brp;
                 bestTseg1 = tseg1;
                 bestTseg2 = tseg2;
-                found = true;
+                found     = true;
             }
         }
     }
 
-    if (!found) return false;
+    if (!found) {
+        return false;
+    }
 
     out_prop_seg   = bestTseg1 / 2;
     out_phase_seg1 = bestTseg1 - out_prop_seg;
@@ -531,13 +556,13 @@ ICommDriver::Status Candlelight::set_fd_data_bitrate(uint32_t bitrate_bps, doubl
 
 ICommDriver::Status Candlelight::open_channel(uint32_t mode_flags, uint32_t timeout_ms)
 {
-    uint32_t fields[2] = { static_cast<uint32_t>(GsCanMode::START), mode_flags };
+    uint32_t fields[2] = {static_cast<uint32_t>(GsCanMode::START), mode_flags};
     uint8_t buf[8];
     serialize_u32_struct(fields, 2, buf);
 
     Status s = ctrl_out(GsUsbBreq::MODE, 0, buf, sizeof(buf), timeout_ms);
     if (s == Status::SUCCESS) {
-        m_channel_open = true;
+        m_channel_open  = true;
         m_fd_negotiated = (mode_flags & GS_CAN_MODE_FD) != 0;
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CAN channel opened, fd="); LOG_UINT8(m_fd_negotiated ? 1 : 0));
     }
@@ -546,11 +571,11 @@ ICommDriver::Status Candlelight::open_channel(uint32_t mode_flags, uint32_t time
 
 ICommDriver::Status Candlelight::close_channel(uint32_t timeout_ms)
 {
-    uint32_t fields[2] = { static_cast<uint32_t>(GsCanMode::RESET), 0 };
+    uint32_t fields[2] = {static_cast<uint32_t>(GsCanMode::RESET), 0};
     uint8_t buf[8];
     serialize_u32_struct(fields, 2, buf);
 
-    Status s = ctrl_out(GsUsbBreq::MODE, 0, buf, sizeof(buf), timeout_ms);
+    Status s       = ctrl_out(GsUsbBreq::MODE, 0, buf, sizeof(buf), timeout_ms);
     m_channel_open = false; // mark closed even on error to avoid loops
     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CAN channel closed"));
     return s;
@@ -560,15 +585,17 @@ ICommDriver::Status Candlelight::close_channel(uint32_t timeout_ms)
 // Diagnostic queries
 // ============================================================================
 
-ICommDriver::Status Candlelight::get_state(GsDeviceState& state, uint32_t timeout_ms)
+ICommDriver::Status Candlelight::get_state(GsDeviceState &state, uint32_t timeout_ms)
 {
     if (!is_get_state_supported()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("get_state: device has no GS_CAN_FEATURE_GET_STATE"));
         return Status::OPERATION_FAILED;
     }
     uint8_t buf[12] = {0};
-    Status s = ctrl_in(GsUsbBreq::GET_STATE, 0, buf, sizeof(buf), timeout_ms);
-    if (s != Status::SUCCESS) return s;
+    Status s        = ctrl_in(GsUsbBreq::GET_STATE, 0, buf, sizeof(buf), timeout_ms);
+    if (s != Status::SUCCESS) {
+        return s;
+    }
 
     uint32_t fields[3];
     deserialize_u32_struct(buf, fields, 3);
@@ -582,31 +609,42 @@ ICommDriver::Status Candlelight::get_state(GsDeviceState& state, uint32_t timeou
 // Frame encoding (session-dependent tail shape)
 // ============================================================================
 
-size_t Candlelight::encode_frame(uint32_t echo_id, const CanFrame& frame, std::span<uint8_t> out) const
+size_t Candlelight::encode_frame(uint32_t echo_id, const CanFrame &frame, std::span<uint8_t> out) const
 {
-    if (out.size() < max_packet_len()) return 0;
-    if (frame.is_canfd && !m_fd_negotiated) return 0;
+    if (out.size() < max_packet_len()) {
+        return 0;
+    }
+    if (frame.is_canfd && !m_fd_negotiated) {
+        return 0;
+    }
 
     const uint8_t dataLen = frame.is_canfd ? frame.len : (frame.is_remote ? 0 : std::min<uint8_t>(frame.len, 8));
 
-    uint32_t can_id = frame.id;
-    if (frame.is_extended) can_id = (can_id & GS_CAN_EFF_MASK) | GS_CAN_EFF_FLAG;
-    else                    can_id = can_id & GS_CAN_SFF_MASK;
-    if (frame.is_remote) can_id |= GS_CAN_RTR_FLAG;
+    uint32_t can_id       = frame.id;
+    if (frame.is_extended) {
+        can_id = (can_id & GS_CAN_EFF_MASK) | GS_CAN_EFF_FLAG;
+    } else {
+        can_id = can_id & GS_CAN_SFF_MASK;
+    }
+    if (frame.is_remote) {
+        can_id |= GS_CAN_RTR_FLAG;
+    }
 
     uint8_t flags = 0;
     if (frame.is_canfd) {
         flags |= GS_CAN_FLAG_FD;
-        if (frame.brs) flags |= GS_CAN_FLAG_BRS;
+        if (frame.brs) {
+            flags |= GS_CAN_FLAG_BRS;
+        }
     }
 
-    uint8_t* p = out.data();
+    uint8_t *p = out.data();
     put_u32le(p + 0, echo_id);
     put_u32le(p + 4, can_id);
-    p[8]  = frame.is_canfd ? SLCAN::len_to_dlc(frame.len) : dataLen; // can_dlc: DLC code for FD, byte count for classic
-    p[9]  = 0; // channel — single-channel adapters only (see class doc comment)
-    p[10] = flags;
-    p[11] = 0; // reserved
+    p[8]                  = frame.is_canfd ? SLCAN::len_to_dlc(frame.len) : dataLen; // can_dlc: DLC code for FD, byte count for classic
+    p[9]                  = 0;                                                       // channel — single-channel adapters only (see class doc comment)
+    p[10]                 = flags;
+    p[11]                 = 0; // reserved
 
     const uint8_t tailCap = m_fd_negotiated ? 64 : 8;
     std::fill(p + GS_HOST_FRAME_HDR_LEN, p + GS_HOST_FRAME_HDR_LEN + tailCap, 0);
@@ -621,19 +659,23 @@ size_t Candlelight::encode_frame(uint32_t echo_id, const CanFrame& frame, std::s
 // Frame decoding (session-dependent tail shape)
 // ============================================================================
 
-bool Candlelight::decode_frame(const uint8_t* pkt, size_t len, uint32_t& echo_id, CanFrame& frame) const
+bool Candlelight::decode_frame(const uint8_t *pkt, size_t len, uint32_t &echo_id, CanFrame &frame) const
 {
-    if (!pkt || len < GS_HOST_FRAME_HDR_LEN) return false;
+    if (!pkt || len < GS_HOST_FRAME_HDR_LEN) {
+        return false;
+    }
 
-    echo_id = get_u32le(pkt + 0);
+    echo_id                   = get_u32le(pkt + 0);
     const uint32_t can_id_raw = get_u32le(pkt + 4);
-    const uint8_t  can_dlc    = pkt[8];
+    const uint8_t can_dlc     = pkt[8];
     // pkt[9] is channel — ignored (single-channel adapters only, see class doc comment)
-    const uint8_t  flags      = pkt[10];
+    const uint8_t flags       = pkt[10];
 
-    const bool is_fd = (flags & GS_CAN_FLAG_FD) != 0;
-    const uint8_t tailCap = is_fd ? 64 : 8;
-    if (len < GS_HOST_FRAME_HDR_LEN + tailCap) return false;
+    const bool is_fd          = (flags & GS_CAN_FLAG_FD) != 0;
+    const uint8_t tailCap     = is_fd ? 64 : 8;
+    if (len < GS_HOST_FRAME_HDR_LEN + tailCap) {
+        return false;
+    }
 
     frame.is_extended = (can_id_raw & GS_CAN_EFF_FLAG) != 0;
     frame.is_remote   = (can_id_raw & GS_CAN_RTR_FLAG) != 0;
@@ -641,7 +683,7 @@ bool Candlelight::decode_frame(const uint8_t* pkt, size_t len, uint32_t& echo_id
     frame.brs         = is_fd && (flags & GS_CAN_FLAG_BRS) != 0;
     frame.id          = frame.is_extended ? (can_id_raw & GS_CAN_EFF_MASK) : (can_id_raw & GS_CAN_SFF_MASK);
     frame.dlc         = can_dlc;
-    frame.len          = is_fd ? SLCAN::dlc_to_len(can_dlc) : std::min<uint8_t>(can_dlc, 8);
+    frame.len         = is_fd ? SLCAN::dlc_to_len(can_dlc) : std::min<uint8_t>(can_dlc, 8);
 
     frame.data.fill(0);
     if (!frame.is_remote) {
@@ -655,14 +697,16 @@ bool Candlelight::decode_frame(const uint8_t* pkt, size_t len, uint32_t& echo_id
 // Internal bulk helpers
 // ============================================================================
 
-ICommDriver::Status Candlelight::bulk_write_frame(uint32_t echo_id, const CanFrame& frame, uint32_t timeout_ms)
+ICommDriver::Status Candlelight::bulk_write_frame(uint32_t echo_id, const CanFrame &frame, uint32_t timeout_ms)
 {
     std::vector<uint8_t> buf(max_packet_len());
     size_t n = encode_frame(echo_id, frame, std::span<uint8_t>(buf));
-    if (n == 0) return Status::INVALID_PARAM;
+    if (n == 0) {
+        return Status::INVALID_PARAM;
+    }
 
     int transferred = 0;
-    int rc = libusb_bulk_transfer(m_usbHandle, m_epOut, buf.data(), static_cast<int>(n), &transferred, timeout_ms);
+    int rc          = libusb_bulk_transfer(m_usbHandle, m_epOut, buf.data(), static_cast<int>(n), &transferred, timeout_ms);
     if (rc != LIBUSB_SUCCESS || static_cast<size_t>(transferred) != n) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("bulk OUT failed"));
         return (rc == LIBUSB_ERROR_TIMEOUT) ? Status::WRITE_TIMEOUT : libusb_err_to_status(rc);
@@ -670,7 +714,7 @@ ICommDriver::Status Candlelight::bulk_write_frame(uint32_t echo_id, const CanFra
     return Status::SUCCESS;
 }
 
-ICommDriver::Status Candlelight::bulk_read_one(uint32_t& echo_id, CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok)
+ICommDriver::Status Candlelight::bulk_read_one(uint32_t &echo_id, CanFrame &frame, uint32_t timeout_ms, std::stop_token stop_tok)
 {
     std::vector<uint8_t> buf(max_packet_len());
 
@@ -682,11 +726,11 @@ ICommDriver::Status Candlelight::bulk_read_one(uint32_t& echo_id, CanFrame& fram
     // bInfinite loops 200ms slices forever instead so the wait stays
     // interruptible via stop_tok even with no caller-specified timeout.
     constexpr unsigned int kSliceMs = 200;
-    const bool bInfinite = (timeout_ms == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+    const bool bInfinite            = (timeout_ms == 0);
+    const auto tDeadline            = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
 
-    int transferred = 0;
-    int rc = LIBUSB_ERROR_TIMEOUT;
+    int transferred                 = 0;
+    int rc                          = LIBUSB_ERROR_TIMEOUT;
     while (true) {
         if (stop_tok.stop_requested()) {
             rc = LIBUSB_ERROR_TIMEOUT;
@@ -701,11 +745,11 @@ ICommDriver::Status Candlelight::bulk_read_one(uint32_t& echo_id, CanFrame& fram
                 break;
             }
             sliceMs = static_cast<unsigned int>(std::min<int64_t>(kSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                                  std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         rc = libusb_bulk_transfer(m_usbHandle, m_epIn, buf.data(),
-                                   static_cast<int>(buf.size()), &transferred, sliceMs);
+                                  static_cast<int>(buf.size()), &transferred, sliceMs);
         if (rc != LIBUSB_ERROR_TIMEOUT) {
             break; // real success or real error — stop retrying either way
         }
@@ -726,7 +770,7 @@ ICommDriver::Status Candlelight::bulk_read_one(uint32_t& echo_id, CanFrame& fram
 // send_frame  — write, then wait for the matching TX-complete echo
 // ============================================================================
 
-ICommDriver::Status Candlelight::send_frame(const CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok)
+ICommDriver::Status Candlelight::send_frame(const CanFrame &frame, uint32_t timeout_ms, std::stop_token stop_tok)
 {
     if (!m_channel_open) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("send_frame: channel not open"));
@@ -734,16 +778,20 @@ ICommDriver::Status Candlelight::send_frame(const CanFrame& frame, uint32_t time
     }
 
     const uint32_t echoId = m_next_echo_id++;
-    if (m_next_echo_id == GS_CAN_ECHO_ID_RX) m_next_echo_id = 0; // never collide with the RX marker
+    if (m_next_echo_id == GS_CAN_ECHO_ID_RX) {
+        m_next_echo_id = 0; // never collide with the RX marker
+    }
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("TX id="); LOG_HEX32(frame.id);
               LOG_STRING(" len="); LOG_UINT8(frame.len);
               LOG_STRING(frame.is_extended ? " EXT" : " STD");
-              LOG_STRING(frame.is_canfd    ? " CANFD" : " CAN"));
+              LOG_STRING(frame.is_canfd ? " CANFD" : " CAN"));
 
     Status s = bulk_write_frame(echoId, frame, timeout_ms);
-    if (s != Status::SUCCESS) return s;
+    if (s != Status::SUCCESS) {
+        return s;
+    }
 
     // Wait for the matching TX-complete echo, silently absorbing any RX
     // frames that happen to arrive first — see uCandlelight.hpp's "echo_id".
@@ -788,7 +836,7 @@ ICommDriver::Status Candlelight::send_frame(const CanFrame& frame, uint32_t time
 // receive_frame  — wait for the next genuine RX frame
 // ============================================================================
 
-ICommDriver::Status Candlelight::receive_frame(CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok)
+ICommDriver::Status Candlelight::receive_frame(CanFrame &frame, uint32_t timeout_ms, std::stop_token stop_tok)
 {
     // Same overall-deadline rationale as send_frame() above: a busy TX flow
     // on this channel could otherwise starve this wait indefinitely while
@@ -808,7 +856,7 @@ ICommDriver::Status Candlelight::receive_frame(CanFrame& frame, uint32_t timeout
             std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - now).count());
 
         uint32_t echoId = 0;
-        Status s = bulk_read_one(echoId, frame, remainingMs, stop_tok);
+        Status s        = bulk_read_one(echoId, frame, remainingMs, stop_tok);
         if (s != Status::SUCCESS) {
             if (s != Status::READ_TIMEOUT) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("receive_frame: read error"));
@@ -820,7 +868,7 @@ ICommDriver::Status Candlelight::receive_frame(CanFrame& frame, uint32_t timeout
                       LOG_STRING("RX id="); LOG_HEX32(frame.id);
                       LOG_STRING(" len="); LOG_UINT8(frame.len);
                       LOG_STRING(frame.is_extended ? " EXT" : " STD");
-                      LOG_STRING(frame.is_canfd    ? " CANFD" : " CAN"));
+                      LOG_STRING(frame.is_canfd ? " CANFD" : " CAN"));
             return Status::SUCCESS;
         }
         // else: a TX-complete echo for some earlier send_frame() call —
@@ -834,8 +882,8 @@ ICommDriver::Status Candlelight::receive_frame(CanFrame& frame, uint32_t timeout
 
 Candlelight::ReadResult Candlelight::tout_read(uint32_t u32ReadTimeout,
                                                std::span<uint8_t> buffer,
-                                               const ReadOptions& /*options*/,
-                                               std::string_view   /*xtra_params*/,
+                                               const ReadOptions & /*options*/,
+                                               std::string_view /*xtra_params*/,
                                                std::stop_token stop_tok) const
 {
     ReadResult result;
@@ -852,11 +900,11 @@ Candlelight::ReadResult Candlelight::tout_read(uint32_t u32ReadTimeout,
     // timeout 0 as "wait forever" on a single call; here bInfinite loops
     // 200ms slices forever instead so the wait stays interruptible.
     constexpr unsigned int kSliceMs = 200;
-    const bool bInfinite = (u32ReadTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+    const bool bInfinite            = (u32ReadTimeout == 0);
+    const auto tDeadline            = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    int transferred = 0;
-    int rc = LIBUSB_ERROR_TIMEOUT;
+    int transferred                 = 0;
+    int rc                          = LIBUSB_ERROR_TIMEOUT;
     while (true) {
         if (stop_tok.stop_requested()) {
             rc = LIBUSB_ERROR_TIMEOUT;
@@ -871,11 +919,11 @@ Candlelight::ReadResult Candlelight::tout_read(uint32_t u32ReadTimeout,
                 break;
             }
             sliceMs = static_cast<unsigned int>(std::min<int64_t>(kSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                                  std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         rc = libusb_bulk_transfer(m_usbHandle, m_epIn, buffer.data(),
-                                   static_cast<int>(buffer.size()), &transferred, sliceMs);
+                                  static_cast<int>(buffer.size()), &transferred, sliceMs);
         if (rc != LIBUSB_ERROR_TIMEOUT) {
             break; // real success or real error — stop retrying either way
         }
@@ -901,11 +949,11 @@ Candlelight::WriteResult Candlelight::tout_write(uint32_t u32WriteTimeout,
 
     // Same bounded-slice-retry rationale as tout_read() above.
     constexpr unsigned int kSliceMs = 200;
-    const bool bInfinite = (u32WriteTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32WriteTimeout);
+    const bool bInfinite            = (u32WriteTimeout == 0);
+    const auto tDeadline            = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32WriteTimeout);
 
-    int transferred = 0;
-    int rc = LIBUSB_ERROR_TIMEOUT;
+    int transferred                 = 0;
+    int rc                          = LIBUSB_ERROR_TIMEOUT;
     while (true) {
         if (stop_tok.stop_requested()) {
             rc = LIBUSB_ERROR_TIMEOUT;
@@ -920,12 +968,12 @@ Candlelight::WriteResult Candlelight::tout_write(uint32_t u32WriteTimeout,
                 break;
             }
             sliceMs = static_cast<unsigned int>(std::min<int64_t>(kSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                                  std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         rc = libusb_bulk_transfer(m_usbHandle, m_epOut,
-                                   const_cast<uint8_t*>(buffer.data()),
-                                   static_cast<int>(buffer.size()), &transferred, sliceMs);
+                                  const_cast<uint8_t *>(buffer.data()),
+                                  static_cast<int>(buffer.size()), &transferred, sliceMs);
         if (rc != LIBUSB_ERROR_TIMEOUT) {
             break;
         }

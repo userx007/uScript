@@ -11,11 +11,11 @@
 #include "jtag_config.hpp"
 
 #include <ch347_lib.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <map>
 #include <memory>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 
@@ -36,8 +36,8 @@ struct PluginDataSet;
 //                          PLUGIN NAME / VERSION                              //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define CH347_PLUGIN_VERSION  "1.0.0.0"
-#define CH347_PLUGIN_NAME     "CH347"
+#define CH347_PLUGIN_VERSION "1.0.0.0"
+#define CH347_PLUGIN_NAME    "CH347"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN MACROS                                      //
@@ -52,13 +52,13 @@ struct PluginDataSet;
 //                          PLUGIN COMMANDS                                    //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define CH347_PLUGIN_COMMANDS_CONFIG_TABLE  \
-CH347_PLUGIN_CMD_RECORD( INFO )             \
-CH347_PLUGIN_CMD_RECORD( CONFIG )           \
-CH347_PLUGIN_CMD_RECORD( SPI  )             \
-CH347_PLUGIN_CMD_RECORD( I2C  )             \
-CH347_PLUGIN_CMD_RECORD( GPIO )             \
-CH347_PLUGIN_CMD_RECORD( JTAG )
+#define CH347_PLUGIN_COMMANDS_CONFIG_TABLE \
+    CH347_PLUGIN_CMD_RECORD(INFO)          \
+    CH347_PLUGIN_CMD_RECORD(CONFIG)        \
+    CH347_PLUGIN_CMD_RECORD(SPI)           \
+    CH347_PLUGIN_CMD_RECORD(I2C)           \
+    CH347_PLUGIN_CMD_RECORD(GPIO)          \
+    CH347_PLUGIN_CMD_RECORD(JTAG)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                                   //
@@ -110,7 +110,6 @@ class CH347Plugin : public PluginInterface
 {
 
 public:
-
     CH347Plugin()
         : m_strVersion(CH347_PLUGIN_VERSION)
         , m_strInstanceName(CH347_PLUGIN_NAME)
@@ -119,229 +118,271 @@ public:
         , m_bIsFaultTolerant(false)
         , m_bIsPrivileged(false)
     {
-        // Top-level command map 
-        #define CH347_PLUGIN_CMD_RECORD(a, ...) \
-            m_mapCmds.insert({#a, \
-            PluginCommandEntry<CH347Plugin>{&CH347Plugin::m_CH347_##a, CH347_GET_BLOCKING(a, ##__VA_ARGS__, false)} });
+// Top-level command map
+#define CH347_PLUGIN_CMD_RECORD(a, ...) \
+    m_mapCmds.insert({#a,               \
+                      PluginCommandEntry<CH347Plugin>{&CH347Plugin::m_CH347_##a, CH347_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
         CH347_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef CH347_PLUGIN_CMD_RECORD
+#undef CH347_PLUGIN_CMD_RECORD
 
-        // SPI 
-        #define SPI_CMD_RECORD(a) \
-            m_mapCmds_SPI.insert({#a, &CH347Plugin::m_handle_spi_##a});
+// SPI
+#define SPI_CMD_RECORD(a) \
+    m_mapCmds_SPI.insert({#a, &CH347Plugin::m_handle_spi_##a});
         SPI_COMMANDS_CONFIG_TABLE
-        #undef SPI_CMD_RECORD
+#undef SPI_CMD_RECORD
 
-        #define SPI_SPEED_RECORD(a,b) m_mapSpeed_SPI.insert({a, static_cast<size_t>(b)});
+#define SPI_SPEED_RECORD(a, b) m_mapSpeed_SPI.insert({a, static_cast<size_t>(b)});
         SPI_SPEED_CONFIG_TABLE
-        #undef SPI_SPEED_RECORD
+#undef SPI_SPEED_RECORD
 
-        // I2C 
-        #define I2C_CMD_RECORD(a) \
-            m_mapCmds_I2C.insert({#a, &CH347Plugin::m_handle_i2c_##a});
+// I2C
+#define I2C_CMD_RECORD(a) \
+    m_mapCmds_I2C.insert({#a, &CH347Plugin::m_handle_i2c_##a});
         I2C_COMMANDS_CONFIG_TABLE
-        #undef I2C_CMD_RECORD
+#undef I2C_CMD_RECORD
 
-        #define I2C_SPEED_RECORD(a,b) m_mapSpeed_I2C.insert({a, static_cast<size_t>(b)});
+#define I2C_SPEED_RECORD(a, b) m_mapSpeed_I2C.insert({a, static_cast<size_t>(b)});
         I2C_SPEED_CONFIG_TABLE
-        #undef I2C_SPEED_RECORD
+#undef I2C_SPEED_RECORD
 
-        // GPIO 
-        #define GPIO_CMD_RECORD(a) \
-            m_mapCmds_GPIO.insert({#a, &CH347Plugin::m_handle_gpio_##a});
+// GPIO
+#define GPIO_CMD_RECORD(a) \
+    m_mapCmds_GPIO.insert({#a, &CH347Plugin::m_handle_gpio_##a});
         GPIO_COMMANDS_CONFIG_TABLE
-        #undef GPIO_CMD_RECORD
+#undef GPIO_CMD_RECORD
 
-        // JTAG 
-        #define JTAG_CMD_RECORD(a) \
-            m_mapCmds_JTAG.insert({#a, &CH347Plugin::m_handle_jtag_##a});
+// JTAG
+#define JTAG_CMD_RECORD(a) \
+    m_mapCmds_JTAG.insert({#a, &CH347Plugin::m_handle_jtag_##a});
         JTAG_COMMANDS_CONFIG_TABLE
-        #undef JTAG_CMD_RECORD
+#undef JTAG_CMD_RECORD
 
-        // Meta maps 
-        m_mapSpeedsMaps.insert({"SPI",  &m_mapSpeed_SPI});
-        m_mapSpeedsMaps.insert({"I2C",  &m_mapSpeed_I2C});
+        // Meta maps
+        m_mapSpeedsMaps.insert({"SPI", &m_mapSpeed_SPI});
+        m_mapSpeedsMaps.insert({"I2C", &m_mapSpeed_I2C});
         m_mapSpeedsMaps.insert({"GPIO", nullptr});
         m_mapSpeedsMaps.insert({"JTAG", nullptr});
 
-        m_mapCommandsMaps.insert({"SPI",  &m_mapCmds_SPI});
-        m_mapCommandsMaps.insert({"I2C",  &m_mapCmds_I2C});
+        m_mapCommandsMaps.insert({"SPI", &m_mapCmds_SPI});
+        m_mapCommandsMaps.insert({"I2C", &m_mapCmds_I2C});
         m_mapCommandsMaps.insert({"GPIO", &m_mapCmds_GPIO});
         m_mapCommandsMaps.insert({"JTAG", &m_mapCmds_JTAG});
     }
 
     ~CH347Plugin() = default;
 
-    // PluginInterface 
+    // PluginInterface
 
-    bool isInitialized()   const override { return m_bIsInitialized;   }
-    bool isEnabled()       const override { return m_bIsEnabled;       }
+    bool isInitialized() const override
+    {
+        return m_bIsInitialized;
+    }
 
-    bool setParams(const PluginDataSet* ps) {
+    bool isEnabled() const override
+    {
+        return m_bIsEnabled;
+    }
+
+    bool setParams(const PluginDataSet *ps)
+    {
         bool ok = generic_setparams<CH347Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
         return ok && m_LocalSetParams(ps);
     }
 
-    void getParams(PluginDataGet* pg) const {
+    void getParams(PluginDataGet *pg) const
+    {
         generic_getparams<CH347Plugin>(this, pg);
     }
 
-    const PluginCommandsMap<CH347Plugin>* getMap() const { return &m_mapCmds; }
+    const PluginCommandsMap<CH347Plugin> *getMap() const
+    {
+        return &m_mapCmds;
+    }
 
-    const std::string& getVersion() const { return m_strVersion; }
-    const std::string& getData()    const { return m_strResultData; }
-    void resetData()                const { m_strResultData.clear(); }
+    const std::string &getVersion() const
+    {
+        return m_strVersion;
+    }
 
-    bool doInit(void* pvUserData);
-    bool doEnable()  { m_bIsEnabled = true; return true;}
+    const std::string &getData() const
+    {
+        return m_strResultData;
+    }
 
-    bool doDispatch(const std::string& cmd, const std::string& params,
-                   std::stop_token st = {} ) const {
+    void resetData() const
+    {
+        m_strResultData.clear();
+    }
+
+    bool doInit(void *pvUserData);
+
+    bool doEnable()
+    {
+        m_bIsEnabled = true;
+        return true;
+    }
+
+    bool doDispatch(const std::string &cmd, const std::string &params,
+                    std::stop_token st = {}) const
+    {
         return generic_dispatch<CH347Plugin>(this, cmd, params, st);
     }
+
     void doCleanup();
-    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
-    bool isPrivileged()    const override { return false;              }
-    void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
-    // Module-map accessors 
+    bool isFaultTolerant() const override
+    {
+        return m_bIsFaultTolerant;
+    }
 
-    ModuleCommandsMap<CH347Plugin>* getModuleCmdsMap(const std::string& m) const;
-    ModuleSpeedMap*                 getModuleSpeedsMap(const std::string& m) const;
+    bool isPrivileged() const override
+    {
+        return false;
+    }
 
-    bool setModuleSpeed(const std::string& module, size_t hz) const;
+    void setFaultTolerant()
+    {
+        m_bIsFaultTolerant = true;
+    }
 
-    // INI accessor 
+    // Module-map accessors
 
-    struct IniValues {
-        std::string  strArtefactsPath;
-        std::string  strDevicePath     {
+    ModuleCommandsMap<CH347Plugin> *getModuleCmdsMap(const std::string &m) const;
+    ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
+
+    bool setModuleSpeed(const std::string &module, size_t hz) const;
+
+    // INI accessor
+
+    struct IniValues
+    {
+        std::string strArtefactsPath;
+        std::string strDevicePath{
 #ifdef _WIN32
-            "0"                  ///< Windows: decimal device index for CH347OpenDevice
+            "0" ///< Windows: decimal device index for CH347OpenDevice
 #else
-            "/dev/ch34xpis0"     ///< Linux: VCP device node
+            "/dev/ch34xpis0" ///< Linux: VCP device node
 #endif
         };
-        uint32_t     u32SpiClockHz     {1000000u};
-        I2cSpeed     eI2cSpeed         {I2cSpeed::Fast};
-        uint8_t      u8I2cAddress      {0x50u};
-        uint8_t      u8JtagClockRate   {2u};
-        uint32_t     u32ReadTimeout    {5000u};
-        uint32_t     u32ScriptDelay    {0u};
+        uint32_t u32SpiClockHz{1000000u};
+        I2cSpeed eI2cSpeed{I2cSpeed::Fast};
+        uint8_t u8I2cAddress{0x50u};
+        uint8_t u8JtagClockRate{2u};
+        uint32_t u32ReadTimeout{5000u};
+        uint32_t u32ScriptDelay{0u};
     };
-    
 
+    /** \brief CONFIG-command setter for strDevicePath (flag 'd') */
+    void setDevicePath(const std::string &strVal) const
+    {
+        m_sIniValues.strDevicePath = strVal;
+    }
 
-        /** \brief CONFIG-command setter for strDevicePath (flag 'd') */
-        void setDevicePath (const std::string& strVal) const
-        {
-            m_sIniValues.strDevicePath = strVal;
-        }
+    /** \brief CONFIG-command setter for u32SpiClockHz (flag 'c') */
+    bool setSpiClockHz(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32SpiClockHz);
+    }
 
-        /** \brief CONFIG-command setter for u32SpiClockHz (flag 'c') */
-        bool setSpiClockHz (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32SpiClockHz);
-        }
+    /** \brief CONFIG-command setter for eI2cSpeed (flag 'i') */
+    bool setI2cSpeed(const std::string &strVal) const
+    {
+        return parseI2cSpeed(strVal, m_sIniValues.eI2cSpeed);
+    }
 
-        /** \brief CONFIG-command setter for eI2cSpeed (flag 'i') */
-        bool setI2cSpeed (const std::string& strVal) const
-        {
-            return parseI2cSpeed(strVal, m_sIniValues.eI2cSpeed);
-        }
+    /** \brief CONFIG-command setter for u8I2cAddress (flag 'a') */
+    bool setI2cAddress(const std::string &strVal) const
+    {
+        return numeric::str2uint8(strVal, m_sIniValues.u8I2cAddress);
+    }
 
-        /** \brief CONFIG-command setter for u8I2cAddress (flag 'a') */
-        bool setI2cAddress (const std::string& strVal) const
-        {
-            return numeric::str2uint8(strVal, m_sIniValues.u8I2cAddress);
-        }
+    /** \brief CONFIG-command setter for u8JtagClockRate (flag 'j') */
+    bool setJtagClockRate(const std::string &strVal) const
+    {
+        return numeric::str2uint8(strVal, m_sIniValues.u8JtagClockRate);
+    }
 
-        /** \brief CONFIG-command setter for u8JtagClockRate (flag 'j') */
-        bool setJtagClockRate (const std::string& strVal) const
-        {
-            return numeric::str2uint8(strVal, m_sIniValues.u8JtagClockRate);
-        }
+    /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
+    bool setReadTimeout(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
+    }
 
-        /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
-        bool setReadTimeout (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
-        }
+    /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
+    bool setScriptDelay(const std::string &strVal) const
+    {
+        return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
+    }
 
-        /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
-        bool setScriptDelay (const std::string& strVal) const
-        {
-            return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
-        }
-
-
-
-    friend const IniValues* getAccessIniValues(const CH347Plugin& obj);
+    friend const IniValues *getAccessIniValues(const CH347Plugin &obj);
 
 private:
+    // Pending configuration structs
 
-    // Pending configuration structs 
-
-    struct SpiPendingCfg {
-        mSpiCfgS     cfg            {};
-        SpiXferOptions xferOpts     {};
-        bool         cfgDirty       {true};
+    struct SpiPendingCfg
+    {
+        mSpiCfgS cfg{};
+        SpiXferOptions xferOpts{};
+        bool cfgDirty{true};
     };
 
-    struct I2cPendingCfg {
-        I2cSpeed     speed          {I2cSpeed::Fast};
-        uint8_t      address        {0x50u};
+    struct I2cPendingCfg
+    {
+        I2cSpeed speed{I2cSpeed::Fast};
+        uint8_t address{0x50u};
     };
 
-    struct GpioPendingCfg {
-        uint8_t      enableMask     {0xFFu};
-        uint8_t      dirMask        {0x00u};  // default all inputs
-        uint8_t      dataValue      {0x00u};
+    struct GpioPendingCfg
+    {
+        uint8_t enableMask{0xFFu};
+        uint8_t dirMask{0x00u}; // default all inputs
+        uint8_t dataValue{0x00u};
     };
 
-    struct JtagPendingCfg {
-        uint8_t      clockRate      {2u};
-        JtagRegister lastReg        {JtagRegister::DR};
+    struct JtagPendingCfg
+    {
+        uint8_t clockRate{2u};
+        JtagRegister lastReg{JtagRegister::DR};
     };
 
-    // Driver instance accessors 
+    // Driver instance accessors
 
-    CH347SPI*  m_spi()  const;
-    CH347I2C*  m_i2c()  const;
-    CH347GPIO* m_gpio() const;
-    CH347JTAG* m_jtag() const;
+    CH347SPI *m_spi() const;
+    CH347I2C *m_i2c() const;
+    CH347GPIO *m_gpio() const;
+    CH347JTAG *m_jtag() const;
 
-    // WrRd callbacks 
+    // WrRd callbacks
 
     bool m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const;
     bool m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const;
 
-    // Top-level command handlers 
+    // Top-level command handlers
 
-    #define CH347_PLUGIN_CMD_RECORD(a, ...) \
-        bool m_CH347_##a( const std::string& args, std::stop_token st ) const;
+#define CH347_PLUGIN_CMD_RECORD(a, ...) \
+    bool m_CH347_##a(const std::string &args, std::stop_token st) const;
     CH347_PLUGIN_COMMANDS_CONFIG_TABLE
-    #undef CH347_PLUGIN_CMD_RECORD
+#undef CH347_PLUGIN_CMD_RECORD
 
-    // Per-module subcommand declarations 
+    // Per-module subcommand declarations
 
-    #define SPI_CMD_RECORD(a)  bool m_handle_spi_##a (const std::string&, std::stop_token st) const;
+#define SPI_CMD_RECORD(a) bool m_handle_spi_##a(const std::string &, std::stop_token st) const;
     SPI_COMMANDS_CONFIG_TABLE
-    #undef SPI_CMD_RECORD
+#undef SPI_CMD_RECORD
 
-    #define I2C_CMD_RECORD(a)  bool m_handle_i2c_##a (const std::string&, std::stop_token st) const;
+#define I2C_CMD_RECORD(a) bool m_handle_i2c_##a(const std::string &, std::stop_token st) const;
     I2C_COMMANDS_CONFIG_TABLE
-    #undef I2C_CMD_RECORD
+#undef I2C_CMD_RECORD
 
-    #define GPIO_CMD_RECORD(a) bool m_handle_gpio_##a(const std::string&, std::stop_token st) const;
+#define GPIO_CMD_RECORD(a) bool m_handle_gpio_##a(const std::string &, std::stop_token st) const;
     GPIO_COMMANDS_CONFIG_TABLE
-    #undef GPIO_CMD_RECORD
+#undef GPIO_CMD_RECORD
 
-    #define JTAG_CMD_RECORD(a) bool m_handle_jtag_##a(const std::string&, std::stop_token st) const;
+#define JTAG_CMD_RECORD(a) bool m_handle_jtag_##a(const std::string &, std::stop_token st) const;
     JTAG_COMMANDS_CONFIG_TABLE
-    #undef JTAG_CMD_RECORD
+#undef JTAG_CMD_RECORD
 
-    // Member data 
+    // Member data
 
     std::string m_strVersion;
 
@@ -358,38 +399,38 @@ private:
 
     mutable IniValues m_sIniValues;
 
-    mutable SpiPendingCfg  m_sSpiCfg;
-    mutable I2cPendingCfg  m_sI2cCfg;
+    mutable SpiPendingCfg m_sSpiCfg;
+    mutable I2cPendingCfg m_sI2cCfg;
     mutable GpioPendingCfg m_sGpioCfg;
     mutable JtagPendingCfg m_sJtagCfg;
 
-    mutable std::unique_ptr<CH347SPI>  m_pSPI;
-    mutable std::unique_ptr<CH347I2C>  m_pI2C;
+    mutable std::unique_ptr<CH347SPI> m_pSPI;
+    mutable std::unique_ptr<CH347I2C> m_pI2C;
     mutable std::unique_ptr<CH347GPIO> m_pGPIO;
     mutable std::unique_ptr<CH347JTAG> m_pJTAG;
 
-    PluginCommandsMap<CH347Plugin>   m_mapCmds;
-    SpeedsMapsMap                    m_mapSpeedsMaps;
-    CommandsMapsMap<CH347Plugin>     m_mapCommandsMaps;
+    PluginCommandsMap<CH347Plugin> m_mapCmds;
+    SpeedsMapsMap m_mapSpeedsMaps;
+    CommandsMapsMap<CH347Plugin> m_mapCommandsMaps;
 
-    ModuleCommandsMap<CH347Plugin>   m_mapCmds_SPI;
-    ModuleCommandsMap<CH347Plugin>   m_mapCmds_I2C;
-    ModuleCommandsMap<CH347Plugin>   m_mapCmds_GPIO;
-    ModuleCommandsMap<CH347Plugin>   m_mapCmds_JTAG;
+    ModuleCommandsMap<CH347Plugin> m_mapCmds_SPI;
+    ModuleCommandsMap<CH347Plugin> m_mapCmds_I2C;
+    ModuleCommandsMap<CH347Plugin> m_mapCmds_GPIO;
+    ModuleCommandsMap<CH347Plugin> m_mapCmds_JTAG;
 
-    ModuleSpeedMap                   m_mapSpeed_SPI;
-    ModuleSpeedMap                   m_mapSpeed_I2C;
+    ModuleSpeedMap m_mapSpeed_SPI;
+    ModuleSpeedMap m_mapSpeed_I2C;
 
-    bool m_LocalSetParams(const PluginDataSet* ps);
+    bool m_LocalSetParams(const PluginDataSet *ps);
 
-    //  Parse helpers 
-    static bool parseI2cSpeed(const std::string& s, I2cSpeed& out);
-    static bool parseSpiParams(const std::string& args,
-                               SpiPendingCfg& cfg,
-                               std::string* pDevPathOut = nullptr);
-    static bool parseI2cParams(const std::string& args,
-                               I2cPendingCfg& cfg,
-                               std::string* pDevPathOut = nullptr);
+    //  Parse helpers
+    static bool parseI2cSpeed(const std::string &s, I2cSpeed &out);
+    static bool parseSpiParams(const std::string &args,
+                               SpiPendingCfg &cfg,
+                               std::string *pDevPathOut = nullptr);
+    static bool parseI2cParams(const std::string &args,
+                               I2cPendingCfg &cfg,
+                               std::string *pDevPathOut = nullptr);
 };
 
 #endif // CH374_PLUGIN_HPP

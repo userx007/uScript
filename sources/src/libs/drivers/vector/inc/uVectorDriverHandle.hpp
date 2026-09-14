@@ -4,8 +4,8 @@
 #include "ICommDriver.hpp"
 #include "vxlapi_platform.hpp"
 
-#include <mutex>
 #include <cstdint>
+#include <mutex>
 
 /**
  * @brief Process-wide XL-API driver handle, shared by every XL-API-backed
@@ -25,18 +25,16 @@
  */
 class VectorDriverHandle
 {
-    public:
+public:
+    /** xlOpenDriver() if this is the first live user in the whole process; always increments the refcount. */
+    static ICommDriver::Status Acquire();
 
-        /** xlOpenDriver() if this is the first live user in the whole process; always increments the refcount. */
-        static ICommDriver::Status Acquire();
+    /** Decrements the refcount; xlCloseDriver() if it reaches zero. */
+    static void Release();
 
-        /** Decrements the refcount; xlCloseDriver() if it reaches zero. */
-        static void Release();
-
-    private:
-
-        static std::mutex s_mutex;
-        static uint32_t   s_u32RefCount;
+private:
+    static std::mutex s_mutex;
+    static uint32_t s_u32RefCount;
 };
 
 #endif // U_VECTOR_DRIVER_HANDLE_H

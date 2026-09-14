@@ -3,13 +3,13 @@
 
 #include "ICommDriver.hpp"
 
+#include <cstdint>
+#include <mutex>
+#include <span>
 #include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <span>
-#include <mutex>
-#include <cstdint>
 
 /**
  * @brief TCP client driver implementing the ICommDriver interface.
@@ -67,185 +67,185 @@
  */
 class TCPIP : public ICommDriver
 {
-    public:
+public:
+    static constexpr size_t TCPIP_MAX_BUFLENGTH             = 256;  /**< Max assembled buffer length (delimiter/token modes). */
+    static constexpr uint32_t TCPIP_READ_DEFAULT_TIMEOUT    = 5000; /**< Default read timeout in milliseconds.                */
+    static constexpr uint32_t TCPIP_WRITE_DEFAULT_TIMEOUT   = 5000; /**< Default write timeout in milliseconds.               */
+    static constexpr uint32_t TCPIP_CONNECT_DEFAULT_TIMEOUT = 5000; /**< Default connect timeout in milliseconds.             */
 
-        static constexpr size_t   TCPIP_MAX_BUFLENGTH          = 256;   /**< Max assembled buffer length (delimiter/token modes). */
-        static constexpr uint32_t TCPIP_READ_DEFAULT_TIMEOUT    = 5000; /**< Default read timeout in milliseconds.                */
-        static constexpr uint32_t TCPIP_WRITE_DEFAULT_TIMEOUT   = 5000; /**< Default write timeout in milliseconds.               */
-        static constexpr uint32_t TCPIP_CONNECT_DEFAULT_TIMEOUT = 5000; /**< Default connect timeout in milliseconds.             */
+    TCPIP()                                                 = default;
 
-        TCPIP() = default;
+    /**
+     * @brief Construct and immediately connect to strHost:u16Port.
+     * @param strHost           Hostname or IP address, e.g. "192.168.1.10" or "myhost.local".
+     * @param u16Port           TCP port number.
+     * @param u32ConnectTimeout Connect timeout in milliseconds (0 = use default).
+     * @param strIdentityLabel  Display text for the GUI comm-dump panel (see
+     *                          describeConnection()), supplied separately from
+     *                          strHost/u16Port by the caller (plugin factory / INI
+     *                          loader) — e.g. "192.168.1.10:502" or a friendlier name.
+     */
+    explicit TCPIP(const std::string &strHost, uint16_t u16Port, uint32_t u32ConnectTimeout = 0,
+                   const std::string &strIdentityLabel = {})
+        : m_strIdentityLabel(strIdentityLabel)
+    {
+        open(strHost, u16Port, u32ConnectTimeout);
+    }
 
-        /**
-         * @brief Construct and immediately connect to strHost:u16Port.
-         * @param strHost           Hostname or IP address, e.g. "192.168.1.10" or "myhost.local".
-         * @param u16Port           TCP port number.
-         * @param u32ConnectTimeout Connect timeout in milliseconds (0 = use default).
-         * @param strIdentityLabel  Display text for the GUI comm-dump panel (see
-         *                          describeConnection()), supplied separately from
-         *                          strHost/u16Port by the caller (plugin factory / INI
-         *                          loader) — e.g. "192.168.1.10:502" or a friendlier name.
-         */
-        explicit TCPIP(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout = 0,
-                       const std::string& strIdentityLabel = {})
-            : m_strIdentityLabel(strIdentityLabel)
-        {
-            open(strHost, u16Port, u32ConnectTimeout);
-        }
+    virtual ~TCPIP()
+    {
+        close();
+    }
 
-        virtual ~TCPIP()
-        {
-            close();
-        }
+    /**
+     * @brief Resolve strHost, open a TCP socket, and connect() to it.
+     *
+     * Tries every address returned by getaddrinfo() (e.g. a hostname that
+     * resolves to both IPv4 and IPv6) in turn until one connects or the
+     * list is exhausted.
+     *
+     * @param strHost            Hostname or IP address.
+     * @param u16Port            TCP port number.
+     * @param u32ConnectTimeout  Connect timeout in milliseconds (0 = use default),
+     *                           applied per candidate address.
+     * @return Status::SUCCESS or an error code.
+     */
+    Status open(const std::string &strHost, uint16_t u16Port, uint32_t u32ConnectTimeout = 0);
 
-        /**
-         * @brief Resolve strHost, open a TCP socket, and connect() to it.
-         *
-         * Tries every address returned by getaddrinfo() (e.g. a hostname that
-         * resolves to both IPv4 and IPv6) in turn until one connects or the
-         * list is exhausted.
-         *
-         * @param strHost            Hostname or IP address.
-         * @param u16Port            TCP port number.
-         * @param u32ConnectTimeout  Connect timeout in milliseconds (0 = use default),
-         *                           applied per candidate address.
-         * @return Status::SUCCESS or an error code.
-         */
-        Status open(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout = 0);
+    /**
+     * @brief Close the socket.
+     * @return Status::SUCCESS.
+     */
+    Status close();
 
-        /**
-         * @brief Close the socket.
-         * @return Status::SUCCESS.
-         */
-        Status close();
+    /**
+     * @brief Check whTCPIPer the socket is open (connected).
+     * @return true if the socket fd is valid.
+     */
+    bool is_open() const override;
 
-        /**
-         * @brief Check whTCPIPer the socket is open (connected).
-         * @return true if the socket fd is valid.
-         */
-        bool is_open() const override;
+    /**
+     * @brief Raw socket file descriptor of the underlying TCP connection.
+     *
+     * Exposed so that a driver layered on top of this one (e.g. MqttDriver,
+     * which needs to hand the connected fd to OpenSSL's SSL_set_fd() to
+     * run TLS over it) can reach the transport without this class having
+     * to know anything about TLS itself. Returns -1 if not open. Callers
+     * must not close() or otherwise manage the fd's lifetime directly —
+     * it remains owned by this TCPIP instance.
+     */
+    int nativeHandle() const
+    {
+        return m_iHandle;
+    }
 
-        /**
-         * @brief Raw socket file descriptor of the underlying TCP connection.
-         *
-         * Exposed so that a driver layered on top of this one (e.g. MqttDriver,
-         * which needs to hand the connected fd to OpenSSL's SSL_set_fd() to
-         * run TLS over it) can reach the transport without this class having
-         * to know anything about TLS itself. Returns -1 if not open. Callers
-         * must not close() or otherwise manage the fd's lifetime directly —
-         * it remains owned by this TCPIP instance.
-         */
-        int nativeHandle() const { return m_iHandle; }
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     * Single-peer TCP client — xtra_params is ignored, same as tout_read/tout_write.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return commdump_details(CommFamily::NET, m_strIdentityLabel);
+    }
 
-        /**
-         * @brief Describe this connection for the GUI comm-dump panel.
-         * Single-peer TCP client — xtra_params is ignored, same as tout_read/tout_write.
-         */
-        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-        {
-            return commdump_details(CommFamily::NET, m_strIdentityLabel);
-        }
+    /**
+     * @brief Unified read interface supporting multiple operation modes.
+     *
+     * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
+     * @param buffer          Buffer to receive data into.
+     * @param options         Read operation configuration.
+     * @param xtra_params     Unused by this driver (single-peer TCP client);
+     *                        accepted only to satisfy ICommDriver. A non-empty
+     *                        value is logged and otherwise ignored.
+     * @return ReadResult containing status, bytes read, and terminator found flag.
+     *
+     * @details
+     * - ReadMode::Exact:          One recv(2); copies up to buffer.size() bytes.
+     * - ReadMode::UntilDelimiter: Accumulate bytes across chunks until delimiter found.
+     * - ReadMode::UntilToken:     KMP search across streamed bytes; bytes_read = 0.
+     */
+    ReadResult tout_read(uint32_t u32ReadTimeout,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Unified read interface supporting multiple operation modes.
-         *
-         * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
-         * @param buffer          Buffer to receive data into.
-         * @param options         Read operation configuration.
-         * @param xtra_params     Unused by this driver (single-peer TCP client);
-         *                        accepted only to satisfy ICommDriver. A non-empty
-         *                        value is logged and otherwise ignored.
-         * @return ReadResult containing status, bytes read, and terminator found flag.
-         *
-         * @details
-         * - ReadMode::Exact:          One recv(2); copies up to buffer.size() bytes.
-         * - ReadMode::UntilDelimiter: Accumulate bytes across chunks until delimiter found.
-         * - ReadMode::UntilToken:     KMP search across streamed bytes; bytes_read = 0.
-         */
-        ReadResult tout_read(uint32_t u32ReadTimeout,
-                             std::span<uint8_t> buffer,
-                             const ReadOptions& options,
-                             std::string_view xtra_params = {},
-                             std::stop_token stop_tok = {}) const override;
+    /**
+     * @brief Unified write interface.
+     *
+     * @param u32WriteTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
+     * @param buffer           Data to send.
+     * @param xtra_params      Unused by this driver; see tout_read().
+     * @return WriteResult containing status and bytes written.
+     */
+    WriteResult tout_write(uint32_t u32WriteTimeout,
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Unified write interface.
-         *
-         * @param u32WriteTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
-         * @param buffer           Data to send.
-         * @param xtra_params      Unused by this driver; see tout_read().
-         * @return WriteResult containing status and bytes written.
-         */
-        WriteResult tout_write(uint32_t u32WriteTimeout,
-                               std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {},
-                               std::stop_token stop_tok = {}) const override;
+private:
+    int m_iHandle = -1;             /**< Socket file descriptor.     */
+    mutable std::mutex m_mutex;     /**< Protects concurrent access. */
+    std::string m_strIdentityLabel; /**< GUI comm-dump display label, see describeConnection(). */
 
-    private:
+    // -----------------------------------------------------------------------
+    // Internal transport primitives
+    // -----------------------------------------------------------------------
 
-        int                 m_iHandle = -1;      /**< Socket file descriptor.     */
-        mutable std::mutex  m_mutex;             /**< Protects concurrent access. */
-        std::string         m_strIdentityLabel;  /**< GUI comm-dump display label, see describeConnection(). */
+    /**
+     * @brief Receive whatever is available (up to buffer.size()) in one
+     * poll(2) + recv(2) pair. bytes_read is set to the number of bytes
+     * actually received.
+     */
+    Status timeout_read(uint32_t u32ReadTimeout,
+                        std::span<uint8_t> buffer,
+                        size_t &szBytesRead,
+                        std::stop_token stop_tok = {}) const;
 
-        // -----------------------------------------------------------------------
-        // Internal transport primitives
-        // -----------------------------------------------------------------------
+    /**
+     * @brief Accumulate received bytes until cDelimiter is found or the
+     * buffer is full. Null-terminates on Status::SUCCESS.
+     */
+    Status timeout_read_until(uint32_t u32ReadTimeout,
+                              std::span<uint8_t> buffer,
+                              uint8_t cDelimiter,
+                              size_t &szBytesRead,
+                              std::stop_token stop_tok = {}) const;
 
-        /**
-         * @brief Receive whatever is available (up to buffer.size()) in one
-         * poll(2) + recv(2) pair. bytes_read is set to the number of bytes
-         * actually received.
-         */
-        Status timeout_read(uint32_t u32ReadTimeout,
-                            std::span<uint8_t> buffer,
-                            size_t& szBytesRead,
-                            std::stop_token stop_tok = {}) const;
-
-        /**
-         * @brief Accumulate received bytes until cDelimiter is found or the
-         * buffer is full. Null-terminates on Status::SUCCESS.
-         */
-        Status timeout_read_until(uint32_t u32ReadTimeout,
-                                  std::span<uint8_t> buffer,
-                                  uint8_t cDelimiter,
-                                  size_t& szBytesRead,
+    /**
+     * @brief Stream bytes off the socket, applying the KMP algorithm to
+     * detect the token sequence.
+     */
+    Status timeout_wait_for_token(uint32_t u32ReadTimeout,
+                                  std::span<const uint8_t> token,
+                                  bool useBuffer,
                                   std::stop_token stop_tok = {}) const;
 
-        /**
-         * @brief Stream bytes off the socket, applying the KMP algorithm to
-         * detect the token sequence.
-         */
-        Status timeout_wait_for_token(uint32_t u32ReadTimeout,
-                                      std::span<const uint8_t> token,
-                                      bool useBuffer,
-                                      std::stop_token stop_tok = {}) const;
+    /**
+     * @brief Send buffer over the socket, looping over send(2) as needed
+     * to cover short writes, until the overall write timeout elapses.
+     */
+    Status timeout_write(uint32_t u32WriteTimeout,
+                         std::span<const uint8_t> buffer,
+                         size_t &szBytesWritten,
+                         std::stop_token stop_tok = {}) const;
 
-        /**
-         * @brief Send buffer over the socket, looping over send(2) as needed
-         * to cover short writes, until the overall write timeout elapses.
-         */
-        Status timeout_write(uint32_t u32WriteTimeout,
-                             std::span<const uint8_t> buffer,
-                             size_t& szBytesWritten,
-                             std::stop_token stop_tok = {}) const;
+    // -----------------------------------------------------------------------
+    // KMP helpers (identical strategy to the UART / I2C / SPI / CAN drivers)
+    // -----------------------------------------------------------------------
 
-        // -----------------------------------------------------------------------
-        // KMP helpers (identical strategy to the UART / I2C / SPI / CAN drivers)
-        // -----------------------------------------------------------------------
+    /** @brief Run KMP stream matching over bytes received from the socket. */
+    Status kmp_stream_match(std::span<const uint8_t> token,
+                            const std::vector<int> &viLps,
+                            uint32_t u32Timeout,
+                            bool bReturnOnTimeout,
+                            bool useBuffer,
+                            std::stop_token stop_tok = {}) const;
 
-        /** @brief Run KMP stream matching over bytes received from the socket. */
-        Status kmp_stream_match(std::span<const uint8_t> token,
-                                const std::vector<int>& viLps,
-                                uint32_t u32Timeout,
-                                bool bReturnOnTimeout,
-                                bool useBuffer,
-                                std::stop_token stop_tok = {}) const;
-
-        /** @brief Build the KMP failure-function table for @p pattern. */
-        void build_kmp_table(std::span<const uint8_t> pattern,
-                             size_t szLength,
-                             std::vector<int>& viLps) const;
+    /** @brief Build the KMP failure-function table for @p pattern. */
+    void build_kmp_table(std::span<const uint8_t> pattern,
+                         size_t szLength,
+                         std::vector<int> &viLps) const;
 };
-
 
 #endif // U_TCPIP_DRIVER_H

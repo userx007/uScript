@@ -1,24 +1,24 @@
 #ifndef U_COMM_SCRIPT_COMMAND_INTERPRETER_HPP
 #define U_COMM_SCRIPT_COMMAND_INTERPRETER_HPP
 
-#include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
 #include "ICommScriptCommandInterpreter.hpp"
 #include "uCommScriptDataTypes.hpp"
-#include "uLogger.hpp"
-#include "uString.hpp"
-#include "uHexlify.hpp"
-#include "uHexdump.hpp"
-#include "uNumeric.hpp"
-#include "uTimer.hpp"
 #include "uFile.hpp"
 #include "uGuiNotify.hpp"
+#include "uHexdump.hpp"
+#include "uHexlify.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+#include "uTimer.hpp"
 
+#include <filesystem>
+#include <memory>
 #include <regex>
 #include <string>
-#include <memory>
 #include <string_view>
-#include <filesystem>
 #include <unordered_map>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -26,14 +26,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "COMM_CMD_I  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "COMM_CMD_I  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            CLASS DEFINITION                                 //
@@ -41,7 +41,7 @@
 
 /**
  * @brief Interprets and executes communication commands from scripts
- * 
+ *
  * This class takes CommCommand objects (parsed script lines) and executes them
  * using any ICommDriver-derived driver. It handles:
  * - Send/receive operations in specified order
@@ -49,14 +49,13 @@
  * - Pattern matching and validation
  * - File transfers in chunks
  * - INFO-severity log messages via the '@' print statement (no driver I/O)
- * 
+ *
  * @tparam TDriver The concrete driver type (must derive from ICommDriver)
  */
 template <typename TDriver>
 class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCommand, TDriver>
 {
 public:
-
     using SendFunc = SendFunction<TDriver>;
     using RecvFunc = RecvFunction<TDriver>;
 
@@ -90,10 +89,10 @@ public:
     explicit CommScriptCommandInterpreter(
         std::shared_ptr<const TDriver> driver,
         std::string pluginName,
-        size_t maxRecvSize = 4096,
-        uint32_t defaultTimeout = 5000,
-        SendFunc pfsend = SendFunc{},
-        RecvFunc pfrecv = RecvFunc{},
+        size_t maxRecvSize       = 4096,
+        uint32_t defaultTimeout  = 5000,
+        SendFunc pfsend          = SendFunc{},
+        RecvFunc pfrecv          = RecvFunc{},
         std::stop_token stop_tok = {})
         : m_driver(driver)
         , m_pluginName(std::move(pluginName))
@@ -104,7 +103,7 @@ public:
         , m_stopTok(std::move(stop_tok))
     {
         static_assert(std::is_base_of<ICommDriver, TDriver>::value,
-                     "TDriver must derive from ICommDriver");
+                      "TDriver must derive from ICommDriver");
     }
 
     /**
@@ -114,7 +113,10 @@ public:
      *        happens naturally inside sendData()/recvData() for whichever
      *        command is currently blocked on device I/O.
      */
-    bool isStopRequested() const { return m_stopTok.stop_requested(); }
+    bool isStopRequested() const
+    {
+        return m_stopTok.stop_requested();
+    }
 
     /**
      * @brief Interpret and execute a single command
@@ -127,7 +129,7 @@ public:
      *                  hardware I/O. true for normal execution.
      * @return true if execution (or dry-run validation) successful, false otherwise
      */
-    bool interpretCommand(const CommCommand& command, bool bRealExec) override
+    bool interpretCommand(const CommCommand &command, bool bRealExec) override
     {
         /* PRINT is a pure logging statement - it performs no driver I/O, so it
          * is handled before the driver-availability check and does not require
@@ -157,14 +159,14 @@ public:
             return true;
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                  LOG_STRING("Exec:"); 
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("Exec:");
                   LOG_STRING(getDirectionName(command.direction));
-                  LOG_STRING("["); LOG_STRING(command.values.first); 
+                  LOG_STRING("["); LOG_STRING(command.values.first);
                   LOG_STRING(":"); LOG_STRING(command.values.second);
-                  LOG_STRING("]=["); 
+                  LOG_STRING("]=[");
                   LOG_STRING(getTokenTypeName(command.tokens.first));
-                  LOG_STRING(":"); 
+                  LOG_STRING(":");
                   LOG_STRING(getTokenTypeName(command.tokens.second));
                   LOG_STRING("] xtra=[");
                   LOG_STRING(command.xtra_params.first);
@@ -191,14 +193,14 @@ public:
             size_t szDelay = 0;
             if (numeric::str2sizet(command.values.first, szDelay)) {
                 if (command.values.second == TIME_MICROSECONDS) {
-                    utime::delay_us(szDelay);    
+                    utime::delay_us(szDelay);
                 } else if (command.values.second == TIME_MILISECONDS) {
-                    utime::delay_ms(szDelay);    
+                    utime::delay_ms(szDelay);
                 } else if (command.values.second == TIME_SECONDS) {
-                    utime::delay_seconds(szDelay);    
+                    utime::delay_seconds(szDelay);
                 } else {
                     LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No delay execution (invalid unit)"));
-                } 
+                }
                 result = true;
             }
         } else {
@@ -216,7 +218,7 @@ public:
     /**
      * @brief Get last received data
      */
-    const std::vector<uint8_t>& getLastReceived() const
+    const std::vector<uint8_t> &getLastReceived() const
     {
         return m_lastReceived;
     }
@@ -238,7 +240,6 @@ public:
     }
 
 private:
-
     std::shared_ptr<const TDriver> m_driver;
     std::string m_pluginName;
     size_t m_maxRecvSize;
@@ -247,7 +248,7 @@ private:
     RecvFunc m_pfrecv;
     std::stop_token m_stopTok;
     std::vector<uint8_t> m_lastReceived;
-    std::vector<uint8_t> m_recvScratch;   /* reused I/O buffer, see doReceiveInto() */
+    std::vector<uint8_t> m_recvScratch; /* reused I/O buffer, see doReceiveInto() */
 
     /**
      * @brief Per-(pattern) compiled-regex cache and per-(type, value)
@@ -281,47 +282,54 @@ private:
      * script text, so cache size tracks script size, not iteration count -
      * safe to leave unbounded (no eviction) across REPEAT loops.
      */
-    struct CachedRegex {
-        std::shared_ptr<std::regex> compiled;  ///< null if `pattern` failed to compile
-        std::string error;                     ///< populated only when compiled == null
+    struct CachedRegex
+    {
+        std::shared_ptr<std::regex> compiled; ///< null if `pattern` failed to compile
+        std::string error;                    ///< populated only when compiled == null
     };
+
     std::unordered_map<std::string, CachedRegex> m_regexCache;
 
-    struct DataCacheKey {
+    struct DataCacheKey
+    {
         CommCommandTokenType type;
         std::string value;
-        bool operator==(const DataCacheKey& other) const noexcept
+
+        bool operator==(const DataCacheKey &other) const noexcept
         {
             return type == other.type && value == other.value;
         }
     };
-    struct DataCacheKeyHash {
-        size_t operator()(const DataCacheKey& k) const noexcept
+
+    struct DataCacheKeyHash
+    {
+        size_t operator()(const DataCacheKey &k) const noexcept
         {
             return std::hash<std::string>{}(k.value) ^ (std::hash<int>{}(static_cast<int>(k.type)) << 1);
         }
     };
+
     std::unordered_map<DataCacheKey, std::vector<uint8_t>, DataCacheKeyHash> m_dataCache;
 
     /**
      * @brief Physical write primitive — pfsend override if one was injected,
      *        otherwise m_driver->tout_write() directly (today's behaviour).
      */
-    ICommDriver::WriteResult doWrite(std::span<const uint8_t> data, const std::string& xtra_params) const
+    ICommDriver::WriteResult doWrite(std::span<const uint8_t> data, const std::string &xtra_params) const
     {
         return m_pfsend ? m_pfsend(m_defaultTimeout, data, m_driver, xtra_params, m_stopTok)
-                         : m_driver->tout_write(m_defaultTimeout, data, xtra_params, m_stopTok);
+                        : m_driver->tout_write(m_defaultTimeout, data, xtra_params, m_stopTok);
     }
 
     /**
      * @brief Physical read primitive — pfrecv override if one was injected,
      *        otherwise m_driver->tout_read() directly (today's behaviour).
      */
-    ICommDriver::ReadResult doRead(std::span<uint8_t> buffer, const ICommDriver::ReadOptions& options,
-                                    const std::string& xtra_params) const
+    ICommDriver::ReadResult doRead(std::span<uint8_t> buffer, const ICommDriver::ReadOptions &options,
+                                   const std::string &xtra_params) const
     {
         return m_pfrecv ? m_pfrecv(m_defaultTimeout, buffer, options, m_driver, xtra_params, m_stopTok)
-                         : m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params, m_stopTok);
+                        : m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params, m_stopTok);
     }
 
     /**
@@ -359,7 +367,7 @@ private:
      * that receiveUntilToken() already special-cased for its own zero-byte
      * result. This makes that guarantee hold for every receive path.
      */
-    ICommDriver::ReadResult doReceiveInto(const ICommDriver::ReadOptions& options, const std::string& xtra_params)
+    ICommDriver::ReadResult doReceiveInto(const ICommDriver::ReadOptions &options, const std::string &xtra_params)
     {
         if (m_recvScratch.size() < m_maxRecvSize) {
             m_recvScratch.resize(m_maxRecvSize);
@@ -382,7 +390,7 @@ private:
      * See m_regexCache's doc comment for why this cache lives here (per
      * interpreter instance) rather than on CommCommand.
      */
-    const CachedRegex& getCompiledRegex(const std::string& pattern)
+    const CachedRegex &getCompiledRegex(const std::string &pattern)
     {
         auto it = m_regexCache.find(pattern);
         if (it != m_regexCache.end()) {
@@ -392,7 +400,7 @@ private:
         CachedRegex entry;
         try {
             entry.compiled = std::make_shared<std::regex>(pattern);
-        } catch (const std::regex_error& e) {
+        } catch (const std::regex_error &e) {
             entry.error = e.what();
         }
 
@@ -418,7 +426,7 @@ private:
      * the same key - see receiveUntilDelimiter() for how to adjust a
      * comparison range instead of trimming the cached vector.
      */
-    const std::vector<uint8_t>* getConvertedData(const std::string& value, CommCommandTokenType type)
+    const std::vector<uint8_t> *getConvertedData(const std::string &value, CommCommandTokenType type)
     {
         DataCacheKey key{type, value};
         auto it = m_dataCache.find(key);
@@ -452,14 +460,14 @@ private:
      * @param len         Number of bytes actually transferred (bytes_read/bytes_written)
      */
     void notifyCommDump(CommDir dir, std::string_view xtra_params,
-                         const uint8_t* data, size_t len) const
+                        const uint8_t *data, size_t len) const
     {
         if (len == 0 || !gui_mode_active()) {
             return;
         }
         gui_notify_comm_dump(m_pluginName,
-                              m_driver->describeConnection(xtra_params),
-                              dir, data, static_cast<uint32_t>(len));
+                             m_driver->describeConnection(xtra_params),
+                             dir, data, static_cast<uint32_t>(len));
     }
 
     /**
@@ -469,18 +477,18 @@ private:
      * @param xtra_params Optional channel/address identifier forwarded to tout_write
      * @return true if send successful, false otherwise
      */
-    bool executeSend(const std::string& value, CommCommandTokenType type,
-                     const std::string& xtra_params = {})
+    bool executeSend(const std::string &value, CommCommandTokenType type,
+                     const std::string &xtra_params = {})
     {
         // Empty token means no send operation
         if (type == CommCommandTokenType::EMPTY) {
             return true;
         }
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
-                  LOG_STRING("Send:"); LOG_STRING(value); 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                  LOG_STRING("Send:"); LOG_STRING(value);
                   LOG_STRING("["); LOG_STRING(getTokenTypeName(type))
-                  LOG_STRING("]"));
+                      LOG_STRING("]"));
 
         // Handle file send specially
         if (type == CommCommandTokenType::FILENAME) {
@@ -488,19 +496,19 @@ private:
         }
 
         // Convert value to bytes based on type (cached - see getConvertedData())
-        const std::vector<uint8_t>* data = getConvertedData(value, type);
+        const std::vector<uint8_t> *data = getConvertedData(value, type);
         if (!data) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Failed to convert data for send"));
             return false;
         }
 
         // Send the data
         auto result = doWrite(std::span<const uint8_t>(*data), xtra_params);
-        
+
         if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Write failed:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Write failed:");
                       LOG_STRING(ICommDriver::to_string(result.status));
                       LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
             return false;
@@ -514,8 +522,8 @@ private:
             notifyCommDump(CommDir::Tx, xtra_params, data->data(), result.bytes_written);
         }
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
-                  LOG_STRING("Sent:"); LOG_SIZET(result.bytes_written); 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                  LOG_STRING("Sent:"); LOG_SIZET(result.bytes_written);
                   LOG_STRING("bytes"));
         return true;
     }
@@ -527,67 +535,67 @@ private:
      * @param xtra_params Optional channel/address identifier forwarded to tout_read
      * @return true if receive successful and data matches expectation, false otherwise
      */
-    bool executeReceive(const std::string& value, CommCommandTokenType type,
-                        const std::string& xtra_params = {})
+    bool executeReceive(const std::string &value, CommCommandTokenType type,
+                        const std::string &xtra_params = {})
     {
         // Empty token means no receive operation
         if (type == CommCommandTokenType::EMPTY) {
             return true;
         }
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
-                  LOG_STRING("Recv:"); LOG_STRING(value); 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                  LOG_STRING("Recv:"); LOG_STRING(value);
                   LOG_STRING("["); LOG_STRING(getTokenTypeName(type));
                   LOG_STRING("]"));
 
         switch (type) {
-            case CommCommandTokenType::REGEX:
-                return receiveAndMatchRegex(value, xtra_params);
+        case CommCommandTokenType::REGEX:
+            return receiveAndMatchRegex(value, xtra_params);
 
-            case CommCommandTokenType::TOKEN_STRING:
-                return receiveUntilToken(value, false, xtra_params);
+        case CommCommandTokenType::TOKEN_STRING:
+            return receiveUntilToken(value, false, xtra_params);
 
-            case CommCommandTokenType::TOKEN_HEXSTREAM:
-                return receiveUntilToken(value, true, xtra_params);
+        case CommCommandTokenType::TOKEN_HEXSTREAM:
+            return receiveUntilToken(value, true, xtra_params);
 
-            case CommCommandTokenType::SIZEOF:
-                return receiveExactSize(value, xtra_params);
+        case CommCommandTokenType::SIZEOF:
+            return receiveExactSize(value, xtra_params);
 
-            case CommCommandTokenType::LINE:
-                return receiveUntilDelimiter('\n', value, xtra_params);
+        case CommCommandTokenType::LINE:
+            return receiveUntilDelimiter('\n', value, xtra_params);
 
-            case CommCommandTokenType::FILENAME:
-                return receiveToFile(value, xtra_params);
+        case CommCommandTokenType::FILENAME:
+            return receiveToFile(value, xtra_params);
 
-            case CommCommandTokenType::HEXSTREAM:
-            case CommCommandTokenType::STRING_DELIMITED:
-            case CommCommandTokenType::STRING_DELIMITED_EMPTY:
-            case CommCommandTokenType::STRING_RAW:
-                return receiveAndCompare(value, type, xtra_params);
+        case CommCommandTokenType::HEXSTREAM:
+        case CommCommandTokenType::STRING_DELIMITED:
+        case CommCommandTokenType::STRING_DELIMITED_EMPTY:
+        case CommCommandTokenType::STRING_RAW:
+            return receiveAndCompare(value, type, xtra_params);
 
-            case CommCommandTokenType::ANYTHING:
-                return receiveAndHexdump(value, xtra_params);
+        case CommCommandTokenType::ANYTHING:
+            return receiveAndHexdump(value, xtra_params);
 
-            default:
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported receive token type"));
-                return false;
+        default:
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported receive token type"));
+            return false;
         }
     }
 
     /**
      * @brief Receive data and match against regex pattern
      */
-    bool receiveAndMatchRegex(const std::string& pattern, const std::string& xtra_params = {})
+    bool receiveAndMatchRegex(const std::string &pattern, const std::string &xtra_params = {})
     {
         // Read exact bytes from driver
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = doReceiveInto(options, xtra_params);
+        auto result  = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Read failed:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Read failed:");
                       LOG_STRING(ICommDriver::to_string(result.status)));
             return false;
         }
@@ -601,31 +609,31 @@ private:
         // a valid bidirectional char iterator range for std::regex_match,
         // avoiding a full copy of m_lastReceived into a temporary std::string
         // just to hand it to regex_match().
-        const char* first = reinterpret_cast<const char*>(m_lastReceived.data());
-        const char* last  = first + m_lastReceived.size();
+        const char *first         = reinterpret_cast<const char *>(m_lastReceived.data());
+        const char *last          = first + m_lastReceived.size();
 
-        const CachedRegex& cached = getCompiledRegex(pattern);
+        const CachedRegex &cached = getCompiledRegex(pattern);
         if (!cached.compiled) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Invalid regex pattern:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Invalid regex pattern:");
                       LOG_STRING(cached.error));
             return false;
         }
 
         try {
             bool matched = std::regex_match(first, last, *cached.compiled);
-            
+
             if (!matched) {
                 // Only pay for the string copy when we actually need it for the log.
-                LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                          LOG_STRING("Regex match failed. Received:"); 
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Regex match failed. Received:");
                           LOG_STRING(std::string(first, last)));
             }
-            
+
             return matched;
-        } catch (const std::regex_error& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Invalid regex pattern:"); 
+        } catch (const std::regex_error &e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Invalid regex pattern:");
                       LOG_STRING(e.what()));
             return false;
         }
@@ -634,11 +642,11 @@ private:
     /**
      * @brief Receive data until a specific token is found
      */
-    bool receiveUntilToken(const std::string& tokenStr, bool isHexStream = false,
-                           const std::string& xtra_params = {})
+    bool receiveUntilToken(const std::string &tokenStr, bool isHexStream = false,
+                           const std::string &xtra_params = {})
     {
         // Convert token string to bytes (cached - see getConvertedData())
-        const std::vector<uint8_t>* token = getConvertedData(tokenStr, (isHexStream ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::TOKEN_STRING));
+        const std::vector<uint8_t> *token = getConvertedData(tokenStr, (isHexStream ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::TOKEN_STRING));
         if (!token) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert token"));
             return false;
@@ -646,15 +654,15 @@ private:
 
         // Setup read options for token search
         ICommDriver::ReadOptions options;
-        options.mode = ICommDriver::ReadMode::UntilToken;
-        options.token = std::span<const uint8_t>(*token);
+        options.mode       = ICommDriver::ReadMode::UntilToken;
+        options.token      = std::span<const uint8_t>(*token);
         options.use_buffer = true;
 
-        auto result = doReceiveInto(options, xtra_params);
+        auto result        = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Token search failed:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Token search failed:");
                       LOG_STRING(ICommDriver::to_string(result.status)));
             return false;
         }
@@ -679,7 +687,7 @@ private:
     /**
      * @brief Receive exact number of bytes specified as size
      */
-    bool receiveExactSize(const std::string& sizeStr, const std::string& xtra_params = {})
+    bool receiveExactSize(const std::string &sizeStr, const std::string &xtra_params = {})
     {
         size_t expectedSize = 0;
         if (!numeric::str2sizet(sizeStr, expectedSize)) {
@@ -695,11 +703,11 @@ private:
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = doReceiveInto(options, xtra_params);
+        auto result  = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Read failed:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Read failed:");
                       LOG_STRING(ICommDriver::to_string(result.status)));
             return false;
         }
@@ -708,8 +716,8 @@ private:
             notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         }
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
-                  LOG_STRING("Received:"); LOG_SIZET(result.bytes_read); 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                  LOG_STRING("Received:"); LOG_SIZET(result.bytes_read);
                   LOG_STRING("bytes"));
         return (result.bytes_read == expectedSize);
     }
@@ -717,18 +725,18 @@ private:
     /**
      * @brief Receive data until delimiter character
      */
-    bool receiveUntilDelimiter(uint8_t delimiter, const std::string& expectedStr,
-                               const std::string& xtra_params = {})
+    bool receiveUntilDelimiter(uint8_t delimiter, const std::string &expectedStr,
+                               const std::string &xtra_params = {})
     {
         ICommDriver::ReadOptions options;
-        options.mode = ICommDriver::ReadMode::UntilDelimiter;
+        options.mode      = ICommDriver::ReadMode::UntilDelimiter;
         options.delimiter = delimiter;
 
-        auto result = doReceiveInto(options, xtra_params);
+        auto result       = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Read until delimiter failed:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Read until delimiter failed:");
                       LOG_STRING(ICommDriver::to_string(result.status)));
             return false;
         }
@@ -739,14 +747,14 @@ private:
 
         // If no expected string provided, just return success
         if (expectedStr.empty()) {
-            LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
-                      LOG_STRING("Received line:"); LOG_SIZET(result.bytes_read); 
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                      LOG_STRING("Received line:"); LOG_SIZET(result.bytes_read);
                       LOG_STRING("bytes"));
             return true;
         }
 
         // Compare with expected (add newline to expected for comparison) - cached, see getConvertedData()
-        const std::vector<uint8_t>* expected = getConvertedData(expectedStr, CommCommandTokenType::LINE);
+        const std::vector<uint8_t> *expected = getConvertedData(expectedStr, CommCommandTokenType::LINE);
         if (!expected) {
             return false;
         }
@@ -761,8 +769,8 @@ private:
             --expectedLen;
         }
 
-        bool matched = std::equal(m_lastReceived.begin(), m_lastReceived.end(), 
-                                 expected->begin(), expected->begin() + expectedLen);
+        bool matched = std::equal(m_lastReceived.begin(), m_lastReceived.end(),
+                                  expected->begin(), expected->begin() + expectedLen);
 
         if (!matched) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Line content mismatch"));
@@ -774,18 +782,18 @@ private:
     /**
      * @brief Receive data and compare with expected value
      */
-    bool receiveAndCompare(const std::string& expectedStr, CommCommandTokenType type,
-                           const std::string& xtra_params = {})
+    bool receiveAndCompare(const std::string &expectedStr, CommCommandTokenType type,
+                           const std::string &xtra_params = {})
     {
         // First receive the data
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = doReceiveInto(options, xtra_params);
+        auto result  = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Read failed:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Read failed:");
                       LOG_STRING(ICommDriver::to_string(result.status)));
             return false;
         }
@@ -795,7 +803,7 @@ private:
         }
 
         // Convert expected string to bytes (cached - see getConvertedData())
-        const std::vector<uint8_t>* expected = getConvertedData(expectedStr, type);
+        const std::vector<uint8_t> *expected = getConvertedData(expectedStr, type);
         if (!expected) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert expected data"));
             return false;
@@ -803,11 +811,11 @@ private:
 
         // Compare
         bool matched = (result.bytes_read == expected->size()) &&
-                      std::equal(m_lastReceived.begin(), m_lastReceived.end(),
-                                expected->begin(), expected->end());
+                       std::equal(m_lastReceived.begin(), m_lastReceived.end(),
+                                  expected->begin(), expected->end());
 
         if (!matched) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Data mismatch. Expected:"); LOG_SIZET(expected->size());
                       LOG_STRING("Received:"); LOG_SIZET(result.bytes_read));
         }
@@ -818,13 +826,13 @@ private:
     /**
      * @brief Receive data and print is as hexdump
      */
-    bool receiveAndHexdump(const std::string& expectedStr, const std::string& xtra_params = {})
+    bool receiveAndHexdump(const std::string &expectedStr, const std::string &xtra_params = {})
     {
         // First receive the data
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = doReceiveInto(options, xtra_params);
+        auto result  = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             // "Receive whatever is sent" is a best-effort read: the driver is
@@ -845,8 +853,8 @@ private:
                 return true;
             }
 
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Read failed:"); 
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Read failed:");
                       LOG_STRING(ICommDriver::to_string(result.status)));
             return false;
         }
@@ -862,14 +870,14 @@ private:
      * @brief Send file in chunks
      * Format: "filename" or "filename,chunksize"
      */
-    bool sendFile(const std::string& fileSpec, const std::string& xtra_params = {})
+    bool sendFile(const std::string &fileSpec, const std::string &xtra_params = {})
     {
         // Parse filename and optional chunk size
         std::pair<std::string, std::string> parts;
         ustring::splitAtFirst(fileSpec, CHAR_SEPARATOR_COMMA, parts);
 
         std::string filepath = parts.first;
-        size_t chunkSize = 1024; // Default chunk size
+        size_t chunkSize     = 1024; // Default chunk size
 
         // Parse chunk size if provided
         if (!parts.second.empty()) {
@@ -880,7 +888,7 @@ private:
         }
 
         // Validate file exists
-        if (!std::filesystem::exists(filepath) || 
+        if (!std::filesystem::exists(filepath) ||
             !std::filesystem::is_regular_file(filepath)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File not found:"); LOG_STRING(filepath));
             return false;
@@ -888,7 +896,7 @@ private:
 
         // Get file size
         auto fileSize = std::filesystem::file_size(filepath);
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                   LOG_STRING("Sending file:"); LOG_STRING(filepath);
                   LOG_STRING("Size:"); LOG_UINT64(fileSize);
                   LOG_STRING("Chunk:"); LOG_SIZET(chunkSize));
@@ -905,7 +913,7 @@ private:
         size_t totalSent = 0;
 
         while (file) {
-            file.read(reinterpret_cast<char*>(chunk.data()), chunkSize);
+            file.read(reinterpret_cast<char *>(chunk.data()), chunkSize);
             std::streamsize bytesRead = file.gcount();
 
             if (bytesRead > 0) {
@@ -913,10 +921,10 @@ private:
                 auto result = doWrite(dataSpan, xtra_params);
 
                 if (result.status != ICommDriver::Status::SUCCESS) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                              LOG_STRING("File write failed at offset:"); 
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("File write failed at offset:");
                               LOG_SIZET(totalSent);
-                              LOG_STRING("Status:"); 
+                              LOG_STRING("Status:");
                               LOG_STRING(ICommDriver::to_string(result.status)));
                     return false;
                 }
@@ -928,8 +936,8 @@ private:
             }
         }
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
-                  LOG_STRING("File sent successfully. Total:"); 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                  LOG_STRING("File sent successfully. Total:");
                   LOG_SIZET(totalSent); LOG_STRING("bytes"));
         return true;
     }
@@ -938,7 +946,7 @@ private:
      * @brief Receive data to file
      * Format: "filename" or "filename,expected_size" or "filename,expected_size,chunksize"
      */
-    bool receiveToFile(const std::string& fileSpec, const std::string& xtra_params = {})
+    bool receiveToFile(const std::string &fileSpec, const std::string &xtra_params = {})
     {
         // Parse the file specification
         std::vector<std::string> parts;
@@ -950,8 +958,8 @@ private:
         }
 
         std::string filepath = parts[0];
-        size_t expectedSize = 0;
-        size_t chunkSize = 1024;
+        size_t expectedSize  = 0;
+        size_t chunkSize     = 1024;
 
         // Parse optional expected size
         if (parts.size() > 1 && !parts[1].empty()) {
@@ -969,7 +977,7 @@ private:
             }
         }
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                   LOG_STRING("Receiving to file:"); LOG_STRING(filepath);
                   LOG_STRING("Expected:"); LOG_SIZET(expectedSize);
                   LOG_STRING("Chunk:"); LOG_SIZET(chunkSize));
@@ -992,7 +1000,9 @@ private:
             size_t bytesToRead = chunkSize;
             if (expectedSize > 0 && (totalReceived + chunkSize > expectedSize)) {
                 bytesToRead = expectedSize - totalReceived;
-                if (bytesToRead == 0) break; // All expected data received
+                if (bytesToRead == 0) {
+                    break; // All expected data received
+                }
             }
 
             // Read chunk
@@ -1004,8 +1014,8 @@ private:
                 if (expectedSize > 0 && totalReceived == expectedSize) {
                     break;
                 }
-                LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                          LOG_STRING("File read failed:"); 
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("File read failed:");
                           LOG_STRING(ICommDriver::to_string(result.status)));
                 return false;
             }
@@ -1019,7 +1029,7 @@ private:
             }
 
             // Write to file
-            file.write(reinterpret_cast<const char*>(chunk.data()), result.bytes_read);
+            file.write(reinterpret_cast<const char *>(chunk.data()), result.bytes_read);
             if (!file) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File write failed"));
                 return false;
@@ -1033,8 +1043,8 @@ private:
             }
         }
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
-                  LOG_STRING("File received successfully. Total:"); 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                  LOG_STRING("File received successfully. Total:");
                   LOG_SIZET(totalReceived); LOG_STRING("bytes"));
         return true;
     }
@@ -1042,34 +1052,34 @@ private:
     /**
      * @brief Convert string value to data bytes based on token type
      */
-    bool convertToData(const std::string& value, 
-                      CommCommandTokenType type, 
-                      std::vector<uint8_t>& data) const
+    bool convertToData(const std::string &value,
+                       CommCommandTokenType type,
+                       std::vector<uint8_t> &data) const
     {
         switch (type) {
-            case CommCommandTokenType::HEXSTREAM:
-                return hexutils::hexstringToVector(value, data);
-            case CommCommandTokenType::LINE:                
-            case CommCommandTokenType::STRING_RAW:
-            case CommCommandTokenType::STRING_DELIMITED:
-            case CommCommandTokenType::STRING_DELIMITED_EMPTY:
-                /* Skip the expandEscapes() allocation+copy entirely when there is
-                 * no backslash to expand (the common case) - go straight from the
-                 * already-owned `value` into the byte vector, which needs exactly
-                 * one copy regardless (stringToVector always builds a fresh
-                 * vector<uint8_t>), instead of string-copy-then-vector-copy. */
-                return (value.find('\\') == std::string::npos)
+        case CommCommandTokenType::HEXSTREAM:
+            return hexutils::hexstringToVector(value, data);
+        case CommCommandTokenType::LINE:
+        case CommCommandTokenType::STRING_RAW:
+        case CommCommandTokenType::STRING_DELIMITED:
+        case CommCommandTokenType::STRING_DELIMITED_EMPTY:
+            /* Skip the expandEscapes() allocation+copy entirely when there is
+             * no backslash to expand (the common case) - go straight from the
+             * already-owned `value` into the byte vector, which needs exactly
+             * one copy regardless (stringToVector always builds a fresh
+             * vector<uint8_t>), instead of string-copy-then-vector-copy. */
+            return (value.find('\\') == std::string::npos)
                        ? ustring::stringToVector(value, data)
                        : ustring::stringToVector(expandEscapes(value), data);
-            case CommCommandTokenType::TOKEN_STRING:
-                return (value.find('\\') == std::string::npos)
+        case CommCommandTokenType::TOKEN_STRING:
+            return (value.find('\\') == std::string::npos)
                        ? ustring::stringToVector(value, data, false)
                        : ustring::stringToVector(expandEscapes(value), data, false);
-            case CommCommandTokenType::TOKEN_HEXSTREAM:
-                return hexutils::stringUnhexlify(value, data);
-            default:
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported token type for data conversion"));
-                return false;
+        case CommCommandTokenType::TOKEN_HEXSTREAM:
+            return hexutils::stringUnhexlify(value, data);
+        default:
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported token type for data conversion"));
+            return false;
         }
     }
 
@@ -1077,14 +1087,14 @@ private:
      * @brief Expand literal escape sequences into their actual byte values
      * @param value Input string possibly containing literal \r and \n sequences
      * @return String with \r replaced by 0x0D and \n replaced by 0x0A
-     * 
+     *
      * Handles:
      *   \r        → 0x0D
      *   \n        → 0x0A
      *   \r\n      → 0x0D 0x0A
      *   \\r \\n   → left as-is (escaped backslash)
      */
-    std::string expandEscapes(const std::string& value) const
+    std::string expandEscapes(const std::string &value) const
     {
         std::string result;
         result.reserve(value.size());
@@ -1092,27 +1102,27 @@ private:
         for (size_t i = 0; i < value.size(); ++i) {
             if (value[i] == '\\' && (i + 1) < value.size()) {
                 switch (value[i + 1]) {
-                    case 'r':
-                        result += '\r';     // 0x0D
-                        ++i;
-                        continue;
-                    case 'n':
-                        result += '\n';     // 0x0A
-                        ++i;
-                        continue;
-                    case '\\':
-                        result += '\\';    // escaped backslash → keep one
-                        ++i;
-                        continue;
-                    default:
-                        break;
+                case 'r':
+                    result += '\r'; // 0x0D
+                    ++i;
+                    continue;
+                case 'n':
+                    result += '\n'; // 0x0A
+                    ++i;
+                    continue;
+                case '\\':
+                    result += '\\'; // escaped backslash → keep one
+                    ++i;
+                    continue;
+                default:
+                    break;
                 }
             }
             result += value[i];
         }
 
         return result;
-    }    
+    }
 };
 
 #endif // U_COMM_SCRIPT_COMMAND_INTERPRETER_HPP

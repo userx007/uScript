@@ -3,11 +3,11 @@
 
 #include "Protocol.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <optional>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <vector>
 
@@ -34,10 +34,10 @@ class Hydrabus;
  * @endcode
  */
 
-class SDIO : public Protocol {
+class SDIO : public Protocol
+{
 
 public:
-
     static constexpr size_t BLOCK_SIZE = 512;
 
     explicit SDIO(std::shared_ptr<Hydrabus> hydrabus);
@@ -92,8 +92,8 @@ public:
     // -------------------------------------------------------------------------
 
     /** @return 1 or 4 (bus width in bits). */
-    int  get_bus_width() const;
-    
+    int get_bus_width() const;
+
     /** @param width 1 or 4. */
     bool set_bus_width(int width);
 
@@ -101,7 +101,7 @@ public:
      * @brief Select clock frequency.
      * @return 0 = slow (~400 kHz), 1 = fast (~24 MHz).
      */
-    int  get_frequency() const;
+    int get_frequency() const;
 
     /** @param freq 0 = slow, 1 = fast. */
     bool set_frequency(int freq);

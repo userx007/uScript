@@ -3,11 +3,11 @@
 
 #include "ICommDriver.hpp"
 
-#include <stop_token>
-#include <hidapi/hidapi.h>
 #include <cstdint>
+#include <hidapi/hidapi.h>
 #include <mutex>
 #include <span>
+#include <stop_token>
 #include <string>
 #include <vector>
 
@@ -48,25 +48,22 @@ class SPIBridge : public ICommDriver
 {
 
 public:
-
     // ── Constants ─────────────────────────────────────────────────────────────
-    static constexpr uint16_t  SPI_DIGISPARK_VID         = 0x16C0; ///< V-USB HID VID
-    static constexpr uint16_t  SPI_DIGISPARK_PID         = 0x05DF; ///< V-USB HID PID
-    static constexpr size_t    SPI_PKT_SIZE               = 8;      ///< HID report payload bytes
-    static constexpr size_t    SPI_MAX_TRANSFER_PAYLOAD   = 6;      ///< Max bytes per transfer packet
-    static constexpr size_t    SPI_MAX_WRITE_PAYLOAD      = 6;      ///< Max bytes per write packet
-    static constexpr size_t    SPI_MAX_READ_PAYLOAD       = 6;      ///< Max bytes per read packet
-    static constexpr uint32_t  SPI_READ_DEFAULT_TIMEOUT   = 2000;   ///< Default read timeout  [ms]
-    static constexpr uint32_t  SPI_WRITE_DEFAULT_TIMEOUT  = 2000;   ///< Default write timeout [ms]
-
+    static constexpr uint16_t SPI_DIGISPARK_VID         = 0x16C0; ///< V-USB HID VID
+    static constexpr uint16_t SPI_DIGISPARK_PID         = 0x05DF; ///< V-USB HID PID
+    static constexpr size_t SPI_PKT_SIZE                = 8;      ///< HID report payload bytes
+    static constexpr size_t SPI_MAX_TRANSFER_PAYLOAD    = 6;      ///< Max bytes per transfer packet
+    static constexpr size_t SPI_MAX_WRITE_PAYLOAD       = 6;      ///< Max bytes per write packet
+    static constexpr size_t SPI_MAX_READ_PAYLOAD        = 6;      ///< Max bytes per read packet
+    static constexpr uint32_t SPI_READ_DEFAULT_TIMEOUT  = 2000;   ///< Default read timeout  [ms]
+    static constexpr uint32_t SPI_WRITE_DEFAULT_TIMEOUT = 2000;   ///< Default write timeout [ms]
 
     // ── SPI clock modes (standard CPOL/CPHA) ──────────────────────────────────
-    enum class SPIMode : uint8_t
-    {
-        Mode0 = 0,  ///< CPOL=0, CPHA=0 — most common (sample on rising edge)
-        Mode1 = 1,  ///< CPOL=0, CPHA=1
-        Mode2 = 2,  ///< CPOL=1, CPHA=0
-        Mode3 = 3,  ///< CPOL=1, CPHA=1
+    enum class SPIMode : uint8_t {
+        Mode0 = 0, ///< CPOL=0, CPHA=0 — most common (sample on rising edge)
+        Mode1 = 1, ///< CPOL=0, CPHA=1
+        Mode2 = 2, ///< CPOL=1, CPHA=0
+        Mode3 = 3, ///< CPOL=1, CPHA=1
         Mode_Last
     };
 
@@ -79,15 +76,13 @@ public:
      *   Div8  ≈ 2.0  MHz
      *   Div16 ≈ 1.0  MHz
      */
-    enum class SPIClockDiv : uint8_t
-    {
+    enum class SPIClockDiv : uint8_t {
         Div2  = 0,
         Div4  = 1,
         Div8  = 2,
         Div16 = 3,
         Div_Last
     };
-
 
     // ── Internal transfer mode ────────────────────────────────────────────────
     /**
@@ -96,12 +91,10 @@ public:
      * Public callers use ICommDriver::ReadOptions::ReadMode to select
      * behaviour; this enum is an implementation detail.
      */
-    enum class SPIReadMode
-    {
-        Transfer,  ///< Full-duplex: send N bytes on MOSI, capture N bytes on MISO → CMD_SPI_TRANSFER
-        Read,      ///< MOSI clocked as 0x00, capture N bytes on MISO             → CMD_SPI_READ
+    enum class SPIReadMode {
+        Transfer, ///< Full-duplex: send N bytes on MOSI, capture N bytes on MISO → CMD_SPI_TRANSFER
+        Read,     ///< MOSI clocked as 0x00, capture N bytes on MISO             → CMD_SPI_READ
     };
-
 
     // ── SPI-specific read options (used by convenience helpers / private layer) ──
     /**
@@ -112,11 +105,10 @@ public:
      */
     struct SPIReadOptions
     {
-        SPIReadMode          mode         = SPIReadMode::Transfer;
-        size_t               length       = 0;     ///< Bytes to clock
-        std::vector<uint8_t> mosi_data;            ///< Bytes to send (Transfer only, max SPI_MAX_TRANSFER_PAYLOAD)
+        SPIReadMode mode = SPIReadMode::Transfer;
+        size_t length    = 0;           ///< Bytes to clock
+        std::vector<uint8_t> mosi_data; ///< Bytes to send (Transfer only, max SPI_MAX_TRANSFER_PAYLOAD)
     };
-
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -129,7 +121,7 @@ public:
      *                         e.g. "digispark-spi-0".
      */
     explicit SPIBridge(uint16_t u16Vid, uint16_t u16Pid,
-                       const std::string& strIdentityLabel = {})
+                       const std::string &strIdentityLabel = {})
         : m_strIdentityLabel(strIdentityLabel)
     {
         open(u16Vid, u16Pid);
@@ -140,8 +132,8 @@ public:
         close();
     }
 
-    Status open (uint16_t u16Vid = SPI_DIGISPARK_VID,
-                 uint16_t u16Pid = SPI_DIGISPARK_PID);
+    Status open(uint16_t u16Vid = SPI_DIGISPARK_VID,
+                uint16_t u16Pid = SPI_DIGISPARK_PID);
     Status close();
 
     /**
@@ -159,9 +151,8 @@ public:
     CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
     {
         return commdump_details(CommFamily::SPI,
-                                 m_strIdentityLabel.empty() ? "Digispark SPI" : m_strIdentityLabel);
+                                m_strIdentityLabel.empty() ? "Digispark SPI" : m_strIdentityLabel);
     }
-
 
     // ── Configuration ─────────────────────────────────────────────────────────
 
@@ -175,9 +166,8 @@ public:
      * @param eDiv   Clock divider
      * @return Status::SUCCESS or error code
      */
-    Status configure(SPIMode     eMode = SPIMode::Mode0,
-                     SPIClockDiv eDiv  = SPIClockDiv::Div4);
-
+    Status configure(SPIMode eMode    = SPIMode::Mode0,
+                     SPIClockDiv eDiv = SPIClockDiv::Div4);
 
     // ── ICommDriver interface ─────────────────────────────────────────────────
 
@@ -209,11 +199,11 @@ public:
      * @param options         ICommDriver read configuration
      * @return ReadResult     { status, bytes_read, found_terminator=false }
      */
-    ReadResult tout_read(uint32_t              u32ReadTimeout,
-                         std::span<uint8_t>    buffer,
-                         const ReadOptions&    options,
-                         std::string_view      xtra_params = {},
-                         std::stop_token stop_tok = {}) const override;
+    ReadResult tout_read(uint32_t u32ReadTimeout,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok     = {}) const override;
 
     /**
      * @brief Unified SPI write, implementing ICommDriver::tout_write.
@@ -224,11 +214,10 @@ public:
      * @param buffer          Data to clock out (max SPI_MAX_WRITE_PAYLOAD bytes)
      * @return WriteResult    { status, bytes_written }
      */
-    WriteResult tout_write(uint32_t                  u32WriteTimeout,
-                           std::span<const uint8_t>  buffer,
-                           std::string_view          xtra_params = {},
-                           std::stop_token stop_tok = {}) const override;
-
+    WriteResult tout_write(uint32_t u32WriteTimeout,
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override;
 
     // ── Convenience helpers ───────────────────────────────────────────────────
 
@@ -242,9 +231,9 @@ public:
      * @param miso        Output buffer for MISO bytes (must be >= mosi.size())
      * @return Status
      */
-    Status transfer(uint32_t                 u32Timeout,
+    Status transfer(uint32_t u32Timeout,
                     std::span<const uint8_t> mosi,
-                    std::span<uint8_t>       miso) const;
+                    std::span<uint8_t> miso) const;
 
     /**
      * @brief Write a value to a register (MSB=0 write convention).
@@ -271,12 +260,10 @@ public:
      */
     Status read_reg(uint8_t u8Reg, std::span<uint8_t> buffer);
 
-
 private:
-
-    hid_device*        m_pDevice = nullptr;  ///< hidapi device handle
-    mutable std::mutex m_mutex;              ///< Protects concurrent access
-    std::string        m_strIdentityLabel;   ///< GUI comm-dump display label, see describeConnection()
+    hid_device *m_pDevice = nullptr; ///< hidapi device handle
+    mutable std::mutex m_mutex;      ///< Protects concurrent access
+    std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 
     // ── Firmware command codes (must match spi_bridge.ino) ───────────────────
     static constexpr uint8_t CMD_SPI_TRANSFER = 0x10;
@@ -284,21 +271,20 @@ private:
     static constexpr uint8_t CMD_SPI_READ     = 0x12;
     static constexpr uint8_t CMD_SPI_CONFIG   = 0x13;
 
-    static constexpr uint8_t FW_STATUS_OK  = 0x00;
-    static constexpr uint8_t FW_STATUS_ERR = 0xFF;
+    static constexpr uint8_t FW_STATUS_OK     = 0x00;
+    static constexpr uint8_t FW_STATUS_ERR    = 0xFF;
 
     // ── Low-level HID transport ───────────────────────────────────────────────
     Status hid_pkt_send(std::span<const uint8_t> payload) const;
     Status hid_pkt_recv(std::span<uint8_t> packet, uint32_t u32Timeout, std::stop_token stop_tok = {}) const;
 
     // ── Private command implementations (called with m_mutex held) ───────────
-    ReadResult  priv_cmd_transfer(uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                  const SPIReadOptions& opts, std::stop_token stop_tok = {}) const;
-    ReadResult  priv_cmd_read    (uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                  size_t szLen, std::stop_token stop_tok = {}) const;
-    WriteResult priv_cmd_write   (uint32_t u32Timeout,
-                                  std::span<const uint8_t> data, std::stop_token stop_tok = {}) const;
+    ReadResult priv_cmd_transfer(uint32_t u32Timeout, std::span<uint8_t> buffer,
+                                 const SPIReadOptions &opts, std::stop_token stop_tok = {}) const;
+    ReadResult priv_cmd_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
+                             size_t szLen, std::stop_token stop_tok = {}) const;
+    WriteResult priv_cmd_write(uint32_t u32Timeout,
+                               std::span<const uint8_t> data, std::stop_token stop_tok = {}) const;
 };
-
 
 #endif // U_SPI_BRIDGE_H

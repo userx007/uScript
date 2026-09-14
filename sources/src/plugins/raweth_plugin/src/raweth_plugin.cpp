@@ -1,5 +1,6 @@
-#include "PluginExport.hpp"
 #include "raweth_plugin.hpp"
+
+#include "PluginExport.hpp"
 #include "raweth_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -21,47 +22,40 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED RawEthPlugin *pluginEntry()
 {
-    EXPORTED RawEthPlugin* pluginEntry()
-    {
-        return new RawEthPlugin();
-    }
+    return new RawEthPlugin();
+}
 
-    EXPORTED void pluginExit( RawEthPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(RawEthPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN INTERNALS                                           //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace
+namespace {
+/**
+ * \brief Format a MacAddr as "AA:BB:CC:DD:EE:FF" for the INFO command.
+ */
+std::string macToString(const RawEth::MacAddr &mac)
 {
-    /**
-      * \brief Format a MacAddr as "AA:BB:CC:DD:EE:FF" for the INFO command.
-    */
-    std::string macToString(const RawEth::MacAddr& mac)
-    {
-        char szBuf[18];
-        std::snprintf(szBuf, sizeof(szBuf), "%02X:%02X:%02X:%02X:%02X:%02X",
-                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        return std::string(szBuf);
-    }
+    char szBuf[18];
+    std::snprintf(szBuf, sizeof(szBuf), "%02X:%02X:%02X:%02X:%02X:%02X",
+                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    return std::string(szBuf);
 }
-
-
-
+} // namespace
 
 ///////////////////////////////////////////////////////////////////
 //                          INIT / CLEANUP                       //
 ///////////////////////////////////////////////////////////////////
-
 
 /////////////////////////////////////////////////////////////////////////////////
 // Driver factory
@@ -69,14 +63,14 @@ namespace
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief open a fresh RawEth driver instance against the configured
-  *        interface, destination MAC and EtherType.
-  *
-  * Opened per-invocation (from m_RAWETH_CMD / m_RAWETH_SCRIPT) rather than
-  * held open for the plugin's lifetime, the same pattern the TCPIP plugin
-  * uses for its TCPIP handle: this keeps a single command's failure (e.g.
-  * an interface that went down) from poisoning the state of the next one.
-*/
+ * \brief open a fresh RawEth driver instance against the configured
+ *        interface, destination MAC and EtherType.
+ *
+ * Opened per-invocation (from m_RAWETH_CMD / m_RAWETH_SCRIPT) rather than
+ * held open for the plugin's lifetime, the same pattern the TCPIP plugin
+ * uses for its TCPIP handle: this keeps a single command's failure (e.g.
+ * an interface that went down) from poisoning the state of the next one.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 std::shared_ptr<RawEth> RawEthPlugin::m_OpenDriver(void) const
 {
@@ -97,39 +91,36 @@ std::shared_ptr<RawEth> RawEthPlugin::m_OpenDriver(void) const
 
 } /* m_OpenDriver() */
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about the plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if plugin initialization fails.
-  *
-  * \note Usage example:
-  *       RAWETH.INFO
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about the plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if plugin initialization fails.
+ *
+ * \note Usage example:
+ *       RAWETH.INFO
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::m_RAWETH_INFO(const std::string& args, std::stop_token st) const
+bool RawEthPlugin::m_RAWETH_INFO(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -180,23 +171,21 @@ bool RawEthPlugin::m_RAWETH_INFO(const std::string& args, std::stop_token st) co
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 
 } /* m_RAWETH_INFO() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command: apply interface/destination/EtherType/timeout/
-  *        buffer-size settings at runtime, using the same key=value grammar
-  *        as the ini-backed m_LocalSetParams() (see raweth_setup.hpp).
-  *
-  *        Recognised keys: i=iface  d=dest_mac  t=ethertype  x=promiscuous
-  *        r=read_tout  w=write_tout  s=recv_bufsize
-*/
+ * \brief CONFIG command: apply interface/destination/EtherType/timeout/
+ *        buffer-size settings at runtime, using the same key=value grammar
+ *        as the ini-backed m_LocalSetParams() (see raweth_setup.hpp).
+ *
+ *        Recognised keys: i=iface  d=dest_mac  t=ethertype  x=promiscuous
+ *        r=read_tout  w=write_tout  s=recv_bufsize
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::m_RAWETH_CONFIG(const std::string& args, std::stop_token st) const
+bool RawEthPlugin::m_RAWETH_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -206,29 +195,28 @@ bool RawEthPlugin::m_RAWETH_CONFIG(const std::string& args, std::stop_token st) 
 
 } /* m_RAWETH_CONFIG() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command: open the configured interface and run a single
-  *        send/receive command against it, the RawEth analogue of m_TCPIP_CMD.
-  *
-  *        Mirrors m_TCPIP_CMD's per-call open/use/close lifecycle: the
-  *        driver only lives for the duration of this single dispatch, and
-  *        command parsing/execution is delegated to the shared
-  *        CommScriptCommandValidator / CommScriptCommandInterpreter, the
-  *        same as TCPIP/UART.
-  *
-  * \note Usage example: <br>
-  *       RAWETH.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
-  *       RAWETH.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
-  *
-  *       Writes use the destination MAC / EtherType configured via CONFIG
-  *       (d=/t= keys) — there is no per-command address override the way a
-  *       CAN plugin might expose one, consistent with RawEth's own
-  *       xtra_params being used for that purpose at the driver level.
-*/
+ * \brief CMD command: open the configured interface and run a single
+ *        send/receive command against it, the RawEth analogue of m_TCPIP_CMD.
+ *
+ *        Mirrors m_TCPIP_CMD's per-call open/use/close lifecycle: the
+ *        driver only lives for the duration of this single dispatch, and
+ *        command parsing/execution is delegated to the shared
+ *        CommScriptCommandValidator / CommScriptCommandInterpreter, the
+ *        same as TCPIP/UART.
+ *
+ * \note Usage example: <br>
+ *       RAWETH.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
+ *       RAWETH.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
+ *
+ *       Writes use the destination MAC / EtherType configured via CONFIG
+ *       (d=/t= keys) — there is no per-command address override the way a
+ *       CAN plugin might expose one, consistent with RawEth's own
+ *       xtra_params being used for that purpose at the driver level.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::m_RAWETH_CMD(const std::string& args, std::stop_token st) const
+bool RawEthPlugin::m_RAWETH_CMD(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -245,17 +233,16 @@ bool RawEthPlugin::m_RAWETH_CMD(const std::string& args, std::stop_token st) con
 
 } /* m_RAWETH_CMD() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command: run a scripted sequence of sends/receives over a
-  *        single interface binding, the RawEth analogue of m_TCPIP_SCRIPT.
-  *
-  * \note Usage example: <br>
-  *       RAWETH.SCRIPT scriptname [|delay]
-*/
+ * \brief SCRIPT command: run a scripted sequence of sends/receives over a
+ *        single interface binding, the RawEth analogue of m_TCPIP_SCRIPT.
+ *
+ * \note Usage example: <br>
+ *       RAWETH.SCRIPT scriptname [|delay]
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::m_RAWETH_SCRIPT(const std::string& args, std::stop_token st) const
+bool RawEthPlugin::m_RAWETH_SCRIPT(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -272,29 +259,28 @@ bool RawEthPlugin::m_RAWETH_SCRIPT(const std::string& args, std::stop_token st) 
 
 } /* m_RAWETH_SCRIPT() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic RawEth frames.
-  *
-  * \note The RawEth socket is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). Each entry's optional "id" is a per-message destination
-  *       override in "AA:BB:CC:DD:EE:FF" or "AA:BB:CC:DD:EE:FF/0800" form (same syntax
-  *       RawEth::tout_write()'s xtra_params already accepts — MAC only, or MAC + EtherType;
-  *       omitted/empty falls back to the dest_mac/ethertype set via CONFIG); "val" is the
-  *       payload as a plain hex string (e.g. "AABBCCDD").
-  *
-  * \note Usage example:
-  *       RAWETH.CYCLIC 100 AABBCCDD AA:BB:CC:DD:EE:FF, 250 1122 11:22:33:44:55:66/0800
-  *       RAWETH.CYCLIC 100 AABBCCDD AA:BB:CC:DD:EE:FF, 250 1122 11:22:33:44:55:66/0800 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic RawEth frames.
+ *
+ * \note The RawEth socket is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). Each entry's optional "id" is a per-message destination
+ *       override in "AA:BB:CC:DD:EE:FF" or "AA:BB:CC:DD:EE:FF/0800" form (same syntax
+ *       RawEth::tout_write()'s xtra_params already accepts — MAC only, or MAC + EtherType;
+ *       omitted/empty falls back to the dest_mac/ethertype set via CONFIG); "val" is the
+ *       payload as a plain hex string (e.g. "AABBCCDD").
+ *
+ * \note Usage example:
+ *       RAWETH.CYCLIC 100 AABBCCDD AA:BB:CC:DD:EE:FF, 250 1122 11:22:33:44:55:66/0800
+ *       RAWETH.CYCLIC 100 AABBCCDD AA:BB:CC:DD:EE:FF, 250 1122 11:22:33:44:55:66/0800 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::m_RAWETH_CYCLIC(const std::string& args, std::stop_token st) const
+bool RawEthPlugin::m_RAWETH_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 

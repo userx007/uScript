@@ -3,11 +3,11 @@
 
 #include "ICommDriver.hpp"
 
-#include <stop_token>
-#include <hidapi/hidapi.h>
 #include <cstdint>
+#include <hidapi/hidapi.h>
 #include <mutex>
 #include <span>
+#include <stop_token>
 #include <string>
 #include <vector>
 
@@ -51,19 +51,17 @@ class I2CBridge : public ICommDriver
 {
 
 public:
-
     // ── Constants ─────────────────────────────────────────────────────────────
-    static constexpr uint16_t  I2C_DIGISPARK_VID        = 0x16C0; ///< V-USB HID VID
-    static constexpr uint16_t  I2C_DIGISPARK_PID        = 0x05DF; ///< V-USB HID PID
-    static constexpr size_t    I2C_PKT_SIZE              = 8;      ///< HID report payload bytes
-    static constexpr size_t    I2C_MAX_WRITE_PAYLOAD     = 5;      ///< Max data bytes per write packet
-    static constexpr size_t    I2C_MAX_READ_PAYLOAD      = 6;      ///< Max data bytes per read packet
-    static constexpr size_t    I2C_MAX_WRITE_READ_WLEN   = 4;      ///< Max preamble bytes in WriteRead
-    static constexpr size_t    I2C_MAX_WRITE_READ_RLEN   = 5;      ///< Max read bytes in WriteRead
-    static constexpr uint32_t  I2C_READ_DEFAULT_TIMEOUT  = 2000;   ///< Default read timeout  [ms]
-    static constexpr uint32_t  I2C_WRITE_DEFAULT_TIMEOUT = 2000;   ///< Default write timeout [ms]
-    static constexpr uint32_t  I2C_SCAN_DEFAULT_TIMEOUT  = 5000;   ///< Bus scan timeout      [ms]
-
+    static constexpr uint16_t I2C_DIGISPARK_VID         = 0x16C0; ///< V-USB HID VID
+    static constexpr uint16_t I2C_DIGISPARK_PID         = 0x05DF; ///< V-USB HID PID
+    static constexpr size_t I2C_PKT_SIZE                = 8;      ///< HID report payload bytes
+    static constexpr size_t I2C_MAX_WRITE_PAYLOAD       = 5;      ///< Max data bytes per write packet
+    static constexpr size_t I2C_MAX_READ_PAYLOAD        = 6;      ///< Max data bytes per read packet
+    static constexpr size_t I2C_MAX_WRITE_READ_WLEN     = 4;      ///< Max preamble bytes in WriteRead
+    static constexpr size_t I2C_MAX_WRITE_READ_RLEN     = 5;      ///< Max read bytes in WriteRead
+    static constexpr uint32_t I2C_READ_DEFAULT_TIMEOUT  = 2000;   ///< Default read timeout  [ms]
+    static constexpr uint32_t I2C_WRITE_DEFAULT_TIMEOUT = 2000;   ///< Default write timeout [ms]
+    static constexpr uint32_t I2C_SCAN_DEFAULT_TIMEOUT  = 5000;   ///< Bus scan timeout      [ms]
 
     // ── I2C-specific read modes ────────────────────────────────────────────────
     /**
@@ -73,8 +71,7 @@ public:
      *   ICommDriver::ReadMode::UntilToken     → I2C write-read   (CMD_WRITE_READ)
      *   ICommDriver::ReadMode::UntilDelimiter → I2C bus scan     (CMD_SCAN)
      */
-    using ReadMode = ICommDriver::ReadMode;
-
+    using ReadMode                                      = ICommDriver::ReadMode;
 
     // ── I2C-specific option struct (extends ICommDriver::ReadOptions) ──────────
     /**
@@ -96,8 +93,8 @@ public:
      */
     struct I2CReadOptions : public ICommDriver::ReadOptions
     {
-        uint8_t slave_addr = 0x00;  ///< 7-bit slave address
-        size_t  read_len   = 0;     ///< Bytes to clock in (CMD_READ / CMD_WRITE_READ)
+        uint8_t slave_addr = 0x00; ///< 7-bit slave address
+        size_t read_len    = 0;    ///< Bytes to clock in (CMD_READ / CMD_WRITE_READ)
     };
 
     /**
@@ -105,10 +102,9 @@ public:
      */
     struct ScanResult
     {
-        Status               status = Status::RETVAL_NOT_SET;
-        std::vector<uint8_t> addresses;  ///< Found 7-bit slave addresses (1–126)
+        Status status = Status::RETVAL_NOT_SET;
+        std::vector<uint8_t> addresses; ///< Found 7-bit slave addresses (1–126)
     };
-
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -121,7 +117,7 @@ public:
      *                         e.g. "digispark-i2c-0".
      */
     explicit I2CBridge(uint16_t u16Vid, uint16_t u16Pid,
-                       const std::string& strIdentityLabel = {})
+                       const std::string &strIdentityLabel = {})
         : m_strIdentityLabel(strIdentityLabel)
     {
         open(u16Vid, u16Pid);
@@ -132,8 +128,8 @@ public:
         close();
     }
 
-    Status open (uint16_t u16Vid = I2C_DIGISPARK_VID,
-                 uint16_t u16Pid = I2C_DIGISPARK_PID);
+    Status open(uint16_t u16Vid = I2C_DIGISPARK_VID,
+                uint16_t u16Pid = I2C_DIGISPARK_PID);
     Status close();
 
     /** @copydoc ICommDriver::is_open() */
@@ -150,9 +146,8 @@ public:
     CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
     {
         return commdump_details(CommFamily::I2C,
-                                 m_strIdentityLabel.empty() ? "Digispark I2C" : m_strIdentityLabel);
+                                m_strIdentityLabel.empty() ? "Digispark I2C" : m_strIdentityLabel);
     }
-
 
     // ── ICommDriver interface ─────────────────────────────────────────────────
 
@@ -174,11 +169,11 @@ public:
      * For full control, downcast options to I2CReadOptions or use the
      * I2C-specific overload.
      */
-    ReadResult tout_read(uint32_t                        u32ReadTimeout,
-                         std::span<uint8_t>              buffer,
-                         const ICommDriver::ReadOptions& options,
-                         std::string_view                xtra_params = {},
-                         std::stop_token stop_tok = {}) const override;
+    ReadResult tout_read(uint32_t u32ReadTimeout,
+                         std::span<uint8_t> buffer,
+                         const ICommDriver::ReadOptions &options,
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok     = {}) const override;
 
     /**
      * @brief I2C-specific overload providing direct access to I2CReadOptions.
@@ -186,9 +181,9 @@ public:
      * Preferred over the base overload when the caller already has I2C context.
      * Not virtual — resolves statically when the concrete type is known.
      */
-    ReadResult tout_read(uint32_t              u32ReadTimeout,
-                         std::span<uint8_t>    buffer,
-                         const I2CReadOptions& options,
+    ReadResult tout_read(uint32_t u32ReadTimeout,
+                         std::span<uint8_t> buffer,
+                         const I2CReadOptions &options,
                          std::stop_token stop_tok = {}) const;
 
     /**
@@ -203,10 +198,10 @@ public:
      *       the ICommDriver interface, which does not have a dedicated address parameter.
      *       Use tout_write(timeout, slaveAddr, data) for a more ergonomic I2C call.
      */
-    WriteResult tout_write(uint32_t                 u32WriteTimeout,
+    WriteResult tout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
-                           std::string_view         xtra_params = {},
-                           std::stop_token stop_tok = {}) const override;
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override;
 
     /**
      * @brief Ergonomic I2C write with an explicit slave address.
@@ -217,8 +212,8 @@ public:
      * @param u8SlaveAddr     7-bit slave address
      * @param buffer          Data to write (max I2C_MAX_WRITE_PAYLOAD bytes)
      */
-    WriteResult tout_write(uint32_t                 u32WriteTimeout,
-                           uint8_t                  u8SlaveAddr,
+    WriteResult tout_write(uint32_t u32WriteTimeout,
+                           uint8_t u8SlaveAddr,
                            std::span<const uint8_t> buffer,
                            std::stop_token stop_tok = {}) const;
 
@@ -233,18 +228,16 @@ public:
      */
     ScanResult scan(uint32_t u32Timeout = I2C_SCAN_DEFAULT_TIMEOUT) const;
 
-
 private:
-
-    hid_device*        m_pDevice = nullptr;  ///< hidapi device handle
-    mutable std::mutex m_mutex;              ///< Protects concurrent access
-    std::string        m_strIdentityLabel;   ///< GUI comm-dump display label, see describeConnection()
+    hid_device *m_pDevice = nullptr; ///< hidapi device handle
+    mutable std::mutex m_mutex;      ///< Protects concurrent access
+    std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 
     // ── Firmware command codes (must match i2c_bridge.ino) ───────────────────
-    static constexpr uint8_t CMD_SCAN        = 0x01;
-    static constexpr uint8_t CMD_WRITE       = 0x02;
-    static constexpr uint8_t CMD_READ        = 0x03;
-    static constexpr uint8_t CMD_WRITE_READ  = 0x04;
+    static constexpr uint8_t CMD_SCAN       = 0x01;
+    static constexpr uint8_t CMD_WRITE      = 0x02;
+    static constexpr uint8_t CMD_READ       = 0x03;
+    static constexpr uint8_t CMD_WRITE_READ = 0x04;
 
     static constexpr uint8_t FW_STATUS_OK   = 0x00;
     static constexpr uint8_t FW_STATUS_NACK = 0x01;
@@ -255,14 +248,13 @@ private:
     Status hid_pkt_recv(std::span<uint8_t> packet, uint32_t u32Timeout, std::stop_token stop_tok = {}) const;
 
     // ── Private command implementations (called with m_mutex held) ───────────
-    ReadResult  priv_cmd_read      (uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                    const I2CReadOptions& opts, std::stop_token stop_tok = {}) const;
-    ReadResult  priv_cmd_write_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                    const I2CReadOptions& opts, std::stop_token stop_tok = {}) const;
-    ReadResult  priv_cmd_scan      (uint32_t u32Timeout, std::span<uint8_t> buffer, std::stop_token stop_tok = {}) const;
-    WriteResult priv_cmd_write     (uint32_t u32Timeout, uint8_t u8SlaveAddr,
-                                    std::span<const uint8_t> data, std::stop_token stop_tok = {}) const;
+    ReadResult priv_cmd_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
+                             const I2CReadOptions &opts, std::stop_token stop_tok = {}) const;
+    ReadResult priv_cmd_write_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
+                                   const I2CReadOptions &opts, std::stop_token stop_tok = {}) const;
+    ReadResult priv_cmd_scan(uint32_t u32Timeout, std::span<uint8_t> buffer, std::stop_token stop_tok = {}) const;
+    WriteResult priv_cmd_write(uint32_t u32Timeout, uint8_t u8SlaveAddr,
+                               std::span<const uint8_t> data, std::stop_token stop_tok = {}) const;
 };
-
 
 #endif // U_I2C_BRIDGE_H

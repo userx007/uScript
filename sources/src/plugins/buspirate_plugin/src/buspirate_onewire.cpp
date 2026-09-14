@@ -8,11 +8,11 @@ http://dangerousprototypes.com/docs/1-Wire_(binary)
 #include "uNumeric.hpp"
 #include "uString.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <algorithm>
 #include <iostream>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 
@@ -21,19 +21,19 @@ http://dangerousprototypes.com/docs/1-Wire_(binary)
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR     "BPIRATE_OWIR|"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR        "BPIRATE_OWIR|"
+#define LOG_HDR       LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //                          DEFINES                              //
 ///////////////////////////////////////////////////////////////////
 
-#define PROTOCOL_NAME    "ONEWIRE"
+#define PROTOCOL_NAME "ONEWIRE"
 
 ///////////////////////////////////////////////////////////////////
 //             PUBLIC INTERFACES IMPLEMENTATION                  //
@@ -45,7 +45,7 @@ http://dangerousprototypes.com/docs/1-Wire_(binary)
 
 bool BuspiratePlugin::m_handle_onewire_help(const std::string &args, std::stop_token /*st*/) const
 {
-   return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
+    return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
 }
 
 /* ============================================================================================
@@ -56,7 +56,7 @@ Use a dummy char /string for the second parameter (will be ignored)
 
 bool BuspiratePlugin::m_handle_onewire_reset(const std::string &args, std::stop_token st) const
 {
-    uint8_t request = 0x02;
+    uint8_t request                               = 0x02;
     uint8_t response[sizeof(m_positive_response)] = {};
     return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
 
@@ -73,15 +73,19 @@ Data ends with 8 bytes of 0xff.
 
 bool BuspiratePlugin::m_handle_onewire_search(const std::string &args, std::stop_token st) const
 {
-    bool bRetVal = true;
+    bool bRetVal    = true;
     uint8_t request = 0U;
 
     // The Bus Pirate binary protocol commands for search macros are 0x08 (ROM) and 0x09 (ALARM).
     // These are NOT the 1-Wire ROM codes (0xF0 / 0xEC) — those are the codes the Bus Pirate
     // sends internally to the bus on behalf of the host.
-    if      ("rom"   == args) { request = 0x08U; }  // 00001000 – ROM search macro (0xf0)
-    else if ("alarm" == args) { request = 0x09U; }  // 00001001 – ALARM search macro (0xec)
-    else if ("help"  == args) {
+    if ("rom" == args) {
+        request = 0x08U;
+    } // 00001000 – ROM search macro (0xf0)
+    else if ("alarm" == args) {
+        request = 0x09U;
+    } // 00001001 – ALARM search macro (0xec)
+    else if ("help" == args) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: rom alarm"));
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
@@ -90,7 +94,7 @@ bool BuspiratePlugin::m_handle_onewire_search(const std::string &args, std::stop
 
     if (true == bRetVal && "help" != args) {
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
+        bRetVal                                       = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -112,7 +116,10 @@ bool BuspiratePlugin::m_handle_onewire_read(const std::string &args, std::stop_t
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
             for (size_t i = 0; i < szReadSize; ++i) {
-                if (st.stop_requested()) { bRetVal = false; break; }
+                if (st.stop_requested()) {
+                    bRetVal = false;
+                    break;
+                }
                 uint8_t request  = 0x04; // 00000100 – Read byte
                 uint8_t response = 0x00;
                 if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), std::span<const uint8_t>{}, true, st))) {
@@ -158,7 +165,7 @@ AUX is always a normal pin output (0=GND, 1=3.3volts).
 
 bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args, std::stop_token st) const
 {
-    bool bRetVal = true;
+    bool bRetVal    = true;
     uint8_t request = 0x40;
 
     if ("help" == args) {
@@ -170,20 +177,36 @@ bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args, std::stop_to
         LOG_PRINT(LOG_EMPTY, LOG_STRING("onewire::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
-        if (ustring::containsChar(args, 'w')) { BIT_CLEAR(request, 3); }
-        if (ustring::containsChar(args, 'W')) { BIT_SET(request,   3); }
+        if (ustring::containsChar(args, 'w')) {
+            BIT_CLEAR(request, 3);
+        }
+        if (ustring::containsChar(args, 'W')) {
+            BIT_SET(request, 3);
+        }
         // clock idle phase
-        if (ustring::containsChar(args, 'p')) { BIT_CLEAR(request, 2); }
-        if (ustring::containsChar(args, 'P')) { BIT_SET(request,   2); }
+        if (ustring::containsChar(args, 'p')) {
+            BIT_CLEAR(request, 2);
+        }
+        if (ustring::containsChar(args, 'P')) {
+            BIT_SET(request, 2);
+        }
         // clock edge
-        if (ustring::containsChar(args, 'a')) { BIT_CLEAR(request, 1); }
-        if (ustring::containsChar(args, 'A')) { BIT_SET(request,   1); }
+        if (ustring::containsChar(args, 'a')) {
+            BIT_CLEAR(request, 1);
+        }
+        if (ustring::containsChar(args, 'A')) {
+            BIT_SET(request, 1);
+        }
         // sample time
-        if (ustring::containsChar(args, 'c')) { BIT_CLEAR(request, 0); }
-        if (ustring::containsChar(args, 'C')) { BIT_SET(request,   0); }
+        if (ustring::containsChar(args, 'c')) {
+            BIT_CLEAR(request, 0);
+        }
+        if (ustring::containsChar(args, 'C')) {
+            BIT_SET(request, 0);
+        }
 
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
+        bRetVal                                       = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -206,7 +229,9 @@ bool BuspiratePlugin::m_onewire_read(std::span<uint8_t> response, std::stop_toke
     static constexpr uint8_t ONEWIRE_READ_BYTE = 0x04; // 00000100
 
     for (size_t i = 0; i < response.size(); ++i) {
-        if (st.stop_requested()) return false;
+        if (st.stop_requested()) {
+            return false;
+        }
         uint8_t request = ONEWIRE_READ_BYTE;
         uint8_t data    = 0;
         if (false == generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(data), std::span<const uint8_t>{}, true, st)) {
@@ -231,14 +256,16 @@ bool BuspiratePlugin::m_onewire_bulk_write(std::span<const uint8_t> request, std
 {
     static constexpr size_t szMaxChunk = 16;
 
-    size_t offset = 0;
+    size_t offset                      = 0;
     while (offset < request.size()) {
         const size_t szCount = std::min(szMaxChunk, request.size() - offset);
         if (false == generic_wire_write_data(request.subspan(offset, szCount), st)) {
             return false;
         }
         offset += szCount;
-        if (st.stop_requested()) return false;
+        if (st.stop_requested()) {
+            return false;
+        }
     }
 
     return true;

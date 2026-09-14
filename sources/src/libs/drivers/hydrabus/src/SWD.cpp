@@ -1,4 +1,5 @@
 #include "SWD.hpp"
+
 #include "Support.hpp"
 #include "uLogger.hpp"
 
@@ -12,22 +13,21 @@
 
 namespace HydraHAL {
 class Hydrabus;
-}  // namespace HydraHAL
+} // namespace HydraHAL
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_SWD   |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_SWD   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
@@ -78,8 +78,7 @@ void SWD::bus_init(std::stop_token stop_tok)
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0x7B, 0x9E,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-        0x0F
-    };
+        0x0F};
     write(jtag_to_swd, stop_tok);
     _sync(stop_tok);
 }
@@ -91,11 +90,10 @@ void SWD::multidrop_init(uint32_t addr, std::stop_token stop_tok)
     // ADIv6 dormant-to-active sequence
     static const std::vector<uint8_t> dormant_active = {
         0x92, 0xF3, 0x09, 0x62, 0x95, 0x2D, 0x85, 0x86,
-        0xE9, 0xAF, 0xDD, 0xE3, 0xA2, 0x0E, 0xBC, 0x19
-    };
+        0xE9, 0xAF, 0xDD, 0xE3, 0xA2, 0x0E, 0xBC, 0x19};
     write(dormant_active, stop_tok);
     const std::array<uint8_t, 1> idle_bits{0x00};
-    write_bits(idle_bits, 4, stop_tok);  // 4 idle clocks
+    write_bits(idle_bits, 4, stop_tok); // 4 idle clocks
 
     // Protocol activation code = SWD (0x1A)
     const std::array<uint8_t, 1> activation{0x1A};
@@ -117,9 +115,9 @@ uint32_t SWD::read_dp(uint8_t addr, int to_ap, std::stop_token stop_tok)
 {
     // Build request byte: 0b10000101 | to_ap<<1 | addr_bits<<1
     uint8_t cmd = 0x85;
-    cmd = cmd | static_cast<uint8_t>(to_ap << 1);
-    cmd = cmd | static_cast<uint8_t>((addr & 0b1100) << 1);
-    cmd = _apply_dp_parity(cmd);
+    cmd         = cmd | static_cast<uint8_t>(to_ap << 1);
+    cmd         = cmd | static_cast<uint8_t>((addr & 0b1100) << 1);
+    cmd         = _apply_dp_parity(cmd);
 
     const std::array<uint8_t, 1> req_rd{cmd};
     write(req_rd, stop_tok);
@@ -132,22 +130,20 @@ uint32_t SWD::read_dp(uint8_t addr, int to_ap, std::stop_token stop_tok)
 
     if (status == 1) {
         // OK: read 32-bit data + 1 parity bit (parity captured in sync)
-        auto raw = read(4, stop_tok);
+        auto raw        = read(4, stop_tok);
         uint32_t retval = from_le32(raw);
         _sync(stop_tok);
         return retval;
-    }
-    else if (status == 2) {
+    } else if (status == 2) {
         // WAIT: abort and retry, unless cancellation has been requested —
         // otherwise a target stuck permanently in WAIT would recurse forever.
         _sync(stop_tok);
         if (stop_tok.stop_requested()) {
             throw std::runtime_error("[SWD] read_dp: cancelled while target WAIT-ing");
         }
-        write_dp(0x00, 0x0000001F, 0, false, stop_tok);   // ABORT — clear all fault flags
+        write_dp(0x00, 0x0000001F, 0, false, stop_tok); // ABORT — clear all fault flags
         return read_dp(addr, to_ap, stop_tok);
-    }
-    else {
+    } else {
         _sync(stop_tok);
         throw std::runtime_error(
             std::string("[SWD] read_dp: FAULT — status = ") +
@@ -156,14 +152,14 @@ uint32_t SWD::read_dp(uint8_t addr, int to_ap, std::stop_token stop_tok)
 }
 
 void SWD::write_dp(uint8_t addr, uint32_t value,
-                   int  to_ap,
+                   int to_ap,
                    bool ignore_status,
                    std::stop_token stop_tok)
 {
     uint8_t cmd = 0x81;
-    cmd = cmd | static_cast<uint8_t>(to_ap << 1);
-    cmd = cmd | static_cast<uint8_t>((addr & 0b1100) << 1);
-    cmd = _apply_dp_parity(cmd);
+    cmd         = cmd | static_cast<uint8_t>(to_ap << 1);
+    cmd         = cmd | static_cast<uint8_t>((addr & 0b1100) << 1);
+    cmd         = _apply_dp_parity(cmd);
 
     const std::array<uint8_t, 1> req_wr{cmd};
     write(req_wr, stop_tok);
@@ -172,7 +168,7 @@ void SWD::write_dp(uint8_t addr, uint32_t value,
     for (int i = 0; i < 3; ++i) {
         status += static_cast<uint8_t>(read_bit(stop_tok) << i);
     }
-    clocks(2, stop_tok);   // turnaround clocks
+    clocks(2, stop_tok); // turnaround clocks
 
     if (!ignore_status) {
         if (status == 2) {
@@ -213,10 +209,9 @@ uint32_t SWD::read_ap(uint8_t ap_address, uint8_t bank, std::stop_token stop_tok
     // Build SELECT register:
     //   bits [31:24] = AP address
     //   bits [7:4]   = bank select
-    uint32_t select_reg = (static_cast<uint32_t>(ap_address) << 24)
-                        | (static_cast<uint32_t>(bank) & 0xF0u);
+    uint32_t select_reg = (static_cast<uint32_t>(ap_address) << 24) | (static_cast<uint32_t>(bank) & 0xF0u);
 
-    write_dp(0x08, select_reg, 0, false, stop_tok);            // DP SELECT register
+    write_dp(0x08, select_reg, 0, false, stop_tok); // DP SELECT register
 
     // Trigger AP read (result goes into RDBUFF)
     read_dp(static_cast<uint8_t>(bank & 0b1100), 1, stop_tok);
@@ -227,10 +222,9 @@ uint32_t SWD::read_ap(uint8_t ap_address, uint8_t bank, std::stop_token stop_tok
 
 void SWD::write_ap(uint8_t ap_address, uint8_t bank, uint32_t value, std::stop_token stop_tok)
 {
-    uint32_t select_reg = (static_cast<uint32_t>(ap_address) << 24)
-                        | (static_cast<uint32_t>(bank) & 0xF0u);
+    uint32_t select_reg = (static_cast<uint32_t>(ap_address) << 24) | (static_cast<uint32_t>(bank) & 0xF0u);
 
-    write_dp(0x08, select_reg, 0, false, stop_tok);            // DP SELECT register
+    write_dp(0x08, select_reg, 0, false, stop_tok); // DP SELECT register
     write_dp(static_cast<uint8_t>(bank & 0b1100), value, 1, false, stop_tok);
 }
 
@@ -242,7 +236,9 @@ void SWD::scan_bus(std::stop_token stop_tok)
 {
     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Scanning APs..."));
     for (int ap = 0; ap < 256; ++ap) {
-        if (stop_tok.stop_requested()) break;
+        if (stop_tok.stop_requested()) {
+            break;
+        }
         uint32_t idr = read_ap(static_cast<uint8_t>(ap), 0xFC, stop_tok);
         if (idr != 0x00000000 && idr != 0xFFFFFFFF) {
             LOG_PRINT(LOG_DEBUG, LOG_HDR;

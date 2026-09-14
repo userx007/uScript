@@ -3,10 +3,10 @@
 
 #include "Protocol.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <vector>
 
@@ -35,10 +35,10 @@ class Hydrabus;
  * @endcode
  */
 
-class RawWire : public Protocol {
+class RawWire : public Protocol
+{
 
 public:
-
     explicit RawWire(std::shared_ptr<Hydrabus> hydrabus);
 
     // -------------------------------------------------------------------------
@@ -108,7 +108,7 @@ public:
     // -------------------------------------------------------------------------
 
     /** @return Current CLK level (cached). */
-    int  get_clk() const;
+    int get_clk() const;
 
     /**
      * @brief Drive the CLK pin to `level` (0 or 1).
@@ -120,7 +120,7 @@ public:
      * @brief Read the current SDA line state from hardware.
      * @return 0 or 1; -1 on error.
      */
-    int  get_sda();
+    int get_sda();
 
     /**
      * @brief Drive the SDA pin to `level` (0 or 1).
@@ -137,30 +137,29 @@ public:
 
     // ---- Clock polarity (CPOL) -----------------------------------------------
     /** @return 0 = idle low, 1 = idle high. */
-    int  get_polarity() const;
+    int get_polarity() const;
     /** @param value 0 or 1. @return true on success. */
     bool set_polarity(int value);
 
     // ---- Wire count ----------------------------------------------------------
     /** @return 2 or 3. */
-    int  get_wires() const;
+    int get_wires() const;
     /** @param value 2 or 3. @return true on success. */
     bool set_wires(int value);
 
     // ---- GPIO drive mode -----------------------------------------------------
     /** @return 0 = Push-Pull, 1 = Open-Drain. */
-    int  get_gpio_mode() const;
+    int get_gpio_mode() const;
     /** @param value 0 = Push-Pull, 1 = Open-Drain. @return true on success. */
     bool set_gpio_mode(int value);
 
 protected:
-
     bool _configure_port();
 
     static constexpr uint8_t DEFAULT_CONFIG = 0b0000;
     uint8_t _config{DEFAULT_CONFIG};
-    int     _clk{0};
-    int     _sda{0};
+    int _clk{0};
+    int _sda{0};
 };
 
 } // namespace HydraHAL

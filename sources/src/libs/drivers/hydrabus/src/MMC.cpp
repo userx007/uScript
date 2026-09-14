@@ -1,4 +1,5 @@
 #include "MMC.hpp"
+
 #include "Support.hpp"
 #include "uLogger.hpp"
 
@@ -6,22 +7,21 @@
 
 namespace HydraHAL {
 class Hydrabus;
-}  // namespace HydraHAL
+} // namespace HydraHAL
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_MMC   |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_MMC   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
@@ -100,11 +100,11 @@ int MMC::get_bus_width() const
 
 bool MMC::set_bus_width(int width)
 {
-    if (width == 1)
+    if (width == 1) {
         _config = static_cast<uint8_t>(_config & ~0b1);
-    else if (width == 4)
+    } else if (width == 4) {
         _config = static_cast<uint8_t>(_config | 0b1);
-    else {
+    } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_bus_width: valid values are 1 or 4"));
         return false;
     }

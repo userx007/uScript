@@ -21,7 +21,9 @@ StatusLed::StatusLed(QWidget *parent)
 
 void StatusLed::setState(State s)
 {
-    if (m_state == s) return;
+    if (m_state == s) {
+        return;
+    }
     m_state = s;
 
     if (m_timerId) {
@@ -40,15 +42,22 @@ void StatusLed::setState(State s)
 
 void StatusLed::timerEvent(QTimerEvent *ev)
 {
-    if (ev->timerId() != m_timerId)
+    if (ev->timerId() != m_timerId) {
         return;
+    }
     constexpr float step = 0.06f;
     if (m_pulseUp) {
         m_pulse += step;
-        if (m_pulse >= 1.f) { m_pulse = 1.f; m_pulseUp = false; }
+        if (m_pulse >= 1.f) {
+            m_pulse   = 1.f;
+            m_pulseUp = false;
+        }
     } else {
         m_pulse -= step;
-        if (m_pulse <= 0.f) { m_pulse = 0.f; m_pulseUp = true; }
+        if (m_pulse <= 0.f) {
+            m_pulse   = 0.f;
+            m_pulseUp = true;
+        }
     }
     update();
 }
@@ -59,7 +68,7 @@ void StatusLed::paintEvent(QPaintEvent *)
     p.setRenderHint(QPainter::Antialiasing);
 
     QColor core, glow;
-    float  glowAlpha = 0.f;
+    float glowAlpha = 0.f;
 
     switch (m_state) {
     case State::Idle:
@@ -74,7 +83,7 @@ void StatusLed::paintEvent(QPaintEvent *)
         break;
     case State::Running: {
         // Interpolate green brightness with pulse
-        int   g   = static_cast<int>(180 + 75 * m_pulse);
+        int g     = static_cast<int>(180 + 75 * m_pulse);
         core      = QColor(0x10, g, 0x50);
         glow      = QColor(0x50, 0xfa, 0x7b);
         glowAlpha = 0.15f + 0.45f * m_pulse;
@@ -89,7 +98,7 @@ void StatusLed::paintEvent(QPaintEvent *)
 
     const QRectF r(0, 0, width(), height());
     const QPointF center = r.center();
-    const float   radius = width() / 2.f - 1.f;
+    const float radius   = width() / 2.f - 1.f;
 
     // Outer glow
     if (glowAlpha > 0.f) {

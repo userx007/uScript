@@ -14,30 +14,27 @@
 // FT_* types, FT_OK, FT_Open, FT_Write etc. come from this header.
 // The MPSSE_* opcode byte constants are NOT from FTD2XX — they are
 // defined in FT2232Base.hpp based on FTDI AN_108.
-#include <ftd2xx.h>
-
-#include <cstring>
 #include <chrono>
+#include <cstring>
+#include <ftd2xx.h>
 #include <thread>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT2232_BASE |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "FT2232_BASE |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // Convenience cast
-#define FT_HDL (static_cast<FT_HANDLE>(m_hDevice))
-
+#define FT_HDL  (static_cast<FT_HANDLE>(m_hDevice))
 
 // ============================================================================
 // Destructor
@@ -48,14 +45,13 @@ FT2232Base::~FT2232Base()
     FT2232Base::close();
 }
 
-
 // ============================================================================
 // open_device
 // ============================================================================
 
-FT2232Base::Status FT2232Base::open_device(Variant  variant,
-                                            Channel  channel,
-                                            uint8_t  u8DeviceIndex)
+FT2232Base::Status FT2232Base::open_device(Variant variant,
+                                           Channel channel,
+                                           uint8_t u8DeviceIndex)
 {
     // ── Channel validation ────────────────────────────────────────────────────
     if (variant == Variant::FT2232D && channel != Channel::A) {
@@ -71,15 +67,14 @@ FT2232Base::Status FT2232Base::open_device(Variant  variant,
     //
     // Note: this differs from FT4232H which has 4 interfaces (stride = 4).
     //
-    DWORD ftIndex = static_cast<DWORD>(u8DeviceIndex) * 2u
-                    + static_cast<DWORD>(channel); // Channel::A=0, Channel::B=1
+    DWORD ftIndex = static_cast<DWORD>(u8DeviceIndex) * 2u + static_cast<DWORD>(channel); // Channel::A=0, Channel::B=1
 
     // ── VID/PID verification ──────────────────────────────────────────────────
     {
         DWORD flags, type, devId, locId;
-        char  serialNum[16]   = {0};
-        char  description[64] = {0};
-        FT_HANDLE tempHandle  = nullptr;
+        char serialNum[16]   = {0};
+        char description[64] = {0};
+        FT_HANDLE tempHandle = nullptr;
 
         FT_STATUS infoStatus = FT_GetDeviceInfoDetail(
             ftIndex, &flags, &type, &devId, &locId,
@@ -94,7 +89,7 @@ FT2232Base::Status FT2232Base::open_device(Variant  variant,
 
         // devId: high word = VID, low word = PID
         const uint16_t vid       = static_cast<uint16_t>((devId >> 16) & 0xFFFFu);
-        const uint16_t pid       = static_cast<uint16_t>( devId        & 0xFFFFu);
+        const uint16_t pid       = static_cast<uint16_t>(devId & 0xFFFFu);
         const uint16_t expectPid = (variant == Variant::FT2232H) ? FT2232H_PID : FT2232D_PID;
 
         if (vid != FT2232_VID || pid != expectPid) {
@@ -143,7 +138,7 @@ FT2232Base::Status FT2232Base::open_device(Variant  variant,
 
     // ── Store state ───────────────────────────────────────────────────────────
     m_variant = variant;
-    m_hDevice = static_cast<void*>(handle);
+    m_hDevice = static_cast<void *>(handle);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT2232 opened: variant="); LOG_UINT32(static_cast<uint8_t>(variant));
@@ -153,7 +148,6 @@ FT2232Base::Status FT2232Base::open_device(Variant  variant,
 
     return Status::SUCCESS;
 }
-
 
 // ============================================================================
 // close / is_open
@@ -169,7 +163,6 @@ FT2232Base::Status FT2232Base::close()
     return Status::SUCCESS;
 }
 
-
 bool FT2232Base::is_open() const
 {
     if (!m_hDevice) {
@@ -179,20 +172,19 @@ bool FT2232Base::is_open() const
     return true;
 }
 
-
 // ============================================================================
 // MPSSE transport primitives
 // ============================================================================
 
-FT2232Base::Status FT2232Base::mpsse_write(const uint8_t* buf, size_t len) const
+FT2232Base::Status FT2232Base::mpsse_write(const uint8_t *buf, size_t len) const
 {
     if (!buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
-    DWORD written = 0;
+    DWORD written    = 0;
     FT_STATUS ftStat = FT_Write(FT_HDL,
-                                const_cast<LPVOID>(static_cast<const void*>(buf)),
+                                const_cast<LPVOID>(static_cast<const void *>(buf)),
                                 static_cast<DWORD>(len),
                                 &written);
 
@@ -211,25 +203,23 @@ FT2232Base::Status FT2232Base::mpsse_write(const uint8_t* buf, size_t len) const
     return Status::SUCCESS;
 }
 
-
-FT2232Base::Status FT2232Base::mpsse_read(uint8_t* buf, size_t len,
-                                           uint32_t timeoutMs,
-                                           size_t& bytesRead,
-                                           std::stop_token stop_tok) const
+FT2232Base::Status FT2232Base::mpsse_read(uint8_t *buf, size_t len,
+                                          uint32_t timeoutMs,
+                                          size_t &bytesRead,
+                                          std::stop_token stop_tok) const
 {
     if (!buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
-    bytesRead = 0;
+    bytesRead            = 0;
 
     // 0 == infinite timeout: never expire this poll loop.
     const bool bInfinite = (timeoutMs == 0);
-    auto deadline = std::chrono::steady_clock::now()
-                    + std::chrono::milliseconds(timeoutMs);
+    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
     while (bytesRead < len) {
-        DWORD queued = 0;
+        DWORD queued     = 0;
         FT_STATUS ftStat = FT_GetQueueStatus(FT_HDL, &queued);
         if (ftStat != FT_OK) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -240,7 +230,7 @@ FT2232Base::Status FT2232Base::mpsse_read(uint8_t* buf, size_t len,
         if (queued > 0) {
             DWORD toRead = std::min(static_cast<DWORD>(len - bytesRead), queued);
             DWORD got    = 0;
-            ftStat = FT_Read(FT_HDL, buf + bytesRead, toRead, &got);
+            ftStat       = FT_Read(FT_HDL, buf + bytesRead, toRead, &got);
             if (ftStat != FT_OK) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("FT_Read() failed, status="); LOG_UINT32(ftStat));
@@ -265,7 +255,6 @@ FT2232Base::Status FT2232Base::mpsse_read(uint8_t* buf, size_t len,
 
     return Status::SUCCESS;
 }
-
 
 FT2232Base::Status FT2232Base::mpsse_purge() const
 {

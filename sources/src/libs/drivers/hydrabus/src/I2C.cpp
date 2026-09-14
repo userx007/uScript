@@ -1,4 +1,5 @@
 #include "I2C.hpp"
+
 #include "Hydrabus.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
@@ -11,15 +12,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_I2C   |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_I2C   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
@@ -125,9 +125,9 @@ std::vector<uint8_t> I2C::bulk_write(std::span<const uint8_t> data, std::stop_to
 // ---------------------------------------------------------------------------
 
 std::optional<std::vector<uint8_t>> I2C::write_read(
-        std::span<const uint8_t> data,
-        size_t                   read_len,
-        std::stop_token          stop_tok)
+    std::span<const uint8_t> data,
+    size_t read_len,
+    std::stop_token stop_tok)
 {
     _write_byte(0b00001000, stop_tok);
     _write_u16_be(static_cast<uint16_t>(data.size()), stop_tok);
@@ -150,7 +150,9 @@ std::optional<std::vector<uint8_t>> I2C::write_read(
         return std::nullopt;
     }
 
-    if (read_len == 0) return std::vector<uint8_t>{};
+    if (read_len == 0) {
+        return std::vector<uint8_t>{};
+    }
     return _read(read_len, stop_tok);
 }
 
@@ -165,7 +167,9 @@ bool I2C::write(std::span<const uint8_t> data, std::stop_token stop_tok)
 
 std::vector<uint8_t> I2C::read(size_t length, std::stop_token stop_tok)
 {
-    if (length == 0) return {};
+    if (length == 0) {
+        return {};
+    }
 
     std::vector<uint8_t> result;
     result.reserve(length);
@@ -222,10 +226,11 @@ bool I2C::get_pullup() const
 
 bool I2C::set_pullup(bool enable)
 {
-    if (enable)
-        _config = static_cast<uint8_t>(_config |  (1 << 2));
-    else
+    if (enable) {
+        _config = static_cast<uint8_t>(_config | (1 << 2));
+    } else {
         _config = static_cast<uint8_t>(_config & ~(1 << 2));
+    }
     return _configure_port();
 }
 
@@ -239,8 +244,10 @@ std::vector<uint8_t> I2C::scan(std::stop_token stop_tok)
 
     // Probe 7-bit addresses 0x01–0x77 (skip reserved ranges)
     for (uint8_t addr = 0x01; addr < 0x78; ++addr) {
-        if (stop_tok.stop_requested()) break;
-        uint8_t probe = static_cast<uint8_t>(addr << 1);  // shift to 8-bit write addr
+        if (stop_tok.stop_requested()) {
+            break;
+        }
+        uint8_t probe = static_cast<uint8_t>(addr << 1); // shift to 8-bit write addr
         start(stop_tok);
         const std::array<uint8_t, 1> probe_buf{probe};
         auto ack_flags = bulk_write(probe_buf, stop_tok);

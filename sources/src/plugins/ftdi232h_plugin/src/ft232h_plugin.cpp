@@ -7,6 +7,7 @@
  * On a single chip, open at most one module at a time.
  */
 #include "ft232h_plugin.hpp"
+
 #include "PluginExport.hpp"
 #include "private/ft232h_setup.hpp"
 #include "uLogger.hpp"
@@ -21,32 +22,31 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED FT232HPlugin *pluginEntry()
 {
-    EXPORTED FT232HPlugin* pluginEntry()
-    {
-        return new FT232HPlugin();
-    }
+    return new FT232HPlugin();
+}
 
-    EXPORTED void pluginExit(FT232HPlugin* p)
-    {
-        delete p;
-    }
+EXPORTED void pluginExit(FT232HPlugin *p)
+{
+    delete p;
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   INIT / CLEANUP                                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::doInit(void* /*pvUserData*/)
+bool FT232HPlugin::doInit(void * /*pvUserData*/)
 {
-    m_sSpiCfg.clockHz = m_sIniValues.u32SpiClockHz;
-    m_sI2cCfg.clockHz = m_sIniValues.u32I2cClockHz;
-    m_sI2cCfg.address = m_sIniValues.u8I2cAddress;
+    m_sSpiCfg.clockHz   = m_sIniValues.u32SpiClockHz;
+    m_sI2cCfg.clockHz   = m_sIniValues.u32I2cClockHz;
+    m_sI2cCfg.address   = m_sIniValues.u8I2cAddress;
 
     m_sUartCfg.baudRate = m_sIniValues.u32UartBaudRate;
 
-    m_bIsInitialized = true;
+    m_bIsInitialized    = true;
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Initialized — FT232H (60 MHz, single MPSSE channel)");
@@ -56,10 +56,22 @@ bool FT232HPlugin::doInit(void* /*pvUserData*/)
 
 void FT232HPlugin::doCleanup()
 {
-    if (m_pSPI)  { m_pSPI->close();  m_pSPI.reset();  }
-    if (m_pI2C)  { m_pI2C->close();  m_pI2C.reset();  }
-    if (m_pGPIO) { m_pGPIO->close(); m_pGPIO.reset(); }
-    if (m_pUART) { m_pUART->close(); m_pUART.reset(); }
+    if (m_pSPI) {
+        m_pSPI->close();
+        m_pSPI.reset();
+    }
+    if (m_pI2C) {
+        m_pI2C->close();
+        m_pI2C.reset();
+    }
+    if (m_pGPIO) {
+        m_pGPIO->close();
+        m_pGPIO.reset();
+    }
+    if (m_pUART) {
+        m_pUART->close();
+        m_pUART.reset();
+    }
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
 }
@@ -68,16 +80,14 @@ void FT232HPlugin::doCleanup()
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::m_FT232H_INFO(const std::string& args, std::stop_token st ) const
+bool FT232HPlugin::m_FT232H_INFO(const std::string &args, std::stop_token st) const
 {
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -86,7 +96,7 @@ bool FT232HPlugin::m_FT232H_INFO(const std::string& args, std::stop_token st ) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: FTDI FT232H Hi-Speed USB to MPSSE/UART adapter (60 MHz, single MPSSE channel, PID 0x6014)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  DeviceIndex:"); LOG_UINT32(m_sIniValues.u8DeviceIndex);
-                         LOG_STRING("  Note: open at most one MPSSE module (SPI/I2C/GPIO) at a time per chip"));
+              LOG_STRING("  Note: open at most one MPSSE module (SPI/I2C/GPIO) at a time per chip"));
 
     // ── SPI ───────────────────────────────────────────────────────────────
     LOG_SEP();
@@ -298,88 +308,96 @@ bool FT232HPlugin::m_FT232H_INFO(const std::string& args, std::stop_token st ) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
-
     return true;
 }
 
-bool FT232HPlugin::m_FT232H_SPI(const std::string& args, std::stop_token st ) const
+bool FT232HPlugin::m_FT232H_SPI(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "SPI", args, st);
 }
 
-bool FT232HPlugin::m_FT232H_I2C(const std::string& args, std::stop_token st ) const
+bool FT232HPlugin::m_FT232H_I2C(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "I2C", args, st);
 }
 
-bool FT232HPlugin::m_FT232H_GPIO(const std::string& args, std::stop_token st ) const
+bool FT232HPlugin::m_FT232H_GPIO(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "GPIO", args, st);
 }
 
-bool FT232HPlugin::m_FT232H_UART(const std::string& args, std::stop_token st ) const
+bool FT232HPlugin::m_FT232H_UART(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "UART", args, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; override one or more ini parameters at runtime
-  *
-  * \note Usage example: <br>
-  *       FT232H.CONFIG spf=2000000 a=0x51
-  *
-  * \param[in] args space-separated key=value tokens (see inc/private/ft232h_setup.hpp)
-  *
-  * \return true if processing succeeded, false otherwise
-*/
+ * \brief CONFIG command implementation; override one or more ini parameters at runtime
+ *
+ * \note Usage example: <br>
+ *       FT232H.CONFIG spf=2000000 a=0x51
+ *
+ * \param[in] args space-separated key=value tokens (see inc/private/ft232h_setup.hpp)
+ *
+ * \return true if processing succeeded, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool FT232HPlugin::m_FT232H_CONFIG ( const std::string &args, std::stop_token st ) const
+bool FT232HPlugin::m_FT232H_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     return generic_ft232h_set_params(this, args);
-
 }
-
 
 ///////////////////////////////////////////////////////////////////
 //              SPI params parse helper                          //
 ///////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::parseSpiParams(const std::string& args,
-                                   SpiPendingCfg& cfg,
-                                   uint8_t* pDeviceIndexOut)
+bool FT232HPlugin::parseSpiParams(const std::string &args,
+                                  SpiPendingCfg &cfg,
+                                  uint8_t *pDeviceIndexOut)
 {
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
 
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
+        if (kv.size() != 2) {
+            continue;
+        }
 
         bool ok = true;
         if (kv[0] == "clock") {
             ok = numeric::str2uint32(kv[1], cfg.clockHz);
         } else if (kv[0] == "mode") {
             uint8_t v = 0;
-            ok = numeric::str2uint8(kv[1], v);
-            if (ok && v <= 3) cfg.mode = static_cast<FT232HSPI::SpiMode>(v);
-            else ok = false;
+            ok        = numeric::str2uint8(kv[1], v);
+            if (ok && v <= 3) {
+                cfg.mode = static_cast<FT232HSPI::SpiMode>(v);
+            } else {
+                ok = false;
+            }
         } else if (kv[0] == "bitorder") {
-            if      (kv[1] == "msb") cfg.bitOrder = FT232HSPI::BitOrder::MsbFirst;
-            else if (kv[1] == "lsb") cfg.bitOrder = FT232HSPI::BitOrder::LsbFirst;
-            else ok = false;
+            if (kv[1] == "msb") {
+                cfg.bitOrder = FT232HSPI::BitOrder::MsbFirst;
+            } else if (kv[1] == "lsb") {
+                cfg.bitOrder = FT232HSPI::BitOrder::LsbFirst;
+            } else {
+                ok = false;
+            }
         } else if (kv[0] == "cspin") {
             ok = numeric::str2uint8(kv[1], cfg.csPin);
         } else if (kv[0] == "cspol") {
-            if      (kv[1] == "low")  cfg.csPolarity = FT232HSPI::CsPolarity::ActiveLow;
-            else if (kv[1] == "high") cfg.csPolarity = FT232HSPI::CsPolarity::ActiveHigh;
-            else ok = false;
+            if (kv[1] == "low") {
+                cfg.csPolarity = FT232HSPI::CsPolarity::ActiveLow;
+            } else if (kv[1] == "high") {
+                cfg.csPolarity = FT232HSPI::CsPolarity::ActiveHigh;
+            } else {
+                ok = false;
+            }
         } else if (kv[0] == "device" && pDeviceIndexOut) {
             ok = numeric::str2uint8(kv[1], *pDeviceIndexOut);
         } else {
@@ -400,34 +418,58 @@ bool FT232HPlugin::parseSpiParams(const std::string& args,
 //              UART params parse helper                                       //
 /////////////////////////////////////////////////////////////////////////////////
 
-static bool parseParity_ft232h(const std::string& s, uint8_t& out)
+static bool parseParity_ft232h(const std::string &s, uint8_t &out)
 {
-    if (s=="none"||s=="NONE") { out=0; return true; }
-    if (s=="odd" ||s=="ODD" ) { out=1; return true; }
-    if (s=="even"||s=="EVEN") { out=2; return true; }
-    if (s=="mark"||s=="MARK") { out=3; return true; }
-    if (s=="space"||s=="SPACE"){ out=4; return true; }
+    if (s == "none" || s == "NONE") {
+        out = 0;
+        return true;
+    }
+    if (s == "odd" || s == "ODD") {
+        out = 1;
+        return true;
+    }
+    if (s == "even" || s == "EVEN") {
+        out = 2;
+        return true;
+    }
+    if (s == "mark" || s == "MARK") {
+        out = 3;
+        return true;
+    }
+    if (s == "space" || s == "SPACE") {
+        out = 4;
+        return true;
+    }
     return false;
 }
 
-bool FT232HPlugin::parseUartParams(const std::string& args, UartPendingCfg& cfg,
-                                    uint8_t* pDeviceIndexOut)
+bool FT232HPlugin::parseUartParams(const std::string &args, UartPendingCfg &cfg,
+                                   uint8_t *pDeviceIndexOut)
 {
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
     bool ok = true;
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
-        const auto& k = kv[0];
-        const auto& v = kv[1];
-        if      (k == "baud"   ) ok &= numeric::str2uint32(v, cfg.baudRate);
-        else if (k == "data"   ) ok &= numeric::str2uint8 (v, cfg.dataBits);
-        else if (k == "stop"   ) ok &= numeric::str2uint8 (v, cfg.stopBits);
-        else if (k == "parity" ) ok &= parseParity_ft232h (v, cfg.parity);
-        else if (k == "flow"   ) cfg.hwFlowCtrl = (v=="hw"||v=="HW"||v=="rtscts");
-        else if (k == "device" && pDeviceIndexOut) ok &= numeric::str2uint8(v, *pDeviceIndexOut);
+        if (kv.size() != 2) {
+            continue;
+        }
+        const auto &k = kv[0];
+        const auto &v = kv[1];
+        if (k == "baud") {
+            ok &= numeric::str2uint32(v, cfg.baudRate);
+        } else if (k == "data") {
+            ok &= numeric::str2uint8(v, cfg.dataBits);
+        } else if (k == "stop") {
+            ok &= numeric::str2uint8(v, cfg.stopBits);
+        } else if (k == "parity") {
+            ok &= parseParity_ft232h(v, cfg.parity);
+        } else if (k == "flow") {
+            cfg.hwFlowCtrl = (v == "hw" || v == "HW" || v == "rtscts");
+        } else if (k == "device" && pDeviceIndexOut) {
+            ok &= numeric::str2uint8(v, *pDeviceIndexOut);
+        }
         if (!ok) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Invalid value for:"); LOG_STRING(k);
@@ -442,7 +484,7 @@ bool FT232HPlugin::parseUartParams(const std::string& args, UartPendingCfg& cfg,
 //                   INI ACCESSOR (friend)                                     //
 /////////////////////////////////////////////////////////////////////////////////
 
-const FT232HPlugin::IniValues* getAccessIniValues(const FT232HPlugin& obj)
+const FT232HPlugin::IniValues *getAccessIniValues(const FT232HPlugin &obj)
 {
     return &obj.m_sIniValues;
 }

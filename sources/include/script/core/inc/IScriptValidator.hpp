@@ -5,17 +5,14 @@
 
 #include <vector>
 
-
 template <typename TScriptEntries>
 class IScriptValidator
 {
 public:
+    IScriptValidator()                                                                                 = default;
+    virtual ~IScriptValidator()                                                                        = default;
 
-    IScriptValidator() = default;
-    virtual ~IScriptValidator() = default;
-
-    virtual bool validateScript(std::vector<ScriptRawLine>& vRawLines, TScriptEntries& sScriptEntries) = 0;
-
+    virtual bool validateScript(std::vector<ScriptRawLine> &vRawLines, TScriptEntries &sScriptEntries) = 0;
 };
 
 #endif // ISCRIPTVALIDATOR_HPP

@@ -3,9 +3,9 @@
 
 #include "uScriptDataTypes.hpp"
 
+#include <cctype>
 #include <string>
 #include <vector>
-#include <cctype>
 
 // ---------------------------------------------------------------------------
 // parseStreamStatement — structural parser for one BITSTREAM/BYTESTREAM line.
@@ -51,10 +51,10 @@
 //         keyword, no fields, a field that isn't exactly "X:Y:Z", or both
 //         REVERSE_BIT and REVERSE_BYTE / an unrecognised "| ..." suffix).
 // ---------------------------------------------------------------------------
-inline bool parseStreamStatement(const std::string& strKeyword,
-                                  const std::string& strLine,
-                                  StreamStatement&    out,
-                                  std::string&        strError) noexcept
+inline bool parseStreamStatement(const std::string &strKeyword,
+                                 const std::string &strLine,
+                                 StreamStatement &out,
+                                 std::string &strError) noexcept
 {
     auto trim = [](std::string s) -> std::string {
         const size_t fs = s.find_first_not_of(" \t");
@@ -64,7 +64,7 @@ inline bool parseStreamStatement(const std::string& strKeyword,
 
     // ── 1. Split at first '?=' ──────────────────────────────────────────
     static const std::string kAssign = "?=";
-    const auto assignPos = strLine.find(kAssign);
+    const auto assignPos             = strLine.find(kAssign);
     if (assignPos == std::string::npos) {
         strError = strKeyword + ": missing '?='";
         return false;
@@ -98,7 +98,7 @@ inline bool parseStreamStatement(const std::string& strKeyword,
     // No field (offset/length/value, whether literal or $macro) can contain
     // '|', so the LAST '|' in the line unambiguously marks this suffix, if
     // one is present at all.
-    out.eReverse = StreamReverseMode::NONE;
+    out.eReverse       = StreamReverseMode::NONE;
     const auto pipePos = strRhs.rfind('|');
     if (pipePos != std::string::npos) {
         const std::string strSuffix = trim(strRhs.substr(pipePos + 1));
@@ -108,7 +108,7 @@ inline bool parseStreamStatement(const std::string& strKeyword,
             out.eReverse = StreamReverseMode::REVERSE_BYTE;
         } else {
             strError = strKeyword + ": unrecognised '| " + strSuffix +
-                        "' — expected REVERSE_BIT or REVERSE_BYTE";
+                       "' — expected REVERSE_BIT or REVERSE_BYTE";
             return false;
         }
         strRhs = trim(strRhs.substr(0, pipePos));
@@ -123,11 +123,11 @@ inline bool parseStreamStatement(const std::string& strKeyword,
     {
         std::string::size_type pos = 0;
         while (pos < strRhs.size()) {
-            const auto spacePos = strRhs.find_first_of(" \t", pos);
+            const auto spacePos        = strRhs.find_first_of(" \t", pos);
             const std::string strField = (spacePos == std::string::npos)
-                                              ? strRhs.substr(pos)
-                                              : strRhs.substr(pos, spacePos - pos);
-            pos = (spacePos == std::string::npos) ? strRhs.size() : strRhs.find_first_not_of(" \t", spacePos);
+                                             ? strRhs.substr(pos)
+                                             : strRhs.substr(pos, spacePos - pos);
+            pos                        = (spacePos == std::string::npos) ? strRhs.size() : strRhs.find_first_not_of(" \t", spacePos);
 
             if (strField.empty()) {
                 continue;
@@ -229,11 +229,11 @@ inline bool parseStreamStatement(const std::string& strKeyword,
 //         missing/wrong keyword right after '|', empty source, or a field
 //         that isn't exactly the shape bByteMode expects).
 // ---------------------------------------------------------------------------
-inline bool parseStreamValStatement(const std::string& strKeyword,
-                                     bool                bByteMode,
-                                     const std::string& strLine,
-                                     StreamValStatement& out,
-                                     std::string&        strError) noexcept
+inline bool parseStreamValStatement(const std::string &strKeyword,
+                                    bool bByteMode,
+                                    const std::string &strLine,
+                                    StreamValStatement &out,
+                                    std::string &strError) noexcept
 {
     auto trim = [](std::string s) -> std::string {
         const size_t fs = s.find_first_not_of(" \t");
@@ -243,7 +243,7 @@ inline bool parseStreamValStatement(const std::string& strKeyword,
 
     // ── 1. Split at first '?=' ──────────────────────────────────────────
     static const std::string kAssign = "?=";
-    const auto assignPos = strLine.find(kAssign);
+    const auto assignPos             = strLine.find(kAssign);
     if (assignPos == std::string::npos) {
         strError = strKeyword + ": missing '?='";
         return false;
@@ -385,11 +385,11 @@ inline bool parseStreamValStatement(const std::string& strKeyword,
 //         missing/wrong keyword right after '|', empty source, no fields
 //         given, or a field that isn't exactly the shape bByteMode expects).
 // ---------------------------------------------------------------------------
-inline bool parseStreamValArrayStatement(const std::string&        strKeyword,
-                                          bool                       bByteMode,
-                                          const std::string&        strLine,
-                                          StreamValArrayStatement&  out,
-                                          std::string&              strError) noexcept
+inline bool parseStreamValArrayStatement(const std::string &strKeyword,
+                                         bool bByteMode,
+                                         const std::string &strLine,
+                                         StreamValArrayStatement &out,
+                                         std::string &strError) noexcept
 {
     auto trim = [](std::string s) -> std::string {
         const size_t fs = s.find_first_not_of(" \t");
@@ -399,7 +399,7 @@ inline bool parseStreamValArrayStatement(const std::string&        strKeyword,
 
     // ── 1. Split at first '[=' ──────────────────────────────────────────
     static const std::string kArrayAssign = "[=";
-    const auto assignPos = strLine.find(kArrayAssign);
+    const auto assignPos                  = strLine.find(kArrayAssign);
     if (assignPos == std::string::npos) {
         strError = strKeyword + ": missing '[='";
         return false;
@@ -448,11 +448,11 @@ inline bool parseStreamValArrayStatement(const std::string&        strKeyword,
     {
         std::string::size_type pos = 0;
         while (pos < strFieldList.size()) {
-            const auto spacePos = strFieldList.find_first_of(" \t", pos);
+            const auto spacePos        = strFieldList.find_first_of(" \t", pos);
             const std::string strField = (spacePos == std::string::npos)
-                                              ? strFieldList.substr(pos)
-                                              : strFieldList.substr(pos, spacePos - pos);
-            pos = (spacePos == std::string::npos) ? strFieldList.size() : strFieldList.find_first_not_of(" \t", spacePos);
+                                             ? strFieldList.substr(pos)
+                                             : strFieldList.substr(pos, spacePos - pos);
+            pos                        = (spacePos == std::string::npos) ? strFieldList.size() : strFieldList.find_first_not_of(" \t", spacePos);
 
             if (strField.empty()) {
                 continue;

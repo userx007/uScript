@@ -8,27 +8,27 @@
 // client_unary_call.h) — it's the header that actually defines that
 // specialization, and grpc++'s own headers don't reliably pull it in
 // first on their own.
+#include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
+#include "grpc_protocol.hpp"
+
 #include <grpcpp/impl/codegen/proto_utils.h>
 #include <grpcpp/support/interceptor.h>
 #include <grpcpp/support/sync_stream.h>
-#include <stdint.h>
 #include <memory>
 #include <mutex>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include "ICommDriver.hpp"
-#include "ICommDumpProtocol.hpp"
-#include "grpc_protocol.hpp"
-
 namespace google {
 namespace protobuf {
 class MethodDescriptor;
-}  // namespace protobuf
-}  // namespace google
+} // namespace protobuf
+} // namespace google
 
 /**
  * @brief `ICommDriver` wrapper around a real, unmodified `grpc::Channel` —
@@ -259,20 +259,21 @@ class MethodDescriptor;
 class GrpcDriver : public ICommDriver
 {
 public:
-    struct Config {
+    struct Config
+    {
         std::string host;
-        uint16_t    port = 50051;
+        uint16_t port = 50051;
 
-        bool        useTls = false;
-        std::string caCertPath;      // empty = use the system/default trust roots
-        std::string clientCertPath;  // empty = no client (mutual-TLS) certificate
+        bool useTls   = false;
+        std::string caCertPath;     // empty = use the system/default trust roots
+        std::string clientCertPath; // empty = no client (mutual-TLS) certificate
         std::string clientKeyPath;
 
-        std::string protosetPath;    // required: FileDescriptorSet, see grpc_protocol.hpp
-        std::string authToken;       // optional: sent as "authorization: Bearer <token>" metadata
+        std::string protosetPath; // required: FileDescriptorSet, see grpc_protocol.hpp
+        std::string authToken;    // optional: sent as "authorization: Bearer <token>" metadata
 
-        uint32_t    callTimeoutMs = 5000;    // unary calls only — see "Server streaming" for why streams have no deadline
-        uint32_t    connectTimeoutMs = 5000;
+        uint32_t callTimeoutMs    = 5000; // unary calls only — see "Server streaming" for why streams have no deadline
+        uint32_t connectTimeoutMs = 5000;
     };
 
     explicit GrpcDriver(Config config);
@@ -295,39 +296,39 @@ public:
     // to, unlike MqttDriver's tout_read/tout_write which forward to the
     // real TCPIP driver they wrap).
     ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                         std::string_view xtra_params = {},
-                                         std::stop_token stop_tok = {}) const override;
+                                        std::string_view xtra_params = {},
+                                        std::stop_token stop_tok     = {}) const override;
     ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                                       const ICommDriver::ReadOptions& options,
-                                       std::string_view xtra_params = {},
-                                       std::stop_token stop_tok = {}) const override;
+                                      const ICommDriver::ReadOptions &options,
+                                      std::string_view xtra_params = {},
+                                      std::stop_token stop_tok     = {}) const override;
 
     /** @brief "CALL <package.Service/Method> [json_request]" / "FINISH" — see class doc comment. */
     ICommDriver::WriteResult send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                   std::string_view xtra_params = {},
-                                   std::stop_token stop_tok = {}) const;
+                                  std::string_view xtra_params = {},
+                                  std::stop_token stop_tok     = {}) const;
 
     /** @brief Delivers a unary CALL's result, the next server-stream message, or a FINISHed client-stream's result. */
     ICommDriver::ReadResult receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                     const ICommDriver::ReadOptions& options,
-                                     std::string_view xtra_params = {},
-                                     std::stop_token stop_tok = {}) const;
+                                    const ICommDriver::ReadOptions &options,
+                                    std::string_view xtra_params = {},
+                                    std::stop_token stop_tok     = {}) const;
 
 private:
-    static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string>& outTokens);
+    static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens);
 
-    ICommDriver::WriteResult m_CallUnary(const google::protobuf::MethodDescriptor* method,
-                                          const std::string& methodPath, const std::string& jsonBody,
-                                          std::string_view xtra_params, std::stop_token stop_tok = {}) const;
-    ICommDriver::WriteResult m_CallServerStreaming(const google::protobuf::MethodDescriptor* method,
-                                                    const std::string& methodPath, const std::string& jsonBody,
-                                                    std::string_view xtra_params, std::stop_token stop_tok = {}) const;
-    ICommDriver::WriteResult m_CallClientStreaming(const google::protobuf::MethodDescriptor* method,
-                                                    const std::string& methodPath, const std::string& jsonBody,
-                                                    std::string_view xtra_params, std::stop_token stop_tok = {}) const;
-    ICommDriver::WriteResult m_CallBidiStreaming(const google::protobuf::MethodDescriptor* method,
-                                                  const std::string& methodPath, const std::string& jsonBody,
-                                                  std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+    ICommDriver::WriteResult m_CallUnary(const google::protobuf::MethodDescriptor *method,
+                                         const std::string &methodPath, const std::string &jsonBody,
+                                         std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+    ICommDriver::WriteResult m_CallServerStreaming(const google::protobuf::MethodDescriptor *method,
+                                                   const std::string &methodPath, const std::string &jsonBody,
+                                                   std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+    ICommDriver::WriteResult m_CallClientStreaming(const google::protobuf::MethodDescriptor *method,
+                                                   const std::string &methodPath, const std::string &jsonBody,
+                                                   std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+    ICommDriver::WriteResult m_CallBidiStreaming(const google::protobuf::MethodDescriptor *method,
+                                                 const std::string &methodPath, const std::string &jsonBody,
+                                                 std::string_view xtra_params, std::stop_token stop_tok = {}) const;
     ICommDriver::WriteResult m_Finish(std::string_view xtra_params) const;
 
     // Caller must already hold m_streamMutex. Best-effort — cancels/closes
@@ -362,10 +363,10 @@ private:
     mutable std::unique_ptr<grpc::ClientReader<google::protobuf::Message>> m_pServerStreamReader;
     mutable std::unique_ptr<grpc::ClientWriter<google::protobuf::Message>> m_pClientStreamWriter;
     mutable std::unique_ptr<grpc::ClientReaderWriter<google::protobuf::Message, google::protobuf::Message>> m_pBidiStream;
-    mutable std::unique_ptr<google::protobuf::Message> m_pClientStreamResponse; // Finish() writes into this
-    mutable const google::protobuf::MethodDescriptor* m_pActiveStreamMethod = nullptr; // needed to build fresh Read() targets
-    mutable std::string m_strActiveStreamMethodPath; // "" when nothing is open
-    mutable bool m_bStreamResponsePending = false;   // a FINISHed client-stream result awaiting receive()
+    mutable std::unique_ptr<google::protobuf::Message> m_pClientStreamResponse;        // Finish() writes into this
+    mutable const google::protobuf::MethodDescriptor *m_pActiveStreamMethod = nullptr; // needed to build fresh Read() targets
+    mutable std::string m_strActiveStreamMethodPath;                                   // "" when nothing is open
+    mutable bool m_bStreamResponsePending = false;                                     // a FINISHed client-stream result awaiting receive()
     mutable std::string m_strStreamPendingResponseJson;
 };
 

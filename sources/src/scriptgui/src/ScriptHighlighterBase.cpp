@@ -1,4 +1,5 @@
 #include "ScriptHighlighterBase.hpp"
+
 #include "uSharedScriptRegex.hpp"
 
 #include <QChar>
@@ -25,20 +26,20 @@ class QTextDocument;
 //   amber   #ffb86c  — R prefix
 //   yellow  #f1fa8c  — ALL '...' string content  (reserved — never reuse)
 //   slate   #6272a4  — comments · block-comment delimiters
-static constexpr auto C_COMMENT   = "#6272a4";   // slate  — comments + delimiters
-static constexpr auto C_STRING    = "#f1fa8c";   // yellow — ALL '...' content (reserved)
-static constexpr auto C_DEF_NAME  = "#bd93f9";   // purple — NAME in  NAME :=
-static constexpr auto C_DEF_OP    = "#ff79c6";   // pink   — := operator (same family as ?= and [=)
-static constexpr auto C_VAR       = "#8be9fd";   // cyan   — $VAR / $ARR.$IDX
+static constexpr auto C_COMMENT    = "#6272a4"; // slate  — comments + delimiters
+static constexpr auto C_STRING     = "#f1fa8c"; // yellow — ALL '...' content (reserved)
+static constexpr auto C_DEF_NAME   = "#bd93f9"; // purple — NAME in  NAME :=
+static constexpr auto C_DEF_OP     = "#ff79c6"; // pink   — := operator (same family as ?= and [=)
+static constexpr auto C_VAR        = "#8be9fd"; // cyan   — $VAR / $ARR.$IDX
 // ── typed-token prefix letters ────────────────────────────────────────────────
-static constexpr auto C_HEX_PFX   = "#ff5555";   // red    — H / X  (raw bytes)
-static constexpr auto C_REGEX_PFX = "#ffb86c";   // amber  — R  (pattern / regex)
-static constexpr auto C_TOKEN_PFX = "#8be9fd";   // cyan   — T / L  (stream tokens)
-static constexpr auto C_SIZE_PFX  = "#bd93f9";   // purple — S  (numeric size)
-static constexpr auto C_FILE_PFX  = "#ff79c6";   // pink   — F  (file resource)
+static constexpr auto C_HEX_PFX    = "#ff5555"; // red    — H / X  (raw bytes)
+static constexpr auto C_REGEX_PFX  = "#ffb86c"; // amber  — R  (pattern / regex)
+static constexpr auto C_TOKEN_PFX  = "#8be9fd"; // cyan   — T / L  (stream tokens)
+static constexpr auto C_SIZE_PFX   = "#bd93f9"; // purple — S  (numeric size)
+static constexpr auto C_FILE_PFX   = "#ff79c6"; // pink   — F  (file resource)
 // ── xtra_params  ~ param | param2  ───────────────────────────────────────────
 // ~ and | both use the shared C_SEPARATOR (declared in ScriptHighlighterBase.hpp)
-static constexpr auto C_XTRA_PARAM = "#ff79c6";  // pink   — param values (same family as := / F)
+static constexpr auto C_XTRA_PARAM = "#ff79c6"; // pink   — param values (same family as := / F)
 
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptHighlighterBase::ScriptHighlighterBase(QTextDocument *parent)
@@ -47,7 +48,7 @@ ScriptHighlighterBase::ScriptHighlighterBase(QTextDocument *parent)
     m_blockStart = QRegularExpression("^---");
     m_blockEnd   = QRegularExpression("^!--");
     m_commentFmt = fmt(C_COMMENT);
-    m_delimFmt   = fmt(C_COMMENT, false, true);   // italic for delimiters
+    m_delimFmt   = fmt(C_COMMENT, false, true); // italic for delimiters
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -55,8 +56,12 @@ QTextCharFormat ScriptHighlighterBase::fmt(const QString &hex, bool bold, bool i
 {
     QTextCharFormat f;
     f.setForeground(QColor(hex));
-    if (bold)   f.setFontWeight(QFont::Bold);
-    if (italic) f.setFontItalic(true);
+    if (bold) {
+        f.setFontWeight(QFont::Bold);
+    }
+    if (italic) {
+        f.setFontItalic(true);
+    }
     return f;
 }
 
@@ -64,7 +69,7 @@ QTextCharFormat ScriptHighlighterBase::fmt(const QString &hex, bool bold, bool i
 void ScriptHighlighterBase::addRule(const QString &pattern,
                                     const QTextCharFormat &f, int cap)
 {
-    m_rules.append({ QRegularExpression(pattern), f, cap });
+    m_rules.append({QRegularExpression(pattern), f, cap});
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,13 +80,15 @@ void ScriptHighlighterBase::addMacroAssignRule()
     //   group 1 — constant name  (purple + bold)
     //   group 2 — := operator    (pink — unified with ?= and [= operators)
     const QRegularExpression re(QString("^\\s*(" SCRIPT_RX_IDENT ")\\s*(:=)"));
-    Rule rOp;  rOp.pattern  = re;
-               rOp.format   = fmt(C_DEF_OP);
-               rOp.captureGroup = 2;
+    Rule rOp;
+    rOp.pattern      = re;
+    rOp.format       = fmt(C_DEF_OP);
+    rOp.captureGroup = 2;
     m_rules.append(rOp);
-    Rule rNm;  rNm.pattern  = re;
-               rNm.format   = fmt(C_DEF_NAME, true);
-               rNm.captureGroup = 1;
+    Rule rNm;
+    rNm.pattern      = re;
+    rNm.format       = fmt(C_DEF_NAME, true);
+    rNm.captureGroup = 1;
     m_rules.append(rNm);
 }
 
@@ -106,13 +113,18 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
     //   Rule 2 (captureGroup=1) — '…' including quotes   (string colour)
     // The lookbehind (?<![A-Za-z0-9_]) prevents matching letters that are
     // part of an identifier (e.g. the 'H' in "MATCH").
-    struct Dec { const char *letters; const char *pfxColor; };
+    struct Dec
+    {
+        const char *letters;
+        const char *pfxColor;
+    };
+
     static constexpr Dec decs[] = {
-        { "HX", C_HEX_PFX   },    // H'hex'  X'hex'  — raw hex bytes
-        { "R",  C_REGEX_PFX  },   // R'pat'          — regex pattern
-        { "TL", C_TOKEN_PFX  },   // T'tok'  L'line' — stream tokens
-        { "S",  C_SIZE_PFX   },   // S'n'            — byte count
-        { "F",  C_FILE_PFX   },   // F'path'         — binary file path
+        {"HX", C_HEX_PFX},   // H'hex'  X'hex'  — raw hex bytes
+        {"R", C_REGEX_PFX},  // R'pat'          — regex pattern
+        {"TL", C_TOKEN_PFX}, // T'tok'  L'line' — stream tokens
+        {"S", C_SIZE_PFX},   // S'n'            — byte count
+        {"F", C_FILE_PFX},   // F'path'         — binary file path
     };
 
     for (const auto &d : decs) {
@@ -123,14 +135,14 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
         // used to be double-quote-delimited — "F\"..." — before those
         // constants were changed to single-quote — F'...' ).
         Rule rPfx;
-        rPfx.pattern = RE(QString(R"re((?<![A-Za-z0-9_])([%1])'[^']*')re").arg(letters));
-        rPfx.format  = fmt(d.pfxColor, /*bold=*/true);
+        rPfx.pattern      = RE(QString(R"re((?<![A-Za-z0-9_])([%1])'[^']*')re").arg(letters));
+        rPfx.format       = fmt(d.pfxColor, /*bold=*/true);
         rPfx.captureGroup = 1;
         m_rules.append(rPfx);
 
         Rule rVal;
-        rVal.pattern = RE(QString(R"re((?<![A-Za-z0-9_])[%1]('[^']*'))re").arg(letters));
-        rVal.format  = fmt(C_STRING);
+        rVal.pattern      = RE(QString(R"re((?<![A-Za-z0-9_])[%1]('[^']*'))re").arg(letters));
+        rVal.format       = fmt(C_STRING);
         rVal.captureGroup = 1;
         m_rules.append(rVal);
     }
@@ -199,7 +211,7 @@ void ScriptHighlighterBase::addNumericLiteralRule(const QTextCharFormat &format)
 void ScriptHighlighterBase::highlightBlock(const QString &text)
 {
     const int NORMAL       = -1;
-    const int IN_BLOCK_CMT =  1;
+    const int IN_BLOCK_CMT = 1;
 
     // ── Block comment state machine ───────────────────────────────────────
     if (previousBlockState() == IN_BLOCK_CMT) {
@@ -246,12 +258,19 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
                 ++i;
                 continue;
             }
-            if (text[i] == QLatin1Char('\'')) { inStr = !inStr; continue; }
-            if (!inStr && text[i] == QLatin1Char('#')) { commentStart = i; break; }
+            if (text[i] == QLatin1Char('\'')) {
+                inStr = !inStr;
+                continue;
+            }
+            if (!inStr && text[i] == QLatin1Char('#')) {
+                commentStart = i;
+                break;
+            }
         }
     }
-    if (commentStart >= 0)
+    if (commentStart >= 0) {
         setFormat(commentStart, text.length() - commentStart, m_commentFmt);
+    }
 
     // ── Build quoted-region map ───────────────────────────────────────────
     // Whole-match rules (captureGroup == 0) are skipped when their match
@@ -260,9 +279,10 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
     // intentionally target prefix letters and token content near quotes.
     // Stored as a sorted list of open-positions so we can use binary search
     // (O(log n)) rather than a linear scan in isInsideQuotes.
-    QVector<QPair<int,int>> quotedRegions;
+    QVector<QPair<int, int>> quotedRegions;
     {
-        bool inQ = false; int openPos = -1;
+        bool inQ    = false;
+        int openPos = -1;
         for (int i = 0; i < text.length(); ++i) {
             // Same escape handling as the comment guard above: an escaped
             // quote doesn't close the region, so it must not be treated as
@@ -273,8 +293,13 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
                 continue;
             }
             if (text[i] == QLatin1Char('\'')) {
-                if (!inQ) { inQ = true;  openPos = i; }
-                else      { inQ = false; quotedRegions.append({openPos, i}); }
+                if (!inQ) {
+                    inQ     = true;
+                    openPos = i;
+                } else {
+                    inQ = false;
+                    quotedRegions.append({openPos, i});
+                }
             }
         }
     }
@@ -285,12 +310,17 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
         int lo = 0, hi = quotedRegions.size();
         while (lo < hi) {
             const int mid = (lo + hi) / 2;
-            if (quotedRegions[mid].first < pos) lo = mid + 1;
-            else                                hi = mid;
+            if (quotedRegions[mid].first < pos) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
         }
         // lo now points to the first region with open >= pos.
         // The region that might contain pos is the one just before lo.
-        if (lo == 0) return false;
+        if (lo == 0) {
+            return false;
+        }
         const auto &r = quotedRegions[lo - 1];
         return pos > r.first && pos < r.second;
     };
@@ -298,16 +328,22 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
     // ── Apply rules ───────────────────────────────────────────────────────
     for (const Rule &rule : m_rules) {
         const bool isSubMatch = (rule.captureGroup > 0);
-        auto it = rule.pattern.globalMatch(text);
+        auto it               = rule.pattern.globalMatch(text);
         while (it.hasNext()) {
-            const auto m = it.next();
+            const auto m     = it.next();
             const int start  = isSubMatch ? m.capturedStart(rule.captureGroup)
                                           : m.capturedStart();
             const int length = isSubMatch ? m.capturedLength(rule.captureGroup)
                                           : m.capturedLength();
-            if (length <= 0) continue;
-            if (commentStart >= 0 && start >= commentStart) continue;
-            if (!isSubMatch && isInsideQuotes(start)) continue;
+            if (length <= 0) {
+                continue;
+            }
+            if (commentStart >= 0 && start >= commentStart) {
+                continue;
+            }
+            if (!isSubMatch && isInsideQuotes(start)) {
+                continue;
+            }
             setFormat(start, length, rule.format);
         }
     }

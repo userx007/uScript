@@ -13,8 +13,8 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <memory>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <utility>
@@ -23,8 +23,8 @@
 //                          PLUGIN NAME / VERSION                              //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define MQTT_PLUGIN_VERSION   "1.0.0.0"
-#define MQTT_PLUGIN_NAME      "MQTT"
+#define MQTT_PLUGIN_VERSION "1.0.0.0"
+#define MQTT_PLUGIN_NAME    "MQTT"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                                    //
@@ -36,7 +36,6 @@
     MQTT_PLUGIN_CMD_RECORD(CMD)           \
     MQTT_PLUGIN_CMD_RECORD(SCRIPT)        \
     MQTT_PLUGIN_CMD_RECORD(CYCLIC)
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                                   //
@@ -103,16 +102,23 @@ public:
         , m_bWillRetain(false)
         , m_bCleanSession(true)
     {
-        #define MQTT_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, \
-            PluginCommandEntry<MqttPlugin>{&MqttPlugin::m_MQTT_##a, false} ));
+#define MQTT_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
+                                                                  PluginCommandEntry<MqttPlugin>{&MqttPlugin::m_MQTT_##a, false}));
         MQTT_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef  MQTT_PLUGIN_CMD_RECORD
+#undef MQTT_PLUGIN_CMD_RECORD
     }
 
     ~MqttPlugin() = default;
 
-    bool isInitialized(void) const { return m_bIsInitialized; }
-    bool isEnabled(void) const { return m_bIsEnabled; }
+    bool isInitialized(void) const
+    {
+        return m_bIsInitialized;
+    }
+
+    bool isEnabled(void) const
+    {
+        return m_bIsEnabled;
+    }
 
     bool setParams(const PluginDataSet *psSetParams)
     {
@@ -130,10 +136,25 @@ public:
         generic_getparams<MqttPlugin>(this, psGetParams);
     }
 
-    const PluginCommandsMap<MqttPlugin>* getMap(void) const { return &m_mapCmds; }
-    const std::string& getVersion(void) const { return m_strVersion; }
-    const std::string& getData(void) const { return m_strResultData; }
-    void resetData(void) const { m_strResultData.clear(); }
+    const PluginCommandsMap<MqttPlugin> *getMap(void) const
+    {
+        return &m_mapCmds;
+    }
+
+    const std::string &getVersion(void) const
+    {
+        return m_strVersion;
+    }
+
+    const std::string &getData(void) const
+    {
+        return m_strResultData;
+    }
+
+    void resetData(void) const
+    {
+        m_strResultData.clear();
+    }
 
     bool doInit(void *pvUserData)
     {
@@ -142,9 +163,13 @@ public:
         return true;
     }
 
-    bool doEnable(void) { m_bIsEnabled = true; return true; }
+    bool doEnable(void)
+    {
+        m_bIsEnabled = true;
+        return true;
+    }
 
-    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+    bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
     {
         return generic_dispatch<MqttPlugin>(this, strCmd, strParams, st);
     }
@@ -152,35 +177,43 @@ public:
     void doCleanup(void)
     {
         m_bIsInitialized = false;
-        m_bIsEnabled = false;
+        m_bIsEnabled     = false;
         m_strResultData.clear();
         m_pDriver.reset(); // ~MqttDriver() sends a clean DISCONNECT and closes the connection
     }
-    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
-    bool isPrivileged(void) const { return m_bIsPrivileged; }
-    
+
+    bool isFaultTolerant(void) const
+    {
+        return m_bIsFaultTolerant;
+    }
+
+    bool isPrivileged(void) const
+    {
+        return m_bIsPrivileged;
+    }
+
     /**
-      * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-    */
-    bool setRawResult (const std::string& strValue) const
+     * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+     */
+    bool setRawResult(const std::string &strValue) const
     {
         return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
     }
 
     /**
-      * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-    */
-    bool setCyclicCached (const std::string& strValue) const
+     * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+     */
+    bool setCyclicCached(const std::string &strValue) const
     {
         return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
 
-    bool setPort(const std::string& portStr) const
+    bool setPort(const std::string &portStr) const
     {
         return numeric::str2uint16(portStr, m_u16Port);
     }
 
-    bool setQos(const std::string& qosStr) const
+    bool setQos(const std::string &qosStr) const
     {
         if (!numeric::str2uint8(qosStr, m_u8Qos) || m_u8Qos > 2) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid QoS (expected 0-2):"); LOG_STRING(m_u8Qos));
@@ -189,17 +222,17 @@ public:
         return true;
     }
 
-    bool setReadTimeout(const std::string& timeoutStr) const
+    bool setReadTimeout(const std::string &timeoutStr) const
     {
         return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
     }
 
-    bool setKeepAliveSeconds(const std::string& timeoutStr) const
+    bool setKeepAliveSeconds(const std::string &timeoutStr) const
     {
         return numeric::str2uint16(timeoutStr, m_u16KeepAliveSeconds);
     }
 
-    bool setWillQos(const std::string& qosStr) const
+    bool setWillQos(const std::string &qosStr) const
     {
         if (!numeric::str2uint8(qosStr, m_u8WillQos) || m_u8WillQos > 2) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid will QoS (expected 0-2):"); LOG_STRING(qosStr));
@@ -209,49 +242,182 @@ public:
     }
 
     // Getters/Setters
-    const std::string& getHost(void) const { return m_strHost; }
-    void setHost(const std::string& host) const { m_strHost = host; }
-    uint16_t getPort(void) const { return m_u16Port; }
-    bool isTlsEnabled(void) const { return m_bUseTls; }
-    bool setTlsEnabled(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bUseTls); }
-    uint8_t getQos(void) const { return m_u8Qos; }
-    bool getRetain(void) const { return m_bRetain; }
-    bool setRetain(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bRetain); }
-    const std::string& getTlsCertPath(void) const { return m_strTlsCertPath; }
-    void setTlsCertPath(const std::string& path) const { m_strTlsCertPath = path; }
-    const std::string& getTlsKeyPath(void) const { return m_strTlsKeyPath; }
-    void setTlsKeyPath(const std::string& path) const { m_strTlsKeyPath = path; }
-    const std::string& getTlsCaPath(void) const { return m_strTlsCaPath; }
-    void setTlsCaPath(const std::string& path) const { m_strTlsCaPath = path; }
-    uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
-    uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
+    const std::string &getHost(void) const
+    {
+        return m_strHost;
+    }
 
-    bool getReceiveIncludeTopic(void) const { return m_bReceiveIncludeTopic; }
-    bool setReceiveIncludeTopic(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bReceiveIncludeTopic); }
+    void setHost(const std::string &host) const
+    {
+        m_strHost = host;
+    }
 
-    const std::string& getUsername(void) const { return m_strUsername; }
-    void setUsername(const std::string& val) const { m_strUsername = val; }
-    const std::string& getPassword(void) const { return m_strPassword; }
-    void setPassword(const std::string& val) const { m_strPassword = val; }
+    uint16_t getPort(void) const
+    {
+        return m_u16Port;
+    }
 
-    const std::string& getWillTopic(void) const { return m_strWillTopic; }
-    void setWillTopic(const std::string& val) const { m_strWillTopic = val; }
-    const std::string& getWillPayload(void) const { return m_strWillPayload; }
-    void setWillPayload(const std::string& val) const { m_strWillPayload = val; }
-    uint8_t getWillQos(void) const { return m_u8WillQos; }
-    bool getWillRetain(void) const { return m_bWillRetain; }
-    bool setWillRetain(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bWillRetain); }
+    bool isTlsEnabled(void) const
+    {
+        return m_bUseTls;
+    }
 
-    bool getCleanSession(void) const { return m_bCleanSession; }
-    bool setCleanSession(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bCleanSession); }
+    bool setTlsEnabled(const std::string &strValue) const
+    {
+        BoolExprEvaluator e;
+        return e.evaluate(strValue, m_bUseTls);
+    }
 
-    const std::string& getClientId(void) const { return m_strClientId; }
-    void setClientId(const std::string& val) const { m_strClientId = val; }
+    uint8_t getQos(void) const
+    {
+        return m_u8Qos;
+    }
 
-    bool setReadBufferSize(const std::string& bufSizeStr) const
+    bool getRetain(void) const
+    {
+        return m_bRetain;
+    }
+
+    bool setRetain(const std::string &strValue) const
+    {
+        BoolExprEvaluator e;
+        return e.evaluate(strValue, m_bRetain);
+    }
+
+    const std::string &getTlsCertPath(void) const
+    {
+        return m_strTlsCertPath;
+    }
+
+    void setTlsCertPath(const std::string &path) const
+    {
+        m_strTlsCertPath = path;
+    }
+
+    const std::string &getTlsKeyPath(void) const
+    {
+        return m_strTlsKeyPath;
+    }
+
+    void setTlsKeyPath(const std::string &path) const
+    {
+        m_strTlsKeyPath = path;
+    }
+
+    const std::string &getTlsCaPath(void) const
+    {
+        return m_strTlsCaPath;
+    }
+
+    void setTlsCaPath(const std::string &path) const
+    {
+        m_strTlsCaPath = path;
+    }
+
+    uint32_t getReadTimeout(void) const
+    {
+        return m_u32ReadTimeout;
+    }
+
+    uint32_t getReadBufferSize(void) const
+    {
+        return m_u32ReadBufferSize;
+    }
+
+    bool getReceiveIncludeTopic(void) const
+    {
+        return m_bReceiveIncludeTopic;
+    }
+
+    bool setReceiveIncludeTopic(const std::string &strValue) const
+    {
+        BoolExprEvaluator e;
+        return e.evaluate(strValue, m_bReceiveIncludeTopic);
+    }
+
+    const std::string &getUsername(void) const
+    {
+        return m_strUsername;
+    }
+
+    void setUsername(const std::string &val) const
+    {
+        m_strUsername = val;
+    }
+
+    const std::string &getPassword(void) const
+    {
+        return m_strPassword;
+    }
+
+    void setPassword(const std::string &val) const
+    {
+        m_strPassword = val;
+    }
+
+    const std::string &getWillTopic(void) const
+    {
+        return m_strWillTopic;
+    }
+
+    void setWillTopic(const std::string &val) const
+    {
+        m_strWillTopic = val;
+    }
+
+    const std::string &getWillPayload(void) const
+    {
+        return m_strWillPayload;
+    }
+
+    void setWillPayload(const std::string &val) const
+    {
+        m_strWillPayload = val;
+    }
+
+    uint8_t getWillQos(void) const
+    {
+        return m_u8WillQos;
+    }
+
+    bool getWillRetain(void) const
+    {
+        return m_bWillRetain;
+    }
+
+    bool setWillRetain(const std::string &strValue) const
+    {
+        BoolExprEvaluator e;
+        return e.evaluate(strValue, m_bWillRetain);
+    }
+
+    bool getCleanSession(void) const
+    {
+        return m_bCleanSession;
+    }
+
+    bool setCleanSession(const std::string &strValue) const
+    {
+        BoolExprEvaluator e;
+        return e.evaluate(strValue, m_bCleanSession);
+    }
+
+    const std::string &getClientId(void) const
+    {
+        return m_strClientId;
+    }
+
+    void setClientId(const std::string &val) const
+    {
+        m_strClientId = val;
+    }
+
+    bool setReadBufferSize(const std::string &bufSizeStr) const
     {
         uint32_t sz = 0;
-        if (!numeric::str2uint32(bufSizeStr, sz)) return false;
+        if (!numeric::str2uint32(bufSizeStr, sz)) {
+            return false;
+        }
         if (sz == 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read buffer size:"); LOG_UINT32(sz));
             return false;
@@ -261,7 +427,6 @@ public:
     }
 
 private:
-
     // Factory used by both m_MQTT_CMD() and m_MQTT_SCRIPT() (passed as
     // ucmdexec::generic_cmd/generic_script's openFn): builds an
     // MqttDriver::Config from the stored settings and returns the one
@@ -283,21 +448,21 @@ private:
     mutable std::string m_strResultData;
 
     /**
-      * \brief when true, CMD returns the raw received bytes as-is instead of
-      *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
-      *        settable via the ini file's RAW_RESULT key or the CONFIG command's
-      *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
-    */
+     * \brief when true, CMD returns the raw received bytes as-is instead of
+     *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+     *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+     *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+     */
     mutable bool m_bRawResult;
 
     /**
-      * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
-      *        command exactly once for the whole session; false re-resolves and re-validates
-      *        every due entry on every tick, needed to track a volatile ("?=") macro used as
-      *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
-      *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
-      *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
-    */
+     * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+     *        command exactly once for the whole session; false re-resolves and re-validates
+     *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+     *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+     *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+     *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+     */
     mutable bool m_bCyclicCached;
     bool m_bIsInitialized;
     bool m_bIsEnabled;
@@ -338,12 +503,12 @@ private:
     // and m_OpenDriver().
     mutable std::shared_ptr<MqttDriver> m_pDriver;
 
-    /**
-      * \brief functions associated to the plugin commands
-    */
-    #define MQTT_PLUGIN_CMD_RECORD(a)  bool m_MQTT_##a ( const std::string& args, std::stop_token st ) const;
+/**
+ * \brief functions associated to the plugin commands
+ */
+#define MQTT_PLUGIN_CMD_RECORD(a) bool m_MQTT_##a(const std::string &args, std::stop_token st) const;
     MQTT_PLUGIN_COMMANDS_CONFIG_TABLE
-    #undef  MQTT_PLUGIN_CMD_RECORD
+#undef MQTT_PLUGIN_CMD_RECORD
 };
 
 #endif // MQTT_PLUGIN_HPP

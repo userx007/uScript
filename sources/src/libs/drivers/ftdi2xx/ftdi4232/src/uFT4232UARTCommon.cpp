@@ -28,19 +28,22 @@
 //                    open / close                               //
 ///////////////////////////////////////////////////////////////////
 
-FT4232UART::Status FT4232UART::open(const UartConfig& config, uint8_t u8DeviceIndex)
+FT4232UART::Status FT4232UART::open(const UartConfig &config, uint8_t u8DeviceIndex)
 {
     // Reject MPSSE-only channels A and B
     if (config.channel != FT4232Base::Channel::C &&
-        config.channel != FT4232Base::Channel::D)
+        config.channel != FT4232Base::Channel::D) {
         return Status::INVALID_PARAM;
+    }
 
-    if (m_hDevice)
+    if (m_hDevice) {
         close();
+    }
 
     Status s = open_device(config.channel, u8DeviceIndex);
-    if (s != Status::SUCCESS)
+    if (s != Status::SUCCESS) {
         return s;
+    }
 
     s = apply_config(config);
     if (s != Status::SUCCESS) {
@@ -52,7 +55,6 @@ FT4232UART::Status FT4232UART::open(const UartConfig& config, uint8_t u8DeviceIn
     return Status::SUCCESS;
 }
 
-
 bool FT4232UART::is_open() const
 {
     return m_hDevice != nullptr;
@@ -62,10 +64,11 @@ bool FT4232UART::is_open() const
 //               configure / set_baud                           //
 ///////////////////////////////////////////////////////////////////
 
-FT4232UART::Status FT4232UART::configure(const UartConfig& config)
+FT4232UART::Status FT4232UART::configure(const UartConfig &config)
 {
-    if (!m_hDevice)
+    if (!m_hDevice) {
         return Status::PORT_ACCESS;
+    }
 
     Status s = apply_config(config);
     if (s == Status::SUCCESS) {
@@ -85,4 +88,3 @@ FT4232UART::Status FT4232UART::set_baud(uint32_t baudRate)
     updated.baudRate   = baudRate;
     return configure(updated);
 }
-

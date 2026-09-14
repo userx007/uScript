@@ -1,4 +1,5 @@
 #include "SPI.hpp"
+
 #include "Hydrabus.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
@@ -11,15 +12,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_SPI   |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_SPI   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
@@ -84,7 +84,7 @@ std::vector<uint8_t> SPI::bulk_write(std::span<const uint8_t> data, std::stop_to
     }
 
     _write(data, stop_tok);
-    return _read(data.size(), stop_tok);  // SPI is full-duplex: read MISO simultaneously
+    return _read(data.size(), stop_tok); // SPI is full-duplex: read MISO simultaneously
 }
 
 // ---------------------------------------------------------------------------
@@ -92,10 +92,10 @@ std::vector<uint8_t> SPI::bulk_write(std::span<const uint8_t> data, std::stop_to
 // ---------------------------------------------------------------------------
 
 std::optional<std::vector<uint8_t>> SPI::write_read(
-        std::span<const uint8_t> data,
-        size_t                   read_len,
-        bool                     manual_cs,
-        std::stop_token          stop_tok)
+    std::span<const uint8_t> data,
+    size_t read_len,
+    bool manual_cs,
+    std::stop_token stop_tok)
 {
     // CMD 0b00000100 | drive_cs_bit
     //   drive_cs_bit = 0 → firmware drives CS
@@ -149,7 +149,9 @@ std::vector<uint8_t> SPI::read(size_t read_len, bool manual_cs, std::stop_token 
     std::vector<uint8_t> result;
     result.reserve(read_len);
 
-    if (!manual_cs) set_cs(0);
+    if (!manual_cs) {
+        set_cs(0);
+    }
 
     size_t remaining = read_len;
     while (remaining > 0) {
@@ -159,10 +161,14 @@ std::vector<uint8_t> SPI::read(size_t read_len, bool manual_cs, std::stop_token 
         auto rx = bulk_write(dummy, stop_tok);
         result.insert(result.end(), rx.begin(), rx.end());
         remaining -= chunk;
-        if (stop_tok.stop_requested()) break;
+        if (stop_tok.stop_requested()) {
+            break;
+        }
     }
 
-    if (!manual_cs) set_cs(1);
+    if (!manual_cs) {
+        set_cs(1);
+    }
     return result;
 }
 
@@ -198,10 +204,11 @@ int SPI::get_polarity() const
 
 bool SPI::set_polarity(int value)
 {
-    if (value == 0)
+    if (value == 0) {
         _config = static_cast<uint8_t>(_config & ~(1 << 2));
-    else
-        _config = static_cast<uint8_t>(_config |  (1 << 2));
+    } else {
+        _config = static_cast<uint8_t>(_config | (1 << 2));
+    }
     return _configure_port();
 }
 
@@ -214,10 +221,11 @@ int SPI::get_phase() const
 
 bool SPI::set_phase(int value)
 {
-    if (value == 0)
+    if (value == 0) {
         _config = static_cast<uint8_t>(_config & ~(1 << 1));
-    else
-        _config = static_cast<uint8_t>(_config |  (1 << 1));
+    } else {
+        _config = static_cast<uint8_t>(_config | (1 << 1));
+    }
     return _configure_port();
 }
 
@@ -232,10 +240,11 @@ bool SPI::set_device(int value)
 {
     // Reset to default config, then apply the device bit
     _config = DEFAULT_CONFIG;
-    if (value == 0)
+    if (value == 0) {
         _config = static_cast<uint8_t>(_config & ~(1 << 0));
-    else
-        _config = static_cast<uint8_t>(_config |  (1 << 0));
+    } else {
+        _config = static_cast<uint8_t>(_config | (1 << 0));
+    }
     return _configure_port();
 }
 

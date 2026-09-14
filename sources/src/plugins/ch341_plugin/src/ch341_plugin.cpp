@@ -1,6 +1,7 @@
+#include "ch341_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
-#include "ch341_plugin.hpp"
 #include "ch341_setup.hpp"
 #include "uCh341.hpp"
 #include "uCommScriptClient.hpp"
@@ -15,10 +16,10 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 
@@ -26,55 +27,49 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED CH341Plugin *pluginEntry()
 {
-    EXPORTED CH341Plugin* pluginEntry()
-    {
-        return new CH341Plugin();
-    }
+    return new CH341Plugin();
+}
 
-    EXPORTED void pluginExit( CH341Plugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(CH341Plugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about plugin and
-  *        describe the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if the plugin initialization fails
-  *
-  * \note Usage example: <br>
-  *       CH341.INFO
-  *
-  * \param[in] pstrArgs NULL (NULL means that no arguments are provided to this function)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about plugin and
+ *        describe the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if the plugin initialization fails
+ *
+ * \note Usage example: <br>
+ *       CH341.INFO
+ *
+ * \param[in] pstrArgs NULL (NULL means that no arguments are provided to this function)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool CH341Plugin::m_CH341_INFO (const std::string &args, std::stop_token st ) const
+bool CH341Plugin::m_CH341_INFO(const std::string &args, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -121,55 +116,48 @@ bool CH341Plugin::m_CH341_INFO (const std::string &args, std::stop_token st ) co
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
-
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current CH341 port (m_strCh341Port)
-  *
-  * \note If an empty string is provided then the command doesn't change anything
-  *
-  * \note Is intended to change the port when the CH341 enumerates under a different /dev or COM node
-  *
-  * \note Usage example: <br>
-  *       CH341.CONFIG p=COM2 b=115200 r=2000 w=2000 s=1024
-  *       CH341.CONFIG p=/dev/ttyCH341USB0 b=115200 r=2000 w=2000 s=1024
-  *
-  * \param[in] p=port b=baudrate r=readtout w=writetout s=readbuffersize
-  *
-  * \return true if reading succeeded, false otherwise
-*/
+ * \brief CONFIG command implementation; overwrite the current CH341 port (m_strCh341Port)
+ *
+ * \note If an empty string is provided then the command doesn't change anything
+ *
+ * \note Is intended to change the port when the CH341 enumerates under a different /dev or COM node
+ *
+ * \note Usage example: <br>
+ *       CH341.CONFIG p=COM2 b=115200 r=2000 w=2000 s=1024
+ *       CH341.CONFIG p=/dev/ttyCH341USB0 b=115200 r=2000 w=2000 s=1024
+ *
+ * \param[in] p=port b=baudrate r=readtout w=writetout s=readbuffersize
+ *
+ * \return true if reading succeeded, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool CH341Plugin::m_CH341_CONFIG ( const std::string &args, std::stop_token st ) const
+bool CH341Plugin::m_CH341_CONFIG(const std::string &args, std::stop_token st) const
 {
     return generic_ch341_set_params<CH341Plugin>(this, args);
-
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief m_CH341_CMD command implementation;
-  *
-  * \note Usage example: <br>
-  *       CH341.CMD
-  *       CH341.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
-  *       CH341.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
-  *
-  * \param[in] pstrArgs - optional timeout
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief m_CH341_CMD command implementation;
+ *
+ * \note Usage example: <br>
+ *       CH341.CMD
+ *       CH341.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
+ *       CH341.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
+ *
+ * \param[in] pstrArgs - optional timeout
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool CH341Plugin::m_CH341_CMD ( const std::string &args, std::stop_token st ) const
+bool CH341Plugin::m_CH341_CMD(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -184,21 +172,20 @@ bool CH341Plugin::m_CH341_CMD ( const std::string &args, std::stop_token st ) co
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation;
-  *
-  * \note Usage example: <br>
-  *       CH341.SCRIPT scriptname [|delay]
-  *
-  * \param[in] filename<string>
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief SCRIPT command implementation;
+ *
+ * \note Usage example: <br>
+ *       CH341.SCRIPT scriptname [|delay]
+ *
+ * \param[in] filename<string>
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH341Plugin::m_CH341_SCRIPT ( const std::string &args, std::stop_token st ) const
+bool CH341Plugin::m_CH341_SCRIPT(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -213,28 +200,27 @@ bool CH341Plugin::m_CH341_SCRIPT ( const std::string &args, std::stop_token st )
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic CH341 messages.
-  *
-  * \note The CH341 port is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). CH341 is a byte-stream with no addressing concept, so
-  *       each entry's optional "id" is never sent on the wire — omit it — and "val" is the
-  *       payload as a plain hex string (e.g. "AABBCCDD").
-  *
-  * \note Usage example:
-  *       CH341.CYCLIC 100 AABBCCDD, 250 06
-  *       CH341.CYCLIC 100 AABBCCDD, 250 06 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic CH341 messages.
+ *
+ * \note The CH341 port is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). CH341 is a byte-stream with no addressing concept, so
+ *       each entry's optional "id" is never sent on the wire — omit it — and "val" is the
+ *       payload as a plain hex string (e.g. "AABBCCDD").
+ *
+ * \note Usage example:
+ *       CH341.CYCLIC 100 AABBCCDD, 250 06
+ *       CH341.CYCLIC 100 AABBCCDD, 250 06 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH341Plugin::m_CH341_CYCLIC ( const std::string &args, std::stop_token st ) const
+bool CH341Plugin::m_CH341_CYCLIC(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
@@ -245,19 +231,17 @@ bool CH341Plugin::m_CH341_CYCLIC ( const std::string &args, std::stop_token st )
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //            PRIVATE INTERFACES IMPLEMENTATION                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief message sender
-*/
+ * \brief message sender
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH341Plugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver ) const
+bool CH341Plugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
 
@@ -271,48 +255,46 @@ bool CH341Plugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<con
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief message receiver
-*/
+ * \brief message receiver
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH341Plugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
+bool CH341Plugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;
 
-    switch(readType)
-    {
-        case CommCommandReadType::LINE:
-            options.mode = ICommDriver::ReadMode::UntilDelimiter;
-            options.delimiter = '\n';  // CHAR_SEPARATOR_NEWLINE
-            break;
+    switch (readType) {
+    case CommCommandReadType::LINE:
+        options.mode      = ICommDriver::ReadMode::UntilDelimiter;
+        options.delimiter = '\n'; // CHAR_SEPARATOR_NEWLINE
+        break;
 
-        case CommCommandReadType::TOKEN_STRING:
-            [[fallthrough]];
-        case CommCommandReadType::TOKEN_HEXSTREAM:
-            options.mode = ICommDriver::ReadMode::UntilToken;
-            options.token = dataSpan;
-            options.use_buffer = true;
-            break;
+    case CommCommandReadType::TOKEN_STRING:
+        [[fallthrough]];
+    case CommCommandReadType::TOKEN_HEXSTREAM:
+        options.mode       = ICommDriver::ReadMode::UntilToken;
+        options.token      = dataSpan;
+        options.use_buffer = true;
+        break;
 
-        default:
-            options.mode = ICommDriver::ReadMode::Exact;
-            break;
+    default:
+        options.mode = ICommDriver::ReadMode::Exact;
+        break;
     }
 
     auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
 
     if (result.status == ICommDriver::Status::SUCCESS) {
-        szSize = result.bytes_read;
+        szSize  = result.bytes_read;
         bRetVal = true;
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:");
                   LOG_STRING(ICommDriver::to_string(result.status));
                   LOG_STRING("Bytes read:"); LOG_SIZET(result.bytes_read));
-        szSize = result.bytes_read;
+        szSize  = result.bytes_read;
         bRetVal = false;
     }
 

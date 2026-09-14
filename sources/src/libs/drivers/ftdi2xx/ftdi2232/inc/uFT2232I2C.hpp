@@ -4,9 +4,9 @@
 #include "FT2232Base.hpp"
 #include "ICommDriver.hpp"
 
-#include <stop_token>
 #include <cstdint>
 #include <span>
+#include <stop_token>
 #include <vector>
 
 /**
@@ -42,119 +42,123 @@
  */
 class FT2232I2C : public FT2232Base, public ICommDriver
 {
-    public:
+public:
+    using Status = ICommDriver::Status;
 
-        using Status = ICommDriver::Status;
+    FT2232I2C()  = default;
 
-        FT2232I2C() = default;
+    /**
+     * @brief Construct and immediately open the device
+     * @param u8I2CAddress     7-bit I²C slave address
+     * @param u32ClockHz       SCL frequency in Hz  (default 100 kHz)
+     * @param variant          FT2232H or FT2232D   (default FT2232H)
+     * @param channel          MPSSE channel        (default A)
+     * @param u8DeviceIndex    Zero-based device index
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately —
+     *                         e.g. "FT2232 #0" or the adapter's serial number.
+     */
+    explicit FT2232I2C(uint8_t u8I2CAddress,
+                       uint32_t u32ClockHz                 = 100000u,
+                       Variant variant                     = Variant::FT2232H,
+                       Channel channel                     = Channel::A,
+                       uint8_t u8DeviceIndex               = 0u,
+                       const std::string &strIdentityLabel = {})
+    {
+        m_strIdentityLabel = strIdentityLabel;
+        this->open(u8I2CAddress, u32ClockHz, variant, channel, u8DeviceIndex);
+    }
 
-        /**
-         * @brief Construct and immediately open the device
-         * @param u8I2CAddress     7-bit I²C slave address
-         * @param u32ClockHz       SCL frequency in Hz  (default 100 kHz)
-         * @param variant          FT2232H or FT2232D   (default FT2232H)
-         * @param channel          MPSSE channel        (default A)
-         * @param u8DeviceIndex    Zero-based device index
-         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-         *                         describeConnection()), supplied separately —
-         *                         e.g. "FT2232 #0" or the adapter's serial number.
-         */
-        explicit FT2232I2C(uint8_t  u8I2CAddress,
-                           uint32_t u32ClockHz    = 100000u,
-                           Variant  variant       = Variant::FT2232H,
-                           Channel  channel       = Channel::A,
-                           uint8_t  u8DeviceIndex = 0u,
-                           const std::string& strIdentityLabel = {})
-        {
-            m_strIdentityLabel = strIdentityLabel;
-            this->open(u8I2CAddress, u32ClockHz, variant, channel, u8DeviceIndex);
-        }
+    ~FT2232I2C() override
+    {
+        close();
+    }
 
-        ~FT2232I2C() override { close(); }
+    /**
+     * @brief Open the FT2232 and configure MPSSE for I²C
+     *
+     * @param u8I2CAddress  7-bit I²C slave address
+     * @param u32ClockHz    SCL frequency in Hz
+     * @param variant       FT2232H or FT2232D
+     * @param channel       MPSSE channel (A or B; FT2232D only supports A)
+     * @param u8DeviceIndex Physical device index
+     */
+    Status open(uint8_t u8I2CAddress,
+                uint32_t u32ClockHz   = 100000u,
+                Variant variant       = Variant::FT2232H,
+                Channel channel       = Channel::A,
+                uint8_t u8DeviceIndex = 0u);
 
-        /**
-         * @brief Open the FT2232 and configure MPSSE for I²C
-         *
-         * @param u8I2CAddress  7-bit I²C slave address
-         * @param u32ClockHz    SCL frequency in Hz
-         * @param variant       FT2232H or FT2232D
-         * @param channel       MPSSE channel (A or B; FT2232D only supports A)
-         * @param u8DeviceIndex Physical device index
-         */
-        Status open(uint8_t  u8I2CAddress,
-                    uint32_t u32ClockHz    = 100000u,
-                    Variant  variant       = Variant::FT2232H,
-                    Channel  channel       = Channel::A,
-                    uint8_t  u8DeviceIndex = 0u);
+    /** @copydoc FT2232Base::close — sends I²C STOP before closing */
+    Status close() override;
 
-        /** @copydoc FT2232Base::close — sends I²C STOP before closing */
-        Status close() override;
+    bool is_open() const override
+    {
+        return FT2232Base::is_open();
+    }
 
-        bool is_open() const override { return FT2232Base::is_open(); }
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     * Address is bound at open() with no documented per-call override here
+     * (unlike KI2C), so xtra_params is accepted but ignored.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return describeBase(CommFamily::I2C);
+    }
 
-        /**
-         * @brief Describe this connection for the GUI comm-dump panel.
-         * Address is bound at open() with no documented per-call override here
-         * (unlike KI2C), so xtra_params is accepted but ignored.
-         */
-        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-        {
-            return describeBase(CommFamily::I2C);
-        }
+    /**
+     * @brief Unified read interface (ICommDriver)
+     *
+     * Modes: Exact, UntilDelimiter, UntilToken.
+     * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
+     */
+    ReadResult tout_read(uint32_t u32ReadTimeout,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Unified read interface (ICommDriver)
-         *
-         * Modes: Exact, UntilDelimiter, UntilToken.
-         * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
-         */
-        ReadResult  tout_read(uint32_t u32ReadTimeout,
-                              std::span<uint8_t> buffer,
-                              const ReadOptions& options,
-                              std::string_view xtra_params = {},
-                              std::stop_token stop_tok = {}) const override;
+    /**
+     * @brief Unified write interface (ICommDriver)
+     *
+     * START → addr+W → bytes → STOP. No payload size limit.
+     * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
+     */
+    WriteResult tout_write(uint32_t u32WriteTimeout,
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Unified write interface (ICommDriver)
-         *
-         * START → addr+W → bytes → STOP. No payload size limit.
-         * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
-         */
-        WriteResult tout_write(uint32_t u32WriteTimeout,
-                               std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {},
-                               std::stop_token stop_tok = {}) const override;
+private:
+    // ── I²C pin masks (ADBUS low byte) ───────────────────────────────────
+    static constexpr uint8_t I2C_SCL         = 0x01u; ///< ADBUS0: SCL output
+    static constexpr uint8_t I2C_SDA_O       = 0x02u; ///< ADBUS1: SDA drive
+    static constexpr uint8_t I2C_SDA_I       = 0x04u; ///< ADBUS2: SDA read
 
-    private:
+    static constexpr uint8_t DIR_SCL_SDA_OUT = I2C_SCL | I2C_SDA_O; ///< 0x03
+    static constexpr uint8_t DIR_SCL_ONLY    = I2C_SCL;             ///< 0x01
 
-        // ── I²C pin masks (ADBUS low byte) ───────────────────────────────────
-        static constexpr uint8_t I2C_SCL   = 0x01u; ///< ADBUS0: SCL output
-        static constexpr uint8_t I2C_SDA_O = 0x02u; ///< ADBUS1: SDA drive
-        static constexpr uint8_t I2C_SDA_I = 0x04u; ///< ADBUS2: SDA read
+    uint8_t m_u8I2CAddress                   = 0x00u;
 
-        static constexpr uint8_t DIR_SCL_SDA_OUT = I2C_SCL | I2C_SDA_O; ///< 0x03
-        static constexpr uint8_t DIR_SCL_ONLY    = I2C_SCL;              ///< 0x01
+    Status configure_mpsse_i2c(uint32_t u32ClockHz) const;
 
-        uint8_t m_u8I2CAddress = 0x00u;
+    static void push_pin_state(std::vector<uint8_t> &buf, bool scl, bool drive_sda_low);
+    static void push_read_sda(std::vector<uint8_t> &buf);
 
-        Status configure_mpsse_i2c(uint32_t u32ClockHz) const;
+    Status i2c_start() const;
+    Status i2c_repeated_start() const;
+    Status i2c_stop() const;
 
-        static void push_pin_state(std::vector<uint8_t>& buf, bool scl, bool drive_sda_low);
-        static void push_read_sda (std::vector<uint8_t>& buf);
+    Status i2c_write_byte(uint8_t byte, bool &ack) const;
+    Status i2c_read_byte(uint8_t &byte, bool sendAck, std::stop_token stop_tok = {}) const;
 
-        Status i2c_start()          const;
-        Status i2c_repeated_start() const;
-        Status i2c_stop()           const;
+    Status i2c_write(std::span<const uint8_t> data,
+                     uint32_t timeoutMs, size_t &bytesWritten) const;
 
-        Status i2c_write_byte(uint8_t byte, bool& ack)          const;
-        Status i2c_read_byte (uint8_t& byte, bool sendAck, std::stop_token stop_tok = {}) const;
-
-        Status i2c_write(std::span<const uint8_t> data,
-                         uint32_t timeoutMs, size_t& bytesWritten) const;
-
-        Status i2c_read (std::span<uint8_t> data,
-                         size_t& bytesRead, uint32_t timeoutMs,
-                         std::stop_token stop_tok = {})    const;
+    Status i2c_read(std::span<uint8_t> data,
+                    size_t &bytesRead, uint32_t timeoutMs,
+                    std::stop_token stop_tok = {}) const;
 };
 
 #endif // U_FT2232_I2C_DRIVER_H

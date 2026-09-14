@@ -1,23 +1,22 @@
 #include "uCP2112Gpio.hpp"
 #include "uLogger.hpp"
 
-#include <stdint.h>
 #include <cstring>
+#include <stdint.h>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "CP2112_GPIO |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "CP2112_GPIO |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // open
@@ -41,7 +40,6 @@ CP2112Gpio::Status CP2112Gpio::open(uint8_t u8DeviceIndex)
     return s;
 }
 
-
 // ============================================================================
 // GPIO protocol  (AN495 §5.1 – §5.3)
 // ============================================================================
@@ -61,7 +59,7 @@ CP2112Gpio::Status CP2112Gpio::open(uint8_t u8DeviceIndex)
  *   Byte 4  : Clock divider (used only when GPIO.6 = clock output)
  *   Bytes 5–63 : Reserved (zero)
  */
-CP2112Gpio::Status CP2112Gpio::gpio_configure(const GpioConfig& config) const
+CP2112Gpio::Status CP2112Gpio::gpio_configure(const GpioConfig &config) const
 {
     if (!is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_configure: device not open"));
@@ -69,20 +67,19 @@ CP2112Gpio::Status CP2112Gpio::gpio_configure(const GpioConfig& config) const
     }
 
     uint8_t report[HID_REPORT_SIZE] = {0};
-    report[0] = RPT_GPIO_CONFIG;
-    report[1] = config.directionMask;
-    report[2] = config.pushPullMask;
-    report[3] = config.specialFuncMask;
-    report[4] = config.clockDivider;
+    report[0]                       = RPT_GPIO_CONFIG;
+    report[1]                       = config.directionMask;
+    report[2]                       = config.pushPullMask;
+    report[3]                       = config.specialFuncMask;
+    report[4]                       = config.clockDivider;
 
-    Status s = hid_set_feature(report, HID_REPORT_SIZE);
+    Status s                        = hid_set_feature(report, HID_REPORT_SIZE);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_configure: hid_set_feature failed"));
     }
 
     return s;
 }
-
 
 /**
  * @brief Drive output pins via Report 0x04 — Set GPIO Values (Feature SET):
@@ -106,21 +103,20 @@ CP2112Gpio::Status CP2112Gpio::gpio_write(uint8_t valueMask, uint8_t applyMask) 
     }
 
     uint8_t report[HID_REPORT_SIZE] = {0};
-    report[0] = RPT_GPIO_SET;
-    report[1] = valueMask;
-    report[2] = applyMask;
+    report[0]                       = RPT_GPIO_SET;
+    report[1]                       = valueMask;
+    report[2]                       = applyMask;
 
-    Status s = hid_set_feature(report, HID_REPORT_SIZE);
+    Status s                        = hid_set_feature(report, HID_REPORT_SIZE);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("gpio_write: hid_set_feature failed");
                   LOG_STRING("value ="); LOG_HEX8(valueMask);
-                  LOG_STRING("mask =");  LOG_HEX8(applyMask));
+                  LOG_STRING("mask ="); LOG_HEX8(applyMask));
     }
 
     return s;
 }
-
 
 /**
  * @brief Read all pin levels via Report 0x03 — Get GPIO Values (Feature GET):
@@ -128,7 +124,7 @@ CP2112Gpio::Status CP2112Gpio::gpio_write(uint8_t valueMask, uint8_t applyMask) 
  *   Byte 1  : Pin levels — bit = 1 → high, 0 → low
  *   Bytes 2–63 : Reserved
  */
-CP2112Gpio::Status CP2112Gpio::gpio_read(uint8_t& valueMask) const
+CP2112Gpio::Status CP2112Gpio::gpio_read(uint8_t &valueMask) const
 {
     valueMask = 0x00;
 
@@ -138,9 +134,9 @@ CP2112Gpio::Status CP2112Gpio::gpio_read(uint8_t& valueMask) const
     }
 
     uint8_t report[HID_REPORT_SIZE] = {0};
-    report[0] = RPT_GPIO_GET;
+    report[0]                       = RPT_GPIO_GET;
 
-    Status s = hid_get_feature(report, HID_REPORT_SIZE);
+    Status s                        = hid_get_feature(report, HID_REPORT_SIZE);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_read: hid_get_feature failed"));
         return s;

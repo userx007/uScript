@@ -1,5 +1,6 @@
-#include "PluginExport.hpp"
 #include "tcpip_plugin.hpp"
+
+#include "PluginExport.hpp"
 #include "tcpip_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -20,20 +21,18 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED TCPIPPlugin *pluginEntry()
 {
-    EXPORTED TCPIPPlugin* pluginEntry()
-    {
-        return new TCPIPPlugin();
-    }
+    return new TCPIPPlugin();
+}
 
-    EXPORTED void pluginExit( TCPIPPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(TCPIPPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -42,14 +41,14 @@ extern "C"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief open a fresh TCPIP driver instance against the configured
-  *        host/port, honouring the configured connect timeout.
-  *
-  * Opened per-invocation (from m_TCPIP_CMD / m_TCPIP_SCRIPT) rather than
-  * held open for the plugin's lifetime, the same pattern the KVCAN plugin
-  * uses for its SocketKVCAN handle: this keeps a single command's failure
-  * (e.g. an unreachable peer) from poisoning the state of the next one.
-*/
+ * \brief open a fresh TCPIP driver instance against the configured
+ *        host/port, honouring the configured connect timeout.
+ *
+ * Opened per-invocation (from m_TCPIP_CMD / m_TCPIP_SCRIPT) rather than
+ * held open for the plugin's lifetime, the same pattern the KVCAN plugin
+ * uses for its SocketKVCAN handle: this keeps a single command's failure
+ * (e.g. an unreachable peer) from poisoning the state of the next one.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 std::shared_ptr<TCPIP> TCPIPPlugin::m_OpenDriver(void) const
 {
@@ -59,7 +58,7 @@ std::shared_ptr<TCPIP> TCPIPPlugin::m_OpenDriver(void) const
     }
 
     auto shpDriver = std::make_shared<TCPIP>(m_strTcpHost, m_u16TcpPort, m_u32ConnectTimeout,
-                                              m_strTcpHost + ":" + std::to_string(m_u16TcpPort));
+                                             m_strTcpHost + ":" + std::to_string(m_u16TcpPort));
 
     if (!shpDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -72,39 +71,36 @@ std::shared_ptr<TCPIP> TCPIPPlugin::m_OpenDriver(void) const
 
 } /* m_OpenDriver() */
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about the plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if plugin initialization fails.
-  *
-  * \note Usage example:
-  *       TCPIP.INFO
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about the plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if plugin initialization fails.
+ *
+ * \note Usage example:
+ *       TCPIP.INFO
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::m_TCPIP_INFO(const std::string& args, std::stop_token st) const
+bool TCPIPPlugin::m_TCPIP_INFO(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -151,23 +147,21 @@ bool TCPIPPlugin::m_TCPIP_INFO(const std::string& args, std::stop_token st) cons
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 
 } /* m_TCPIP_INFO() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command: apply host/port/timeout/buffer-size settings at
-  *        runtime, using the same key=value grammar as the ini-backed
-  *        m_LocalSetParams() (see tcpip_setup.hpp).
-  *
-  *        Recognised keys: h=host  p=port  c=connect_tout  r=read_tout
-  *        w=write_tout  s=recv_bufsize
-*/
+ * \brief CONFIG command: apply host/port/timeout/buffer-size settings at
+ *        runtime, using the same key=value grammar as the ini-backed
+ *        m_LocalSetParams() (see tcpip_setup.hpp).
+ *
+ *        Recognised keys: h=host  p=port  c=connect_tout  r=read_tout
+ *        w=write_tout  s=recv_bufsize
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::m_TCPIP_CONFIG(const std::string& args, std::stop_token st) const
+bool TCPIPPlugin::m_TCPIP_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -177,25 +171,24 @@ bool TCPIPPlugin::m_TCPIP_CONFIG(const std::string& args, std::stop_token st) co
 
 } /* m_TCPIP_CONFIG() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command: open a connection to the configured host:port and
-  *        run a single send/receive command against it, the TCPIP analogue
-  *        of m_UART_CMD.
-  *
-  *        Mirrors m_UART_CMD's per-call open/use/close lifecycle: the
-  *        driver only lives for the duration of this single dispatch, and
-  *        command parsing/execution is delegated to the shared
-  *        CommScriptCommandValidator / CommScriptCommandInterpreter, the
-  *        same as UART.
-  *
-  * \note Usage example: <br>
-  *       TCPIP.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
-  *       TCPIP.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
-*/
+ * \brief CMD command: open a connection to the configured host:port and
+ *        run a single send/receive command against it, the TCPIP analogue
+ *        of m_UART_CMD.
+ *
+ *        Mirrors m_UART_CMD's per-call open/use/close lifecycle: the
+ *        driver only lives for the duration of this single dispatch, and
+ *        command parsing/execution is delegated to the shared
+ *        CommScriptCommandValidator / CommScriptCommandInterpreter, the
+ *        same as UART.
+ *
+ * \note Usage example: <br>
+ *       TCPIP.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
+ *       TCPIP.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
+bool TCPIPPlugin::m_TCPIP_CMD(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -212,17 +205,16 @@ bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
 
 } /* m_TCPIP_CMD() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command: run a scripted sequence of sends/receives over a
-  *        single connection, the TCPIP analogue of m_UART_SCRIPT.
-  *
-  * \note Usage example: <br>
-  *       TCPIP.SCRIPT scriptname [|delay]
-*/
+ * \brief SCRIPT command: run a scripted sequence of sends/receives over a
+ *        single connection, the TCPIP analogue of m_UART_SCRIPT.
+ *
+ * \note Usage example: <br>
+ *       TCPIP.SCRIPT scriptname [|delay]
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string& args, std::stop_token st) const
+bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -239,27 +231,26 @@ bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string& args, std::stop_token st) co
 
 } /* m_TCPIP_SCRIPT() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic TCPIP messages.
-  *
-  * \note The TCP connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). TCPIP is a single-peer stream with no addressable
-  *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
-  *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
-  *
-  * \note Usage example:
-  *       TCPIP.CYCLIC 100 AABBCCDD, 250 06
-  *       TCPIP.CYCLIC 100 AABBCCDD, 250 06 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic TCPIP messages.
+ *
+ * \note The TCP connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). TCPIP is a single-peer stream with no addressable
+ *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
+ *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+ *
+ * \note Usage example:
+ *       TCPIP.CYCLIC 100 AABBCCDD, 250 06
+ *       TCPIP.CYCLIC 100 AABBCCDD, 250 06 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::m_TCPIP_CYCLIC(const std::string& args, std::stop_token st) const
+bool TCPIPPlugin::m_TCPIP_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 

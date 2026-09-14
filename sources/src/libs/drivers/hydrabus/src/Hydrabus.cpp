@@ -1,4 +1,5 @@
 #include "Hydrabus.hpp"
+
 #include "ICommDriver.hpp"
 #include "uLogger.hpp"
 
@@ -15,15 +16,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_OPS   |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_OPS   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
@@ -91,8 +91,8 @@ std::vector<uint8_t> Hydrabus::read(size_t length, uint32_t timeout_ms, std::sto
     // ReadMode::Exact fills the buffer up to buffer.size() bytes, which is
     // the behaviour the rest of HydraHAL has always depended on.
     ICommDriver::ReadOptions opts{};
-    opts.mode       = ICommDriver::ReadMode::Exact;
-    opts.use_buffer = false;   // no internal KMP buffering needed for raw reads
+    opts.mode                      = ICommDriver::ReadMode::Exact;
+    opts.use_buffer                = false; // no internal KMP buffering needed for raw reads
 
     // [ADAPTED] tout_read now returns ReadResult{status, bytes_read,
     // found_terminator} instead of a plain size_t / bool.
@@ -103,8 +103,7 @@ std::vector<uint8_t> Hydrabus::read(size_t length, uint32_t timeout_ms, std::sto
     buf.resize(result.bytes_read);
 
     if (result.status != ICommDriver::Status::SUCCESS &&
-        result.status != ICommDriver::Status::READ_TIMEOUT)
-    {
+        result.status != ICommDriver::Status::READ_TIMEOUT) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("read error:");
                   LOG_STRING(ICommDriver::to_string(result.status).c_str()));
@@ -154,7 +153,9 @@ bool Hydrabus::enter_bbio()
 
 bool Hydrabus::exit_bbio()
 {
-    if (!reset_to_bbio()) return false;
+    if (!reset_to_bbio()) {
+        return false;
+    }
 
     // Send reset + CLI-exit sequence
     write_byte(0x00);
@@ -165,9 +166,9 @@ bool Hydrabus::exit_bbio()
 
 bool Hydrabus::reset_to_bbio()
 {
-    using Clock    = std::chrono::steady_clock;
-    using Seconds  = std::chrono::seconds;
-    auto deadline  = Clock::now() + Seconds{10};
+    using Clock                     = std::chrono::steady_clock;
+    using Seconds                   = std::chrono::seconds;
+    auto deadline                   = Clock::now() + Seconds{10};
 
     static const std::string kBBIO1 = "BBIO1";
 

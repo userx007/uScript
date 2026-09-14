@@ -1,3 +1,5 @@
+#include "websocket_plugin.hpp"
+
 #include "PluginExport.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -9,7 +11,6 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 #include "uWebSocket.hpp"
-#include "websocket_plugin.hpp"
 #include "websocket_setup.hpp"
 
 #include <memory>
@@ -20,20 +21,18 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED WEBSOCKETPlugin *pluginEntry()
 {
-    EXPORTED WEBSOCKETPlugin* pluginEntry()
-    {
-        return new WEBSOCKETPlugin();
-    }
+    return new WEBSOCKETPlugin();
+}
 
-    EXPORTED void pluginExit( WEBSOCKETPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(WEBSOCKETPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -42,15 +41,15 @@ extern "C"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief open a fresh WebSocket driver instance against the configured
-  *        host/port/path, honouring the configured connect timeout.
-  *
-  * Opened per-invocation (from m_WEBSOCKET_CMD / m_WEBSOCKET_SCRIPT /
-  * m_WEBSOCKET_CYCLIC) rather than held open for the plugin's lifetime, the
-  * same pattern the TCPIP plugin uses for its TCPIP handle: this keeps a
-  * single command's failure (e.g. an unreachable peer or a rejected
-  * handshake) from poisoning the state of the next one.
-*/
+ * \brief open a fresh WebSocket driver instance against the configured
+ *        host/port/path, honouring the configured connect timeout.
+ *
+ * Opened per-invocation (from m_WEBSOCKET_CMD / m_WEBSOCKET_SCRIPT /
+ * m_WEBSOCKET_CYCLIC) rather than held open for the plugin's lifetime, the
+ * same pattern the TCPIP plugin uses for its TCPIP handle: this keeps a
+ * single command's failure (e.g. an unreachable peer or a rejected
+ * handshake) from poisoning the state of the next one.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 std::shared_ptr<WebSocket> WEBSOCKETPlugin::m_OpenDriver(void) const
 {
@@ -60,8 +59,8 @@ std::shared_ptr<WebSocket> WEBSOCKETPlugin::m_OpenDriver(void) const
     }
 
     auto shpDriver = std::make_shared<WebSocket>(m_strWsHost, m_u16WsPort, m_strWsPath, m_u32ConnectTimeout,
-                                                  m_strWsHost + ":" + std::to_string(m_u16WsPort) + m_strWsPath,
-                                                  m_strWsSubprotocol);
+                                                 m_strWsHost + ":" + std::to_string(m_u16WsPort) + m_strWsPath,
+                                                 m_strWsSubprotocol);
 
     if (!shpDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -74,39 +73,36 @@ std::shared_ptr<WebSocket> WEBSOCKETPlugin::m_OpenDriver(void) const
 
 } /* m_OpenDriver() */
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about the plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if plugin initialization fails.
-  *
-  * \note Usage example:
-  *       WEBSOCKET.INFO
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about the plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if plugin initialization fails.
+ *
+ * \note Usage example:
+ *       WEBSOCKET.INFO
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::m_WEBSOCKET_INFO(const std::string& args, std::stop_token st) const
+bool WEBSOCKETPlugin::m_WEBSOCKET_INFO(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -157,23 +153,21 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_INFO(const std::string& args, std::stop_token 
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 
 } /* m_WEBSOCKET_INFO() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command: apply host/port/path/subprotocol/timeout/buffer-size
-  *        settings at runtime, using the same key=value grammar as the
-  *        ini-backed m_LocalSetParams() (see websocket_setup.hpp).
-  *
-  *        Recognised keys: h=host  p=port  u=path  o=subprotocol
-  *        c=connect_tout  r=read_tout  w=write_tout  s=recv_bufsize
-*/
+ * \brief CONFIG command: apply host/port/path/subprotocol/timeout/buffer-size
+ *        settings at runtime, using the same key=value grammar as the
+ *        ini-backed m_LocalSetParams() (see websocket_setup.hpp).
+ *
+ *        Recognised keys: h=host  p=port  u=path  o=subprotocol
+ *        c=connect_tout  r=read_tout  w=write_tout  s=recv_bufsize
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::m_WEBSOCKET_CONFIG(const std::string& args, std::stop_token st) const
+bool WEBSOCKETPlugin::m_WEBSOCKET_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -183,25 +177,24 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_CONFIG(const std::string& args, std::stop_toke
 
 } /* m_WEBSOCKET_CONFIG() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command: open a connection + handshake to the configured
-  *        host:port/path and run a single send/receive command against it,
-  *        the WEBSOCKET analogue of m_TCPIP_CMD.
-  *
-  *        Mirrors m_TCPIP_CMD's per-call open/use/close lifecycle: the
-  *        driver only lives for the duration of this single dispatch, and
-  *        command parsing/execution is delegated to the shared
-  *        CommScriptCommandValidator / CommScriptCommandInterpreter, the
-  *        same as TCPIP/UART.
-  *
-  * \note Usage example: <br>
-  *       WEBSOCKET.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
-  *       WEBSOCKET.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
-*/
+ * \brief CMD command: open a connection + handshake to the configured
+ *        host:port/path and run a single send/receive command against it,
+ *        the WEBSOCKET analogue of m_TCPIP_CMD.
+ *
+ *        Mirrors m_TCPIP_CMD's per-call open/use/close lifecycle: the
+ *        driver only lives for the duration of this single dispatch, and
+ *        command parsing/execution is delegated to the shared
+ *        CommScriptCommandValidator / CommScriptCommandInterpreter, the
+ *        same as TCPIP/UART.
+ *
+ * \note Usage example: <br>
+ *       WEBSOCKET.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
+ *       WEBSOCKET.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::m_WEBSOCKET_CMD(const std::string& args, std::stop_token st) const
+bool WEBSOCKETPlugin::m_WEBSOCKET_CMD(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -218,17 +211,16 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_CMD(const std::string& args, std::stop_token s
 
 } /* m_WEBSOCKET_CMD() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command: run a scripted sequence of sends/receives over a
-  *        single connection, the WEBSOCKET analogue of m_TCPIP_SCRIPT.
-  *
-  * \note Usage example: <br>
-  *       WEBSOCKET.SCRIPT scriptname [|delay]
-*/
+ * \brief SCRIPT command: run a scripted sequence of sends/receives over a
+ *        single connection, the WEBSOCKET analogue of m_TCPIP_SCRIPT.
+ *
+ * \note Usage example: <br>
+ *       WEBSOCKET.SCRIPT scriptname [|delay]
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::m_WEBSOCKET_SCRIPT(const std::string& args, std::stop_token st) const
+bool WEBSOCKETPlugin::m_WEBSOCKET_SCRIPT(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -245,27 +237,26 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_SCRIPT(const std::string& args, std::stop_toke
 
 } /* m_WEBSOCKET_SCRIPT() */
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic WEBSOCKET messages.
-  *
-  * \note The connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). WEBSOCKET is a single-peer stream with no addressable
-  *       channels, so each entry's optional "id" is never sent on the wire - omit it - and
-  *       "val" is the payload as a plain hex string (e.g. "AABBCCDD"), sent as a Binary frame.
-  *
-  * \note Usage example:
-  *       WEBSOCKET.CYCLIC 100 AABBCCDD, 250 06
-  *       WEBSOCKET.CYCLIC 100 AABBCCDD, 250 06 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic WEBSOCKET messages.
+ *
+ * \note The connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). WEBSOCKET is a single-peer stream with no addressable
+ *       channels, so each entry's optional "id" is never sent on the wire - omit it - and
+ *       "val" is the payload as a plain hex string (e.g. "AABBCCDD"), sent as a Binary frame.
+ *
+ * \note Usage example:
+ *       WEBSOCKET.CYCLIC 100 AABBCCDD, 250 06
+ *       WEBSOCKET.CYCLIC 100 AABBCCDD, 250 06 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::m_WEBSOCKET_CYCLIC(const std::string& args, std::stop_token st) const
+bool WEBSOCKETPlugin::m_WEBSOCKET_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 

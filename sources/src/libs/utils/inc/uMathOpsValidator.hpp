@@ -1,31 +1,30 @@
 #ifndef U_MATH_OPS_EVALUATOR_HPP
 #define U_MATH_OPS_EVALUATOR_HPP
 
-#include "uString.hpp"
 #include "uLogger.hpp"
+#include "uString.hpp"
 
+#include <algorithm>
+#include <regex>
 #include <string>
 #include <string_view>
-#include <vector>
-#include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
-#include <regex>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "EXPR_EVAL   |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "EXPR_EVAL   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //                     IMPLEMENTATION                            //
@@ -33,13 +32,10 @@
 
 namespace eval {
 
-
-inline bool string2bool(std::string_view token, bool& result)
+inline bool string2bool(std::string_view token, bool &result)
 {
     static const std::unordered_map<std::string_view, bool> token_map = {
-        {"TRUE",   true},  {"!FALSE", true},
-        {"FALSE",  false}, {"!TRUE", false}
-    };
+        {"TRUE", true}, {"!FALSE", true}, {"FALSE", false}, {"!TRUE", false}};
 
     auto it = token_map.find(token);
     if (it != token_map.end()) {
@@ -51,85 +47,69 @@ inline bool string2bool(std::string_view token, bool& result)
     return false;
 }
 
-
-
-inline bool isMathOperator(const std::string& op)
+inline bool isMathOperator(const std::string &op)
 {
     static const std::unordered_set<std::string> validOperators = {
         "+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>",
-        "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="
-    };
+        "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="};
 
     return validOperators.count(op) > 0;
 }
 
-
-
-inline bool isStringValidationRule (const std::string &strRule)
+inline bool isStringValidationRule(const std::string &strRule)
 {
-    static const std::unordered_set<std::string> validRules {"EQ", "NE", "eq", "ne"};
+    static const std::unordered_set<std::string> validRules{"EQ", "NE", "eq", "ne"};
     return validRules.count(strRule) > 0;
 }
 
-
-
-inline bool isNumericValidationRule (const std::string &strRule)
+inline bool isNumericValidationRule(const std::string &strRule)
 {
-    static const std::unordered_set<std::string> validRules {"<", "<=", "==", "!=", ">", ">="};
+    static const std::unordered_set<std::string> validRules{"<", "<=", "==", "!=", ">", ">="};
     return validRules.count(strRule) > 0;
 }
 
-
-
-inline bool isMathRule (const std::string &strRule)
+inline bool isMathRule(const std::string &strRule)
 {
-    static const std::unordered_set<std::string> validRules {"+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>"};
+    static const std::unordered_set<std::string> validRules{"+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>"};
     return validRules.count(strRule) > 0;
 }
 
-
-
-inline bool isValidVectorOfNumbers (const std::string& input)
+inline bool isValidVectorOfNumbers(const std::string &input)
 {
-    static const std::regex rx(R"(^\s*(0[xX][0-9A-Fa-f]+|\d+)(\s+(0[xX][0-9A-Fa-f]+|\d+))*\s*$)",std::regex::ECMAScript | std::regex::optimize);
+    static const std::regex rx(R"(^\s*(0[xX][0-9A-Fa-f]+|\d+)(\s+(0[xX][0-9A-Fa-f]+|\d+))*\s*$)", std::regex::ECMAScript | std::regex::optimize);
     return std::regex_match(input, rx);
 }
 
-
-
-inline bool isValidVectorOfStrings (const std::string& input)
+inline bool isValidVectorOfStrings(const std::string &input)
 {
-    static const std::regex rx(R"(^\s*(\w+)(\s+\w+)*\s*$)",std::regex::ECMAScript | std::regex::optimize);
+    static const std::regex rx(R"(^\s*(\w+)(\s+\w+)*\s*$)", std::regex::ECMAScript | std::regex::optimize);
     return std::regex_match(input, rx);
 }
 
-
-
-inline bool isValidVectorOfBools (const std::string& input)
+inline bool isValidVectorOfBools(const std::string &input)
 {
-    static const std::regex rx(R"(^(?:\s*(?:!?(?:TRUE|FALSE))\s*)+$)",std::regex::ECMAScript | std::regex::optimize);
+    static const std::regex rx(R"(^(?:\s*(?:!?(?:TRUE|FALSE))\s*)+$)", std::regex::ECMAScript | std::regex::optimize);
     return std::regex_match(input, rx);
 }
 
-
-
-inline bool isValidVersion(const std::string& input)
+inline bool isValidVersion(const std::string &input)
 {
     static const std::regex rgx(R"(^\d+(\.\d+){1,3}$)", std::regex::ECMAScript | std::regex::optimize);
     return std::regex_match(input, rgx);
 }
 
-
-
-inline bool validateVectorBooleans(const std::string& boolString, const std::string& rule, bool& outResult)
+inline bool validateVectorBooleans(const std::string &boolString, const std::string &rule, bool &outResult)
 {
-    enum class BoolRule { OR, AND };
+    enum class BoolRule { OR,
+                          AND };
 
     BoolRule evalRule;
 
-    if      (rule == "OR")  evalRule = BoolRule::OR;
-    else if (rule == "AND") evalRule = BoolRule::AND;
-    else {
+    if (rule == "OR") {
+        evalRule = BoolRule::OR;
+    } else if (rule == "AND") {
+        evalRule = BoolRule::AND;
+    } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid boolean rule:"); LOG_STRING(rule); LOG_STRING("use AND OR"));
         return false;
     }
@@ -138,7 +118,7 @@ inline bool validateVectorBooleans(const std::string& boolString, const std::str
     ustring::tokenize(boolString, vstrBools);
     std::vector<bool> values;
 
-    for (const auto& token : vstrBools) {
+    for (const auto &token : vstrBools) {
         bool val;
         if (false == string2bool(token, val)) {
             return false;
@@ -161,6 +141,5 @@ inline bool validateVectorBooleans(const std::string& boolString, const std::str
 }
 
 } // namespace eval
-
 
 #endif // U_MATH_OPS_EVALUATOR_HPP

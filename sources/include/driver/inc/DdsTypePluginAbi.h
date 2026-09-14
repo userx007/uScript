@@ -69,12 +69,13 @@ extern "C" {
 #define DDS_TYPE_PLUGIN_ABI_VERSION 1u
 
 /** One IDL type, addressed by the one DDS topic name it's published/subscribed on. */
-typedef struct DdsTypeEntry {
-    const char* topic_name;
-    const dds_topic_descriptor_t* descriptor; /* from idlc — passed straight to dds_create_topic() */
+typedef struct DdsTypeEntry
+{
+    const char *topic_name;
+    const dds_topic_descriptor_t *descriptor; /* from idlc — passed straight to dds_create_topic() */
 
-    void* (*alloc_sample)(void);
-    void  (*free_sample)(void* sample, dds_free_op_t op);
+    void *(*alloc_sample)(void);
+    void (*free_sample)(void *sample, dds_free_op_t op);
 
     /**
      * DDS_TYPED.CMD > PUBLISH <topic> <text...>'s <text...> (everything
@@ -84,7 +85,7 @@ typedef struct DdsTypeEntry {
      * PUBLISH (e.g. malformed text) — DdsTypedDriver logs it and does
      * not call dds_write().
      */
-    bool (*decode)(const char* text, void* out_sample);
+    bool (*decode)(const char *text, void *out_sample);
 
     /**
      * The inverse, used for DDS_TYPED.CMD < (receive) and DDS_TYPED.CMD
@@ -92,7 +93,7 @@ typedef struct DdsTypeEntry {
      * out_buf (capacity out_cap, NUL-terminate). Return false if it
      * doesn't fit or otherwise can't be rendered.
      */
-    bool (*encode)(const void* sample, char* out_buf, size_t out_cap);
+    bool (*encode)(const void *sample, char *out_buf, size_t out_cap);
 } DdsTypeEntry;
 
 /**
@@ -102,15 +103,16 @@ typedef struct DdsTypeEntry {
  * DDS_TYPE_PLUGIN_ABI_VERSION) before anything else in this struct is
  * touched — see dds_typed_driver.cpp's m_LoadPlugin().
  */
-typedef struct DdsTypePlugin {
+typedef struct DdsTypePlugin
+{
     uint32_t abi_version;
-    const char* customer_name;
+    const char *customer_name;
     size_t (*get_type_count)(void);
-    const DdsTypeEntry* (*get_type)(size_t index);
+    const DdsTypeEntry *(*get_type)(size_t index);
 } DdsTypePlugin;
 
 /** The one exported symbol every customer type plugin `.so` must provide. */
-const DdsTypePlugin* dds_type_plugin_get(void);
+const DdsTypePlugin *dds_type_plugin_get(void);
 
 #ifdef __cplusplus
 }

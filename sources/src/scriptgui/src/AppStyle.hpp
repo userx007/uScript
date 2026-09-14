@@ -8,7 +8,9 @@
 //  Returns a QStringLiteral to avoid a heap allocation at startup.
 // ─────────────────────────────────────────────────────────────────────────────
 
-inline QString appStyleSheet() { return QStringLiteral(R"(
+inline QString appStyleSheet()
+{
+    return QStringLiteral(R"(
 
 /* ── Global ─────────────────────────────────────────────────────────────── */
 
@@ -469,4 +471,5 @@ QPushButton#stopBtn:disabled {
     border-color: #2a2f3a;
 }
 
-)"); }
+)");
+}

@@ -9,6 +9,7 @@
  * and defaults to "/dev/ch34xpis0" (Linux) or "0" (Windows).
  */
 #include "ch347_plugin.hpp"
+
 #include "PluginExport.hpp"
 #include "private/ch347_setup.hpp"
 #include "uLogger.hpp"
@@ -22,24 +23,23 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED CH347Plugin *pluginEntry()
 {
-    EXPORTED CH347Plugin* pluginEntry()
-    {
-        return new CH347Plugin();
-    }
+    return new CH347Plugin();
+}
 
-    EXPORTED void pluginExit(CH347Plugin* p)
-    {
-        delete p;
-    }
+EXPORTED void pluginExit(CH347Plugin *p)
+{
+    delete p;
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   INI ACCESSOR (friend)                                     //
 /////////////////////////////////////////////////////////////////////////////////
 
-const CH347Plugin::IniValues* getAccessIniValues(const CH347Plugin& obj)
+const CH347Plugin::IniValues *getAccessIniValues(const CH347Plugin &obj)
 {
     return &obj.m_sIniValues;
 }
@@ -48,29 +48,43 @@ const CH347Plugin::IniValues* getAccessIniValues(const CH347Plugin& obj)
 //                   DRIVER ACCESSORS                                          //
 /////////////////////////////////////////////////////////////////////////////////
 
-CH347SPI*  CH347Plugin::m_spi()  const { return m_pSPI.get();  }
-CH347I2C*  CH347Plugin::m_i2c()  const { return m_pI2C.get();  }
-CH347GPIO* CH347Plugin::m_gpio() const { return m_pGPIO.get(); }
-CH347JTAG* CH347Plugin::m_jtag() const { return m_pJTAG.get(); }
+CH347SPI *CH347Plugin::m_spi() const
+{
+    return m_pSPI.get();
+}
 
+CH347I2C *CH347Plugin::m_i2c() const
+{
+    return m_pI2C.get();
+}
+
+CH347GPIO *CH347Plugin::m_gpio() const
+{
+    return m_pGPIO.get();
+}
+
+CH347JTAG *CH347Plugin::m_jtag() const
+{
+    return m_pJTAG.get();
+}
 
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN INIT / CLEANUP                                       //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::doInit(void* /*pvUserData*/)
+bool CH347Plugin::doInit(void * /*pvUserData*/)
 {
     // Propagate INI defaults into pending config structs
-    m_sI2cCfg.speed   = m_sIniValues.eI2cSpeed;
-    m_sI2cCfg.address = m_sIniValues.u8I2cAddress;
-    m_sJtagCfg.clockRate = m_sIniValues.u8JtagClockRate;
+    m_sI2cCfg.speed          = m_sIniValues.eI2cSpeed;
+    m_sI2cCfg.address        = m_sIniValues.u8I2cAddress;
+    m_sJtagCfg.clockRate     = m_sIniValues.u8JtagClockRate;
 
     // Default SPI: mode 0, MSB-first, CS1, 1 MHz
     m_sSpiCfg.cfg.iMode      = 0;
     m_sSpiCfg.cfg.iByteOrder = 1;
     m_sSpiCfg.cfg.iClock     = spiHzToClockIndex(m_sIniValues.u32SpiClockHz);
 
-    m_bIsInitialized = true;
+    m_bIsInitialized         = true;
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Initialized — device:"); LOG_STRING(m_sIniValues.strDevicePath));
     return true;
@@ -78,54 +92,63 @@ bool CH347Plugin::doInit(void* /*pvUserData*/)
 
 void CH347Plugin::doCleanup()
 {
-    if (m_pSPI)  { m_pSPI->close();  m_pSPI.reset();  }
-    if (m_pI2C)  { m_pI2C->close();  m_pI2C.reset();  }
-    if (m_pGPIO) { m_pGPIO->close(); m_pGPIO.reset(); }
-    if (m_pJTAG) { m_pJTAG->close(); m_pJTAG.reset(); }
+    if (m_pSPI) {
+        m_pSPI->close();
+        m_pSPI.reset();
+    }
+    if (m_pI2C) {
+        m_pI2C->close();
+        m_pI2C.reset();
+    }
+    if (m_pGPIO) {
+        m_pGPIO->close();
+        m_pGPIO.reset();
+    }
+    if (m_pJTAG) {
+        m_pJTAG->close();
+        m_pJTAG.reset();
+    }
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; override one or more ini parameters at runtime
-  *
-  * \note Usage example: <br>
-  *       CH347.CONFIG d=/dev/ch34xpis0 c=2000000 a=0x51
-  *
-  * \param[in] args space-separated key=value tokens (see inc/private/ch347_setup.hpp)
-  *
-  * \return true if processing succeeded, false otherwise
-*/
+ * \brief CONFIG command implementation; override one or more ini parameters at runtime
+ *
+ * \note Usage example: <br>
+ *       CH347.CONFIG d=/dev/ch34xpis0 c=2000000 a=0x51
+ *
+ * \param[in] args space-separated key=value tokens (see inc/private/ch347_setup.hpp)
+ *
+ * \return true if processing succeeded, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool CH347Plugin::m_CH347_CONFIG ( const std::string &args, std::stop_token st ) const
+bool CH347Plugin::m_CH347_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     return generic_ch347_set_params(this, args);
-
 }
-
 
 ///////////////////////////////////////////////////////////////////
 //                   MODULE MAP ACCESSORS                        //
 ///////////////////////////////////////////////////////////////////
 
-ModuleCommandsMap<CH347Plugin>* CH347Plugin::getModuleCmdsMap(const std::string& m) const
+ModuleCommandsMap<CH347Plugin> *CH347Plugin::getModuleCmdsMap(const std::string &m) const
 {
     auto it = m_mapCommandsMaps.find(m);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
-ModuleSpeedMap* CH347Plugin::getModuleSpeedsMap(const std::string& m) const
+ModuleSpeedMap *CH347Plugin::getModuleSpeedsMap(const std::string &m) const
 {
     auto it = m_mapSpeedsMaps.find(m);
     return (it != m_mapSpeedsMaps.end()) ? it->second : nullptr;
 }
 
-bool CH347Plugin::setModuleSpeed(const std::string& module, size_t hz) const
+bool CH347Plugin::setModuleSpeed(const std::string &module, size_t hz) const
 {
     if (module == "SPI") {
         m_sSpiCfg.cfg.iClock = spiHzToClockIndex(static_cast<uint32_t>(hz));
@@ -138,13 +161,21 @@ bool CH347Plugin::setModuleSpeed(const std::string& module, size_t hz) const
     if (module == "I2C") {
         I2cSpeed spd = I2cSpeed::Fast;
         // Map Hz to the nearest preset
-        if      (hz <= 20000 ) spd = I2cSpeed::Low;
-        else if (hz <= 50000 ) spd = I2cSpeed::Std50;
-        else if (hz <= 100000) spd = I2cSpeed::Standard;
-        else if (hz <= 200000) spd = I2cSpeed::Std200;
-        else if (hz <= 400000) spd = I2cSpeed::Fast;
-        else if (hz <= 750000) spd = I2cSpeed::High;
-        else                   spd = I2cSpeed::Fast1M;
+        if (hz <= 20000) {
+            spd = I2cSpeed::Low;
+        } else if (hz <= 50000) {
+            spd = I2cSpeed::Std50;
+        } else if (hz <= 100000) {
+            spd = I2cSpeed::Standard;
+        } else if (hz <= 200000) {
+            spd = I2cSpeed::Std200;
+        } else if (hz <= 400000) {
+            spd = I2cSpeed::Fast;
+        } else if (hz <= 750000) {
+            spd = I2cSpeed::High;
+        } else {
+            spd = I2cSpeed::Fast1M;
+        }
 
         m_sI2cCfg.speed = spd;
         if (m_pI2C && m_pI2C->is_open()) {
@@ -157,21 +188,18 @@ bool CH347Plugin::setModuleSpeed(const std::string& module, size_t hz) const
     return false;
 }
 
-
 ///////////////////////////////////////////////////////////////////
 //               TOP-LEVEL COMMAND HANDLERS                      //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_CH347_INFO(const std::string& args, std::stop_token st ) const
+bool CH347Plugin::m_CH347_INFO(const std::string &args, std::stop_token st) const
 {
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -180,7 +208,7 @@ bool CH347Plugin::m_CH347_INFO(const std::string& args, std::stop_token st ) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: WCH CH347 Hi-Speed USB adapter (SPI/I2C/GPIO/JTAG)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Device:"); LOG_STRING(m_sIniValues.strDevicePath);
-                         LOG_STRING("  (Linux default: /dev/ch34xpis0  Windows default: 0)"));
+              LOG_STRING("  (Linux default: /dev/ch34xpis0  Windows default: 0)"));
 
     // ── SPI ───────────────────────────────────────────────────────────────
     LOG_SEP();
@@ -396,26 +424,25 @@ bool CH347Plugin::m_CH347_INFO(const std::string& args, std::stop_token st ) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
-
     return true;
 }
 
-bool CH347Plugin::m_CH347_SPI(const std::string& args, std::stop_token st ) const
+bool CH347Plugin::m_CH347_SPI(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "SPI", args, st);
 }
 
-bool CH347Plugin::m_CH347_I2C(const std::string& args, std::stop_token st ) const
+bool CH347Plugin::m_CH347_I2C(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "I2C", args, st);
 }
 
-bool CH347Plugin::m_CH347_GPIO(const std::string& args, std::stop_token st ) const
+bool CH347Plugin::m_CH347_GPIO(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "GPIO", args, st);
 }
 
-bool CH347Plugin::m_CH347_JTAG(const std::string& args, std::stop_token st ) const
+bool CH347Plugin::m_CH347_JTAG(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "JTAG", args, st);
 }

@@ -82,12 +82,12 @@
  *   [dataLen] uint8_t data[dataLen]
  */
 
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <chrono>
 
 // ---------------------------------------------------------------------------
 // Family / direction tags
@@ -97,17 +97,17 @@
 // icon/colour choices in the GUI, not a full protocol descriptor. The actual
 // identifying information (port path, IP:port, bus+address, CAN id, ...)
 // lives entirely in CommDetails::label, rendered by the driver itself.
-enum class CommFamily : uint8_t
-{
-    SERIAL = 0,   // UART and UART-like point-to-point byte streams
+enum class CommFamily : uint8_t {
+    SERIAL = 0, // UART and UART-like point-to-point byte streams
     I2C    = 1,
     SPI    = 2,
     CAN    = 3,
-    NET    = 4,   // TCP/UDP/raw-Ethernet and SPI/MII-attached MAC chips alike
-    OTHER  = 5    // GPIO, JTAG, or anything that doesn't fit the above
+    NET    = 4, // TCP/UDP/raw-Ethernet and SPI/MII-attached MAC chips alike
+    OTHER  = 5  // GPIO, JTAG, or anything that doesn't fit the above
 };
 
-enum class CommDir : uint8_t { Rx = 0, Tx = 1 };
+enum class CommDir : uint8_t { Rx = 0,
+                               Tx = 1 };
 
 // ---------------------------------------------------------------------------
 // CommDetails — the "Details" column content.
@@ -116,13 +116,13 @@ enum class CommDir : uint8_t { Rx = 0, Tx = 1 };
 // wire size is stable across compilers/DSOs, matching the constraint the old
 // union had — just with one field instead of seven.
 // ---------------------------------------------------------------------------
-inline constexpr int k_labelSize = 64;   // includes the NULL terminator
+inline constexpr int k_labelSize = 64; // includes the NULL terminator
 
 struct CommDetails
 {
-    CommFamily family = CommFamily::OTHER;
-    char       label[k_labelSize] = {};   // e.g. "/dev/ttyUSB0", "192.168.1.5:502",
-                                           // "PCAN-USB ch0 id=0x123", "i2c-1 addr=0x50"
+    CommFamily family       = CommFamily::OTHER;
+    char label[k_labelSize] = {}; // e.g. "/dev/ttyUSB0", "192.168.1.5:502",
+                                  // "PCAN-USB ch0 id=0x123", "i2c-1 addr=0x50"
 };
 
 // Builds a CommDetails from a family + arbitrary string, truncating safely
@@ -132,13 +132,13 @@ struct CommDetails
 inline CommDetails commdump_details(CommFamily family, std::string_view label)
 {
     CommDetails d;
-    d.family = family;
+    d.family            = family;
     const size_t maxLen = sizeof(d.label) - 1;
     if (label.size() <= maxLen) {
         std::memcpy(d.label, label.data(), label.size());
     } else {
         std::memcpy(d.label, label.data(), maxLen - 1);
-        d.label[maxLen - 1] = '~';   // truncation marker
+        d.label[maxLen - 1] = '~'; // truncation marker
     }
     return d;
 }
@@ -162,12 +162,12 @@ inline int64_t commdump_now_us() noexcept
 // ---------------------------------------------------------------------------
 // commdump_pack — serialize one record into a flat byte buffer
 // ---------------------------------------------------------------------------
-inline std::vector<uint8_t> commdump_pack(int64_t              timestampUs,
-                                           const std::string   &pluginName,
-                                           const CommDetails   &details,
-                                           CommDir              dir,
-                                           const uint8_t       *data,
-                                           uint32_t             dataLen)
+inline std::vector<uint8_t> commdump_pack(int64_t timestampUs,
+                                          const std::string &pluginName,
+                                          const CommDetails &details,
+                                          CommDir dir,
+                                          const uint8_t *data,
+                                          uint32_t dataLen)
 {
     std::vector<uint8_t> buf;
     const uint8_t nameLen = static_cast<uint8_t>(
@@ -176,8 +176,9 @@ inline std::vector<uint8_t> commdump_pack(int64_t              timestampUs,
     buf.reserve(8 + 1 + nameLen + 1 + k_labelSize + 1 + 4 + dataLen);
 
     const uint64_t tsBits = static_cast<uint64_t>(timestampUs);
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < 8; ++i) {
         buf.push_back(static_cast<uint8_t>((tsBits >> (8 * i)) & 0xFF));
+    }
 
     buf.push_back(nameLen);
     buf.insert(buf.end(), pluginName.begin(), pluginName.begin() + nameLen);
@@ -189,11 +190,13 @@ inline std::vector<uint8_t> commdump_pack(int64_t              timestampUs,
 
     buf.push_back(static_cast<uint8_t>(dir));
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; ++i) {
         buf.push_back(static_cast<uint8_t>((dataLen >> (8 * i)) & 0xFF));
+    }
 
-    if (dataLen && data)
+    if (dataLen && data) {
         buf.insert(buf.end(), data, data + dataLen);
+    }
 
     return buf;
 }

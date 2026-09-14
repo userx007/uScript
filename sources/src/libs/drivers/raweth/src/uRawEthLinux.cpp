@@ -1,54 +1,52 @@
 #include "uLogger.hpp"
 #include "uRawEth.hpp"
 
-#include <arpa/inet.h>
-#include <errno.h>
-#include <net/ethernet.h>
-#include <net/if.h>
-#include <netpacket/packet.h>
-#include <poll.h>
-#include <stdint.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <algorithm>
+#include <arpa/inet.h>
 #include <chrono>
 #include <compare>
 #include <cstdio>
 #include <cstring>
+#include <errno.h>
 #include <mutex>
+#include <net/ethernet.h>
+#include <net/if.h>
+#include <netpacket/packet.h>
+#include <poll.h>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "RAWETH_DRV   |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "RAWETH_DRV   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // OPEN / CLOSE
 // ============================================================================
 
-RawEth::Status RawEth::open(const std::string& strIfaceName,
-                            const MacAddr& defaultDestMac,
+RawEth::Status RawEth::open(const std::string &strIfaceName,
+                            const MacAddr &defaultDestMac,
                             uint16_t u16EtherType,
                             bool bPromiscuous)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (strIfaceName.empty() || strIfaceName.size() >= IFNAMSIZ)
-    {
+    if (strIfaceName.empty() || strIfaceName.size() >= IFNAMSIZ) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Invalid parameter: empty or over-long interface name"));
         return Status::INVALID_PARAM;
@@ -59,9 +57,8 @@ RawEth::Status RawEth::open(const std::string& strIfaceName,
     // AF_PACKET/SOCK_RAW with the socket's protocol argument already narrowed
     // to our EtherType — the kernel filters everything else out for us
     // before it ever reaches recvfrom().
-    const int iSock = ::socket(AF_PACKET, SOCK_RAW, htons(u16Ethertype));
-    if (iSock < 0)
-    {
+    const int iSock             = ::socket(AF_PACKET, SOCK_RAW, htons(u16Ethertype));
+    if (iSock < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("socket(AF_PACKET) failed, errno:"); LOG_INT(err);
@@ -73,8 +70,7 @@ RawEth::Status RawEth::open(const std::string& strIfaceName,
     std::strncpy(sIfr.ifr_name, strIfaceName.c_str(), IFNAMSIZ - 1);
 
     // Resolve interface index.
-    if (::ioctl(iSock, SIOCGIFINDEX, &sIfr) < 0)
-    {
+    if (::ioctl(iSock, SIOCGIFINDEX, &sIfr) < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("SIOCGIFINDEX failed for "); LOG_STRING(strIfaceName.c_str());
@@ -87,8 +83,7 @@ RawEth::Status RawEth::open(const std::string& strIfaceName,
     // Resolve our own MAC address (used as the source MAC on every write).
     std::memset(&sIfr, 0, sizeof(sIfr));
     std::strncpy(sIfr.ifr_name, strIfaceName.c_str(), IFNAMSIZ - 1);
-    if (::ioctl(iSock, SIOCGIFHWADDR, &sIfr) < 0)
-    {
+    if (::ioctl(iSock, SIOCGIFHWADDR, &sIfr) < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("SIOCGIFHWADDR failed for "); LOG_STRING(strIfaceName.c_str());
@@ -102,12 +97,11 @@ RawEth::Status RawEth::open(const std::string& strIfaceName,
     // Bind the socket to this interface + EtherType so we never see traffic
     // from other interfaces sharing the same protocol family.
     struct sockaddr_ll sAddr = {};
-    sAddr.sll_family   = AF_PACKET;
-    sAddr.sll_protocol = htons(u16Ethertype);
-    sAddr.sll_ifindex  = iIfIndex;
+    sAddr.sll_family         = AF_PACKET;
+    sAddr.sll_protocol       = htons(u16Ethertype);
+    sAddr.sll_ifindex        = iIfIndex;
 
-    if (::bind(iSock, reinterpret_cast<struct sockaddr*>(&sAddr), sizeof(sAddr)) < 0)
-    {
+    if (::bind(iSock, reinterpret_cast<struct sockaddr *>(&sAddr), sizeof(sAddr)) < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("bind() failed for "); LOG_STRING(strIfaceName.c_str());
@@ -117,21 +111,17 @@ RawEth::Status RawEth::open(const std::string& strIfaceName,
     }
 
     bool bPromiscSetByUs = false;
-    if (bPromiscuous)
-    {
+    if (bPromiscuous) {
         struct packet_mreq sMreq = {};
-        sMreq.mr_ifindex = iIfIndex;
-        sMreq.mr_type    = PACKET_MR_PROMISC;
+        sMreq.mr_ifindex         = iIfIndex;
+        sMreq.mr_type            = PACKET_MR_PROMISC;
 
-        if (::setsockopt(iSock, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &sMreq, sizeof(sMreq)) < 0)
-        {
+        if (::setsockopt(iSock, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &sMreq, sizeof(sMreq)) < 0) {
             // Not fatal — proceed without promiscuous mode.
             const int err = errno;
             LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("Failed to enable promiscuous mode, errno:"); LOG_INT(err));
-        }
-        else
-        {
+        } else {
             bPromiscSetByUs = true;
         }
     }
@@ -156,18 +146,15 @@ RawEth::Status RawEth::open(const std::string& strIfaceName,
     return Status::SUCCESS;
 }
 
-
 RawEth::Status RawEth::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (m_iHandle >= 0)
-    {
-        if (m_bPromiscSetByUs)
-        {
+    if (m_iHandle >= 0) {
+        if (m_bPromiscSetByUs) {
             struct packet_mreq sMreq = {};
-            sMreq.mr_ifindex = m_iIfIndex;
-            sMreq.mr_type    = PACKET_MR_PROMISC;
+            sMreq.mr_ifindex         = m_iIfIndex;
+            sMreq.mr_type            = PACKET_MR_PROMISC;
             ::setsockopt(m_iHandle, SOL_PACKET, PACKET_DROP_MEMBERSHIP, &sMreq, sizeof(sMreq));
             m_bPromiscSetByUs = false;
         }
@@ -183,13 +170,11 @@ RawEth::Status RawEth::close()
     return Status::SUCCESS;
 }
 
-
 RawEth::MacAddr RawEth::local_mac() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_ownMac;
 }
-
 
 // ============================================================================
 // INTERNAL READ PRIMITIVE
@@ -200,11 +185,10 @@ RawEth::MacAddr RawEth::local_mac() const
 
 RawEth::Status RawEth::timeout_read(uint32_t u32ReadTimeout,
                                     std::span<uint8_t> buffer,
-                                    size_t& szBytesRead,
+                                    size_t &szBytesRead,
                                     std::stop_token stop_tok) const
 {
-    if (buffer.empty())
-    {
+    if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_read: invalid parameter"));
         return Status::INVALID_PARAM;
     }
@@ -212,51 +196,44 @@ RawEth::Status RawEth::timeout_read(uint32_t u32ReadTimeout,
     szBytesRead = 0;
 
     struct pollfd sPollFd;
-    sPollFd.fd      = m_iHandle;
-    sPollFd.events  = POLLIN;
-    sPollFd.revents = 0;
+    sPollFd.fd                 = m_iHandle;
+    sPollFd.events             = POLLIN;
+    sPollFd.revents            = 0;
 
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite = (u32ReadTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+    const bool bInfinite       = (u32ReadTimeout == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    int iPollResult = 0;
-    while (true)
-    {
-        if (stop_tok.stop_requested())
-        {
+    int iPollResult            = 0;
+    while (true) {
+        if (stop_tok.stop_requested()) {
             return Status::READ_TIMEOUT;
         }
 
         int iSliceMs = kPollSliceMs;
-        if (!bInfinite)
-        {
+        if (!bInfinite) {
             const auto remaining = tDeadline - std::chrono::steady_clock::now();
-            if (remaining <= std::chrono::milliseconds(0))
-            {
+            if (remaining <= std::chrono::milliseconds(0)) {
                 return Status::READ_TIMEOUT;
             }
             iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                          std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         iPollResult = ::poll(&sPollFd, 1, iSliceMs);
-        if (iPollResult < 0)
-        {
+        if (iPollResult < 0) {
             const int err = errno;
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
             return Status::READ_ERROR;
         }
-        if (iPollResult > 0)
-        {
+        if (iPollResult > 0) {
             break;
         }
     }
 
-    if (sPollFd.revents & (POLLERR | POLLHUP))
-    {
+    if (sPollFd.revents & (POLLERR | POLLHUP)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("timeout_read: socket error or interface went down"));
         return Status::READ_ERROR;
@@ -266,14 +243,12 @@ RawEth::Status RawEth::timeout_read(uint32_t u32ReadTimeout,
     // for the largest possible non-jumbo frame, then split header/payload.
     uint8_t frame[RAWETH_MAX_FRAME_LEN];
     const ssize_t nbytes = ::recvfrom(m_iHandle, frame, sizeof(frame), 0, nullptr, nullptr);
-    if (nbytes < 0)
-    {
+    if (nbytes < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("recvfrom() failed, errno:"); LOG_INT(err));
         return Status::READ_ERROR;
     }
-    if (static_cast<size_t>(nbytes) < RAWETH_ETH_HEADER_LEN)
-    {
+    if (static_cast<size_t>(nbytes) < RAWETH_ETH_HEADER_LEN) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("timeout_read: runt frame smaller than the L2 header"));
         return Status::READ_ERROR;
@@ -282,8 +257,7 @@ RawEth::Status RawEth::timeout_read(uint32_t u32ReadTimeout,
     const size_t szPayloadLen = static_cast<size_t>(nbytes) - RAWETH_ETH_HEADER_LEN;
     const size_t szCopyLen    = std::min(szPayloadLen, buffer.size());
 
-    if (szCopyLen < szPayloadLen)
-    {
+    if (szCopyLen < szPayloadLen) {
         // Same trade-off the CAN driver makes: excess payload bytes beyond
         // the caller's buffer are discarded, not carried over to the next call.
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
@@ -299,7 +273,6 @@ RawEth::Status RawEth::timeout_read(uint32_t u32ReadTimeout,
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // INTERNAL WRITE PRIMITIVE
 // Builds one frame (dest MAC + own MAC + EtherType + payload) and sends it as
@@ -312,13 +285,12 @@ RawEth::Status RawEth::timeout_read(uint32_t u32ReadTimeout,
 
 RawEth::Status RawEth::timeout_write(uint32_t u32WriteTimeout,
                                      std::span<const uint8_t> buffer,
-                                     const MacAddr& destMac,
+                                     const MacAddr &destMac,
                                      uint16_t u16EtherType,
-                                     size_t& szBytesWritten,
+                                     size_t &szBytesWritten,
                                      std::stop_token stop_tok) const
 {
-    if (buffer.empty() || buffer.size() > RAWETH_MAX_PAYLOAD)
-    {
+    if (buffer.empty() || buffer.size() > RAWETH_MAX_PAYLOAD) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("timeout_write: invalid parameter (empty or over MTU)"));
         return Status::INVALID_PARAM;
@@ -332,75 +304,65 @@ RawEth::Status RawEth::timeout_write(uint32_t u32WriteTimeout,
     const uint16_t u16NetEtherType = htons(u16EtherType);
     std::memcpy(frame + (2 * RAWETH_MAC_ADDR_LEN), &u16NetEtherType, sizeof(u16NetEtherType));
     std::memcpy(frame + RAWETH_ETH_HEADER_LEN, buffer.data(), buffer.size());
-    const size_t szFrameLen = RAWETH_ETH_HEADER_LEN + buffer.size();
+    const size_t szFrameLen  = RAWETH_ETH_HEADER_LEN + buffer.size();
 
     struct sockaddr_ll sAddr = {};
-    sAddr.sll_family   = AF_PACKET;
-    sAddr.sll_ifindex  = m_iIfIndex;
-    sAddr.sll_halen    = RAWETH_MAC_ADDR_LEN;
-    sAddr.sll_protocol = u16NetEtherType;
+    sAddr.sll_family         = AF_PACKET;
+    sAddr.sll_ifindex        = m_iIfIndex;
+    sAddr.sll_halen          = RAWETH_MAC_ADDR_LEN;
+    sAddr.sll_protocol       = u16NetEtherType;
     std::memcpy(sAddr.sll_addr, destMac.data(), RAWETH_MAC_ADDR_LEN);
 
     // 0 == infinite timeout: never time out the overall write. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite = (u32WriteTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() +
-                           std::chrono::milliseconds(u32WriteTimeout);
+    const bool bInfinite       = (u32WriteTimeout == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() +
+                                 std::chrono::milliseconds(u32WriteTimeout);
 
-    while (true)
-    {
-        if (stop_tok.stop_requested())
-        {
+    while (true) {
+        if (stop_tok.stop_requested()) {
             return Status::WRITE_TIMEOUT;
         }
 
         const auto tNow = std::chrono::steady_clock::now();
-        if (!bInfinite && tNow >= tDeadline)
-        {
+        if (!bInfinite && tNow >= tDeadline) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("timeout_write: overall timeout elapsed"));
             return Status::WRITE_TIMEOUT;
         }
 
         int iPollTimeout = -1;
-        if (!bInfinite)
-        {
+        if (!bInfinite) {
             const auto remainingMs =
                 std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow).count();
             iPollTimeout = static_cast<int>(remainingMs);
         }
 
         struct pollfd sPollFd;
-        sPollFd.fd      = m_iHandle;
-        sPollFd.events  = POLLOUT;
-        sPollFd.revents = 0;
+        sPollFd.fd            = m_iHandle;
+        sPollFd.events        = POLLOUT;
+        sPollFd.revents       = 0;
 
         const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
-        if (iPollResult < 0)
-        {
+        if (iPollResult < 0) {
             const int err = errno;
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
             return Status::WRITE_ERROR;
-        }
-        else if (iPollResult == 0)
-        {
+        } else if (iPollResult == 0) {
             return Status::WRITE_TIMEOUT;
         }
 
-        if (sPollFd.revents & (POLLERR | POLLHUP))
-        {
+        if (sPollFd.revents & (POLLERR | POLLHUP)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("timeout_write: socket error or interface went down"));
             return Status::WRITE_ERROR;
         }
 
         const ssize_t nbytes = ::sendto(m_iHandle, frame, szFrameLen, 0,
-                                        reinterpret_cast<struct sockaddr*>(&sAddr), sizeof(sAddr));
-        if (nbytes < 0)
-        {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
+                                        reinterpret_cast<struct sockaddr *>(&sAddr), sizeof(sAddr));
+        if (nbytes < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 continue; // TX queue transiently full — re-poll for POLLOUT.
             }
             const int err = errno;
@@ -410,8 +372,7 @@ RawEth::Status RawEth::timeout_write(uint32_t u32WriteTimeout,
 
         // A raw Ethernet sendto() is all-or-nothing; a short count here
         // would indicate something has gone wrong at the driver/NIC level.
-        if (static_cast<size_t>(nbytes) != szFrameLen)
-        {
+        if (static_cast<size_t>(nbytes) != szFrameLen) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("timeout_write: short frame send, expected/actual:");
                       LOG_UINT32(static_cast<uint32_t>(szFrameLen));

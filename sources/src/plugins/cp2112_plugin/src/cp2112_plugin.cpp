@@ -6,6 +6,7 @@
  * Neither module requires open before INFO/setParams — only before data ops.
  */
 #include "cp2112_plugin.hpp"
+
 #include "PluginExport.hpp"
 #include "private/cp2112_setup.hpp"
 #include "uLogger.hpp"
@@ -19,34 +20,32 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED CP2112Plugin *pluginEntry()
 {
-    EXPORTED CP2112Plugin* pluginEntry()
-    {
-        return new CP2112Plugin();
-    }
+    return new CP2112Plugin();
+}
 
-    EXPORTED void pluginExit(CP2112Plugin* ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(CP2112Plugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   INIT / CLEANUP                                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::doInit(void* /*pvUserData*/)
+bool CP2112Plugin::doInit(void * /*pvUserData*/)
 {
     // Seed pending configs from INI values so that an open without
     // explicit parameters uses whatever was in the config file.
     m_sI2cCfg.clockHz = m_sIniValues.u32I2cClockHz;
     m_sI2cCfg.address = m_sIniValues.u8I2cAddress;
 
-    m_bIsInitialized = true;
+    m_bIsInitialized  = true;
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("Initialized — CP2112 (VID 0x10C4 / PID 0xEA90)");
@@ -56,27 +55,30 @@ bool CP2112Plugin::doInit(void* /*pvUserData*/)
 
 void CP2112Plugin::doCleanup()
 {
-    if (m_pI2C)  { m_pI2C->close();  m_pI2C.reset();  }
-    if (m_pGPIO) { m_pGPIO->close(); m_pGPIO.reset(); }
+    if (m_pI2C) {
+        m_pI2C->close();
+        m_pI2C.reset();
+    }
+    if (m_pGPIO) {
+        m_pGPIO->close();
+        m_pGPIO.reset();
+    }
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
 }
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_CP2112_INFO(const std::string& args, std::stop_token st ) const
+bool CP2112Plugin::m_CP2112_INFO(const std::string &args, std::stop_token st) const
 {
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -201,54 +203,48 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string& args, std::stop_token st ) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
-
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; override one or more ini parameters at runtime
-  *
-  * \note Usage example: <br>
-  *       CP2112.CONFIG c=400000 a=0x51
-  *
-  * \param[in] args space-separated key=value tokens (see inc/private/cp2112_setup.hpp)
-  *
-  * \return true if processing succeeded, false otherwise
-*/
+ * \brief CONFIG command implementation; override one or more ini parameters at runtime
+ *
+ * \note Usage example: <br>
+ *       CP2112.CONFIG c=400000 a=0x51
+ *
+ * \param[in] args space-separated key=value tokens (see inc/private/cp2112_setup.hpp)
+ *
+ * \return true if processing succeeded, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool CP2112Plugin::m_CP2112_CONFIG ( const std::string &args, std::stop_token st ) const
+bool CP2112Plugin::m_CP2112_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     return generic_cp2112_set_params(this, args);
-
 }
 
-bool CP2112Plugin::m_CP2112_I2C(const std::string& args, std::stop_token st ) const
+bool CP2112Plugin::m_CP2112_I2C(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<CP2112Plugin>(this, "I2C", args);
 }
 
-bool CP2112Plugin::m_CP2112_GPIO(const std::string& args, std::stop_token st ) const
+bool CP2112Plugin::m_CP2112_GPIO(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<CP2112Plugin>(this, "GPIO", args);
 }
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   PLUGIN PRIVATE INTERFACES                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-
 //-------------------------------------------------------------------------------
 //                   INI VALUES ACCESSORS                                      //
 //-------------------------------------------------------------------------------
 
-const CP2112Plugin::IniValues* getAccessIniValues(const CP2112Plugin& obj)
+const CP2112Plugin::IniValues *getAccessIniValues(const CP2112Plugin &obj)
 {
     return &obj.m_sIniValues;
 }
@@ -257,7 +253,7 @@ const CP2112Plugin::IniValues* getAccessIniValues(const CP2112Plugin& obj)
 //              DRIVER INSTANCE ACCESSORS                                      //
 //-------------------------------------------------------------------------------
 
-CP2112* CP2112Plugin::m_i2c() const
+CP2112 *CP2112Plugin::m_i2c() const
 {
     if (m_bIsEnabled) {
         if (!m_pI2C || !m_pI2C->is_open()) {
@@ -269,34 +265,36 @@ CP2112* CP2112Plugin::m_i2c() const
     return nullptr;
 }
 
-CP2112Gpio* CP2112Plugin::m_gpio() const
+CP2112Gpio *CP2112Plugin::m_gpio() const
 {
-    if (m_bIsEnabled) {    
+    if (m_bIsEnabled) {
         if (!m_pGPIO || !m_pGPIO->is_open()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("GPIO not open — call CP2112.GPIO open [device=N] [dir=0xNN] ..."));
             return nullptr;
         }
         return m_pGPIO.get();
     }
-    return nullptr;    
+    return nullptr;
 }
 
 //-------------------------------------------------------------------------------
 //              MAP ACCESSORS                                                  //
 //-------------------------------------------------------------------------------
 
-ModuleCommandsMap<CP2112Plugin>*
-CP2112Plugin::getModuleCmdsMap(const std::string& m) const
+ModuleCommandsMap<CP2112Plugin> *
+CP2112Plugin::getModuleCmdsMap(const std::string &m) const
 {
     auto it = m_mapCommandsMaps.find(m);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
-ModuleSpeedMap*
-CP2112Plugin::getModuleSpeedsMap(const std::string& m) const
+ModuleSpeedMap *
+CP2112Plugin::getModuleSpeedsMap(const std::string &m) const
 {
     auto it = m_mapSpeedsMaps.find(m);
-    if (it == m_mapSpeedsMaps.end()) return nullptr;
+    if (it == m_mapSpeedsMaps.end()) {
+        return nullptr;
+    }
     return it->second;
 }
 
@@ -304,7 +302,7 @@ CP2112Plugin::getModuleSpeedsMap(const std::string& m) const
 //              setModuleSpeed                                                 //
 //-------------------------------------------------------------------------------
 
-bool CP2112Plugin::setModuleSpeed(const std::string& module, size_t hz) const
+bool CP2112Plugin::setModuleSpeed(const std::string &module, size_t hz) const
 {
     if (module == "I2C") {
         m_sI2cCfg.clockHz = static_cast<uint32_t>(hz);

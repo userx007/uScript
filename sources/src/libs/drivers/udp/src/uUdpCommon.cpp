@@ -2,11 +2,11 @@
 #include "uLogger.hpp"
 #include "uUdp.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <array>
 #include <mutex>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string_view>
 #include <vector>
@@ -16,15 +16,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "UDP_DRV     |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "UDP_DRV     |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 bool UDP::is_open() const
 {
@@ -32,21 +31,19 @@ bool UDP::is_open() const
     return m_iHandle >= 0;
 }
 
-
 // ============================================================================
 // PUBLIC UNIFIED INTERFACE IMPLEMENTATION
 // ============================================================================
 
 UDP::ReadResult UDP::tout_read(uint32_t u32ReadTimeout,
-                           std::span<uint8_t> buffer,
-                           const ReadOptions& options,
-                           std::string_view xtra_params,
-                           std::stop_token stop_tok) const
+                               std::span<uint8_t> buffer,
+                               const ReadOptions &options,
+                               std::string_view xtra_params,
+                               std::stop_token stop_tok) const
 {
     ReadResult result;
 
-    if (!xtra_params.empty())
-    {
+    if (!xtra_params.empty()) {
         // The socket is connect()ed to a single default peer, so the kernel
         // already scopes incoming datagrams to it — there is no per-call
         // source filter for xtra_params to install here (unlike the CAN
@@ -60,61 +57,55 @@ UDP::ReadResult UDP::tout_read(uint32_t u32ReadTimeout,
     // below, which block indefinitely rather than substituting a default.
     const uint32_t u32Timeout = u32ReadTimeout;
 
-    switch (options.mode)
-    {
-        case ReadMode::Exact:
-        {
-            size_t bytes_read = 0;
-            result.status           = timeout_read(u32Timeout, buffer, bytes_read, stop_tok);
-            result.bytes_read       = bytes_read;
-            result.found_terminator = false;
-            break;
-        }
+    switch (options.mode) {
+    case ReadMode::Exact: {
+        size_t bytes_read       = 0;
+        result.status           = timeout_read(u32Timeout, buffer, bytes_read, stop_tok);
+        result.bytes_read       = bytes_read;
+        result.found_terminator = false;
+        break;
+    }
 
-        case ReadMode::UntilDelimiter:
-        {
-            size_t bytes_read = 0;
-            result.status           = timeout_read_until(u32Timeout, buffer,
-                                                         options.delimiter, bytes_read, stop_tok);
-            result.bytes_read       = bytes_read;
-            result.found_terminator = (result.status == Status::SUCCESS);
-            break;
-        }
+    case ReadMode::UntilDelimiter: {
+        size_t bytes_read       = 0;
+        result.status           = timeout_read_until(u32Timeout, buffer,
+                                                     options.delimiter, bytes_read, stop_tok);
+        result.bytes_read       = bytes_read;
+        result.found_terminator = (result.status == Status::SUCCESS);
+        break;
+    }
 
-        case ReadMode::UntilToken:
-        {
-            result.status           = timeout_wait_for_token(u32Timeout,
-                                                             options.token,
-                                                             options.use_buffer,
-                                                             stop_tok);
-            result.bytes_read       = 0; // Token search does not fill the caller's buffer
-            result.found_terminator = (result.status == Status::SUCCESS);
-            break;
-        }
+    case ReadMode::UntilToken: {
+        result.status           = timeout_wait_for_token(u32Timeout,
+                                                         options.token,
+                                                         options.use_buffer,
+                                                         stop_tok);
+        result.bytes_read       = 0; // Token search does not fill the caller's buffer
+        result.found_terminator = (result.status == Status::SUCCESS);
+        break;
+    }
 
-        default:
-            result.status           = Status::INVALID_PARAM;
-            result.bytes_read       = 0;
-            result.found_terminator = false;
-            break;
+    default:
+        result.status           = Status::INVALID_PARAM;
+        result.bytes_read       = 0;
+        result.found_terminator = false;
+        break;
     }
 
     return result;
 }
 
-
 UDP::WriteResult UDP::tout_write(uint32_t u32WriteTimeout,
-                             std::span<const uint8_t> buffer,
-                             std::string_view xtra_params,
-                             std::stop_token stop_tok) const
+                                 std::span<const uint8_t> buffer,
+                                 std::string_view xtra_params,
+                                 std::stop_token stop_tok) const
 {
     WriteResult result;
 
     // 0 == infinite timeout: timeout_write() blocks until the datagram is sent.
     const uint32_t u32Timeout = u32WriteTimeout;
 
-    if (xtra_params.empty())
-    {
+    if (xtra_params.empty()) {
         // Send to the default peer recorded by open()'s connect() call.
         size_t bytes_written = 0;
         result.status        = timeout_write(u32Timeout, buffer, bytes_written,
@@ -126,8 +117,7 @@ UDP::WriteResult UDP::tout_write(uint32_t u32WriteTimeout,
     // Per-call destination override — parse "host:port" (numeric only) and
     // sendto() it for this single datagram.
     std::vector<uint8_t> vAddrStorage;
-    if (!resolve_numeric_host_port(xtra_params, vAddrStorage))
-    {
+    if (!resolve_numeric_host_port(xtra_params, vAddrStorage)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("tout_write: xtra_params is not a valid numeric host:port"));
         result.status        = Status::INVALID_PARAM;
@@ -143,19 +133,17 @@ UDP::WriteResult UDP::tout_write(uint32_t u32WriteTimeout,
     return result;
 }
 
-
 // ============================================================================
 // PRIVATE LEGACY IMPLEMENTATION (INTERNAL USE ONLY)
 // ============================================================================
 
 UDP::Status UDP::timeout_wait_for_token(uint32_t u32ReadTimeout,
-                                    std::span<const uint8_t> token,
-                                    bool useBuffer,
-                                    std::stop_token stop_tok) const
+                                        std::span<const uint8_t> token,
+                                        bool useBuffer,
+                                        std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
-    if (token.empty() || szTokenLength == 0 || szTokenLength >= UDP_MAX_DGRAM_LEN)
-    {
+    if (token.empty() || szTokenLength == 0 || szTokenLength >= UDP_MAX_DGRAM_LEN) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid token or length"));
         return Status::INVALID_PARAM;
     }
@@ -168,55 +156,49 @@ UDP::Status UDP::timeout_wait_for_token(uint32_t u32ReadTimeout,
     return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, useBuffer, stop_tok);
 }
 
-
 void UDP::build_kmp_table(std::span<const uint8_t> pattern,
-                        size_t szLength,
-                        std::vector<int>& viLps) const
+                          size_t szLength,
+                          std::vector<int> &viLps) const
 {
     ukmp::build_kmp_table(pattern, szLength, viLps);
 }
 
-
 UDP::Status UDP::kmp_stream_match(std::span<const uint8_t> token,
-                              const std::vector<int>& viLps,
-                              uint32_t u32Timeout,
-                              bool bReturnOnTimeout,
-                              bool useBuffer,
-                              std::stop_token stop_tok) const
+                                  const std::vector<int> &viLps,
+                                  uint32_t u32Timeout,
+                                  bool bReturnOnTimeout,
+                                  bool useBuffer,
+                                  std::stop_token stop_tok) const
 {
     // Scratch buffer sized to one datagram at a time (the theoretical max,
     // so no legal datagram is ever truncated mid-search).
     return ukmp::kmp_stream_match(
-        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
+        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t &bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
         token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
         /*szChunkBufferSize=*/UDP_MAX_DGRAM_LEN, /*szRingBufferSize=*/UDP_MAX_DGRAM_LEN);
 }
 
-
 UDP::Status UDP::timeout_read_until(uint32_t u32ReadTimeout,
-                                std::span<uint8_t> buffer,
-                                uint8_t cDelimiter,
-                                size_t& szBytesRead,
-                                std::stop_token stop_tok) const
+                                    std::span<uint8_t> buffer,
+                                    uint8_t cDelimiter,
+                                    size_t &szBytesRead,
+                                    std::stop_token stop_tok) const
 {
-    if (buffer.size() < 2)
-    {
+    if (buffer.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Buffer too small for delimiter + null terminator"));
         return Status::INVALID_PARAM;
     }
 
-    szBytesRead = 0;
+    szBytesRead         = 0;
     UDP::Status eResult = Status::RETVAL_NOT_SET;
 
     // Scratch buffer for one datagram at a time.
     std::vector<uint8_t> datagram(UDP_MAX_DGRAM_LEN);
 
-    while (eResult == Status::RETVAL_NOT_SET)
-    {
+    while (eResult == Status::RETVAL_NOT_SET) {
         const size_t bytesRemaining = buffer.size() - szBytesRead - 1; // reserve for '\0'
-        if (bytesRemaining == 0)
-        {
+        if (bytesRemaining == 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer full before delimiter found"));
             return Status::BUFFER_OVERFLOW;
         }
@@ -224,32 +206,25 @@ UDP::Status UDP::timeout_read_until(uint32_t u32ReadTimeout,
         size_t datagramBytes = 0;
         const UDP::Status readResult =
             timeout_read(u32ReadTimeout,
-                        std::span<uint8_t>(datagram.data(), datagram.size()),
-                        datagramBytes, stop_tok);
+                         std::span<uint8_t>(datagram.data(), datagram.size()),
+                         datagramBytes, stop_tok);
 
-        if (readResult == Status::SUCCESS && datagramBytes > 0)
-        {
+        if (readResult == Status::SUCCESS && datagramBytes > 0) {
             // NOTE: as with the CAN driver, any bytes received after the
             // delimiter within this same datagram are discarded when we
             // return early below.
-            for (size_t i = 0; i < datagramBytes && szBytesRead < buffer.size() - 1; ++i)
-            {
+            for (size_t i = 0; i < datagramBytes && szBytesRead < buffer.size() - 1; ++i) {
                 const uint8_t ch = datagram[i];
 
-                if (ch == cDelimiter)
-                {
+                if (ch == cDelimiter) {
                     buffer[szBytesRead] = '\0';
                     return Status::SUCCESS;
                 }
                 buffer[szBytesRead++] = ch;
             }
-        }
-        else if (readResult == Status::READ_TIMEOUT)
-        {
+        } else if (readResult == Status::READ_TIMEOUT) {
             eResult = (u32ReadTimeout > 0) ? Status::READ_TIMEOUT : Status::PORT_ACCESS;
-        }
-        else
-        {
+        } else {
             eResult = Status::PORT_ACCESS;
         }
     }

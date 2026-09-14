@@ -1,4 +1,5 @@
 #include "uPcan.hpp"
+
 #include "TpFactory.hpp"
 #include "uGuiNotify.hpp"
 #include "uLogger.hpp"
@@ -11,35 +12,35 @@
 #include <system_error>
 
 #if defined(_WIN32)
-#  include <windows.h>   // WaitForSingleObject, WAIT_OBJECT_0, etc.
+#include <windows.h> // WaitForSingleObject, WAIT_OBJECT_0, etc.
 #else
-#  include <poll.h>      // poll(), POLLIN
-#  include <sys/eventfd.h>
+#include <poll.h> // poll(), POLLIN
+#include <sys/eventfd.h>
 #endif
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-#  undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-#  undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "PCAN_DRV    |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "PCAN_DRV    |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // STATIC HELPERS
 // ============================================================================
 
-bool PCAN::parseUint32(std::string_view sv, uint32_t& out)
+bool PCAN::parseUint32(std::string_view sv, uint32_t &out)
 {
-    if (sv.empty()) return false;
+    if (sv.empty()) {
+        return false;
+    }
 
     int base = 10;
     if (sv.size() > 2 && sv[0] == '0' && (sv[1] == 'x' || sv[1] == 'X')) {
@@ -51,10 +52,11 @@ bool PCAN::parseUint32(std::string_view sv, uint32_t& out)
     return (ec == std::errc{} && ptr == sv.data() + sv.size());
 }
 
-
 uint32_t PCAN::resolveTxId(std::string_view xtra_params) const
 {
-    if (xtra_params.empty()) return m_u32DefaultTxId;
+    if (xtra_params.empty()) {
+        return m_u32DefaultTxId;
+    }
 
     uint32_t id = 0;
     if (!parseUint32(xtra_params, id)) {
@@ -66,10 +68,11 @@ uint32_t PCAN::resolveTxId(std::string_view xtra_params) const
     return id;
 }
 
-
 uint32_t PCAN::resolveRxId(std::string_view xtra_params) const
 {
-    if (xtra_params.empty()) return m_u32DefaultRxFilterId;
+    if (xtra_params.empty()) {
+        return m_u32DefaultRxFilterId;
+    }
 
     uint32_t id = 0;
     if (!parseUint32(xtra_params, id)) {
@@ -80,7 +83,6 @@ uint32_t PCAN::resolveRxId(std::string_view xtra_params) const
     }
     return id;
 }
-
 
 uint32_t PCAN::resolveTpRxId(std::string_view xtra_params) const
 {
@@ -96,7 +98,6 @@ uint32_t PCAN::resolveTpRxId(std::string_view xtra_params) const
     return m_bTpRxIdSet ? m_u32TpRxId : m_u32DefaultTxId;
 }
 
-
 void PCAN::dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
 {
     if (!gui_mode_active()) {
@@ -107,71 +108,89 @@ void PCAN::dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<cons
                   m_strIdentityLabel.empty() ? "PCAN" : m_strIdentityLabel.c_str(),
                   u32Id, bExtended ? " (ext)" : "");
     gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::CAN, label),
-                          dir, data.data(), static_cast<uint32_t>(data.size()));
+                         dir, data.data(), static_cast<uint32_t>(data.size()));
 }
 
-
-bool PCAN::frameMatchesFilter(const TPCANMsg& msg, uint32_t u32RxFilterId) const
+bool PCAN::frameMatchesFilter(const TPCANMsg &msg, uint32_t u32RxFilterId) const
 {
     if (u32RxFilterId == 0) {
-        return true;   // accept-all
+        return true; // accept-all
     }
 
     // Normalise the SocketCAN canid_t convention: bit 31 = CAN_EFF_FLAG,
     // rest is either an 11-bit or 29-bit numeric id. PCANBasic's msg.ID
     // never carries that flag bit — extended-ness lives in MSGTYPE — so
     // both the flag and the numeric id must be handled separately here.
-    const bool     bWantExtended = (u32RxFilterId & CAN_EFF_FLAG) != 0U ||
-                                    ((u32RxFilterId & CAN_EFF_MASK) > CAN_SFF_MASK);
-    const uint32_t u32WantId     = u32RxFilterId & (bWantExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
-    const bool     bFrameExtended = (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U;
+    const bool bWantExtended  = (u32RxFilterId & CAN_EFF_FLAG) != 0U ||
+                                ((u32RxFilterId & CAN_EFF_MASK) > CAN_SFF_MASK);
+    const uint32_t u32WantId  = u32RxFilterId & (bWantExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
+    const bool bFrameExtended = (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U;
 
     return (bFrameExtended == bWantExtended) && (msg.ID == u32WantId);
 }
 
-
 ICommDriver::Status PCAN::mapPcanError(TPCANStatus sts)
 {
-    if (sts == PCAN_ERROR_OK)          return Status::SUCCESS;
-    if (sts == PCAN_ERROR_QRCVEMPTY)   return Status::READ_TIMEOUT;  // RX queue empty
-    if (sts == PCAN_ERROR_INITIALIZE)  return Status::PORT_ACCESS;
-    if (sts == PCAN_ERROR_ILLOPERATION) return Status::INVALID_PARAM;
+    if (sts == PCAN_ERROR_OK) {
+        return Status::SUCCESS;
+    }
+    if (sts == PCAN_ERROR_QRCVEMPTY) {
+        return Status::READ_TIMEOUT; // RX queue empty
+    }
+    if (sts == PCAN_ERROR_INITIALIZE) {
+        return Status::PORT_ACCESS;
+    }
+    if (sts == PCAN_ERROR_ILLOPERATION) {
+        return Status::INVALID_PARAM;
+    }
     return Status::READ_ERROR;
 }
-
 
 TPCANBaudrate PCAN::mapBitrate(uint32_t u32Bitrate)
 {
     switch (u32Bitrate) {
-        case 1000000: return PCAN_BAUD_1M;
-        case  800000: return PCAN_BAUD_800K;
-        case  500000: return PCAN_BAUD_500K;
-        case  250000: return PCAN_BAUD_250K;
-        case  125000: return PCAN_BAUD_125K;
-        case  100000: return PCAN_BAUD_100K;
-        case   95000: return PCAN_BAUD_95K;
-        case   83000: return PCAN_BAUD_83K;
-        case   50000: return PCAN_BAUD_50K;
-        case   47000: return PCAN_BAUD_47K;
-        case   33000: return PCAN_BAUD_33K;
-        case   20000: return PCAN_BAUD_20K;
-        case   10000: return PCAN_BAUD_10K;
-        case    5000: return PCAN_BAUD_5K;
-        default:
-            return 0;   // caller must check
+    case 1000000:
+        return PCAN_BAUD_1M;
+    case 800000:
+        return PCAN_BAUD_800K;
+    case 500000:
+        return PCAN_BAUD_500K;
+    case 250000:
+        return PCAN_BAUD_250K;
+    case 125000:
+        return PCAN_BAUD_125K;
+    case 100000:
+        return PCAN_BAUD_100K;
+    case 95000:
+        return PCAN_BAUD_95K;
+    case 83000:
+        return PCAN_BAUD_83K;
+    case 50000:
+        return PCAN_BAUD_50K;
+    case 47000:
+        return PCAN_BAUD_47K;
+    case 33000:
+        return PCAN_BAUD_33K;
+    case 20000:
+        return PCAN_BAUD_20K;
+    case 10000:
+        return PCAN_BAUD_10K;
+    case 5000:
+        return PCAN_BAUD_5K;
+    default:
+        return 0; // caller must check
     }
 }
-
 
 // ============================================================================
 // LIFECYCLE
 // ============================================================================
 
-ICommDriver::Status PCAN::open(const std::string& strChannel,
-                               uint32_t           u32Bitrate,
-                               uint32_t           u32TxId,
-                               bool               bExtended,
-                               bool               bFD)
+ICommDriver::Status PCAN::open(const std::string &strChannel,
+                               uint32_t u32Bitrate,
+                               uint32_t u32TxId,
+                               bool bExtended,
+                               bool bFD)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -191,7 +210,7 @@ ICommDriver::Status PCAN::open(const std::string& strChannel,
         return Status::INVALID_PARAM;
     }
 
-    TPCANHandle hChannel = static_cast<TPCANHandle>(u32Channel);
+    TPCANHandle hChannel   = static_cast<TPCANHandle>(u32Channel);
 
     TPCANBaudrate baudrate = mapBitrate(u32Bitrate);
     if (baudrate == 0) {
@@ -212,11 +231,11 @@ ICommDriver::Status PCAN::open(const std::string& strChannel,
         return Status::PORT_ACCESS;
     }
 
-    m_hChannel            = hChannel;
-    m_bOpen               = true;
-    m_bFD                 = bFD;
-    m_bExtendedId         = bExtended;
-    m_u32DefaultTxId      = u32TxId;
+    m_hChannel       = hChannel;
+    m_bOpen          = true;
+    m_bFD            = bFD;
+    m_bExtendedId    = bExtended;
+    m_u32DefaultTxId = u32TxId;
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("PCAN channel opened:");
@@ -226,7 +245,6 @@ ICommDriver::Status PCAN::open(const std::string& strChannel,
 
     return Status::SUCCESS;
 }
-
 
 ICommDriver::Status PCAN::close()
 {
@@ -242,21 +260,19 @@ ICommDriver::Status PCAN::close()
     return Status::SUCCESS;
 }
 
-
 bool PCAN::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_bOpen;
 }
 
-
 // ============================================================================
 // FRAME-LEVEL PRIMITIVES
 // ============================================================================
 
-ICommDriver::Status PCAN::recvFrame(uint32_t        u32TimeoutMs,
-                                    TPCANMsg&       msg,
-                                    TPCANTimestamp& ts,
+ICommDriver::Status PCAN::recvFrame(uint32_t u32TimeoutMs,
+                                    TPCANMsg &msg,
+                                    TPCANTimestamp &ts,
                                     std::stop_token stop_tok) const
 {
     // First attempt a non-blocking read from the RX queue.
@@ -300,7 +316,7 @@ ICommDriver::Status PCAN::recvFrame(uint32_t        u32TimeoutMs,
     // 0 == infinite timeout: WaitForSingleObject's native infinite sentinel
     // is the INFINITE macro.
     const DWORD dwWaitTimeout = (u32TimeoutMs == 0) ? INFINITE : static_cast<DWORD>(u32TimeoutMs);
-    DWORD dwWait = WaitForSingleObject(hEvent, dwWaitTimeout);
+    DWORD dwWait              = WaitForSingleObject(hEvent, dwWaitTimeout);
     CAN_SetValue(m_hChannel, PCAN_RECEIVE_EVENT, nullptr, 0);
     CloseHandle(hEvent);
 
@@ -323,25 +339,25 @@ ICommDriver::Status PCAN::recvFrame(uint32_t        u32TimeoutMs,
     // ---- Linux path ----
 #else
     // On Linux PCAN_RECEIVE_EVENT yields a file descriptor we can poll on.
-    int iFd = -1;
+    int iFd        = -1;
     DWORD dwFdSize = sizeof(iFd);
-    sts = CAN_GetValue(m_hChannel, PCAN_RECEIVE_EVENT,
-                       reinterpret_cast<void*>(&iFd), dwFdSize);
+    sts            = CAN_GetValue(m_hChannel, PCAN_RECEIVE_EVENT,
+                                  reinterpret_cast<void *>(&iFd), dwFdSize);
     if (sts != PCAN_ERROR_OK || iFd < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("PCAN_RECEIVE_EVENT fd unavailable"));
         return Status::READ_ERROR;
     }
 
     struct pollfd pfd;
-    pfd.fd      = iFd;
-    pfd.events  = POLLIN;
-    pfd.revents = 0;
+    pfd.fd                     = iFd;
+    pfd.events                 = POLLIN;
+    pfd.revents                = 0;
 
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite = (u32TimeoutMs == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
+    const bool bInfinite       = (u32TimeoutMs == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
 
     while (true) {
         if (stop_tok.stop_requested()) {
@@ -355,7 +371,7 @@ ICommDriver::Status PCAN::recvFrame(uint32_t        u32TimeoutMs,
                 return Status::READ_TIMEOUT;
             }
             iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                          std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         int iPollRet = poll(&pfd, 1, iSliceMs);
@@ -382,9 +398,8 @@ ICommDriver::Status PCAN::recvFrame(uint32_t        u32TimeoutMs,
     return Status::READ_ERROR;
 }
 
-
-ICommDriver::Status PCAN::sendFrame(uint32_t                 u32Id,
-                                    bool                     bExtended,
+ICommDriver::Status PCAN::sendFrame(uint32_t u32Id,
+                                    bool bExtended,
                                     std::span<const uint8_t> data) const
 {
     if (data.size() > PCAN_MAX_PAYLOAD) {
@@ -415,18 +430,17 @@ ICommDriver::Status PCAN::sendFrame(uint32_t                 u32Id,
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // READ-MODE IMPLEMENTATIONS
 // ============================================================================
 
-void PCAN::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int>& viLps)
+void PCAN::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &viLps)
 {
     const size_t n = pattern.size();
     viLps.assign(n, 0);
     int len = 0;
 
-    for (size_t i = 1; i < n; ) {
+    for (size_t i = 1; i < n;) {
         if (pattern[i] == pattern[len]) {
             viLps[i++] = ++len;
         } else if (len != 0) {
@@ -437,26 +451,31 @@ void PCAN::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int>& viL
     }
 }
 
-
-ICommDriver::Status PCAN::readExact(uint32_t           u32TimeoutMs,
+ICommDriver::Status PCAN::readExact(uint32_t u32TimeoutMs,
                                     std::span<uint8_t> buffer,
-                                    size_t&            szBytesRead,
-                                    uint32_t           u32RxFilterId,
-                                    std::stop_token    stop_tok) const
+                                    size_t &szBytesRead,
+                                    uint32_t u32RxFilterId,
+                                    std::stop_token stop_tok) const
 {
     szBytesRead = 0;
-    TPCANMsg       msg;
+    TPCANMsg msg;
     TPCANTimestamp ts;
 
     while (szBytesRead < buffer.size()) {
         Status s = recvFrame(u32TimeoutMs, msg, ts, stop_tok);
-        if (s != Status::SUCCESS) return s;
+        if (s != Status::SUCCESS) {
+            return s;
+        }
 
         // Optional single-ID filter (0 = accept all).
-        if (!frameMatchesFilter(msg, u32RxFilterId)) continue;
+        if (!frameMatchesFilter(msg, u32RxFilterId)) {
+            continue;
+        }
 
         // Skip error frames.
-        if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
+        if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) {
+            continue;
+        }
 
         dumpFrame(CommDir::Rx, msg.ID, (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U,
                   std::span<const uint8_t>(msg.DATA, msg.LEN));
@@ -469,13 +488,12 @@ ICommDriver::Status PCAN::readExact(uint32_t           u32TimeoutMs,
     return Status::SUCCESS;
 }
 
-
-ICommDriver::Status PCAN::readUntilDelimiter(uint32_t           u32TimeoutMs,
+ICommDriver::Status PCAN::readUntilDelimiter(uint32_t u32TimeoutMs,
                                              std::span<uint8_t> buffer,
-                                             uint8_t            cDelimiter,
-                                             size_t&            szBytesRead,
-                                             uint32_t           u32RxFilterId,
-                                             std::stop_token    stop_tok) const
+                                             uint8_t cDelimiter,
+                                             size_t &szBytesRead,
+                                             uint32_t u32RxFilterId,
+                                             std::stop_token stop_tok) const
 {
     if (buffer.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("readUntilDelimiter: buffer too small"));
@@ -483,15 +501,21 @@ ICommDriver::Status PCAN::readUntilDelimiter(uint32_t           u32TimeoutMs,
     }
 
     szBytesRead = 0;
-    TPCANMsg       msg;
+    TPCANMsg msg;
     TPCANTimestamp ts;
 
     while (true) {
         Status s = recvFrame(u32TimeoutMs, msg, ts, stop_tok);
-        if (s != Status::SUCCESS) return s;
+        if (s != Status::SUCCESS) {
+            return s;
+        }
 
-        if (!frameMatchesFilter(msg, u32RxFilterId)) continue;
-        if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
+        if (!frameMatchesFilter(msg, u32RxFilterId)) {
+            continue;
+        }
+        if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) {
+            continue;
+        }
 
         dumpFrame(CommDir::Rx, msg.ID, (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U,
                   std::span<const uint8_t>(msg.DATA, msg.LEN));
@@ -513,11 +537,10 @@ ICommDriver::Status PCAN::readUntilDelimiter(uint32_t           u32TimeoutMs,
     }
 }
 
-
-ICommDriver::Status PCAN::readUntilToken(uint32_t                 u32TimeoutMs,
+ICommDriver::Status PCAN::readUntilToken(uint32_t u32TimeoutMs,
                                          std::span<const uint8_t> token,
-                                         uint32_t                 u32RxFilterId,
-                                         std::stop_token          stop_tok) const
+                                         uint32_t u32RxFilterId,
+                                         std::stop_token stop_tok) const
 {
     if (token.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("readUntilToken: empty token"));
@@ -527,16 +550,22 @@ ICommDriver::Status PCAN::readUntilToken(uint32_t                 u32TimeoutMs,
     std::vector<int> viLps;
     buildKmpTable(token, viLps);
 
-    TPCANMsg       msg;
+    TPCANMsg msg;
     TPCANTimestamp ts;
-    size_t         szMatched = 0;
+    size_t szMatched = 0;
 
     while (true) {
         Status s = recvFrame(u32TimeoutMs, msg, ts, stop_tok);
-        if (s != Status::SUCCESS) return s;
+        if (s != Status::SUCCESS) {
+            return s;
+        }
 
-        if (!frameMatchesFilter(msg, u32RxFilterId)) continue;
-        if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
+        if (!frameMatchesFilter(msg, u32RxFilterId)) {
+            continue;
+        }
+        if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) {
+            continue;
+        }
 
         dumpFrame(CommDir::Rx, msg.ID, (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U,
                   std::span<const uint8_t>(msg.DATA, msg.LEN));
@@ -557,19 +586,18 @@ ICommDriver::Status PCAN::readUntilToken(uint32_t                 u32TimeoutMs,
     }
 }
 
-
 // ============================================================================
 // PUBLIC UNIFIED INTERFACE
 // ============================================================================
 
-ICommDriver::ReadResult PCAN::readOneFrame_locked(uint32_t           u32TimeoutMs,
-                                                   std::span<uint8_t> buffer,
-                                                   std::string_view   xtra_params) const
+ICommDriver::ReadResult PCAN::readOneFrame_locked(uint32_t u32TimeoutMs,
+                                                  std::span<uint8_t> buffer,
+                                                  std::string_view xtra_params) const
 {
     // ASSUMES m_mutex IS ALREADY HELD (see class comment / RawIo).
     ReadResult result;
     const uint32_t rxFilterId = resolveRxId(xtra_params);
-    TPCANMsg       msg;
+    TPCANMsg msg;
     TPCANTimestamp ts;
 
     while (true) {
@@ -582,8 +610,12 @@ ICommDriver::ReadResult PCAN::readOneFrame_locked(uint32_t           u32TimeoutM
             result.status = s;
             return result;
         }
-        if (!frameMatchesFilter(msg, rxFilterId)) continue;
-        if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
+        if (!frameMatchesFilter(msg, rxFilterId)) {
+            continue;
+        }
+        if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) {
+            continue;
+        }
         break;
     }
 
@@ -605,11 +637,11 @@ ICommDriver::ReadResult PCAN::readOneFrame_locked(uint32_t           u32TimeoutM
     return result;
 }
 
-ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t           u32ReadTimeout,
+ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t u32ReadTimeout,
                                                   std::span<uint8_t> buffer,
-                                                  const ReadOptions& options,
-                                                  std::string_view   xtra_params,
-                                                  std::stop_token    stop_tok) const
+                                                  const ReadOptions &options,
+                                                  std::string_view xtra_params,
+                                                  std::stop_token stop_tok) const
 {
     // ASSUMES m_mutex IS ALREADY HELD (see class comment / RawIo).
     ReadResult result;
@@ -622,45 +654,44 @@ ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t           u32ReadTime
 
     switch (options.mode) {
 
-        case ReadMode::Exact: {
-            size_t bytesRead = 0;
-            result.status         = readExact(timeout, buffer, bytesRead, rxFilterId, stop_tok);
-            result.bytes_read     = bytesRead;
-            result.found_terminator = false;
-            break;
-        }
+    case ReadMode::Exact: {
+        size_t bytesRead        = 0;
+        result.status           = readExact(timeout, buffer, bytesRead, rxFilterId, stop_tok);
+        result.bytes_read       = bytesRead;
+        result.found_terminator = false;
+        break;
+    }
 
-        case ReadMode::UntilDelimiter: {
-            size_t bytesRead = 0;
-            result.status         = readUntilDelimiter(timeout, buffer,
-                                                       options.delimiter,
-                                                       bytesRead, rxFilterId, stop_tok);
-            result.bytes_read       = bytesRead;
-            result.found_terminator = (result.status == Status::SUCCESS);
-            break;
-        }
+    case ReadMode::UntilDelimiter: {
+        size_t bytesRead        = 0;
+        result.status           = readUntilDelimiter(timeout, buffer,
+                                                     options.delimiter,
+                                                     bytesRead, rxFilterId, stop_tok);
+        result.bytes_read       = bytesRead;
+        result.found_terminator = (result.status == Status::SUCCESS);
+        break;
+    }
 
-        case ReadMode::UntilToken: {
-            result.status           = readUntilToken(timeout, options.token, rxFilterId, stop_tok);
-            result.bytes_read       = 0;
-            result.found_terminator = (result.status == Status::SUCCESS);
-            break;
-        }
+    case ReadMode::UntilToken: {
+        result.status           = readUntilToken(timeout, options.token, rxFilterId, stop_tok);
+        result.bytes_read       = 0;
+        result.found_terminator = (result.status == Status::SUCCESS);
+        break;
+    }
 
-        default:
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: unknown ReadMode"));
-            result.status = Status::INVALID_PARAM;
-            break;
+    default:
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: unknown ReadMode"));
+        result.status = Status::INVALID_PARAM;
+        break;
     }
 
     return result;
 }
 
-
-ICommDriver::ReadResult PCAN::tout_read(uint32_t           u32ReadTimeout,
+ICommDriver::ReadResult PCAN::tout_read(uint32_t u32ReadTimeout,
                                         std::span<uint8_t> buffer,
-                                        const ReadOptions& options,
-                                        std::string_view   xtra_params,
+                                        const ReadOptions &options,
+                                        std::string_view xtra_params,
                                         std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -699,32 +730,31 @@ ICommDriver::ReadResult PCAN::tout_read(uint32_t           u32ReadTimeout,
     return upTp->receive(m_rawIo, u32ReadTimeout, buffer, szRxId, szTxId);
 }
 
-
-ICommDriver::WriteResult PCAN::writeFragmented_locked(uint32_t                 u32WriteTimeout,
-                                                       std::span<const uint8_t> buffer,
-                                                       std::string_view         xtra_params) const
+ICommDriver::WriteResult PCAN::writeFragmented_locked(uint32_t u32WriteTimeout,
+                                                      std::span<const uint8_t> buffer,
+                                                      std::string_view xtra_params) const
 {
     // ASSUMES m_mutex IS ALREADY HELD (see class comment / RawIo).
     WriteResult result;
 
-    (void)u32WriteTimeout;  // CAN_Write is non-blocking; timeout reserved for future use.
+    (void)u32WriteTimeout; // CAN_Write is non-blocking; timeout reserved for future use.
 
     const uint32_t u32TxId    = resolveTxId(xtra_params);
-    const bool     bExtended  = m_bExtendedId || (u32TxId & CAN_EFF_FLAG) != 0U ||
-                                 ((u32TxId & CAN_EFF_MASK) > CAN_SFF_MASK);
+    const bool bExtended      = m_bExtendedId || (u32TxId & CAN_EFF_FLAG) != 0U ||
+                                ((u32TxId & CAN_EFF_MASK) > CAN_SFF_MASK);
     // sendFrame()/TPCANMsg::ID hold only the raw 11/29-bit value — PCANBasic
     // has no equivalent of the CAN_EFF_FLAG bit (extended-ness is carried
     // separately via MSGTYPE) — so it must be stripped here, not forwarded.
     const uint32_t u32RawTxId = u32TxId & (bExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
-    const size_t   maxPayload = m_bFD ? PCAN_FD_MAX_PAYLOAD : PCAN_MAX_PAYLOAD;
+    const size_t maxPayload   = m_bFD ? PCAN_FD_MAX_PAYLOAD : PCAN_MAX_PAYLOAD;
 
-    size_t offset = 0;
+    size_t offset             = 0;
     while (offset < buffer.size()) {
         size_t frameLen = std::min(maxPayload, buffer.size() - offset);
-        Status s = sendFrame(u32RawTxId, bExtended,
-                             buffer.subspan(offset, frameLen));
+        Status s        = sendFrame(u32RawTxId, bExtended,
+                                    buffer.subspan(offset, frameLen));
         if (s != Status::SUCCESS) {
-            result.status       = s;
+            result.status        = s;
             result.bytes_written = offset;
             return result;
         }
@@ -741,10 +771,9 @@ ICommDriver::WriteResult PCAN::writeFragmented_locked(uint32_t                 u
     return result;
 }
 
-
-ICommDriver::WriteResult PCAN::tout_write(uint32_t                 u32WriteTimeout,
+ICommDriver::WriteResult PCAN::tout_write(uint32_t u32WriteTimeout,
                                           std::span<const uint8_t> buffer,
-                                          std::string_view         xtra_params,
+                                          std::string_view xtra_params,
                                           std::stop_token /*stop_tok*/) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);

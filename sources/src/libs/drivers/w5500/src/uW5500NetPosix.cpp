@@ -2,28 +2,28 @@
 #include "uW5500Net.hpp"
 
 #include <arpa/inet.h>
+#include <cstring>
 #include <fcntl.h>
+#include <mutex>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <stdint.h>
+#include <string>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <cstring>
-#include <mutex>
-#include <string>
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
-#define LT_HDR "W5500_NET_POSIX"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR  "W5500_NET_POSIX"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // POSIX IMPLEMENTATION OF OPEN/CLOSE
 // ============================================================================
 
-W5500Net::Status W5500Net::open(const std::string& ipAddr, uint16_t u16Port)
+W5500Net::Status W5500Net::open(const std::string &ipAddr, uint16_t u16Port)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -32,10 +32,10 @@ W5500Net::Status W5500Net::open(const std::string& ipAddr, uint16_t u16Port)
     }
 
     m_strServerIp = ipAddr;
-    m_u16Port = u16Port;
+    m_u16Port     = u16Port;
 
     // 1. Create Socket (IPv4, TCP)
-    m_iSocketFd = ::socket(AF_INET, SOCK_STREAM, 0);
+    m_iSocketFd   = ::socket(AF_INET, SOCK_STREAM, 0);
     if (m_iSocketFd < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to create socket"));
         return Status::PORT_ACCESS;
@@ -49,7 +49,7 @@ W5500Net::Status W5500Net::open(const std::string& ipAddr, uint16_t u16Port)
 
     // 3. Set Timeout for Connect
     struct timeval tv;
-    tv.tv_sec = 2;
+    tv.tv_sec  = 2;
     tv.tv_usec = 0;
     ::setsockopt(m_iSocketFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
@@ -57,7 +57,7 @@ W5500Net::Status W5500Net::open(const std::string& ipAddr, uint16_t u16Port)
     struct sockaddr_in server_addr;
     std::memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(u16Port);
+    server_addr.sin_port   = htons(u16Port);
 
     // Resolve IP
     if (::inet_pton(AF_INET, ipAddr.c_str(), &server_addr.sin_addr) <= 0) {
@@ -67,7 +67,7 @@ W5500Net::Status W5500Net::open(const std::string& ipAddr, uint16_t u16Port)
         return Status::INVALID_PARAM;
     }
 
-    if (::connect(m_iSocketFd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+    if (::connect(m_iSocketFd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Connection failed to "); LOG_STRING(ipAddr.c_str()));
         ::close(m_iSocketFd);
         m_iSocketFd = -1;
@@ -75,7 +75,7 @@ W5500Net::Status W5500Net::open(const std::string& ipAddr, uint16_t u16Port)
     }
 
     // Restore non-blocking or default timeout behavior for I/O
-    tv.tv_sec = 0;
+    tv.tv_sec  = 0;
     tv.tv_usec = 0;
     ::setsockopt(m_iSocketFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 

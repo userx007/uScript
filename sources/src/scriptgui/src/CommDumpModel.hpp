@@ -39,8 +39,16 @@ class CommDumpModel : public QAbstractItemModel
 {
     Q_OBJECT
 public:
-    enum Column { ColTimestamp = 0, ColPlugin, ColDetails, ColDir, ColLength, ColData, ColAscii,
-                  ColRepeatCount, ColCount };
+    enum Column { ColTimestamp = 0,
+                  ColPlugin,
+                  ColDetails,
+                  ColDir,
+                  ColLength,
+                  ColData,
+                  ColAscii,
+                  ColRepeatCount,
+                  ColCount };
+
     // TimeWallClock:        wall-clock time the record was stamped ("HH:mm:ss.uuuuuu").
     // TimeDeltaPrevious:    delta since the *previous* top-level record, as
     //                       "S.uuuuuu" seconds (row 0's delta is always 0).
@@ -51,33 +59,39 @@ public:
     // TimeFormatCount is a sentinel (not a real mode) so the view can cycle
     // through the real modes with a plain "% TimeFormatCount" without a
     // separately-maintained count.
-    enum TimeFormat { TimeWallClock = 0, TimeDeltaPrevious, TimeSinceCaptureStart, TimeFormatCount };
+    enum TimeFormat { TimeWallClock = 0,
+                      TimeDeltaPrevious,
+                      TimeSinceCaptureStart,
+                      TimeFormatCount };
+
     static constexpr int k_previewBytes = 8;
 
-    struct Record {
+    struct Record
+    {
         // Microseconds since the Unix epoch, as captured by the *producer*
         // process (the interpreter/plugin, at the moment the Rx/Tx event was
         // observed) and passed in verbatim by addRecord() — see
         // ICommDumpProtocol.hpp / uGuiNotify.hpp::gui_notify_comm_dump(). Not
         // the GUI's own receipt time, so this stays on the same clock basis
         // as the Log panel's timestamps (both use std::chrono::system_clock).
-        qint64    timestampUs = 0;
-        QString   plugin;
-        QString   details;     // already formatted (comm port / ip:port / i2c addr / ...)
-        bool      isTx = false;
+        qint64 timestampUs = 0;
+        QString plugin;
+        QString details; // already formatted (comm port / ip:port / i2c addr / ...)
+        bool isTx = false;
         QByteArray data;
-        mutable QString fullDumpCache;   // lazily built on first expand
+        mutable QString fullDumpCache; // lazily built on first expand
     };
 
     // Plain-data staging struct for addRecords() — lets a caller (see
     // CommDumpView's coalesced ingestion queue) accumulate several records
     // off to the side and hand them to the model in one shot, instead of
     // paying one full insert transaction (and one view relayout) per record.
-    struct PendingRecord {
-        qint64     timestampUs = 0;
-        QString    plugin;
-        QString    details;
-        bool       isTx = false;
+    struct PendingRecord
+    {
+        qint64 timestampUs = 0;
+        QString plugin;
+        QString details;
+        bool isTx = false;
         QByteArray data;
     };
 
@@ -88,13 +102,14 @@ public:
     // fonts, full-dump caching) already works unmodified on an
     // AggregateEntry* accessed through a Record* — the two extra fields
     // below are the only aggregate-specific additions.
-    struct AggregateEntry : Record {
+    struct AggregateEntry : Record
+    {
         // Total occurrences of this key ever observed — monotonic, NOT
         // reduced when maxRecords() evicts old *raw* records (see
         // updateAggregateForRecord()); a repeating heartbeat's count should
         // keep growing across a long capture even once the raw ring buffer
         // has started discarding old duplicates of it for memory reasons.
-        qint64 count = 0;
+        qint64 count                = 0;
         qint64 firstSeenTimestampUs = 0;
         // Timestamp of this key's PREVIOUS occurrence — i.e. what
         // Record::timestampUs held just before it was last overwritten with
@@ -110,7 +125,7 @@ public:
         // clamped to 0) essentially at random as soon as any earlier row
         // repeats. Comparing a row only against its OWN previous occurrence
         // is self-contained and always non-negative.
-        qint64 previousTimestampUs = 0;
+        qint64 previousTimestampUs  = 0;
     };
 
     // Reports back which currently-active-storage rows one addRecords()
@@ -139,7 +154,8 @@ public:
     // the whole view feel choppy (scrollToBottom() on a word-wrapped,
     // non-uniform-row-height tree recomputes the scrollbar geometry from
     // scratch every time, whether or not anything actually moved).
-    struct IngestResult {
+    struct IngestResult
+    {
         QVector<int> touchedRows;
         int rowsAppended = 0;
     };
@@ -153,7 +169,7 @@ public:
     // Equivalent to addRecords() with a single-element list — kept as a
     // convenience for callers that only ever add one record at a time.
     void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
-                    const QByteArray &data);
+                   const QByteArray &data);
 
     // Appends every record in `pending` inside a single beginInsertRows()/
     // endInsertRows() pair, so a burst of N records costs one view relayout
@@ -165,6 +181,7 @@ public:
     IngestResult addRecords(const QVector<PendingRecord> &pending);
 
     void clear();
+
     // Row count of whichever storage is CURRENTLY ACTIVE for display —
     // raw records normally, or aggregate (one-per-key) rows while
     // collapsedMode() is on. This is deliberately what every existing
@@ -173,7 +190,10 @@ public:
     // now"), so those needed no changes to become collapsed-mode-aware.
     // Use rawRecordCount() instead when you specifically need the full
     // raw log regardless of display mode (e.g. Save).
-    int  recordCount() const { return m_collapsedMode ? m_aggregateRows.size() : m_records.size(); }
+    int recordCount() const
+    {
+        return m_collapsedMode ? m_aggregateRows.size() : m_records.size();
+    }
 
     // Caps how many records are retained. Once recordCount() would exceed
     // this, the oldest records are dropped (ring-buffer semantics) so a
@@ -184,12 +204,19 @@ public:
     // shift happens roughly once every (10% of max) records instead of on
     // every single insert. 0 = unlimited (the previous, default behaviour).
     void setMaxRecords(int max);
-    int  maxRecords() const { return m_maxRecords; }
+
+    int maxRecords() const
+    {
+        return m_maxRecords;
+    }
 
     // Total records ever accepted by addRecord()/addRecords(), *not*
     // reduced by eviction — lets the view report "X shown, Y total, oldest
     // trimmed" instead of silently losing history with no indication.
-    qint64 totalIngestedCount() const { return m_totalIngested; }
+    qint64 totalIngestedCount() const
+    {
+        return m_totalIngested;
+    }
 
     // ── Collapsed view ──────────────────────────────────────────────────
     //
@@ -216,13 +243,21 @@ public:
     //  side are only emitted while collapsedMode() is true, since those
     //  are the only rows a view is allowed to assume currently exist.
     void setCollapsedMode(bool on);
-    bool collapsedMode() const { return m_collapsedMode; }
+
+    bool collapsedMode() const
+    {
+        return m_collapsedMode;
+    }
 
     // Always the raw, full-fidelity record log, regardless of
     // collapsedMode() — used by Save (see CommDumpView::saveToFile()) and
     // by anything else that must see every captured record even while the
     // view is showing the collapsed aggregate.
-    int rawRecordCount() const { return m_records.size(); }
+    int rawRecordCount() const
+    {
+        return m_records.size();
+    }
+
     const Record *rawRecordAt(int row) const;
 
     // Number of distinct (plugin, details) keys ever observed — monotonic,
@@ -231,19 +266,30 @@ public:
     // were trimmed" the same way totalIngestedCount() does for raw
     // records, in the (expected to be rare) case a capture's Details field
     // is variable enough to blow past that cap.
-    qint64 totalDistinctKeysSeen() const { return m_totalDistinctKeysSeen; }
+    qint64 totalDistinctKeysSeen() const
+    {
+        return m_totalDistinctKeysSeen;
+    }
 
     // Whether column ColAscii is populated. When false, data() returns an
     // empty value for that column instead of computing the ASCII text, so
     // toggling it off actually avoids the per-row work, not just hides it.
     void setShowAscii(bool on);
-    bool showAscii() const { return m_showAscii; }
+
+    bool showAscii() const
+    {
+        return m_showAscii;
+    }
 
     // Switches how column ColTimestamp is rendered (see TimeFormat above).
     // Pure display toggle: does not touch stored data, so it's cheap and
     // fully reversible, including after a trace has been reloaded from disk.
     void setTimeFormat(TimeFormat fmt);
-    TimeFormat timeFormat() const { return m_timeFormat; }
+
+    TimeFormat timeFormat() const
+    {
+        return m_timeFormat;
+    }
 
     // How many bytes per line the full hex+ASCII dump (child row) wraps at
     // — 8, 16, or 32. Also reflected in the ColData header label ("Data:8" /
@@ -251,7 +297,11 @@ public:
     // affects rendering (and clears fullDumpCache so it regenerates), not
     // stored data. Any other value is ignored (kept at the current setting).
     void setDumpBytesPerLine(int n);
-    int dumpBytesPerLine() const { return m_dumpBytesPerLine; }
+
+    int dumpBytesPerLine() const
+    {
+        return m_dumpBytesPerLine;
+    }
 
     // Font size (absolute point size) for the full hex dump child row. The
     // model only ever stores/uses an absolute size — converting "proportion
@@ -259,7 +309,11 @@ public:
     // (see CommDumpView::updateFullDumpFontSize()); the model must never be
     // asked to reinterpret its own stored size as a proportion again.
     void setFullDumpFontSize(double pointSize);
-    double fullDumpFontSize() const { return m_fullDumpFontSize; }
+
+    double fullDumpFontSize() const
+    {
+        return m_fullDumpFontSize;
+    }
 
     // ── Persistence (save/reload traces) ───────────────────────────────────
     // rows empty => export every record; otherwise only the given row indices
@@ -290,8 +344,8 @@ public:
     // empty string for an out-of-range row or a record with no payload.
     QString fullDumpForRow(int row) const;
 
-    static QString formatTimestampUs(qint64 us);   // "HH:mm:ss.mmmuuu" (microsecond resolution)
-    static QString formatDurationSecUs(qint64 deltaUs);   // "S.uuuuuu" duration, e.g. "0.785645" / "99999.445678"
+    static QString formatTimestampUs(qint64 us);        // "HH:mm:ss.mmmuuu" (microsecond resolution)
+    static QString formatDurationSecUs(qint64 deltaUs); // "S.uuuuuu" duration, e.g. "0.785645" / "99999.445678"
 
 private:
     QJsonObject recordToJson(const Record &r) const;
@@ -321,7 +375,7 @@ private:
     // or newly appended), so addRecords() can report it back via
     // IngestResult.
     int updateAggregateForRecord(qint64 timestampUs, const QString &plugin, const QString &details,
-                                  bool isTx, const QByteArray &data);
+                                 bool isTx, const QByteArray &data);
 
     // Same hysteresis batch-eviction pattern as evictIfNeeded(), applied to
     // m_aggregateRows/m_aggregateKeyToRow instead of m_records — a purely
@@ -361,10 +415,10 @@ private:
     QColor colorForPlugin(const QString &plugin) const;
 
     QVector<Record> m_records;
-    bool m_showAscii = true;
-    TimeFormat m_timeFormat = TimeWallClock;
+    bool m_showAscii          = true;
+    TimeFormat m_timeFormat   = TimeWallClock;
     double m_fullDumpFontSize = 10.0; // Default absolute size
-    int m_dumpBytesPerLine = 16;      // 8, 16, or 32 — see setDumpBytesPerLine()
+    int m_dumpBytesPerLine    = 16;   // 8, 16, or 32 — see setDumpBytesPerLine()
 
     // Cached once per setFullDumpFontSize() call (rather than rebuilt on
     // every single data()/FontRole query) — constructing a QFont from a
@@ -372,19 +426,19 @@ private:
     // for every cell paint of a large, fast-scrolling trace.
     QFont m_fullDumpFont;
 
-    int   m_maxRecords = 0;       // 0 = unlimited; see setMaxRecords()
-    qint64 m_totalIngested = 0;   // monotonic; see totalIngestedCount()
+    int m_maxRecords       = 0; // 0 = unlimited; see setMaxRecords()
+    qint64 m_totalIngested = 0; // monotonic; see totalIngestedCount()
 
     // ── Collapsed-view state ────────────────────────────────────────────
-    bool m_collapsedMode = false;
-    QVector<AggregateEntry> m_aggregateRows;     // one per distinct (plugin,details) key, first-seen order
-    QHash<QString, int>     m_aggregateKeyToRow; // aggregateKey(...) -> index into m_aggregateRows
-    qint64 m_totalDistinctKeysSeen = 0;          // monotonic; see totalDistinctKeysSeen()
+    bool m_collapsedMode   = false;
+    QVector<AggregateEntry> m_aggregateRows; // one per distinct (plugin,details) key, first-seen order
+    QHash<QString, int> m_aggregateKeyToRow; // aggregateKey(...) -> index into m_aggregateRows
+    qint64 m_totalDistinctKeysSeen = 0;      // monotonic; see totalDistinctKeysSeen()
     // Defensive-only cap on distinct-key cardinality (not exposed as a
     // user setting — see evictAggregateIfNeeded()); normal traces have far
     // fewer distinct keys than raw records, so this should essentially
     // never trigger in practice.
-    int m_maxAggregateRows = 50000;
+    int m_maxAggregateRows         = 50000;
 
     mutable QHash<QString, QColor> m_pluginColors;
 };

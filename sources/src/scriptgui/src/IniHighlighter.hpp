@@ -49,44 +49,44 @@ private:
 
     // Section header:  [name]
     QRegularExpression m_reSection;
-    QTextCharFormat    m_fmtBracket;
-    QTextCharFormat    m_fmtSectionName;
+    QTextCharFormat m_fmtBracket;
+    QTextCharFormat m_fmtSectionName;
 
     // Key = value
     QRegularExpression m_reKey;
-    QTextCharFormat    m_fmtKey;
-    QTextCharFormat    m_fmtEquals;
+    QTextCharFormat m_fmtKey;
+    QTextCharFormat m_fmtEquals;
 
     // ${…} interpolation (inside values)
     QRegularExpression m_reInterp;
-    QTextCharFormat    m_fmtInterp;        // plain ${VAR} — all purple
+    QTextCharFormat m_fmtInterp; // plain ${VAR} — all purple
 
     // ${section:key} cross-section reference — sub-span formatting
     QRegularExpression m_reInterpXRef;
-    QTextCharFormat    m_fmtInterpPunct;   // ${ : }  — purple
-    QTextCharFormat    m_fmtInterpSect;    // section  — amber bold
-    QTextCharFormat    m_fmtInterpKey;     // key      — cyan
+    QTextCharFormat m_fmtInterpPunct; // ${ : }  — purple
+    QTextCharFormat m_fmtInterpSect;  // section  — amber bold
+    QTextCharFormat m_fmtInterpKey;   // key      — cyan
 
     // Standalone ${SECTION} include directive (whole trimmed line is ${…})
     QRegularExpression m_reInclude;
-    QTextCharFormat    m_fmtInclude;
+    QTextCharFormat m_fmtInclude;
 
     // Quoted string values
     QRegularExpression m_reQuoted;
-    QTextCharFormat    m_fmtQuoted;
+    QTextCharFormat m_fmtQuoted;
 
     // Boolean literals  TRUE / FALSE
     QRegularExpression m_reBool;
-    QTextCharFormat    m_fmtTrue;    // green bold
-    QTextCharFormat    m_fmtFalse;   // red  bold
+    QTextCharFormat m_fmtTrue;  // green bold
+    QTextCharFormat m_fmtFalse; // red  bold
 
     // Numeric literals
-    QRegularExpression m_reHexNum;   // 0x…
-    QRegularExpression m_reDecNum;   // integer / float
-    QTextCharFormat    m_fmtHexNum;  // pink
-    QTextCharFormat    m_fmtDecNum;  // peach/orange
+    QRegularExpression m_reHexNum; // 0x…
+    QRegularExpression m_reDecNum; // integer / float
+    QTextCharFormat m_fmtHexNum;   // pink
+    QTextCharFormat m_fmtDecNum;   // peach/orange
 
     // Comments  # …  and  ; …
     QRegularExpression m_reComment;
-    QTextCharFormat    m_fmtComment;
+    QTextCharFormat m_fmtComment;
 };

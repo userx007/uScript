@@ -3,12 +3,12 @@
 
 #include "ICommDriver.hpp"
 
+#include <mutex>
+#include <span>
 #include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <span>
-#include <mutex>
 
 /**
  * @brief Userspace wrapper for the CH340/CH341 USB-to-serial kernel driver.
@@ -31,119 +31,115 @@
 class CH341 : public ICommDriver
 {
 
-    public:
+public:
+    static constexpr size_t CH341_MAX_BUFLENGTH           = 256;  /**< Maximum CH341 buffer length. */
+    static constexpr uint32_t CH341_READ_DEFAULT_TIMEOUT  = 5000; /**< Default CH341 read timeout in milliseconds. */
+    static constexpr uint32_t CH341_WRITE_DEFAULT_TIMEOUT = 5000; /**< Default CH341 write timeout in milliseconds. */
 
-        static constexpr size_t   CH341_MAX_BUFLENGTH         = 256;  /**< Maximum CH341 buffer length. */
-        static constexpr uint32_t CH341_READ_DEFAULT_TIMEOUT  = 5000; /**< Default CH341 read timeout in milliseconds. */
-        static constexpr uint32_t CH341_WRITE_DEFAULT_TIMEOUT = 5000; /**< Default CH341 write timeout in milliseconds. */
+    CH341()                                               = default;
 
-        CH341() = default;
+    /**
+     * @param strDevice        tty path passed straight to open(), e.g. "/dev/ttyCH341USB0".
+     * @param u32Speed         Baud rate passed straight to open().
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately from
+     *                         strDevice by the caller (plugin factory / INI loader).
+     */
+    explicit CH341(const std::string &strDevice, uint32_t u32Speed,
+                   const std::string &strIdentityLabel = {})
+        : m_strIdentityLabel(strIdentityLabel)
+    {
+        open(strDevice, u32Speed);
+    }
 
-        /**
-         * @param strDevice        tty path passed straight to open(), e.g. "/dev/ttyCH341USB0".
-         * @param u32Speed         Baud rate passed straight to open().
-         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-         *                         describeConnection()), supplied separately from
-         *                         strDevice by the caller (plugin factory / INI loader).
-         */
-        explicit CH341(const std::string& strDevice, uint32_t u32Speed,
-                       const std::string& strIdentityLabel = {})
-            : m_strIdentityLabel(strIdentityLabel)
-        {
-            open(strDevice, u32Speed);
-        }
+    virtual ~CH341()
+    {
+        close();
+    }
 
-        virtual ~CH341()
-        {
-            close();
-        }
+    /**
+     * @brief Open and configure the CH341 tty node (e.g. "/dev/ttyCH341USB0").
+     * @param strDevice Path to the tty device created by the ch341 kernel driver.
+     * @param u32Speed  Requested baud rate (arbitrary values supported via BOTHER).
+     */
+    Status open(const std::string &strDevice, uint32_t u32Speed);
+    Status close();
+    bool is_open() const override;
 
-        /**
-         * @brief Open and configure the CH341 tty node (e.g. "/dev/ttyCH341USB0").
-         * @param strDevice Path to the tty device created by the ch341 kernel driver.
-         * @param u32Speed  Requested baud rate (arbitrary values supported via BOTHER).
-         */
-        Status open(const std::string& strDevice, uint32_t u32Speed);
-        Status close();
-        bool is_open() const override;
+    /**
+     * @brief Describe this CH341's identity for the GUI comm-dump panel.
+     * Point-to-point byte stream, no addressable channels — xtra_params ignored.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return commdump_details(CommFamily::SERIAL, m_strIdentityLabel);
+    }
 
-        /**
-         * @brief Describe this CH341's identity for the GUI comm-dump panel.
-         * Point-to-point byte stream, no addressable channels — xtra_params ignored.
-         */
-        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-        {
-            return commdump_details(CommFamily::SERIAL, m_strIdentityLabel);
-        }
+    /**
+     * @brief Unified read interface supporting multiple operation modes
+     *
+     * @param u32ReadTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout).
+     * @param buffer Buffer to read data into
+     * @param options Read operation configuration
+     * @param xtra_params Optional driver-specific addressing hint (ignored by CH341 —
+     *                    it is a point-to-point byte-stream with no addressable
+     *                    channels; the parameter is accepted for interface conformance)
+     * @return ReadResult containing status, bytes read, and terminator found flag
+     *
+     * @details
+     * - ReadMode::Exact: Reads up to buffer.size() bytes
+     * - ReadMode::UntilDelimiter: Reads until delimiter is found, null-terminates
+     * - ReadMode::UntilToken: Searches for token sequence using KMP algorithm
+     */
+    ReadResult tout_read(uint32_t u32ReadTimeout,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Unified read interface supporting multiple operation modes
-         *
-         * @param u32ReadTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout).
-         * @param buffer Buffer to read data into
-         * @param options Read operation configuration
-         * @param xtra_params Optional driver-specific addressing hint (ignored by CH341 —
-         *                    it is a point-to-point byte-stream with no addressable
-         *                    channels; the parameter is accepted for interface conformance)
-         * @return ReadResult containing status, bytes read, and terminator found flag
-         *
-         * @details
-         * - ReadMode::Exact: Reads up to buffer.size() bytes
-         * - ReadMode::UntilDelimiter: Reads until delimiter is found, null-terminates
-         * - ReadMode::UntilToken: Searches for token sequence using KMP algorithm
-         */
-        ReadResult tout_read(uint32_t u32ReadTimeout,
-                             std::span<uint8_t> buffer,
-                             const ReadOptions& options,
-                             std::string_view xtra_params = {},
-                             std::stop_token stop_tok = {}) const override;
+    /**
+     * @brief Unified write interface
+     *
+     * @param u32WriteTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout).
+     * @param buffer Data to write
+     * @param xtra_params Optional driver-specific addressing hint (ignored by CH341 —
+     *                    it is a point-to-point byte-stream with no addressable
+     *                    channels; the parameter is accepted for interface conformance)
+     * @return WriteResult containing status and bytes written
+     */
+    WriteResult tout_write(uint32_t u32WriteTimeout,
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Unified write interface
-         *
-         * @param u32WriteTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout).
-         * @param buffer Data to write
-         * @param xtra_params Optional driver-specific addressing hint (ignored by CH341 —
-         *                    it is a point-to-point byte-stream with no addressable
-         *                    channels; the parameter is accepted for interface conformance)
-         * @return WriteResult containing status and bytes written
-         */
-        WriteResult tout_write(uint32_t u32WriteTimeout,
-                               std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {},
-                               std::stop_token stop_tok = {}) const override;
+    /**
+     * @brief Read current modem/control line status (DCD, DSR, RI, CTS, ...)
+     *        as reported by the CH341 status endpoint, via TIOCMGET.
+     * @param u32Lines Bitmask of TIOCM_* lines on success.
+     * @return Status::SUCCESS on success.
+     */
+    Status get_modem_lines(unsigned int &u32Lines) const;
 
-        /**
-         * @brief Read current modem/control line status (DCD, DSR, RI, CTS, ...)
-         *        as reported by the CH341 status endpoint, via TIOCMGET.
-         * @param u32Lines Bitmask of TIOCM_* lines on success.
-         * @return Status::SUCCESS on success.
-         */
-        Status get_modem_lines(unsigned int& u32Lines) const;
+    /**
+     * @brief Assert/clear DTR and/or RTS output lines, via TIOCMBIS/TIOCMBIC.
+     */
+    Status set_dtr_rts(bool bDtr, bool bRts) const;
 
-        /**
-         * @brief Assert/clear DTR and/or RTS output lines, via TIOCMBIS/TIOCMBIC.
-         */
-        Status set_dtr_rts(bool bDtr, bool bRts) const;
+private:
+    int m_iHandle = -1;             /**< Internal handle to the CH341 tty device. */
+    mutable std::mutex m_mutex;     /**< Mutex for protecting concurrent access to the driver. */
+    std::string m_strIdentityLabel; /**< GUI comm-dump display label, see describeConnection(). */
 
-    private:
+    // Legacy internal methods (kept for implementation compatibility, mirrors UART)
+    Status timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t &szBytesRead, std::stop_token stop_tok = {}) const;
+    Status timeout_read_until(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, uint8_t cDelimiter, size_t &szBytesRead, std::stop_token stop_tok = {}) const;
+    Status timeout_wait_for_token(uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool useBuffer, std::stop_token stop_tok = {}) const;
+    Status timeout_write(uint32_t u32WriteTimeouts, std::span<const uint8_t> buffer, size_t &szBytesWritten, std::stop_token stop_tok = {}) const;
 
-        int                m_iHandle = -1; /**< Internal handle to the CH341 tty device. */
-        mutable std::mutex m_mutex;        /**< Mutex for protecting concurrent access to the driver. */
-        std::string        m_strIdentityLabel;  /**< GUI comm-dump display label, see describeConnection(). */
-
-        // Legacy internal methods (kept for implementation compatibility, mirrors UART)
-        Status timeout_read (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead, std::stop_token stop_tok = {}) const;
-        Status timeout_read_until (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, uint8_t cDelimiter, size_t& szBytesRead, std::stop_token stop_tok = {}) const;
-        Status timeout_wait_for_token (uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool useBuffer, std::stop_token stop_tok = {}) const;
-        Status timeout_write (uint32_t u32WriteTimeouts, std::span<const uint8_t> buffer, size_t& szBytesWritten, std::stop_token stop_tok = {}) const;
-
-        Status purge (bool bInput, bool bOutput) const;
-        Status setup (uint32_t u32Speed) const;
-        Status kmp_stream_match (std::span<const uint8_t> token, const std::vector<int>& viLps, uint32_t u32Timeout, bool bReturnOnTimeout, bool useBuffer, std::stop_token stop_tok = {}) const;
-        void   build_kmp_table (std::span<const uint8_t> pattern, size_t szLength, std::vector<int>& viLps) const;
-
+    Status purge(bool bInput, bool bOutput) const;
+    Status setup(uint32_t u32Speed) const;
+    Status kmp_stream_match(std::span<const uint8_t> token, const std::vector<int> &viLps, uint32_t u32Timeout, bool bReturnOnTimeout, bool useBuffer, std::stop_token stop_tok = {}) const;
+    void build_kmp_table(std::span<const uint8_t> pattern, size_t szLength, std::vector<int> &viLps) const;
 };
-
 
 #endif // U_CH341_DRIVER_H

@@ -22,10 +22,10 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <optional>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -34,14 +34,14 @@
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+#undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR   "HB_SPI     |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR        "HB_SPI     |"
+#define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "SPI"
 
@@ -49,7 +49,7 @@
 //                       HELP                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_help(const std::string&, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_spi_help(const std::string &, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
@@ -59,32 +59,37 @@ bool HydrabusPlugin::m_handle_spi_help(const std::string&, std::stop_token /*st*
 ///////////////////////////////////////////////////////////////////
 
 // cfg polarity=0 phase=1 device=1
-bool HydrabusPlugin::m_handle_spi_cfg(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_spi_cfg(const std::string &args, std::stop_token /*st*/) const
 {
-    auto* p = m_spi();
+    auto *p = m_spi();
 
     if (args == "help" || args == "?") {
         if (p) {
             LOG_PRINT(LOG_EMPTY,
-                      LOG_STRING("polarity="); LOG_INT(p->get_polarity());
-                      LOG_STRING("phase=");    LOG_INT(p->get_phase());
-                      LOG_STRING("device=");   LOG_INT(p->get_device()));
+                      LOG_STRING("polarity=");
+                      LOG_INT(p->get_polarity());
+                      LOG_STRING("phase="); LOG_INT(p->get_phase());
+                      LOG_STRING("device="); LOG_INT(p->get_device()));
         }
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg polarity=[0|1] phase=[0|1] device=[0|1]"));
         return true;
     }
 
-    if (!p) return false;
+    if (!p) {
+        return false;
+    }
 
     // Parse key=value pairs (space-separated)
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
 
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
+        if (kv.size() != 2) {
+            continue;
+        }
 
         uint8_t v = 0;
         if (!numeric::str2uint8(kv[1], v)) {
@@ -92,10 +97,19 @@ bool HydrabusPlugin::m_handle_spi_cfg(const std::string& args, std::stop_token /
             return false;
         }
 
-        if      (kv[0] == "polarity") { if (!p->set_polarity(v)) return false; }
-        else if (kv[0] == "phase")    { if (!p->set_phase(v))    return false; }
-        else if (kv[0] == "device")   { if (!p->set_device(v))   return false; }
-        else {
+        if (kv[0] == "polarity") {
+            if (!p->set_polarity(v)) {
+                return false;
+            }
+        } else if (kv[0] == "phase") {
+            if (!p->set_phase(v)) {
+                return false;
+            }
+        } else if (kv[0] == "device") {
+            if (!p->set_device(v)) {
+                return false;
+            }
+        } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown key:"); LOG_STRING(kv[0]));
             return false;
         }
@@ -107,18 +121,22 @@ bool HydrabusPlugin::m_handle_spi_cfg(const std::string& args, std::stop_token /
 //                       CS                                      //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_cs(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_spi_cs(const std::string &args, std::stop_token /*st*/) const
 {
-    auto* p = m_spi();
+    auto *p = m_spi();
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cs [en|dis]"));
         return true;
     }
-    if (!p) return false;
+    if (!p) {
+        return false;
+    }
 
-    if      (args == "en")  return p->set_cs(0);  // active-low
-    else if (args == "dis") return p->set_cs(1);
-    else {
+    if (args == "en") {
+        return p->set_cs(0); // active-low
+    } else if (args == "dis") {
+        return p->set_cs(1);
+    } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown cs arg:"); LOG_STRING(args));
         return false;
     }
@@ -128,7 +146,7 @@ bool HydrabusPlugin::m_handle_spi_cs(const std::string& args, std::stop_token /*
 //                       SPEED                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_speed(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_spi_speed(const std::string &args, std::stop_token /*st*/) const
 {
     return generic_module_set_speed<HydrabusPlugin>(this, PROTOCOL_NAME, args);
 }
@@ -137,15 +155,17 @@ bool HydrabusPlugin::m_handle_spi_speed(const std::string& args, std::stop_token
 //                       WRITE (bulk, full-duplex)               //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_write(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_spi_write(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Full-duplex: MISO bytes are printed"));
         return true;
     }
-    auto* p = m_spi();
-    if (!p) return false;
+    auto *p = m_spi();
+    if (!p) {
+        return false;
+    }
 
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(args, data) || data.empty() || data.size() > 16) {
@@ -154,7 +174,9 @@ bool HydrabusPlugin::m_handle_spi_write(const std::string& args, std::stop_token
     }
 
     auto miso = p->bulk_write(data, st);
-    if (miso.empty() && !data.empty()) return false;
+    if (miso.empty() && !data.empty()) {
+        return false;
+    }
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("MISO:"));
     hexutils::HexDump2(miso.data(), miso.size());
@@ -165,14 +187,16 @@ bool HydrabusPlugin::m_handle_spi_write(const std::string& args, std::stop_token
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_read(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_spi_read(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N  (read N bytes, clocks 0xFF)"));
         return true;
     }
-    auto* p = m_spi();
-    if (!p) return false;
+    auto *p = m_spi();
+    if (!p) {
+        return false;
+    }
 
     size_t n = 0;
     if (!numeric::str2sizet(args, n) || n == 0) {
@@ -191,11 +215,15 @@ bool HydrabusPlugin::m_handle_spi_read(const std::string& args, std::stop_token 
 
 bool HydrabusPlugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const
 {
-    auto* p = m_spi();
-    if (!p) return false;
+    auto *p = m_spi();
+    if (!p) {
+        return false;
+    }
 
     auto result = p->write_read(req, rdlen, false, st);
-    if (!result) return false;
+    if (!result) {
+        return false;
+    }
 
     if (!result->empty()) {
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
@@ -204,13 +232,13 @@ bool HydrabusPlugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, s
     return true;
 }
 
-bool HydrabusPlugin::m_handle_spi_wrrd(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_spi_wrrd(const std::string &args, std::stop_token st) const
 {
     return generic_write_read_data<HydrabusPlugin>(
         this, args, &HydrabusPlugin::m_spi_wrrd_cb, st);
 }
 
-bool HydrabusPlugin::m_handle_spi_wrrdf(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_spi_wrrdf(const std::string &args, std::stop_token st) const
 {
     return generic_write_read_file<HydrabusPlugin>(
         this, args, &HydrabusPlugin::m_spi_wrrd_cb,
@@ -221,7 +249,7 @@ bool HydrabusPlugin::m_handle_spi_wrrdf(const std::string& args, std::stop_token
 //                       AUX                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_aux(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_spi_aux(const std::string &args, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(args, m_spi());
 }
@@ -230,7 +258,7 @@ bool HydrabusPlugin::m_handle_spi_aux(const std::string& args, std::stop_token /
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_script(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_spi_script(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));

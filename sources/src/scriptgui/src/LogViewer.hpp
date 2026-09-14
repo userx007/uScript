@@ -37,7 +37,7 @@ public:
     void refreshGutter();
 
     // Gutter geometry/paint – called by LogLineNumberArea
-    int  lineNumberAreaWidth() const;
+    int lineNumberAreaWidth() const;
     void lineNumberAreaPaintEvent(QPaintEvent *ev);
 
 protected:
@@ -54,7 +54,7 @@ private:
     void clearWordHighlights();
 
     LogLineNumberArea *m_lineNumberArea;
-    QString            m_highlightedWord;   // currently highlighted word (empty = none)
+    QString m_highlightedWord; // currently highlighted word (empty = none)
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ public:
 
     void clear();
     void saveLog();
-    void setScriptPath(const QString &scriptPath);  // called on tab switch / load
+    void setScriptPath(const QString &scriptPath); // called on tab switch / load
     // Set the font used in the log text area (called by MainWindow for Ctrl+/-).
     void setLogFont(const QFont &font);
 
@@ -98,34 +98,42 @@ public:
 
     // Returns the numeric enum value of the selected log level (0=WERBOSE …
     // 7=FIXED), or -1 when DEFAULT is selected (meaning: don't pass -l at all).
-    int  logLevelArg() const;
+    int logLevelArg() const;
 
 public slots:
-    void setAutoScroll(bool on) { m_autoScroll = on; }
+
+    void setAutoScroll(bool on)
+    {
+        m_autoScroll = on;
+    }
+
     // Disable the log-level combo while the interpreter is running so the
     // selection cannot be changed mid-run (it only takes effect at launch).
-    void setRunning(bool running) { m_logLevelCb->setEnabled(!running); }
+    void setRunning(bool running)
+    {
+        m_logLevelCb->setEnabled(!running);
+    }
 
 private:
     void appendFormattedLine(const QString &html);
-    void markDirty();   // enable save button + clear "saved" label on first new content
+    void markDirty(); // enable save button + clear "saved" label on first new content
 
-    QLabel      *m_titleLabel;
-    QLabel      *m_countLabel;
-    QLabel      *m_savedLabel;    // shows "Saved: <path>" after a save
-    LogEdit     *m_logEdit;
+    QLabel *m_titleLabel;
+    QLabel *m_countLabel;
+    QLabel *m_savedLabel; // shows "Saved: <path>" after a save
+    LogEdit *m_logEdit;
     QPushButton *m_clearBtn;
     QPushButton *m_saveBtn;
-    bool         m_savedClean = true;
-    QString      m_scriptDir;     // directory of the currently active script
-    QCheckBox   *m_autoScrollCb;
-    QComboBox   *m_logLevelCb;
-    bool         m_autoScroll = true;
+    bool m_savedClean = true;
+    QString m_scriptDir; // directory of the currently active script
+    QCheckBox *m_autoScrollCb;
+    QComboBox *m_logLevelCb;
+    bool m_autoScroll            = true;
 
     // ── batching (see beginBatch()/endBatch()) ──────────────────────────
-    int          m_batchDepth = 0;
-    bool         m_batchNeedsLabelUpdate = false;
-    bool         m_batchNeedsScroll      = false;
+    int m_batchDepth             = 0;
+    bool m_batchNeedsLabelUpdate = false;
+    bool m_batchNeedsScroll      = false;
 
-    void refreshCountAndScroll();   // the per-line work batching defers
+    void refreshCountAndScroll(); // the per-line work batching defers
 };

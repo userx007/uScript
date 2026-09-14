@@ -44,16 +44,16 @@
 #include <initializer_list>
 
 // ─── colour palette (matches AppStyle dark theme) ────────────────────────────
-static const QColor C_STATUS (0x4a, 0x9e, 0xff);   // blue  (internal status msgs)
-static const QColor C_PLAIN  (0xab, 0xb2, 0xbf);   // grey  (bare / unrecognised)
+static const QColor C_STATUS(0x4a, 0x9e, 0xff); // blue  (internal status msgs)
+static const QColor C_PLAIN(0xab, 0xb2, 0xbf);  // grey  (bare / unrecognised)
 
 // Gutter colours – match ScriptViewer / ShellTerminal palette exactly
-static const QColor C_GUTTER_BG    (0x11, 0x13, 0x18);
-static const QColor C_GUTTER_FG    (0x3E, 0x44, 0x51);
+static const QColor C_GUTTER_BG(0x11, 0x13, 0x18);
+static const QColor C_GUTTER_FG(0x3E, 0x44, 0x51);
 static const QColor C_GUTTER_BORDER(0x20, 0x22, 0x2A);
 
 // Word-match highlight – muted amber tint readable over dark ANSI colours
-static const QColor C_WORD_HIGHLIGHT       (0xf1, 0xfa, 0x8c,  60);   // Dracula yellow, low alpha
+static const QColor C_WORD_HIGHLIGHT(0xf1, 0xfa, 0x8c, 60); // Dracula yellow, low alpha
 static const QColor C_WORD_HIGHLIGHT_BORDER(0xf1, 0xc4, 0x0f, 180);
 
 // Saved-label stylesheet — used in three places; single source of truth.
@@ -71,29 +71,50 @@ static constexpr auto k_savedErrStyle =
 static QColor sgrCodeToColor(int code)
 {
     switch (code) {
-    case 30: return QColor(0x40, 0x48, 0x55);
-    case 31: return QColor(0xff, 0x55, 0x55);
-    case 32: return QColor(0x50, 0xfa, 0x7b);
-    case 33: return QColor(0xf1, 0xfa, 0x8c);
-    case 34: return QColor(0x4a, 0x9e, 0xff);
-    case 35: return QColor(0xff, 0x79, 0xc6);
-    case 36: return QColor(0x8b, 0xe9, 0xfd);
-    case 37: return QColor(0xf8, 0xf8, 0xf2);
-    case 90: return QColor(0x62, 0x72, 0xa4);
-    case 91: return QColor(0xff, 0x6e, 0x6e);
-    case 92: return QColor(0x69, 0xff, 0x94);
-    case 93: return QColor(0xff, 0xff, 0xa5);
-    case 94: return QColor(0xd6, 0xac, 0xff);
-    case 95: return QColor(0xff, 0x92, 0xdf);
-    case 96: return QColor(0xa4, 0xff, 0xff);
-    case 97: return QColor(0xff, 0xff, 0xff);
-    default: return {};
+    case 30:
+        return QColor(0x40, 0x48, 0x55);
+    case 31:
+        return QColor(0xff, 0x55, 0x55);
+    case 32:
+        return QColor(0x50, 0xfa, 0x7b);
+    case 33:
+        return QColor(0xf1, 0xfa, 0x8c);
+    case 34:
+        return QColor(0x4a, 0x9e, 0xff);
+    case 35:
+        return QColor(0xff, 0x79, 0xc6);
+    case 36:
+        return QColor(0x8b, 0xe9, 0xfd);
+    case 37:
+        return QColor(0xf8, 0xf8, 0xf2);
+    case 90:
+        return QColor(0x62, 0x72, 0xa4);
+    case 91:
+        return QColor(0xff, 0x6e, 0x6e);
+    case 92:
+        return QColor(0x69, 0xff, 0x94);
+    case 93:
+        return QColor(0xff, 0xff, 0xa5);
+    case 94:
+        return QColor(0xd6, 0xac, 0xff);
+    case 95:
+        return QColor(0xff, 0x92, 0xdf);
+    case 96:
+        return QColor(0xa4, 0xff, 0xff);
+    case 97:
+        return QColor(0xff, 0xff, 0xff);
+    default:
+        return {};
     }
 }
 
 // Decomposes an ANSI-coloured string into a list of (text, QTextCharFormat)
 // segments.  Returns one segment per colour run.
-struct Segment { QString text; QTextCharFormat fmt; };
+struct Segment
+{
+    QString text;
+    QTextCharFormat fmt;
+};
 
 static QList<Segment> ansiToSegments(const QString &input,
                                      const QTextCharFormat &base)
@@ -102,9 +123,9 @@ static QList<Segment> ansiToSegments(const QString &input,
 
     QList<Segment> result;
     QTextCharFormat cur = base;
-    int pos = 0;
+    int pos             = 0;
 
-    auto flush = [&](int end) {
+    auto flush          = [&](int end) {
         if (end > pos) {
             Segment s;
             s.text = input.mid(pos, end - pos);
@@ -117,11 +138,11 @@ static QList<Segment> ansiToSegments(const QString &input,
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
         flush(m.capturedStart());
-        pos = m.capturedEnd();
+        pos                      = m.capturedEnd();
 
         const QStringList params = m.captured(1).isEmpty()
-                                   ? QStringList{"0"}
-                                   : m.captured(1).split(';', Qt::SkipEmptyParts);
+                                       ? QStringList{"0"}
+                                       : m.captured(1).split(';', Qt::SkipEmptyParts);
         for (const QString &p : params) {
             const int code = p.toInt();
             if (code == 0) {
@@ -136,7 +157,9 @@ static QList<Segment> ansiToSegments(const QString &input,
                 cur.setFontItalic(false);
             } else {
                 const QColor c = sgrCodeToColor(code);
-                if (c.isValid()) cur.setForeground(c);
+                if (c.isValid()) {
+                    cur.setForeground(c);
+                }
             }
         }
     }
@@ -151,14 +174,20 @@ class LogLineNumberArea : public QWidget
 {
 public:
     explicit LogLineNumberArea(LogEdit *editor)
-        : QWidget(editor), m_editor(editor) {}
+        : QWidget(editor)
+        , m_editor(editor)
+    {}
 
     QSize sizeHint() const override
-    { return { m_editor->lineNumberAreaWidth(), 0 }; }
+    {
+        return {m_editor->lineNumberAreaWidth(), 0};
+    }
 
 protected:
     void paintEvent(QPaintEvent *ev) override
-    { m_editor->lineNumberAreaPaintEvent(ev); }
+    {
+        m_editor->lineNumberAreaPaintEvent(ev);
+    }
 
 private:
     LogEdit *m_editor;
@@ -204,11 +233,15 @@ void LogEdit::updateLineNumberAreaWidth(int)
 
 void LogEdit::updateLineNumberArea(const QRect &rect, int dy)
 {
-    if (dy) m_lineNumberArea->scroll(0, dy);
-    else    m_lineNumberArea->update(0, rect.y(),
-                                     m_lineNumberArea->width(), rect.height());
-    if (rect.contains(viewport()->rect()))
+    if (dy) {
+        m_lineNumberArea->scroll(0, dy);
+    } else {
+        m_lineNumberArea->update(0, rect.y(),
+                                 m_lineNumberArea->width(), rect.height());
+    }
+    if (rect.contains(viewport()->rect())) {
         updateLineNumberAreaWidth(0);
+    }
 }
 
 void LogEdit::resizeEvent(QResizeEvent *ev)
@@ -230,15 +263,18 @@ void LogEdit::lineNumberAreaPaintEvent(QPaintEvent *ev)
     p.drawLine(bx, ev->rect().top(), bx, ev->rect().bottom());
 
     // Iterate over visible blocks and draw their 1-based line number
-    QTextBlock block     = firstVisibleBlock();
-    int        blockNum  = block.blockNumber();
-    int        top       = qRound(blockBoundingGeometry(block)
-                                  .translated(contentOffset()).top());
-    int        bottom    = top + qRound(blockBoundingRect(block).height());
+    QTextBlock block = firstVisibleBlock();
+    int blockNum     = block.blockNumber();
+    int top          = qRound(blockBoundingGeometry(block)
+                                  .translated(contentOffset())
+                                  .top());
+    int bottom       = top + qRound(blockBoundingRect(block).height());
 
     // Use a slightly smaller font, matching ShellTerminal's gutter style
-    QFont gf = font();
-    if (gf.pointSize() > 1) gf.setPointSize(gf.pointSize() - 1);
+    QFont gf         = font();
+    if (gf.pointSize() > 1) {
+        gf.setPointSize(gf.pointSize() - 1);
+    }
     p.setFont(gf);
     p.setPen(C_GUTTER_FG);
 
@@ -252,7 +288,7 @@ void LogEdit::lineNumberAreaPaintEvent(QPaintEvent *ev)
                        m_lineNumberArea->width() - 4 - 1, lh,
                        Qt::AlignRight | Qt::AlignVCenter, num);
         }
-        block  = block.next();
+        block = block.next();
         ++blockNum;
         top    = bottom;
         bottom = top + qRound(blockBoundingRect(block).height());
@@ -277,7 +313,7 @@ void LogEdit::applyWordHighlights(const QString &word)
                         QVariant::fromValue(QPen(C_WORD_HIGHLIGHT_BORDER, 1)));
 
         QTextDocument *doc = document();
-        QTextCursor    hit = doc->find(re);
+        QTextCursor hit    = doc->find(re);
         while (!hit.isNull()) {
             QTextEdit::ExtraSelection sel;
             sel.cursor = hit;
@@ -351,10 +387,10 @@ LogViewer::LogViewer(QWidget *parent)
     m_logLevelCb = new QComboBox(header);
     m_logLevelCb->setToolTip("Minimum log severity passed to the interpreter\n");
     for (const char *name : {"DEFAULT", "WERBOSE", "VERBOSE", "DEBUG", "INFO",
-                              "WARNING", "ERROR",  "FATAL", "FIXED"}) {
+                             "WARNING", "ERROR", "FATAL", "FIXED"}) {
         m_logLevelCb->addItem(QString::fromLatin1(name));
     }
-    m_logLevelCb->setCurrentIndex(0);   // DEFAULT
+    m_logLevelCb->setCurrentIndex(0); // DEFAULT
 
     m_countLabel = new QLabel("", header);
     m_countLabel->setObjectName("panelInfo");
@@ -368,9 +404,9 @@ LogViewer::LogViewer(QWidget *parent)
     m_clearBtn->setToolTip("Clear log output");
 
     m_saveBtn = new QPushButton("SAVE", header);
-    m_saveBtn->setObjectName("clearBtn");   // reuse same QSS
+    m_saveBtn->setObjectName("clearBtn"); // reuse same QSS
     m_saveBtn->setToolTip("Save log to log_<date>_<time>.log");
-    m_saveBtn->setEnabled(false);           // nothing to save yet
+    m_saveBtn->setEnabled(false); // nothing to save yet
 
     m_savedLabel = new QLabel("", header);
     m_savedLabel->setObjectName("panelInfo");
@@ -379,7 +415,7 @@ LogViewer::LogViewer(QWidget *parent)
     hlay->addWidget(m_titleLabel);
     hlay->addWidget(m_logLevelCb);
     hlay->addSpacing(8);
-    hlay->addWidget(m_savedLabel, 1);   // stretch=1 so it takes remaining space
+    hlay->addWidget(m_savedLabel, 1); // stretch=1 so it takes remaining space
     hlay->addWidget(m_autoScrollCb);
     hlay->addWidget(m_countLabel);
     hlay->addWidget(m_saveBtn);
@@ -390,9 +426,9 @@ LogViewer::LogViewer(QWidget *parent)
     root->addWidget(header);
     root->addWidget(m_logEdit, 1);
 
-    connect(m_clearBtn,     &QPushButton::clicked,  this, &LogViewer::clear);
-    connect(m_autoScrollCb, &QCheckBox::toggled,    this, &LogViewer::setAutoScroll);
-    connect(m_saveBtn,      &QPushButton::clicked,  this, &LogViewer::saveLog);
+    connect(m_clearBtn, &QPushButton::clicked, this, &LogViewer::clear);
+    connect(m_autoScrollCb, &QCheckBox::toggled, this, &LogViewer::setAutoScroll);
+    connect(m_saveBtn, &QPushButton::clicked, this, &LogViewer::saveLog);
 }
 
 void LogViewer::setLogFont(const QFont &font)
@@ -434,8 +470,9 @@ static QTextCursor cursorAtNewLine(QTextDocument *doc)
 {
     QTextCursor cursor(doc);
     cursor.movePosition(QTextCursor::End);
-    if (!doc->isEmpty())
+    if (!doc->isEmpty()) {
         cursor.insertBlock();
+    }
     return cursor;
 }
 
@@ -447,16 +484,20 @@ void LogViewer::beginBatch()
 
 void LogViewer::endBatch()
 {
-    if (m_batchDepth <= 0)
-        return;   // unbalanced call — ignore rather than underflow
-    if (--m_batchDepth > 0)
-        return;   // still nested — only the outermost pair flushes
+    if (m_batchDepth <= 0) {
+        return; // unbalanced call — ignore rather than underflow
+    }
+    if (--m_batchDepth > 0) {
+        return; // still nested — only the outermost pair flushes
+    }
 
-    if (m_batchNeedsLabelUpdate)
+    if (m_batchNeedsLabelUpdate) {
         m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
-    if (m_batchNeedsScroll && m_autoScroll)
+    }
+    if (m_batchNeedsScroll && m_autoScroll) {
         m_logEdit->verticalScrollBar()->setValue(
             m_logEdit->verticalScrollBar()->maximum());
+    }
 
     m_batchNeedsLabelUpdate = false;
     m_batchNeedsScroll      = false;
@@ -471,9 +512,10 @@ void LogViewer::refreshCountAndScroll()
     // by one.
     m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
 
-    if (m_autoScroll)
+    if (m_autoScroll) {
         m_logEdit->verticalScrollBar()->setValue(
             m_logEdit->verticalScrollBar()->maximum());
+    }
 }
 
 void LogViewer::appendLine(const QString &line)
@@ -489,15 +531,17 @@ void LogViewer::appendLine(const QString &line)
     // escape codes with no visible text), skip the block insertion entirely.
     // Without this guard, cursorAtNewLine() would insert an empty QTextDocument
     // block, which toPlainText() serialises as a blank line.
-    const bool hasText = std::any_of(segments.cbegin(), segments.cend(),
-                                     [](const Segment &s){ return !s.text.isEmpty(); });
-    if (!hasText)
+    const bool hasText            = std::any_of(segments.cbegin(), segments.cend(),
+                                                [](const Segment &s) { return !s.text.isEmpty(); });
+    if (!hasText) {
         return;
+    }
 
     QTextCursor cursor = cursorAtNewLine(m_logEdit->document());
 
-    for (const Segment &s : segments)
+    for (const Segment &s : segments) {
         cursor.insertText(s.text, s.fmt);
+    }
 
     if (m_batchDepth > 0) {
         m_batchNeedsLabelUpdate = true;
@@ -521,7 +565,7 @@ void LogViewer::appendStatus(const QString &msg)
     cursor.insertText(QString("── %1  %2 ──").arg(ts, msg), fmt);
 
     if (m_batchDepth > 0) {
-        m_batchNeedsScroll = true;   // status lines aren't counted in the "N lines" label
+        m_batchNeedsScroll = true; // status lines aren't counted in the "N lines" label
     } else if (m_autoScroll) {
         m_logEdit->verticalScrollBar()->setValue(
             m_logEdit->verticalScrollBar()->maximum());
@@ -543,13 +587,15 @@ void LogViewer::clear()
 void LogViewer::setScriptPath(const QString &scriptPath)
 {
     m_scriptDir = scriptPath.isEmpty()
-                  ? QString()
-                  : QFileInfo(scriptPath).absolutePath();
+                      ? QString()
+                      : QFileInfo(scriptPath).absolutePath();
 }
 
 void LogViewer::saveLog()
 {
-    if (m_savedClean) return;   // nothing new — button should be disabled anyway
+    if (m_savedClean) {
+        return; // nothing new — button should be disabled anyway
+    }
     // Determine save directory: <scriptDir>/logs/  (create if needed)
     QString saveDir;
     if (!m_scriptDir.isEmpty()) {
@@ -572,8 +618,8 @@ void LogViewer::saveLog()
             m_savedClean = true;
             m_saveBtn->setEnabled(false);
             const QString display = m_scriptDir.isEmpty()
-                ? filePath
-                : QString("logs/%1").arg(fileName);
+                                        ? filePath
+                                        : QString("logs/%1").arg(fileName);
             m_savedLabel->setText(QString("saved: %1").arg(display));
             m_savedLabel->setStyleSheet(k_savedOkStyle);
             return;

@@ -71,21 +71,23 @@ protected:
     // so it stays visually grouped with the type keyword it introduces
     // rather than with generic structural separators (see
     // ScriptHighlighter's "EVAL sub-context" rule).
-    static constexpr auto C_SEPARATOR = "#6272a4";   // slate
+    static constexpr auto C_SEPARATOR = "#6272a4"; // slate
 
     // ── Rule table ────────────────────────────────────────────────────────
-    struct Rule {
+    struct Rule
+    {
         QRegularExpression pattern;
-        QTextCharFormat    format;
-        int                captureGroup = 0;   // 0 = whole match
+        QTextCharFormat format;
+        int captureGroup = 0; // 0 = whole match
     };
+
     QVector<Rule> m_rules;
 
     // ── Block comment state (--- … !--) ───────────────────────────────────
-    QRegularExpression m_blockStart;   // ^---
-    QRegularExpression m_blockEnd;     // ^!--
-    QTextCharFormat    m_commentFmt;   // slate
-    QTextCharFormat    m_delimFmt;     // slate + italic
+    QRegularExpression m_blockStart; // ^---
+    QRegularExpression m_blockEnd;   // ^!--
+    QTextCharFormat m_commentFmt;    // slate
+    QTextCharFormat m_delimFmt;      // slate + italic
 
     // ── Helpers ───────────────────────────────────────────────────────────
     static QTextCharFormat fmt(const QString &hex,

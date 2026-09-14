@@ -1,4 +1,5 @@
 #include "uScriptValidator.hpp"
+
 #include "IPluginDataTypes.hpp"
 #include "IScriptCommandValidator.hpp"
 #include "uGuiNotify.hpp"
@@ -10,8 +11,6 @@
 #include "uStreamStatementParser.hpp"
 #include "uString.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -22,6 +21,8 @@
 #include <set>
 #include <sstream>
 #include <stack>
+#include <stddef.h>
+#include <stdint.h>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -35,15 +36,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "CORE_SCR_V  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "CORE_SCR_V  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            CLASS IMPLEMENTATION                             //
@@ -53,10 +53,10 @@
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::validateScript(std::vector<ScriptRawLine>& vRawLines, ScriptEntriesType& sScriptEntries)
+bool ScriptValidator::validateScript(std::vector<ScriptRawLine> &vRawLines, ScriptEntriesType &sScriptEntries)
 {
 
-    bool bRetVal = false;
+    bool bRetVal     = false;
 
     m_sScriptEntries = &sScriptEntries;
 
@@ -90,41 +90,37 @@ bool ScriptValidator::validateScript(std::vector<ScriptRawLine>& vRawLines, Scri
 
         bRetVal = true;
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
 
 } // validateScript()
 
-
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_validateScriptStatements(std::vector<ScriptRawLine>& vRawLines) noexcept
+bool ScriptValidator::m_validateScriptStatements(std::vector<ScriptRawLine> &vRawLines) noexcept
 {
     Token token;
 
     return std::all_of(vRawLines.begin(), vRawLines.end(),
-        [&](ScriptRawLine& rawLine) {
-            m_iCurrentSourceLine = rawLine.iLineNumber;
-            ustring::replaceMacros(rawLine.strContent, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
-            if (!m_shpCommandValidator->validateCommand(rawLine.iLineNumber, rawLine.strContent, token)) {
-                auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                          LOG_STRING("Failed to validate ["); 
-                          LOG_STRING(rawLine.strContent); 
-                          LOG_STRING("]"));
-                gui_notify_error_main(rawLine.iLineNumber);
-                return false;
-            }
-            return m_preprocessScriptStatements(rawLine, token);
-        });
+                       [&](ScriptRawLine &rawLine) {
+                           m_iCurrentSourceLine = rawLine.iLineNumber;
+                           ustring::replaceMacros(rawLine.strContent, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+                           if (!m_shpCommandValidator->validateCommand(rawLine.iLineNumber, rawLine.strContent, token)) {
+                               auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+                               LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                         LOG_STRING("Failed to validate [");
+                                         LOG_STRING(rawLine.strContent);
+                                         LOG_STRING("]"));
+                               gui_notify_error_main(rawLine.iLineNumber);
+                               return false;
+                           }
+                           return m_preprocessScriptStatements(rawLine, token);
+                       });
 
 } // m_validateScriptStatements()
-
-
 
 /*-------------------------------------------------------------------------------
   Validates every $NAME.SIZE reference found in the compiled command list.
@@ -148,7 +144,7 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
 
     static const std::regex sizePattern(R"(\$([A-Za-z_][A-Za-z0-9_]*)\.SIZE(?![A-Za-z0-9_]))");
 
-    auto checkField = [&](const std::string& strField, int iLineNumber) {
+    auto checkField = [&](const std::string &strField, int iLineNumber) {
         auto itMatch = std::sregex_iterator(strField.begin(), strField.end(), sizePattern);
         auto itEnd   = std::sregex_iterator();
 
@@ -165,8 +161,8 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
         }
     };
 
-    for (const auto& scriptLine : m_sScriptEntries->vCommands) {
-        std::visit([&](const auto& command) {
+    for (const auto &scriptLine : m_sScriptEntries->vCommands) {
+        std::visit([&](const auto &command) {
             using T = std::decay_t<decltype(command)>;
 
             if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
@@ -175,8 +171,8 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
                 checkField(command.strCondition, scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, RepeatTimes>) {
                 checkField(command.begin.strExpr, scriptLine.iLineNumber);
-                checkField(command.end.strExpr,   scriptLine.iLineNumber);
-                checkField(command.step.strExpr,  scriptLine.iLineNumber);
+                checkField(command.end.strExpr, scriptLine.iLineNumber);
+                checkField(command.step.strExpr, scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, RepeatUntil>) {
                 checkField(command.strCondition, scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, PrintStatement>) {
@@ -189,34 +185,34 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
             } else if constexpr (std::is_same_v<T, MathStatement>) {
                 checkField(command.strExprTpl, scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, StreamStatement>) {
-                for (const auto& field : command.vFields) {
+                for (const auto &field : command.vFields) {
                     checkField(field.strOffsetTpl, scriptLine.iLineNumber);
                     checkField(field.strLengthTpl, scriptLine.iLineNumber);
-                    checkField(field.strValueTpl,  scriptLine.iLineNumber);
+                    checkField(field.strValueTpl, scriptLine.iLineNumber);
                 }
             } else if constexpr (std::is_same_v<T, StreamValStatement>) {
-                checkField(command.strSourceTpl,     scriptLine.iLineNumber);
+                checkField(command.strSourceTpl, scriptLine.iLineNumber);
                 checkField(command.strByteOffsetTpl, scriptLine.iLineNumber);
-                checkField(command.strBitOffsetTpl,  scriptLine.iLineNumber);
-                checkField(command.strValueSizeTpl,  scriptLine.iLineNumber);
+                checkField(command.strBitOffsetTpl, scriptLine.iLineNumber);
+                checkField(command.strValueSizeTpl, scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, StreamValArrayStatement>) {
                 checkField(command.strSourceTpl, scriptLine.iLineNumber);
-                for (const auto& field : command.vFields) {
+                for (const auto &field : command.vFields) {
                     checkField(field.strByteOffsetTpl, scriptLine.iLineNumber);
-                    checkField(field.strBitOffsetTpl,  scriptLine.iLineNumber);
-                    checkField(field.strValueSizeTpl,  scriptLine.iLineNumber);
+                    checkField(field.strBitOffsetTpl, scriptLine.iLineNumber);
+                    checkField(field.strValueSizeTpl, scriptLine.iLineNumber);
                 }
             } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
                 checkField(command.strLabelTpl, scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
                 if (command.bIsArraySource) {
-                    for (const auto& elem : command.vArrayValues) {
+                    for (const auto &elem : command.vArrayValues) {
                         checkField(elem.strExpr, scriptLine.iLineNumber);
                     }
                 } else {
                     checkField(command.begin.strExpr, scriptLine.iLineNumber);
-                    checkField(command.end.strExpr,   scriptLine.iLineNumber);
-                    checkField(command.step.strExpr,  scriptLine.iLineNumber);
+                    checkField(command.end.strExpr, scriptLine.iLineNumber);
+                    checkField(command.step.strExpr, scriptLine.iLineNumber);
                 }
                 if (command.bHasK) {
                     checkField(command.k.strExpr, scriptLine.iLineNumber);
@@ -225,16 +221,16 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
             // Label, RepeatEnd, LoopBreak, LoopContinue, GeneratorStopAllStatement
             // carry only plain identifiers or nothing at all (no $macro
             // templates) — nothing to scan.
-        }, scriptLine.command);
+        },
+                   scriptLine.command);
     }
 
     LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR;
-               LOG_STRING("Array SIZE usage validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
+              LOG_STRING("Array SIZE usage validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
 } // m_validateArraySizeUsage()
-
 
 /*-------------------------------------------------------------------------------
 
@@ -243,17 +239,17 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
 bool ScriptValidator::m_validateConditions() noexcept
 {
     int iIndex = 0;
-    std::map<std::string, int> gotolabelRegistry;   // earliest GOTO index per label
-    std::set<std::string>      definedLabels;       // all LABEL names seen so far
-    bool bRetVal = true;
+    std::map<std::string, int> gotolabelRegistry; // earliest GOTO index per label
+    std::set<std::string> definedLabels;          // all LABEL names seen so far
+    bool bRetVal                 = true;
 
-    auto hasValidGotoBeforeLabel = [&gotolabelRegistry](const auto& label, int currentIndex) {
+    auto hasValidGotoBeforeLabel = [&gotolabelRegistry](const auto &label, int currentIndex) {
         auto it = gotolabelRegistry.find(label);
         return (it != gotolabelRegistry.end()) && (it->second < currentIndex);
     };
 
-    for (const auto& command : m_sScriptEntries->vCommands) {
-        std::visit([&](const auto& item) {
+    for (const auto &command : m_sScriptEntries->vCommands) {
+        std::visit([&](const auto &item) {
             using T = std::decay_t<decltype(item)>;
 
             if constexpr (std::is_same_v<T, Condition>) {
@@ -261,7 +257,7 @@ bool ScriptValidator::m_validateConditions() noexcept
             }
 
             if constexpr (std::is_same_v<T, Label>) {
-                const std::string& label = item.strLabelName;
+                const std::string &label = item.strLabelName;
 
                 if (!hasValidGotoBeforeLabel(label, iIndex)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Label ["); LOG_STRING(label); LOG_STRING("] without preceding GOTO"));
@@ -275,13 +271,14 @@ bool ScriptValidator::m_validateConditions() noexcept
                     bRetVal = false;
                 }
             }
-        }, command.command);
+        },
+                   command.command);
 
         ++iIndex;
     }
 
     // Post-validation: every GOTO must have a corresponding LABEL.
-    for (const auto& [label, index] : gotolabelRegistry) {
+    for (const auto &[label, index] : gotolabelRegistry) {
         if (definedLabels.find(label) == definedLabels.end()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("GOTO"); LOG_STRING(label); LOG_STRING("without corresponding label"));
             bRetVal = false;
@@ -293,7 +290,6 @@ bool ScriptValidator::m_validateConditions() noexcept
     return bRetVal;
 
 } // m_validateConditions
-
 
 /*-------------------------------------------------------------------------------
   Validates the structure of REPEAT_TIMES / REPEAT_UNTIL / ENDREP blocks:
@@ -330,38 +326,35 @@ bool ScriptValidator::m_validateLoops() noexcept
     std::vector<std::string> loopStack;
 
     std::vector<std::pair<std::string, std::vector<std::string>>> vGotoContexts;
-    std::map<std::string, std::vector<std::string>>               mapLabelContexts;
-    std::set<std::string>                                         definedLabels;
+    std::map<std::string, std::vector<std::string>> mapLabelContexts;
+    std::set<std::string> definedLabels;
 
-    for (const auto& cmd : m_sScriptEntries->vCommands) {
+    for (const auto &cmd : m_sScriptEntries->vCommands) {
 
         if (!bRetVal) {
             break;
         }
 
-        std::visit([&](const auto& item) {
+        std::visit([&](const auto &item) {
             using T = std::decay_t<decltype(item)>;
 
             // ----- collect name sets as we walk forward -----
             if constexpr (std::is_same_v<T, Condition>) {
                 allGotoLabelNames.insert(item.strLabelName);
                 vGotoContexts.emplace_back(item.strLabelName, loopStack);
-            }
-            else if constexpr (std::is_same_v<T, Label>) {
+            } else if constexpr (std::is_same_v<T, Label>) {
                 allGotoLabelNames.insert(item.strLabelName);
                 mapLabelContexts[item.strLabelName] = loopStack;
                 definedLabels.insert(item.strLabelName);
-            }
-            else if constexpr (std::is_same_v<T, MacroCommand>) {
+            } else if constexpr (std::is_same_v<T, MacroCommand>) {
                 allScriptMacroNames.insert(item.strVarMacroName);
-            }
-            else if constexpr (std::is_same_v<T, VarMacroInit>) {
+            } else if constexpr (std::is_same_v<T, VarMacroInit>) {
                 allScriptMacroNames.insert(item.strName);
             }
 
             // ----- loop open markers -----
             else if constexpr (std::is_same_v<T, RepeatTimes> || std::is_same_v<T, RepeatUntil>) {
-                const std::string& label = item.strLabel;
+                const std::string &label = item.strLabel;
 
                 if (!allLoopLabels.insert(label).second) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Duplicate loop label:"); LOG_STRING(label));
@@ -389,7 +382,7 @@ bool ScriptValidator::m_validateLoops() noexcept
 
             // ----- loop close marker -----
             else if constexpr (std::is_same_v<T, RepeatEnd>) {
-                const std::string& label = item.strLabel;
+                const std::string &label = item.strLabel;
 
                 if (loopStack.empty()) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("END_REPEAT without matching REPEAT:"); LOG_STRING(label));
@@ -410,8 +403,8 @@ bool ScriptValidator::m_validateLoops() noexcept
 
             // ----- BREAK / CONTINUE — label must be an enclosing loop -----
             else if constexpr (std::is_same_v<T, LoopBreak> || std::is_same_v<T, LoopContinue>) {
-                const std::string& label = item.strLabel;
-                const char* pszKeyword   = std::is_same_v<T, LoopBreak> ? "BREAK" : "CONTINUE";
+                const std::string &label = item.strLabel;
+                const char *pszKeyword   = std::is_same_v<T, LoopBreak> ? "BREAK" : "CONTINUE";
 
                 if (loopStack.empty()) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -422,7 +415,7 @@ bool ScriptValidator::m_validateLoops() noexcept
                     return;
                 }
                 bool bFound = std::any_of(loopStack.begin(), loopStack.end(),
-                    [&label](const std::string& l) { return l == label; });
+                                          [&label](const std::string &l) { return l == label; });
                 if (!bFound) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING(pszKeyword); LOG_STRING(label);
@@ -431,13 +424,13 @@ bool ScriptValidator::m_validateLoops() noexcept
                     bRetVal = false;
                 }
             }
-
-        }, cmd.command);
+        },
+                   cmd.command);
     }
 
     // --- unclosed loops -------------------------------------------------------
     if (bRetVal && !loopStack.empty()) {
-        for (const auto& label : loopStack) {
+        for (const auto &label : loopStack) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unclosed loop (missing END_REPEAT):"); LOG_STRING(label));
         }
         bRetVal = false;
@@ -445,7 +438,7 @@ bool ScriptValidator::m_validateLoops() noexcept
 
     // --- GOTO must not cross loop boundaries ----------------------------------
     if (bRetVal) {
-        for (const auto& [targetLabel, gotoCtx] : vGotoContexts) {
+        for (const auto &[targetLabel, gotoCtx] : vGotoContexts) {
             auto it = mapLabelContexts.find(targetLabel);
             if (it != mapLabelContexts.end()) {
                 if (gotoCtx != it->second) {
@@ -463,42 +456,42 @@ bool ScriptValidator::m_validateLoops() noexcept
 
 } // m_validateLoops()
 
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_validatePlugins () noexcept
+bool ScriptValidator::m_validatePlugins() noexcept
 {
     bool bRetVal = true;
 
     // list of plugins used by the commands (store them in a std::set because only one occurence is relevant)
     std::set<std::string> usedPlugins;
     std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
-        [&usedPlugins](const ScriptLine& data) {
-            std::visit([&usedPlugins](const auto & item) {
-                using T = std::decay_t<decltype(item)>;
+                  [&usedPlugins](const ScriptLine &data) {
+                      std::visit([&usedPlugins](const auto &item) {
+                          using T = std::decay_t<decltype(item)>;
 
-                if constexpr (std::is_same_v<T, MacroCommand>) {
-                    usedPlugins.insert(item.strPlugin);
-                }
+                          if constexpr (std::is_same_v<T, MacroCommand>) {
+                              usedPlugins.insert(item.strPlugin);
+                          }
 
-                if constexpr (std::is_same_v<T, Command>) {
-                    usedPlugins.insert(item.strPlugin);
-                }
-            }, data.command);
-        });
+                          if constexpr (std::is_same_v<T, Command>) {
+                              usedPlugins.insert(item.strPlugin);
+                          }
+                      },
+                                 data.command);
+                  });
 
     // set of loaded plugins from the vPlugins
     std::set<std::string> loadedPlugins;
     std::transform(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(), std::inserter(loadedPlugins, loadedPlugins.begin()),
-        [](const auto & item) {
-            return item.strPluginName;
-        });
+                   [](const auto &item) {
+                       return item.strPluginName;
+                   });
 
     // Helper: extract the base name from a plugin name, stripping any ":N" suffix.
     // "UART:1" → "UART",  "UART" → "UART"
-    auto baseName = [](const std::string& name) -> std::string {
+    auto baseName = [](const std::string &name) -> std::string {
         const auto pos = name.find(':');
         return (pos != std::string::npos) ? name.substr(0, pos) : name;
     };
@@ -507,7 +500,7 @@ bool ScriptValidator::m_validatePlugins () noexcept
     // An instanced name like "UART:1" is satisfied when its base "UART" is loaded,
     // so we only flag it missing when neither the exact name nor the base is loaded.
     std::set<std::string> notloadedPlugins;
-    for (const auto& used : usedPlugins) {
+    for (const auto &used : usedPlugins) {
         if (loadedPlugins.count(used) == 0 && loadedPlugins.count(baseName(used)) == 0) {
             notloadedPlugins.insert(used);
         }
@@ -517,27 +510,32 @@ bool ScriptValidator::m_validatePlugins () noexcept
     // A base plugin "UART" is considered used when any instanced command "UART:N"
     // references it, even if "UART" itself never appears verbatim in a command.
     std::set<std::string> notusedPlugins;
-    for (const auto& loaded : loadedPlugins) {
+    for (const auto &loaded : loadedPlugins) {
         bool bUsed = usedPlugins.count(loaded) > 0;
         if (!bUsed) {
-            for (const auto& used : usedPlugins) {
-                if (baseName(used) == loaded) { bUsed = true; break; }
+            for (const auto &used : usedPlugins) {
+                if (baseName(used) == loaded) {
+                    bUsed = true;
+                    break;
+                }
             }
         }
-        if (!bUsed) notusedPlugins.insert(loaded);
+        if (!bUsed) {
+            notusedPlugins.insert(loaded);
+        }
     }
 
     // lambda to print a set
-    auto printSet = [](const std::set<std::string>& s, const std::string& name, bool bError = false) {
+    auto printSet = [](const std::set<std::string> &s, const std::string &name, bool bError = false) {
         std::ostringstream oss;
         oss << name << ": ";
-        for (const auto& item : s) {
+        for (const auto &item : s) {
             oss << item << " ";
         }
         LOG_PRINT((bError ? LOG_ERROR : LOG_WERBOSE), LOG_HDR; LOG_STRING(oss.str()));
     };
 
-    printSet(usedPlugins,   "Needed plugins");
+    printSet(usedPlugins, "Needed plugins");
     printSet(loadedPlugins, "Loaded plugins");
 
     // not really an error but printed in order to notify the user
@@ -556,128 +554,101 @@ bool ScriptValidator::m_validatePlugins () noexcept
 
 } // m_validatePlugins()
 
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_preprocessScriptStatements ( const ScriptRawLine& rawLine, const Token token ) noexcept
+bool ScriptValidator::m_preprocessScriptStatements(const ScriptRawLine &rawLine, const Token token) noexcept
 {
     bool bRetVal = false;
 
-    switch(token) {
-        case Token::LOAD_PLUGIN: {
-                bRetVal = m_HandleLoadPlugin(rawLine);
-            }
-            break;
-        case Token::CONSTANT_MACRO: {
-                bRetVal = m_HandleConstantMacro(rawLine);
-            }
-            break;
-        case Token::ARRAY_MACRO: {
-                bRetVal = m_HandleArrayMacro(rawLine);
-            }
-            break;
-        case Token::VARIABLE_MACRO: {
-                bRetVal = m_HandleVariableMacro(rawLine);
-            }
-            break;
-        case Token::VAR_MACRO_INIT: {
-                bRetVal = m_HandleVarMacroInit(rawLine);
-            }
-            break;
-        case Token::FORMAT_STMT: {
-                bRetVal = m_HandleFormatStmt(rawLine);
-            }
-            break;
-        case Token::MATH_STMT: {
-                bRetVal = m_HandleMathStmt(rawLine);
-            }
-            break;
-        case Token::BITSTREAM_STMT: {
-                bRetVal = m_HandleBitstreamStmt(rawLine);
-            }
-            break;
-        case Token::BYTESTREAM_STMT: {
-                bRetVal = m_HandleBytestreamStmt(rawLine);
-            }
-            break;
-        case Token::BITSTREAMVAL_STMT: {
-                bRetVal = m_HandleBitstreamValStmt(rawLine);
-            }
-            break;
-        case Token::BYTESTREAMVAL_STMT: {
-                bRetVal = m_HandleBytestreamValStmt(rawLine);
-            }
-            break;
-        case Token::BITSTREAMVAL_ARRAY_STMT: {
-                bRetVal = m_HandleBitstreamValArrayStmt(rawLine);
-            }
-            break;
-        case Token::BYTESTREAMVAL_ARRAY_STMT: {
-                bRetVal = m_HandleBytestreamValArrayStmt(rawLine);
-            }
-            break;
-        case Token::COMMAND: {
-                bRetVal = m_HandleCommand(rawLine);
-            }
-            break;
-        case Token::IF_GOTO_LABEL: {
-                bRetVal = m_HandleCondition(rawLine);
-            }
-            break;
-        case Token::LABEL: {
-                bRetVal = m_HandleLabel(rawLine);
-            }
-            break;
-        case Token::REPEAT: {
-                bRetVal = m_HandleRepeat(rawLine);
-            }
-            break;
-        case Token::END_REPEAT: {
-                bRetVal = m_HandleEndRepeat(rawLine);
-            }
-            break;
-        case Token::BREAK_LOOP: {
-                bRetVal = m_HandleBreak(rawLine);
-            }
-            break;
-        case Token::CONTINUE_LOOP: {
-                bRetVal = m_HandleContinue(rawLine);
-            }
-            break;
-        case Token::PRINT_STMT: {
-                bRetVal = m_HandlePrint(rawLine);
-            }
-            break;
-        case Token::DELAY_STMT: {
-                bRetVal = m_HandleDelay(rawLine);
-            }
-            break;
-        case Token::BREAKPOINT_STMT: {
-                bRetVal = m_HandleBreakpoint(rawLine);
-            }
-            break;
-        case Token::GENERATOR_STMT: {
-                bRetVal = m_HandleGeneratorStmt(rawLine);
-            }
-            break;
-        case Token::GENERATOR_STOP_ALL_STMT: {
-                bRetVal = m_HandleGeneratorStopAll(rawLine);
-            }
-            break;
-        default: {  
-                auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                    LOG_STRING("Unknown command token received!"));
-            }
-            break;
-    }
-
-    if( false == bRetVal ) {
+    switch (token) {
+    case Token::LOAD_PLUGIN: {
+        bRetVal = m_HandleLoadPlugin(rawLine);
+    } break;
+    case Token::CONSTANT_MACRO: {
+        bRetVal = m_HandleConstantMacro(rawLine);
+    } break;
+    case Token::ARRAY_MACRO: {
+        bRetVal = m_HandleArrayMacro(rawLine);
+    } break;
+    case Token::VARIABLE_MACRO: {
+        bRetVal = m_HandleVariableMacro(rawLine);
+    } break;
+    case Token::VAR_MACRO_INIT: {
+        bRetVal = m_HandleVarMacroInit(rawLine);
+    } break;
+    case Token::FORMAT_STMT: {
+        bRetVal = m_HandleFormatStmt(rawLine);
+    } break;
+    case Token::MATH_STMT: {
+        bRetVal = m_HandleMathStmt(rawLine);
+    } break;
+    case Token::BITSTREAM_STMT: {
+        bRetVal = m_HandleBitstreamStmt(rawLine);
+    } break;
+    case Token::BYTESTREAM_STMT: {
+        bRetVal = m_HandleBytestreamStmt(rawLine);
+    } break;
+    case Token::BITSTREAMVAL_STMT: {
+        bRetVal = m_HandleBitstreamValStmt(rawLine);
+    } break;
+    case Token::BYTESTREAMVAL_STMT: {
+        bRetVal = m_HandleBytestreamValStmt(rawLine);
+    } break;
+    case Token::BITSTREAMVAL_ARRAY_STMT: {
+        bRetVal = m_HandleBitstreamValArrayStmt(rawLine);
+    } break;
+    case Token::BYTESTREAMVAL_ARRAY_STMT: {
+        bRetVal = m_HandleBytestreamValArrayStmt(rawLine);
+    } break;
+    case Token::COMMAND: {
+        bRetVal = m_HandleCommand(rawLine);
+    } break;
+    case Token::IF_GOTO_LABEL: {
+        bRetVal = m_HandleCondition(rawLine);
+    } break;
+    case Token::LABEL: {
+        bRetVal = m_HandleLabel(rawLine);
+    } break;
+    case Token::REPEAT: {
+        bRetVal = m_HandleRepeat(rawLine);
+    } break;
+    case Token::END_REPEAT: {
+        bRetVal = m_HandleEndRepeat(rawLine);
+    } break;
+    case Token::BREAK_LOOP: {
+        bRetVal = m_HandleBreak(rawLine);
+    } break;
+    case Token::CONTINUE_LOOP: {
+        bRetVal = m_HandleContinue(rawLine);
+    } break;
+    case Token::PRINT_STMT: {
+        bRetVal = m_HandlePrint(rawLine);
+    } break;
+    case Token::DELAY_STMT: {
+        bRetVal = m_HandleDelay(rawLine);
+    } break;
+    case Token::BREAKPOINT_STMT: {
+        bRetVal = m_HandleBreakpoint(rawLine);
+    } break;
+    case Token::GENERATOR_STMT: {
+        bRetVal = m_HandleGeneratorStmt(rawLine);
+    } break;
+    case Token::GENERATOR_STOP_ALL_STMT: {
+        bRetVal = m_HandleGeneratorStopAll(rawLine);
+    } break;
+    default: {
         auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-            LOG_STRING("Failed to validate:"); LOG_STRING(rawLine.strContent));
+                  LOG_STRING("Unknown command token received!"));
+    } break;
+    }
+
+    if (false == bRetVal) {
+        auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("Failed to validate:"); LOG_STRING(rawLine.strContent));
         gui_notify_error_main(rawLine.iLineNumber);
     }
 
@@ -685,12 +656,11 @@ bool ScriptValidator::m_preprocessScriptStatements ( const ScriptRawLine& rawLin
 
 } // m_preprocessScriptStatements()
 
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleLoadPlugin ( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleLoadPlugin(const ScriptRawLine &rawLine) noexcept
 {
     bool bRetVal = false;
 
@@ -698,42 +668,39 @@ bool ScriptValidator::m_HandleLoadPlugin ( const ScriptRawLine& rawLine ) noexce
     ustring::tokenize(rawLine.strContent, vstrTokens);
     size_t szSize = vstrTokens.size();
 
-
     do {
 
         if ((szSize != 2) && (szSize != 4)) {
             break;
         }
 
-        if (std::find_if (m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
-        [&vstrTokens](const auto & item) {
-        return item.strPluginName == vstrTokens[1];
-        }) != m_sScriptEntries->vPlugins.end()) {
+        if (std::find_if(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
+                         [&vstrTokens](const auto &item) {
+                             return item.strPluginName == vstrTokens[1];
+                         }) != m_sScriptEntries->vPlugins.end()) {
             auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                LOG_STRING("Plugin already exists:"); 
-                LOG_STRING(vstrTokens[1]));
+                      LOG_STRING("Plugin already exists:");
+                      LOG_STRING(vstrTokens[1]));
             break;
         }
 
         bool bHasVersion = (4 == vstrTokens.size());
-        m_sScriptEntries->vPlugins.emplace_back( vstrTokens[1], (bHasVersion ? vstrTokens[2] : std::string("")), (bHasVersion ? vstrTokens[3] : std::string("")), nullptr );
+        m_sScriptEntries->vPlugins.emplace_back(vstrTokens[1], (bHasVersion ? vstrTokens[2] : std::string("")), (bHasVersion ? vstrTokens[3] : std::string("")), nullptr);
 
         bRetVal = true;
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
 
 } // m_HandleLoadPlugin()
 
-
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleConstantMacro ( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleConstantMacro(const ScriptRawLine &rawLine) noexcept
 {
     std::vector<std::string> vstrTokens;
     ustring::tokenize(rawLine.strContent, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
@@ -754,9 +721,7 @@ bool ScriptValidator::m_HandleConstantMacro ( const ScriptRawLine& rawLine ) noe
     // fail if the cmacro already exists
     return aRetVal.second;
 
-
 } // m_HandleConstantMacro()
-
 
 /*-------------------------------------------------------------------------------
   m_parseArrayElements — CSV parser for array element lists.
@@ -772,12 +737,12 @@ bool ScriptValidator::m_HandleConstantMacro ( const ScriptRawLine& rawLine ) noe
     "\"a, b\", \"c, d\""           → ["a, b", "c, d"]
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_parseArrayElements( const std::string& strList,
-                                             std::vector<std::string>& vElements ) noexcept
+bool ScriptValidator::m_parseArrayElements(const std::string &strList,
+                                           std::vector<std::string> &vElements) noexcept
 {
     vElements.clear();
 
-    bool        bInQuotes  = false;
+    bool bInQuotes = false;
     std::string strCurrent;
 
     for (size_t i = 0; i < strList.size(); ++i) {
@@ -817,7 +782,6 @@ bool ScriptValidator::m_parseArrayElements( const std::string& strList,
 
 } // m_parseArrayElements()
 
-
 /*-------------------------------------------------------------------------------
   ARRAY_MACRO handler:  NAME [= elem1, elem2, ...
 
@@ -828,11 +792,11 @@ bool ScriptValidator::m_parseArrayElements( const std::string& strList,
     declaration, not a runtime command.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleArrayMacro( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleArrayMacro(const ScriptRawLine &rawLine) noexcept
 {
     // Split at [= to get name and element list
     static const std::string kSep = "[=";
-    auto sepPos = rawLine.strContent.find(kSep);
+    auto sepPos                   = rawLine.strContent.find(kSep);
     if (sepPos == std::string::npos) {
         return false;
     }
@@ -841,25 +805,25 @@ bool ScriptValidator::m_HandleArrayMacro( const ScriptRawLine& rawLine ) noexcep
     std::string strList = rawLine.strContent.substr(sepPos + kSep.size());
 
     // trim name
-    size_t ns = strName.find_first_not_of(" \t");
-    size_t ne = strName.find_last_not_of(" \t");
-    if (ns == std::string::npos) { 
-        return false; 
+    size_t ns           = strName.find_first_not_of(" \t");
+    size_t ne           = strName.find_last_not_of(" \t");
+    if (ns == std::string::npos) {
+        return false;
     }
-    strName = strName.substr(ns, ne - ns + 1);
+    strName   = strName.substr(ns, ne - ns + 1);
 
     // trim list
     size_t ls = strList.find_first_not_of(" \t");
-    if (ls == std::string::npos) { 
-        return false; 
+    if (ls == std::string::npos) {
+        return false;
     }
-    strList = strList.substr(ls);
+    strList     = strList.substr(ls);
 
     auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
     // Name must not collide with an existing constant macro
     if (m_sScriptEntries->mapMacros.count(strName)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("Array macro name conflicts with constant macro:"); 
+                  LOG_STRING("Array macro name conflicts with constant macro:");
                   LOG_STRING(strName));
         return false;
     }
@@ -867,7 +831,7 @@ bool ScriptValidator::m_HandleArrayMacro( const ScriptRawLine& rawLine ) noexcep
     // Name must not collide with an existing array macro (duplicate)
     if (m_sScriptEntries->mapArrayMacros.count(strName)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("Array macro already declared:"); 
+                  LOG_STRING("Array macro already declared:");
                   LOG_STRING(strName));
         return false;
     }
@@ -875,7 +839,7 @@ bool ScriptValidator::m_HandleArrayMacro( const ScriptRawLine& rawLine ) noexcep
     std::vector<std::string> vElements;
     if (!m_parseArrayElements(strList, vElements)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("Array macro ["); 
+                  LOG_STRING("Array macro [");
                   LOG_STRING(strName);
                   LOG_STRING("]: unterminated quote in element list"));
         return false;
@@ -883,8 +847,8 @@ bool ScriptValidator::m_HandleArrayMacro( const ScriptRawLine& rawLine ) noexcep
 
     if (vElements.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("Array macro ["); 
-                  LOG_STRING(strName); 
+                  LOG_STRING("Array macro [");
+                  LOG_STRING(strName);
                   LOG_STRING("]: no elements"));
         return false;
     }
@@ -892,9 +856,9 @@ bool ScriptValidator::m_HandleArrayMacro( const ScriptRawLine& rawLine ) noexcep
     m_sScriptEntries->mapArrayMacros.emplace(strName, std::move(vElements));
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-              LOG_STRING("Array macro ["); 
+              LOG_STRING("Array macro [");
               LOG_STRING(strName);
-              LOG_STRING("]="); 
+              LOG_STRING("]=");
               LOG_STRING(std::to_string(m_sScriptEntries->mapArrayMacros.at(strName).size()));
               LOG_STRING("elements"));
 
@@ -902,16 +866,14 @@ bool ScriptValidator::m_HandleArrayMacro( const ScriptRawLine& rawLine ) noexcep
 
 } // m_HandleArrayMacro()
 
-
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleVariableMacro ( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleVariableMacro(const ScriptRawLine &rawLine) noexcept
 {
-    std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR, 
-                                            SCRIPT_PLUGIN_COMMAND_SEPARATOR, 
+    std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR,
+                                            SCRIPT_PLUGIN_COMMAND_SEPARATOR,
                                             SCRIPT_COMMAND_PARAMS_SEPARATOR};
     std::vector<std::string> vstrTokens;
     ustring::tokenizeEx(rawLine.strContent, vstrDelimiters, vstrTokens);
@@ -922,7 +884,7 @@ bool ScriptValidator::m_HandleVariableMacro ( const ScriptRawLine& rawLine ) noe
     }
 
     std::string strParams = (szSize == 4) ? vstrTokens[3] : "";
-    const bool bThreaded = extractIsThreaded(strParams);
+    const bool bThreaded  = extractIsThreaded(strParams);
 
     // A threaded variable-capture command (?= ... &) is allowed: it launches
     // a background thread that keeps re-dispatching the underlying
@@ -938,11 +900,10 @@ bool ScriptValidator::m_HandleVariableMacro ( const ScriptRawLine& rawLine ) noe
 
     // vmacroname ?= plugin.command params
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine,
-        MacroCommand{vstrTokens[1], vstrTokens[2], strParams, vstrTokens[0], bThreaded}});
+                                                        MacroCommand{vstrTokens[1], vstrTokens[2], strParams, vstrTokens[0], bThreaded}});
     return true;
 
 } // m_HandleVariableMacro()
-
 
 /*-------------------------------------------------------------------------------
   VAR_MACRO_INIT handler:  name ?= <string value>
@@ -963,21 +924,21 @@ bool ScriptValidator::m_HandleVariableMacro ( const ScriptRawLine& rawLine ) noe
   time m_executeCommand can write the expanded value into m_RuntimeVarMacros.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleVarMacroInit( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleVarMacroInit(const ScriptRawLine &rawLine) noexcept
 {
     // Split at first '?=' to get name and value template.
     static const std::string kSep = "?=";
-    auto sepPos = rawLine.strContent.find(kSep);
+    auto sepPos                   = rawLine.strContent.find(kSep);
     if (sepPos == std::string::npos) {
         return false;
     }
 
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr         = ustring::fmtLineNr(rawLine.iLineNumber);
 
     // Extract and trim the macro name.
     std::string strName = rawLine.strContent.substr(0, sepPos);
-    size_t ns = strName.find_first_not_of(" \t");
-    size_t ne = strName.find_last_not_of(" \t");
+    size_t ns           = strName.find_first_not_of(" \t");
+    size_t ne           = strName.find_last_not_of(" \t");
     if (ns == std::string::npos) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("VAR_MACRO_INIT: missing macro name"));
@@ -989,7 +950,7 @@ bool ScriptValidator::m_HandleVarMacroInit( const ScriptRawLine& rawLine ) noexc
     std::string strValue;
     const size_t valStart = sepPos + kSep.size();
     if (valStart < rawLine.strContent.size()) {
-        strValue = rawLine.strContent.substr(valStart);
+        strValue  = rawLine.strContent.substr(valStart);
         size_t vs = strValue.find_first_not_of(" \t");
         strValue  = (vs == std::string::npos) ? "" : strValue.substr(vs);
     }
@@ -1006,14 +967,13 @@ bool ScriptValidator::m_HandleVarMacroInit( const ScriptRawLine& rawLine ) noexc
     m_sScriptEntries->vCommands.emplace_back(
         ScriptLine{m_iCurrentSourceLine, VarMacroInit{strName, strValue}});
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("VAR_MACRO_INIT ["); LOG_STRING(strName);
               LOG_STRING("]=["); LOG_STRING(strValue.empty() ? "<none>" : strValue); LOG_STRING("]"));
 
     return true;
 
 } // m_HandleVarMacroInit()
-
 
 /*-------------------------------------------------------------------------------
   FORMAT_STMT handler:  name ?= FORMAT input | format_pattern
@@ -1034,13 +994,13 @@ bool ScriptValidator::m_HandleVarMacroInit( const ScriptRawLine& rawLine ) noexc
     the input word count is only known after $macro expansion.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleFormatStmt(const ScriptRawLine &rawLine) noexcept
 {
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr                      = ustring::fmtLineNr(rawLine.iLineNumber);
 
     // ── 1.  Split at first '?=' ────────────────────────────────────────────
     static const std::string kAssign = "?=";
-    const auto assignPos = rawLine.strContent.find(kAssign);
+    const auto assignPos             = rawLine.strContent.find(kAssign);
     if (assignPos == std::string::npos) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("FORMAT: missing '?='"));
@@ -1062,11 +1022,11 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
 
     // ── 2.  Strip "FORMAT" keyword from the RHS ────────────────────────────
     const size_t rhsStart = assignPos + kAssign.size();
-    std::string strRhs = rawLine.strContent.substr(rhsStart);
+    std::string strRhs    = rawLine.strContent.substr(rhsStart);
     {
         // trim leading whitespace
         const size_t rs = strRhs.find_first_not_of(" \t");
-        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+        strRhs          = (rs == std::string::npos) ? "" : strRhs.substr(rs);
     }
 
     static const std::string kKeyword = "FORMAT";
@@ -1076,10 +1036,10 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
                   LOG_STRING("FORMAT: missing FORMAT keyword in RHS"));
         return false;
     }
-    strRhs = strRhs.substr(kKeyword.size());  // strip "FORMAT"
+    strRhs = strRhs.substr(kKeyword.size()); // strip "FORMAT"
     {
         const size_t rs = strRhs.find_first_not_of(" \t");
-        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+        strRhs          = (rs == std::string::npos) ? "" : strRhs.substr(rs);
     }
 
     // ── 3.  Split at first '|' ─────────────────────────────────────────────
@@ -1094,10 +1054,10 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
     std::string strFormat = strRhs.substr(pipePos + 1);
 
     // trim both sides
-    auto trimStr = [](std::string& s) {
+    auto trimStr          = [](std::string &s) {
         const size_t fs = s.find_first_not_of(" \t");
         const size_t fe = s.find_last_not_of(" \t");
-        s = (fs == std::string::npos) ? "" : s.substr(fs, fe - fs + 1);
+        s               = (fs == std::string::npos) ? "" : s.substr(fs, fe - fs + 1);
     };
     trimStr(strInput);
     trimStr(strFormat);
@@ -1125,7 +1085,7 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
             const char cIdx = strFormat[i + 1];
             if (!std::isdigit(static_cast<unsigned char>(cIdx))) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                          LOG_STRING("FORMAT: '%" ); 
+                          LOG_STRING("FORMAT: '%");
                           LOG_STRING(std::string(1, cIdx));
                           LOG_STRING("' — index must be a single decimal digit (0-9)"));
                 return false;
@@ -1143,7 +1103,7 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
     // ── 5.  Name collision with constant macros ────────────────────────────
     if (m_sScriptEntries->mapMacros.count(strName)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("FORMAT ["); 
+                  LOG_STRING("FORMAT [");
                   LOG_STRING(strName);
                   LOG_STRING("]: name already used as a constant macro (:=)"));
         return false;
@@ -1153,16 +1113,15 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
     m_sScriptEntries->vCommands.emplace_back(
         ScriptLine{m_iCurrentSourceLine, FormatStatement{strName, strInput, strFormat}});
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("FORMAT ["); LOG_STRING(strName);
               LOG_STRING("] input=["); LOG_STRING(strInput);
-              LOG_STRING("] fmt=["); LOG_STRING(strFormat); 
+              LOG_STRING("] fmt=["); LOG_STRING(strFormat);
               LOG_STRING("]"));
 
     return true;
 
 } // m_HandleFormatStmt()
-
 
 /*-------------------------------------------------------------------------------
   MATH_STMT handler:  name ?= MATH <expression> [| HEX[_<width>][_<endian>]]
@@ -1203,13 +1162,13 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
   std::runtime_error, which is caught and logged as a command failure.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleMathStmt(const ScriptRawLine &rawLine) noexcept
 {
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr                      = ustring::fmtLineNr(rawLine.iLineNumber);
 
     // ── 1. Split at first '?=' ─────────────────────────────────────────────
     static const std::string kAssign = "?=";
-    const auto assignPos = rawLine.strContent.find(kAssign);
+    const auto assignPos             = rawLine.strContent.find(kAssign);
     if (assignPos == std::string::npos) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("MATH: missing '?='"));
@@ -1233,7 +1192,7 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
     std::string strRhs = rawLine.strContent.substr(assignPos + kAssign.size());
     {
         const size_t rs = strRhs.find_first_not_of(" \t");
-        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+        strRhs          = (rs == std::string::npos) ? "" : strRhs.substr(rs);
     }
 
     static const std::string kKeyword = "MATH";
@@ -1246,7 +1205,7 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
     strRhs = strRhs.substr(kKeyword.size());
     {
         const size_t rs = strRhs.find_first_not_of(" \t");
-        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+        strRhs          = (rs == std::string::npos) ? "" : strRhs.substr(rs);
     }
 
     // ── 3. Expression must be non-empty ───────────────────────────────────
@@ -1298,18 +1257,25 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
                 return false;
             } else {
                 const bool bBigEndian = (strEndian == "BE");
-                if      (strWidth == "16")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_16_BE     : HexOutputFormat::HEX_16_LE;
-                else if (strWidth == "32")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_32_BE     : HexOutputFormat::HEX_32_LE;
-                else if (strWidth == "64")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_64_BE     : HexOutputFormat::HEX_64_LE;
-                else if (strWidth == "128")    eHexFormat = bBigEndian ? HexOutputFormat::HEX_128_BE    : HexOutputFormat::HEX_128_LE;
-                else if (strWidth == "FLOAT")  eHexFormat = bBigEndian ? HexOutputFormat::HEX_FLOAT_BE  : HexOutputFormat::HEX_FLOAT_LE;
-                else /* "DOUBLE" */            eHexFormat = bBigEndian ? HexOutputFormat::HEX_DOUBLE_BE : HexOutputFormat::HEX_DOUBLE_LE;
+                if (strWidth == "16") {
+                    eHexFormat = bBigEndian ? HexOutputFormat::HEX_16_BE : HexOutputFormat::HEX_16_LE;
+                } else if (strWidth == "32") {
+                    eHexFormat = bBigEndian ? HexOutputFormat::HEX_32_BE : HexOutputFormat::HEX_32_LE;
+                } else if (strWidth == "64") {
+                    eHexFormat = bBigEndian ? HexOutputFormat::HEX_64_BE : HexOutputFormat::HEX_64_LE;
+                } else if (strWidth == "128") {
+                    eHexFormat = bBigEndian ? HexOutputFormat::HEX_128_BE : HexOutputFormat::HEX_128_LE;
+                } else if (strWidth == "FLOAT") {
+                    eHexFormat = bBigEndian ? HexOutputFormat::HEX_FLOAT_BE : HexOutputFormat::HEX_FLOAT_LE;
+                } else { /* "DOUBLE" */
+                    eHexFormat = bBigEndian ? HexOutputFormat::HEX_DOUBLE_BE : HexOutputFormat::HEX_DOUBLE_LE;
+                }
             }
 
             // Strip the matched suffix and any whitespace left behind.
-            strRhs = strRhs.substr(0, match.position(0));
+            strRhs          = strRhs.substr(0, match.position(0));
             const size_t ne = strRhs.find_last_not_of(" \t");
-            strRhs = (ne == std::string::npos) ? "" : strRhs.substr(0, ne + 1);
+            strRhs          = (ne == std::string::npos) ? "" : strRhs.substr(0, ne + 1);
 
             LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                       LOG_STRING("MATH: HEX output requested for ["); LOG_STRING(strName);
@@ -1345,7 +1311,6 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
 
 } // m_HandleMathStmt()
 
-
 /*-------------------------------------------------------------------------------
   BITSTREAM_STMT / BYTESTREAM_STMT handlers:
     name ?= BITSTREAM  offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
@@ -1378,22 +1343,22 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
     grammar only allows one "| ..." suffix at all).
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleBitstreamStmt( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleBitstreamStmt(const ScriptRawLine &rawLine) noexcept
 {
     return m_HandleStreamStmt(rawLine, "BITSTREAM", false);
 } // m_HandleBitstreamStmt()
 
-bool ScriptValidator::m_HandleBytestreamStmt( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleBytestreamStmt(const ScriptRawLine &rawLine) noexcept
 {
     return m_HandleStreamStmt(rawLine, "BYTESTREAM", true);
 } // m_HandleBytestreamStmt()
 
-bool ScriptValidator::m_HandleStreamStmt( const ScriptRawLine& rawLine, const std::string& strKeyword, bool bByteMode ) noexcept
+bool ScriptValidator::m_HandleStreamStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept
 {
     auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
 
     StreamStatement sStmt;
-    std::string     strError;
+    std::string strError;
 
     if (!parseStreamStatement(strKeyword, rawLine.strContent, sStmt, strError)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(strError));
@@ -1420,7 +1385,6 @@ bool ScriptValidator::m_HandleStreamStmt( const ScriptRawLine& rawLine, const st
 
 } // m_HandleStreamStmt()
 
-
 /*-------------------------------------------------------------------------------
   BITSTREAMVAL_STMT / BYTESTREAMVAL_STMT handlers:
     name ?= <hex_source> | BITSTREAMVAL  bit_offset:value_size
@@ -1445,22 +1409,22 @@ bool ScriptValidator::m_HandleStreamStmt( const ScriptRawLine& rawLine, const st
     keyword, and exactly one well-formed field.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleBitstreamValStmt( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleBitstreamValStmt(const ScriptRawLine &rawLine) noexcept
 {
     return m_HandleStreamValStmt(rawLine, "BITSTREAMVAL", false);
 } // m_HandleBitstreamValStmt()
 
-bool ScriptValidator::m_HandleBytestreamValStmt( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleBytestreamValStmt(const ScriptRawLine &rawLine) noexcept
 {
     return m_HandleStreamValStmt(rawLine, "BYTESTREAMVAL", true);
 } // m_HandleBytestreamValStmt()
 
-bool ScriptValidator::m_HandleStreamValStmt( const ScriptRawLine& rawLine, const std::string& strKeyword, bool bByteMode ) noexcept
+bool ScriptValidator::m_HandleStreamValStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept
 {
     auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
 
     StreamValStatement sStmt;
-    std::string        strError;
+    std::string strError;
 
     if (!parseStreamValStatement(strKeyword, bByteMode, rawLine.strContent, sStmt, strError)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(strError));
@@ -1484,7 +1448,6 @@ bool ScriptValidator::m_HandleStreamValStmt( const ScriptRawLine& rawLine, const
     return true;
 
 } // m_HandleStreamValStmt()
-
 
 /*-------------------------------------------------------------------------------
   BITSTREAMVAL_ARRAY_STMT / BYTESTREAMVAL_ARRAY_STMT handlers:
@@ -1527,22 +1490,22 @@ bool ScriptValidator::m_HandleStreamValStmt( const ScriptRawLine& rawLine, const
   ScriptInterpreter's BITSTREAMVAL_ARRAY/BYTESTREAMVAL_ARRAY execution).
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleBitstreamValArrayStmt( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleBitstreamValArrayStmt(const ScriptRawLine &rawLine) noexcept
 {
     return m_HandleStreamValArrayStmt(rawLine, "BITSTREAMVAL", false);
 } // m_HandleBitstreamValArrayStmt()
 
-bool ScriptValidator::m_HandleBytestreamValArrayStmt( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleBytestreamValArrayStmt(const ScriptRawLine &rawLine) noexcept
 {
     return m_HandleStreamValArrayStmt(rawLine, "BYTESTREAMVAL", true);
 } // m_HandleBytestreamValArrayStmt()
 
-bool ScriptValidator::m_HandleStreamValArrayStmt( const ScriptRawLine& rawLine, const std::string& strKeyword, bool bByteMode ) noexcept
+bool ScriptValidator::m_HandleStreamValArrayStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept
 {
     auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
 
     StreamValArrayStatement sStmt;
-    std::string             strError;
+    std::string strError;
 
     if (!parseStreamValArrayStatement(strKeyword, bByteMode, rawLine.strContent, sStmt, strError)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(strError));
@@ -1584,13 +1547,11 @@ bool ScriptValidator::m_HandleStreamValArrayStmt( const ScriptRawLine& rawLine, 
 
 } // m_HandleStreamValArrayStmt()
 
-
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleCommand ( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleCommand(const ScriptRawLine &rawLine) noexcept
 {
     std::vector<std::string> vstrDelimiters{SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
     std::vector<std::string> vstrTokens;
@@ -1602,20 +1563,20 @@ bool ScriptValidator::m_HandleCommand ( const ScriptRawLine& rawLine ) noexcept
 
     // plugin.command params
     std::string strParams = (vstrTokens.size() == 3) ? vstrTokens[2] : "";
-    const bool bThreaded = extractIsThreaded(strParams);
+    const bool bThreaded  = extractIsThreaded(strParams);
 
     // Validation: reject a blocking command scheduled without '&'.
     // We check mapBlockingCommands which is populated by generic_getparams
     // from the plugin's command table (bBlocking flag in the X-macro).
     // A blocking command launched sequentially would hang script execution.
-    for (const auto& plugin : m_sScriptEntries->vPlugins) {
+    for (const auto &plugin : m_sScriptEntries->vPlugins) {
         if (plugin.strPluginName == vstrTokens[0]) {
-            const auto& mapBlocking = plugin.sGetParams.mapBlockingCommands;
+            const auto &mapBlocking = plugin.sGetParams.mapBlockingCommands;
             if (!bThreaded && mapBlocking.count(vstrTokens[1])) {
                 auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                    LOG_STRING("Command"); LOG_STRING(vstrTokens[0] + "." + vstrTokens[1]);
-                    LOG_STRING("is a blocking command and must be launched with '&'"));
+                          LOG_STRING("Command"); LOG_STRING(vstrTokens[0] + "." + vstrTokens[1]);
+                          LOG_STRING("is a blocking command and must be launched with '&'"));
                 gui_notify_error_main(rawLine.iLineNumber);
                 return false;
             }
@@ -1624,26 +1585,24 @@ bool ScriptValidator::m_HandleCommand ( const ScriptRawLine& rawLine ) noexcept
     }
 
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine,
-        Command{vstrTokens[0], vstrTokens[1], strParams, bThreaded}});
+                                                        Command{vstrTokens[0], vstrTokens[1], strParams, bThreaded}});
     return true;
 
 } // m_HandleCommand()
-
-
 
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleCondition ( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleCondition(const ScriptRawLine &rawLine) noexcept
 {
-    auto tokenize = [](const std::string& expression, std::string& outCondition, std::string& outLabel) -> bool {
+    auto tokenize = [](const std::string &expression, std::string &outCondition, std::string &outLabel) -> bool {
         static const std::regex pattern(R"(^(?:IF\s+(.*?)\s+)?GOTO\s+([A-Za-z_][A-Za-z0-9_]*)$)");
         std::smatch match;
 
         if (std::regex_match(expression, match, pattern)) {
             outCondition = match[1].matched ? match[1].str() : SCRIPT_COND_TRUE;
-            outLabel = match[2];
+            outLabel     = match[2];
             return true;
         }
         return false;
@@ -1659,13 +1618,11 @@ bool ScriptValidator::m_HandleCondition ( const ScriptRawLine& rawLine ) noexcep
 
 } // m_HandleCondition()
 
-
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleLabel ( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleLabel(const ScriptRawLine &rawLine) noexcept
 {
     std::vector<std::string> vstrTokens;
     ustring::tokenize(rawLine.strContent, vstrTokens);
@@ -1679,7 +1636,6 @@ bool ScriptValidator::m_HandleLabel ( const ScriptRawLine& rawLine ) noexcept
     return true;
 
 } // m_HandleLabel()
-
 
 /*-------------------------------------------------------------------------------
   [varname ?=] REPEAT <label> <end>
@@ -1706,7 +1662,7 @@ bool ScriptValidator::m_HandleLabel ( const ScriptRawLine& rawLine ) noexcept
   Structural/nesting validation is deferred to m_validateLoops().
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleRepeat( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleRepeat(const ScriptRawLine &rawLine) noexcept
 {
     // Parse the optional capture prefix and the mandatory REPEAT body.
     // Group 1 (optional): varname before "?="
@@ -1722,9 +1678,9 @@ bool ScriptValidator::m_HandleRepeat( const ScriptRawLine& rawLine ) noexcept
 
     const std::string strVarMacroName = match[1].matched ? match[1].str() : "";
     const std::string strLabel        = match[2].str();
-    const std::string strRemainder    = match[3].str();   // either "<params>" or "UNTIL <cond>"
+    const std::string strRemainder    = match[3].str(); // either "<params>" or "UNTIL <cond>"
 
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr                       = ustring::fmtLineNr(rawLine.iLineNumber);
 
     // --- Conditional form: [varname ?=] REPEAT label UNTIL <condition> ---
     static const std::regex untilPattern(R"(^UNTIL\s+(\S.*)$)");
@@ -1762,19 +1718,19 @@ bool ScriptValidator::m_HandleRepeat( const ScriptRawLine& rawLine ) noexcept
 
     // Build a RepeatRangeValue for one already-trimmed token: either a deferred
     // "$macroname" reference or a literal resolved to int/double right now.
-    auto makeRangeValue = [&](const std::string& strTok, bool& bOk) -> RepeatRangeValue {
+    auto makeRangeValue = [&](const std::string &strTok, bool &bOk) -> RepeatRangeValue {
         RepeatRangeValue val;
         val.strExpr = strTok;
 
         if (!strTok.empty() && strTok[0] == '$') {
             val.bIsMacro = true;
-            bOk = true;
+            bOk          = true;
             return val;
         }
 
         long long llVal = 0;
-        double    dVal  = 0.0;
-        bool      bIsInt = true;
+        double dVal     = 0.0;
+        bool bIsInt     = true;
         if (!parseRepeatNumber(strTok, bIsInt, llVal, dVal)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                       LOG_STRING("REPEAT: invalid numeric literal:"); LOG_STRING(strTok));
@@ -1784,7 +1740,7 @@ bool ScriptValidator::m_HandleRepeat( const ScriptRawLine& rawLine ) noexcept
         val.bIsInteger = bIsInt;
         val.llValue    = llVal;
         val.dValue     = dVal;
-        bOk = true;
+        bOk            = true;
         return val;
     };
 
@@ -1794,18 +1750,24 @@ bool ScriptValidator::m_HandleRepeat( const ScriptRawLine& rawLine ) noexcept
     RepeatRangeValue rangeStep{"1", false, true, 1, 1.0};
 
     switch (vstrParams.size()) {
-        case 1:
-            rangeEnd = makeRangeValue(vstrParams[0], bOk);
-            break;
-        case 2:
-            rangeBegin = makeRangeValue(vstrParams[0], bOk);
-            if (bOk) { rangeEnd = makeRangeValue(vstrParams[1], bOk); }
-            break;
-        default: // 3
-            rangeBegin = makeRangeValue(vstrParams[0], bOk);
-            if (bOk) { rangeEnd  = makeRangeValue(vstrParams[1], bOk); }
-            if (bOk) { rangeStep = makeRangeValue(vstrParams[2], bOk); }
-            break;
+    case 1:
+        rangeEnd = makeRangeValue(vstrParams[0], bOk);
+        break;
+    case 2:
+        rangeBegin = makeRangeValue(vstrParams[0], bOk);
+        if (bOk) {
+            rangeEnd = makeRangeValue(vstrParams[1], bOk);
+        }
+        break;
+    default: // 3
+        rangeBegin = makeRangeValue(vstrParams[0], bOk);
+        if (bOk) {
+            rangeEnd = makeRangeValue(vstrParams[1], bOk);
+        }
+        if (bOk) {
+            rangeStep = makeRangeValue(vstrParams[2], bOk);
+        }
+        break;
     }
     if (!bOk) {
         return false;
@@ -1827,12 +1789,11 @@ bool ScriptValidator::m_HandleRepeat( const ScriptRawLine& rawLine ) noexcept
 
 } // m_HandleRepeat()
 
-
 /*-------------------------------------------------------------------------------
   END_REPEAT <label>
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleEndRepeat( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleEndRepeat(const ScriptRawLine &rawLine) noexcept
 {
     std::vector<std::string> vstrTokens;
     ustring::tokenize(rawLine.strContent, vstrTokens);
@@ -1846,14 +1807,13 @@ bool ScriptValidator::m_HandleEndRepeat( const ScriptRawLine& rawLine ) noexcept
 
 } // m_HandleEndRepeat()
 
-
 /*-------------------------------------------------------------------------------
   BREAK <loop-label>
   CONTINUE <loop-label>
   Both share the same parse shape — one keyword, one identifier.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleBreak( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleBreak(const ScriptRawLine &rawLine) noexcept
 {
     std::vector<std::string> vstrTokens;
     ustring::tokenize(rawLine.strContent, vstrTokens);
@@ -1867,9 +1827,7 @@ bool ScriptValidator::m_HandleBreak( const ScriptRawLine& rawLine ) noexcept
 
 } // m_HandleBreak()
 
-
-
-bool ScriptValidator::m_HandleContinue( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleContinue(const ScriptRawLine &rawLine) noexcept
 {
     std::vector<std::string> vstrTokens;
     ustring::tokenize(rawLine.strContent, vstrTokens);
@@ -1883,7 +1841,6 @@ bool ScriptValidator::m_HandleContinue( const ScriptRawLine& rawLine ) noexcept
 
 } // m_HandleContinue()
 
-
 /*-------------------------------------------------------------------------------
   PRINT handler.
 
@@ -1895,7 +1852,7 @@ bool ScriptValidator::m_HandleContinue( const ScriptRawLine& rawLine ) noexcept
   A bare "PRINT" with no text is valid and will output a blank line at runtime.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandlePrint( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandlePrint(const ScriptRawLine &rawLine) noexcept
 {
     // Strip the "PRINT" keyword and the single separating space (if present).
     // Everything that remains is the raw text template.
@@ -1914,7 +1871,6 @@ bool ScriptValidator::m_HandlePrint( const ScriptRawLine& rawLine ) noexcept
 
 } // m_HandlePrint()
 
-
 /*-------------------------------------------------------------------------------
   DELAY_STMT handler:  DELAY <value> <unit>
 
@@ -1930,7 +1886,7 @@ bool ScriptValidator::m_HandlePrint( const ScriptRawLine& rawLine ) noexcept
   the appropriate utime::delay_* function directly.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleDelay( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleDelay(const ScriptRawLine &rawLine) noexcept
 {
     // Tokenise: expect exactly ["DELAY", "<value>", "<unit>"]
     std::vector<std::string> vstrTokens;
@@ -1941,7 +1897,7 @@ bool ScriptValidator::m_HandleDelay( const ScriptRawLine& rawLine ) noexcept
     if (vstrTokens.size() != 3) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("DELAY: expected 'DELAY <value> <unit>', got");
-                  LOG_UINT32(static_cast<uint32_t>(vstrTokens.size())); 
+                  LOG_UINT32(static_cast<uint32_t>(vstrTokens.size()));
                   LOG_STRING("tokens"));
         return false;
     }
@@ -1958,18 +1914,21 @@ bool ScriptValidator::m_HandleDelay( const ScriptRawLine& rawLine ) noexcept
         szValue = static_cast<size_t>(ullVal);
     } catch (...) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("DELAY: invalid value:"); 
+                  LOG_STRING("DELAY: invalid value:");
                   LOG_STRING(vstrTokens[1]));
         return false;
     }
 
     // Parse unit
     DelayUnit eUnit;
-    const std::string& strUnit = vstrTokens[2];
-    if      (strUnit == "us")  { eUnit = DelayUnit::US;  }
-    else if (strUnit == "ms")  { eUnit = DelayUnit::MS;  }
-    else if (strUnit == "sec") { eUnit = DelayUnit::SEC; }
-    else {
+    const std::string &strUnit = vstrTokens[2];
+    if (strUnit == "us") {
+        eUnit = DelayUnit::US;
+    } else if (strUnit == "ms") {
+        eUnit = DelayUnit::MS;
+    } else if (strUnit == "sec") {
+        eUnit = DelayUnit::SEC;
+    } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("DELAY: unknown unit '"); LOG_STRING(strUnit);
                   LOG_STRING("' — use us, ms or sec"));
@@ -1982,12 +1941,11 @@ bool ScriptValidator::m_HandleDelay( const ScriptRawLine& rawLine ) noexcept
     // Build a human-readable label for the log
     const std::string strLabel = std::to_string(szValue) + " " + strUnit;
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-              LOG_STRING("DELAY:"); 
+              LOG_STRING("DELAY:");
               LOG_STRING(strLabel));
     return true;
 
 } // m_HandleDelay()
-
 
 /*-------------------------------------------------------------------------------
   BREAKPOINT_STMT handler:  BREAKPOINT [label]
@@ -2000,7 +1958,7 @@ bool ScriptValidator::m_HandleDelay( const ScriptRawLine& rawLine ) noexcept
   No validation of the label content is performed — it is purely cosmetic.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleBreakpoint( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleBreakpoint(const ScriptRawLine &rawLine) noexcept
 {
     // Strip the "BREAKPOINT" keyword; everything after the separating space
     // (if present) is the raw label template.
@@ -2023,7 +1981,6 @@ bool ScriptValidator::m_HandleBreakpoint( const ScriptRawLine& rawLine ) noexcep
 
 } // m_HandleBreakpoint()
 
-
 /*-------------------------------------------------------------------------------
   GENERATOR_STMT handler:
     name ?= GENERATOR <count> <unit> <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
@@ -2044,13 +2001,13 @@ bool ScriptValidator::m_HandleBreakpoint( const ScriptRawLine& rawLine ) noexcep
   REPEAT/BITSTREAM/MATH each keeping their own small field-building helper.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &rawLine) noexcept
 {
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr                      = ustring::fmtLineNr(rawLine.iLineNumber);
 
     // ── 1. Split at first '?=' ─────────────────────────────────────────────
     static const std::string kAssign = "?=";
-    const auto assignPos = rawLine.strContent.find(kAssign);
+    const auto assignPos             = rawLine.strContent.find(kAssign);
     if (assignPos == std::string::npos) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("GENERATOR: missing '?='"));
@@ -2073,17 +2030,17 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
     std::string strRhs = rawLine.strContent.substr(assignPos + kAssign.size());
     {
         const size_t rs = strRhs.find_first_not_of(" \t");
-        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+        strRhs          = (rs == std::string::npos) ? "" : strRhs.substr(rs);
     }
     static const std::string kKeyword = "GENERATOR";
-    strRhs = strRhs.substr(kKeyword.size());
+    strRhs                            = strRhs.substr(kKeyword.size());
     {
         const size_t rs = strRhs.find_first_not_of(" \t");
-        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+        strRhs          = (rs == std::string::npos) ? "" : strRhs.substr(rs);
     }
     {
         const size_t re = strRhs.find_last_not_of(" \t");
-        strRhs = (re == std::string::npos) ? "" : strRhs.substr(0, re + 1);
+        strRhs          = (re == std::string::npos) ? "" : strRhs.substr(0, re + 1);
     }
 
     // ── 3. "GENERATOR STOP" form — nothing else to parse ────────────────────
@@ -2111,12 +2068,13 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
     static const std::string fieldCap  = "(" + tok + ")";
     static const std::string rangeBody = fieldCap + "\\s*:\\s*" + fieldCap + "\\s*:\\s*" + fieldCap + "(?:\\s*:\\s*" + fieldCap + ")?";
     static const std::string arrayBody = "(" + tok + "(?:\\s*,\\s*" + tok + ")*)";
-    static const std::regex  reBody(
+    static const std::regex reBody(
         "^([1-9][0-9]*)\\s+" SCRIPT_RX_TIME_UNITS "\\s+"
-        "(?:" + rangeBody + "|" + arrayBody + ")"
-        "\\s*\\|\\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)"
-        "(?:\\s*\\|\\s*(HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?))?"
-        "\\s*$");
+        "(?:" +
+        rangeBody + "|" + arrayBody + ")"
+                                      "\\s*\\|\\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)"
+                                      "(?:\\s*\\|\\s*(HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?))?"
+                                      "\\s*$");
 
     std::smatch match;
     if (!std::regex_match(strRhs, match, reBody)) {
@@ -2127,20 +2085,20 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
 
     const std::string strCount     = match[1].str();
     const std::string strUnit      = match[2].str();
-    const bool        bIsRangeForm = match[3].matched; // range form matched -> begin/end/step[/k] groups are populated
+    const bool bIsRangeForm        = match[3].matched; // range form matched -> begin/end/step[/k] groups are populated
     const std::string strBegin     = bIsRangeForm ? match[3].str() : "";
     const std::string strEnd       = bIsRangeForm ? match[4].str() : "";
     const std::string strStep      = bIsRangeForm ? match[5].str() : "";
-    const bool        bHasKField  = bIsRangeForm && match[6].matched;
+    const bool bHasKField          = bIsRangeForm && match[6].matched;
     const std::string strK         = bHasKField ? match[6].str() : "";
     const std::string strArrayList = bIsRangeForm ? "" : match[7].str();
-    const bool        bIsArraySource = !bIsRangeForm;
+    const bool bIsArraySource      = !bIsRangeForm;
     const std::string strWaveform  = match[8].str();
-    const bool        bHasEnc     = match[9].matched;
+    const bool bHasEnc             = match[9].matched;
     const std::string strEnc       = bHasEnc ? match[9].str() : "";
 
     // ── 5. Interval: <count> <unit> -> microseconds (DELAY's own conversion) ─
-    uint64_t uIntervalUs = 0;
+    uint64_t uIntervalUs           = 0;
     try {
         const unsigned long long ullCount = std::stoull(strCount);
         if (ullCount == 0) {
@@ -2148,9 +2106,13 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
                       LOG_STRING("GENERATOR: interval count must be >= 1"));
             return false;
         }
-        if      (strUnit == "us")  { uIntervalUs = ullCount; }
-        else if (strUnit == "ms")  { uIntervalUs = ullCount * 1000ULL; }
-        else /* "sec" */           { uIntervalUs = ullCount * 1000000ULL; }
+        if (strUnit == "us") {
+            uIntervalUs = ullCount;
+        } else if (strUnit == "ms") {
+            uIntervalUs = ullCount * 1000ULL;
+        } else /* "sec" */ {
+            uIntervalUs = ullCount * 1000000ULL;
+        }
     } catch (...) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("GENERATOR: invalid interval count:"); LOG_STRING(strCount));
@@ -2158,8 +2120,8 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
     }
 
     // ── 6a. begin/end/step/k -> RepeatRangeValue (literal resolved now, $macro deferred) ─
-    bool bOk = true;
-    auto makeRangeValue = [&](const std::string& strTok) -> RepeatRangeValue {
+    bool bOk            = true;
+    auto makeRangeValue = [&](const std::string &strTok) -> RepeatRangeValue {
         RepeatRangeValue val;
         val.strExpr = strTok;
 
@@ -2169,8 +2131,8 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
         }
 
         long long llVal = 0;
-        double    dVal  = 0.0;
-        bool      bIsInt = true;
+        double dVal     = 0.0;
+        bool bIsInt     = true;
         if (!parseRepeatNumber(strTok, bIsInt, llVal, dVal)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                       LOG_STRING("GENERATOR: invalid numeric literal:"); LOG_STRING(strTok));
@@ -2190,7 +2152,9 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
         rangeBegin = makeRangeValue(strBegin);
         rangeEnd   = makeRangeValue(strEnd);
         rangeStep  = makeRangeValue(strStep);
-        if (!bOk) { return false; }
+        if (!bOk) {
+            return false;
+        }
     } else {
         // ── 6b. Array data source: either a single "$arrayName" token that
         //        names an already-declared ARRAY_MACRO (expanded here into
@@ -2204,7 +2168,7 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
 
         if (std::regex_match(strArrayList, bareMatch, reBareMacroName)) {
             const std::string strArrName = bareMatch[1].str();
-            auto arrIt = m_sScriptEntries->mapArrayMacros.find(strArrName);
+            auto arrIt                   = m_sScriptEntries->mapArrayMacros.find(strArrName);
             if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
                 vRawTokens = arrIt->second; // copy the array macro's own element templates verbatim
             } else {
@@ -2216,33 +2180,45 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
             size_t pos = 0;
             while (pos <= strArrayList.size()) {
                 const size_t comma = strArrayList.find(',', pos);
-                std::string  piece = (comma == std::string::npos)
-                                          ? strArrayList.substr(pos)
-                                          : strArrayList.substr(pos, comma - pos);
-                const size_t ps = piece.find_first_not_of(" \t");
-                const size_t pe = piece.find_last_not_of(" \t");
+                std::string piece  = (comma == std::string::npos)
+                                         ? strArrayList.substr(pos)
+                                         : strArrayList.substr(pos, comma - pos);
+                const size_t ps    = piece.find_first_not_of(" \t");
+                const size_t pe    = piece.find_last_not_of(" \t");
                 vRawTokens.push_back(ps == std::string::npos ? "" : piece.substr(ps, pe - ps + 1));
-                if (comma == std::string::npos) { break; }
+                if (comma == std::string::npos) {
+                    break;
+                }
                 pos = comma + 1;
             }
         }
 
         vArrayValues.reserve(vRawTokens.size());
-        for (const auto& strElem : vRawTokens) {
+        for (const auto &strElem : vRawTokens) {
             vArrayValues.push_back(makeRangeValue(strElem));
         }
-        if (!bOk) { return false; }
+        if (!bOk) {
+            return false;
+        }
     }
 
     // ── 7. Waveform keyword -> GeneratorWaveform ("LINEAR" aliases SAWTOOTH) ─
     GeneratorWaveform eWaveform = GeneratorWaveform::SAWTOOTH;
-    if      (strWaveform == "LINEAR" || strWaveform == "SAWTOOTH") { eWaveform = GeneratorWaveform::SAWTOOTH; }
-    else if (strWaveform == "TRIANGLE")                            { eWaveform = GeneratorWaveform::TRIANGLE; }
-    else if (strWaveform == "SINE")                                { eWaveform = GeneratorWaveform::SINE;     }
-    else if (strWaveform == "SQUARE")                               { eWaveform = GeneratorWaveform::SQUARE;   }
-    else if (strWaveform == "EXP")                                 { eWaveform = GeneratorWaveform::EXP;      }
-    else if (strWaveform == "LOG")                                 { eWaveform = GeneratorWaveform::LOG;      }
-    else /* "RANDOM" */                                             { eWaveform = GeneratorWaveform::RANDOM;   }
+    if (strWaveform == "LINEAR" || strWaveform == "SAWTOOTH") {
+        eWaveform = GeneratorWaveform::SAWTOOTH;
+    } else if (strWaveform == "TRIANGLE") {
+        eWaveform = GeneratorWaveform::TRIANGLE;
+    } else if (strWaveform == "SINE") {
+        eWaveform = GeneratorWaveform::SINE;
+    } else if (strWaveform == "SQUARE") {
+        eWaveform = GeneratorWaveform::SQUARE;
+    } else if (strWaveform == "EXP") {
+        eWaveform = GeneratorWaveform::EXP;
+    } else if (strWaveform == "LOG") {
+        eWaveform = GeneratorWaveform::LOG;
+    } else /* "RANDOM" */ {
+        eWaveform = GeneratorWaveform::RANDOM;
+    }
 
     const bool bIsExpOrLog = (eWaveform == GeneratorWaveform::EXP || eWaveform == GeneratorWaveform::LOG);
 
@@ -2251,8 +2227,8 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
     //        numeric begin/end range. ─────────────────────────────────────
     if (bIsArraySource) {
         const bool bAllowedForArray = (eWaveform == GeneratorWaveform::SAWTOOTH ||
-                                        eWaveform == GeneratorWaveform::TRIANGLE ||
-                                        eWaveform == GeneratorWaveform::RANDOM);
+                                       eWaveform == GeneratorWaveform::TRIANGLE ||
+                                       eWaveform == GeneratorWaveform::RANDOM);
         if (!bAllowedForArray) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                       LOG_STRING("GENERATOR: an array data source only supports SAWTOOTH/LINEAR, TRIANGLE or RANDOM, not");
@@ -2269,12 +2245,14 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
         return false;
     }
 
-    bool             bHasK = false;
+    bool bHasK = false;
     RepeatRangeValue rangeK;
     if (bIsExpOrLog) {
         if (bHasKField) {
             rangeK = makeRangeValue(strK);
-            if (!bOk) { return false; }
+            if (!bOk) {
+                return false;
+            }
         } else {
             // Default steepness when the 4th field was omitted: EXP=3.0, LOG=(e-1).
             rangeK.bIsMacro   = false;
@@ -2323,12 +2301,19 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
             return false;
         } else {
             const bool bBigEndian = (strEndian == "BE");
-            if      (strWidth == "16")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_16_BE     : HexOutputFormat::HEX_16_LE;
-            else if (strWidth == "32")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_32_BE     : HexOutputFormat::HEX_32_LE;
-            else if (strWidth == "64")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_64_BE     : HexOutputFormat::HEX_64_LE;
-            else if (strWidth == "128")    eHexFormat = bBigEndian ? HexOutputFormat::HEX_128_BE    : HexOutputFormat::HEX_128_LE;
-            else if (strWidth == "FLOAT")  eHexFormat = bBigEndian ? HexOutputFormat::HEX_FLOAT_BE  : HexOutputFormat::HEX_FLOAT_LE;
-            else /* "DOUBLE" */            eHexFormat = bBigEndian ? HexOutputFormat::HEX_DOUBLE_BE : HexOutputFormat::HEX_DOUBLE_LE;
+            if (strWidth == "16") {
+                eHexFormat = bBigEndian ? HexOutputFormat::HEX_16_BE : HexOutputFormat::HEX_16_LE;
+            } else if (strWidth == "32") {
+                eHexFormat = bBigEndian ? HexOutputFormat::HEX_32_BE : HexOutputFormat::HEX_32_LE;
+            } else if (strWidth == "64") {
+                eHexFormat = bBigEndian ? HexOutputFormat::HEX_64_BE : HexOutputFormat::HEX_64_LE;
+            } else if (strWidth == "128") {
+                eHexFormat = bBigEndian ? HexOutputFormat::HEX_128_BE : HexOutputFormat::HEX_128_LE;
+            } else if (strWidth == "FLOAT") {
+                eHexFormat = bBigEndian ? HexOutputFormat::HEX_FLOAT_BE : HexOutputFormat::HEX_FLOAT_LE;
+            } else { /* "DOUBLE" */
+                eHexFormat = bBigEndian ? HexOutputFormat::HEX_DOUBLE_BE : HexOutputFormat::HEX_DOUBLE_LE;
+            }
         }
     }
 
@@ -2369,7 +2354,6 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
 
 } // m_HandleGeneratorStmt()
 
-
 /*-------------------------------------------------------------------------------
   GENERATOR_STOP_ALL_STMT handler:  GENERATOR STOP ALL
 
@@ -2378,7 +2362,7 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
   m_isGeneratorStopAll() has already confirmed the exact literal shape.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleGeneratorStopAll( const ScriptRawLine& rawLine ) noexcept
+bool ScriptValidator::m_HandleGeneratorStopAll(const ScriptRawLine &rawLine) noexcept
 {
     m_sScriptEntries->vCommands.emplace_back(
         ScriptLine{m_iCurrentSourceLine, GeneratorStopAllStatement{}});
@@ -2390,7 +2374,6 @@ bool ScriptValidator::m_HandleGeneratorStopAll( const ScriptRawLine& rawLine ) n
     return true;
 
 } // m_HandleGeneratorStopAll()
-
 
 /*-------------------------------------------------------------------------------
   Walks the compiled command list in source order, tracking which GENERATOR
@@ -2406,9 +2389,9 @@ bool ScriptValidator::m_validateGeneratorPairing() noexcept
     bool bRetVal = true;
     std::unordered_set<std::string> setStarted;
 
-    for (const auto& scriptLine : m_sScriptEntries->vCommands) {
-        std::visit([&](const auto& command) {
-            using T = std::decay_t<decltype(command)>;
+    for (const auto &scriptLine : m_sScriptEntries->vCommands) {
+        std::visit([&](const auto &command) {
+            using T     = std::decay_t<decltype(command)>;
             auto lineNr = ustring::fmtLineNr(scriptLine.iLineNumber);
 
             if constexpr (std::is_same_v<T, GeneratorStatement>) {
@@ -2435,57 +2418,58 @@ bool ScriptValidator::m_validateGeneratorPairing() noexcept
                     setStarted.clear();
                 }
             }
-        }, scriptLine.command);
+        },
+                   scriptLine.command);
     }
 
     LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR;
-               LOG_STRING("GENERATOR START/STOP pairing validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
+              LOG_STRING("GENERATOR START/STOP pairing validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
 } // m_validateGeneratorPairing()
 
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_ListStatements () noexcept
+bool ScriptValidator::m_ListStatements() noexcept
 {
-    if(false == m_sScriptEntries->vPlugins.empty()) {
+    if (false == m_sScriptEntries->vPlugins.empty()) {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_PLUGINS));
-        std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(), [&](const auto & item) {
+        std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(), [&](const auto &item) {
             LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(item.strPluginVersRule); LOG_STRING(item.strPluginVersRequested));
         });
     }
 
-    if(false == m_sScriptEntries->mapMacros.empty()) {
+    if (false == m_sScriptEntries->mapMacros.empty()) {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_CMACROS));
-        std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(), [&](const auto & item) {
+        std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(), [&](const auto &item) {
             LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(item.first); LOG_STRING(":"); LOG_STRING(item.second));
-
         });
     }
 
-    if(false == m_sScriptEntries->mapArrayMacros.empty()) {
+    if (false == m_sScriptEntries->mapArrayMacros.empty()) {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_ARRAYS));
         std::for_each(m_sScriptEntries->mapArrayMacros.begin(), m_sScriptEntries->mapArrayMacros.end(),
-            [&](const auto& item) {
-                std::ostringstream oss;
-                oss << item.first << " [" << item.second.size() << "] = ";
-                for (size_t k = 0; k < item.second.size(); ++k) {
-                    if (k > 0) oss << ", ";
-                    oss << "[" << k << "]=" << item.second[k];
-                }
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
-            });
+                      [&](const auto &item) {
+                          std::ostringstream oss;
+                          oss << item.first << " [" << item.second.size() << "] = ";
+                          for (size_t k = 0; k < item.second.size(); ++k) {
+                              if (k > 0) {
+                                  oss << ", ";
+                              }
+                              oss << "[" << k << "]=" << item.second[k];
+                          }
+                          LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+                      });
     }
 
-    if(false == m_sScriptEntries->vCommands.empty()) {
+    if (false == m_sScriptEntries->vCommands.empty()) {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_COMMANDS));
-        std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine& data) {
-            std::visit([&data](const auto & item) {
-                using T = std::decay_t<decltype(item)>;
+        std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine &data) {
+            std::visit([&data](const auto &item) {
+                using T     = std::decay_t<decltype(item)>;
                 auto lineNr = ustring::fmtLineNr(data.iLineNumber);
 
                 if constexpr (std::is_same_v<T, MacroCommand>) {
@@ -2512,7 +2496,8 @@ bool ScriptValidator::m_ListStatements () noexcept
                 } else if constexpr (std::is_same_v<T, PrintStatement>) {
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     PRINT:"); LOG_STRING(item.strText.empty() ? "<none>" : item.strText));
                 } else if constexpr (std::is_same_v<T, DelayStatement>) {
-                    const std::string strUnit = (item.eUnit == DelayUnit::US)  ? "us"  :(item.eUnit == DelayUnit::MS)  ? "ms"  : "sec";
+                    const std::string strUnit = (item.eUnit == DelayUnit::US) ? "us" : (item.eUnit == DelayUnit::MS) ? "ms"
+                                                                                                                     : "sec";
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     DELAY:"); LOG_STRING(std::to_string(item.szValue)); LOG_STRING(strUnit));
                 } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("BREAKPOINT:"); LOG_STRING(item.strLabelTpl.empty() ? "<none>" : item.strLabelTpl));
@@ -2525,10 +2510,12 @@ bool ScriptValidator::m_ListStatements () noexcept
                 } else if constexpr (std::is_same_v<T, StreamStatement>) {
                     std::ostringstream oss;
                     for (size_t k = 0; k < item.vFields.size(); ++k) {
-                        if (k > 0) oss << " ";
+                        if (k > 0) {
+                            oss << " ";
+                        }
                         oss << item.vFields[k].strOffsetTpl << ":" << item.vFields[k].strLengthTpl << ":" << item.vFields[k].strValueTpl;
                     }
-                    const char* pszKind = item.bByteMode ? "BYTESTREAM:" : " BITSTREAM:";
+                    const char *pszKind = item.bByteMode ? "BYTESTREAM:" : " BITSTREAM:";
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(pszKind); LOG_STRING(item.strName); LOG_STRING("= ["); LOG_STRING(oss.str()); LOG_STRING("]"));
                 } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
                     if (item.bStop) {
@@ -2537,12 +2524,16 @@ bool ScriptValidator::m_ListStatements () noexcept
                         std::ostringstream oss;
                         if (item.bIsArraySource) {
                             for (size_t k = 0; k < item.vArrayValues.size(); ++k) {
-                                if (k > 0) { oss << ","; }
+                                if (k > 0) {
+                                    oss << ",";
+                                }
                                 oss << item.vArrayValues[k].strExpr;
                             }
                         } else {
                             oss << item.begin.strExpr << ":" << item.end.strExpr << ":" << item.step.strExpr;
-                            if (item.bHasK) { oss << ":" << item.k.strExpr; }
+                            if (item.bHasK) {
+                                oss << ":" << item.k.strExpr;
+                            }
                         }
                         oss << " | " << getGeneratorWaveformName(item.eWaveform);
                         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR:"); LOG_STRING(item.strName);
@@ -2553,7 +2544,8 @@ bool ScriptValidator::m_ListStatements () noexcept
                 } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR: STOP ALL"));
                 }
-            }, data.command);
+            },
+                       data.command);
         });
     }
 

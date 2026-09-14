@@ -97,18 +97,18 @@
  *   primary     := number | identifier_or_func | '(' expr ')'
  */
 
-#include <cmath>
 #include <cctype>
+#include <cmath>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 
 #ifndef M_PI
-#define M_PI   3.14159265358979323846
+#define M_PI 3.14159265358979323846
 #endif
 #ifndef M_E
-#define M_E    2.71828182845904523536
+#define M_E 2.71828182845904523536
 #endif
 
 class Calculator
@@ -120,15 +120,17 @@ public:
 
     // vars is a persistent map shared across multiple Calculator invocations
     // so that assigned variables survive between calls.
-    Calculator(const std::string& expr,
-               std::unordered_map<std::string, double>& vars)
-        : m_expr(expr), m_pos(0), m_vars(vars)
+    Calculator(const std::string &expr,
+               std::unordered_map<std::string, double> &vars)
+        : m_expr(expr)
+        , m_pos(0)
+        , m_vars(vars)
     {
         // Built-in constants (only set if not already defined by the user)
-        m_vars.try_emplace("pi",  M_PI);
-        m_vars.try_emplace("e",   M_E);
+        m_vars.try_emplace("pi", M_PI);
+        m_vars.try_emplace("e", M_E);
         m_vars.try_emplace("tau", 2.0 * M_PI);
-        m_vars.try_emplace("phi", 1.6180339887498948482);   // golden ratio
+        m_vars.try_emplace("phi", 1.6180339887498948482); // golden ratio
         m_vars.try_emplace("inf", std::numeric_limits<double>::infinity());
         m_vars.try_emplace("nan", std::numeric_limits<double>::quiet_NaN());
     }
@@ -137,7 +139,7 @@ public:
     // Throws std::runtime_error on any parse or domain error.
     double evaluate()
     {
-        m_pos = 0;
+        m_pos         = 0;
         double result = parseAssignment();
         skipWhitespace();
         if (m_pos < m_expr.size()) {
@@ -150,8 +152,8 @@ public:
 
 private:
     std::string m_expr;
-    size_t      m_pos;
-    std::unordered_map<std::string, double>& m_vars;
+    size_t m_pos;
+    std::unordered_map<std::string, double> &m_vars;
 
     // ─────────────────────────────────────────────────────────────────────────
     // Utilities
@@ -160,8 +162,9 @@ private:
     void skipWhitespace()
     {
         while (m_pos < m_expr.size() &&
-               std::isspace(static_cast<unsigned char>(m_expr[m_pos])))
+               std::isspace(static_cast<unsigned char>(m_expr[m_pos]))) {
             ++m_pos;
+        }
     }
 
     char peek(size_t offset = 0) const
@@ -170,25 +173,34 @@ private:
         return (i < m_expr.size()) ? m_expr[i] : '\0';
     }
 
-    bool match(const char* s)
+    bool match(const char *s)
     {
         size_t len = 0;
-        while (s[len]) ++len;
-        if (m_pos + len > m_expr.size()) return false;
-        if (m_expr.compare(m_pos, len, s) != 0) return false;
+        while (s[len]) {
+            ++len;
+        }
+        if (m_pos + len > m_expr.size()) {
+            return false;
+        }
+        if (m_expr.compare(m_pos, len, s) != 0) {
+            return false;
+        }
         m_pos += len;
         return true;
     }
 
     // Consume a specific character; throw if not present.
-    void expect(char c, const char* ctx = "")
+    void expect(char c, const char *ctx = "")
     {
         skipWhitespace();
         if (m_pos >= m_expr.size() || m_expr[m_pos] != c) {
             std::string msg = "Expected '";
             msg += c;
             msg += "'";
-            if (ctx && ctx[0]) { msg += " "; msg += ctx; }
+            if (ctx && ctx[0]) {
+                msg += " ";
+                msg += ctx;
+            }
             throw std::runtime_error(msg);
         }
         ++m_pos;
@@ -197,10 +209,12 @@ private:
     // Cast double to int64 for bitwise ops, with range check
     static int64_t toInt(double v)
     {
-        if (!std::isfinite(v))
+        if (!std::isfinite(v)) {
             throw std::runtime_error("Bitwise operation on non-finite value");
-        if (v < static_cast<double>(INT64_MIN) || v > static_cast<double>(INT64_MAX))
+        }
+        if (v < static_cast<double>(INT64_MIN) || v > static_cast<double>(INT64_MAX)) {
             throw std::runtime_error("Value out of range for bitwise operation");
+        }
         return static_cast<int64_t>(v);
     }
 
@@ -218,24 +232,20 @@ private:
         // Try to read an identifier — if it is followed by '=' (but not ==)
         // treat this as an assignment.
         skipWhitespace();
-        if (m_pos < m_expr.size() && (std::isalpha(static_cast<unsigned char>(m_expr[m_pos]))
-                                       || m_expr[m_pos] == '_'))
-        {
+        if (m_pos < m_expr.size() && (std::isalpha(static_cast<unsigned char>(m_expr[m_pos])) || m_expr[m_pos] == '_')) {
             size_t nameStart = m_pos;
             std::string name;
             while (m_pos < m_expr.size() &&
                    (std::isalnum(static_cast<unsigned char>(m_expr[m_pos])) ||
-                    m_expr[m_pos] == '_'))
-            {
+                    m_expr[m_pos] == '_')) {
                 name += m_expr[m_pos++];
             }
             skipWhitespace();
 
             // Assignment: single '=' not followed by another '='
             if (m_pos < m_expr.size() && m_expr[m_pos] == '=' &&
-                (m_pos + 1 >= m_expr.size() || m_expr[m_pos + 1] != '='))
-            {
-                ++m_pos; // consume '='
+                (m_pos + 1 >= m_expr.size() || m_expr[m_pos + 1] != '=')) {
+                ++m_pos;                          // consume '='
                 double value = parseAssignment(); // right-associative
                 m_vars[name] = value;
                 return value;
@@ -255,7 +265,7 @@ private:
         skipWhitespace();
         if (m_pos < m_expr.size() && m_expr[m_pos] == '?') {
             ++m_pos;
-            double vtrue  = parseAssignment();
+            double vtrue = parseAssignment();
             expect(':', "in ternary operator");
             double vfalse = parseAssignment();
             return (cond != 0.0) ? vtrue : vfalse;
@@ -270,11 +280,10 @@ private:
         while (true) {
             skipWhitespace();
             if (m_pos + 1 < m_expr.size() &&
-                m_expr[m_pos] == '|' && m_expr[m_pos + 1] == '|')
-            {
+                m_expr[m_pos] == '|' && m_expr[m_pos + 1] == '|') {
                 m_pos += 2;
                 double rhs = parseLogicalAnd();
-                lhs = ((lhs != 0.0) || (rhs != 0.0)) ? 1.0 : 0.0;
+                lhs        = ((lhs != 0.0) || (rhs != 0.0)) ? 1.0 : 0.0;
             } else {
                 break;
             }
@@ -289,11 +298,10 @@ private:
         while (true) {
             skipWhitespace();
             if (m_pos + 1 < m_expr.size() &&
-                m_expr[m_pos] == '&' && m_expr[m_pos + 1] == '&')
-            {
+                m_expr[m_pos] == '&' && m_expr[m_pos + 1] == '&') {
                 m_pos += 2;
                 double rhs = parseBitwiseOr();
-                lhs = ((lhs != 0.0) && (rhs != 0.0)) ? 1.0 : 0.0;
+                lhs        = ((lhs != 0.0) && (rhs != 0.0)) ? 1.0 : 0.0;
             } else {
                 break;
             }
@@ -309,11 +317,10 @@ private:
             skipWhitespace();
             // Single '|' not followed by '|'
             if (m_pos < m_expr.size() && m_expr[m_pos] == '|' &&
-                (m_pos + 1 >= m_expr.size() || m_expr[m_pos + 1] != '|'))
-            {
+                (m_pos + 1 >= m_expr.size() || m_expr[m_pos + 1] != '|')) {
                 ++m_pos;
                 double rhs = parseBitwiseXor();
-                lhs = static_cast<double>(toInt(lhs) | toInt(rhs));
+                lhs        = static_cast<double>(toInt(lhs) | toInt(rhs));
             } else {
                 break;
             }
@@ -328,11 +335,10 @@ private:
         double lhs = parseBitwiseAnd();
         while (true) {
             skipWhitespace();
-            if (m_pos < m_expr.size() && m_expr[m_pos] == '^')
-            {
+            if (m_pos < m_expr.size() && m_expr[m_pos] == '^') {
                 ++m_pos;
                 double rhs = parseBitwiseAnd();
-                lhs = static_cast<double>(toInt(lhs) ^ toInt(rhs));
+                lhs        = static_cast<double>(toInt(lhs) ^ toInt(rhs));
             } else {
                 break;
             }
@@ -348,11 +354,10 @@ private:
             skipWhitespace();
             // Single '&' not followed by '&'
             if (m_pos < m_expr.size() && m_expr[m_pos] == '&' &&
-                (m_pos + 1 >= m_expr.size() || m_expr[m_pos + 1] != '&'))
-            {
+                (m_pos + 1 >= m_expr.size() || m_expr[m_pos + 1] != '&')) {
                 ++m_pos;
                 double rhs = parseEquality();
-                lhs = static_cast<double>(toInt(lhs) & toInt(rhs));
+                lhs        = static_cast<double>(toInt(lhs) & toInt(rhs));
             } else {
                 break;
             }
@@ -367,20 +372,16 @@ private:
         while (true) {
             skipWhitespace();
             if (m_pos + 1 < m_expr.size() &&
-                m_expr[m_pos] == '=' && m_expr[m_pos + 1] == '=')
-            {
+                m_expr[m_pos] == '=' && m_expr[m_pos + 1] == '=') {
                 m_pos += 2;
                 double rhs = parseRelational();
-                lhs = (lhs == rhs) ? 1.0 : 0.0;
-            }
-            else if (m_pos + 1 < m_expr.size() &&
-                     m_expr[m_pos] == '!' && m_expr[m_pos + 1] == '=')
-            {
+                lhs        = (lhs == rhs) ? 1.0 : 0.0;
+            } else if (m_pos + 1 < m_expr.size() &&
+                       m_expr[m_pos] == '!' && m_expr[m_pos + 1] == '=') {
                 m_pos += 2;
                 double rhs = parseRelational();
-                lhs = (lhs != rhs) ? 1.0 : 0.0;
-            }
-            else {
+                lhs        = (lhs != rhs) ? 1.0 : 0.0;
+            } else {
                 break;
             }
         }
@@ -394,14 +395,28 @@ private:
         while (true) {
             skipWhitespace();
             if (m_pos < m_expr.size()) {
-                char c = m_expr[m_pos];
+                char c  = m_expr[m_pos];
                 char c2 = (m_pos + 1 < m_expr.size()) ? m_expr[m_pos + 1] : '\0';
 
-                if (c == '<' && c2 == '=') { m_pos += 2; double r = parseShift(); lhs = (lhs <= r) ? 1.0 : 0.0; }
-                else if (c == '>' && c2 == '=') { m_pos += 2; double r = parseShift(); lhs = (lhs >= r) ? 1.0 : 0.0; }
-                else if (c == '<' && c2 != '<') { ++m_pos;    double r = parseShift(); lhs = (lhs <  r) ? 1.0 : 0.0; }
-                else if (c == '>' && c2 != '>') { ++m_pos;    double r = parseShift(); lhs = (lhs >  r) ? 1.0 : 0.0; }
-                else break;
+                if (c == '<' && c2 == '=') {
+                    m_pos += 2;
+                    double r = parseShift();
+                    lhs      = (lhs <= r) ? 1.0 : 0.0;
+                } else if (c == '>' && c2 == '=') {
+                    m_pos += 2;
+                    double r = parseShift();
+                    lhs      = (lhs >= r) ? 1.0 : 0.0;
+                } else if (c == '<' && c2 != '<') {
+                    ++m_pos;
+                    double r = parseShift();
+                    lhs      = (lhs < r) ? 1.0 : 0.0;
+                } else if (c == '>' && c2 != '>') {
+                    ++m_pos;
+                    double r = parseShift();
+                    lhs      = (lhs > r) ? 1.0 : 0.0;
+                } else {
+                    break;
+                }
             } else {
                 break;
             }
@@ -416,20 +431,16 @@ private:
         while (true) {
             skipWhitespace();
             if (m_pos + 1 < m_expr.size() &&
-                m_expr[m_pos] == '<' && m_expr[m_pos + 1] == '<')
-            {
+                m_expr[m_pos] == '<' && m_expr[m_pos + 1] == '<') {
                 m_pos += 2;
                 double rhs = parseAdditive();
-                lhs = static_cast<double>(toInt(lhs) << toInt(rhs));
-            }
-            else if (m_pos + 1 < m_expr.size() &&
-                     m_expr[m_pos] == '>' && m_expr[m_pos + 1] == '>')
-            {
+                lhs        = static_cast<double>(toInt(lhs) << toInt(rhs));
+            } else if (m_pos + 1 < m_expr.size() &&
+                       m_expr[m_pos] == '>' && m_expr[m_pos + 1] == '>') {
                 m_pos += 2;
                 double rhs = parseAdditive();
-                lhs = static_cast<double>(toInt(lhs) >> toInt(rhs));
-            }
-            else {
+                lhs        = static_cast<double>(toInt(lhs) >> toInt(rhs));
+            } else {
                 break;
             }
         }
@@ -443,11 +454,10 @@ private:
         while (true) {
             skipWhitespace();
             if (m_pos < m_expr.size() &&
-                (m_expr[m_pos] == '+' || m_expr[m_pos] == '-'))
-            {
-                char op = m_expr[m_pos++];
+                (m_expr[m_pos] == '+' || m_expr[m_pos] == '-')) {
+                char op    = m_expr[m_pos++];
                 double rhs = parseTerm();
-                lhs = (op == '+') ? lhs + rhs : lhs - rhs;
+                lhs        = (op == '+') ? lhs + rhs : lhs - rhs;
             } else {
                 break;
             }
@@ -464,30 +474,33 @@ private:
             if (m_pos < m_expr.size()) {
                 // '//' — floor division
                 if (m_pos + 1 < m_expr.size() &&
-                    m_expr[m_pos] == '/' && m_expr[m_pos + 1] == '/')
-                {
+                    m_expr[m_pos] == '/' && m_expr[m_pos + 1] == '/') {
                     m_pos += 2;
                     double rhs = parseUnary();
-                    if (rhs == 0.0)
+                    if (rhs == 0.0) {
                         throw std::runtime_error("Floor division by zero");
+                    }
                     lhs = std::floor(lhs / rhs);
-                }
-                else if (m_expr[m_pos] == '*') { ++m_pos; lhs *= parseUnary(); }
-                else if (m_expr[m_pos] == '/') {
+                } else if (m_expr[m_pos] == '*') {
+                    ++m_pos;
+                    lhs *= parseUnary();
+                } else if (m_expr[m_pos] == '/') {
                     ++m_pos;
                     double rhs = parseUnary();
-                    if (rhs == 0.0)
+                    if (rhs == 0.0) {
                         throw std::runtime_error("Division by zero");
+                    }
                     lhs /= rhs;
-                }
-                else if (m_expr[m_pos] == '%') {
+                } else if (m_expr[m_pos] == '%') {
                     ++m_pos;
                     double rhs = parseUnary();
-                    if (rhs == 0.0)
+                    if (rhs == 0.0) {
                         throw std::runtime_error("Modulo by zero");
+                    }
                     lhs = std::fmod(lhs, rhs);
+                } else {
+                    break;
                 }
-                else { break; }
             } else {
                 break;
             }
@@ -500,10 +513,22 @@ private:
     {
         skipWhitespace();
         if (m_pos < m_expr.size()) {
-            if (m_expr[m_pos] == '+') { ++m_pos; return  parseUnary(); }
-            if (m_expr[m_pos] == '-') { ++m_pos; return -parseUnary(); }
-            if (m_expr[m_pos] == '!') { ++m_pos; return (parseUnary() == 0.0) ? 1.0 : 0.0; }
-            if (m_expr[m_pos] == '~') { ++m_pos; return static_cast<double>(~toInt(parseUnary())); }
+            if (m_expr[m_pos] == '+') {
+                ++m_pos;
+                return parseUnary();
+            }
+            if (m_expr[m_pos] == '-') {
+                ++m_pos;
+                return -parseUnary();
+            }
+            if (m_expr[m_pos] == '!') {
+                ++m_pos;
+                return (parseUnary() == 0.0) ? 1.0 : 0.0;
+            }
+            if (m_expr[m_pos] == '~') {
+                ++m_pos;
+                return static_cast<double>(~toInt(parseUnary()));
+            }
         }
         return parsePower();
     }
@@ -514,8 +539,7 @@ private:
         double base = parseImplicitMul();
         skipWhitespace();
         if (m_pos + 1 < m_expr.size() &&
-            m_expr[m_pos] == '*' && m_expr[m_pos + 1] == '*')
-        {
+            m_expr[m_pos] == '*' && m_expr[m_pos + 1] == '*') {
             m_pos += 2;
             double exp = parseUnary(); // right-assoc → recurse into unary
             return std::pow(base, exp);
@@ -530,14 +554,15 @@ private:
         double result = parsePrimary();
         while (true) {
             skipWhitespace();
-            if (m_pos >= m_expr.size()) break;
+            if (m_pos >= m_expr.size()) {
+                break;
+            }
             char c = m_expr[m_pos];
             // Implicit multiply when next token starts with alpha/digit/'('
             // but only when the current character is NOT an operator
             if (c == '(' ||
                 std::isalpha(static_cast<unsigned char>(c)) ||
-                c == '_')
-            {
+                c == '_') {
                 result *= parsePrimary();
             } else {
                 break;
@@ -550,8 +575,9 @@ private:
     double parsePrimary()
     {
         skipWhitespace();
-        if (m_pos >= m_expr.size())
+        if (m_pos >= m_expr.size()) {
             throw std::runtime_error("Unexpected end of expression");
+        }
 
         if (m_expr[m_pos] == '(') {
             ++m_pos;
@@ -561,8 +587,7 @@ private:
         }
 
         if (std::isalpha(static_cast<unsigned char>(m_expr[m_pos])) ||
-            m_expr[m_pos] == '_')
-        {
+            m_expr[m_pos] == '_') {
             return parseFunctionOrVariable();
         }
 
@@ -580,83 +605,86 @@ private:
         skipWhitespace();
         size_t start = m_pos;
 
-        if (m_pos >= m_expr.size())
+        if (m_pos >= m_expr.size()) {
             throw std::runtime_error(
                 std::string("Expected number at position ") + std::to_string(m_pos));
+        }
 
         // ── Non-decimal prefix literals (0b / 0o / 0x / legacy octal) ────────
-        if (m_expr[m_pos] == '0' && m_pos + 1 < m_expr.size())
-        {
+        if (m_expr[m_pos] == '0' && m_pos + 1 < m_expr.size()) {
             char next = m_expr[m_pos + 1];
 
             // Binary: 0b / 0B
-            if (next == 'b' || next == 'B')
-            {
+            if (next == 'b' || next == 'B') {
                 m_pos += 2;
                 size_t digitStart = m_pos;
                 while (m_pos < m_expr.size() &&
-                       (m_expr[m_pos] == '0' || m_expr[m_pos] == '1'))
+                       (m_expr[m_pos] == '0' || m_expr[m_pos] == '1')) {
                     ++m_pos;
-                if (m_pos == digitStart)
+                }
+                if (m_pos == digitStart) {
                     throw std::runtime_error(
                         "Binary literal (0b) has no digits at position " +
                         std::to_string(start));
+                }
                 std::string digits = m_expr.substr(digitStart, m_pos - digitStart);
                 return static_cast<double>(std::stoull(digits, nullptr, 2));
             }
 
             // Hexadecimal: 0x / 0X
-            if (next == 'x' || next == 'X')
-            {
+            if (next == 'x' || next == 'X') {
                 m_pos += 2;
                 size_t digitStart = m_pos;
                 while (m_pos < m_expr.size() &&
-                       std::isxdigit(static_cast<unsigned char>(m_expr[m_pos])))
+                       std::isxdigit(static_cast<unsigned char>(m_expr[m_pos]))) {
                     ++m_pos;
-                if (m_pos == digitStart)
+                }
+                if (m_pos == digitStart) {
                     throw std::runtime_error(
                         "Hexadecimal literal (0x) has no digits at position " +
                         std::to_string(start));
+                }
                 std::string digits = m_expr.substr(digitStart, m_pos - digitStart);
                 return static_cast<double>(std::stoull(digits, nullptr, 16));
             }
 
             // Explicit octal: 0o / 0O
-            if (next == 'o' || next == 'O')
-            {
+            if (next == 'o' || next == 'O') {
                 m_pos += 2;
                 size_t digitStart = m_pos;
                 while (m_pos < m_expr.size() &&
-                       m_expr[m_pos] >= '0' && m_expr[m_pos] <= '7')
+                       m_expr[m_pos] >= '0' && m_expr[m_pos] <= '7') {
                     ++m_pos;
-                if (m_pos == digitStart)
+                }
+                if (m_pos == digitStart) {
                     throw std::runtime_error(
                         "Octal literal (0o) has no digits at position " +
                         std::to_string(start));
+                }
                 std::string digits = m_expr.substr(digitStart, m_pos - digitStart);
                 return static_cast<double>(std::stoull(digits, nullptr, 8));
             }
 
             // Legacy C-style octal: leading '0' followed by more octal digits,
             // but NOT followed by '.', 'e'/'E' (those are decimal floats).
-            if (next >= '0' && next <= '7')
-            {
+            if (next >= '0' && next <= '7') {
                 size_t probe = m_pos + 1;
                 while (probe < m_expr.size() &&
-                       (m_expr[probe] >= '0' && m_expr[probe] <= '7'))
+                       (m_expr[probe] >= '0' && m_expr[probe] <= '7')) {
                     ++probe;
+                }
                 // If the next non-octal character is '8','9','.','e','E'
                 // fall through to the normal decimal path.
                 bool isLegacyOctal = true;
                 if (probe < m_expr.size() &&
                     (m_expr[probe] == '8' || m_expr[probe] == '9' ||
                      m_expr[probe] == '.' ||
-                     m_expr[probe] == 'e' || m_expr[probe] == 'E'))
+                     m_expr[probe] == 'e' || m_expr[probe] == 'E')) {
                     isLegacyOctal = false;
+                }
 
-                if (isLegacyOctal)
-                {
-                    m_pos = probe;
+                if (isLegacyOctal) {
+                    m_pos              = probe;
                     std::string digits = m_expr.substr(start, m_pos - start);
                     return static_cast<double>(std::stoull(digits, nullptr, 8));
                 }
@@ -669,32 +697,34 @@ private:
         // integer or decimal part
         while (m_pos < m_expr.size() &&
                (std::isdigit(static_cast<unsigned char>(m_expr[m_pos])) ||
-                m_expr[m_pos] == '.'))
+                m_expr[m_pos] == '.')) {
             ++m_pos;
+        }
 
         // optional scientific notation: e/E followed by optional sign and digits
         if (m_pos < m_expr.size() &&
-            (m_expr[m_pos] == 'e' || m_expr[m_pos] == 'E'))
-        {
+            (m_expr[m_pos] == 'e' || m_expr[m_pos] == 'E')) {
             size_t savedPos = m_pos;
             ++m_pos;
             if (m_pos < m_expr.size() &&
-                (m_expr[m_pos] == '+' || m_expr[m_pos] == '-'))
+                (m_expr[m_pos] == '+' || m_expr[m_pos] == '-')) {
                 ++m_pos;
+            }
             if (m_pos < m_expr.size() &&
-                std::isdigit(static_cast<unsigned char>(m_expr[m_pos])))
-            {
+                std::isdigit(static_cast<unsigned char>(m_expr[m_pos]))) {
                 while (m_pos < m_expr.size() &&
-                       std::isdigit(static_cast<unsigned char>(m_expr[m_pos])))
+                       std::isdigit(static_cast<unsigned char>(m_expr[m_pos]))) {
                     ++m_pos;
+                }
             } else {
                 m_pos = savedPos; // not a valid exponent — rewind
             }
         }
 
-        if (start == m_pos)
+        if (start == m_pos) {
             throw std::runtime_error(
                 std::string("Expected number at position ") + std::to_string(m_pos));
+        }
 
         return std::stod(m_expr.substr(start, m_pos - start));
     }
@@ -708,8 +738,7 @@ private:
         std::string name;
         while (m_pos < m_expr.size() &&
                (std::isalnum(static_cast<unsigned char>(m_expr[m_pos])) ||
-                m_expr[m_pos] == '_'))
-        {
+                m_expr[m_pos] == '_')) {
             name += m_expr[m_pos++];
         }
 
@@ -723,8 +752,9 @@ private:
 
         // Variable / constant lookup
         auto it = m_vars.find(name);
-        if (it != m_vars.end())
+        if (it != m_vars.end()) {
             return it->second;
+        }
 
         throw std::runtime_error("Undefined variable: " + name);
     }
@@ -732,7 +762,7 @@ private:
     // ─────────────────────────────────────────────────────────────────────────
     // Function dispatch — single-arg and two-arg
     // ─────────────────────────────────────────────────────────────────────────
-    double dispatchFunction(const std::string& name)
+    double dispatchFunction(const std::string &name)
     {
         // Helper: read first argument (already past the opening '(')
         auto readArg = [&]() -> double {
@@ -755,101 +785,201 @@ private:
         // ── Single-argument functions ──────────────────────────────────────
 
         // Trigonometric
-        if (name == "sin")   { double a = readArg(); close(); return std::sin(a); }
-        if (name == "cos")   { double a = readArg(); close(); return std::cos(a); }
-        if (name == "tan")   { double a = readArg(); close(); return std::tan(a); }
-        if (name == "asin")  {
-            double a = readArg(); close();
-            if (a < -1.0 || a > 1.0) throw std::runtime_error("asin: domain error (|x| > 1)");
+        if (name == "sin") {
+            double a = readArg();
+            close();
+            return std::sin(a);
+        }
+        if (name == "cos") {
+            double a = readArg();
+            close();
+            return std::cos(a);
+        }
+        if (name == "tan") {
+            double a = readArg();
+            close();
+            return std::tan(a);
+        }
+        if (name == "asin") {
+            double a = readArg();
+            close();
+            if (a < -1.0 || a > 1.0) {
+                throw std::runtime_error("asin: domain error (|x| > 1)");
+            }
             return std::asin(a);
         }
-        if (name == "acos")  {
-            double a = readArg(); close();
-            if (a < -1.0 || a > 1.0) throw std::runtime_error("acos: domain error (|x| > 1)");
+        if (name == "acos") {
+            double a = readArg();
+            close();
+            if (a < -1.0 || a > 1.0) {
+                throw std::runtime_error("acos: domain error (|x| > 1)");
+            }
             return std::acos(a);
         }
-        if (name == "atan")  { double a = readArg(); close(); return std::atan(a); }
-        if (name == "sinh")  { double a = readArg(); close(); return std::sinh(a); }
-        if (name == "cosh")  { double a = readArg(); close(); return std::cosh(a); }
-        if (name == "tanh")  { double a = readArg(); close(); return std::tanh(a); }
+        if (name == "atan") {
+            double a = readArg();
+            close();
+            return std::atan(a);
+        }
+        if (name == "sinh") {
+            double a = readArg();
+            close();
+            return std::sinh(a);
+        }
+        if (name == "cosh") {
+            double a = readArg();
+            close();
+            return std::cosh(a);
+        }
+        if (name == "tanh") {
+            double a = readArg();
+            close();
+            return std::tanh(a);
+        }
 
         // Exponential / logarithmic
-        if (name == "sqrt")  {
-            double a = readArg(); close();
-            if (a < 0.0) throw std::runtime_error("sqrt: domain error (negative argument)");
+        if (name == "sqrt") {
+            double a = readArg();
+            close();
+            if (a < 0.0) {
+                throw std::runtime_error("sqrt: domain error (negative argument)");
+            }
             return std::sqrt(a);
         }
-        if (name == "cbrt")  { double a = readArg(); close(); return std::cbrt(a); }
-        if (name == "exp")   { double a = readArg(); close(); return std::exp(a); }
-        if (name == "exp2")  { double a = readArg(); close(); return std::exp2(a); }
-        if (name == "log")   {
-            double a = readArg(); close();
-            if (a <= 0.0) throw std::runtime_error("log: domain error (argument <= 0)");
+        if (name == "cbrt") {
+            double a = readArg();
+            close();
+            return std::cbrt(a);
+        }
+        if (name == "exp") {
+            double a = readArg();
+            close();
+            return std::exp(a);
+        }
+        if (name == "exp2") {
+            double a = readArg();
+            close();
+            return std::exp2(a);
+        }
+        if (name == "log") {
+            double a = readArg();
+            close();
+            if (a <= 0.0) {
+                throw std::runtime_error("log: domain error (argument <= 0)");
+            }
             return std::log(a);
         }
-        if (name == "log2")  {
-            double a = readArg(); close();
-            if (a <= 0.0) throw std::runtime_error("log2: domain error (argument <= 0)");
+        if (name == "log2") {
+            double a = readArg();
+            close();
+            if (a <= 0.0) {
+                throw std::runtime_error("log2: domain error (argument <= 0)");
+            }
             return std::log2(a);
         }
         if (name == "log10") {
-            double a = readArg(); close();
-            if (a <= 0.0) throw std::runtime_error("log10: domain error (argument <= 0)");
+            double a = readArg();
+            close();
+            if (a <= 0.0) {
+                throw std::runtime_error("log10: domain error (argument <= 0)");
+            }
             return std::log10(a);
         }
 
         // Rounding
-        if (name == "abs")   { double a = readArg(); close(); return std::abs(a); }
-        if (name == "ceil")  { double a = readArg(); close(); return std::ceil(a); }
-        if (name == "floor") { double a = readArg(); close(); return std::floor(a); }
-        if (name == "round") { double a = readArg(); close(); return std::round(a); }
-        if (name == "trunc") { double a = readArg(); close(); return std::trunc(a); }
+        if (name == "abs") {
+            double a = readArg();
+            close();
+            return std::abs(a);
+        }
+        if (name == "ceil") {
+            double a = readArg();
+            close();
+            return std::ceil(a);
+        }
+        if (name == "floor") {
+            double a = readArg();
+            close();
+            return std::floor(a);
+        }
+        if (name == "round") {
+            double a = readArg();
+            close();
+            return std::round(a);
+        }
+        if (name == "trunc") {
+            double a = readArg();
+            close();
+            return std::trunc(a);
+        }
 
         // Sign
-        if (name == "sign")  {
-            double a = readArg(); close();
-            return (a > 0.0) ? 1.0 : (a < 0.0) ? -1.0 : 0.0;
+        if (name == "sign") {
+            double a = readArg();
+            close();
+            return (a > 0.0) ? 1.0 : (a < 0.0) ? -1.0
+                                               : 0.0;
         }
 
         // ── Two-argument functions ─────────────────────────────────────────
 
         if (name == "pow") {
-            double base = readArg(); comma();
-            double exp  = readArg(); close();
+            double base = readArg();
+            comma();
+            double exp = readArg();
+            close();
             return std::pow(base, exp);
         }
         if (name == "atan2") {
-            double y = readArg(); comma();
-            double x = readArg(); close();
+            double y = readArg();
+            comma();
+            double x = readArg();
+            close();
             return std::atan2(y, x);
         }
         if (name == "min") {
-            double a = readArg(); comma();
-            double b = readArg(); close();
+            double a = readArg();
+            comma();
+            double b = readArg();
+            close();
             return std::min(a, b);
         }
         if (name == "max") {
-            double a = readArg(); comma();
-            double b = readArg(); close();
+            double a = readArg();
+            comma();
+            double b = readArg();
+            close();
             return std::max(a, b);
         }
         if (name == "hypot") {
-            double a = readArg(); comma();
-            double b = readArg(); close();
+            double a = readArg();
+            comma();
+            double b = readArg();
+            close();
             return std::hypot(a, b);
         }
         if (name == "fmod") {
-            double a = readArg(); comma();
-            double b = readArg(); close();
-            if (b == 0.0) throw std::runtime_error("fmod: second argument is zero");
+            double a = readArg();
+            comma();
+            double b = readArg();
+            close();
+            if (b == 0.0) {
+                throw std::runtime_error("fmod: second argument is zero");
+            }
             return std::fmod(a, b);
         }
         if (name == "log_b") {
             // log_b(value, base) = log(value) / log(base)
-            double v = readArg(); comma();
-            double b = readArg(); close();
-            if (v <= 0.0) throw std::runtime_error("log_b: value must be > 0");
-            if (b <= 0.0 || b == 1.0) throw std::runtime_error("log_b: base must be > 0 and != 1");
+            double v = readArg();
+            comma();
+            double b = readArg();
+            close();
+            if (v <= 0.0) {
+                throw std::runtime_error("log_b: value must be > 0");
+            }
+            if (b <= 0.0 || b == 1.0) {
+                throw std::runtime_error("log_b: base must be > 0 and != 1");
+            }
             return std::log(v) / std::log(b);
         }
 

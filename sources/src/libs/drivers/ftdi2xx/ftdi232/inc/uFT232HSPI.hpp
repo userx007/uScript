@@ -4,10 +4,10 @@
 #include "FT232HBase.hpp"
 #include "ICommDriver.hpp"
 
-#include <stop_token>
 #include <cstdint>
 #include <cstdio>
 #include <span>
+#include <stop_token>
 #include <vector>
 
 /**
@@ -43,140 +43,152 @@
  */
 class FT232HSPI : public FT232HBase, public ICommDriver
 {
-    public:
+public:
+    using Status = ICommDriver::Status;
 
-        using Status = ICommDriver::Status;
+    // ── SPI configuration ────────────────────────────────────────────────
 
-        // ── SPI configuration ────────────────────────────────────────────────
+    /** Standard SPI clock/phase mode */
+    enum class SpiMode : uint8_t { Mode0 = 0,
+                                   Mode1 = 1,
+                                   Mode2 = 2,
+                                   Mode3 = 3 };
 
-        /** Standard SPI clock/phase mode */
-        enum class SpiMode    : uint8_t { Mode0 = 0, Mode1 = 1, Mode2 = 2, Mode3 = 3 };
+    /** Bit transmission order */
+    enum class BitOrder : uint8_t { MsbFirst = 0,
+                                    LsbFirst = 1 };
 
-        /** Bit transmission order */
-        enum class BitOrder   : uint8_t { MsbFirst = 0, LsbFirst = 1 };
+    /** Chip-select active polarity */
+    enum class CsPolarity : uint8_t { ActiveLow  = 0,
+                                      ActiveHigh = 1 };
 
-        /** Chip-select active polarity */
-        enum class CsPolarity : uint8_t { ActiveLow = 0, ActiveHigh = 1 };
+    /**
+     * @brief Complete SPI bus configuration
+     *
+     * Defaults produce a safe, widely-compatible 1 MHz Mode-0 bus.
+     * No channel field — the FT232H has only one MPSSE interface.
+     */
+    struct SpiConfig
+    {
+        uint32_t clockHz      = 1000000u;              ///< SCK frequency in Hz (max 30 MHz)
+        SpiMode mode          = SpiMode::Mode0;        ///< Clock polarity/phase
+        BitOrder bitOrder     = BitOrder::MsbFirst;    ///< Transmission order
+        uint8_t csPin         = 0x08u;                 ///< CS pin mask on ADBUS (default ADBUS3)
+        CsPolarity csPolarity = CsPolarity::ActiveLow; ///< CS assert level
+    };
 
-        /**
-         * @brief Complete SPI bus configuration
-         *
-         * Defaults produce a safe, widely-compatible 1 MHz Mode-0 bus.
-         * No channel field — the FT232H has only one MPSSE interface.
-         */
-        struct SpiConfig {
-            uint32_t   clockHz    = 1000000u;              ///< SCK frequency in Hz (max 30 MHz)
-            SpiMode    mode       = SpiMode::Mode0;        ///< Clock polarity/phase
-            BitOrder   bitOrder   = BitOrder::MsbFirst;    ///< Transmission order
-            uint8_t    csPin      = 0x08u;                 ///< CS pin mask on ADBUS (default ADBUS3)
-            CsPolarity csPolarity = CsPolarity::ActiveLow; ///< CS assert level
-        };
+    // ── Full-duplex result ────────────────────────────────────────────────
 
-        // ── Full-duplex result ────────────────────────────────────────────────
+    struct TransferResult
+    {
+        Status status       = Status::RETVAL_NOT_SET;
+        size_t bytes_xfered = 0;
+    };
 
-        struct TransferResult {
-            Status status       = Status::RETVAL_NOT_SET;
-            size_t bytes_xfered = 0;
-        };
+    FT232HSPI() = default;
 
-        FT232HSPI() = default;
+    /**
+     * @param config           SPI bus configuration.
+     * @param u8DeviceIndex    Physical device index (0 if only one chip).
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately.
+     */
+    explicit FT232HSPI(const SpiConfig &config, uint8_t u8DeviceIndex = 0u,
+                       const std::string &strIdentityLabel = {})
+    {
+        m_strIdentityLabel = strIdentityLabel;
+        this->open(config, u8DeviceIndex);
+    }
 
-        /**
-         * @param config           SPI bus configuration.
-         * @param u8DeviceIndex    Physical device index (0 if only one chip).
-         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-         *                         describeConnection()), supplied separately.
-         */
-        explicit FT232HSPI(const SpiConfig& config, uint8_t u8DeviceIndex = 0u,
-                           const std::string& strIdentityLabel = {})
-        {
-            m_strIdentityLabel = strIdentityLabel;
-            this->open(config, u8DeviceIndex);
-        }
+    ~FT232HSPI() override
+    {
+        close();
+    }
 
-        ~FT232HSPI() override { close(); }
+    /**
+     * @brief Open the FT232H and configure MPSSE for SPI
+     *
+     * @param config        SPI bus parameters
+     * @param u8DeviceIndex Physical device index (0 if only one chip)
+     */
+    Status open(const SpiConfig &config, uint8_t u8DeviceIndex = 0u);
 
-        /**
-         * @brief Open the FT232H and configure MPSSE for SPI
-         *
-         * @param config        SPI bus parameters
-         * @param u8DeviceIndex Physical device index (0 if only one chip)
-         */
-        Status open(const SpiConfig& config, uint8_t u8DeviceIndex = 0u);
+    Status close() override;
 
-        Status close() override;
-        bool is_open() const override { return FT232HBase::is_open(); }
+    bool is_open() const override
+    {
+        return FT232HBase::is_open();
+    }
 
-        /**
-         * @brief Describe this connection for the GUI comm-dump panel.
-         * xtra_params accepted (interface conformance) but ignored — CS pin and
-         * clock are fixed for the lifetime of this driver by SpiConfig.
-         */
-        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-        {
-            char label[k_labelSize];
-            std::snprintf(label, sizeof(label), "%s CS=0x%02X",
-                          m_strIdentityLabel.empty() ? "FT232H" : m_strIdentityLabel.c_str(),
-                          m_config.csPin);
-            return commdump_details(CommFamily::SPI, label);
-        }
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     * xtra_params accepted (interface conformance) but ignored — CS pin and
+     * clock are fixed for the lifetime of this driver by SpiConfig.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        char label[k_labelSize];
+        std::snprintf(label, sizeof(label), "%s CS=0x%02X",
+                      m_strIdentityLabel.empty() ? "FT232H" : m_strIdentityLabel.c_str(),
+                      m_config.csPin);
+        return commdump_details(CommFamily::SPI, label);
+    }
 
-        /**
-         * @brief SPI write-only transaction (CS asserted for full transfer)
-         */
-        WriteResult tout_write(uint32_t u32WriteTimeout,
-                               std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {},
-                               std::stop_token stop_tok = {}) const override;
+    /**
+     * @brief SPI write-only transaction (CS asserted for full transfer)
+     */
+    WriteResult tout_write(uint32_t u32WriteTimeout,
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief SPI read-only transaction (dummy 0x00 clocked on MOSI)
-         */
-        ReadResult  tout_read(uint32_t u32ReadTimeout,
-                              std::span<uint8_t> buffer,
-                              const ReadOptions& options,
-                              std::string_view xtra_params = {},
-                              std::stop_token stop_tok = {}) const override;
+    /**
+     * @brief SPI read-only transaction (dummy 0x00 clocked on MOSI)
+     */
+    ReadResult tout_read(uint32_t u32ReadTimeout,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok     = {}) const override;
 
-        /**
-         * @brief Full-duplex SPI transaction (simultaneous TX+RX)
-         *
-         * Both buffers must be the same size.
-         */
-        TransferResult spi_transfer(std::span<const uint8_t> txBuf,
-                                    std::span<uint8_t>       rxBuf,
-                                    uint32_t u32TimeoutMs = 0u,
-                                    std::stop_token stop_tok = {}) const;
+    /**
+     * @brief Full-duplex SPI transaction (simultaneous TX+RX)
+     *
+     * Both buffers must be the same size.
+     */
+    TransferResult spi_transfer(std::span<const uint8_t> txBuf,
+                                std::span<uint8_t> rxBuf,
+                                uint32_t u32TimeoutMs    = 0u,
+                                std::stop_token stop_tok = {}) const;
 
-    private:
+private:
+    SpiConfig m_config;
 
-        SpiConfig m_config;
+    // Resolved MPSSE command bytes (set at open() time from m_config)
+    uint8_t m_cmdWrite = 0x11u;
+    uint8_t m_cmdRead  = 0x20u;
+    uint8_t m_cmdXfer  = 0x31u;
 
-        // Resolved MPSSE command bytes (set at open() time from m_config)
-        uint8_t m_cmdWrite = 0x11u;
-        uint8_t m_cmdRead  = 0x20u;
-        uint8_t m_cmdXfer  = 0x31u;
+    // ADBUS pin state tracking
+    uint8_t m_pinValue = 0x00u; ///< Current ADBUS output value
+    uint8_t m_pinDir   = 0x0Bu; ///< ADBUS direction: SCK+MOSI+CS = outputs, MISO = input
 
-        // ADBUS pin state tracking
-        uint8_t m_pinValue = 0x00u; ///< Current ADBUS output value
-        uint8_t m_pinDir   = 0x0Bu; ///< ADBUS direction: SCK+MOSI+CS = outputs, MISO = input
+    Status configure_mpsse_spi(const SpiConfig &config);
+    Status cs_assert() const;
+    Status cs_deassert() const;
+    Status apply_pin_state(bool csActive) const;
 
-        Status configure_mpsse_spi(const SpiConfig& config);
-        Status cs_assert()   const;
-        Status cs_deassert() const;
-        Status apply_pin_state(bool csActive) const;
-
-        Status spi_write_raw(std::span<const uint8_t> data,
-                             size_t& bytesWritten) const;
-        Status spi_read_raw(std::span<uint8_t> data,
-                            size_t& bytesRead,
-                            uint32_t timeoutMs,
-                            std::stop_token stop_tok = {}) const;
-        Status spi_xfer_raw(std::span<const uint8_t> txBuf,
-                            std::span<uint8_t>       rxBuf,
-                            size_t& bytesXferd,
-                            uint32_t timeoutMs,
-                            std::stop_token stop_tok = {}) const;
+    Status spi_write_raw(std::span<const uint8_t> data,
+                         size_t &bytesWritten) const;
+    Status spi_read_raw(std::span<uint8_t> data,
+                        size_t &bytesRead,
+                        uint32_t timeoutMs,
+                        std::stop_token stop_tok = {}) const;
+    Status spi_xfer_raw(std::span<const uint8_t> txBuf,
+                        std::span<uint8_t> rxBuf,
+                        size_t &bytesXferd,
+                        uint32_t timeoutMs,
+                        std::stop_token stop_tok = {}) const;
 };
 
 #endif // U_FT232H_SPI_DRIVER_H

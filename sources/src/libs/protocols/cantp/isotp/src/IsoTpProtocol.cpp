@@ -1,64 +1,59 @@
 #include "IsoTpProtocol.hpp"
 
-#include <stddef.h>
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <stddef.h>
 #include <thread>
 
-namespace
+namespace {
+constexpr size_t kFrameLen       = 8; // classic CAN frame length used for every SF/FF/CF/FC
+constexpr size_t kSfMaxLen       = 7; // 1 PCI byte + up to 7 data bytes
+constexpr size_t kFfFirstLen     = 6; // FF: 2 PCI bytes + 6 data bytes
+constexpr size_t kCfMaxLen       = 7; // 1 PCI byte + up to 7 data bytes
+
+constexpr uint8_t kPciSF         = 0x0;
+constexpr uint8_t kPciFF         = 0x1;
+constexpr uint8_t kPciCF         = 0x2;
+constexpr uint8_t kPciFC         = 0x3;
+
+constexpr uint8_t kFsClearToSend = 0x0;
+constexpr uint8_t kFsWait        = 0x1;
+constexpr uint8_t kFsOverflow    = 0x2;
+
+inline uint8_t pci_type(uint8_t b0)
 {
-    constexpr size_t  kFrameLen   = 8; // classic CAN frame length used for every SF/FF/CF/FC
-    constexpr size_t  kSfMaxLen   = 7; // 1 PCI byte + up to 7 data bytes
-    constexpr size_t  kFfFirstLen = 6; // FF: 2 PCI bytes + 6 data bytes
-    constexpr size_t  kCfMaxLen   = 7; // 1 PCI byte + up to 7 data bytes
-
-    constexpr uint8_t kPciSF = 0x0;
-    constexpr uint8_t kPciFF = 0x1;
-    constexpr uint8_t kPciCF = 0x2;
-    constexpr uint8_t kPciFC = 0x3;
-
-    constexpr uint8_t kFsClearToSend = 0x0;
-    constexpr uint8_t kFsWait        = 0x1;
-    constexpr uint8_t kFsOverflow    = 0x2;
-
-    inline uint8_t pci_type(uint8_t b0) { return static_cast<uint8_t>((b0 & 0xF0) >> 4); }
-
-    inline void fill_padding(std::array<uint8_t, kFrameLen>& frame, size_t usedLen,
-                              bool pad, uint8_t padByte)
-    {
-        if (pad && usedLen < kFrameLen)
-        {
-            std::fill(frame.begin() + static_cast<long>(usedLen), frame.end(), padByte);
-        }
-    }
+    return static_cast<uint8_t>((b0 & 0xF0) >> 4);
 }
 
+inline void fill_padding(std::array<uint8_t, kFrameLen> &frame, size_t usedLen,
+                         bool pad, uint8_t padByte)
+{
+    if (pad && usedLen < kFrameLen) {
+        std::fill(frame.begin() + static_cast<long>(usedLen), frame.end(), padByte);
+    }
+}
+} // namespace
 
 void IsoTpProtocol::sleep_st_min(uint8_t stMin)
 {
-    if (stMin == 0)
-    {
+    if (stMin == 0) {
         return;
     }
-    if (stMin <= 0x7F)
-    {
+    if (stMin <= 0x7F) {
         std::this_thread::sleep_for(std::chrono::milliseconds(stMin));
-    }
-    else if (stMin >= 0xF1 && stMin <= 0xF9)
-    {
+    } else if (stMin >= 0xF1 && stMin <= 0xF9) {
         std::this_thread::sleep_for(std::chrono::microseconds(100u * (stMin - 0xF0u)));
     }
     // 0x80-0xF0 and 0xFA-0xFF are reserved by the standard; treat as "no delay".
 }
-
 
 // ============================================================================
 // SEND
 // ============================================================================
 
 ICommDriver::WriteResult IsoTpProtocol::send(
-    const ICommDriver& driver,
+    const ICommDriver &driver,
     uint32_t u32WriteTimeout,
     std::span<const uint8_t> data,
     std::string_view txId,
@@ -66,26 +61,24 @@ ICommDriver::WriteResult IsoTpProtocol::send(
 {
     ICommDriver::WriteResult result;
 
-    if (data.empty() || data.size() > m_cfg.maxMessageLen)
-    {
+    if (data.empty() || data.size() > m_cfg.maxMessageLen) {
         result.status = ICommDriver::Status::INVALID_PARAM;
         return result;
     }
 
     // ---- Single Frame: exactly one physical frame, same call count as
     // ---- TpProtocol::NONE today. --------------------------------------
-    if (data.size() <= kSfMaxLen)
-    {
+    if (data.size() <= kSfMaxLen) {
         std::array<uint8_t, kFrameLen> frame{};
         frame[0] = static_cast<uint8_t>(data.size() & 0x0F); // PCI=SF, SF_DL=len
         std::copy(data.begin(), data.end(), frame.begin() + 1);
         const size_t usedLen = 1 + data.size();
         fill_padding(frame, usedLen, m_cfg.padFrames, m_cfg.paddingByte);
-        const size_t txLen = m_cfg.padFrames ? kFrameLen : usedLen;
+        const size_t txLen   = m_cfg.padFrames ? kFrameLen : usedLen;
 
-        auto wr = driver.tout_write(u32WriteTimeout,
-                                     std::span<const uint8_t>(frame.data(), txLen), txId);
-        result.status = wr.status;
+        auto wr              = driver.tout_write(u32WriteTimeout,
+                                                 std::span<const uint8_t>(frame.data(), txLen), txId);
+        result.status        = wr.status;
         result.bytes_written = (wr.status == ICommDriver::Status::SUCCESS) ? data.size() : 0;
         return result;
     }
@@ -98,62 +91,54 @@ ICommDriver::WriteResult IsoTpProtocol::send(
     std::copy(data.begin(), data.begin() + static_cast<long>(kFfFirstLen), ff.begin() + 2);
 
     auto wrFF = driver.tout_write(u32WriteTimeout, std::span<const uint8_t>(ff.data(), kFrameLen), txId);
-    if (wrFF.status != ICommDriver::Status::SUCCESS)
-    {
+    if (wrFF.status != ICommDriver::Status::SUCCESS) {
         result.status = wrFF.status;
         return result;
     }
 
-    size_t sent = kFfFirstLen;
-    uint8_t seq = 1;
-    uint32_t consecutiveWaits = 0;   // ISO 15765-2 WFTmax bookkeeping — see m_cfg.wftMax's doc comment
+    size_t sent               = kFfFirstLen;
+    uint8_t seq               = 1;
+    uint32_t consecutiveWaits = 0; // ISO 15765-2 WFTmax bookkeeping — see m_cfg.wftMax's doc comment
 
-    while (sent < data.size())
-    {
+    while (sent < data.size()) {
         // ---- Wait for a Flow Control frame from the peer. ---------------
         std::array<uint8_t, kFrameLen> fc{};
         ICommDriver::ReadOptions opts;
         opts.mode = ICommDriver::ReadMode::Exact;
 
-        auto rr = driver.tout_read(m_cfg.timeoutNBs_ms,
-                                    std::span<uint8_t>(fc.data(), fc.size()), opts, rxId);
-        if (rr.status != ICommDriver::Status::SUCCESS || rr.bytes_read < 3)
-        {
+        auto rr   = driver.tout_read(m_cfg.timeoutNBs_ms,
+                                     std::span<uint8_t>(fc.data(), fc.size()), opts, rxId);
+        if (rr.status != ICommDriver::Status::SUCCESS || rr.bytes_read < 3) {
             result.status = (rr.status == ICommDriver::Status::READ_TIMEOUT)
-                             ? ICommDriver::Status::WRITE_TIMEOUT
-                             : ICommDriver::Status::PROTOCOL_ERROR;
+                                ? ICommDriver::Status::WRITE_TIMEOUT
+                                : ICommDriver::Status::PROTOCOL_ERROR;
             return result;
         }
 
-        if (pci_type(fc[0]) != kPciFC)
-        {
+        if (pci_type(fc[0]) != kPciFC) {
             result.status = ICommDriver::Status::PROTOCOL_ERROR;
             return result;
         }
 
         const uint8_t fs = fc[0] & 0x0F;
-        if (fs == kFsOverflow)
-        {
+        if (fs == kFsOverflow) {
             result.status = ICommDriver::Status::NACK; // peer aborted the transfer
             return result;
         }
-        if (fs == kFsWait)
-        {
+        if (fs == kFsWait) {
             // ISO 15765-2's WFTmax: bound how many consecutive FC.Wait
             // frames are tolerated. Without this cap, a peer that keeps
             // sending FC.Wait (buggy or otherwise) could stall this call
             // indefinitely — each retry below gets a fresh timeoutNBs_ms
             // budget, so nothing else here would ever time it out.
-            if (m_cfg.wftMax != 0 && ++consecutiveWaits > m_cfg.wftMax)
-            {
+            if (m_cfg.wftMax != 0 && ++consecutiveWaits > m_cfg.wftMax) {
                 result.status = ICommDriver::Status::WRITE_TIMEOUT;
                 return result;
             }
             continue; // peer needs more time before it can accept data; poll again
         }
         consecutiveWaits = 0; // any non-Wait Flow Control frame resets the count
-        if (fs != kFsClearToSend)
-        {
+        if (fs != kFsClearToSend) {
             result.status = ICommDriver::Status::PROTOCOL_ERROR;
             return result;
         }
@@ -161,11 +146,10 @@ ICommDriver::WriteResult IsoTpProtocol::send(
         const uint8_t blockSize = fc[1];
         const uint8_t stMin     = fc[2];
 
-        uint8_t framesInBlock = 0;
-        while (sent < data.size() && (blockSize == 0 || framesInBlock < blockSize))
-        {
+        uint8_t framesInBlock   = 0;
+        while (sent < data.size() && (blockSize == 0 || framesInBlock < blockSize)) {
             std::array<uint8_t, kFrameLen> cf{};
-            cf[0] = static_cast<uint8_t>(0x20 | (seq & 0x0F));
+            cf[0]              = static_cast<uint8_t>(0x20 | (seq & 0x0F));
             const size_t chunk = std::min(kCfMaxLen, data.size() - sent);
             std::copy(data.begin() + static_cast<long>(sent),
                       data.begin() + static_cast<long>(sent + chunk),
@@ -174,10 +158,9 @@ ICommDriver::WriteResult IsoTpProtocol::send(
             fill_padding(cf, usedLen, m_cfg.padFrames, m_cfg.paddingByte);
             const size_t txLen = m_cfg.padFrames ? kFrameLen : usedLen;
 
-            auto wrCf = driver.tout_write(u32WriteTimeout,
-                                           std::span<const uint8_t>(cf.data(), txLen), txId);
-            if (wrCf.status != ICommDriver::Status::SUCCESS)
-            {
+            auto wrCf          = driver.tout_write(u32WriteTimeout,
+                                                   std::span<const uint8_t>(cf.data(), txLen), txId);
+            if (wrCf.status != ICommDriver::Status::SUCCESS) {
                 result.status = wrCf.status;
                 return result;
             }
@@ -186,8 +169,7 @@ ICommDriver::WriteResult IsoTpProtocol::send(
             seq = static_cast<uint8_t>((seq + 1) & 0x0F);
             ++framesInBlock;
 
-            if (sent < data.size())
-            {
+            if (sent < data.size()) {
                 sleep_st_min(stMin);
             }
         }
@@ -195,18 +177,17 @@ ICommDriver::WriteResult IsoTpProtocol::send(
         // next Flow Control frame unless the transfer is already done.
     }
 
-    result.status = ICommDriver::Status::SUCCESS;
+    result.status        = ICommDriver::Status::SUCCESS;
     result.bytes_written = data.size();
     return result;
 }
-
 
 // ============================================================================
 // RECEIVE
 // ============================================================================
 
 ICommDriver::ReadResult IsoTpProtocol::receive(
-    const ICommDriver& driver,
+    const ICommDriver &driver,
     uint32_t u32ReadTimeout,
     std::span<uint8_t> buffer,
     std::string_view rxId,
@@ -218,9 +199,8 @@ ICommDriver::ReadResult IsoTpProtocol::receive(
     ICommDriver::ReadOptions opts;
     opts.mode = ICommDriver::ReadMode::Exact;
 
-    auto rr = driver.tout_read(u32ReadTimeout, std::span<uint8_t>(frame.data(), frame.size()), opts, rxId);
-    if (rr.status != ICommDriver::Status::SUCCESS || rr.bytes_read == 0)
-    {
+    auto rr   = driver.tout_read(u32ReadTimeout, std::span<uint8_t>(frame.data(), frame.size()), opts, rxId);
+    if (rr.status != ICommDriver::Status::SUCCESS || rr.bytes_read == 0) {
         result.status = rr.status;
         return result;
     }
@@ -228,27 +208,23 @@ ICommDriver::ReadResult IsoTpProtocol::receive(
     const uint8_t type = pci_type(frame[0]);
 
     // ---- Single Frame: one physical frame in, done. ------------------------
-    if (type == kPciSF)
-    {
+    if (type == kPciSF) {
         const uint8_t len = frame[0] & 0x0F;
-        if (len == 0 || len > rr.bytes_read - 1)
-        {
+        if (len == 0 || len > rr.bytes_read - 1) {
             result.status = ICommDriver::Status::PROTOCOL_ERROR;
             return result;
         }
-        if (len > buffer.size())
-        {
+        if (len > buffer.size()) {
             result.status = ICommDriver::Status::BUFFER_OVERFLOW;
             return result;
         }
         std::copy(frame.begin() + 1, frame.begin() + 1 + len, buffer.begin());
-        result.status = ICommDriver::Status::SUCCESS;
+        result.status     = ICommDriver::Status::SUCCESS;
         result.bytes_read = len;
         return result;
     }
 
-    if (type != kPciFF)
-    {
+    if (type != kPciFF) {
         // A lone CF/FC with no preceding FF for this exchange.
         result.status = ICommDriver::Status::PROTOCOL_ERROR;
         return result;
@@ -257,14 +233,12 @@ ICommDriver::ReadResult IsoTpProtocol::receive(
     // ---- First Frame -------------------------------------------------------
     const size_t totalLen = (static_cast<size_t>(frame[0] & 0x0F) << 8) | frame[1];
 
-    if (totalLen == 0 || totalLen <= kSfMaxLen)
-    {
+    if (totalLen == 0 || totalLen <= kSfMaxLen) {
         result.status = ICommDriver::Status::PROTOCOL_ERROR; // malformed FF
         return result;
     }
 
-    if (totalLen > buffer.size())
-    {
+    if (totalLen > buffer.size()) {
         // Tell the peer we can't take this message, then stop.
         std::array<uint8_t, kFrameLen> fcAbort{};
         fcAbort[0] = static_cast<uint8_t>(0x30 | kFsOverflow);
@@ -284,31 +258,27 @@ ICommDriver::ReadResult IsoTpProtocol::receive(
     fill_padding(fc, 3, m_cfg.padFrames, m_cfg.paddingByte);
     const size_t fcLen = m_cfg.padFrames ? kFrameLen : 3;
 
-    auto wrFc = driver.tout_write(u32ReadTimeout, std::span<const uint8_t>(fc.data(), fcLen), txId);
-    if (wrFc.status != ICommDriver::Status::SUCCESS)
-    {
+    auto wrFc          = driver.tout_write(u32ReadTimeout, std::span<const uint8_t>(fc.data(), fcLen), txId);
+    if (wrFc.status != ICommDriver::Status::SUCCESS) {
         result.status = wrFc.status;
         return result;
     }
 
-    uint8_t expectedSeq  = 1;
+    uint8_t expectedSeq   = 1;
     uint8_t framesSinceFc = 0;
 
-    while (received < totalLen)
-    {
+    while (received < totalLen) {
         std::array<uint8_t, kFrameLen> cf{};
         auto rrCf = driver.tout_read(m_cfg.timeoutNCr_ms,
-                                      std::span<uint8_t>(cf.data(), cf.size()), opts, rxId);
-        if (rrCf.status != ICommDriver::Status::SUCCESS || rrCf.bytes_read == 0)
-        {
+                                     std::span<uint8_t>(cf.data(), cf.size()), opts, rxId);
+        if (rrCf.status != ICommDriver::Status::SUCCESS || rrCf.bytes_read == 0) {
             result.status = (rrCf.status == ICommDriver::Status::READ_TIMEOUT)
-                             ? ICommDriver::Status::READ_TIMEOUT
-                             : ICommDriver::Status::PROTOCOL_ERROR;
+                                ? ICommDriver::Status::READ_TIMEOUT
+                                : ICommDriver::Status::PROTOCOL_ERROR;
             return result;
         }
 
-        if (pci_type(cf[0]) != kPciCF || (cf[0] & 0x0F) != expectedSeq)
-        {
+        if (pci_type(cf[0]) != kPciCF || (cf[0] & 0x0F) != expectedSeq) {
             result.status = ICommDriver::Status::PROTOCOL_ERROR;
             return result;
         }
@@ -319,11 +289,9 @@ ICommDriver::ReadResult IsoTpProtocol::receive(
         expectedSeq = static_cast<uint8_t>((expectedSeq + 1) & 0x0F);
         ++framesSinceFc;
 
-        if (m_cfg.blockSize != 0 && framesSinceFc >= m_cfg.blockSize && received < totalLen)
-        {
+        if (m_cfg.blockSize != 0 && framesSinceFc >= m_cfg.blockSize && received < totalLen) {
             auto wrFc2 = driver.tout_write(u32ReadTimeout, std::span<const uint8_t>(fc.data(), fcLen), txId);
-            if (wrFc2.status != ICommDriver::Status::SUCCESS)
-            {
+            if (wrFc2.status != ICommDriver::Status::SUCCESS) {
                 result.status = wrFc2.status;
                 return result;
             }
@@ -331,7 +299,7 @@ ICommDriver::ReadResult IsoTpProtocol::receive(
         }
     }
 
-    result.status = ICommDriver::Status::SUCCESS;
+    result.status     = ICommDriver::Status::SUCCESS;
     result.bytes_read = received;
     return result;
 }

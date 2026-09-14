@@ -1,7 +1,8 @@
+#include "buspirate_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
 #include "buspirate_generic.hpp"
-#include "buspirate_plugin.hpp"
 #include "private/buspirate_setup.hpp"
 #include "uLogger.hpp"
 #include "uNumeric.hpp"
@@ -15,20 +16,18 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED BuspiratePlugin *pluginEntry()
 {
-    EXPORTED BuspiratePlugin* pluginEntry()
-    {
-        return new BuspiratePlugin();
-    }
+    return new BuspiratePlugin();
+}
 
-    EXPORTED void pluginExit( BuspiratePlugin *ptrPlugin )
-    {
-        if (nullptr != ptrPlugin )
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(BuspiratePlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -38,11 +37,11 @@ extern "C"
 bool BuspiratePlugin::doInit(void *pvUserData)
 {
     if (m_sIniValues.strUartPort.empty() || m_sIniValues.u32UartBaudrate == 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                LOG_STRING("Missing UART settings: Port["); 
-                LOG_STRING(m_sIniValues.strUartPort); 
-                LOG_STRING("] Baudrate:"); 
-                LOG_UINT32(m_sIniValues.u32UartBaudrate));
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("Missing UART settings: Port[");
+                  LOG_STRING(m_sIniValues.strUartPort);
+                  LOG_STRING("] Baudrate:");
+                  LOG_UINT32(m_sIniValues.u32UartBaudrate));
         return false;
     }
 
@@ -52,28 +51,28 @@ bool BuspiratePlugin::doInit(void *pvUserData)
 }
 
 /**
-  * \brief perform the enabling of the plugin
-  * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
-  *       This mode is used for the command validation
-*/
+ * \brief perform the enabling of the plugin
+ * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
+ *       This mode is used for the command validation
+ */
 bool BuspiratePlugin::doEnable(void)
 {
     m_drvUart.open(m_sIniValues.strUartPort, m_sIniValues.u32UartBaudrate);
 
     if (!m_drvUart.is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                LOG_STRING("Failed to open UART port ["); 
-                LOG_STRING(m_sIniValues.strUartPort);
-                LOG_STRING("] Baudrate:"); 
-                LOG_UINT32(m_sIniValues.u32UartBaudrate));
+                  LOG_STRING("Failed to open UART port [");
+                  LOG_STRING(m_sIniValues.strUartPort);
+                  LOG_STRING("] Baudrate:");
+                  LOG_UINT32(m_sIniValues.u32UartBaudrate));
     } else {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Initialized port ["); 
-                    LOG_STRING(m_sIniValues.strUartPort);
-                    LOG_STRING("] Baudrate:"); 
-                    LOG_UINT32(m_sIniValues.u32UartBaudrate));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Initialized port [");
+                  LOG_STRING(m_sIniValues.strUartPort);
+                  LOG_STRING("] Baudrate:");
+                  LOG_UINT32(m_sIniValues.u32UartBaudrate));
         m_bIsEnabled = true;
     }
-    
+
     return m_bIsEnabled;
 }
 
@@ -86,7 +85,6 @@ void BuspiratePlugin::doCleanup(void)
     m_strResultData.clear();
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
-
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -95,31 +93,29 @@ void BuspiratePlugin::doCleanup(void)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about plugin and
-  *        describe the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if the plugin initialization fails
-  *
-  * \note Usage example: <br>
-  *       BUSPIRATE.INFO
-  *
-  * \param[in] args NULL (NULL means that no arguments are provided to this function)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about plugin and
+ *        describe the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if the plugin initialization fails
+ *
+ * \note Usage example: <br>
+ *       BUSPIRATE.INFO
+ *
+ * \param[in] args NULL (NULL means that no arguments are provided to this function)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token st ) const
+bool BuspiratePlugin::m_Buspirate_INFO(const std::string &args, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled )
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -128,7 +124,7 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: BusPirate multi-protocol interface (SPI/I2C/UART/1-Wire/RawWire)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Port:"); LOG_STRING(m_sIniValues.strUartPort);
-                         LOG_STRING("  Baud:"); LOG_UINT32(m_sIniValues.u32UartBaudrate));
+              LOG_STRING("  Baud:"); LOG_UINT32(m_sIniValues.u32UartBaudrate));
 
     // ── MODE ─────────────────────────────────────────────────────────────
     LOG_SEP();
@@ -255,7 +251,6 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  scan : Scans every valid 7-bit I2C address and reports the ones responding with ACK."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.I2C scan"));
-
 
     // ── UART ──────────────────────────────────────────────────────────────
     LOG_SEP();
@@ -407,9 +402,7 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
-
     return true;
-
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -424,47 +417,44 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool BuspiratePlugin::m_Buspirate_MODE (const std::string &args, std::stop_token st ) const
+bool BuspiratePlugin::m_Buspirate_MODE(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
 
-        if (true == args.empty())
-        {
+        if (true == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Argument expected: mode"));
             break;
         }
 
         // if plugin is not enabled then stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
 
         bRetVal = m_handle_mode(args);
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
-
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; override one or more ini parameters at runtime
-  *
-  * \note Usage example: <br>
-  *       BUSPIRATE.CONFIG p=/dev/ttyUSB0 b=115200 r=2000
-  *
-  * \param[in] args space-separated key=value tokens (see inc/private/buspirate_ini_setup.hpp)
-  *
-  * \return true if processing succeeded, false otherwise
-*/
+ * \brief CONFIG command implementation; override one or more ini parameters at runtime
+ *
+ * \note Usage example: <br>
+ *       BUSPIRATE.CONFIG p=/dev/ttyUSB0 b=115200 r=2000
+ *
+ * \param[in] args space-separated key=value tokens (see inc/private/buspirate_ini_setup.hpp)
+ *
+ * \return true if processing succeeded, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool BuspiratePlugin::m_Buspirate_CONFIG ( const std::string &args, std::stop_token st ) const
+bool BuspiratePlugin::m_Buspirate_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -476,14 +466,13 @@ bool BuspiratePlugin::m_Buspirate_CONFIG ( const std::string &args, std::stop_to
 //                 PLUGIN FRIEND INTERFACES                                    //
 /////////////////////////////////////////////////////////////////////////////////
 
-const BuspiratePlugin::IniValues* getAccessIniValues(const BuspiratePlugin& obj)
+const BuspiratePlugin::IniValues *getAccessIniValues(const BuspiratePlugin &obj)
 {
     return &obj.m_sIniValues;
 
 } /* getAccessIniValues() */
 
-
-bool getEnabledStatus(const BuspiratePlugin& obj)
+bool getEnabledStatus(const BuspiratePlugin &obj)
 {
     return obj.m_bIsEnabled;
 

@@ -1,4 +1,5 @@
 #include "Utils.hpp"
+
 #include "Hydrabus.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
@@ -10,15 +11,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_UTILS |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_UTILS |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
@@ -40,7 +40,9 @@ uint16_t Utils::read_adc()
 {
     _hydrabus->write_byte(0x14);
     auto resp = _hydrabus->read(2);
-    if (resp.size() < 2) return 0;
+    if (resp.size() < 2) {
+        return 0;
+    }
     // Big-endian 16-bit value
     return static_cast<uint16_t>((resp[0] << 8) | resp[1]);
 }
@@ -59,7 +61,9 @@ void Utils::continuous_adc(std::function<bool(uint16_t)> callback, std::stop_tok
             break;
         }
         auto resp = _hydrabus->read(2, stop_tok);
-        if (resp.size() < 2) break;
+        if (resp.size() < 2) {
+            break;
+        }
         uint16_t value = static_cast<uint16_t>((resp[0] << 8) | resp[1]);
         if (!callback(value)) {
             // Signal the firmware to stop by sending a null byte, then reset
@@ -81,8 +85,9 @@ std::pair<uint32_t, uint32_t> Utils::read_frequency()
     auto freq_bytes = _hydrabus->read(4);
     auto duty_bytes = _hydrabus->read(4);
 
-    if (freq_bytes.size() < 4 || duty_bytes.size() < 4)
+    if (freq_bytes.size() < 4 || duty_bytes.size() < 4) {
         return {0, 0};
+    }
 
     uint32_t freq = from_le32(freq_bytes);
     uint32_t duty = from_le32(duty_bytes);

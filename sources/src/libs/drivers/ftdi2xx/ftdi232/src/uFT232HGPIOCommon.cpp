@@ -17,26 +17,29 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT232H_GPIO |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "FT232H_GPIO |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // open / close
 // ============================================================================
 
-FT232HGPIO::Status FT232HGPIO::open(const GpioConfig& config, uint8_t u8DeviceIndex)
+FT232HGPIO::Status FT232HGPIO::open(const GpioConfig &config, uint8_t u8DeviceIndex)
 {
-    if (is_open()) close();
+    if (is_open()) {
+        close();
+    }
 
     auto s = open_device(u8DeviceIndex);
-    if (s != Status::SUCCESS) return s;
+    if (s != Status::SUCCESS) {
+        return s;
+    }
 
     mpsse_purge();
 
@@ -52,18 +55,17 @@ FT232HGPIO::Status FT232HGPIO::close()
 {
     // Drive all output pins low before releasing the handle
     if (is_open()) {
-        apply_low (0x00u, m_lowDir);
+        apply_low(0x00u, m_lowDir);
         apply_high(0x00u, m_highDir);
     }
     return FT232HBase::close();
 }
 
-
 // ============================================================================
 // MPSSE configuration
 // ============================================================================
 
-FT232HGPIO::Status FT232HGPIO::configure_mpsse_gpio(const GpioConfig& config)
+FT232HGPIO::Status FT232HGPIO::configure_mpsse_gpio(const GpioConfig &config)
 {
     m_lowValue  = config.lowValue;
     m_lowDir    = config.lowDirMask;
@@ -87,34 +89,32 @@ FT232HGPIO::Status FT232HGPIO::configure_mpsse_gpio(const GpioConfig& config)
     return mpsse_write(init.data(), init.size());
 }
 
-
 // ============================================================================
 // Internal apply helpers
 // ============================================================================
 
 FT232HGPIO::Status FT232HGPIO::apply_low(uint8_t value, uint8_t dir) const
 {
-    uint8_t cmd[3] = { MPSSE_SET_BITS_LOW, value, dir };
+    uint8_t cmd[3] = {MPSSE_SET_BITS_LOW, value, dir};
     return mpsse_write(cmd, 3);
 }
 
 FT232HGPIO::Status FT232HGPIO::apply_high(uint8_t value, uint8_t dir) const
 {
-    uint8_t cmd[3] = { MPSSE_SET_BITS_HIGH, value, dir };
+    uint8_t cmd[3] = {MPSSE_SET_BITS_HIGH, value, dir};
     return mpsse_write(cmd, 3);
 }
-
 
 // ============================================================================
 // Direction control
 // ============================================================================
 
 FT232HGPIO::Status FT232HGPIO::set_direction(Bank bank, uint8_t dirMask,
-                                              uint8_t initialValue)
+                                             uint8_t initialValue)
 {
     if (bank == Bank::Low) {
-        m_lowDir    = dirMask;
-        m_lowValue  = (m_lowValue & ~dirMask) | (initialValue & dirMask);
+        m_lowDir   = dirMask;
+        m_lowValue = (m_lowValue & ~dirMask) | (initialValue & dirMask);
         return apply_low(m_lowValue, m_lowDir);
     } else {
         m_highDir   = dirMask;
@@ -122,7 +122,6 @@ FT232HGPIO::Status FT232HGPIO::set_direction(Bank bank, uint8_t dirMask,
         return apply_high(m_highValue, m_highDir);
     }
 }
-
 
 // ============================================================================
 // Output control
@@ -172,28 +171,29 @@ FT232HGPIO::Status FT232HGPIO::toggle_pins(Bank bank, uint8_t pinMask)
     }
 }
 
-
 // ============================================================================
 // Input reading
 // ============================================================================
 
-FT232HGPIO::Status FT232HGPIO::read(Bank bank, uint8_t& value)
+FT232HGPIO::Status FT232HGPIO::read(Bank bank, uint8_t &value)
 {
     uint8_t cmd[2];
     cmd[0] = (bank == Bank::Low) ? MPSSE_GET_BITS_LOW : MPSSE_GET_BITS_HIGH;
     cmd[1] = MPSSE_SEND_IMMEDIATE;
 
     auto s = mpsse_write(cmd, 2);
-    if (s != Status::SUCCESS) return s;
+    if (s != Status::SUCCESS) {
+        return s;
+    }
 
     size_t got = 0;
     return mpsse_read(&value, 1, FT232H_READ_DEFAULT_TIMEOUT, got);
 }
 
-FT232HGPIO::Status FT232HGPIO::read_pins(Bank bank, uint8_t pinMask, uint8_t& value)
+FT232HGPIO::Status FT232HGPIO::read_pins(Bank bank, uint8_t pinMask, uint8_t &value)
 {
     uint8_t raw = 0;
-    auto s = read(bank, raw);
-    value = raw & pinMask;
+    auto s      = read(bank, raw);
+    value       = raw & pinMask;
     return s;
 }

@@ -9,6 +9,7 @@
  *   GPIO  — byte-wide bit-bang on D0–D7 (mutually exclusive with FIFO)
  */
 #include "ft245_plugin.hpp"
+
 #include "PluginExport.hpp"
 #include "private/ft245_setup.hpp"
 #include "uLogger.hpp"
@@ -22,51 +23,51 @@
 //                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+#undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR   "FT245_P     |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR  "FT245_P     |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED FT245Plugin *pluginEntry()
 {
-    EXPORTED FT245Plugin* pluginEntry()
-    {
-        return new FT245Plugin();
-    }
+    return new FT245Plugin();
+}
 
-    EXPORTED void pluginExit(FT245Plugin* ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(FT245Plugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 //                   INIT / CLEANUP                                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::doInit(void* /*pvUserData*/)
+bool FT245Plugin::doInit(void * /*pvUserData*/)
 {
     m_sFifoCfg.variant  = m_sIniValues.eDefaultVariant;
     m_sFifoCfg.fifoMode = m_sIniValues.eDefaultFifoMode;
     m_sGpioCfg.variant  = m_sIniValues.eDefaultVariant;
 
-    m_bIsInitialized = true;
+    m_bIsInitialized    = true;
 
-    const char* varStr  = (m_sIniValues.eDefaultVariant == FT245Base::Variant::FT245BM)
-                          ? "FT245BM/RL" : "FT245R";
-    const char* modeStr = (m_sIniValues.eDefaultFifoMode == FT245Base::FifoMode::Async)
-                          ? "Async" : "Sync";
+    const char *varStr  = (m_sIniValues.eDefaultVariant == FT245Base::Variant::FT245BM)
+                              ? "FT245BM/RL"
+                              : "FT245R";
+    const char *modeStr = (m_sIniValues.eDefaultFifoMode == FT245Base::FifoMode::Async)
+                              ? "Async"
+                              : "Sync";
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Initialized — variant:"); LOG_STRING(varStr);
@@ -77,8 +78,14 @@ bool FT245Plugin::doInit(void* /*pvUserData*/)
 
 void FT245Plugin::doCleanup()
 {
-    if (m_pFIFO) { m_pFIFO->close(); m_pFIFO.reset(); }
-    if (m_pGPIO) { m_pGPIO->close(); m_pGPIO.reset(); }
+    if (m_pFIFO) {
+        m_pFIFO->close();
+        m_pFIFO.reset();
+    }
+    if (m_pGPIO) {
+        m_pGPIO->close();
+        m_pGPIO.reset();
+    }
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
 }
@@ -87,7 +94,7 @@ void FT245Plugin::doCleanup()
 //              DRIVER INSTANCE ACCESSORS                        //
 ///////////////////////////////////////////////////////////////////
 
-FT245Sync* FT245Plugin::m_fifo() const
+FT245Sync *FT245Plugin::m_fifo() const
 {
     if (!m_pFIFO || !m_pFIFO->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -97,7 +104,7 @@ FT245Sync* FT245Plugin::m_fifo() const
     return m_pFIFO.get();
 }
 
-FT245GPIO* FT245Plugin::m_gpio() const
+FT245GPIO *FT245Plugin::m_gpio() const
 {
     if (!m_pGPIO || !m_pGPIO->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -111,18 +118,20 @@ FT245GPIO* FT245Plugin::m_gpio() const
 //              MAP ACCESSORS                                     //
 ///////////////////////////////////////////////////////////////////
 
-ModuleCommandsMap<FT245Plugin>*
-FT245Plugin::getModuleCmdsMap(const std::string& m) const
+ModuleCommandsMap<FT245Plugin> *
+FT245Plugin::getModuleCmdsMap(const std::string &m) const
 {
     auto it = m_mapCommandsMaps.find(m);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
-ModuleSpeedMap*
-FT245Plugin::getModuleSpeedsMap(const std::string& m) const
+ModuleSpeedMap *
+FT245Plugin::getModuleSpeedsMap(const std::string &m) const
 {
     auto it = m_mapSpeedsMaps.find(m);
-    if (it == m_mapSpeedsMaps.end()) return nullptr;
+    if (it == m_mapSpeedsMaps.end()) {
+        return nullptr;
+    }
     return it->second;
 }
 
@@ -130,7 +139,7 @@ FT245Plugin::getModuleSpeedsMap(const std::string& m) const
 //              setModuleSpeed                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::setModuleSpeed(const std::string& module, size_t /*hz*/) const
+bool FT245Plugin::setModuleSpeed(const std::string &module, size_t /*hz*/) const
 {
     // The FT245 has no configurable clock divisor — transfer rate is
     // entirely governed by the USB bulk transfer engine.  Speed presets
@@ -146,26 +155,24 @@ bool FT245Plugin::setModuleSpeed(const std::string& module, size_t /*hz*/) const
 //              TOP-LEVEL COMMAND HANDLERS                       //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_FT245_FIFO(const std::string& args, std::stop_token st ) const
+bool FT245Plugin::m_FT245_FIFO(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<FT245Plugin>(this, "FIFO", args, st);
 }
 
-bool FT245Plugin::m_FT245_GPIO(const std::string& args, std::stop_token st ) const
+bool FT245Plugin::m_FT245_GPIO(const std::string &args, std::stop_token st) const
 {
     return generic_module_dispatch<FT245Plugin>(this, "GPIO", args, st);
 }
 
-bool FT245Plugin::m_FT245_INFO(const std::string& args, std::stop_token st ) const
+bool FT245Plugin::m_FT245_INFO(const std::string &args, std::stop_token st) const
 {
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -175,8 +182,8 @@ bool FT245Plugin::m_FT245_INFO(const std::string& args, std::stop_token st ) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: FTDI FT245 USB parallel FIFO interface"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Variants: FT245BM/RL (async+sync FIFO, up to 1 MB/s sync)  |  FT245R (async FIFO only, integrated oscillator)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  DeviceIndex:"); LOG_UINT32(m_sIniValues.u8DeviceIndex);
-                         LOG_STRING("  Default variant:");
-                         LOG_STRING(m_sIniValues.eDefaultVariant == FT245Base::Variant::FT245BM ? "BM (FT245BM/RL)" : "R (FT245R)"));
+              LOG_STRING("  Default variant:");
+              LOG_STRING(m_sIniValues.eDefaultVariant == FT245Base::Variant::FT245BM ? "BM (FT245BM/RL)" : "R (FT245R)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Note: FIFO and GPIO modes are mutually exclusive — close one before opening the other"));
 
     // ── FIFO ──────────────────────────────────────────────────────────────
@@ -298,29 +305,25 @@ bool FT245Plugin::m_FT245_INFO(const std::string& args, std::stop_token st ) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
-
     return true;
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; override one or more ini parameters at runtime
-  *
-  * \note Usage example: <br>
-  *       FT245.CONFIG fm=Sync r=2000
-  *
-  * \param[in] args space-separated key=value tokens (see inc/private/ft245_setup.hpp)
-  *
-  * \return true if processing succeeded, false otherwise
-*/
+ * \brief CONFIG command implementation; override one or more ini parameters at runtime
+ *
+ * \note Usage example: <br>
+ *       FT245.CONFIG fm=Sync r=2000
+ *
+ * \param[in] args space-separated key=value tokens (see inc/private/ft245_setup.hpp)
+ *
+ * \return true if processing succeeded, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool FT245Plugin::m_FT245_CONFIG ( const std::string &args, std::stop_token st ) const
+bool FT245Plugin::m_FT245_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     return generic_ft245_set_params(this, args);
-
 }
-

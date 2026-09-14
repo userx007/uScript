@@ -9,24 +9,23 @@
 
 #pragma once
 
+#include "common.hpp"
+
 #include <memory>
 #include <string>
 
-#include "common.hpp"
-
-namespace loopback
-{
+namespace loopback {
 
 class IChannel
 {
 public:
-    virtual ~IChannel() = default;
+    virtual ~IChannel()                     = default;
 
     // Open/bind/connect/listen as appropriate for this transport. Returns
     // false (after logging the reason) on failure.
-    virtual bool open() = 0;
+    virtual bool open()                     = 0;
 
-    virtual void close() = 0;
+    virtual void close()                    = 0;
 
     // Block until one message (a CAN frame's payload, or one chunk of
     // bytes for stream/datagram transports) is available, or until
@@ -42,7 +41,7 @@ public:
     // Returns false when no further messages will come (stop requested,
     // fatal error, or - for connection oriented transports - the peer is
     // gone and cannot be replaced).
-    virtual bool readMessage(Message &msg) = 0;
+    virtual bool readMessage(Message &msg)  = 0;
 
     // Send a message out this channel. May mutate msg (the CAN channel
     // truncates oversized payloads to 8 bytes here, logging a warning,
@@ -57,7 +56,7 @@ public:
 
     // Short human-readable identity used in banners and dump lines, e.g.
     // "uart:/dev/tnt0@115200" or "kvcan:vcan0".
-    virtual std::string name() const = 0;
+    virtual std::string name() const        = 0;
 
     // A coarser identity used only to detect "the -i and -o spec refer to
     // the same underlying endpoint" (e.g. same CAN interface, same UART
@@ -66,9 +65,12 @@ public:
     // resource twice - which for CAN would otherwise create an infinite
     // echo storm between the two sockets, and for UART/TCP would just
     // fail or fight over the same fd/port.
-    virtual std::string identity() const = 0;
+    virtual std::string identity() const    = 0;
 
-    virtual bool isCan() const { return false; }
+    virtual bool isCan() const
+    {
+        return false;
+    }
 
     // Print an RX/TX dump line for msg, in this channel's native format.
     virtual void dump(const char *dir, const Message &msg) const = 0;

@@ -2,11 +2,11 @@
 #include "uCP2112.hpp"
 #include "uLogger.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <algorithm>
 #include <chrono>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string_view>
 #include <thread>
@@ -17,15 +17,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "CP2112_DRV  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "CP2112_DRV  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // open / close
@@ -45,7 +44,7 @@ CP2112::Status CP2112::open(uint8_t u8I2CAddress, uint32_t u32ClockHz, uint8_t u
 
     m_u8I2CAddress = u8I2CAddress;
 
-    s = configure_smbus(u32ClockHz);
+    s              = configure_smbus(u32ClockHz);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to configure SMBus clock"); LOG_UINT32(u32ClockHz));
         CP2112Base::close();
@@ -60,7 +59,6 @@ CP2112::Status CP2112::open(uint8_t u8I2CAddress, uint32_t u32ClockHz, uint8_t u
     return Status::SUCCESS;
 }
 
-
 CP2112::Status CP2112::close()
 {
     if (is_open()) {
@@ -69,21 +67,20 @@ CP2112::Status CP2112::close()
     return CP2112Base::close();
 }
 
-
 // ============================================================================
 // PUBLIC UNIFIED INTERFACE  (ICommDriver)
 // ============================================================================
 
-CP2112::ReadResult CP2112::tout_read(uint32_t           u32ReadTimeout,
+CP2112::ReadResult CP2112::tout_read(uint32_t u32ReadTimeout,
                                      std::span<uint8_t> buffer,
-                                     const ReadOptions& options,
-                                     std::string_view   /*xtra_params*/,
+                                     const ReadOptions &options,
+                                     std::string_view /*xtra_params*/,
                                      std::stop_token stop_tok) const
 {
     ReadResult result;
 
     if (!is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: device not open ..."));        
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: device not open ..."));
         result.status = Status::PORT_ACCESS;
         return result;
     }
@@ -92,145 +89,139 @@ CP2112::ReadResult CP2112::tout_read(uint32_t           u32ReadTimeout,
     // which now block indefinitely rather than substituting a default.
     uint32_t timeout = u32ReadTimeout;
 
-    switch (options.mode)
-    {
-        // ------------------------------------------------------------------
-        case ReadMode::Exact:
-        {
-            size_t bytesRead = 0;
-            result.status           = i2c_read(buffer, bytesRead, timeout, stop_tok);
-            result.bytes_read       = bytesRead;
-            result.found_terminator = false;
-            break;
-        }
+    switch (options.mode) {
+    // ------------------------------------------------------------------
+    case ReadMode::Exact: {
+        size_t bytesRead        = 0;
+        result.status           = i2c_read(buffer, bytesRead, timeout, stop_tok);
+        result.bytes_read       = bytesRead;
+        result.found_terminator = false;
+        break;
+    }
 
-        // ------------------------------------------------------------------
-        case ReadMode::UntilDelimiter:
-        {
-            if (buffer.size() < 2) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer too small for delimiter + null terminator"));
-                result.status = Status::INVALID_PARAM;
-                break;
-            }
-
-            size_t pos    = 0;
-            result.status = Status::READ_TIMEOUT;
-
-            while (pos < buffer.size() - 1) {
-                uint8_t byte = 0;
-                size_t  got  = 0;
-                Status  s    = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
-
-                if (s != Status::SUCCESS || got == 0) {
-                    result.status = s;
-                    break;
-                }
-
-                if (byte == options.delimiter) {
-                    buffer[pos]             = '\0';
-                    result.found_terminator = true;
-                    result.status           = Status::SUCCESS;
-                    break;
-                }
-
-                buffer[pos++] = byte;
-            }
-
-            if (pos == buffer.size() - 1 && result.status == Status::READ_TIMEOUT) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer full before delimiter found"));
-                result.status = Status::BUFFER_OVERFLOW;
-            }
-
-            result.bytes_read = pos;
-            break;
-        }
-
-        // ------------------------------------------------------------------
-        case ReadMode::UntilToken:
-        {
-            if (options.token.empty()) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty token"));
-                result.status = Status::INVALID_PARAM;
-                break;
-            }
-
-            const auto& token = options.token;
-
-            // Build KMP failure table
-            std::vector<int> lps(token.size(), 0);
-            for (size_t i = 1, len = 0; i < token.size(); ) {
-                if (token[i] == token[len]) {
-                    lps[i++] = static_cast<int>(++len);
-                } else if (len != 0) {
-                    len = static_cast<size_t>(lps[len - 1]);
-                } else {
-                    lps[i++] = 0;
-                }
-            }
-
-            size_t matched = 0;
-            result.status  = Status::READ_TIMEOUT;
-
-            while (true) {
-                uint8_t byte = 0;
-                size_t  got  = 0;
-                Status  s    = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
-
-                if (s != Status::SUCCESS || got == 0) {
-                    result.status = s;
-                    break;
-                }
-
-                while (matched > 0 && byte != token[matched]) {
-                    matched = static_cast<size_t>(lps[matched - 1]);
-                }
-                if (byte == token[matched]) {
-                    ++matched;
-                }
-                if (matched == token.size()) {
-                    result.found_terminator = true;
-                    result.status           = Status::SUCCESS;
-                    break;
-                }
-            }
-
-            result.bytes_read = 0;
-            break;
-        }
-
-        default:
+    // ------------------------------------------------------------------
+    case ReadMode::UntilDelimiter: {
+        if (buffer.size() < 2) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer too small for delimiter + null terminator"));
             result.status = Status::INVALID_PARAM;
             break;
+        }
+
+        size_t pos    = 0;
+        result.status = Status::READ_TIMEOUT;
+
+        while (pos < buffer.size() - 1) {
+            uint8_t byte = 0;
+            size_t got   = 0;
+            Status s     = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
+
+            if (s != Status::SUCCESS || got == 0) {
+                result.status = s;
+                break;
+            }
+
+            if (byte == options.delimiter) {
+                buffer[pos]             = '\0';
+                result.found_terminator = true;
+                result.status           = Status::SUCCESS;
+                break;
+            }
+
+            buffer[pos++] = byte;
+        }
+
+        if (pos == buffer.size() - 1 && result.status == Status::READ_TIMEOUT) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer full before delimiter found"));
+            result.status = Status::BUFFER_OVERFLOW;
+        }
+
+        result.bytes_read = pos;
+        break;
+    }
+
+    // ------------------------------------------------------------------
+    case ReadMode::UntilToken: {
+        if (options.token.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty token"));
+            result.status = Status::INVALID_PARAM;
+            break;
+        }
+
+        const auto &token = options.token;
+
+        // Build KMP failure table
+        std::vector<int> lps(token.size(), 0);
+        for (size_t i = 1, len = 0; i < token.size();) {
+            if (token[i] == token[len]) {
+                lps[i++] = static_cast<int>(++len);
+            } else if (len != 0) {
+                len = static_cast<size_t>(lps[len - 1]);
+            } else {
+                lps[i++] = 0;
+            }
+        }
+
+        size_t matched = 0;
+        result.status  = Status::READ_TIMEOUT;
+
+        while (true) {
+            uint8_t byte = 0;
+            size_t got   = 0;
+            Status s     = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
+
+            if (s != Status::SUCCESS || got == 0) {
+                result.status = s;
+                break;
+            }
+
+            while (matched > 0 && byte != token[matched]) {
+                matched = static_cast<size_t>(lps[matched - 1]);
+            }
+            if (byte == token[matched]) {
+                ++matched;
+            }
+            if (matched == token.size()) {
+                result.found_terminator = true;
+                result.status           = Status::SUCCESS;
+                break;
+            }
+        }
+
+        result.bytes_read = 0;
+        break;
+    }
+
+    default:
+        result.status = Status::INVALID_PARAM;
+        break;
     }
 
     return result;
 }
 
-
 CP2112::WriteResult CP2112::tout_write(uint32_t u32WriteTimeout,
-                               std::span<const uint8_t> buffer,
-                               [[maybe_unused]]std::string_view         xtra_params,
-                               std::stop_token stop_tok) const
+                                       std::span<const uint8_t> buffer,
+                                       [[maybe_unused]] std::string_view xtra_params,
+                                       std::stop_token stop_tok) const
 {
     WriteResult result;
 
     if (!is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_write: device not open ..."));        
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_write: device not open ..."));
         result.status = Status::PORT_ACCESS;
         return result;
     }
 
     // 0 == infinite timeout: forwarded to i2c_write()/poll_transfer_done(),
     // which now block indefinitely rather than substituting a default.
-    uint32_t timeout    = u32WriteTimeout;
-    size_t   bytesWritten = 0;
+    uint32_t timeout     = u32WriteTimeout;
+    size_t bytesWritten  = 0;
 
     result.status        = i2c_write(buffer, timeout, bytesWritten, stop_tok);
     result.bytes_written = bytesWritten;
 
     return result;
 }
-
 
 // ============================================================================
 // PRIVATE I²C PROTOCOL IMPLEMENTATION
@@ -239,28 +230,27 @@ CP2112::WriteResult CP2112::tout_write(uint32_t u32WriteTimeout,
 CP2112::Status CP2112::configure_smbus(uint32_t u32ClockHz) const
 {
     uint8_t report[HID_REPORT_SIZE] = {0};
-    report[0]  = RPT_SMBUS_CONFIG;
-    report[1]  = static_cast<uint8_t>((u32ClockHz >> 24) & 0xFF);
-    report[2]  = static_cast<uint8_t>((u32ClockHz >> 16) & 0xFF);
-    report[3]  = static_cast<uint8_t>((u32ClockHz >>  8) & 0xFF);
-    report[4]  = static_cast<uint8_t>( u32ClockHz        & 0xFF);
-    report[5]  = 0x00; // device address (not used in master mode)
-    report[6]  = 0x00; // auto send read: disabled
-    report[7]  = 0x00; // write timeout high byte
-    report[8]  = 0x00; // write timeout low  byte
-    report[9]  = 0x00; // read  timeout high byte
-    report[10] = 0x00; // read  timeout low  byte
-    report[11] = 0x00; // SCL low timeout: disabled
-    report[12] = 0x00; // retry count high byte
-    report[13] = 0x03; // retry count low  byte (3 retries)
+    report[0]                       = RPT_SMBUS_CONFIG;
+    report[1]                       = static_cast<uint8_t>((u32ClockHz >> 24) & 0xFF);
+    report[2]                       = static_cast<uint8_t>((u32ClockHz >> 16) & 0xFF);
+    report[3]                       = static_cast<uint8_t>((u32ClockHz >> 8) & 0xFF);
+    report[4]                       = static_cast<uint8_t>(u32ClockHz & 0xFF);
+    report[5]                       = 0x00; // device address (not used in master mode)
+    report[6]                       = 0x00; // auto send read: disabled
+    report[7]                       = 0x00; // write timeout high byte
+    report[8]                       = 0x00; // write timeout low  byte
+    report[9]                       = 0x00; // read  timeout high byte
+    report[10]                      = 0x00; // read  timeout low  byte
+    report[11]                      = 0x00; // SCL low timeout: disabled
+    report[12]                      = 0x00; // retry count high byte
+    report[13]                      = 0x03; // retry count low  byte (3 retries)
 
     return hid_set_feature(report, HID_REPORT_SIZE);
 }
 
-
 CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
                                  uint32_t timeoutMs,
-                                 size_t& bytesWritten,
+                                 size_t &bytesWritten,
                                  std::stop_token stop_tok) const
 {
     if (data.empty()) {
@@ -272,7 +262,7 @@ CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
 
     while (bytesWritten < data.size()) {
         size_t chunkSize = std::min(data.size() - bytesWritten, MAX_I2C_WRITE_PAYLOAD);
-        auto   chunk     = data.subspan(bytesWritten, chunkSize);
+        auto chunk       = data.subspan(bytesWritten, chunkSize);
 
         LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                   LOG_STRING("i2c_write: chunk offset="); LOG_UINT32(bytesWritten);
@@ -290,7 +280,6 @@ CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
     return Status::SUCCESS;
 }
 
-
 CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t timeoutMs, std::stop_token stop_tok) const
 {
     if (chunk.empty() || chunk.size() > MAX_I2C_WRITE_PAYLOAD) {
@@ -299,9 +288,9 @@ CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t 
     }
 
     uint8_t report[HID_REPORT_SIZE] = {0};
-    report[0] = RPT_DATA_WRITE;
-    report[1] = static_cast<uint8_t>(m_u8I2CAddress << 1); // 8-bit write address
-    report[2] = static_cast<uint8_t>(chunk.size());
+    report[0]                       = RPT_DATA_WRITE;
+    report[1]                       = static_cast<uint8_t>(m_u8I2CAddress << 1); // 8-bit write address
+    report[2]                       = static_cast<uint8_t>(chunk.size());
     std::copy(chunk.begin(), chunk.end(), report + 3);
 
     Status s = hid_interrupt_write(report, HID_REPORT_SIZE);
@@ -319,8 +308,7 @@ CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t 
     return s;
 }
 
-
-CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint32_t timeoutMs, std::stop_token stop_tok) const
+CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t &bytesRead, uint32_t timeoutMs, std::stop_token stop_tok) const
 {
     bytesRead = 0;
 
@@ -334,12 +322,12 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint
     }
 
     uint8_t request[HID_REPORT_SIZE] = {0};
-    request[0] = RPT_DATA_READ_REQUEST;
-    request[1] = static_cast<uint8_t>((m_u8I2CAddress << 1) | 0x01);
-    request[2] = static_cast<uint8_t>((data.size() >> 8) & 0xFF);
-    request[3] = static_cast<uint8_t>( data.size()       & 0xFF);
+    request[0]                       = RPT_DATA_READ_REQUEST;
+    request[1]                       = static_cast<uint8_t>((m_u8I2CAddress << 1) | 0x01);
+    request[2]                       = static_cast<uint8_t>((data.size() >> 8) & 0xFF);
+    request[3]                       = static_cast<uint8_t>(data.size() & 0xFF);
 
-    Status s = hid_set_feature(request, HID_REPORT_SIZE);
+    Status s                         = hid_set_feature(request, HID_REPORT_SIZE);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_read: failed to send read request"));
         return s;
@@ -349,7 +337,7 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint
 
     while (bytesRead < data.size()) {
         size_t got = 0;
-        s = hid_interrupt_read(response, HID_REPORT_SIZE, timeoutMs, got, stop_tok);
+        s          = hid_interrupt_read(response, HID_REPORT_SIZE, timeoutMs, got, stop_tok);
 
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -358,7 +346,9 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint
             break;
         }
 
-        if (got == 0 || response[0] != RPT_DATA_READ_RESPONSE) continue;
+        if (got == 0 || response[0] != RPT_DATA_READ_RESPONSE) {
+            continue;
+        }
 
         uint8_t pktStatus = response[1];
         uint8_t pktLen    = response[2];
@@ -374,7 +364,9 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint
             bytesRead += toCopy;
         }
 
-        if (pktStatus != XFER_BUSY) break;
+        if (pktStatus != XFER_BUSY) {
+            break;
+        }
     }
 
     if (bytesRead == 0) {
@@ -385,15 +377,14 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint
     return Status::SUCCESS;
 }
 
-
 CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs, std::stop_token stop_tok) const
 {
     uint8_t reqBuf[HID_REPORT_SIZE] = {0};
     uint8_t rspBuf[HID_REPORT_SIZE] = {0};
-    uint32_t elapsed = 0;
+    uint32_t elapsed                = 0;
 
     // 0 == infinite timeout: keep polling for transfer completion forever.
-    const bool bInfinite = (timeoutMs == 0);
+    const bool bInfinite            = (timeoutMs == 0);
 
     while (bInfinite || elapsed < timeoutMs) {
         if (stop_tok.stop_requested()) {
@@ -403,24 +394,28 @@ CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs, std::stop_token st
         reqBuf[0] = RPT_TRANSFER_STATUS_REQ;
         reqBuf[1] = 0x01;
 
-        Status s = hid_set_feature(reqBuf, HID_REPORT_SIZE);
-        if (s != Status::SUCCESS) return s;
+        Status s  = hid_set_feature(reqBuf, HID_REPORT_SIZE);
+        if (s != Status::SUCCESS) {
+            return s;
+        }
 
         rspBuf[0] = RPT_TRANSFER_STATUS_RESP;
-        s = hid_get_feature(rspBuf, HID_REPORT_SIZE);
-        if (s != Status::SUCCESS) return s;
+        s         = hid_get_feature(rspBuf, HID_REPORT_SIZE);
+        if (s != Status::SUCCESS) {
+            return s;
+        }
 
         switch (rspBuf[1]) {
-            case XFER_COMPLETE:
-            case XFER_IDLE:
-                return Status::SUCCESS;
+        case XFER_COMPLETE:
+        case XFER_IDLE:
+            return Status::SUCCESS;
 
-            case XFER_ERROR:
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll_transfer_done: error, detail:"); LOG_UINT32(rspBuf[2]));
-                return Status::WRITE_ERROR;
+        case XFER_ERROR:
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll_transfer_done: error, detail:"); LOG_UINT32(rspBuf[2]));
+            return Status::WRITE_ERROR;
 
-            default:
-                break;
+        default:
+            break;
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(STATUS_POLL_INTERVAL_MS));
@@ -431,12 +426,11 @@ CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs, std::stop_token st
     return Status::WRITE_TIMEOUT;
 }
 
-
 CP2112::Status CP2112::cancel_transfer() const
 {
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Cancel transfer ..."));
     uint8_t report[HID_REPORT_SIZE] = {0};
-    report[0] = RPT_CANCEL_TRANSFER;
-    report[1] = 0x01;
+    report[0]                       = RPT_CANCEL_TRANSFER;
+    report[1]                       = 0x01;
     return hid_set_feature(report, HID_REPORT_SIZE);
 }

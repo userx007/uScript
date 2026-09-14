@@ -37,20 +37,22 @@
 // "ID [DLC] bytes" form, everything else as "[len] hex bytes" - matching
 // the format the original standalone tools already used.
 
+#include "channel_factory.hpp"
+#include "common.hpp"
+
 #include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <thread>
 
-#include "channel_factory.hpp"
-#include "common.hpp"
-
-namespace loopback
-{
+namespace loopback {
 volatile sig_atomic_t g_stop = 0;
 
-static void onSignal(int /*sig*/) { g_stop = 1; }
+static void onSignal(int /*sig*/)
+{
+    g_stop = 1;
+}
 
 void install_signal_handlers()
 {
@@ -68,37 +70,35 @@ void install_signal_handlers()
 }
 } // namespace loopback
 
-namespace
-{
+namespace {
 
 void printUsage(const char *argv0)
 {
     std::fprintf(stderr,
-        "Usage: %s -i <input-spec> [-o <output-spec>] [-t <delay-ms>]\n"
-        "\n"
-        "  -i   input channel (required)\n"
-        "  -o   output channel (default: mirror the input channel back to itself)\n"
-        "  -t   delay in ms between RX and the mirrored/forwarded TX (default: 0)\n"
-        "\n"
-        "  spec := uart:<device>[/<baud>]\n"
-        "        | kvcan:<iface>[/<can_id>]\n"
-        "        | tcpip:[server/]<port>[/<bindaddr>] | tcpip:client/<host>/<port>\n"
-        "        | udp:[server/]<port>[/<bindaddr>]   | udp:client/<host>/<port>\n"
-        "        | raweth:<ifname>[/<ethertype>][/promisc]\n"
-        "\n"
-        "Examples:\n"
-        "  %s -i uart:/dev/tnt0/115200\n"
-        "  %s -i kvcan:vcan0\n"
-        "  %s -i uart:/dev/tnt0/115200 -o kvcan:vcan0/0x100 -t 500\n",
-        argv0, argv0, argv0, argv0);
+                 "Usage: %s -i <input-spec> [-o <output-spec>] [-t <delay-ms>]\n"
+                 "\n"
+                 "  -i   input channel (required)\n"
+                 "  -o   output channel (default: mirror the input channel back to itself)\n"
+                 "  -t   delay in ms between RX and the mirrored/forwarded TX (default: 0)\n"
+                 "\n"
+                 "  spec := uart:<device>[/<baud>]\n"
+                 "        | kvcan:<iface>[/<can_id>]\n"
+                 "        | tcpip:[server/]<port>[/<bindaddr>] | tcpip:client/<host>/<port>\n"
+                 "        | udp:[server/]<port>[/<bindaddr>]   | udp:client/<host>/<port>\n"
+                 "        | raweth:<ifname>[/<ethertype>][/promisc]\n"
+                 "\n"
+                 "Examples:\n"
+                 "  %s -i uart:/dev/tnt0/115200\n"
+                 "  %s -i kvcan:vcan0\n"
+                 "  %s -i uart:/dev/tnt0/115200 -o kvcan:vcan0/0x100 -t 500\n",
+                 argv0, argv0, argv0, argv0);
 }
 
 void sleepInterruptible(int delay_ms)
 {
     const int step_ms = 20;
-    int remaining = delay_ms;
-    while (remaining > 0 && !loopback::g_stop)
-    {
+    int remaining     = delay_ms;
+    while (remaining > 0 && !loopback::g_stop) {
         int chunk = std::min(remaining, step_ms);
         std::this_thread::sleep_for(std::chrono::milliseconds(chunk));
         remaining -= chunk;
@@ -112,36 +112,30 @@ int main(int argc, char *argv[])
     std::string in_spec, out_spec;
     int delay_ms = 0;
 
-    for (int i = 1; i < argc; i++)
-    {
+    for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
-        if (arg == "-i" && i + 1 < argc)
+        if (arg == "-i" && i + 1 < argc) {
             in_spec = argv[++i];
-        else if (arg == "-o" && i + 1 < argc)
+        } else if (arg == "-o" && i + 1 < argc) {
             out_spec = argv[++i];
-        else if (arg == "-t" && i + 1 < argc)
+        } else if (arg == "-t" && i + 1 < argc) {
             delay_ms = std::atoi(argv[++i]);
-        else if (arg == "-h" || arg == "--help")
-        {
+        } else if (arg == "-h" || arg == "--help") {
             printUsage(argv[0]);
             return EXIT_SUCCESS;
-        }
-        else
-        {
+        } else {
             std::fprintf(stderr, "unrecognized argument '%s'\n", arg.c_str());
             printUsage(argv[0]);
             return EXIT_FAILURE;
         }
     }
 
-    if (in_spec.empty())
-    {
+    if (in_spec.empty()) {
         std::fprintf(stderr, "-i <input-spec> is required\n");
         printUsage(argv[0]);
         return EXIT_FAILURE;
     }
-    if (delay_ms < 0)
-    {
+    if (delay_ms < 0) {
         std::fprintf(stderr, "-t delay must be >= 0\n");
         return EXIT_FAILURE;
     }
@@ -150,38 +144,29 @@ int main(int argc, char *argv[])
     loopback::ChannelPtr output_channel;
     bool mirror = out_spec.empty();
 
-    try
-    {
+    try {
         input_channel = loopback::createChannel(in_spec);
 
-        if (mirror)
-        {
+        if (mirror) {
             output_channel = input_channel;
-        }
-        else
-        {
+        } else {
             auto candidate_output = loopback::createChannel(out_spec);
-            if (candidate_output->identity() == input_channel->identity())
-            {
+            if (candidate_output->identity() == input_channel->identity()) {
                 // Same underlying endpoint (e.g. "-i kvcan:vcan0 -o
                 // kvcan:vcan0"): collapse to one shared channel instead of
                 // opening the resource twice. For CAN in particular this
                 // also avoids an echo storm between two sockets on the
                 // same interface (see can_channel.hpp).
                 loopback::log_info("loopback",
-                    "-o resolves to the same endpoint as -i (" + input_channel->identity() +
-                        "); mirroring on a single channel instead of opening it twice");
+                                   "-o resolves to the same endpoint as -i (" + input_channel->identity() +
+                                       "); mirroring on a single channel instead of opening it twice");
                 output_channel = input_channel;
-                mirror = true;
-            }
-            else
-            {
+                mirror         = true;
+            } else {
                 output_channel = candidate_output;
             }
         }
-    }
-    catch (const loopback::SpecError &e)
-    {
+    } catch (const loopback::SpecError &e) {
         std::fprintf(stderr, "%s\n", e.what());
         printUsage(argv[0]);
         return EXIT_FAILURE;
@@ -190,15 +175,18 @@ int main(int argc, char *argv[])
     // Only meaningful for CAN: enables the CAN_RAW_RECV_OWN_MSGS=0 single-
     // socket trick that lets one socket both receive and reply without an
     // echo storm. See can_channel.hpp.
-    if (auto can = std::dynamic_pointer_cast<loopback::CanChannel>(input_channel))
+    if (auto can = std::dynamic_pointer_cast<loopback::CanChannel>(input_channel)) {
         can->setMirrorMode(mirror);
+    }
 
     loopback::install_signal_handlers();
 
-    if (!input_channel->open())
+    if (!input_channel->open()) {
         return EXIT_FAILURE;
-    if (!mirror && !output_channel->open())
+    }
+    if (!mirror && !output_channel->open()) {
         return EXIT_FAILURE;
+    }
 
     std::printf("loopback: %s -> %s (delay %dms) - press Ctrl-C to stop\n",
                 input_channel->name().c_str(),
@@ -206,22 +194,22 @@ int main(int argc, char *argv[])
                 delay_ms);
     std::printf("--------------------------------------------------\n");
 
-    while (!loopback::g_stop)
-    {
+    while (!loopback::g_stop) {
         loopback::Message msg;
-        if (!input_channel->readMessage(msg))
+        if (!input_channel->readMessage(msg)) {
             break;
+        }
 
         input_channel->dump("RX", msg);
 
         sleepInterruptible(delay_ms);
-        if (loopback::g_stop)
+        if (loopback::g_stop) {
             break;
+        }
 
-        if (!output_channel->writeMessage(msg))
-        {
+        if (!output_channel->writeMessage(msg)) {
             loopback::log_warn("loopback", "failed to deliver message to " + output_channel->name() +
-                                                ", dropping it and continuing");
+                                               ", dropping it and continuing");
             continue;
         }
 
@@ -230,8 +218,9 @@ int main(int argc, char *argv[])
 
     std::printf("\nloopback: shutting down.\n");
     input_channel->close();
-    if (output_channel && output_channel != input_channel)
+    if (output_channel && output_channel != input_channel) {
         output_channel->close();
+    }
 
     return EXIT_SUCCESS;
 }

@@ -15,21 +15,20 @@
 // EtherType convention for test traffic).
 #pragma once
 
+#include "ichannel.hpp"
+
 #include <arpa/inet.h>
+#include <array>
+#include <cerrno>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <net/if.h>
+#include <optional>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <array>
-#include <cerrno>
-#include <optional>
 
-#include "ichannel.hpp"
-
-namespace loopback
-{
+namespace loopback {
 
 class RawEthChannel : public IChannel
 {
@@ -45,29 +44,30 @@ public:
                   std::optional<uint16_t> tx_ethertype,
                   std::optional<std::array<uint8_t, MAC_LEN>> dst_mac,
                   bool promisc)
-        : ifname_(std::move(ifname)),
-          capture_ethertype_(capture_ethertype),
-          tx_ethertype_(tx_ethertype),
-          fixed_dst_mac_(dst_mac),
-          promisc_(promisc)
+        : ifname_(std::move(ifname))
+        , capture_ethertype_(capture_ethertype)
+        , tx_ethertype_(tx_ethertype)
+        , fixed_dst_mac_(dst_mac)
+        , promisc_(promisc)
     {
     }
 
-    ~RawEthChannel() override { RawEthChannel::close(); }
+    ~RawEthChannel() override
+    {
+        RawEthChannel::close();
+    }
 
     bool open() override
     {
         fd_ = ::socket(AF_PACKET, SOCK_RAW, htons(capture_ethertype_));
-        if (fd_ < 0)
-        {
+        if (fd_ < 0) {
             log_err(name(), std::string("socket(AF_PACKET, SOCK_RAW): ") + std::strerror(errno) +
-                                 " (usually missing CAP_NET_RAW - run as root, or "
-                                 "'sudo setcap cap_net_raw+ep <binary>')");
+                                " (usually missing CAP_NET_RAW - run as root, or "
+                                "'sudo setcap cap_net_raw+ep <binary>')");
             return false;
         }
 
-        if (!resolveInterface())
-        {
+        if (!resolveInterface()) {
             close();
             return false;
         }
@@ -78,21 +78,18 @@ public:
         bind_addr.sll_protocol = htons(capture_ethertype_);
         bind_addr.sll_ifindex  = ifindex_;
 
-        if (::bind(fd_, reinterpret_cast<struct sockaddr *>(&bind_addr), sizeof(bind_addr)) < 0)
-        {
+        if (::bind(fd_, reinterpret_cast<struct sockaddr *>(&bind_addr), sizeof(bind_addr)) < 0) {
             log_err(name(), "bind to '" + ifname_ + "': " + std::strerror(errno));
             close();
             return false;
         }
 
-        if (promisc_)
-        {
+        if (promisc_) {
             struct packet_mreq mreq;
             std::memset(&mreq, 0, sizeof(mreq));
             mreq.mr_ifindex = ifindex_;
             mreq.mr_type    = PACKET_MR_PROMISC;
-            if (::setsockopt(fd_, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0)
-            {
+            if (::setsockopt(fd_, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
                 log_err(name(), std::string("setsockopt(PACKET_ADD_MEMBERSHIP): ") + std::strerror(errno));
                 close();
                 return false;
@@ -100,54 +97,57 @@ public:
         }
 
         log_info(name(), "bound to " + ifname_ + " (mac " + macToString(own_mac_.data()) + ")" +
-                              (promisc_ ? ", promiscuous" : ""));
+                             (promisc_ ? ", promiscuous" : ""));
         return true;
     }
 
     void close() override
     {
-        if (fd_ >= 0) { ::close(fd_); fd_ = -1; }
+        if (fd_ >= 0) {
+            ::close(fd_);
+            fd_ = -1;
+        }
     }
 
     bool readMessage(Message &msg) override
     {
         uint8_t buf[65536];
-        while (!g_stop)
-        {
+        while (!g_stop) {
             struct sockaddr_ll src_addr;
             socklen_t addr_len = sizeof(src_addr);
 
-            ssize_t n = ::recvfrom(fd_, buf, sizeof(buf), 0,
-                                    reinterpret_cast<struct sockaddr *>(&src_addr), &addr_len);
-            if (n < 0)
-            {
-                if (errno == EINTR)
+            ssize_t n          = ::recvfrom(fd_, buf, sizeof(buf), 0,
+                                            reinterpret_cast<struct sockaddr *>(&src_addr), &addr_len);
+            if (n < 0) {
+                if (errno == EINTR) {
                     continue;
+                }
                 log_err(name(), std::string("recvfrom: ") + std::strerror(errno));
                 return false;
             }
 
             // Ignore frames we transmitted ourselves, or the echo storm
             // never ends.
-            if (src_addr.sll_pkttype == PACKET_OUTGOING)
+            if (src_addr.sll_pkttype == PACKET_OUTGOING) {
                 continue;
+            }
 
-            if (static_cast<size_t>(n) < kEthHdrLen)
-            {
+            if (static_cast<size_t>(n) < kEthHdrLen) {
                 log_warn(name(), "runt frame (" + std::to_string(n) + " bytes), dropping");
                 continue;
             }
 
             std::array<uint8_t, MAC_LEN> src_mac;
             std::memcpy(src_mac.data(), buf + MAC_LEN, MAC_LEN);
-            if (src_mac == own_mac_)
+            if (src_mac == own_mac_) {
                 continue; // defensive: some virtual interfaces miss PACKET_OUTGOING
+            }
 
             uint16_t ethertype = ntohs(*reinterpret_cast<uint16_t *>(buf + 2 * MAC_LEN));
 
-            last_src_mac_     = src_mac;
-            last_ethertype_   = ethertype;
-            has_last_context_ = true;
+            last_src_mac_      = src_mac;
+            last_ethertype_    = ethertype;
+            has_last_context_  = true;
 
             msg.data.assign(buf + kEthHdrLen, buf + n);
             msg.has_can_id = false;
@@ -161,24 +161,19 @@ public:
         std::array<uint8_t, MAC_LEN> dst_mac;
         uint16_t ethertype;
 
-        if (has_last_context_)
-        {
+        if (has_last_context_) {
             // Mirror / same-channel bridge: reply to whoever we last
             // heard from, on the EtherType they used.
             dst_mac   = last_src_mac_;
             ethertype = last_ethertype_;
-        }
-        else if (fixed_dst_mac_)
-        {
+        } else if (fixed_dst_mac_) {
             dst_mac   = *fixed_dst_mac_;
             ethertype = tx_ethertype_.value_or(capture_ethertype_ == ETH_P_ALL ? kDefaultTxEthertype
-                                                                                : capture_ethertype_);
-        }
-        else
-        {
+                                                                               : capture_ethertype_);
+        } else {
             dst_mac   = kBroadcastMac;
             ethertype = tx_ethertype_.value_or(capture_ethertype_ == ETH_P_ALL ? kDefaultTxEthertype
-                                                                                : capture_ethertype_);
+                                                                               : capture_ethertype_);
         }
 
         std::vector<uint8_t> frame(kEthHdrLen + msg.data.size());
@@ -190,22 +185,20 @@ public:
 
         struct sockaddr_ll dst_addr;
         std::memset(&dst_addr, 0, sizeof(dst_addr));
-        dst_addr.sll_family   = AF_PACKET;
-        dst_addr.sll_ifindex  = ifindex_;
-        dst_addr.sll_halen    = MAC_LEN;
+        dst_addr.sll_family  = AF_PACKET;
+        dst_addr.sll_ifindex = ifindex_;
+        dst_addr.sll_halen   = MAC_LEN;
         std::memcpy(dst_addr.sll_addr, dst_mac.data(), MAC_LEN);
 
         ssize_t sent = ::sendto(fd_, frame.data(), frame.size(), 0,
-                                 reinterpret_cast<struct sockaddr *>(&dst_addr), sizeof(dst_addr));
-        if (sent < 0)
-        {
+                                reinterpret_cast<struct sockaddr *>(&dst_addr), sizeof(dst_addr));
+        if (sent < 0) {
             log_err(name(), std::string("sendto: ") + std::strerror(errno));
             return false;
         }
-        if (static_cast<size_t>(sent) != frame.size())
-        {
+        if (static_cast<size_t>(sent) != frame.size()) {
             log_warn(name(), "short write (" + std::to_string(sent) + " of " +
-                                  std::to_string(frame.size()) + " bytes)");
+                                 std::to_string(frame.size()) + " bytes)");
         }
 
         last_tx_dst_mac_   = dst_mac;
@@ -213,22 +206,29 @@ public:
         return true;
     }
 
-    std::string name() const override { return "raweth:" + ifname_; }
+    std::string name() const override
+    {
+        return "raweth:" + ifname_;
+    }
 
-    std::string identity() const override { return "raweth:" + ifname_; }
+    std::string identity() const override
+    {
+        return "raweth:" + ifname_;
+    }
 
     void dump(const char *dir, const Message &msg) const override
     {
         std::printf("%-10s %-8s [%zu] ", name().c_str(), dir, msg.data.size());
-        for (uint8_t b : msg.data)
+        for (uint8_t b : msg.data) {
             std::printf("%02X ", b);
+        }
         std::printf("\n");
         std::fflush(stdout);
     }
 
 private:
-    static constexpr size_t kEthHdrLen           = 14;
-    static constexpr uint16_t kDefaultTxEthertype = 0x88B5; // IEEE 802 "local experimental"
+    static constexpr size_t kEthHdrLen                             = 14;
+    static constexpr uint16_t kDefaultTxEthertype                  = 0x88B5; // IEEE 802 "local experimental"
     static inline const std::array<uint8_t, MAC_LEN> kBroadcastMac = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
     bool resolveInterface()
@@ -237,8 +237,7 @@ private:
         std::memset(&ifr, 0, sizeof(ifr));
         std::strncpy(ifr.ifr_name, ifname_.c_str(), IFNAMSIZ - 1);
 
-        if (::ioctl(fd_, SIOCGIFINDEX, &ifr) < 0)
-        {
+        if (::ioctl(fd_, SIOCGIFINDEX, &ifr) < 0) {
             log_err(name(), "ioctl(SIOCGIFINDEX, " + ifname_ + "): " + std::strerror(errno));
             return false;
         }
@@ -246,8 +245,7 @@ private:
 
         std::memset(&ifr, 0, sizeof(ifr));
         std::strncpy(ifr.ifr_name, ifname_.c_str(), IFNAMSIZ - 1);
-        if (::ioctl(fd_, SIOCGIFHWADDR, &ifr) < 0)
-        {
+        if (::ioctl(fd_, SIOCGIFHWADDR, &ifr) < 0) {
             log_err(name(), "ioctl(SIOCGIFHWADDR, " + ifname_ + "): " + std::strerror(errno));
             return false;
         }
@@ -264,16 +262,16 @@ private:
     }
 
     std::string ifname_;
-    uint16_t    capture_ethertype_;
+    uint16_t capture_ethertype_;
     std::optional<uint16_t> tx_ethertype_;
     std::optional<std::array<uint8_t, MAC_LEN>> fixed_dst_mac_;
-    bool        promisc_;
+    bool promisc_;
 
-    int     fd_      = -1;
-    int     ifindex_ = -1;
+    int fd_      = -1;
+    int ifindex_ = -1;
     std::array<uint8_t, MAC_LEN> own_mac_{};
 
-    bool    has_last_context_ = false;
+    bool has_last_context_ = false;
     std::array<uint8_t, MAC_LEN> last_src_mac_{};
     uint16_t last_ethertype_ = 0;
 

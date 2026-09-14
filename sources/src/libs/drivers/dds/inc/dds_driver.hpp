@@ -72,16 +72,17 @@
 class DdsDriver : public ICommDriver
 {
 public:
-    struct Config {
-        uint32_t domainId = 0;
+    struct Config
+    {
+        uint32_t domainId        = 0;
         // Selects this participant's discovery port (RTPS "participant
         // index", RTPS spec 9.6.1.1) — maps to Discovery/ParticipantIndex
         // in the domain's Cyclone config (see open()'s doc comment). Give
         // co-located instances (e.g. several DDS:n plugin instances in one
         // process, or several processes on the same host/domain) distinct
         // values, same as before.
-        uint32_t participantId = 0;
-        bool useIpv6 = false;            // -> General/Transport = udp6 vs udp
+        uint32_t participantId   = 0;
+        bool useIpv6             = false;     // -> General/Transport = udp6 vs udp
         std::string ifaceAddress = "0.0.0.0"; // "0.0.0.0"/"::" = let Cyclone auto-select; else -> General/Interfaces/NetworkInterface
         // Used as the NetworkInterface selector when ifaceAddress is left
         // at its "auto" default — IPv4: an interface IP; IPv6: an
@@ -96,32 +97,35 @@ public:
         // Carried in the participant's standard USER_DATA QoS (visible to
         // any DDSI-RTPS peer, not just this plugin) and read back for
         // DDS.CMD > LIST — see listParticipants()'s doc comment.
-        std::string participantName = "uScript-DDS";
-        uint8_t  ttl = 1;                    // -> General/MulticastTimeToLive
-        uint32_t spdpPeriodMs = 2000;        // -> Discovery/SPDPInterval
-        uint32_t leaseDurationSec = 20;      // -> Discovery/LeaseDuration
-        bool     reliable = false;           // -> DDS_RELIABILITY_QOS on locally created writers/readers
+        std::string participantName     = "uScript-DDS";
+        uint8_t ttl                     = 1;     // -> General/MulticastTimeToLive
+        uint32_t spdpPeriodMs           = 2000;  // -> Discovery/SPDPInterval
+        uint32_t leaseDurationSec       = 20;    // -> Discovery/LeaseDuration
+        bool reliable                   = false; // -> DDS_RELIABILITY_QOS on locally created writers/readers
         // No public per-entity QoS for this in Cyclone (it schedules
         // HEARTBEATs internally); kept only so an existing ini file /
         // CONFIG hb= argument doesn't start failing to parse. Accepted,
         // not applied — see open()'s doc comment.
-        uint32_t heartbeatPeriodMs = 500;
-        uint32_t historyDepth = 32;              // -> DDS_HISTORY_KEEP_LAST(historyDepth) QoS
-        uint32_t fragmentThresholdBytes = 1300;  // -> General/FragmentSize; 0 leaves Cyclone's own default
+        uint32_t heartbeatPeriodMs      = 500;
+        uint32_t historyDepth           = 32;   // -> DDS_HISTORY_KEEP_LAST(historyDepth) QoS
+        uint32_t fragmentThresholdBytes = 1300; // -> General/FragmentSize; 0 leaves Cyclone's own default
         std::string strInstanceName;
     };
 
-    struct DiscoveredParticipantView {
+    struct DiscoveredParticipantView
+    {
         std::string guidHex;
-        std::string name;   // from the peer's USER_DATA QoS, if it set one (empty otherwise — not every DDS vendor does)
-        double      ageSec = 0.0; // time since Cyclone's builtin-topic cache last refreshed this participant
+        std::string name;    // from the peer's USER_DATA QoS, if it set one (empty otherwise — not every DDS vendor does)
+        double ageSec = 0.0; // time since Cyclone's builtin-topic cache last refreshed this participant
     };
-    struct DiscoveredEndpointView {
+
+    struct DiscoveredEndpointView
+    {
         std::string guidHex;
         std::string topic;
         std::string typeName;
-        bool        isWriter = false;
-        bool        reliable = false;
+        bool isWriter = false;
+        bool reliable = false;
     };
 
     explicit DdsDriver(Config config);
@@ -142,12 +146,12 @@ public:
     bool is_open() const override;
     CommDetails describeConnection(std::string_view xtra_params = {}) const override;
     ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                         std::string_view xtra_params = {},
-                                         std::stop_token stop_tok = {}) const override;
+                                        std::string_view xtra_params = {},
+                                        std::stop_token stop_tok     = {}) const override;
     ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                                       const ICommDriver::ReadOptions& options,
-                                       std::string_view xtra_params = {},
-                                       std::stop_token stop_tok = {}) const override;
+                                      const ICommDriver::ReadOptions &options,
+                                      std::string_view xtra_params = {},
+                                      std::stop_token stop_tok     = {}) const override;
 
     /**
      * @brief The intermediary layer: parses one DDS.CMD argument line
@@ -160,7 +164,7 @@ public:
      * automatic dump.
      */
     ICommDriver::WriteResult send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                   std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+                                  std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     /**
      * @brief The other half: for a standalone "DDS.CMD <" (no preceding
@@ -184,8 +188,8 @@ public:
      *                 preserves pre-existing behaviour exactly.
      */
     ICommDriver::ReadResult receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params,
-                                     std::stop_token stop_tok = {}) const;
+                                    const ICommDriver::ReadOptions &options, std::string_view xtra_params,
+                                    std::stop_token stop_tok = {}) const;
 
     /// For DDS.INFO / DDS.CMD > LIST — a human-readable snapshot of every
     /// discovered participant and endpoint, read straight from Cyclone's
@@ -203,24 +207,27 @@ private:
     // public header, the same way the previous socket-based driver kept
     // POSIX fds as plain `int` in its header and did all the actual
     // socket-API work in the .cpp only.
-    using DdsEntity = int32_t;
+    using DdsEntity                           = int32_t;
     static constexpr DdsEntity kInvalidEntity = -1;
 
-    DdsEntity m_domain = kInvalidEntity;          // only >=0 if *this* open() call created it — see open()'s doc comment
-    DdsEntity m_participant = kInvalidEntity;
-    DdsEntity m_biParticipantReader = kInvalidEntity;  // DDS_BUILTIN_TOPIC_DCPSPARTICIPANT
-    DdsEntity m_biPublicationReader = kInvalidEntity;  // DDS_BUILTIN_TOPIC_DCPSPUBLICATION
-    DdsEntity m_biSubscriptionReader = kInvalidEntity; // DDS_BUILTIN_TOPIC_DCPSSUBSCRIPTION
+    DdsEntity m_domain                        = kInvalidEntity; // only >=0 if *this* open() call created it — see open()'s doc comment
+    DdsEntity m_participant                   = kInvalidEntity;
+    DdsEntity m_biParticipantReader           = kInvalidEntity; // DDS_BUILTIN_TOPIC_DCPSPARTICIPANT
+    DdsEntity m_biPublicationReader           = kInvalidEntity; // DDS_BUILTIN_TOPIC_DCPSPUBLICATION
+    DdsEntity m_biSubscriptionReader          = kInvalidEntity; // DDS_BUILTIN_TOPIC_DCPSSUBSCRIPTION
 
     std::string m_strIdentityLabel;
     std::string m_guidHex; // this participant's own GUID, hex — used to filter self out of listParticipants()
 
-    struct LocalWriter {
-        DdsEntity topic = kInvalidEntity;
+    struct LocalWriter
+    {
+        DdsEntity topic  = kInvalidEntity;
         DdsEntity writer = kInvalidEntity;
     };
-    struct LocalReader {
-        DdsEntity topic = kInvalidEntity;
+
+    struct LocalReader
+    {
+        DdsEntity topic  = kInvalidEntity;
         DdsEntity reader = kInvalidEntity;
         mutable std::mutex queueMutex;
         mutable std::condition_variable_any queueCv;
@@ -231,8 +238,8 @@ private:
     // LocalReader's queue, which has its own mutex so a blocking receive()
     // on one topic never stalls PUBLISH/SUBSCRIBE/UNSUBSCRIBE on another.
     mutable std::mutex m_mutex;
-    mutable std::map<std::string, LocalWriter> m_localWriters;                   // key: topic name
-    mutable std::map<std::string, std::shared_ptr<LocalReader>> m_localReaders;  // key: topic name
+    mutable std::map<std::string, LocalWriter> m_localWriters;                  // key: topic name
+    mutable std::map<std::string, std::shared_ptr<LocalReader>> m_localReaders; // key: topic name
 
     // Hand-off between a "DDS.CMD > SUBSCRIBE <topic>" send() and the receive()
     // call that follows it — see receive()'s doc comment. Instance-scoped
@@ -245,19 +252,19 @@ private:
 
     // ---- helpers (implemented in dds_driver.cpp) ----
     std::string m_BuildDomainConfigXml() const;
-    DdsEntity m_EnsureLocalWriter(const std::string& topic) const;
-    std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string& topic) const;
+    DdsEntity m_EnsureLocalWriter(const std::string &topic) const;
+    std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;
 
-    bool m_Publish(const std::string& topic, const std::string& payload) const;
-    bool m_Subscribe(const std::string& topic) const;
-    bool m_Unsubscribe(const std::string& topic) const;
+    bool m_Publish(const std::string &topic, const std::string &payload) const;
+    bool m_Subscribe(const std::string &topic) const;
+    bool m_Unsubscribe(const std::string &topic) const;
     std::string m_BuildListText() const;
 
     /// dds_on_data_available_fn callback (see <dds/ddsc/dds_public_listener.h>)
     /// registered on every local reader: drains whatever Cyclone just made
     /// available via dds_take() straight into that LocalReader's queue and
     /// wakes receive(). `arg` is the LocalReader* passed to dds_create_listener().
-    static void m_OnReaderDataAvailable(DdsEntity reader, void* arg);
+    static void m_OnReaderDataAvailable(DdsEntity reader, void *arg);
 };
 
 #endif // DDS_DRIVER_HPP

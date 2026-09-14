@@ -2,6 +2,7 @@
 MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
 */
 #include "ushell_core.h"
+
 #include "ushell_core_keys.h"
 #include "ushell_core_printout.h"
 #include "ushell_core_utils.h"
@@ -24,19 +25,19 @@ MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
 #define uSHELL_CORE_KEYHANDLE_SKIP_TILDE   true
 #define uSHELL_CORE_KEYHANDLE_SKIP_BRACKET true
 #else
-#define uSHELL_CORE_KEYHANDLE_SKIP_TILDE   (uSHELL_KEY_TILDE        == uSHELL_GETCH())
+#define uSHELL_CORE_KEYHANDLE_SKIP_TILDE   (uSHELL_KEY_TILDE == uSHELL_GETCH())
 #define uSHELL_CORE_KEYHANDLE_SKIP_BRACKET (uSHELL_KEY_LEFT_BRACKET == uSHELL_GETCH())
 #endif
 
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
-#define uSHELL_HISTORY_METADATA_SIZE  4U  // embedded metadata: 2 bytes at start + 2 bytes at end
-#endif /*(1 == uSHELL_IMPLEMENTS_HISTORY)*/
+#define uSHELL_HISTORY_METADATA_SIZE 4U // embedded metadata: 2 bytes at start + 2 bytes at end
+#endif                                  /*(1 == uSHELL_IMPLEMENTS_HISTORY)*/
 
 /* concatenate strings */
-#define FRMT(a,b)       a b uSHELL_RESET_COLOR
+#define FRMT(a, b)           a b uSHELL_RESET_COLOR
 
 /* defines */
-#define uSHELL_NEWLINE      "\n\r"
+#define uSHELL_NEWLINE       "\n\r"
 #define uSHELL_INVALID_VALUE (-1)
 
 /*==============================================================================
@@ -48,27 +49,29 @@ MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
 std::shared_ptr<Microshell> Microshell::getShellSharedPtr(uShellInst_s *psShellInst, const char *pstrPromptExt)
 {
     return std::shared_ptr<Microshell>(new Microshell(psShellInst, pstrPromptExt));
-}/* getShellSharedPtr() */
+} /* getShellSharedPtr() */
 #endif // (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 
-
 /*----------------------------------------------------------------------------*/
-Microshell *Microshell::getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt) {
+Microshell *Microshell::getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt)
+{
     static Microshell uShellInstance(psShellInst, pstrPromptExt);
     return &uShellInstance;
 } /* getShell() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::Run(void) {
+void Microshell::Run(void)
+{
     m_CorePrintPrompt();
-    while(m_Execute()) {}
+    while (m_Execute()) {
+    }
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
-    if(0 == --m_iInstanceCounter) {
+    if (0 == --m_iInstanceCounter) {
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
         m_HistoryDeInit();
 #endif /* (1 == uSHELL_IMPLEMENTS_HISTORY) */
-        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR,"uShell exit!\n\r"));
+        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "uShell exit!\n\r"));
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     } else {
         m_pInst = m_pInstBackup;
@@ -82,8 +85,9 @@ void Microshell::Run(void) {
 
 #if (1 == uSHELL_SUPPORTS_COMMAND_AS_PARAMETER)
 /*----------------------------------------------------------------------------*/
-bool Microshell::Execute(const char *pstrCommand) {
-    bool bRetVal = false;
+bool Microshell::Execute(const char *pstrCommand)
+{
+    bool bRetVal      = false;
     unsigned int iLen = (unsigned int)strlen(pstrCommand) + 1;
     if ((nullptr != pstrCommand) && (iLen < uSHELL_MAX_INPUT_BUF_LEN)) {
         strcpy(m_pstrInput, pstrCommand);
@@ -105,7 +109,8 @@ bool Microshell::Execute(const char *pstrCommand) {
 ==============================================================================*/
 
 /*----------------------------------------------------------------------------*/
-Microshell::Microshell(uShellInst_s *psShellInst, const char *pstrPromptExt) {
+Microshell::Microshell(uShellInst_s *psShellInst, const char *pstrPromptExt)
+{
     psShellInst->pstrPromptName = pstrPromptExt;
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     m_pInstBackup = m_pInst;
@@ -114,9 +119,9 @@ Microshell::Microshell(uShellInst_s *psShellInst, const char *pstrPromptExt) {
     m_Init(pstrPromptExt);
 } /* Microshell() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_Init(const char *pstrPromptExt) {
+void Microshell::m_Init(const char *pstrPromptExt)
+{
     m_CoreSetPrompt(pstrPromptExt);
 #if ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))
     m_HistoryInit(pstrPromptExt);
@@ -138,10 +143,10 @@ void Microshell::m_Init(const char *pstrPromptExt) {
     m_pInst->psShortcutsArray[0] = {'#', m_CoreHandleShortcut_Hash};
     m_CoreResetInput(true);
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
-    if(0 == m_iInstanceCounter++) {
+    if (0 == m_iInstanceCounter++) {
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES) */
 #if (1 == uSHELL_SCRIPT_MODE)
-    uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "uShell v%s [script mode]\n"), uSHELL_VERSION);
+        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "uShell v%s [script mode]\n"), uSHELL_VERSION);
 #else
     uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "uShell v%s [info: ###]\n"), uSHELL_VERSION);
 #endif /* (1 == uSHELL_SCRIPT_MODE) */
@@ -154,7 +159,8 @@ void Microshell::m_Init(const char *pstrPromptExt) {
 } /* m_Init() */
 
 /*----------------------------------------------------------------------------*/
-inline bool Microshell::m_Execute(void) {
+inline bool Microshell::m_Execute(void)
+{
     m_CoreProcessKeyPress(uSHELL_GETCH());
 #if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
     return m_pInst->bKeepRuning;
@@ -164,7 +170,8 @@ inline bool Microshell::m_Execute(void) {
 } /* m_Execute() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreParseExecuteCommand(void) {
+void Microshell::m_CoreParseExecuteCommand(void)
+{
     int iRetVal = 0;
     if (uSHELL_ERR_OK == (iRetVal = m_CoreParseCommand())) {
         if ((iRetVal = m_pInst->pfExec(&m_sCommand)) >= 0) {
@@ -178,14 +185,15 @@ void Microshell::m_CoreParseExecuteCommand(void) {
 } /* m_CoreParseExecuteCommand() */
 
 /*----------------------------------------------------------------------------*/
-int Microshell::m_CoreParseCommand(void) {
-    int iRetVal = uSHELL_ERR_OK;
-    char *pstrRest = m_pstrInput;
-    char *pstrToken = strtok_ex(pstrRest, m_pstrTokenSeparator, &pstrRest);
+int Microshell::m_CoreParseCommand(void)
+{
+    int iRetVal            = uSHELL_ERR_OK;
+    char *pstrRest         = m_pstrInput;
+    char *pstrToken        = strtok_ex(pstrRest, m_pstrTokenSeparator, &pstrRest);
     m_sCommand.pstrFctName = pstrToken;
     if (uSHELL_ERR_FUNCTION_NOT_FOUND != (m_sCommand.iFctIndex = m_CoreSearchFunction(pstrToken))) {
-        bool bIsVoidFct = ('v' == m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef[0]);
-        bool bHasParams = (nullptr != pstrRest);
+        bool bIsVoidFct       = ('v' == m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef[0]);
+        bool bHasParams       = (nullptr != pstrRest);
         int iNrParamsExpected = (int)strlen(m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef);
 
         if ((true == bHasParams) && (false == bIsVoidFct)) {
@@ -353,8 +361,8 @@ int Microshell::m_CoreParseCommand(void) {
                 if (uSHELL_ERR_OK == iRetVal) {
                     iRetVal = m_CoreHandleBorderedStrings(&pstrToken, &pstrRest, &iNrParamsRead);
                 }
-#endif        /* (1 == uSHELL_SUPPORTS_SPACED_STRINGS) */
-#endif        /* defined(uSHELL_IMPLEMENTS_STRINGS) */
+#endif /* (1 == uSHELL_SUPPORTS_SPACED_STRINGS) */
+#endif /* defined(uSHELL_IMPLEMENTS_STRINGS) */
             } /* while(...) */
             if (uSHELL_ERR_OK != iRetVal) {
                 m_sCommand.iErrorInfo = m_sCommand.iTypIndex - 1;
@@ -375,30 +383,49 @@ int Microshell::m_CoreParseCommand(void) {
 } /* m_CoreParseCommand() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CorePrintError(const int iError) {
+void Microshell::m_CorePrintError(const int iError)
+{
     static const char *pstrErrorUnknown = " ?";
     static const char *pstrErrorCaption = " : ";
-    static const char *pstrErrorString = nullptr;
-    bool bIsTooManyArgsError = false;
-    bool bIsInvalidNumError = false;
-    bool bIsNumBigValueError = false;
+    static const char *pstrErrorString  = nullptr;
+    bool bIsTooManyArgsError            = false;
+    bool bIsInvalidNumError             = false;
+    bool bIsNumBigValueError            = false;
 
-    switch(iError) {
-        case uSHELL_ERR_FUNCTION_NOT_FOUND       : { pstrErrorString = "command not found";}                 break;
-        case uSHELL_ERR_WRONG_NUMBER_ARGS        : { pstrErrorString = "wrong number of arguments";}         break;
-        case uSHELL_ERR_PARAM_TYPE_NOT_IMPLEM    : { pstrErrorString = "data type not implem/enabled";}      break;
-        case uSHELL_ERR_PARAMS_PATTERN_NOT_IMPLEM: { pstrErrorString = "params pattern not implem/enabled";} break;
-        case uSHELL_ERR_STRING_NOT_CLOSED        : { pstrErrorString = "string not closed"; }                break;
-        case uSHELL_ERR_TOO_MANY_ARGS            : { bIsTooManyArgsError = true;} break;
-        case uSHELL_ERR_INVALID_NUMBER           : { bIsInvalidNumError  = true;} break;
-        case uSHELL_ERR_VALUE_TOO_BIG            : { bIsNumBigValueError = true;} break;
-        default                                  : { pstrErrorString = pstrErrorUnknown;} break;
+    switch (iError) {
+    case uSHELL_ERR_FUNCTION_NOT_FOUND: {
+        pstrErrorString = "command not found";
+    } break;
+    case uSHELL_ERR_WRONG_NUMBER_ARGS: {
+        pstrErrorString = "wrong number of arguments";
+    } break;
+    case uSHELL_ERR_PARAM_TYPE_NOT_IMPLEM: {
+        pstrErrorString = "data type not implem/enabled";
+    } break;
+    case uSHELL_ERR_PARAMS_PATTERN_NOT_IMPLEM: {
+        pstrErrorString = "params pattern not implem/enabled";
+    } break;
+    case uSHELL_ERR_STRING_NOT_CLOSED: {
+        pstrErrorString = "string not closed";
+    } break;
+    case uSHELL_ERR_TOO_MANY_ARGS: {
+        bIsTooManyArgsError = true;
+    } break;
+    case uSHELL_ERR_INVALID_NUMBER: {
+        bIsInvalidNumError = true;
+    } break;
+    case uSHELL_ERR_VALUE_TOO_BIG: {
+        bIsNumBigValueError = true;
+    } break;
+    default: {
+        pstrErrorString = pstrErrorUnknown;
+    } break;
     }
-    if((true == bIsInvalidNumError) || (true == bIsTooManyArgsError) || (true == bIsNumBigValueError)) {
-        const char *pstrErrorDescription = bIsInvalidNumError  ? "invalid " :
-                                           bIsTooManyArgsError ? "too many args of type " :
-                                           bIsNumBigValueError ? "value too big for " : pstrErrorUnknown;
-        const char *pstrErrorDetail = (m_sCommand.eDataType < uSHELL_DATA_TYPE_LAST) ? m_vstrTypeNames[m_sCommand.eDataType] : pstrErrorUnknown;
+    if ((true == bIsInvalidNumError) || (true == bIsTooManyArgsError) || (true == bIsNumBigValueError)) {
+        const char *pstrErrorDescription = bIsInvalidNumError ? "invalid " : bIsTooManyArgsError ? "too many args of type "
+                                                                         : bIsNumBigValueError   ? "value too big for "
+                                                                                                 : pstrErrorUnknown;
+        const char *pstrErrorDetail      = (m_sCommand.eDataType < uSHELL_DATA_TYPE_LAST) ? m_vstrTypeNames[m_sCommand.eDataType] : pstrErrorUnknown;
 
         uSHELL_PRINTF(FRMT(uSHELL_ERROR_COLOR, "\r%s%s%s (arg:%d) | %s:%s\n"), pstrErrorCaption, pstrErrorDescription, pstrErrorDetail, (m_sCommand.iErrorInfo + 1), m_sCommand.pstrFctName, m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef);
     } else {
@@ -409,7 +436,8 @@ void Microshell::m_CorePrintError(const int iError) {
 #if defined(uSHELL_IMPLEMENTS_STRINGS)
 #if (1 == uSHELL_SUPPORTS_SPACED_STRINGS)
 /*----------------------------------------------------------------------------*/
-int Microshell::m_CoreHandleBorderedStrings(char **ppstrToken, char **ppstrRest, int *pIntArgCounter) {
+int Microshell::m_CoreHandleBorderedStrings(char **ppstrToken, char **ppstrRest, int *pIntArgCounter)
+{
     int iRetVal = uSHELL_ERR_OK;
     bool bFound = false;
 
@@ -425,11 +453,12 @@ int Microshell::m_CoreHandleBorderedStrings(char **ppstrToken, char **ppstrRest,
             }
         }
         if (true == bFound) {
-            bFound = false;
+            bFound      = false;
             **ppstrRest = '\0';
-            while(*m_pstrTokenSeparator == *(++(*ppstrRest)));   /* cleanup the trailing separators */
-            if('s' == m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef[(m_sCommand.iTypIndex)++]) {
-                if(m_sCommand.iNrStrings < uSHELL_MAX_PARAMS_STRING) {
+            while (*m_pstrTokenSeparator == *(++(*ppstrRest)))
+                ; /* cleanup the trailing separators */
+            if ('s' == m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef[(m_sCommand.iTypIndex)++]) {
+                if (m_sCommand.iNrStrings < uSHELL_MAX_PARAMS_STRING) {
                     m_sCommand.vs[m_sCommand.iNrStrings++] = *ppstrToken;
                     ++(*pIntArgCounter);
                 } else {
@@ -449,7 +478,8 @@ int Microshell::m_CoreHandleBorderedStrings(char **ppstrToken, char **ppstrRest,
 } /* m_CoreHandleBorderedStrings() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreSetStringBorder(const char *pstrStringBorder) {
+void Microshell::m_CoreSetStringBorder(const char *pstrStringBorder)
+{
     int iLen = (int)strlen(pstrStringBorder);
     if (iLen > 1) {
         uSHELL_PRINTF(FRMT(uSHELL_ERROR_COLOR, ": only one symbol expected\n\r"));
@@ -464,7 +494,8 @@ void Microshell::m_CoreSetStringBorder(const char *pstrStringBorder) {
 #endif /*defined(uSHELL_IMPLEMENTS_STRINGS)*/
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreResetInput(const bool bFull) {
+void Microshell::m_CoreResetInput(const bool bFull)
+{
     memset(m_pstrInput, 0, sizeof(m_pstrInput));
     m_iInputPos = 0;
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
@@ -479,7 +510,8 @@ void Microshell::m_CoreResetInput(const bool bFull) {
 } /* m_CoreResetInput() */
 
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_CorePutString(const char *pstrArray) {
+inline void Microshell::m_CorePutString(const char *pstrArray)
+{
     while (*pstrArray) {
         uSHELL_PUTCH(*pstrArray++);
     }
@@ -488,12 +520,14 @@ inline void Microshell::m_CorePutString(const char *pstrArray) {
 /*----------------------------------------------------------------------------*/
 inline void Microshell::m_CoreRemoveTrailingSpaces(void)
 {
-    while(uSHELL_KEY_SPACE == m_pstrInput[--m_iInputPos]);
+    while (uSHELL_KEY_SPACE == m_pstrInput[--m_iInputPos])
+        ;
     m_pstrInput[++m_iInputPos] = '\0';
 } /* m_CoreRemoveTrailingSpaces() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreCmdLineDelete(void) {
+void Microshell::m_CoreCmdLineDelete(void)
+{
     m_CoreResetInput(false);
     uSHELL_PRINTF("\r\033[%dC\033[K", m_pInst->iPromptLength);
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
@@ -503,7 +537,8 @@ void Microshell::m_CoreCmdLineDelete(void) {
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
-inline void Microshell::m_CoreUpdatePrompt(const prompti_e ePromptIndex, const bool bOnOff) {
+inline void Microshell::m_CoreUpdatePrompt(const prompti_e ePromptIndex, const bool bOnOff)
+{
     m_pInst->vstrPrompt[ePromptIndex] = ((true == bOnOff) ? m_pstrPromptInfo[ePromptIndex] : tolower(m_pstrPromptInfo[ePromptIndex]));
 } /* m_CoreUpdatePrompt() */
 #endif /*(1 == uSHELL_IMPLEMENTS_SMART_PROMPT)*/
@@ -513,7 +548,8 @@ inline void Microshell::m_CoreUpdatePrompt(const prompti_e ePromptIndex, const b
 ==============================================================================*/
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreProcessKeyPress(const char cKeyPressed) {
+void Microshell::m_CoreProcessKeyPress(const char cKeyPressed)
+{
     m_CorePutString("\033[?25l"); /* hide cursor */
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
     if (true == m_sAutocomplete.bEnabled) {
@@ -580,7 +616,8 @@ void Microshell::m_CoreProcessKeyPress(const char cKeyPressed) {
 } /* m_CoreProcessKeyPress() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreExecuteEnterKey(void) {
+void Microshell::m_CoreExecuteEnterKey(void)
+{
     if (false == m_CoreHandleShortcuts()) {
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
         m_HistoryWrite();
@@ -590,7 +627,8 @@ void Microshell::m_CoreExecuteEnterKey(void) {
 } /*m_CoreExecuteEnterKey()*/
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyEnter(void) {
+void Microshell::m_CoreHandleKeyEnter(void)
+{
     m_CoreRemoveTrailingSpaces();
     if (m_iInputPos >= 0) {
         m_CorePutString(uSHELL_NEWLINE);
@@ -614,7 +652,8 @@ void Microshell::m_CoreHandleKeyEnter(void) {
 } /* m_CoreHandleKeyEnter() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyDefault(const char cKeyPressed) {
+void Microshell::m_CoreHandleKeyDefault(const char cKeyPressed)
+{
     if (true == uSHELL_ISPRINT(cKeyPressed)) {
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
         if ((true == m_bEditMode) && (m_iCursorPos < m_iInputPos)) {
@@ -623,7 +662,7 @@ void Microshell::m_CoreHandleKeyDefault(const char cKeyPressed) {
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
             if (m_iInputPos < (int)(sizeof(m_pstrInput) - 1)) {
                 *(m_pstrInput + m_iInputPos++) = cKeyPressed;
-                *(m_pstrInput + m_iInputPos) = '\0';
+                *(m_pstrInput + m_iInputPos)   = '\0';
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
                 if (true == m_bEditMode) {
                     m_iCursorPos = m_iInputPos;
@@ -650,7 +689,8 @@ void Microshell::m_CoreHandleKeyDefault(const char cKeyPressed) {
 } /* m_CoreHandleKeyDefault() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyEscapeSeq(void) {
+void Microshell::m_CoreHandleKeyEscapeSeq(void)
+{
     if (uSHELL_CORE_KEYHANDLE_SKIP_BRACKET) { /* skip the [ */
         switch (uSHELL_GETCH()) {             /* get the ecape sequence */
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_HISTORY)
@@ -743,12 +783,13 @@ void Microshell::m_CoreHandleKeyEscapeSeq(void) {
         default:
             break;
         } /* switch(uSHELL_GETCH()) */
-    }     /* uSHELL_CORE_KEYHANDLE_SKIP_BRACKET */
+    } /* uSHELL_CORE_KEYHANDLE_SKIP_BRACKET */
 } /* m_CoreHandleKeyEscapeSeq() */
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_HISTORY)
-void Microshell::m_CoreHandleKeyArrowUpDown(const dir_e eDir) {
+void Microshell::m_CoreHandleKeyArrowUpDown(const dir_e eDir)
+{
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
     if (true == m_bEditMode) {
         switch (eDir) {
@@ -776,7 +817,8 @@ void Microshell::m_CoreHandleKeyArrowUpDown(const dir_e eDir) {
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-void Microshell::m_CoreHandleKeyArrowLeftRight(const dir_e eDir) {
+void Microshell::m_CoreHandleKeyArrowLeftRight(const dir_e eDir)
+{
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
     if (false == m_EditMoveCursor(eDir)) {
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
@@ -797,7 +839,8 @@ void Microshell::m_CoreHandleKeyArrowLeftRight(const dir_e eDir) {
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
 #if !defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyInsert(void) {
+void Microshell::m_CoreHandleKeyInsert(void)
+{
     m_bEditMode = !m_bEditMode;
     if (m_iInputPos > 0) {
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
@@ -814,7 +857,8 @@ void Microshell::m_CoreHandleKeyInsert(void) {
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyDelete(void) {
+void Microshell::m_CoreHandleKeyDelete(void)
+{
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
     if (true == m_bEditMode) {
         m_EditDeleteUnderCursor();
@@ -827,7 +871,8 @@ void Microshell::m_CoreHandleKeyDelete(void) {
 } /* m_CoreHandleKeyDelete() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyBackspace(void) {
+void Microshell::m_CoreHandleKeyBackspace(void)
+{
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
     if (true == m_bEditMode) {
         m_EditDeleteBackward();
@@ -846,19 +891,22 @@ void Microshell::m_CoreHandleKeyBackspace(void) {
 } /* m_CoreHandleKeyBackspace() */
 
 /*----------------------------------------------------------------------------*/
-inline bool Microshell::m_CoreIsShortcutSymbol(const char cKey) {
+inline bool Microshell::m_CoreIsShortcutSymbol(const char cKey)
+{
     return (((cKey > 0x20) && (cKey < 0x30)) || ((cKey > 0x39) && (cKey < 0x41)) || ((cKey > 0x5A) && (cKey < 0x61)) || ((cKey > 0x7A) && (cKey < 0x7F)));
 } /* m_CoreIsShortcutSymbol() */
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_CoreHandleShortcuts(void) {
+bool Microshell::m_CoreHandleShortcuts(void)
+{
     bool bRetVal = false;
-    char cKey = *m_pstrInput;
+    char cKey    = *m_pstrInput;
     for (int i = 0; i < m_pInst->iNrShortcuts; ++i) {
         if (cKey == m_pInst->psShortcutsArray[i].cSymbol) {
             if (nullptr != m_pInst->psShortcutsArray[i].pfShortcut) {
                 char *pstrArgs = m_pstrInput;
-                while(uSHELL_KEY_SPACE == *(++pstrArgs));
+                while (uSHELL_KEY_SPACE == *(++pstrArgs))
+                    ;
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
                 if (i > 0) {
                     m_HistoryWrite();
@@ -882,8 +930,9 @@ bool Microshell::m_CoreHandleShortcuts(void) {
 } /* m_CoreHandleShortcuts() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleShortcut_Hash(const char *pstrArgs) {
-    int iError = 1;
+void Microshell::m_CoreHandleShortcut_Hash(const char *pstrArgs)
+{
+    int iError      = 1;
     const char cKey = *pstrArgs;
 
     if ('\0' != cKey) {
@@ -1011,7 +1060,7 @@ void Microshell::m_CoreHandleShortcut_Hash(const char *pstrArgs) {
         default: {
             iError = 2;
         } break;
-#endif    /*(1 == uSHELL_IMPLEMENTS_HISTORY)*/
+#endif /*(1 == uSHELL_IMPLEMENTS_HISTORY)*/
         } /*switch(...)*/
     } else {
         iError = 3; /*if(..)*/
@@ -1032,7 +1081,8 @@ void Microshell::m_CoreHandleShortcut_Hash(const char *pstrArgs) {
 } /* m_CoreHandleShortcut_Hash() */
 
 /*----------------------------------------------------------------------------*/
-int Microshell::m_CoreSearchFunction(const char *pstrFctName) {
+int Microshell::m_CoreSearchFunction(const char *pstrFctName)
+{
     for (int i = 0; i < m_pInst->iNrFunctions; ++i) {
         if (0 == strcmp(pstrFctName, m_pInst->psFuncDefArray[i].pstrFctName)) {
             return i;
@@ -1042,7 +1092,8 @@ int Microshell::m_CoreSearchFunction(const char *pstrFctName) {
 } /* m_CoreSearchFunction() */
 
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_CoreSetPrompt(const char *pstrPromptExt) {
+inline void Microshell::m_CoreSetPrompt(const char *pstrPromptExt)
+{
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
 #if (defined(uSHELL_IMPLEMENTS_STRINGS) && (1 == uSHELL_SUPPORTS_SPACED_STRINGS))
     uSHELL_SNPRINTF(m_pInst->vstrPrompt, sizeof(m_pInst->vstrPrompt), "%s%c:%s> ", m_pstrPrompt, m_cStringBorderSymbol, pstrPromptExt);
@@ -1061,7 +1112,8 @@ inline void Microshell::m_CoreSetPrompt(const char *pstrPromptExt) {
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)
-bool Microshell::m_CoreConfirmRequest(void) {
+bool Microshell::m_CoreConfirmRequest(void)
+{
     bool bConfirmed = false;
     m_CorePutString("Are you sure? (y/n): ");
     do {
@@ -1082,7 +1134,8 @@ bool Microshell::m_CoreConfirmRequest(void) {
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
-inline void Microshell::m_CoreExit(void) {
+inline void Microshell::m_CoreExit(void)
+{
 #if (1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)
     if (true == m_CoreConfirmRequest()) {
 #endif /* (1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)*/
@@ -1099,7 +1152,8 @@ inline void Microshell::m_CoreExit(void) {
 
 #if (1 == uSHELL_IMPLEMENTS_COMMAND_HELP)
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_CorePutChars(const char *pstrArray, int iNrChars, const bool bNewLine) {
+inline void Microshell::m_CorePutChars(const char *pstrArray, int iNrChars, const bool bNewLine)
+{
     while (0 < iNrChars--) {
         uSHELL_PUTCH(*pstrArray++);
     }
@@ -1109,7 +1163,8 @@ inline void Microshell::m_CorePutChars(const char *pstrArray, int iNrChars, cons
 } /* m_CorePutChars() */
 
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_CoreShowTypes(void) {
+inline void Microshell::m_CoreShowTypes(void)
+{
     uSHELL_PRINTF(FRMT(uSHELL_INFO_HEADER_COLOR, "%s\n\r\t"), "DATATYPES");
 
     for (int i = 0; i < uSHELL_DATA_TYPE_LAST; ++i) {
@@ -1119,7 +1174,8 @@ inline void Microshell::m_CoreShowTypes(void) {
 } /* m_CoreShowTypes() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreShowShortcuts(void) {
+void Microshell::m_CoreShowShortcuts(void)
+{
     uSHELL_PRINTF(FRMT(uSHELL_INFO_HEADER_COLOR, "%s\n\r"), "SHORTCUTS CORE");
     uSHELL_PRINTF(FRMT(uSHELL_INFO_BODY_COLOR, "%s"), m_pstrCoreShortcutCaption);
 
@@ -1132,7 +1188,8 @@ void Microshell::m_CoreShowShortcuts(void) {
 } /* m_CoreShowShortcuts() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreShowCmd(int iFctIndex) {
+void Microshell::m_CoreShowCmd(int iFctIndex)
+{
     uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%3d %15s : %-15s"), iFctIndex, m_pInst->psFuncDefArray[iFctIndex].pstrFctName, m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef);
 } /* m_CoreShowCmd() */
 
@@ -1143,7 +1200,8 @@ void Microshell::m_CoreShowCmd(int iFctIndex) {
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif /*defined (__GNUC__) && defined(__AVR__)*/
 
-void Microshell::m_CoreShowCmdInfo(const int iFctIndex, const bool bParamInfo) {
+void Microshell::m_CoreShowCmdInfo(const int iFctIndex, const bool bParamInfo)
+{
     if (false == bParamInfo) {
         m_CoreShowCmd(iFctIndex);
     } else {
@@ -1166,8 +1224,9 @@ void Microshell::m_CoreShowCmdInfo(const int iFctIndex, const bool bParamInfo) {
 #endif /*defined (__GNUC__) && defined(__AVR__)*/
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreShowInfo(const char *pstrArgs) {
-    bool bFound = false;
+void Microshell::m_CoreShowInfo(const char *pstrArgs)
+{
+    bool bFound     = false;
     BIGNUM_T numVal = 0;
 
     while (' ' == *pstrArgs) {
@@ -1200,7 +1259,8 @@ void Microshell::m_CoreShowInfo(const char *pstrArgs) {
 #endif /* (1 == uSHELL_IMPLEMENTS_COMMAND_HELP) */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreShowCmdsList(void) {
+void Microshell::m_CoreShowCmdsList(void)
+{
     uSHELL_PRINTF(FRMT(uSHELL_INFO_HEADER_COLOR, "%s\n"), "COMMANDS");
 #if (1 == uSHELL_IMPLEMENTS_COMMAND_HELP)
     for (int i = 0; i < m_pInst->iNrFunctions; ++i) {
@@ -1224,13 +1284,14 @@ void Microshell::m_CoreShowCmdsList(void) {
 void Microshell::m_CorePrintMessage(const int iFeatIdx, const int iStatIdx)
 {
     /*       index:                         0      1               2                 3          4           5           6               7                8                9           10         11              */
-    static const char *pstrFeatArray[] = { " ",   "autocomplete", "echo",            "history", "callback", "shortcut", "sub-shortcut", "args",          "command",       "fopen"                                };
-    static const char *pstrStatArray[] = { "off", "on",           "not implemented", "noentry", "failed",   "empty",    "reset",        "uninitialized", "not supported", "missing",  "nofile", "not registered" };
+    static const char *pstrFeatArray[] = {" ", "autocomplete", "echo", "history", "callback", "shortcut", "sub-shortcut", "args", "command", "fopen"};
+    static const char *pstrStatArray[] = {"off", "on", "not implemented", "noentry", "failed", "empty", "reset", "uninitialized", "not supported", "missing", "nofile", "not registered"};
     uSHELL_PRINTF(FRMT(uSHELL_WARNING_COLOR, ": %s %s\n"), pstrFeatArray[iFeatIdx], pstrStatArray[iStatIdx]);
 } /* m_CorePrintMessage() */
 
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_CorePrintPrompt(void) {
+inline void Microshell::m_CorePrintPrompt(void)
+{
     uSHELL_PRINTF(FRMT(uSHELL_PROMPT_COLOR, "%s"), m_pInst->vstrPrompt);
 } /*m_CorePrintPrompt() */
 
@@ -1241,25 +1302,29 @@ inline void Microshell::m_CorePrintPrompt(void) {
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryWriteLengthAt(char *pBuffer, size_t szCapacity, size_t szPos, uint16_t u16Len) {
-    pBuffer[szPos % szCapacity] = (u16Len >> 8) & 0xFF;
+void Microshell::m_HistoryWriteLengthAt(char *pBuffer, size_t szCapacity, size_t szPos, uint16_t u16Len)
+{
+    pBuffer[szPos % szCapacity]       = (u16Len >> 8) & 0xFF;
     pBuffer[(szPos + 1) % szCapacity] = u16Len & 0xFF;
 }
 
 /*----------------------------------------------------------------------------*/
-uint16_t Microshell::m_HistoryReadLengthAt(const char *pBuffer, size_t szCapacity, size_t szPos) {
+uint16_t Microshell::m_HistoryReadLengthAt(const char *pBuffer, size_t szCapacity, size_t szPos)
+{
     uint8_t u8High = pBuffer[szPos % szCapacity];
-    uint8_t u8Low = pBuffer[(szPos + 1) % szCapacity];
+    uint8_t u8Low  = pBuffer[(szPos + 1) % szCapacity];
     return (u8High << 8) | u8Low;
 }
 
 /*----------------------------------------------------------------------------*/
-inline size_t Microshell::m_HistoryEntryTotalSize(uint16_t u16DataLen) {
+inline size_t Microshell::m_HistoryEntryTotalSize(uint16_t u16DataLen)
+{
     return uSHELL_HISTORY_METADATA_SIZE + u16DataLen;
 }
 
 /*----------------------------------------------------------------------------*/
-size_t Microshell::m_HistoryCalculateUsedSpace(const history_s *pHistory) {
+size_t Microshell::m_HistoryCalculateUsedSpace(const history_s *pHistory)
+{
     if (pHistory->szEntryCount == 0) {
         return 0;
     }
@@ -1273,13 +1338,15 @@ size_t Microshell::m_HistoryCalculateUsedSpace(const history_s *pHistory) {
 }
 
 /*----------------------------------------------------------------------------*/
-size_t Microshell::m_HistoryFindNextEntryPos(const history_s *pHistory, size_t szPos) {
+size_t Microshell::m_HistoryFindNextEntryPos(const history_s *pHistory, size_t szPos)
+{
     uint16_t u16len = m_HistoryReadLengthAt(pHistory->pDataBuffer, pHistory->szDataBufferSize, szPos);
     return (szPos + m_HistoryEntryTotalSize(u16len)) % pHistory->szDataBufferSize;
 }
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryRemoveOldestEntry(history_s *pHistory) {
+void Microshell::m_HistoryRemoveOldestEntry(history_s *pHistory)
+{
     if (pHistory->szEntryCount == 0) {
         return;
     }
@@ -1289,17 +1356,18 @@ void Microshell::m_HistoryRemoveOldestEntry(history_s *pHistory) {
     pHistory->szEntryCount--;
 }
 
-void Microshell::m_HistoryInitCore(history_s *pHistory, char *pDataBuffer, size_t szCapacity) {
-    pHistory->pDataBuffer = pDataBuffer;
+void Microshell::m_HistoryInitCore(history_s *pHistory, char *pDataBuffer, size_t szCapacity)
+{
+    pHistory->pDataBuffer      = pDataBuffer;
     pHistory->szDataBufferSize = szCapacity;
-    pHistory->szDataHeadPos = 0;
+    pHistory->szDataHeadPos    = 0;
     pHistory->szOldestEntryPos = 0;
-    pHistory->szEntryCount = 0;
-    pHistory->szCurrentIndex = 0;
+    pHistory->szEntryCount     = 0;
+    pHistory->szCurrentIndex   = 0;
 
 #if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
     pHistory->pstrFilePath = NULL;
-    pHistory->bAutoSave = false;
+    pHistory->bAutoSave    = false;
 #endif
 
     // Clear buffer
@@ -1307,10 +1375,11 @@ void Microshell::m_HistoryInitCore(history_s *pHistory, char *pDataBuffer, size_
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryPush(history_s *pHistory, bool bTriggerAutosave) {
+bool Microshell::m_HistoryPush(history_s *pHistory, bool bTriggerAutosave)
+{
     // Trim m_pstrInput in place
     char *pstrTrimmed = trim_whitespace_inplace(m_pstrInput);
-    size_t szLen = strlen(pstrTrimmed);
+    size_t szLen      = strlen(pstrTrimmed);
 
     // Reject if empty or too large for uint16_t length field
     if (szLen == 0 || szLen > 65535) {
@@ -1335,7 +1404,7 @@ bool Microshell::m_HistoryPush(history_s *pHistory, bool bTriggerAutosave) {
             if (entry_len == szLen) {
                 // Lengths match, compare data
                 bool is_duplicate = true;
-                size_t data_pos = (szPos + 2) % pHistory->szDataBufferSize;
+                size_t data_pos   = (szPos + 2) % pHistory->szDataBufferSize;
                 for (size_t j = 0; j < szLen; j++) {
                     if (pHistory->pDataBuffer[(data_pos + j) % pHistory->szDataBufferSize] != pstrTrimmed[j]) {
                         is_duplicate = false;
@@ -1354,7 +1423,9 @@ bool Microshell::m_HistoryPush(history_s *pHistory, bool bTriggerAutosave) {
 
     // Remove oldest entries until we have enough space
     while (pHistory->szEntryCount > 0) {
-        if ((pHistory->szDataBufferSize - m_HistoryCalculateUsedSpace(pHistory)) >= szNeeded) break;
+        if ((pHistory->szDataBufferSize - m_HistoryCalculateUsedSpace(pHistory)) >= szNeeded) {
+            break;
+        }
         m_HistoryRemoveOldestEntry(pHistory);
     }
 
@@ -1378,7 +1449,7 @@ bool Microshell::m_HistoryPush(history_s *pHistory, bool bTriggerAutosave) {
 
     // Write trailing length (2 bytes) - enables backward traversal
     m_HistoryWriteLengthAt(pHistory->pDataBuffer, pHistory->szDataBufferSize, write_pos, (uint16_t)szLen);
-    write_pos = (write_pos + 2) % pHistory->szDataBufferSize;
+    write_pos               = (write_pos + 2) % pHistory->szDataBufferSize;
 
     // Update head position and counts
     pHistory->szDataHeadPos = write_pos;
@@ -1390,7 +1461,7 @@ bool Microshell::m_HistoryPush(history_s *pHistory, bool bTriggerAutosave) {
     if (bTriggerAutosave && pHistory->bAutoSave && pHistory->pstrFilePath) {
         m_HistoryAppendToFile(pHistory, pstrTrimmed);
     }
-#else 
+#else
     (void)bTriggerAutosave;
 #endif
 
@@ -1398,7 +1469,8 @@ bool Microshell::m_HistoryPush(history_s *pHistory, bool bTriggerAutosave) {
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryGetPrevEntry(history_s *pHistory, char *pBuffer, size_t szBufferSize) {
+bool Microshell::m_HistoryGetPrevEntry(history_s *pHistory, char *pBuffer, size_t szBufferSize)
+{
     if (pHistory->szEntryCount == 0) {
         return false;
     }
@@ -1413,7 +1485,8 @@ bool Microshell::m_HistoryGetPrevEntry(history_s *pHistory, char *pBuffer, size_
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryGetNextEntry(history_s *pHistory, char *pBuffer, size_t szBufferSize) {
+bool Microshell::m_HistoryGetNextEntry(history_s *pHistory, char *pBuffer, size_t szBufferSize)
+{
     if (pHistory->szEntryCount == 0) {
         return false;
     }
@@ -1424,12 +1497,14 @@ bool Microshell::m_HistoryGetNextEntry(history_s *pHistory, char *pBuffer, size_
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryGetFirstEntry(const history_s *pHistory, char *pBuffer, size_t szBufferSize) {
+bool Microshell::m_HistoryGetFirstEntry(const history_s *pHistory, char *pBuffer, size_t szBufferSize)
+{
     return m_HistoryGetEntryAtIndex(pHistory, 0, pBuffer, szBufferSize);
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryGetLastEntry(const history_s *pHistory, char *pBuffer, size_t szBufferSize) {
+bool Microshell::m_HistoryGetLastEntry(const history_s *pHistory, char *pBuffer, size_t szBufferSize)
+{
     if (pHistory->szEntryCount == 0) {
         return false;
     }
@@ -1437,19 +1512,22 @@ bool Microshell::m_HistoryGetLastEntry(const history_s *pHistory, char *pBuffer,
 }
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistorySetIndex(history_s *pHistory, size_t szIndex) {
+void Microshell::m_HistorySetIndex(history_s *pHistory, size_t szIndex)
+{
     if (szIndex < pHistory->szEntryCount) {
         pHistory->szCurrentIndex = szIndex;
     }
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryIsEmpty(const history_s *pHistory) {
+bool Microshell::m_HistoryIsEmpty(const history_s *pHistory)
+{
     return pHistory->szEntryCount == 0;
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryGetEntryAtIndex(const history_s *pHistory, size_t szIndex, char *pBuffer, size_t szBufferSize) {
+bool Microshell::m_HistoryGetEntryAtIndex(const history_s *pHistory, size_t szIndex, char *pBuffer, size_t szBufferSize)
+{
     if (szIndex >= pHistory->szEntryCount || szBufferSize == 0) {
         return false;
     }
@@ -1475,24 +1553,27 @@ bool Microshell::m_HistoryGetEntryAtIndex(const history_s *pHistory, size_t szIn
 }
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryClear(history_s *pHistory) {
-    pHistory->szDataHeadPos = 0;
+void Microshell::m_HistoryClear(history_s *pHistory)
+{
+    pHistory->szDataHeadPos    = 0;
     pHistory->szOldestEntryPos = 0;
-    pHistory->szEntryCount = 0;
-    pHistory->szCurrentIndex = 0;
+    pHistory->szEntryCount     = 0;
+    pHistory->szCurrentIndex   = 0;
 
     // Clear the buffer
     memset(pHistory->pDataBuffer, 0, pHistory->szDataBufferSize);
 }
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryGetFreeSpace(const history_s *pHistory, size_t *pszFreeBytes) {
+void Microshell::m_HistoryGetFreeSpace(const history_s *pHistory, size_t *pszFreeBytes)
+{
     size_t szUsedBytes = m_HistoryCalculateUsedSpace(pHistory);
-    *pszFreeBytes = pHistory->szDataBufferSize - szUsedBytes;
+    *pszFreeBytes      = pHistory->szDataBufferSize - szUsedBytes;
 }
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryShow(const history_s *pHistory) {
+void Microshell::m_HistoryShow(const history_s *pHistory)
+{
     if (m_HistoryIsEmpty(pHistory)) {
         m_CorePrintMessage(3, 5); /*pHistory empty*/
         return;
@@ -1522,18 +1603,21 @@ void Microshell::m_HistoryShow(const history_s *pHistory) {
 }
 
 /*----------------------------------------------------------------------------*/
-size_t Microshell::m_HistoryGetEntrySize(const history_s *pHistory) {
+size_t Microshell::m_HistoryGetEntrySize(const history_s *pHistory)
+{
     return pHistory->szEntryCount;
 }
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryIteratorInit(historyIter_s *pIter, const history_s *pHistory) {
+void Microshell::m_HistoryIteratorInit(historyIter_s *pIter, const history_s *pHistory)
+{
     pIter->pHistory = pHistory;
-    pIter->szIndex = 0;
+    pIter->szIndex  = 0;
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryIteratorNext(historyIter_s *pIter, char *pBuffer, size_t szBufferSize) {
+bool Microshell::m_HistoryIteratorNext(historyIter_s *pIter, char *pBuffer, size_t szBufferSize)
+{
     if (pIter->szIndex >= pIter->pHistory->szEntryCount) {
         return false;
     }
@@ -1546,12 +1630,14 @@ bool Microshell::m_HistoryIteratorNext(historyIter_s *pIter, char *pBuffer, size
 
 #if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistorySetFilePath(history_s *pHistory, const char *pstrFilePath) {
+void Microshell::m_HistorySetFilePath(history_s *pHistory, const char *pstrFilePath)
+{
     pHistory->pstrFilePath = (char *)pstrFilePath;
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryLoadFromFile(history_s *pHistory) {
+bool Microshell::m_HistoryLoadFromFile(history_s *pHistory)
+{
     if (!pHistory->pstrFilePath) {
         return false;
     }
@@ -1587,12 +1673,14 @@ bool Microshell::m_HistoryLoadFromFile(history_s *pHistory) {
 }
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryEnableAutoSave(history_s *pHistory, bool bEnable) {
+void Microshell::m_HistoryEnableAutoSave(history_s *pHistory, bool bEnable)
+{
     pHistory->bAutoSave = bEnable;
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryAppendToFile(history_s *pHistory, const char *pstrEntry) {
+bool Microshell::m_HistoryAppendToFile(history_s *pHistory, const char *pstrEntry)
+{
     if (!pHistory->pstrFilePath) {
         return false;
     }
@@ -1617,12 +1705,13 @@ bool Microshell::m_HistoryAppendToFile(history_s *pHistory, const char *pstrEntr
 
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryInit(const char *pstrFileName) {
+void Microshell::m_HistoryInit(const char *pstrFileName)
+{
     // Initialize the advanced history implementation (no separate metadata array)
     m_HistoryInitCore(&m_sHistory, m_historyBuffer, sizeof(m_historyBuffer));
 
     m_bHistoryInitialized = true;
-    m_bHistoryEnabled = uSHELL_INIT_HISTORY_MODE;
+    m_bHistoryEnabled     = uSHELL_INIT_HISTORY_MODE;
 
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
     m_CoreUpdatePrompt(uSHELL_PROMPTI_HISTORY, m_bHistoryEnabled);
@@ -1639,16 +1728,18 @@ void Microshell::m_HistoryInit(const char *pstrFileName) {
 } /* m_HistoryInit() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryDeInit(void) {
+void Microshell::m_HistoryDeInit(void)
+{
     if (true == m_bHistoryInitialized) {
         m_HistoryClear(&m_sHistory);
         m_bHistoryInitialized = false;
-        m_bHistoryEnabled = false;
+        m_bHistoryEnabled     = false;
     }
 } /* m_HistoryDeInit() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryRead(const dir_e eDir) {
+void Microshell::m_HistoryRead(const dir_e eDir)
+{
     if ((true == m_bHistoryEnabled) && (false == m_HistoryIsEmpty(&m_sHistory))) {
         // Clear the current line BEFORE loading pHistory into m_pstrInput
         m_CoreCmdLineDelete();
@@ -1669,7 +1760,8 @@ void Microshell::m_HistoryRead(const dir_e eDir) {
 } /* m_HistoryRead() */
 
 /*----------------------------------------------------------------------------*/
-char *Microshell::m_HistoryGetEntry(const int iIndex) {
+char *Microshell::m_HistoryGetEntry(const int iIndex)
+{
     if ((true == m_bHistoryInitialized) && (true == m_bHistoryEnabled)) {
         if (m_HistoryGetEntryAtIndex(&m_sHistory, (size_t)iIndex, m_pstrInput, sizeof(m_pstrInput))) {
             return m_pstrInput;
@@ -1679,7 +1771,8 @@ char *Microshell::m_HistoryGetEntry(const int iIndex) {
 } /* m_HistoryGetEntry() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryExecuteEntry(const char *pstrIndex) {
+void Microshell::m_HistoryExecuteEntry(const char *pstrIndex)
+{
     BIGNUM_T iIndex = 0;
     if (true == asc2int((pstrIndex), &iIndex)) {
         m_CoreCmdLineDelete();
@@ -1700,7 +1793,8 @@ void Microshell::m_HistoryExecuteEntry(const char *pstrIndex) {
 } /* m_HistoryExecuteEntry() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryWrite(void) {
+void Microshell::m_HistoryWrite(void)
+{
     if (true == m_bHistoryEnabled) {
         // Push to pHistory - it handles duplicates, trimming, and auto-save internally
         m_HistoryPush(&m_sHistory, true);
@@ -1708,7 +1802,8 @@ void Microshell::m_HistoryWrite(void) {
 } /* m_HistoryWrite() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryReset(void) {
+void Microshell::m_HistoryReset(void)
+{
     if (true == m_bHistoryInitialized) {
 #if (1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)
         if (true == m_CoreConfirmRequest()) {
@@ -1722,7 +1817,8 @@ void Microshell::m_HistoryReset(void) {
 } /* m_HistoryReset() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryList(void) {
+void Microshell::m_HistoryList(void)
+{
     if (true == m_bHistoryInitialized) {
         if (true == m_bHistoryEnabled) {
             m_HistoryShow(&m_sHistory);
@@ -1735,7 +1831,8 @@ void Microshell::m_HistoryList(void) {
 } /* m_HistoryList() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryEnable(bool bEnable) {
+void Microshell::m_HistoryEnable(bool bEnable)
+{
     if (true == m_bHistoryInitialized) {
         m_bHistoryEnabled = bEnable;
         m_CorePrintMessage(3, (int)bEnable); /* pHistory on/off*/
@@ -1748,7 +1845,8 @@ void Microshell::m_HistoryEnable(bool bEnable) {
 
 #if ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryReload(void) {
+void Microshell::m_HistoryReload(void)
+{
     if (true == m_bHistoryInitialized) {
         if (!m_HistoryLoadFromFile(&m_sHistory)) {
             m_CorePrintMessage(3, 10); /* pHistory nofile */
@@ -1759,7 +1857,8 @@ void Microshell::m_HistoryReload(void) {
 
 #if ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryInitFile(const char *pstrFileName) {
+void Microshell::m_HistoryInitFile(const char *pstrFileName)
+{
     uSHELL_SNPRINTF(m_HistoryFilePath, sizeof(m_HistoryFilePath), ".hist_%s", pstrFileName);
     m_HistorySetFilePath(&m_sHistory, m_HistoryFilePath);
 
@@ -1773,7 +1872,8 @@ void Microshell::m_HistoryInitFile(const char *pstrFileName) {
 ==============================================================================*/
 
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-void Microshell::m_AutocomplInit(void) {
+void Microshell::m_AutocomplInit(void)
+{
     m_sAutocomplete.bEnabled = uSHELL_INIT_AUTOCOMPL_MODE;
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
     m_CoreUpdatePrompt(uSHELL_PROMPTI_AUTOCOMPLETE, m_sAutocomplete.bEnabled);
@@ -1782,29 +1882,32 @@ void Microshell::m_AutocomplInit(void) {
 } /* m_AutocomplInit() */
 
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_AutocomplReInit(void) {
+inline void Microshell::m_AutocomplReInit(void)
+{
     if (true == m_sAutocomplete.bEnabled) {
         m_sAutocomplete.bFirstFilter = true;
     }
 } /* m_AutocomplReInit() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplReset(bool bReinit) {
+void Microshell::m_AutocomplReset(bool bReinit)
+{
     memset(m_pInst->piAutocompleteIndexArray, uSHELL_INVALID_VALUE, m_pInst->iNrFunctions);
-    m_sAutocomplete.iSearchPos = 0;
-    m_sAutocomplete.iSavedSearchPos = 0;
-    m_sAutocomplete.iSearchIndex = 0;
-    m_sAutocomplete.bFirstFilter = true;
+    m_sAutocomplete.iSearchPos       = 0;
+    m_sAutocomplete.iSavedSearchPos  = 0;
+    m_sAutocomplete.iSearchIndex     = 0;
+    m_sAutocomplete.bFirstFilter     = true;
     m_sAutocomplete.bFoundExactMatch = false;
-    m_sAutocomplete.iNrCrtElems = 0;
+    m_sAutocomplete.iNrCrtElems      = 0;
     m_AutocomplFill(bReinit);
 } /* m_AutocomplReset() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplGetCommon(void) {
+void Microshell::m_AutocomplGetCommon(void)
+{
     if (true == m_sAutocomplete.bEnabled) {
-        int iCount = 0;
-        bool bFound = false;
+        int iCount          = 0;
+        bool bFound         = false;
         const char *pstrRef = nullptr, *pstrCrt = nullptr;
         char cRef = '\0', cCrt = '\0';
 
@@ -1812,7 +1915,7 @@ void Microshell::m_AutocomplGetCommon(void) {
         if (m_sAutocomplete.iNrCrtElems > 0) {
             if (m_sAutocomplete.iNrCrtElems > 1) {
                 while (false == bFound) {
-                    iCount = 0;
+                    iCount  = 0;
                     pstrRef = m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[0]].pstrFctName;
                     for (int i = 1; i < m_sAutocomplete.iNrCrtElems; ++i) {
                         pstrCrt = m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[i]].pstrFctName;
@@ -1830,11 +1933,11 @@ void Microshell::m_AutocomplGetCommon(void) {
                     }
                 }
             } else { /*1 == m_sAutocomplete.iNrCrtElems */
-                m_sAutocomplete.iSearchPos = (int)strlen(m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[0]].pstrFctName);
+                m_sAutocomplete.iSearchPos       = (int)strlen(m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[0]].pstrFctName);
                 m_sAutocomplete.bFoundExactMatch = true;
             }
             for (int i = m_sAutocomplete.iSavedSearchPos; i < m_sAutocomplete.iSearchPos; ++i) {
-                char cCrtChar = (m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[0]].pstrFctName)[i];
+                char cCrtChar  = (m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[0]].pstrFctName)[i];
                 m_pstrInput[i] = cCrtChar;
                 ++m_iInputPos;
                 uSHELL_PUTCH(cCrtChar);
@@ -1847,7 +1950,8 @@ void Microshell::m_AutocomplGetCommon(void) {
 } /* m_AutocomplGetCommon() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplRead(const dir_e eDir) {
+void Microshell::m_AutocomplRead(const dir_e eDir)
+{
     if (true == m_sAutocomplete.bEnabled) {
         if (uSHELL_KEY_BACKSPACE == m_sAutocomplete.cPrevKey) {
             m_AutocomplReset(false);
@@ -1876,8 +1980,8 @@ void Microshell::m_AutocomplRead(const dir_e eDir) {
 #else
             strncpy(m_pstrInput, m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[m_sAutocomplete.iSearchIndex]].pstrFctName, sizeof(m_pstrInput) - 1);
 #endif /*(defined(__MINGW32__) || defined(_MSC_VER))*/
-            m_pstrInput[sizeof(m_pstrInput) - 1] = '\0';           
-            m_iInputPos = (int)strlen(m_pstrInput);
+            m_pstrInput[sizeof(m_pstrInput) - 1] = '\0';
+            m_iInputPos                          = (int)strlen(m_pstrInput);
             m_AutocomplInsEndSpace();
             uSHELL_PRINTF("\r\033[%dC\033[K%s", m_pInst->iPromptLength, m_pstrInput);
         }
@@ -1885,14 +1989,15 @@ void Microshell::m_AutocomplRead(const dir_e eDir) {
 } /* m_AutocomplRead() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplFilter(void) {
+void Microshell::m_AutocomplFilter(void)
+{
     int iCount = 0, iIndex = 0;
-    int iLimit = (true == m_sAutocomplete.bFirstFilter) ? m_pInst->iNrFunctions : m_sAutocomplete.iNrCrtElems;
-    const char *pstrCrtItem = nullptr;
+    int iLimit                      = (true == m_sAutocomplete.bFirstFilter) ? m_pInst->iNrFunctions : m_sAutocomplete.iNrCrtElems;
+    const char *pstrCrtItem         = nullptr;
 
     m_sAutocomplete.iSavedSearchPos = (int)strlen(m_pstrInput);
     for (int i = 0; i < iLimit; ++i) {
-        iIndex = (true == m_sAutocomplete.bFirstFilter) ? i : m_pInst->piAutocompleteIndexArray[i];
+        iIndex      = (true == m_sAutocomplete.bFirstFilter) ? i : m_pInst->piAutocompleteIndexArray[i];
         pstrCrtItem = m_pInst->psFuncDefArray[iIndex].pstrFctName;
         if (0 == strncmp(pstrCrtItem, m_pstrInput, m_sAutocomplete.iSavedSearchPos)) {
             m_pInst->piAutocompleteIndexArray[iCount++] = iIndex;
@@ -1905,7 +2010,8 @@ void Microshell::m_AutocomplFilter(void) {
 } /* m_AutocomplFilter() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplFill(const bool bFull) {
+void Microshell::m_AutocomplFill(const bool bFull)
+{
     if (true == bFull) {
         for (int i = 0; i < m_pInst->iNrFunctions; ++i) {
             m_pInst->piAutocompleteIndexArray[i] = i;
@@ -1917,16 +2023,18 @@ void Microshell::m_AutocomplFill(const bool bFull) {
 } /* m_AutocomplFill() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplInsEndSpace(void) {
+void Microshell::m_AutocomplInsEndSpace(void)
+{
     if ((true == m_sAutocomplete.bFoundExactMatch)) {
         m_pstrInput[m_iInputPos++] = uSHELL_KEY_SPACE;
-        m_pstrInput[m_iInputPos] = '\0';
+        m_pstrInput[m_iInputPos]   = '\0';
         uSHELL_PUTCH(uSHELL_KEY_SPACE);
     }
 } /* m_AutocomplInsEndSpace() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplEnable(const bool bEnable) {
+void Microshell::m_AutocomplEnable(const bool bEnable)
+{
     m_sAutocomplete.bEnabled = bEnable;
     m_CorePrintMessage(1, (int)bEnable); /* autocomplete on/off */
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
@@ -1941,7 +2049,8 @@ void Microshell::m_AutocomplEnable(const bool bEnable) {
 
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditMoveCursorDirSteps(const dir_e eDir, const int iSteps) {
+void Microshell::m_EditMoveCursorDirSteps(const dir_e eDir, const int iSteps)
+{
     if (iSteps > 1) {
         uSHELL_PRINTF("\033[%d%c", iSteps, ((uSHELL_DIR_FORWARD == eDir) ? 'C' : 'D'));
     } else {
@@ -1950,7 +2059,8 @@ void Microshell::m_EditMoveCursorDirSteps(const dir_e eDir, const int iSteps) {
 } /*m_EditMoveCursorDirSteps() */
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_EditMoveCursor(const dir_e eDir) {
+bool Microshell::m_EditMoveCursor(const dir_e eDir)
+{
     if (true == m_bEditMode) {
         switch (eDir) {
         case uSHELL_DIR_FORWARD: {
@@ -1988,7 +2098,8 @@ bool Microshell::m_EditMoveCursor(const dir_e eDir) {
 } /*m_EditMoveCursor()*/
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditDeleteUnderCursor(void) {
+void Microshell::m_EditDeleteUnderCursor(void)
+{
     if ((m_iInputPos > 0) && (m_iInputPos > m_iCursorPos)) {
         for (int i = 0; i < (m_iInputPos - m_iCursorPos); ++i) {
             *(m_pstrInput + (m_iCursorPos + i)) = *(m_pstrInput + (m_iCursorPos + i + 1));
@@ -2003,7 +2114,8 @@ void Microshell::m_EditDeleteUnderCursor(void) {
 } /* m_EditDeleteUnderCursor() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditDeleteBackward(void) {
+void Microshell::m_EditDeleteBackward(void)
+{
     if (m_iCursorPos > 0) {
         for (int i = 0; i < (m_iInputPos - m_iCursorPos + 1); ++i) {
             *(m_pstrInput + (m_iCursorPos + i - 1)) = *(m_pstrInput + (m_iCursorPos + i));
@@ -2018,7 +2130,8 @@ void Microshell::m_EditDeleteBackward(void) {
 } /* m_EditDeleteBackward() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditInsertUnderCursor(const char cKeyPressed) {
+void Microshell::m_EditInsertUnderCursor(const char cKeyPressed)
+{
     if (m_iInputPos < ((int)(sizeof(m_pstrInput) - 1))) {
         int iCrtMovePos = m_iInputPos;
         while (iCrtMovePos >= m_iCursorPos) {
@@ -2026,13 +2139,14 @@ void Microshell::m_EditInsertUnderCursor(const char cKeyPressed) {
             --iCrtMovePos;
         }
         *(m_pstrInput + m_iCursorPos++) = cKeyPressed;
-        *(m_pstrInput + ++m_iInputPos) = '\0';
+        *(m_pstrInput + ++m_iInputPos)  = '\0';
         uSHELL_PRINTF("%s\33[%dD", (m_pstrInput + m_iCursorPos - 1), (m_iInputPos - m_iCursorPos));
     }
 } /* m_EditInsertUnderCursor() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditDeleteBackwardToHome(void) {
+void Microshell::m_EditDeleteBackwardToHome(void)
+{
     if (m_iCursorPos > 0) {
         int iLen = m_iInputPos - m_iCursorPos;
         if (iLen > 0) {
@@ -2041,7 +2155,7 @@ void Microshell::m_EditDeleteBackwardToHome(void) {
             }
             memset(&m_pstrInput[iLen], 0, m_iCursorPos);
             m_iCursorPos = 0;
-            m_iInputPos = iLen;
+            m_iInputPos  = iLen;
             uSHELL_PRINTF("\r\033[%dC\033[K%s\033[%dD", m_pInst->iPromptLength, m_pstrInput, iLen);
         } else {
             m_CoreCmdLineDelete();
@@ -2053,7 +2167,8 @@ void Microshell::m_EditDeleteBackwardToHome(void) {
 } /* m_EditDeleteBackwardToHome() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditDeleteForwardToEnd(void) {
+void Microshell::m_EditDeleteForwardToEnd(void)
+{
     int iLen = m_iInputPos - m_iCursorPos;
     if (iLen > 0) {
         if (m_iCursorPos > 0) {
@@ -2072,7 +2187,8 @@ void Microshell::m_EditDeleteForwardToEnd(void) {
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_KEY_DECODER)
-void Microshell::keydecoder(void) {
+void Microshell::keydecoder(void)
+{
     char cRead;
     m_CorePutString(":exit:$\n\r");
     do {
@@ -2090,15 +2206,15 @@ void Microshell::keydecoder(void) {
             PRIVATE VARIABLES INITIALIZATION
 ==============================================================================*/
 
-uShellInst_s *Microshell::m_pInst = nullptr;
-command_s Microshell::m_sCommand = {};
+uShellInst_s *Microshell::m_pInst                      = nullptr;
+command_s Microshell::m_sCommand                       = {};
 char Microshell::m_pstrInput[uSHELL_MAX_INPUT_BUF_LEN] = {0};
-int Microshell::m_iInputPos = 0;
-int Microshell::m_iCursorPos = 0;
+int Microshell::m_iInputPos                            = 0;
+int Microshell::m_iCursorPos                           = 0;
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 uShellInst_s *Microshell::m_pInstBackup = nullptr;
-int  Microshell::m_iInstanceCounter = 0;
+int Microshell::m_iInstanceCounter      = 0;
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
 
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
@@ -2107,10 +2223,10 @@ autocomplete_s Microshell::m_sAutocomplete = {};
 
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
 /* New pHistory implementation static variables */
-history_s Microshell::m_sHistory = {};
+history_s Microshell::m_sHistory                             = {};
 char Microshell::m_historyBuffer[uSHELL_HISTORY_BUFFER_SIZE] = {0};
-bool Microshell::m_bHistoryEnabled = false;
-bool Microshell::m_bHistoryInitialized = false;
+bool Microshell::m_bHistoryEnabled                           = false;
+bool Microshell::m_bHistoryInitialized                       = false;
 #if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
 char Microshell::m_HistoryFilePath[uSHELL_HISTORY_FILEPATH_LENGTH] = {0};
 #endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)*/
@@ -2133,48 +2249,52 @@ char Microshell::m_cStringBorderSymbol = uSHELL_KEY_QUOTATION_MARK;
 #endif /*(defined(uSHELL_IMPLEMENTS_STRINGS) && (1 == uSHELL_SUPPORTS_SPACED_STRINGS))*/
 
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
-#define  uSHELL_PROMPT_TABLE_BEGIN      char Microshell::m_pstrPrompt[uSHELL_PROMPTI_LAST + 1] = ""
-#define  uSHELL_PROMPT_CELL(a, b, c)        ":"
-#define  uSHELL_PROMPT_TABLE_END        ;
+#define uSHELL_PROMPT_TABLE_BEGIN   char Microshell::m_pstrPrompt[uSHELL_PROMPTI_LAST + 1] = ""
+#define uSHELL_PROMPT_CELL(a, b, c) ":"
+#define uSHELL_PROMPT_TABLE_END     ;
 #include uSHELL_PROMPT_CONFIG_FILE
-#undef   uSHELL_PROMPT_TABLE_BEGIN
-#undef   uSHELL_PROMPT_CELL
-#undef   uSHELL_PROMPT_TABLE_END
+#undef uSHELL_PROMPT_TABLE_BEGIN
+#undef uSHELL_PROMPT_CELL
+#undef uSHELL_PROMPT_TABLE_END
 
-#define  uSHELL_PROMPT_TABLE_BEGIN      const char Microshell::m_pstrPromptInfo[uSHELL_PROMPTI_LAST + 1] = ""
-#define  uSHELL_PROMPT_CELL(a, b, c)        #b
-#define  uSHELL_PROMPT_TABLE_END        ;
+#define uSHELL_PROMPT_TABLE_BEGIN   const char Microshell::m_pstrPromptInfo[uSHELL_PROMPTI_LAST + 1] = ""
+#define uSHELL_PROMPT_CELL(a, b, c) #b
+#define uSHELL_PROMPT_TABLE_END     ;
 #include uSHELL_PROMPT_CONFIG_FILE
-#undef   uSHELL_PROMPT_TABLE_BEGIN
-#undef   uSHELL_PROMPT_CELL
-#undef   uSHELL_PROMPT_TABLE_END
+#undef uSHELL_PROMPT_TABLE_BEGIN
+#undef uSHELL_PROMPT_CELL
+#undef uSHELL_PROMPT_TABLE_END
 
-#define  uSHELL_PROMPT_TABLE_BEGIN      const char Microshell::m_pstrPromptInfoEditMode[uSHELL_PROMPTI_LAST + 1] = ""
-#define  uSHELL_PROMPT_CELL(a, b, c)        #c
-#define  uSHELL_PROMPT_TABLE_END        ;
+#define uSHELL_PROMPT_TABLE_BEGIN   const char Microshell::m_pstrPromptInfoEditMode[uSHELL_PROMPTI_LAST + 1] = ""
+#define uSHELL_PROMPT_CELL(a, b, c) #c
+#define uSHELL_PROMPT_TABLE_END     ;
 #include uSHELL_PROMPT_CONFIG_FILE
-#undef   uSHELL_PROMPT_TABLE_BEGIN
-#undef   uSHELL_PROMPT_CELL
-#undef   uSHELL_PROMPT_TABLE_END
+#undef uSHELL_PROMPT_TABLE_BEGIN
+#undef uSHELL_PROMPT_CELL
+#undef uSHELL_PROMPT_TABLE_END
 #endif /*(1 == uSHELL_IMPLEMENTS_SMART_PROMPT)*/
 
 #if (1 == uSHELL_IMPLEMENTS_COMMAND_HELP)
-#define  uSHELL_DATA_TYPES_TABLE_BEGIN  const char Microshell::m_vstrTypeMarks[uSHELL_TYPE_LAST] = {
-#define  uSHELL_DATA_TYPE(a, b)             b,
-#define  uSHELL_DATA_TYPES_TABLE_END    };
+#define uSHELL_DATA_TYPES_TABLE_BEGIN const char Microshell::m_vstrTypeMarks[uSHELL_TYPE_LAST] = {
+#define uSHELL_DATA_TYPE(a, b)        b,
+#define uSHELL_DATA_TYPES_TABLE_END \
+    }                               \
+    ;
 #include uSHELL_DATA_TYPES_CONFIG_FILE
-#undef   uSHELL_DATA_TYPES_TABLE_BEGIN
-#undef   uSHELL_DATA_TYPE
-#undef   uSHELL_DATA_TYPES_TABLE_END
+#undef uSHELL_DATA_TYPES_TABLE_BEGIN
+#undef uSHELL_DATA_TYPE
+#undef uSHELL_DATA_TYPES_TABLE_END
 #endif /*(1 == uSHELL_IMPLEMENTS_COMMAND_HELP)*/
 
-#define  uSHELL_DATA_TYPES_TABLE_BEGIN  const char *Microshell::m_vstrTypeNames[uSHELL_TYPE_LAST] = {
-#define  uSHELL_DATA_TYPE(a, b)             #a,
-#define  uSHELL_DATA_TYPES_TABLE_END    };
+#define uSHELL_DATA_TYPES_TABLE_BEGIN const char *Microshell::m_vstrTypeNames[uSHELL_TYPE_LAST] = {
+#define uSHELL_DATA_TYPE(a, b)        #a,
+#define uSHELL_DATA_TYPES_TABLE_END \
+    }                               \
+    ;
 #include uSHELL_DATA_TYPES_CONFIG_FILE
-#undef   uSHELL_DATA_TYPES_TABLE_BEGIN
-#undef   uSHELL_DATA_TYPE
-#undef   uSHELL_DATA_TYPES_TABLE_END
+#undef uSHELL_DATA_TYPES_TABLE_BEGIN
+#undef uSHELL_DATA_TYPE
+#undef uSHELL_DATA_TYPES_TABLE_END
 
 const char *Microshell::m_pstrCoreShortcutCaption = "\t##|#|i|s : info short|all|i|substr s\n\r"
 #if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
@@ -2197,4 +2317,4 @@ const char *Microshell::m_pstrCoreShortcutCaption = "\t##|#|i|s : info short|all
 #if (1 == uSHELL_IMPLEMENTS_KEY_DECODER)
                                                     "\t#k : keydecoder\n\r"
 #endif /*(1 == uSHELL_IMPLEMENTS_KEY_DECODER)*/
-                                                    ;
+    ;

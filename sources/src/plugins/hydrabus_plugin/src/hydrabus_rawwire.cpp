@@ -23,9 +23,9 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
+#include <span>
 #include <stddef.h>
 #include <stdint.h>
-#include <span>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -34,20 +34,20 @@
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+#undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR   "HB_RAWWIRE |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR        "HB_RAWWIRE |"
+#define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "RAWWIRE"
 
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_help(const std::string&, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_rawwire_help(const std::string &, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
@@ -56,38 +56,54 @@ bool HydrabusPlugin::m_handle_rawwire_help(const std::string&, std::stop_token /
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_cfg(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_rawwire_cfg(const std::string &args, std::stop_token /*st*/) const
 {
-    auto* p = m_rawwire();
+    auto *p = m_rawwire();
 
     if (args == "help" || args == "?") {
         if (p) {
             LOG_PRINT(LOG_EMPTY,
-                      LOG_STRING("polarity="); LOG_INT(p->get_polarity());
-                      LOG_STRING("wires=");    LOG_INT(p->get_wires());
-                      LOG_STRING("gpio=");     LOG_INT(p->get_gpio_mode()));
+                      LOG_STRING("polarity=");
+                      LOG_INT(p->get_polarity());
+                      LOG_STRING("wires="); LOG_INT(p->get_wires());
+                      LOG_STRING("gpio="); LOG_INT(p->get_gpio_mode()));
         }
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg polarity=[0|1] wires=[2|3] gpio=[0|1]"));
         return true;
     }
-    if (!p) return false;
+    if (!p) {
+        return false;
+    }
 
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
 
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
+        if (kv.size() != 2) {
+            continue;
+        }
 
         uint8_t v = 0;
-        if (!numeric::str2uint8(kv[1], v)) return false;
+        if (!numeric::str2uint8(kv[1], v)) {
+            return false;
+        }
 
-        if      (kv[0] == "polarity") { if (!p->set_polarity(v))   return false; }
-        else if (kv[0] == "wires")    { if (!p->set_wires(v))      return false; }
-        else if (kv[0] == "gpio")     { if (!p->set_gpio_mode(v))  return false; }
-        else {
+        if (kv[0] == "polarity") {
+            if (!p->set_polarity(v)) {
+                return false;
+            }
+        } else if (kv[0] == "wires") {
+            if (!p->set_wires(v)) {
+                return false;
+            }
+        } else if (kv[0] == "gpio") {
+            if (!p->set_gpio_mode(v)) {
+                return false;
+            }
+        } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown key:"); LOG_STRING(kv[0]));
             return false;
         }
@@ -99,7 +115,7 @@ bool HydrabusPlugin::m_handle_rawwire_cfg(const std::string& args, std::stop_tok
 //                       SPEED                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_speed(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_rawwire_speed(const std::string &args, std::stop_token /*st*/) const
 {
     return generic_module_set_speed<HydrabusPlugin>(this, PROTOCOL_NAME, args);
 }
@@ -108,14 +124,16 @@ bool HydrabusPlugin::m_handle_rawwire_speed(const std::string& args, std::stop_t
 //                       SDA                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_sda(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_rawwire_sda(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: sda [0|1]"));
         return true;
     }
-    auto* p = m_rawwire();
-    if (!p) return false;
+    auto *p = m_rawwire();
+    if (!p) {
+        return false;
+    }
 
     uint8_t v = 0;
     if (!numeric::str2uint8(args, v)) {
@@ -129,16 +147,20 @@ bool HydrabusPlugin::m_handle_rawwire_sda(const std::string& args, std::stop_tok
 //                       CLK                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_clk(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_rawwire_clk(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: clk [0|1|tick]"));
         return true;
     }
-    auto* p = m_rawwire();
-    if (!p) return false;
+    auto *p = m_rawwire();
+    if (!p) {
+        return false;
+    }
 
-    if (args == "tick") return p->clock(st);
+    if (args == "tick") {
+        return p->clock(st);
+    }
 
     uint8_t v = 0;
     if (!numeric::str2uint8(args, v)) {
@@ -153,15 +175,17 @@ bool HydrabusPlugin::m_handle_rawwire_clk(const std::string& args, std::stop_tok
 ///////////////////////////////////////////////////////////////////
 
 // bit N HEXBYTE  – send N bits from HEXBYTE (e.g. "bit 7 A5")
-bool HydrabusPlugin::m_handle_rawwire_bit(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_rawwire_bit(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: bit N HEXBYTE  (e.g. bit 7 A5 – send 7 bits of 0xA5)"));
         return true;
     }
-    auto* p = m_rawwire();
-    if (!p) return false;
+    auto *p = m_rawwire();
+    if (!p) {
+        return false;
+    }
 
     std::vector<std::string> parts;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
@@ -189,14 +213,16 @@ bool HydrabusPlugin::m_handle_rawwire_bit(const std::string& args, std::stop_tok
 //                       TICKS                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_ticks(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_rawwire_ticks(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: ticks N  (1-16)"));
         return true;
     }
-    auto* p = m_rawwire();
-    if (!p) return false;
+    auto *p = m_rawwire();
+    if (!p) {
+        return false;
+    }
 
     size_t n = 0;
     if (!numeric::str2sizet(args, n) || n == 0 || n > 16) {
@@ -210,14 +236,16 @@ bool HydrabusPlugin::m_handle_rawwire_ticks(const std::string& args, std::stop_t
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_write(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_rawwire_write(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
         return true;
     }
-    auto* p = m_rawwire();
-    if (!p) return false;
+    auto *p = m_rawwire();
+    if (!p) {
+        return false;
+    }
 
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(args, data) || data.empty() || data.size() > 16) {
@@ -237,14 +265,16 @@ bool HydrabusPlugin::m_handle_rawwire_write(const std::string& args, std::stop_t
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_read(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_rawwire_read(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
         return true;
     }
-    auto* p = m_rawwire();
-    if (!p) return false;
+    auto *p = m_rawwire();
+    if (!p) {
+        return false;
+    }
 
     size_t n = 0;
     if (!numeric::str2sizet(args, n) || n == 0) {
@@ -260,7 +290,7 @@ bool HydrabusPlugin::m_handle_rawwire_read(const std::string& args, std::stop_to
 //                       AUX                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_aux(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_rawwire_aux(const std::string &args, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(args, m_rawwire());
 }

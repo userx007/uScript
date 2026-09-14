@@ -6,10 +6,10 @@ http://dangerousprototypes.com/docs/Bitbang
 #include "uLogger.hpp"
 #include "uNumeric.hpp"
 
-#include <stdint.h>
 #include <algorithm>
 #include <map>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <utility>
@@ -20,14 +20,13 @@ http://dangerousprototypes.com/docs/Bitbang
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR     "BPIRATE_MODE|"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "BPIRATE_MODE|"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //            PUBLIC INTERFACES IMPLEMENTATION                   //
@@ -35,7 +34,7 @@ http://dangerousprototypes.com/docs/Bitbang
 
 bool BuspiratePlugin::m_handle_mode(const std::string &args, std::stop_token st) const
 {
-    bool bRetVal = false;
+    bool bRetVal   = false;
     bool bShowHelp = false;
 
     if ("help" == args) {
@@ -53,11 +52,11 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args, std::stop_token st)
             std::vector<uint8_t> request(it->second.iRepetition);
             std::fill(request.begin(), request.end(), it->second.iRequest);
             // answer
-            std::string strExpect { it->second.strAnswer };
+            std::string strExpect{it->second.strAnswer};
 
             if (0 == strExpect.compare("-")) {
                 uint8_t response[sizeof(m_positive_response)] = {};
-                bRetVal = generic_uart_send_receive(request, numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
+                bRetVal                                       = generic_uart_send_receive(request, numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
             } else {
                 std::vector<uint8_t> expected(strExpect.begin(), strExpect.end());
                 std::vector<uint8_t> response(expected.size());
@@ -70,7 +69,7 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args, std::stop_token st)
         }
     }
 
-    if(true == bShowHelp) {
+    if (true == bShowHelp) {
         std::string strModeList;
         for (auto it : m_mapModes) {
             strModeList += it.first;
@@ -80,5 +79,4 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args, std::stop_token st)
     }
 
     return bRetVal;
-
 }

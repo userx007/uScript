@@ -8,11 +8,9 @@
 class IScriptReader
 {
 public:
+    virtual bool readScript(std::vector<ScriptRawLine> &vRawLines) = 0;
 
-    virtual bool readScript(std::vector<ScriptRawLine>& vRawLines) = 0;
-
-    virtual ~IScriptReader() = default;
-
+    virtual ~IScriptReader()                                       = default;
 };
 
 #endif // ISCRIPTREADER_HPP

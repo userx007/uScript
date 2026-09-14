@@ -3,20 +3,20 @@
 #include "ICommDriver.hpp"
 #include "ICommDumpProtocol.hpp"
 
+#include <linux/can.h>
+#include <linux/can/raw.h>
+#include <net/if.h>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <string_view>
-#include <linux/can.h>
-#include <stdint.h>
-#include <linux/can/raw.h>
-#include <net/if.h>
 #include <sys/socket.h>
 
 class RealCommDriver : public ICommDriver
 {
 public:
-    explicit RealCommDriver(const std::string& interfaceName);
+    explicit RealCommDriver(const std::string &interfaceName);
     ~RealCommDriver() override;
 
     bool is_open() const override;
@@ -27,14 +27,14 @@ public:
         uint32_t u32WriteTimeout,
         std::span<const uint8_t> data,
         std::string_view xtra_params = {},
-        std::stop_token stop_tok = {}) const override;
+        std::stop_token stop_tok     = {}) const override;
 
     ReadResult tout_read(
         uint32_t u32ReadTimeout,
         std::span<uint8_t> buffer,
-        const ReadOptions& opts,
+        const ReadOptions &opts,
         std::string_view xtra_params = {},
-        std::stop_token stop_tok = {}) const override;
+        std::stop_token stop_tok     = {}) const override;
 
 private:
     int m_socket = -1;
@@ -43,6 +43,6 @@ private:
     struct ifreq ifr;
     struct sockaddr_can addr;
 
-    bool init(const std::string& iface);
+    bool init(const std::string &iface);
     uint32_t parse_can_id(std::string_view xtra_params) const;
 };

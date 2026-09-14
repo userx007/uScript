@@ -13,17 +13,17 @@
  *        so every uVector*.hpp/.cpp file can #include this one header
  *        instead of repeating the #if defined(_WIN32) / #elif
  *        defined(__linux__) dance itself.
-*/
+ */
 
 #if defined(_WIN32)
-#  include <windows.h>
-#  include <vxlapi.h>
+#include <vxlapi.h>
+#include <windows.h>
 #elif defined(__linux__)
-#  include <cstdint>
-#  include <unistd.h>
-#  include <vxlapi_linux.h>
+#include <cstdint>
+#include <unistd.h>
+#include <vxlapi_linux.h>
 #else
-#  error "vxlapi_platform.hpp: Vector's XL Driver Library ships for Windows and Linux only."
+#error "vxlapi_platform.hpp: Vector's XL Driver Library ships for Windows and Linux only."
 #endif
 
 #endif // U_VECTOR_VXLAPI_PLATFORM_H

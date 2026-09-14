@@ -3,11 +3,10 @@
 
 class IScriptRunner
 {
-    public:
+public:
+    virtual bool runScript(const char *pstrCallCtx, bool bRealExec, bool bUseDryRun) = 0;
 
-        virtual bool runScript(const char *pstrCallCtx, bool bRealExec, bool bUseDryRun) = 0;
-
-        virtual ~IScriptRunner() = default;
+    virtual ~IScriptRunner()                                                         = default;
 };
 
 #endif // I_SCRIPT_RUNNER_HPP

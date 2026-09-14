@@ -17,14 +17,16 @@
 //                      open / close                             //
 ///////////////////////////////////////////////////////////////////
 
-FT232HUART::Status FT232HUART::open(const UartConfig& config, uint8_t u8DeviceIndex)
+FT232HUART::Status FT232HUART::open(const UartConfig &config, uint8_t u8DeviceIndex)
 {
-    if (m_hDevice)
+    if (m_hDevice) {
         close();
+    }
 
     Status s = open_device(u8DeviceIndex);
-    if (s != Status::SUCCESS)
+    if (s != Status::SUCCESS) {
         return s;
+    }
 
     s = apply_config(config);
     if (s != Status::SUCCESS) {
@@ -36,7 +38,6 @@ FT232HUART::Status FT232HUART::open(const UartConfig& config, uint8_t u8DeviceIn
     return Status::SUCCESS;
 }
 
-
 bool FT232HUART::is_open() const
 {
     return m_hDevice != nullptr;
@@ -46,14 +47,16 @@ bool FT232HUART::is_open() const
 //                  configure / set_baud                         //
 ///////////////////////////////////////////////////////////////////
 
-FT232HUART::Status FT232HUART::configure(const UartConfig& config)
+FT232HUART::Status FT232HUART::configure(const UartConfig &config)
 {
-    if (!m_hDevice)
+    if (!m_hDevice) {
         return Status::PORT_ACCESS;
+    }
 
     Status s = apply_config(config);
-    if (s == Status::SUCCESS)
+    if (s == Status::SUCCESS) {
         m_config = config;
+    }
 
     return s;
 }
@@ -64,4 +67,3 @@ FT232HUART::Status FT232HUART::set_baud(uint32_t baudRate)
     updated.baudRate   = baudRate;
     return configure(updated);
 }
-

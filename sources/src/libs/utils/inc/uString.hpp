@@ -2,18 +2,18 @@
 #define USTRING_UTILS_H
 
 #include <algorithm>
-#include <utility>
-#include <sstream>
-#include <vector>
-#include <string>
-#include <regex>
-#include <unordered_map>
-#include <string_view>
-#include <span>
 #include <cctype>
+#include <charconv>
 #include <cstdint>
 #include <optional>
-#include <charconv>
+#include <regex>
+#include <span>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -22,8 +22,7 @@
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-namespace ustring
-{
+namespace ustring {
 
 /*========================================================================================================*/
 /*                                      WHITESPACE & TRIMMING                                             */
@@ -58,7 +57,7 @@ inline bool is_alnum(char ch) noexcept
 inline std::string trim(std::string_view input)
 {
     auto start = std::find_if_not(input.begin(), input.end(), is_space);
-    auto end = std::find_if_not(input.rbegin(), input.rend(), is_space).base();
+    auto end   = std::find_if_not(input.rbegin(), input.rend(), is_space).base();
     return (start < end) ? std::string(start, end) : std::string();
 }
 
@@ -83,7 +82,7 @@ inline std::string trim_right(std::string_view input)
 /**
  * @brief Trims leading and trailing whitespace in place
  */
-inline void trimInPlace(std::string& input)
+inline void trimInPlace(std::string &input)
 {
     // Trim leading
     input.erase(input.begin(), std::find_if_not(input.begin(), input.end(), is_space));
@@ -94,9 +93,9 @@ inline void trimInPlace(std::string& input)
 /**
  * @brief Trims leading and trailing whitespace from each string in a vector
  */
-inline void trimInPlace(std::vector<std::string>& vstr)
+inline void trimInPlace(std::vector<std::string> &vstr)
 {
-    for (auto& str : vstr) {
+    for (auto &str : vstr) {
         trimInPlace(str);
     }
 }
@@ -123,15 +122,19 @@ inline std::string_view skipWhitespace(std::string_view sv) noexcept
  */
 inline std::string_view trim_view(std::string_view input) noexcept
 {
-    while (!input.empty() && is_space(input.front())) input.remove_prefix(1);
-    while (!input.empty() && is_space(input.back()))  input.remove_suffix(1);
+    while (!input.empty() && is_space(input.front())) {
+        input.remove_prefix(1);
+    }
+    while (!input.empty() && is_space(input.back())) {
+        input.remove_suffix(1);
+    }
     return input;
 }
 
 /**
  * @brief Remove all whitespace from string in place
  */
-inline void removeWhitespace(std::string& input)
+inline void removeWhitespace(std::string &input)
 {
     input.erase(std::remove_if(input.begin(), input.end(), is_space), input.end());
 }
@@ -139,7 +142,7 @@ inline void removeWhitespace(std::string& input)
 /**
  * @brief Remove all spaces from string in place
  */
-inline void removeSpaces(std::string& input)
+inline void removeSpaces(std::string &input)
 {
     input.erase(std::remove(input.begin(), input.end(), ' '), input.end());
 }
@@ -163,7 +166,7 @@ inline std::string tolowercase(std::string_view input)
 /**
  * @brief Converts a string to lowercase in place
  */
-inline void tolowercase(std::string& input)
+inline void tolowercase(std::string &input)
 {
     std::transform(input.begin(), input.end(), input.begin(),
                    [](unsigned char c) { return std::tolower(c); });
@@ -184,7 +187,7 @@ inline std::string touppercase(std::string_view input)
 /**
  * @brief Converts a string to uppercase in place
  */
-inline void touppercase(std::string& input)
+inline void touppercase(std::string &input)
 {
     std::transform(input.begin(), input.end(), input.begin(),
                    [](unsigned char c) { return std::toupper(c); });
@@ -199,12 +202,14 @@ inline void touppercase(std::string& input)
  */
 inline bool equals_ignore_case(std::string_view a, std::string_view b) noexcept
 {
-    if (a.size() != b.size()) return false;
+    if (a.size() != b.size()) {
+        return false;
+    }
     return std::equal(a.begin(), a.end(), b.begin(),
-                     [](char c1, char c2) {
-                         return std::tolower(static_cast<unsigned char>(c1)) ==
-                                std::tolower(static_cast<unsigned char>(c2));
-                     });
+                      [](char c1, char c2) {
+                          return std::tolower(static_cast<unsigned char>(c1)) ==
+                                 std::tolower(static_cast<unsigned char>(c2));
+                      });
 }
 
 /**
@@ -276,8 +281,8 @@ inline std::pair<std::string, std::string> splitAtFirst(std::string_view input, 
 /**
  * @brief Split at first occurrence of delimiter (output to pair reference)
  */
-inline void splitAtFirst(std::string_view input, char delimiter, 
-                         std::pair<std::string, std::string>& result)
+inline void splitAtFirst(std::string_view input, char delimiter,
+                         std::pair<std::string, std::string> &result)
 {
     result = splitAtFirst(input, delimiter);
 }
@@ -285,8 +290,8 @@ inline void splitAtFirst(std::string_view input, char delimiter,
 /**
  * @brief Split at first occurrence of delimiter (output to vector)
  */
-inline void splitAtFirst(std::string_view input, char delimiter, 
-                         std::vector<std::string>& result)
+inline void splitAtFirst(std::string_view input, char delimiter,
+                         std::vector<std::string> &result)
 {
     result.clear();
     auto [first, second] = splitAtFirst(input, delimiter);
@@ -299,14 +304,14 @@ inline void splitAtFirst(std::string_view input, char delimiter,
 /**
  * @brief Split at first occurrence of string delimiter
  */
-inline std::pair<std::string, std::string> splitAtFirst(std::string_view input, 
-                                                         std::string_view delimiter)
+inline std::pair<std::string, std::string> splitAtFirst(std::string_view input,
+                                                        std::string_view delimiter)
 {
     size_t pos = input.find(delimiter);
     if (pos == std::string_view::npos) {
         return {std::string(input), ""};
     }
-    return {trim(input.substr(0, pos)), 
+    return {trim(input.substr(0, pos)),
             trim(input.substr(pos + delimiter.length()))};
 }
 
@@ -314,7 +319,7 @@ inline std::pair<std::string, std::string> splitAtFirst(std::string_view input,
  * @brief Split at first occurrence of string delimiter (output to pair)
  */
 inline void splitAtFirst(std::string_view input, std::string_view delimiter,
-                         std::pair<std::string, std::string>& result)
+                         std::pair<std::string, std::string> &result)
 {
     result = splitAtFirst(input, delimiter);
 }
@@ -334,12 +339,12 @@ inline std::pair<std::string, std::string> splitReverseAtChar(std::string_view i
 /**
  * @brief Split in reverse at last occurrence of delimiter (output params)
  */
-inline void splitReverseAtChar(std::string_view input, std::string& left, 
-                               std::string& right, char ch)
+inline void splitReverseAtChar(std::string_view input, std::string &left,
+                               std::string &right, char ch)
 {
     auto [l, r] = splitReverseAtChar(input, ch);
-    left = std::move(l);
-    right = std::move(r);
+    left        = std::move(l);
+    right       = std::move(r);
 }
 
 /**
@@ -347,13 +352,17 @@ inline void splitReverseAtChar(std::string_view input, std::string& left,
  */
 inline std::string_view substringUntil(std::string_view input, char delimiter) noexcept
 {
-    size_t pos = input.find(delimiter);
+    size_t pos              = input.find(delimiter);
     std::string_view result = (pos != std::string_view::npos) ? input.substr(0, pos) : input;
-    
+
     // Trim
-    while (!result.empty() && is_space(result.front())) result.remove_prefix(1);
-    while (!result.empty() && is_space(result.back())) result.remove_suffix(1);
-    
+    while (!result.empty() && is_space(result.front())) {
+        result.remove_prefix(1);
+    }
+    while (!result.empty() && is_space(result.back())) {
+        result.remove_suffix(1);
+    }
+
     return result;
 }
 
@@ -363,7 +372,7 @@ inline std::string_view substringUntil(std::string_view input, char delimiter) n
 inline std::pair<std::string, std::string> splitAtFirstQuotedAware(std::string_view input, char delimiter)
 {
     bool inQuotes = false;
-    size_t pos = std::string_view::npos;
+    size_t pos    = std::string_view::npos;
 
     for (size_t i = 0; i < input.size(); ++i) {
         char c = input[i];
@@ -385,7 +394,7 @@ inline std::pair<std::string, std::string> splitAtFirstQuotedAware(std::string_v
  * @brief Split at first delimiter (quote-aware, output to pair)
  */
 inline void splitAtFirstQuotedAware(std::string_view input, char delimiter,
-                                    std::pair<std::string, std::string>& result)
+                                    std::pair<std::string, std::string> &result)
 {
     result = splitAtFirstQuotedAware(input, delimiter);
 }
@@ -397,8 +406,8 @@ inline void splitAtFirstQuotedAware(std::string_view input, char delimiter,
 /**
  * @brief Check if string is decorated with start/end markers
  */
-inline bool isDecorated(std::string_view input, std::string_view start, 
-                       std::string_view end) noexcept
+inline bool isDecorated(std::string_view input, std::string_view start,
+                        std::string_view end) noexcept
 {
     return input.size() >= start.size() + end.size() &&
            starts_with(input, start) &&
@@ -418,14 +427,14 @@ inline bool isDecoratedNonempty(std::string_view input, std::string_view start,
 /**
  * @brief Remove decoration markers (returns new string)
  */
-inline std::optional<std::string> undecorate(std::string_view input, 
+inline std::optional<std::string> undecorate(std::string_view input,
                                              std::string_view start,
                                              std::string_view end)
 {
     if (!isDecorated(input, start, end)) {
         return std::nullopt;
     }
-    
+
     auto content = input.substr(start.size(), input.size() - start.size() - end.size());
     return std::string(content);
 }
@@ -434,7 +443,7 @@ inline std::optional<std::string> undecorate(std::string_view input,
  * @brief Remove decoration markers (output parameter version)
  */
 inline bool undecorate(std::string_view input, std::string_view start,
-                      std::string_view end, std::string& output)
+                       std::string_view end, std::string &output)
 {
     auto result = undecorate(input, start, end);
     if (result) {
@@ -447,7 +456,7 @@ inline bool undecorate(std::string_view input, std::string_view start,
 /**
  * @brief Remove decoration markers in place
  */
-inline bool undecorate(std::string& input, std::string_view start, std::string_view end)
+inline bool undecorate(std::string &input, std::string_view start, std::string_view end)
 {
     if (!isDecorated(input, start, end)) {
         return false;
@@ -467,7 +476,7 @@ inline std::optional<std::string> undecorate(std::string_view input)
 /**
  * @brief Remove surrounding double quotes (output parameter)
  */
-inline bool undecorate(std::string_view input, std::string& output)
+inline bool undecorate(std::string_view input, std::string &output)
 {
     return undecorate(input, "\"", "\"", output);
 }
@@ -475,7 +484,7 @@ inline bool undecorate(std::string_view input, std::string& output)
 /**
  * @brief Remove surrounding double quotes in place
  */
-inline bool undecorate(std::string& input)
+inline bool undecorate(std::string &input)
 {
     return undecorate(input, "\"", "\"");
 }
@@ -504,8 +513,8 @@ inline bool isValidTaggedOrPlainString(std::string_view input)
  */
 inline bool isValidMacroUsage(std::string_view input)
 {
-    static const std::regex rgx(R"(^!?\$[a-zA-Z_][a-zA-Z0-9_]+$)", 
-                               std::regex::ECMAScript | std::regex::optimize);
+    static const std::regex rgx(R"(^!?\$[a-zA-Z_][a-zA-Z0-9_]+$)",
+                                std::regex::ECMAScript | std::regex::optimize);
     return std::regex_match(input.begin(), input.end(), rgx);
 }
 
@@ -535,7 +544,7 @@ inline std::optional<std::string> extractCondition(std::string_view input)
 /**
  * @brief Extract condition (output parameter version)
  */
-inline bool extractCondition(std::string_view input, std::string& conditionOut)
+inline bool extractCondition(std::string_view input, std::string &conditionOut)
 {
     auto result = extractCondition(input);
     if (result) {
@@ -557,32 +566,34 @@ inline std::vector<std::string> tokenize(std::string_view input)
 {
     std::vector<std::string> tokens;
     std::string_view remaining = input;
-    
+
     while (!remaining.empty()) {
         // Skip leading whitespace
         while (!remaining.empty() && is_space(remaining.front())) {
             remaining.remove_prefix(1);
         }
-        
-        if (remaining.empty()) break;
-        
+
+        if (remaining.empty()) {
+            break;
+        }
+
         // Find next whitespace
         size_t pos = 0;
         while (pos < remaining.size() && !is_space(remaining[pos])) {
             ++pos;
         }
-        
+
         tokens.emplace_back(remaining.substr(0, pos));
         remaining.remove_prefix(pos);
     }
-    
+
     return tokens;
 }
 
 /**
  * @brief Tokenize using whitespace (output parameter)
  */
-inline void tokenize(std::string_view input, std::vector<std::string>& tokens)
+inline void tokenize(std::string_view input, std::vector<std::string> &tokens)
 {
     tokens = tokenize(input);
 }
@@ -594,25 +605,25 @@ inline std::vector<std::string> tokenize(std::string_view input, char delimiter)
 {
     std::vector<std::string> tokens;
     size_t start = 0;
-    size_t pos = 0;
-    
+    size_t pos   = 0;
+
     while ((pos = input.find(delimiter, start)) != std::string_view::npos) {
         tokens.push_back(trim(input.substr(start, pos - start)));
         start = pos + 1;
     }
-    
+
     if (start <= input.size()) {
         tokens.push_back(trim(input.substr(start)));
     }
-    
+
     return tokens;
 }
 
 /**
  * @brief Tokenize using character delimiter (output parameter)
  */
-inline void tokenize(std::string_view input, char delimiter, 
-                    std::vector<std::string>& tokens)
+inline void tokenize(std::string_view input, char delimiter,
+                     std::vector<std::string> &tokens)
 {
     tokens = tokenize(input, delimiter);
 }
@@ -654,7 +665,7 @@ inline std::vector<std::string> tokenizeRespectingQuotes(std::string_view input,
     std::vector<std::string> tokens;
     bool insideSingleQuote = false;
     bool insideDoubleQuote = false;
-    size_t start = 0;
+    size_t start           = 0;
 
     for (size_t i = 0; i < input.size(); ++i) {
         const char c = input[i];
@@ -678,20 +689,22 @@ inline std::vector<std::string> tokenizeRespectingQuotes(std::string_view input,
 inline std::vector<std::string> tokenize(std::string_view input, std::string_view delimiter)
 {
     std::vector<std::string> tokens;
-    if (delimiter.empty()) return tokens;
-    
+    if (delimiter.empty()) {
+        return tokens;
+    }
+
     size_t start = 0;
-    size_t pos = 0;
-    
+    size_t pos   = 0;
+
     while ((pos = input.find(delimiter, start)) != std::string_view::npos) {
         tokens.push_back(trim(input.substr(start, pos - start)));
         start = pos + delimiter.length();
     }
-    
+
     if (start <= input.size()) {
         tokens.push_back(trim(input.substr(start)));
     }
-    
+
     return tokens;
 }
 
@@ -699,7 +712,7 @@ inline std::vector<std::string> tokenize(std::string_view input, std::string_vie
  * @brief Tokenize using string delimiter (output parameter)
  */
 inline void tokenize(std::string_view input, std::string_view delimiter,
-                    std::vector<std::string>& tokens)
+                     std::vector<std::string> &tokens)
 {
     tokens = tokenize(input, delimiter);
 }
@@ -707,35 +720,35 @@ inline void tokenize(std::string_view input, std::string_view delimiter,
 /**
  * @brief Tokenize using multiple delimiters (closest match priority)
  */
-inline std::vector<std::string> tokenize(std::string_view input, 
-                                        const std::vector<std::string>& delimiters)
+inline std::vector<std::string> tokenize(std::string_view input,
+                                         const std::vector<std::string> &delimiters)
 {
     std::vector<std::string> tokens;
     if (delimiters.empty()) {
         tokens.push_back(trim(input));
         return tokens;
     }
-    
+
     // Sort delimiters by length (longest first) to prioritize longer matches
     std::vector<std::string> sortedDelims = delimiters;
     std::sort(sortedDelims.begin(), sortedDelims.end(),
-              [](const auto& a, const auto& b) { return a.length() > b.length(); });
-    
+              [](const auto &a, const auto &b) { return a.length() > b.length(); });
+
     size_t start = 0;
     while (start < input.length()) {
-        size_t minPos = std::string_view::npos;
+        size_t minPos   = std::string_view::npos;
         size_t delimLen = 0;
-        
+
         // Find closest delimiter
-        for (const auto& delim : sortedDelims) {
+        for (const auto &delim : sortedDelims) {
             size_t pos = input.find(delim, start);
-            if (pos != std::string_view::npos && 
+            if (pos != std::string_view::npos &&
                 (minPos == std::string_view::npos || pos < minPos)) {
-                minPos = pos;
+                minPos   = pos;
                 delimLen = delim.length();
             }
         }
-        
+
         if (minPos != std::string_view::npos) {
             auto token = trim(input.substr(start, minPos - start));
             if (!token.empty()) {
@@ -750,15 +763,15 @@ inline std::vector<std::string> tokenize(std::string_view input,
             break;
         }
     }
-    
+
     return tokens;
 }
 
 /**
  * @brief Tokenize using multiple delimiters (output parameter)
  */
-inline void tokenize(std::string_view input, const std::vector<std::string>& delimiters,
-                    std::vector<std::string>& tokens)
+inline void tokenize(std::string_view input, const std::vector<std::string> &delimiters,
+                     std::vector<std::string> &tokens)
 {
     tokens = tokenize(input, delimiters);
 }
@@ -767,32 +780,32 @@ inline void tokenize(std::string_view input, const std::vector<std::string>& del
  * @brief Tokenize using ordered sequence of delimiters
  */
 inline std::vector<std::string> tokenizeEx(std::string_view input,
-                                           const std::vector<std::string>& delimiters)
+                                           const std::vector<std::string> &delimiters)
 {
     std::vector<std::string> tokens;
     tokens.reserve(delimiters.size() + 1);
-    
+
     size_t start = 0;
-    for (const auto& delimiter : delimiters) {
+    for (const auto &delimiter : delimiters) {
         size_t pos = input.find(delimiter, start);
         if (pos != std::string_view::npos) {
             tokens.push_back(trim(input.substr(start, pos - start)));
             start = pos + delimiter.length();
         }
     }
-    
+
     if (start < input.size()) {
         tokens.push_back(trim(input.substr(start)));
     }
-    
+
     return tokens;
 }
 
 /**
  * @brief Tokenize using ordered sequence of delimiters (output parameter)
  */
-inline void tokenizeEx(std::string_view input, const std::vector<std::string>& delimiters,
-                      std::vector<std::string>& tokens)
+inline void tokenizeEx(std::string_view input, const std::vector<std::string> &delimiters,
+                       std::vector<std::string> &tokens)
 {
     tokens = tokenizeEx(input, delimiters);
 }
@@ -803,18 +816,18 @@ inline void tokenizeEx(std::string_view input, const std::vector<std::string>& d
 inline std::vector<std::string> tokenizeSpaceQuotesAware(std::string_view input)
 {
     std::vector<std::string> tokens;
-    bool in_quotes = false;
+    bool in_quotes     = false;
     size_t token_start = 0;
-    bool in_token = false;
-    
+    bool in_token      = false;
+
     for (size_t i = 0; i < input.size(); ++i) {
         char ch = input[i];
-        
+
         if (ch == '"') {
             in_quotes = !in_quotes;
             if (!in_token) {
                 token_start = i;
-                in_token = true;
+                in_token    = true;
             }
         } else if (is_space(ch) && !in_quotes) {
             if (in_token) {
@@ -828,11 +841,11 @@ inline std::vector<std::string> tokenizeSpaceQuotesAware(std::string_view input)
         } else {
             if (!in_token) {
                 token_start = i;
-                in_token = true;
+                in_token    = true;
             }
         }
     }
-    
+
     // Handle last token
     if (in_token) {
         std::string token = trim(input.substr(token_start));
@@ -840,20 +853,18 @@ inline std::vector<std::string> tokenizeSpaceQuotesAware(std::string_view input)
             tokens.push_back(std::move(token));
         }
     }
-    
+
     return tokens;
 }
-
 
 /**
  * @brief Tokenize by spaces (quote-aware, output parameter)
  */
-inline void tokenizeSpaceQuotesAware(std::string_view input, 
-                                    std::vector<std::string>& tokens)
+inline void tokenizeSpaceQuotesAware(std::string_view input,
+                                     std::vector<std::string> &tokens)
 {
     tokens = tokenizeSpaceQuotesAware(input);
 }
-
 
 /*========================================================================================================*/
 /*                                    STRING JOINING                                                      */
@@ -862,60 +873,64 @@ inline void tokenizeSpaceQuotesAware(std::string_view input,
 /**
  * @brief Join strings with delimiter (returns new string)
  */
-inline std::string joinStrings(const std::vector<std::string>& strings, 
+inline std::string joinStrings(const std::vector<std::string> &strings,
                                std::string_view delimiter)
 {
-    if (strings.empty()) return "";
-    
+    if (strings.empty()) {
+        return "";
+    }
+
     // Calculate total size to avoid reallocations
     size_t total_size = 0;
-    for (const auto& s : strings) {
+    for (const auto &s : strings) {
         total_size += s.size();
     }
     total_size += delimiter.size() * (strings.size() - 1);
-    
+
     std::string result;
     result.reserve(total_size);
-    
+
     result += strings[0];
     for (size_t i = 1; i < strings.size(); ++i) {
         result += delimiter;
         result += strings[i];
     }
-    
+
     return result;
 }
 
 /**
  * @brief Join strings with character delimiter
  */
-inline std::string joinStrings(const std::vector<std::string>& strings, char delimiter)
+inline std::string joinStrings(const std::vector<std::string> &strings, char delimiter)
 {
-    if (strings.empty()) return "";
-    
+    if (strings.empty()) {
+        return "";
+    }
+
     size_t total_size = 0;
-    for (const auto& s : strings) {
+    for (const auto &s : strings) {
         total_size += s.size();
     }
-    total_size += (strings.size() - 1);  // delimiters
-    
+    total_size += (strings.size() - 1); // delimiters
+
     std::string result;
     result.reserve(total_size);
-    
+
     result += strings[0];
     for (size_t i = 1; i < strings.size(); ++i) {
         result += delimiter;
         result += strings[i];
     }
-    
+
     return result;
 }
 
 /**
  * @brief Join strings with delimiter (output parameter)
  */
-inline void joinStrings(const std::vector<std::string>& strings,
-                       std::string_view delimiter, std::string& outResult)
+inline void joinStrings(const std::vector<std::string> &strings,
+                        std::string_view delimiter, std::string &outResult)
 {
     outResult = joinStrings(strings, delimiter);
 }
@@ -927,23 +942,25 @@ inline void joinStrings(const std::vector<std::string>& strings,
 /**
  * @brief Replace all occurrences of a substring
  */
-inline std::string replace_all(std::string_view input, std::string_view from, 
-                              std::string_view to)
+inline std::string replace_all(std::string_view input, std::string_view from,
+                               std::string_view to)
 {
-    if (from.empty()) return std::string(input);
-    
+    if (from.empty()) {
+        return std::string(input);
+    }
+
     std::string result;
     result.reserve(input.size());
-    
+
     size_t start = 0;
-    size_t pos = 0;
-    
+    size_t pos   = 0;
+
     while ((pos = input.find(from, start)) != std::string_view::npos) {
         result.append(input.substr(start, pos - start));
         result.append(to);
         start = pos + from.length();
     }
-    
+
     result.append(input.substr(start));
     return result;
 }
@@ -951,11 +968,13 @@ inline std::string replace_all(std::string_view input, std::string_view from,
 /**
  * @brief Replace all occurrences in place
  */
-inline void replace_all_inplace(std::string& input, std::string_view from, 
-                               std::string_view to)
+inline void replace_all_inplace(std::string &input, std::string_view from,
+                                std::string_view to)
 {
-    if (from.empty()) return;
-    
+    if (from.empty()) {
+        return;
+    }
+
     size_t pos = 0;
     while ((pos = input.find(from, pos)) != std::string::npos) {
         input.replace(pos, from.length(), to);
@@ -966,42 +985,42 @@ inline void replace_all_inplace(std::string& input, std::string_view from,
 /**
  * @brief Replace macros in string using map
  */
-inline void replaceMacros(std::string& input, 
-                         const std::unordered_map<std::string, std::string>& macroMap,
-                         char macroMarker)
+inline void replaceMacros(std::string &input,
+                          const std::unordered_map<std::string, std::string> &macroMap,
+                          char macroMarker)
 {
     std::string result;
-    result.reserve(input.size() * 1.2);  // Reserve extra space
-    
+    result.reserve(input.size() * 1.2); // Reserve extra space
+
     size_t i = 0;
     while (i < input.size()) {
-        if (input[i] == macroMarker && i + 1 < input.size() && 
+        if (input[i] == macroMarker && i + 1 < input.size() &&
             (is_alpha(input[i + 1]) || input[i + 1] == '_')) {
-            
+
             // Extract macro name
             size_t start = i + 1;
-            size_t end = start;
+            size_t end   = start;
             while (end < input.size() && (is_alnum(input[end]) || input[end] == '_')) {
                 ++end;
             }
-            
+
             std::string macroName = input.substr(start, end - start);
-            auto it = macroMap.find(macroName);
-            
+            auto it               = macroMap.find(macroName);
+
             if (it != macroMap.end()) {
                 result += it->second;
             } else {
-                result += input[i];  // Keep marker
+                result += input[i]; // Keep marker
                 result += macroName;
             }
-            
+
             i = end;
         } else {
             result += input[i];
             ++i;
         }
     }
-    
+
     input = std::move(result);
 }
 
@@ -1015,27 +1034,27 @@ inline void replaceMacros(std::string& input,
 inline std::vector<uint8_t> stringToVector(std::string_view input, bool bTerminator = true)
 {
     std::string_view view = input;
-    
+
     // Remove quotes if present
     if (view.size() >= 2 && view.front() == '"' && view.back() == '"') {
         view.remove_prefix(1);
         view.remove_suffix(1);
     }
-    
+
     std::vector<uint8_t> output;
     output.reserve(view.size() + 1);
     output.assign(view.begin(), view.end());
-    if (bTerminator){
+    if (bTerminator) {
         output.push_back('\0');
     }
-    
+
     return output;
 }
 
 /**
  * @brief Convert string to vector (output parameter)
  */
-inline bool stringToVector(std::string_view input, std::vector<uint8_t>& output, bool bTerminator = true)
+inline bool stringToVector(std::string_view input, std::vector<uint8_t> &output, bool bTerminator = true)
 {
     output = stringToVector(input, bTerminator);
     return true;
@@ -1044,7 +1063,7 @@ inline bool stringToVector(std::string_view input, std::vector<uint8_t>& output,
 /**
  * @brief Replace null terminator with newline
  */
-inline void replaceNullWithNewline(std::vector<uint8_t>& data)
+inline void replaceNullWithNewline(std::vector<uint8_t> &data)
 {
     if (!data.empty() && data.back() == '\0') {
         data.back() = '\n';
@@ -1057,7 +1076,7 @@ inline void replaceNullWithNewline(std::vector<uint8_t>& data)
  */
 inline std::string spanToString(std::span<const uint8_t> span)
 {
-    return std::string(reinterpret_cast<const char*>(span.data()), span.size());
+    return std::string(reinterpret_cast<const char *>(span.data()), span.size());
 }
 
 /**
@@ -1066,7 +1085,7 @@ inline std::string spanToString(std::span<const uint8_t> span)
 inline std::span<const uint8_t> stringToSpan(std::string_view str) noexcept
 {
     return std::span<const uint8_t>(
-        reinterpret_cast<const uint8_t*>(str.data()), str.size());
+        reinterpret_cast<const uint8_t *>(str.data()), str.size());
 }
 
 /*========================================================================================================*/
@@ -1076,7 +1095,7 @@ inline std::span<const uint8_t> stringToSpan(std::string_view str) noexcept
 /**
  * @brief Parse integer from string (modern, fast)
  */
-template<typename T = int>
+template <typename T = int>
 inline std::optional<T> parse_int(std::string_view str) noexcept
 {
     T value;
@@ -1098,7 +1117,8 @@ inline std::optional<double> parse_double(std::string_view str)
         if (pos == str.size()) {
             return val;
         }
-    } catch (...) {}
+    } catch (...) {
+    }
     return std::nullopt;
 }
 
@@ -1107,31 +1127,32 @@ inline std::optional<double> parse_double(std::string_view str)
 /*========================================================================================================*/
 /**
  * Usage:
- * 
+ *
  * std::string value, unit;
- * 
+ *
  * static constexpr std::array<std::string_view, 3> TIME_UNITS = { "sec", "ms", "us" };
  * splitValueUnit("100 ms", TIME_UNITS, value, unit);
- * 
+ *
  * static constexpr std::array<std::string_view, 3> DISTANCE_UNITS = { "km", "m", "cm" };
  * splitValueUnit("3.5 km", DISTANCE_UNITS, value, unit);
- * 
+ *
  * splitValueUnit("50 hz", std::array<std::string_view, 2>{"khz", "hz"}, value, unit);
-*/
+ */
 
 inline bool splitValueUnit(std::string_view input,
-                      std::span<const std::string_view> supported_units,
-                      std::string& value,
-                      std::string& unit)
+                           std::span<const std::string_view> supported_units,
+                           std::string &value,
+                           std::string &unit)
 {
     size_t end = input.find_last_not_of(" \t");
-    if (end == std::string::npos)
+    if (end == std::string::npos) {
         return false;
+    }
 
     std::string_view sv(input.data(), end + 1);
     std::string_view matched_unit;
 
-    for (auto& u : supported_units) {
+    for (auto &u : supported_units) {
         if (sv.size() >= u.size() &&
             sv.substr(sv.size() - u.size()) == u) {
             matched_unit = u;
@@ -1139,48 +1160,48 @@ inline bool splitValueUnit(std::string_view input,
         }
     }
 
-    if (matched_unit.empty())
+    if (matched_unit.empty()) {
         return false;
+    }
 
     std::string_view before_unit = sv.substr(0, sv.size() - matched_unit.size());
 
-    size_t value_end = before_unit.find_last_not_of(" \t");
-    if (value_end == std::string::npos)
+    size_t value_end             = before_unit.find_last_not_of(" \t");
+    if (value_end == std::string::npos) {
         return false;
+    }
 
     std::string_view value_sv = before_unit.substr(0, value_end + 1);
-    size_t value_start = value_sv.find_first_not_of(" \t");
+    size_t value_start        = value_sv.find_first_not_of(" \t");
 
-    value = std::string(value_sv.substr(value_start));
-    unit  = std::string(matched_unit);
+    value                     = std::string(value_sv.substr(value_start));
+    unit                      = std::string(matched_unit);
     return true;
 }
-
 
 /**
  * Strip a known keyword prefix from str in-place.
  * No-op when the prefix is absent
-*/
-inline void stripPrefix(std::string& str, std::string_view prefix) noexcept
+ */
+inline void stripPrefix(std::string &str, std::string_view prefix) noexcept
 {
     if (str.size() >= prefix.size() &&
-        str.compare(0, prefix.size(), prefix.data(), prefix.size()) == 0)
-    {
+        str.compare(0, prefix.size(), prefix.data(), prefix.size()) == 0) {
         str.erase(0, prefix.size());
     }
 }
 
-
 /**
  * Format a number appearance
- * 
+ *
  * auto a = fmtLineNr(42);                    // default → std::array
  * auto s = fmtLineNr<std::string>(42);       // explicit → std::string
  * puts(fmtLineNr(42).data());                // works directly
- * 
+ *
  */
-template<typename T = std::array<char, 16>>
-inline T fmtLineNr(int n) {
+template <typename T = std::array<char, 16>>
+inline T fmtLineNr(int n)
+{
     if constexpr (std::is_same_v<T, std::string>) {
         char buf[16];
         std::snprintf(buf, sizeof(buf), "%04d:", n);
@@ -1191,7 +1212,6 @@ inline T fmtLineNr(int n) {
         return buf;
     }
 }
-
 
 } /* namespace ustring */
 

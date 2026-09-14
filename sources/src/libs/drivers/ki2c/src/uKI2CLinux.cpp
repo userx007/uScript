@@ -1,55 +1,52 @@
 #include "uKI2C.hpp"
 #include "uLogger.hpp"
 
-#include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <stdint.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
 #include <algorithm>
 #include <chrono>
 #include <compare>
 #include <cstring>
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/i2c-dev.h> // I2C_SLAVE
 #include <mutex>
+#include <poll.h>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
-#include <linux/i2c-dev.h>   // I2C_SLAVE
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "KI2C_DRV    |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "KI2C_DRV    |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // OPEN / CLOSE
 // ============================================================================
 
-KI2C::Status KI2C::open(const std::string& strDevice, uint8_t u8Address)
+KI2C::Status KI2C::open(const std::string &strDevice, uint8_t u8Address)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (strDevice.empty())
-    {
+    if (strDevice.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Invalid parameter: empty device path"));
         return Status::INVALID_PARAM;
     }
 
     m_iHandle = ::open(strDevice.c_str(), O_RDWR | O_CLOEXEC);
-    if (m_iHandle < 0)
-    {
+    if (m_iHandle < 0) {
         int errnoRet = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to open ["); LOG_STRING(strDevice.c_str());
@@ -58,8 +55,7 @@ KI2C::Status KI2C::open(const std::string& strDevice, uint8_t u8Address)
     }
 
     // Bind the file descriptor to the target slave address.
-    if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(u8Address)) < 0)
-    {
+    if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(u8Address)) < 0) {
         int errnoRet = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ioctl(I2C_SLAVE) failed for address ");
@@ -79,13 +75,11 @@ KI2C::Status KI2C::open(const std::string& strDevice, uint8_t u8Address)
     return Status::SUCCESS;
 }
 
-
 KI2C::Status KI2C::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (m_iHandle >= 0)
-    {
+    if (m_iHandle >= 0) {
         ::close(m_iHandle);
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("KI2C closed, handle:"); LOG_INT(m_iHandle));
@@ -95,18 +89,16 @@ KI2C::Status KI2C::close()
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // INTERNAL READ PRIMITIVE
 // ============================================================================
 
 KI2C::Status KI2C::timeout_read(uint32_t u32ReadTimeout,
-                              std::span<uint8_t> buffer,
-                              size_t& szBytesRead,
-                              std::stop_token stop_tok) const
+                                std::span<uint8_t> buffer,
+                                size_t &szBytesRead,
+                                std::stop_token stop_tok) const
 {
-    if (buffer.empty())
-    {
+    if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_read: invalid parameter"));
         return Status::INVALID_PARAM;
     }
@@ -115,53 +107,46 @@ KI2C::Status KI2C::timeout_read(uint32_t u32ReadTimeout,
 
     // Use poll(2) to honour the caller-supplied timeout.
     struct pollfd sPollFd;
-    sPollFd.fd      = m_iHandle;
-    sPollFd.events  = POLLIN;
-    sPollFd.revents = 0;
+    sPollFd.fd                 = m_iHandle;
+    sPollFd.events             = POLLIN;
+    sPollFd.revents            = 0;
 
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite = (u32ReadTimeout == 0);
-    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+    const bool bInfinite       = (u32ReadTimeout == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    int iPollResult = 0;
-    while (true)
-    {
-        if (stop_tok.stop_requested())
-        {
+    int iPollResult            = 0;
+    while (true) {
+        if (stop_tok.stop_requested()) {
             return Status::READ_TIMEOUT;
         }
 
         int iSliceMs = kPollSliceMs;
-        if (!bInfinite)
-        {
+        if (!bInfinite) {
             const auto remaining = tDeadline - std::chrono::steady_clock::now();
-            if (remaining <= std::chrono::milliseconds(0))
-            {
+            if (remaining <= std::chrono::milliseconds(0)) {
                 return Status::READ_TIMEOUT;
             }
             iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+                                                          std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
         iPollResult = ::poll(&sPollFd, 1, iSliceMs);
-        if (iPollResult < 0)
-        {
+        if (iPollResult < 0) {
             const int err = errno;
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
             return Status::READ_ERROR;
         }
-        if (iPollResult > 0)
-        {
+        if (iPollResult > 0) {
             break;
         }
     }
 
     // poll() reports data available — issue the read.
     const ssize_t sszBytesRead = ::read(m_iHandle, buffer.data(), buffer.size());
-    if (sszBytesRead <= 0)
-    {
+    if (sszBytesRead <= 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("read() failed or returned 0"); LOG_INT(err));
@@ -172,18 +157,16 @@ KI2C::Status KI2C::timeout_read(uint32_t u32ReadTimeout,
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // INTERNAL WRITE PRIMITIVE
 // ============================================================================
 
 KI2C::Status KI2C::timeout_write(uint32_t /*u32WriteTimeout*/,
-                               std::span<const uint8_t> buffer,
-                               size_t& szBytesWritten,
-                               std::stop_token /*stop_tok*/) const
+                                 std::span<const uint8_t> buffer,
+                                 size_t &szBytesWritten,
+                                 std::stop_token /*stop_tok*/) const
 {
-    if (buffer.empty())
-    {
+    if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter: buffer.empty()"));
         return Status::INVALID_PARAM;
     }
@@ -193,13 +176,11 @@ KI2C::Status KI2C::timeout_write(uint32_t /*u32WriteTimeout*/,
     // KI2C writes are atomic at the kernel level; a single ::write() covers
     // the full buffer. Loop guards against short writes (should not occur
     // in practice on i2c-dev, but mirrors the UART driver for consistency).
-    while (szBytesWritten < buffer.size())
-    {
+    while (szBytesWritten < buffer.size()) {
         const ssize_t sszWritten = ::write(m_iHandle,
                                            buffer.data() + szBytesWritten,
                                            buffer.size() - szBytesWritten);
-        if (sszWritten <= 0)
-        {
+        if (sszWritten <= 0) {
             const int err = errno;
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("KI2C write error"); LOG_INT32(err));

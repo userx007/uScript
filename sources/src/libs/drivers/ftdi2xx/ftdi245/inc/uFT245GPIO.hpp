@@ -33,81 +33,86 @@
  */
 class FT245GPIO : public FT245Base
 {
-    public:
+public:
+    using Status = ICommDriver::Status;
 
-        using Status = ICommDriver::Status;
+    /**
+     * @brief Full GPIO configuration
+     *
+     * Direction mask: 1 = output, 0 = input.
+     * Defaults: all pins as inputs (safe on open).
+     */
+    struct GpioConfig
+    {
+        uint8_t dirMask      = 0x00u; ///< D0–D7 direction (1=out, 0=in)
+        uint8_t initialValue = 0x00u; ///< Initial output levels
+        Variant variant      = Variant::FT245BM;
+    };
 
-        /**
-         * @brief Full GPIO configuration
-         *
-         * Direction mask: 1 = output, 0 = input.
-         * Defaults: all pins as inputs (safe on open).
-         */
-        struct GpioConfig {
-            uint8_t dirMask      = 0x00u; ///< D0–D7 direction (1=out, 0=in)
-            uint8_t initialValue = 0x00u; ///< Initial output levels
-            Variant variant      = Variant::FT245BM;
-        };
+    FT245GPIO() = default;
 
-        FT245GPIO() = default;
+    explicit FT245GPIO(const GpioConfig &config, uint8_t u8DeviceIndex = 0u)
+    {
+        this->open(config, u8DeviceIndex);
+    }
 
-        explicit FT245GPIO(const GpioConfig& config, uint8_t u8DeviceIndex = 0u)
-        {
-            this->open(config, u8DeviceIndex);
-        }
+    ~FT245GPIO() override
+    {
+        close();
+    }
 
-        ~FT245GPIO() override { close(); }
+    /**
+     * @brief Open the FT245 in bit-bang GPIO mode
+     *
+     * @param config        Direction and initial value for D0–D7
+     * @param u8DeviceIndex Physical device index (0 = first chip found)
+     */
+    Status open(const GpioConfig &config, uint8_t u8DeviceIndex = 0u);
 
-        /**
-         * @brief Open the FT245 in bit-bang GPIO mode
-         *
-         * @param config        Direction and initial value for D0–D7
-         * @param u8DeviceIndex Physical device index (0 = first chip found)
-         */
-        Status open(const GpioConfig& config, uint8_t u8DeviceIndex = 0u);
+    /** @copydoc FT245Base::close — drives all output pins low before closing */
+    Status close() override;
 
-        /** @copydoc FT245Base::close — drives all output pins low before closing */
-        Status close() override;
+    bool is_open() const
+    {
+        return FT245Base::is_open();
+    }
 
-        bool is_open() const { return FT245Base::is_open(); }
+    // ── Direction control ─────────────────────────────────────────────────
+    /**
+     * @brief Set the direction of all 8 GPIO pins
+     *
+     * @param dirMask      1 = output, 0 = input (per-pin)
+     * @param initialValue Output level for pins newly becoming outputs
+     */
+    Status set_direction(uint8_t dirMask, uint8_t initialValue = 0x00u);
 
-        // ── Direction control ─────────────────────────────────────────────────
-        /**
-         * @brief Set the direction of all 8 GPIO pins
-         *
-         * @param dirMask      1 = output, 0 = input (per-pin)
-         * @param initialValue Output level for pins newly becoming outputs
-         */
-        Status set_direction(uint8_t dirMask, uint8_t initialValue = 0x00u);
+    // ── Output control ────────────────────────────────────────────────────
+    /** Write a full byte to the output pins (masked by direction) */
+    Status write(uint8_t value);
+    /** Assert (set high) selected output pins */
+    Status set_pins(uint8_t pinMask);
+    /** Deassert (set low) selected output pins */
+    Status clear_pins(uint8_t pinMask);
+    /** Toggle selected output pins */
+    Status toggle_pins(uint8_t pinMask);
 
-        // ── Output control ────────────────────────────────────────────────────
-        /** Write a full byte to the output pins (masked by direction) */
-        Status write     (uint8_t value);
-        /** Assert (set high) selected output pins */
-        Status set_pins  (uint8_t pinMask);
-        /** Deassert (set low) selected output pins */
-        Status clear_pins(uint8_t pinMask);
-        /** Toggle selected output pins */
-        Status toggle_pins(uint8_t pinMask);
+    // ── Input reading ─────────────────────────────────────────────────────
+    /**
+     * @brief Read the instantaneous level of all 8 pins
+     *
+     * Sampled via FT_GetBitMode / ftdi_read_pins.
+     * Input pins reflect the external signal; output pins reflect the
+     * last written value.
+     */
+    Status read(uint8_t &value);
+    /** Read (rawValue & pinMask) into value */
+    Status read_pins(uint8_t pinMask, uint8_t &value);
 
-        // ── Input reading ─────────────────────────────────────────────────────
-        /**
-         * @brief Read the instantaneous level of all 8 pins
-         *
-         * Sampled via FT_GetBitMode / ftdi_read_pins.
-         * Input pins reflect the external signal; output pins reflect the
-         * last written value.
-         */
-        Status read     (uint8_t& value);
-        /** Read (rawValue & pinMask) into value */
-        Status read_pins(uint8_t pinMask, uint8_t& value);
+private:
+    uint8_t m_value   = 0x00u; ///< Last written output byte
+    uint8_t m_dirMask = 0x00u; ///< Current direction mask
 
-    private:
-
-        uint8_t m_value  = 0x00u; ///< Last written output byte
-        uint8_t m_dirMask = 0x00u; ///< Current direction mask
-
-        Status apply(uint8_t value, uint8_t dir) const;
+    Status apply(uint8_t value, uint8_t dir) const;
 };
 
 #endif // U_FT245_GPIO_DRIVER_H

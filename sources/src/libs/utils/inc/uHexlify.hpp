@@ -1,18 +1,18 @@
 #ifndef UHEXLIFYUTILS_HPP
 #define UHEXLIFYUTILS_HPP
 
-#include <vector>
-#include <string>
-#include <string_view>
-#include <stdexcept>
-#include <cstring>
-#include <cstdint>
-#include <type_traits>
 #include <algorithm>
+#include <array>
+#include <bit>
+#include <cstdint>
+#include <cstring>
 #include <optional>
 #include <span>
-#include <bit>
-#include <array>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -21,8 +21,7 @@
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-namespace hexutils
-{
+namespace hexutils {
 
 /**
  * @brief Enumeration for specifying endianness.
@@ -38,8 +37,7 @@ enum class Endianness : uint8_t {
  * @brief Contains internal helper functions for hexutils.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-namespace internal
-{
+namespace internal {
 // Lookup tables for fast hex conversion
 constexpr char g_hexDigitsUpper[] = "0123456789ABCDEF";
 constexpr char g_hexDigitsLower[] = "0123456789abcdef";
@@ -71,9 +69,15 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
 /*--------------------------------------------------------------------------------------------------------*/
 [[nodiscard]] constexpr int hex_char_to_nibble(char c) noexcept
 {
-    if ('0' <= c && c <= '9') return c - '0';
-    if ('A' <= c && c <= 'F') return c - 'A' + 10;
-    if ('a' <= c && c <= 'f') return c - 'a' + 10;
+    if ('0' <= c && c <= '9') {
+        return c - '0';
+    }
+    if ('A' <= c && c <= 'F') {
+        return c - 'A' + 10;
+    }
+    if ('a' <= c && c <= 'f') {
+        return c - 'a' + 10;
+    }
     return -1;
 }
 
@@ -105,8 +109,7 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
     return ('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
 }
 
-}  /* namespace internal */
-
+} /* namespace internal */
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -126,7 +129,6 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
     return std::all_of(input.begin(), input.end(), internal::is_hex_char);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Converts a buffer of bytes to a hexadecimal string.
@@ -137,9 +139,9 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
  * @return Hexadecimal string representation.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline std::string stringHexlify(std::span<const uint8_t> input, 
-                                               size_t offset = 0, 
-                                               size_t count = std::string::npos,
+[[nodiscard]] inline std::string stringHexlify(std::span<const uint8_t> input,
+                                               size_t offset  = 0,
+                                               size_t count   = std::string::npos,
                                                bool uppercase = true)
 {
     if (offset >= input.size()) {
@@ -150,7 +152,7 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
     std::string result;
     result.reserve(count * 2);
 
-    const char* hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
+    const char *hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
 
     for (size_t i = 0; i < count; ++i) {
         uint8_t byte = input[offset + i];
@@ -162,19 +164,19 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
 }
 
 // Overload for vector
-[[nodiscard]] inline std::string stringHexlify(const std::vector<uint8_t>& input, 
-                                               size_t offset = 0, 
-                                               size_t count = std::string::npos,
+[[nodiscard]] inline std::string stringHexlify(const std::vector<uint8_t> &input,
+                                               size_t offset  = 0,
+                                               size_t count   = std::string::npos,
                                                bool uppercase = true)
 {
     return stringHexlify(std::span<const uint8_t>(input), offset, count, uppercase);
 }
 
 // Legacy interface (backward compatible)
-[[nodiscard]] inline bool stringHexlify(const std::vector<uint8_t>& InBuffer, 
-                                        size_t szOffset, 
-                                        size_t szNrElems, 
-                                        std::string& OutBuffer)
+[[nodiscard]] inline bool stringHexlify(const std::vector<uint8_t> &InBuffer,
+                                        size_t szOffset,
+                                        size_t szNrElems,
+                                        std::string &OutBuffer)
 {
     if (szOffset >= InBuffer.size()) {
         return false;
@@ -183,7 +185,6 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
     OutBuffer = stringHexlify(InBuffer, szOffset, szNrElems);
     return true;
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -204,12 +205,12 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
 
     for (size_t i = 0; i < hex.size(); i += 2) {
         int high = internal::hex_char_to_nibble(hex[i]);
-        int low = internal::hex_char_to_nibble(hex[i + 1]);
-        
+        int low  = internal::hex_char_to_nibble(hex[i + 1]);
+
         if (high < 0 || low < 0) {
             return std::nullopt;
         }
-        
+
         result.push_back(static_cast<uint8_t>((high << 4) | low));
     }
 
@@ -224,7 +225,7 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
  * @return True if the conversion was successful, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool stringUnhexlify(std::string_view hex, std::vector<uint8_t>& result) noexcept
+[[nodiscard]] inline bool stringUnhexlify(std::string_view hex, std::vector<uint8_t> &result) noexcept
 {
     auto opt = stringUnhexlifyOpt(hex);
     if (opt) {
@@ -233,7 +234,6 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
     }
     return false;
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -263,7 +263,7 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
  * @return True if the conversion was successful, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool hexstringToVector(std::string_view input, std::vector<uint8_t>& result) noexcept
+[[nodiscard]] inline bool hexstringToVector(std::string_view input, std::vector<uint8_t> &result) noexcept
 {
     auto opt = hexstringToVectorOpt(input);
     if (opt) {
@@ -272,7 +272,6 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
     }
     return false;
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -284,33 +283,33 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
  * @return Hexadecimal string with endianness marker.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-template<typename T>
+template <typename T>
     requires std::is_trivially_copyable_v<T>
-[[nodiscard]] std::string stringHexlifyAny(std::span<const T> data, 
+[[nodiscard]] std::string stringHexlifyAny(std::span<const T> data,
                                            Endianness endian = Endianness::Little,
-                                           bool uppercase = true)
+                                           bool uppercase    = true)
 {
-    const uint8_t* bytePtr = reinterpret_cast<const uint8_t*>(data.data());
-    size_t byteCount = data.size() * sizeof(T);
-    
+    const uint8_t *bytePtr = reinterpret_cast<const uint8_t *>(data.data());
+    size_t byteCount       = data.size() * sizeof(T);
+
     std::string out;
     out.reserve(byteCount * 2 + 2);
 
-    const char* hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
+    const char *hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
 
     // Add endianness marker
-    uint8_t marker = (endian == Endianness::Little) ? 0x4C : 0x42; // 'L' or 'B'
+    uint8_t marker        = (endian == Endianness::Little) ? 0x4C : 0x42; // 'L' or 'B'
     out.push_back(hexDigits[(marker >> 4) & 0xF]);
     out.push_back(hexDigits[marker & 0xF]);
 
     constexpr bool systemIsLE = internal::is_system_little_endian();
 
-    if ((endian == Endianness::Big && systemIsLE) || 
-                  (endian == Endianness::Little && !systemIsLE)) {
+    if ((endian == Endianness::Big && systemIsLE) ||
+        (endian == Endianness::Little && !systemIsLE)) {
         // Reverse byte order of each element
         constexpr size_t elemSize = sizeof(T);
         for (size_t i = 0; i < data.size(); ++i) {
-            const uint8_t* elemPtr = reinterpret_cast<const uint8_t*>(&data[i]);
+            const uint8_t *elemPtr = reinterpret_cast<const uint8_t *>(&data[i]);
             for (size_t j = 0; j < elemSize; ++j) {
                 uint8_t byte = elemPtr[elemSize - 1 - j];
                 out.push_back(hexDigits[(byte >> 4) & 0xF]);
@@ -330,26 +329,25 @@ template<typename T>
 }
 
 // Overload for vector
-template<typename T>
+template <typename T>
     requires std::is_trivially_copyable_v<T>
-[[nodiscard]] inline std::string stringHexlifyAny(const std::vector<T>& data, 
-                                                   Endianness endian = Endianness::Little,
-                                                   bool uppercase = true)
+[[nodiscard]] inline std::string stringHexlifyAny(const std::vector<T> &data,
+                                                  Endianness endian = Endianness::Little,
+                                                  bool uppercase    = true)
 {
     return stringHexlifyAny(std::span<const T>(data), endian, uppercase);
 }
 
 // Legacy interface
-template<typename T>
+template <typename T>
     requires std::is_trivially_copyable_v<T>
-[[nodiscard]] inline bool stringHexlifyAny(const std::vector<T>& data, 
-                                           std::string& out, 
+[[nodiscard]] inline bool stringHexlifyAny(const std::vector<T> &data,
+                                           std::string &out,
                                            Endianness endian = Endianness::Little)
 {
     out = stringHexlifyAny(data, endian);
     return true;
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -359,7 +357,7 @@ template<typename T>
  * @return Optional vector of elements, nullopt if conversion failed.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-template<typename T>
+template <typename T>
     requires std::is_trivially_copyable_v<T>
 [[nodiscard]] std::optional<std::vector<T>> stringUnhexlifyAnyOpt(std::string_view hex) noexcept
 {
@@ -369,14 +367,14 @@ template<typename T>
 
     // Parse endianness marker
     int markerHigh = internal::hex_char_to_nibble(hex[0]);
-    int markerLow = internal::hex_char_to_nibble(hex[1]);
-    
+    int markerLow  = internal::hex_char_to_nibble(hex[1]);
+
     if (markerHigh < 0 || markerLow < 0) {
         return std::nullopt;
     }
 
     uint8_t marker = static_cast<uint8_t>((markerHigh << 4) | markerLow);
-    
+
     Endianness targetEndian;
     if (marker == 0x4C) {
         targetEndian = Endianness::Little;
@@ -394,15 +392,15 @@ template<typename T>
     // Convert hex to bytes
     std::vector<uint8_t> bytes;
     bytes.reserve(byteCount);
-    
+
     for (size_t i = 0; i < byteCount; ++i) {
         int high = internal::hex_char_to_nibble(hex[2 + 2 * i]);
-        int low = internal::hex_char_to_nibble(hex[2 + 2 * i + 1]);
-        
+        int low  = internal::hex_char_to_nibble(hex[2 + 2 * i + 1]);
+
         if (high < 0 || low < 0) {
             return std::nullopt;
         }
-        
+
         bytes.push_back(static_cast<uint8_t>((high << 4) | low));
     }
 
@@ -420,7 +418,7 @@ template<typename T>
     std::vector<T> result;
     result.resize(byteCount / sizeof(T));
     std::memcpy(result.data(), bytes.data(), byteCount);
-    
+
     return result;
 }
 
@@ -433,9 +431,9 @@ template<typename T>
  * @return True if the conversion was successful, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-template<typename T>
+template <typename T>
     requires std::is_trivially_copyable_v<T>
-[[nodiscard]] inline bool stringUnhexlifyAny(std::string_view hex, std::vector<T>& result) noexcept
+[[nodiscard]] inline bool stringUnhexlifyAny(std::string_view hex, std::vector<T> &result) noexcept
 {
     auto opt = stringUnhexlifyAnyOpt<T>(hex);
     if (opt) {
@@ -444,7 +442,6 @@ template<typename T>
     }
     return false;
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -457,14 +454,14 @@ template<typename T>
 /*--------------------------------------------------------------------------------------------------------*/
 [[nodiscard]] inline std::string toHexString(std::span<const uint8_t> input,
                                              std::string_view separator = "",
-                                             bool uppercase = true)
+                                             bool uppercase             = true)
 {
     if (input.empty()) {
         return "";
     }
 
-    const char* hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
-    
+    const char *hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
+
     std::string result;
     result.reserve(input.size() * (2 + separator.size()) - separator.size());
 
@@ -481,13 +478,12 @@ template<typename T>
 }
 
 // Overload for vector
-[[nodiscard]] inline std::string toHexString(const std::vector<uint8_t>& input,
+[[nodiscard]] inline std::string toHexString(const std::vector<uint8_t> &input,
                                              std::string_view separator = "",
-                                             bool uppercase = true)
+                                             bool uppercase             = true)
 {
     return toHexString(std::span<const uint8_t>(input), separator, uppercase);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -499,10 +495,9 @@ template<typename T>
 /*--------------------------------------------------------------------------------------------------------*/
 [[nodiscard]] constexpr std::array<char, 2> byteToHex(uint8_t byte, bool uppercase = true) noexcept
 {
-    const char* hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
+    const char *hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
     return {hexDigits[(byte >> 4) & 0xF], hexDigits[byte & 0xF]};
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -516,11 +511,11 @@ template<typename T>
 {
     int h = internal::hex_char_to_nibble(high);
     int l = internal::hex_char_to_nibble(low);
-    
+
     if (h < 0 || l < 0) {
         return std::nullopt;
     }
-    
+
     return static_cast<uint8_t>((h << 4) | l);
 }
 
@@ -551,7 +546,7 @@ template<typename T>
 
     // Decompose into up to 8 bytes, big-endian, skipping leading zero bytes.
     uint8_t bytes[8];
-    int start = 8;
+    int start    = 8;
     uint64_t tmp = value;
     while (tmp > 0) {
         bytes[--start] = static_cast<uint8_t>(tmp & 0xFF);
@@ -588,7 +583,7 @@ template<typename T>
  */
 /*--------------------------------------------------------------------------------------------------------*/
 [[nodiscard]] inline std::string intToHexStringFixed(uint64_t value, size_t byteWidth,
-                                                      Endianness endian, bool uppercase = true) noexcept
+                                                     Endianness endian, bool uppercase = true) noexcept
 {
     if (byteWidth == 0) {
         return "";
@@ -639,11 +634,11 @@ template<typename T>
  */
 /*--------------------------------------------------------------------------------------------------------*/
 [[nodiscard]] inline std::string floatToHexStringFixed(float value, Endianness endian,
-                                                        bool uppercase = true) noexcept
+                                                       bool uppercase = true) noexcept
 {
     static_assert(sizeof(float) == 4, "expects IEEE-754 binary32 (4-byte) float");
 
-    const auto raw = std::bit_cast<std::array<uint8_t, 4>>(value);   // native byte order
+    const auto raw = std::bit_cast<std::array<uint8_t, 4>>(value); // native byte order
 
     std::vector<uint8_t> bytes(raw.begin(), raw.end());
     constexpr bool systemIsLE = internal::is_system_little_endian();
@@ -672,11 +667,11 @@ template<typename T>
  */
 /*--------------------------------------------------------------------------------------------------------*/
 [[nodiscard]] inline std::string doubleToHexStringFixed(double value, Endianness endian,
-                                                         bool uppercase = true) noexcept
+                                                        bool uppercase = true) noexcept
 {
     static_assert(sizeof(double) == 8, "expects IEEE-754 binary64 (8-byte) double");
 
-    const auto raw = std::bit_cast<std::array<uint8_t, 8>>(value);   // native byte order
+    const auto raw = std::bit_cast<std::array<uint8_t, 8>>(value); // native byte order
 
     std::vector<uint8_t> bytes(raw.begin(), raw.end());
     constexpr bool systemIsLE = internal::is_system_little_endian();

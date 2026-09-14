@@ -1,4 +1,5 @@
 #include "profibus_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
 #include "private/profibus_setup.hpp"
@@ -13,18 +14,24 @@ struct PluginDataGet;
 struct PluginDataSet;
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 #define LT_HDR  "PROFIBUS PLUGIN |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
-extern "C"
+extern "C" {
+EXPORTED ProfibusPlugin *pluginEntry()
 {
-    EXPORTED ProfibusPlugin* pluginEntry() { return new ProfibusPlugin(); }
-    EXPORTED void pluginExit(ProfibusPlugin *ptrPlugin) { delete ptrPlugin; }
+    return new ProfibusPlugin();
+}
+
+EXPORTED void pluginExit(ProfibusPlugin *ptrPlugin)
+{
+    delete ptrPlugin;
+}
 }
 
 bool ProfibusPlugin::doInit(void *pvUserData)
@@ -37,7 +44,7 @@ bool ProfibusPlugin::doInit(void *pvUserData)
 void ProfibusPlugin::doCleanup(void)
 {
     m_bIsInitialized = false;
-    m_bIsEnabled = false;
+    m_bIsEnabled     = false;
     m_strResultData.clear();
     m_pDriver.reset(); // ~ProfibusDriver() closes the serial port
 }
@@ -58,7 +65,7 @@ void ProfibusPlugin::getParams(PluginDataGet *psGetParams) const
     generic_getparams<ProfibusPlugin>(this, psGetParams);
 }
 
-bool ProfibusPlugin::doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+bool ProfibusPlugin::doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
 {
     return generic_dispatch<ProfibusPlugin>(this, strCmd, strParams, st);
 }
@@ -79,14 +86,14 @@ std::shared_ptr<ProfibusDriver> ProfibusPlugin::m_OpenDriver(void) const
     }
 
     ProfibusDriver::Config cfg;
-    cfg.device             = m_strDevice;
+    cfg.device              = m_strDevice;
     cfg.baud                = m_u32Baud;
     cfg.ownAddress          = m_u8OwnAddress;
     cfg.responseTimeoutMs   = m_u32ResponseTimeout;
     cfg.defaultHighPriority = m_bDefaultHighPriority;
     cfg.strInstanceName     = m_strInstanceName;
 
-    auto driver = std::make_shared<ProfibusDriver>(cfg);
+    auto driver             = std::make_shared<ProfibusDriver>(cfg);
     if (!driver->open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ProfibusDriver open failed"));
         return nullptr;
@@ -100,9 +107,10 @@ std::shared_ptr<ProfibusDriver> ProfibusPlugin::m_OpenDriver(void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string& args, std::stop_token st) const
+bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string &args, std::stop_token st) const
 {
-    (void)args; (void)st;
+    (void)args;
+    (void)st;
     resetData();
     std::ostringstream oss;
     oss << PROFIBUS_PLUGIN_NAME " v" << m_strVersion
@@ -158,7 +166,6 @@ bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
@@ -166,7 +173,7 @@ bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string& args, std::stop_token st
 // PROFIBUS.CONFIG — see class doc comment (profibus_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string& args, std::stop_token st) const
+bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -180,7 +187,7 @@ bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string& args, std::stop_token 
 // PROFIBUS.CMD / PROFIBUS.SCRIPT — see class doc comment (profibus_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string& args, std::stop_token st) const
+bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -195,12 +202,13 @@ bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string& args, std::stop_token st)
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
 
-bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string& args, std::stop_token st) const
+bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -212,16 +220,17 @@ bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string& args, std::stop_token 
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
 
 // -----------------------------------------------------------------------
 // PROFIBUS.CYCLIC — see class doc comment (profibus_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool ProfibusPlugin::m_PROFIBUS_CYCLIC(const std::string& args, std::stop_token st) const
+bool ProfibusPlugin::m_PROFIBUS_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -235,7 +244,7 @@ bool ProfibusPlugin::m_PROFIBUS_CYCLIC(const std::string& args, std::stop_token 
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
         });
 }

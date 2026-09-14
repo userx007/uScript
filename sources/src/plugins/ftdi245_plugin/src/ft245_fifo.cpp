@@ -28,10 +28,10 @@
 #include "uNumeric.hpp"
 #include "uString.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <string_view>
@@ -41,14 +41,14 @@
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+#undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR   "FT245_FIFO |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR        "FT245_FIFO |"
+#define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "FIFO"
 
@@ -56,7 +56,7 @@
 //                       HELP                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_fifo_help(const std::string&, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_fifo_help(const std::string &, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<FT245Plugin>(this, PROTOCOL_NAME);
 }
@@ -65,7 +65,7 @@ bool FT245Plugin::m_handle_fifo_help(const std::string&, std::stop_token /*st*/)
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_fifo_open(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_fifo_open(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -78,8 +78,10 @@ bool FT245Plugin::m_handle_fifo_open(const std::string& args, std::stop_token /*
     }
 
     uint8_t devIdx = m_sIniValues.u8DeviceIndex;
-    if (!parseFifoParams(args, m_sFifoCfg, &devIdx)) return false;
-    const_cast<FT245Plugin*>(this)->m_sIniValues.u8DeviceIndex = devIdx;
+    if (!parseFifoParams(args, m_sFifoCfg, &devIdx)) {
+        return false;
+    }
+    const_cast<FT245Plugin *>(this)->m_sIniValues.u8DeviceIndex = devIdx;
 
     // FT245R does not support sync mode
     if (m_sFifoCfg.variant == FT245Base::Variant::FT245R &&
@@ -89,22 +91,25 @@ bool FT245Plugin::m_handle_fifo_open(const std::string& args, std::stop_token /*
         return false;
     }
 
-    if (m_pFIFO) { m_pFIFO->close(); m_pFIFO.reset(); }
+    if (m_pFIFO) {
+        m_pFIFO->close();
+        m_pFIFO.reset();
+    }
 
     FT245Sync::SyncConfig cfg;
     cfg.variant  = m_sFifoCfg.variant;
     cfg.fifoMode = m_sFifoCfg.fifoMode;
 
-    m_pFIFO = std::make_unique<FT245Sync>();
-    auto s = m_pFIFO->open(cfg, m_sIniValues.u8DeviceIndex);
+    m_pFIFO      = std::make_unique<FT245Sync>();
+    auto s       = m_pFIFO->open(cfg, m_sIniValues.u8DeviceIndex);
     if (s != FT245Sync::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FIFO open failed"));
         m_pFIFO.reset();
         return false;
     }
 
-    const char* varStr  = (cfg.variant  == FT245Base::Variant::FT245BM) ? "BM" : "R";
-    const char* modeStr = (cfg.fifoMode == FT245Base::FifoMode::Async)  ? "async" : "sync";
+    const char *varStr  = (cfg.variant == FT245Base::Variant::FT245BM) ? "BM" : "R";
+    const char *modeStr = (cfg.fifoMode == FT245Base::FifoMode::Async) ? "async" : "sync";
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("FIFO opened: variant="); LOG_STRING(varStr);
               LOG_STRING("mode="); LOG_STRING(modeStr);
@@ -116,7 +121,7 @@ bool FT245Plugin::m_handle_fifo_open(const std::string& args, std::stop_token /*
 //                       CLOSE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_fifo_close(const std::string&, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_fifo_close(const std::string &, std::stop_token /*st*/) const
 {
     if (m_pFIFO) {
         m_pFIFO->close();
@@ -132,21 +137,24 @@ bool FT245Plugin::m_handle_fifo_close(const std::string&, std::stop_token /*st*/
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_fifo_cfg(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_fifo_cfg(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help" || args == "?") {
-        const char* varStr  = (m_sFifoCfg.variant  == FT245Base::Variant::FT245BM) ? "BM" : "R";
-        const char* modeStr = (m_sFifoCfg.fifoMode == FT245Base::FifoMode::Async)  ? "async" : "sync";
+        const char *varStr  = (m_sFifoCfg.variant == FT245Base::Variant::FT245BM) ? "BM" : "R";
+        const char *modeStr = (m_sFifoCfg.fifoMode == FT245Base::FifoMode::Async) ? "async" : "sync";
         LOG_PRINT(LOG_EMPTY, LOG_STRING("FIFO pending config:"));
         LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  variant="); LOG_STRING(varStr);
-                  LOG_STRING("mode=");      LOG_STRING(modeStr));
+                  LOG_STRING("  variant=");
+                  LOG_STRING(varStr);
+                  LOG_STRING("mode="); LOG_STRING(modeStr));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [variant=BM|R] [mode=async|sync]"));
         return true;
     }
 
-    if (!parseFifoParams(args, m_sFifoCfg)) return false;
+    if (!parseFifoParams(args, m_sFifoCfg)) {
+        return false;
+    }
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("FIFO config updated (takes effect on next open)"));
@@ -157,15 +165,17 @@ bool FT245Plugin::m_handle_fifo_cfg(const std::string& args, std::stop_token /*s
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_fifo_write(const std::string& args, std::stop_token st) const
+bool FT245Plugin::m_handle_fifo_write(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write AABB..  (hex bytes written into TX FIFO)"));
         return true;
     }
-    auto* p = m_fifo();
-    if (!p) return false;
+    auto *p = m_fifo();
+    if (!p) {
+        return false;
+    }
 
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(args, data) || data.empty()) {
@@ -189,15 +199,17 @@ bool FT245Plugin::m_handle_fifo_write(const std::string& args, std::stop_token s
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_fifo_read(const std::string& args, std::stop_token st) const
+bool FT245Plugin::m_handle_fifo_read(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (read N bytes from RX FIFO)"));
         return true;
     }
-    auto* p = m_fifo();
-    if (!p) return false;
+    auto *p = m_fifo();
+    if (!p) {
+        return false;
+    }
 
     size_t n = 0;
     if (!numeric::str2sizet(args, n) || n == 0) {
@@ -207,7 +219,7 @@ bool FT245Plugin::m_handle_fifo_read(const std::string& args, std::stop_token st
 
     std::vector<uint8_t> buf(n);
     ICommDriver::ReadOptions opts;
-    opts.mode = ICommDriver::ReadMode::Exact;
+    opts.mode   = ICommDriver::ReadMode::Exact;
 
     auto result = p->tout_read(p->FT245_READ_DEFAULT_TIMEOUT, buf, opts, std::string_view{}, st);
     if (result.status != FT245Sync::Status::SUCCESS) {
@@ -226,8 +238,10 @@ bool FT245Plugin::m_handle_fifo_read(const std::string& args, std::stop_token st
 
 bool FT245Plugin::m_fifo_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const
 {
-    auto* p = m_fifo();
-    if (!p) return false;
+    auto *p = m_fifo();
+    if (!p) {
+        return false;
+    }
 
     if (!req.empty()) {
         auto wr = p->tout_write(p->FT245_WRITE_DEFAULT_TIMEOUT, req, std::string_view{}, st);
@@ -242,7 +256,7 @@ bool FT245Plugin::m_fifo_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
         ICommDriver::ReadOptions opts;
         opts.mode = ICommDriver::ReadMode::Exact;
 
-        auto rd = p->tout_read(p->FT245_READ_DEFAULT_TIMEOUT, rxBuf, opts, std::string_view{}, st);
+        auto rd   = p->tout_read(p->FT245_READ_DEFAULT_TIMEOUT, rxBuf, opts, std::string_view{}, st);
         if (rd.status != FT245Sync::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("wrrd: read phase failed"));
             return false;
@@ -255,13 +269,13 @@ bool FT245Plugin::m_fifo_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
     return true;
 }
 
-bool FT245Plugin::m_handle_fifo_wrrd(const std::string& args, std::stop_token st) const
+bool FT245Plugin::m_handle_fifo_wrrd(const std::string &args, std::stop_token st) const
 {
     return generic_write_read_data<FT245Plugin>(
         this, args, &FT245Plugin::m_fifo_wrrd_cb, st);
 }
 
-bool FT245Plugin::m_handle_fifo_wrrdf(const std::string& args, std::stop_token st) const
+bool FT245Plugin::m_handle_fifo_wrrdf(const std::string &args, std::stop_token st) const
 {
     return generic_write_read_file<FT245Plugin>(
         this, args, &FT245Plugin::m_fifo_wrrd_cb,
@@ -272,7 +286,7 @@ bool FT245Plugin::m_handle_fifo_wrrdf(const std::string& args, std::stop_token s
 //                       FLUSH                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_fifo_flush(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_fifo_flush(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -280,8 +294,10 @@ bool FT245Plugin::m_handle_fifo_flush(const std::string& args, std::stop_token /
         return true;
     }
 
-    auto* p = m_fifo();
-    if (!p) return false;
+    auto *p = m_fifo();
+    if (!p) {
+        return false;
+    }
 
     auto s = p->flush();
     if (s != FT245Sync::Status::SUCCESS) {
@@ -297,7 +313,7 @@ bool FT245Plugin::m_handle_fifo_flush(const std::string& args, std::stop_token /
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_fifo_script(const std::string& args, std::stop_token st) const
+bool FT245Plugin::m_handle_fifo_script(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
@@ -306,18 +322,20 @@ bool FT245Plugin::m_handle_fifo_script(const std::string& args, std::stop_token 
         return true;
     }
 
-    auto* pFifo = m_fifo();
-    if (!pFifo) return false;
+    auto *pFifo = m_fifo();
+    if (!pFifo) {
+        return false;
+    }
 
-    const auto* ini = getAccessIniValues(*this);
+    const auto *ini = getAccessIniValues(*this);
     return generic_execute_script(
-            pFifo,
-            FT245_PLUGIN_NAME,
-            args,
-            ini->strArtefactsPath,
-            FT_BULK_MAX_BYTES,
-            ini->u32ReadTimeout,
-            ini->u32ScriptDelay,
-            m_bIsEnabled,
-            st);
+        pFifo,
+        FT245_PLUGIN_NAME,
+        args,
+        ini->strArtefactsPath,
+        FT_BULK_MAX_BYTES,
+        ini->u32ReadTimeout,
+        ini->u32ScriptDelay,
+        m_bIsEnabled,
+        st);
 }

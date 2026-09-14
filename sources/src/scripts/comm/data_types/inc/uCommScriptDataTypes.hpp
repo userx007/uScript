@@ -4,40 +4,38 @@
 #include "uSharedConfig.hpp"
 
 #include <string>
-#include <vector>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 /**
  * @brief Direction of command execution
  */
-enum class CommCommandDirection
-{
-    SEND_RECV,  ///< CommCommand starts with '>', send first then optionally receive
-    RECV_SEND,  ///< CommCommand starts with '<', receive first then optionally send
-    DELAY,      ///< CommCommand starts with '!', insert delay
-    PRINT,      ///< CommCommand starts with '@', log the trailing message at INFO severity
-    INVALID     ///< Neither above, wrong command format
+enum class CommCommandDirection {
+    SEND_RECV, ///< CommCommand starts with '>', send first then optionally receive
+    RECV_SEND, ///< CommCommand starts with '<', receive first then optionally send
+    DELAY,     ///< CommCommand starts with '!', insert delay
+    PRINT,     ///< CommCommand starts with '@', log the trailing message at INFO severity
+    INVALID    ///< Neither above, wrong command format
 };
 
 /**
  * @brief Type of token parsed from script line
  */
-enum class CommCommandTokenType
-{
-    EMPTY,                   ///< No content
-    HEXSTREAM,               ///< Hexadecimal stream [exact buffer]  (e.g., H"4A6F686E") 
-    REGEX,                   ///< Regular expression pattern (e.g., R".*")
-    FILENAME,                ///< File name or path (e.g., F"firmware.bin")
-    TOKEN_STRING,            ///< String Token [partial string] to wait for (e.g., T"OK")
-    TOKEN_HEXSTREAM,         ///< Hexstream Token [partial buffer] to wait for (e.g., X"CAFE00FF124C")
-    LINE,                    ///< Line terminated with LF or CRLF (e.g., L"data")
-    SIZEOF,                  ///< Number of bytes to read (e.g., S"256")
-    STRING_DELIMITED,        ///< String with delimiters (e.g., "HelloWorld" or "Hello World" or "Hello || World")
-    STRING_DELIMITED_EMPTY,  ///< Empty delimited string (e.g., "")
-    STRING_RAW,              ///< Plain string without delimiters (e.g., HelloWorld / Hello World )
-    ANYTHING,                ///< Receive anything found
-    INVALID                  ///< Unrecognized or malformed token
+enum class CommCommandTokenType {
+    EMPTY,                  ///< No content
+    HEXSTREAM,              ///< Hexadecimal stream [exact buffer]  (e.g., H"4A6F686E")
+    REGEX,                  ///< Regular expression pattern (e.g., R".*")
+    FILENAME,               ///< File name or path (e.g., F"firmware.bin")
+    TOKEN_STRING,           ///< String Token [partial string] to wait for (e.g., T"OK")
+    TOKEN_HEXSTREAM,        ///< Hexstream Token [partial buffer] to wait for (e.g., X"CAFE00FF124C")
+    LINE,                   ///< Line terminated with LF or CRLF (e.g., L"data")
+    SIZEOF,                 ///< Number of bytes to read (e.g., S"256")
+    STRING_DELIMITED,       ///< String with delimiters (e.g., "HelloWorld" or "Hello World" or "Hello || World")
+    STRING_DELIMITED_EMPTY, ///< Empty delimited string (e.g., "")
+    STRING_RAW,             ///< Plain string without delimiters (e.g., HelloWorld / Hello World )
+    ANYTHING,               ///< Receive anything found
+    INVALID                 ///< Unrecognized or malformed token
 };
 
 /**
@@ -73,8 +71,7 @@ struct CommCommandsType
 /**
  * @brief Read operation types for driver interface
  */
-enum class CommCommandReadType
-{
+enum class CommCommandReadType {
     DEFAULT,        ///< Read exact number of bytes
     LINE,           ///< Read until newline delimiter
     TOKEN_STRING,   ///< Read until specific string token is found
@@ -82,35 +79,55 @@ enum class CommCommandReadType
 };
 
 // Helper functions for enum to string conversion
-inline const char* getDirectionName(CommCommandDirection dir)
+inline const char *getDirectionName(CommCommandDirection dir)
 {
     switch (dir) {
-        case CommCommandDirection::SEND_RECV: return "SEND_RECV";
-        case CommCommandDirection::RECV_SEND: return "RECV_SEND";
-        case CommCommandDirection::DELAY:     return "DELAY";
-        case CommCommandDirection::PRINT:     return "PRINT";
-        case CommCommandDirection::INVALID:   return "INVALID";
-        default:                              return "UNKNOWN";
+    case CommCommandDirection::SEND_RECV:
+        return "SEND_RECV";
+    case CommCommandDirection::RECV_SEND:
+        return "RECV_SEND";
+    case CommCommandDirection::DELAY:
+        return "DELAY";
+    case CommCommandDirection::PRINT:
+        return "PRINT";
+    case CommCommandDirection::INVALID:
+        return "INVALID";
+    default:
+        return "UNKNOWN";
     }
 }
 
-inline const char* getTokenTypeName(CommCommandTokenType type)
+inline const char *getTokenTypeName(CommCommandTokenType type)
 {
     switch (type) {
-        case CommCommandTokenType::EMPTY:                  return "EMPTY";
-        case CommCommandTokenType::HEXSTREAM:              return "HEXSTREAM";
-        case CommCommandTokenType::REGEX:                  return "REGEX";
-        case CommCommandTokenType::FILENAME:               return "FILENAME";
-        case CommCommandTokenType::TOKEN_STRING:           return "TOKEN_STRING";
-        case CommCommandTokenType::TOKEN_HEXSTREAM:        return "TOKEN_HEXSTREAM";
-        case CommCommandTokenType::LINE:                   return "LINE";
-        case CommCommandTokenType::SIZEOF:                 return "SIZEOF";
-        case CommCommandTokenType::STRING_DELIMITED:       return "STRING_DELIMITED";
-        case CommCommandTokenType::STRING_DELIMITED_EMPTY: return "STRING_DELIMITED_EMPTY";
-        case CommCommandTokenType::STRING_RAW:             return "STRING_RAW";
-        case CommCommandTokenType::ANYTHING:               return "ANYTHING";
-        case CommCommandTokenType::INVALID:                return "INVALID";
-        default:                                           return "UNKNOWN";
+    case CommCommandTokenType::EMPTY:
+        return "EMPTY";
+    case CommCommandTokenType::HEXSTREAM:
+        return "HEXSTREAM";
+    case CommCommandTokenType::REGEX:
+        return "REGEX";
+    case CommCommandTokenType::FILENAME:
+        return "FILENAME";
+    case CommCommandTokenType::TOKEN_STRING:
+        return "TOKEN_STRING";
+    case CommCommandTokenType::TOKEN_HEXSTREAM:
+        return "TOKEN_HEXSTREAM";
+    case CommCommandTokenType::LINE:
+        return "LINE";
+    case CommCommandTokenType::SIZEOF:
+        return "SIZEOF";
+    case CommCommandTokenType::STRING_DELIMITED:
+        return "STRING_DELIMITED";
+    case CommCommandTokenType::STRING_DELIMITED_EMPTY:
+        return "STRING_DELIMITED_EMPTY";
+    case CommCommandTokenType::STRING_RAW:
+        return "STRING_RAW";
+    case CommCommandTokenType::ANYTHING:
+        return "ANYTHING";
+    case CommCommandTokenType::INVALID:
+        return "INVALID";
+    default:
+        return "UNKNOWN";
     }
 }
 

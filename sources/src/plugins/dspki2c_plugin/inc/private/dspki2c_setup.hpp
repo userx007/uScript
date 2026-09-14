@@ -2,8 +2,8 @@
 #define DSPKI2C_SETUP_HPP
 #include "PluginSetup.hpp"
 #include "dspki2c_plugin.hpp"
-#include "uPluginSettings.hpp"
 #include "uCommandExec.hpp"
+#include "uPluginSettings.hpp"
 
 #include <string>
 
@@ -12,26 +12,26 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "DSPK_I2C_P  |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR         "DSPK_I2C_P  |"
+#define LOG_HDR        LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  INI FILE CONFIGURATION ITEMS                               //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
-#define    I2C_VID            "I2C_VID"
-#define    I2C_PID            "I2C_PID"
-#define    I2C_SLAVE_ADDR     "I2C_SLAVE_ADDR"
-#define    READ_TIMEOUT       "READ_TIMEOUT"
-#define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
-#define    READ_BUF_SIZE      "READ_BUF_SIZE"
+#define ARTEFACTS_PATH "ARTEFACTS_PATH"
+#define I2C_VID        "I2C_VID"
+#define I2C_PID        "I2C_PID"
+#define I2C_SLAVE_ADDR "I2C_SLAVE_ADDR"
+#define READ_TIMEOUT   "READ_TIMEOUT"
+#define WRITE_TIMEOUT  "WRITE_TIMEOUT"
+#define READ_BUF_SIZE  "READ_BUF_SIZE"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  CONFIGURATION INTERFACES                                   //
@@ -39,15 +39,15 @@
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief processing of the plugin specific settings.
-  *
-  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
-  * same setter surface the CONFIG command uses so an ini file
-  * and a runtime CONFIG command are always interpreted identically
-*/
+ * \brief processing of the plugin specific settings.
+ *
+ * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+ * same setter surface the CONFIG command uses so an ini file
+ * and a runtime CONFIG command are always interpreted identically
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
+bool DSPKi2cPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
     // Runtime instance identity for the GUI comm-dump panel (e.g. "DSPKI2C:1"); falls back to the fixed plugin name if the
     // interpreter didn't supply one. Done before the "nothing loaded from ini"
@@ -61,40 +61,39 @@ bool DSPKi2cPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 
     PluginSettingsBinder sSettings;
     sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(I2C_VID, [this](const std::string& v) {
+    sSettings.Bind(I2C_VID, [this](const std::string &v) {
         if (false == setVid(v)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_VID value"));
             return false;
         }
         return true;
     });
-    sSettings.Bind(I2C_PID, [this](const std::string& v) {
+    sSettings.Bind(I2C_PID, [this](const std::string &v) {
         if (false == setPid(v)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_PID value"));
             return false;
         }
         return true;
     });
-    sSettings.Bind(I2C_SLAVE_ADDR, [this](const std::string& v) {
+    sSettings.Bind(I2C_SLAVE_ADDR, [this](const std::string &v) {
         if (false == setSlaveAddr(v)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_SLAVE_ADDR (must be 7-bit hex, 00-7F)"));
             return false;
         }
         return true;
     });
-    sSettings.Bind(READ_TIMEOUT,  m_u32ReadTimeout);
+    sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
     sSettings.Bind(READ_BUF_SIZE, m_u32ReadBufferSize);
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     return sSettings.Apply(psSetParams->mapSettings,
-        [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-        });
+                           [](const std::string &strKey, const std::string &strRawValue) {
+                               LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+                           });
 
 } /* m_LocalSetParams() */
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -108,20 +107,20 @@ bool DSPKi2cPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
  * \note Short-circuits to true (without applying anything) while the plugin isn't yet enabled -
  *       this is the argument-validation-only dry run, before any real Digispark device is
  *       expected to be attached.
-*/
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename T>
-bool generic_i2c_set_params (const T *pOwner, const std::string &args)
+bool generic_i2c_set_params(const T *pOwner, const std::string &args)
 {
     static constexpr KVSetterEntry<T> table[] = {
-        { .key = "v",      .boolSetter = &T::setVid             },
-        { .key = "p",      .boolSetter = &T::setPid             },
-        { .key = "a",      .boolSetter = &T::setSlaveAddr       },
-        { .key = "r",      .boolSetter = &T::setReadTimeout     },
-        { .key = "w",      .boolSetter = &T::setWriteTimeout    },
-        { .key = "s",      .boolSetter = &T::setReadBufferSize  },
-        { .key = "raw",    .boolSetter = &T::setRawResult       },
-        { .key = "cached", .boolSetter = &T::setCyclicCached    },
+        {.key = "v", .boolSetter = &T::setVid},
+        {.key = "p", .boolSetter = &T::setPid},
+        {.key = "a", .boolSetter = &T::setSlaveAddr},
+        {.key = "r", .boolSetter = &T::setReadTimeout},
+        {.key = "w", .boolSetter = &T::setWriteTimeout},
+        {.key = "s", .boolSetter = &T::setReadBufferSize},
+        {.key = "raw", .boolSetter = &T::setRawResult},
+        {.key = "cached", .boolSetter = &T::setCyclicCached},
     };
 
     if (args.empty()) {

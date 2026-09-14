@@ -1,6 +1,7 @@
+#include "kspi_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
-#include "kspi_plugin.hpp"
 #include "kspi_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -15,10 +16,10 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 
@@ -26,20 +27,18 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED KSPIPlugin *pluginEntry()
 {
-    EXPORTED KSPIPlugin* pluginEntry()
-    {
-        return new KSPIPlugin();
-    }
+    return new KSPIPlugin();
+}
 
-    EXPORTED void pluginExit( KSPIPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(KSPIPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -48,31 +47,29 @@ extern "C"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about the plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if plugin initialization fails.
-  *
-  * \note Usage example:
-  *       KSPI.INFO
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about the plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if plugin initialization fails.
+ *
+ * \note Usage example:
+ *       KSPI.INFO
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KSPIPlugin::m_KSPI_INFO (const std::string &args, std::stop_token st) const
+bool KSPIPlugin::m_KSPI_INFO(const std::string &args, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -120,50 +117,47 @@ bool KSPIPlugin::m_KSPI_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current KSPI parameters at runtime.
-  *
-  * \note Any subset of parameters can be specified; omitted keys retain their current values.
-  *
-  * \note Usage example:
-  *       KSPI.CONFIG d=/dev/spidev0.0 m=0 z=1000000 b=8 r=2000 w=2000 s=256
-  *       KSPI.CONFIG d=/dev/spidev0.1 m=3 z=8000000
-  *
-  * \param[in] args  [d=device] [m=mode] [z=speed_hz] [b=bits_per_word] [r=read_tout] [w=write_tout] [s=recv_bufsize]
-  *
-  * \return true if parameters were updated successfully, false otherwise
-*/
+ * \brief CONFIG command implementation; overwrite the current KSPI parameters at runtime.
+ *
+ * \note Any subset of parameters can be specified; omitted keys retain their current values.
+ *
+ * \note Usage example:
+ *       KSPI.CONFIG d=/dev/spidev0.0 m=0 z=1000000 b=8 r=2000 w=2000 s=256
+ *       KSPI.CONFIG d=/dev/spidev0.1 m=3 z=8000000
+ *
+ * \param[in] args  [d=device] [m=mode] [z=speed_hz] [b=bits_per_word] [r=read_tout] [w=write_tout] [s=recv_bufsize]
+ *
+ * \return true if parameters were updated successfully, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KSPIPlugin::m_KSPI_CONFIG (const std::string &args, std::stop_token st) const
+bool KSPIPlugin::m_KSPI_CONFIG(const std::string &args, std::stop_token st) const
 {
     return generic_spi_set_params<KSPIPlugin>(this, args);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation; execute a single send/receive operation over KSPI.
-  *
-  * \note The KSPI device is opened for the duration of the call and closed automatically on return (RAII).
-  *
-  * \note Usage example:
-  *       KSPI.CMD > H\"01\" | H\"00\"
-  *       KSPI.CMD < \"Ready\" | \"Go!\"
-  *
-  * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CMD command implementation; execute a single send/receive operation over KSPI.
+ *
+ * \note The KSPI device is opened for the duration of the call and closed automatically on return (RAII).
+ *
+ * \note Usage example:
+ *       KSPI.CMD > H\"01\" | H\"00\"
+ *       KSPI.CMD < \"Ready\" | \"Go!\"
+ *
+ * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KSPIPlugin::m_KSPI_CMD (const std::string &args, std::stop_token st) const
+bool KSPIPlugin::m_KSPI_CMD(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -177,29 +171,28 @@ bool KSPIPlugin::m_KSPI_CMD (const std::string &args, std::stop_token st) const
             config.bits_per_word = m_u8SpiBitsPerWord;
 
             // Open the KSPI device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
+            auto shpDriver       = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation; execute a multi-command script file over KSPI.
-  *
-  * \note Usage example:
-  *       KSPI.SCRIPT init_sequence.txt
-  *       KSPI.SCRIPT flash_write.txt 100
-  *
-  * \param[in] args  filename [delay_ms]
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief SCRIPT command implementation; execute a multi-command script file over KSPI.
+ *
+ * \note Usage example:
+ *       KSPI.SCRIPT init_sequence.txt
+ *       KSPI.SCRIPT flash_write.txt 100
+ *
+ * \param[in] args  filename [delay_ms]
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KSPIPlugin::m_KSPI_SCRIPT (const std::string &args, std::stop_token st) const
+bool KSPIPlugin::m_KSPI_SCRIPT(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -213,35 +206,34 @@ bool KSPIPlugin::m_KSPI_SCRIPT (const std::string &args, std::stop_token st) con
             config.bits_per_word = m_u8SpiBitsPerWord;
 
             // Open the KSPI device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
+            auto shpDriver       = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic KSPI messages.
-  *
-  * \note The KSPI device is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). KSPI is a point-to-point bus with no addressable
-  *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
-  *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
-  *
-  * \note Usage example:
-  *       KSPI.CYCLIC 100 AABBCCDD, 250 06
-  *       KSPI.CYCLIC 100 AABBCCDD, 250 06 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic KSPI messages.
+ *
+ * \note The KSPI device is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). KSPI is a point-to-point bus with no addressable
+ *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
+ *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+ *
+ * \note Usage example:
+ *       KSPI.CYCLIC 100 AABBCCDD, 250 06
+ *       KSPI.CYCLIC 100 AABBCCDD, 250 06 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KSPIPlugin::m_KSPI_CYCLIC (const std::string &args, std::stop_token st) const
+bool KSPIPlugin::m_KSPI_CYCLIC(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
@@ -253,12 +245,11 @@ bool KSPIPlugin::m_KSPI_CYCLIC (const std::string &args, std::stop_token st) con
             config.bits_per_word = m_u8SpiBitsPerWord;
 
             // Open the KSPI device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
+            auto shpDriver       = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //            PRIVATE INTERFACES IMPLEMENTATION                                //
@@ -266,8 +257,8 @@ bool KSPIPlugin::m_KSPI_CYCLIC (const std::string &args, std::stop_token st) con
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief message sender
-*/
+ * \brief message sender
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
 bool KSPIPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
@@ -284,36 +275,34 @@ bool KSPIPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief message receiver
-*/
+ * \brief message receiver
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KSPIPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+bool KSPIPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;
 
-    switch(readType)
-    {
-        case CommCommandReadType::LINE:
-            options.mode      = ICommDriver::ReadMode::UntilDelimiter;
-            options.delimiter = '\n';
-            break;
+    switch (readType) {
+    case CommCommandReadType::LINE:
+        options.mode      = ICommDriver::ReadMode::UntilDelimiter;
+        options.delimiter = '\n';
+        break;
 
-        case CommCommandReadType::TOKEN_STRING:
-            [[fallthrough]];
-        case CommCommandReadType::TOKEN_HEXSTREAM:
-            options.mode       = ICommDriver::ReadMode::UntilToken;
-            options.token      = dataSpan;
-            options.use_buffer = true;
-            break;
+    case CommCommandReadType::TOKEN_STRING:
+        [[fallthrough]];
+    case CommCommandReadType::TOKEN_HEXSTREAM:
+        options.mode       = ICommDriver::ReadMode::UntilToken;
+        options.token      = dataSpan;
+        options.use_buffer = true;
+        break;
 
-        default:
-            options.mode = ICommDriver::ReadMode::Exact;
-            break;
+    default:
+        options.mode = ICommDriver::ReadMode::Exact;
+        break;
     }
 
     auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);

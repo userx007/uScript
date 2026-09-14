@@ -21,24 +21,24 @@
  */
 
 // Foundation
-#include "Support.hpp"
-#include "Hydrabus.hpp"
 #include "AUXPin.hpp"
+#include "Hydrabus.hpp"
 #include "Protocol.hpp"
+#include "Support.hpp"
 
 // Protocols
-#include "SPI.hpp"
 #include "I2C.hpp"
-#include "UART.hpp"
+#include "MMC.hpp"
+#include "NFC.hpp"
 #include "OneWire.hpp"
 #include "RawWire.hpp"
+#include "SDIO.hpp"
+#include "SPI.hpp"
 #include "SWD.hpp"
 #include "Smartcard.hpp"
-#include "NFC.hpp"
-#include "MMC.hpp"
-#include "SDIO.hpp"
+#include "UART.hpp"
 
 // Utilities
 #include "Utils.hpp"
 
-#endif //HYDRABUS_HAL_HPP
+#endif // HYDRABUS_HAL_HPP

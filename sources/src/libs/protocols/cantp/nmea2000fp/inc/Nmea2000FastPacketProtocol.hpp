@@ -5,8 +5,8 @@
 #include "ITransportProtocol.hpp"
 #include "TpConfig.hpp"
 
-#include <stdint.h>
 #include <span>
+#include <stdint.h>
 #include <string_view>
 
 /**
@@ -53,32 +53,35 @@
  */
 class Nmea2000FastPacketProtocol final : public ITransportProtocol
 {
-    public:
+public:
+    explicit Nmea2000FastPacketProtocol(const TpConfig &cfg = {})
+        : m_cfg(cfg)
+    {}
 
-        explicit Nmea2000FastPacketProtocol(const TpConfig& cfg = {}) : m_cfg(cfg) {}
+    ICommDriver::WriteResult send(
+        const ICommDriver &driver,
+        uint32_t u32WriteTimeout,
+        std::span<const uint8_t> data,
+        std::string_view txId,
+        std::string_view rxId = {}) const override;
 
-        ICommDriver::WriteResult send(
-            const ICommDriver& driver,
-            uint32_t u32WriteTimeout,
-            std::span<const uint8_t> data,
-            std::string_view txId,
-            std::string_view rxId = {}) const override;
+    ICommDriver::ReadResult receive(
+        const ICommDriver &driver,
+        uint32_t u32ReadTimeout,
+        std::span<uint8_t> buffer,
+        std::string_view rxId,
+        std::string_view txId = {}) const override;
 
-        ICommDriver::ReadResult receive(
-            const ICommDriver& driver,
-            uint32_t u32ReadTimeout,
-            std::span<uint8_t> buffer,
-            std::string_view rxId,
-            std::string_view txId = {}) const override;
+    TpProtocol id() const override
+    {
+        return TpProtocol::NMEA2000_FAST_PACKET;
+    }
 
-        TpProtocol id() const override { return TpProtocol::NMEA2000_FAST_PACKET; }
+private:
+    TpConfig m_cfg;
 
-    private:
-
-        TpConfig m_cfg;
-
-        /** @brief Cycles 0-7; a fresh value is used for every send() call. */
-        mutable uint8_t m_nextSeqCounter = 0;
+    /** @brief Cycles 0-7; a fresh value is used for every send() call. */
+    mutable uint8_t m_nextSeqCounter = 0;
 };
 
 #endif // CAN_TP_NMEA2000_FAST_PACKET_PROTOCOL_HPP

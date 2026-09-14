@@ -2,12 +2,12 @@
 #ifndef UFLAG_PARSER_H
 #define UFLAG_PARSER_H
 
-#include <string>
-#include <string_view>
-#include <unordered_set>
 #include <cctype>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -23,7 +23,6 @@
 class FlagParser
 {
 public:
-
     /*--------------------------------------------------------------------------------------------------------*/
     /**
      * @brief Constructs a FlagParser from a flag string.
@@ -36,7 +35,8 @@ public:
      */
     /*--------------------------------------------------------------------------------------------------------*/
 
-    FlagParser(std::string_view flags) : m_bValid(false)
+    FlagParser(std::string_view flags)
+        : m_bValid(false)
     {
         if (!validate_flag_string(flags)) {
             // Conflict detected — parser remains invalid; caller should check isValid()
@@ -56,8 +56,10 @@ public:
      */
     /*--------------------------------------------------------------------------------------------------------*/
 
-    [[nodiscard]] bool isValid() const noexcept { return m_bValid; }
-
+    [[nodiscard]] bool isValid() const noexcept
+    {
+        return m_bValid;
+    }
 
     /*--------------------------------------------------------------------------------------------------------*/
     /**
@@ -77,12 +79,9 @@ public:
         return it->second;
     } /* get_flag() */
 
-
 private:
-
     std::unordered_map<char, bool> m_umapFlags; ///< Stores flags with their boolean values.
-    bool m_bValid = false;                       ///< True iff the flag string passed validation.
-
+    bool m_bValid = false;                      ///< True iff the flag string passed validation.
 
     /*--------------------------------------------------------------------------------------------------------*/
     /**
@@ -106,6 +105,5 @@ private:
         return true;
     } /* validate_flag_string() */
 };
-
 
 #endif // UFLAG_PARSER_H

@@ -3,18 +3,17 @@
 
 #include "uError.hpp"
 
+#include <string>
 #include <system_error>
 #include <type_traits>
-#include <string>
 #include <utility>
 
 #ifdef _WIN32
-    #include <windows.h>
-    #include <shlwapi.h>
+#include <shlwapi.h>
+#include <windows.h>
 #else // __linux__
-    #include <dlfcn.h>
+#include <dlfcn.h>
 #endif /* _WIN32 */
-
 
 ///////////////////////////////////////////////////////////////////
 //            LOCAL DEFINES AND DATA TYPES                       //
@@ -24,10 +23,10 @@
  * definitions needed to create a common interface for both, Windows and Linux
  */
 #ifndef _WIN32
-using FARPROC = void*;
-using HMODULE = void*;
-using LPCSTR  = const char*;
-using LPCTSTR = const char*;
+using FARPROC = void *;
+using HMODULE = void *;
+using LPCSTR  = const char *;
+using LPCTSTR = const char *;
 #endif //_WIN32
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +39,9 @@ public:
     /**
      * \brief class constructor
      */
-    explicit constexpr ProcAddress(FARPROC ptr) noexcept : m_procPtr(ptr) {}
+    explicit constexpr ProcAddress(FARPROC ptr) noexcept
+        : m_procPtr(ptr)
+    {}
 
     /**
      * \brief overloader operator()
@@ -50,12 +51,12 @@ public:
     operator T *() const noexcept
     {
 #if !defined(_MSC_VER)
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
 #endif
         return reinterpret_cast<T *>(m_procPtr);
 #if !defined(_MSC_VER)
-    #pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
 #endif
     }
 
@@ -71,7 +72,6 @@ private:
     FARPROC m_procPtr;
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////
 //  Class used to handle a shared library (load, unload and get the symbols of the library)
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,14 +83,17 @@ public:
      * \brief Default constructor — creates an unloaded loader.
      *        Call load() to load a library; check isLoaded() or the return value of load().
      */
-    SharedLibLoader() noexcept : m_hModule(nullptr) {}
+    SharedLibLoader() noexcept
+        : m_hModule(nullptr)
+    {}
 
     /**
      * \brief Constructor that attempts to load a shared library.
      * \note On failure the object is left in the unloaded state (isLoaded() == false).
      *       No exception is thrown; call isLoaded() to verify success.
      */
-    explicit SharedLibLoader(LPCTSTR pstrFilename) : m_hModule(nullptr)
+    explicit SharedLibLoader(LPCTSTR pstrFilename)
+        : m_hModule(nullptr)
     {
         load(pstrFilename);
     }
@@ -114,7 +117,7 @@ public:
     /**
      * \brief Move constructor
      */
-    SharedLibLoader(SharedLibLoader&& other) noexcept 
+    SharedLibLoader(SharedLibLoader &&other) noexcept
         : m_hModule(other.m_hModule)
     {
         other.m_hModule = nullptr;
@@ -123,23 +126,22 @@ public:
     /**
      * \brief Move assignment operator
      */
-    SharedLibLoader& operator=(SharedLibLoader&& other) noexcept
+    SharedLibLoader &operator=(SharedLibLoader &&other) noexcept
     {
-        if (this != &other)
-        {
+        if (this != &other) {
             // Release current resource
             unload();
-            
+
             // Transfer ownership
-            m_hModule = other.m_hModule;
+            m_hModule       = other.m_hModule;
             other.m_hModule = nullptr;
         }
         return *this;
     }
 
     // Delete copy operations (non-copyable resource)
-    SharedLibLoader(const SharedLibLoader&) = delete;
-    SharedLibLoader& operator=(const SharedLibLoader&) = delete;
+    SharedLibLoader(const SharedLibLoader &)            = delete;
+    SharedLibLoader &operator=(const SharedLibLoader &) = delete;
 
     /**
      * \brief The class destructor
@@ -156,7 +158,7 @@ public:
      * \param outAddr       Receives the ProcAddress on success; untouched on failure.
      * \return true if the symbol was found, false otherwise.
      */
-    bool getSymbol(LPCSTR pstrProcName, ProcAddress& outAddr) const noexcept
+    bool getSymbol(LPCSTR pstrProcName, ProcAddress &outAddr) const noexcept
     {
 #ifndef _WIN32
         dlerror();
@@ -226,8 +228,7 @@ private:
      */
     void unload() noexcept
     {
-        if (m_hModule != nullptr)
-        {
+        if (m_hModule != nullptr) {
 #ifdef _WIN32
             FreeLibrary(m_hModule);
 #else

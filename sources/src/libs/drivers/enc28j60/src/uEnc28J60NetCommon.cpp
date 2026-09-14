@@ -1,30 +1,30 @@
 #include "uEnc28J60Net.hpp"
 #include "uLogger.hpp"
 
-#include <stdint.h>
 #include <chrono>
 #include <cstring>
 #include <mutex>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string_view>
 #include <thread>
 
 #ifdef _WIN32
-    #include <winsock2.h>
+#include <winsock2.h>
 #else
-    #include <sys/socket.h>
+#include <sys/socket.h>
 #endif
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR "ENC28J60_NET |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR  "ENC28J60_NET |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // PORTABLE recv()/send() WRAPPERS
@@ -38,44 +38,43 @@
 // receive_packet()/send_command() below.
 // ============================================================================
 namespace {
-    inline long net_recv(int iSocketFd, void* pBuf, size_t szLen, int iFlags)
-    {
+inline long net_recv(int iSocketFd, void *pBuf, size_t szLen, int iFlags)
+{
 #ifdef _WIN32
-        return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char*>(pBuf),
-                      static_cast<int>(szLen), iFlags);
+    return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char *>(pBuf),
+                  static_cast<int>(szLen), iFlags);
 #else
-        return ::recv(iSocketFd, pBuf, szLen, iFlags);
+    return ::recv(iSocketFd, pBuf, szLen, iFlags);
 #endif
-    }
-
-    inline long net_send(int iSocketFd, const void* pBuf, size_t szLen, int iFlags)
-    {
-#ifdef _WIN32
-        return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char*>(pBuf),
-                      static_cast<int>(szLen), iFlags);
-#else
-        return ::send(iSocketFd, pBuf, szLen, iFlags);
-#endif
-    }
 }
 
+inline long net_send(int iSocketFd, const void *pBuf, size_t szLen, int iFlags)
+{
+#ifdef _WIN32
+    return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char *>(pBuf),
+                  static_cast<int>(szLen), iFlags);
+#else
+    return ::send(iSocketFd, pBuf, szLen, iFlags);
+#endif
+}
+} // namespace
 
 // ============================================================================
 // PROTOCOL HELPERS
 // ============================================================================
 
-Enc28J60Net::Status Enc28J60Net::receive_packet(std::span<uint8_t> response_buffer, size_t max_len, size_t& bytes_read) const
+Enc28J60Net::Status Enc28J60Net::receive_packet(std::span<uint8_t> response_buffer, size_t max_len, size_t &bytes_read) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     uint8_t status_byte = 0;
-    long n = net_recv(m_iSocketFd, &status_byte, 1, 0);
+    long n              = net_recv(m_iSocketFd, &status_byte, 1, 0);
     if (n <= 0) {
         return Status::READ_ERROR;
     }
 
     uint8_t len_bytes[2] = {0};
-    n = net_recv(m_iSocketFd, len_bytes, 2, MSG_WAITALL);
+    n                    = net_recv(m_iSocketFd, len_bytes, 2, MSG_WAITALL);
     if (n != 2) {
         return Status::READ_ERROR;
     }
@@ -97,21 +96,21 @@ Enc28J60Net::Status Enc28J60Net::receive_packet(std::span<uint8_t> response_buff
     return Status::SUCCESS;
 }
 
-Enc28J60Net::Status Enc28J60Net::send_command(uint8_t cmd_id, const uint8_t* payload, size_t payload_len) const
+Enc28J60Net::Status Enc28J60Net::send_command(uint8_t cmd_id, const uint8_t *payload, size_t payload_len) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     uint8_t header[3];
-    header[0] = cmd_id;
-    header[1] = (payload_len >> 8) & 0xFF;
-    header[2] = payload_len & 0xFF;
+    header[0]        = cmd_id;
+    header[1]        = (payload_len >> 8) & 0xFF;
+    header[2]        = payload_len & 0xFF;
 
     size_t total_len = 3 + payload_len;
-    size_t offset = 0;
+    size_t offset    = 0;
 
     while (offset < total_len) {
         long n = net_send(m_iSocketFd,
-                          ((const uint8_t*)header) + offset,
+                          ((const uint8_t *)header) + offset,
                           total_len - offset,
                           0);
         if (n < 0) {
@@ -143,7 +142,7 @@ Enc28J60Net::Status Enc28J60Net::send_command(uint8_t cmd_id, const uint8_t* pay
 
 Enc28J60Net::ReadResult Enc28J60Net::tout_read(uint32_t u32ReadTimeout,
                                                std::span<uint8_t> buffer,
-                                               const ReadOptions& options,
+                                               const ReadOptions &options,
                                                std::string_view xtra_params,
                                                std::stop_token stop_tok) const
 {
@@ -155,112 +154,115 @@ Enc28J60Net::ReadResult Enc28J60Net::tout_read(uint32_t u32ReadTimeout,
     const uint32_t timeout = u32ReadTimeout;
 
     switch (options.mode) {
-        case ReadMode::Exact: {
-            // 1. Ask for available bytes
-            // The ENC28J60 server implementation might just send data on RECV (0x03)
-            // without a prior GET_COUNT. Let's assume RECV returns all available data.
+    case ReadMode::Exact: {
+        // 1. Ask for available bytes
+        // The ENC28J60 server implementation might just send data on RECV (0x03)
+        // without a prior GET_COUNT. Let's assume RECV returns all available data.
 
-            // We need a buffer large enough to hold the max expected payload (1460 bytes)
-            uint8_t pkt[ENC28J60NET_MAX_BUF];
-            size_t bytes_read = 0;
+        // We need a buffer large enough to hold the max expected payload (1460 bytes)
+        uint8_t pkt[ENC28J60NET_MAX_BUF];
+        size_t bytes_read = 0;
 
-            // Send RECV command with no args (or arg 0)
-            uint8_t cmd_arg = 0;
-            send_command(0x03, &cmd_arg, 1);
+        // Send RECV command with no args (or arg 0)
+        uint8_t cmd_arg   = 0;
+        send_command(0x03, &cmd_arg, 1);
 
-            Status status = receive_packet(pkt, sizeof(pkt), bytes_read);
+        Status status = receive_packet(pkt, sizeof(pkt), bytes_read);
 
-            if (status != Status::SUCCESS) {
-                result.status = status;
-                return result;
-            }
-
-            // Check if no data was received
-            // The payload length is at pkt[1] and pkt[2]
-            uint16_t data_len = (pkt[1] << 8) | pkt[2];
-
-            if (data_len == 0) {
-                result.status = Status::READ_TIMEOUT;
-                result.bytes_read = 0;
-                return result;
-            }
-
-            if (data_len > buffer.size()) {
-                result.status = Status::BUFFER_OVERFLOW;
-                result.bytes_read = 0;
-                return result;
-            }
-
-            // Payload is at index 3
-            std::memcpy(buffer.data(), pkt + 3, data_len);
-            result.bytes_read = data_len;
-            result.status = Status::SUCCESS;
-            break;
+        if (status != Status::SUCCESS) {
+            result.status = status;
+            return result;
         }
 
-        case ReadMode::UntilDelimiter: {
-            // Simple loop
-            size_t offset = 0;
-            bool found = false;
-            // 0 == infinite timeout: keep polling for a chunk forever.
-            const bool bInfinite = (timeout == 0);
-            auto tStart = std::chrono::steady_clock::now();
+        // Check if no data was received
+        // The payload length is at pkt[1] and pkt[2]
+        uint16_t data_len = (pkt[1] << 8) | pkt[2];
 
-            while (offset < buffer.size() - 1) {
-                uint8_t cmd_payload = 0;
-                send_command(0x03, &cmd_payload, 1); // Get next chunk
+        if (data_len == 0) {
+            result.status     = Status::READ_TIMEOUT;
+            result.bytes_read = 0;
+            return result;
+        }
 
-                uint8_t pkt[1460];
-                size_t br = 0;
-                Status st = receive_packet(pkt, sizeof(pkt), br);
+        if (data_len > buffer.size()) {
+            result.status     = Status::BUFFER_OVERFLOW;
+            result.bytes_read = 0;
+            return result;
+        }
 
-                if (st != Status::SUCCESS) {
-                    if (stop_tok.stop_requested()) {
+        // Payload is at index 3
+        std::memcpy(buffer.data(), pkt + 3, data_len);
+        result.bytes_read = data_len;
+        result.status     = Status::SUCCESS;
+        break;
+    }
+
+    case ReadMode::UntilDelimiter: {
+        // Simple loop
+        size_t offset        = 0;
+        bool found           = false;
+        // 0 == infinite timeout: keep polling for a chunk forever.
+        const bool bInfinite = (timeout == 0);
+        auto tStart          = std::chrono::steady_clock::now();
+
+        while (offset < buffer.size() - 1) {
+            uint8_t cmd_payload = 0;
+            send_command(0x03, &cmd_payload, 1); // Get next chunk
+
+            uint8_t pkt[1460];
+            size_t br = 0;
+            Status st = receive_packet(pkt, sizeof(pkt), br);
+
+            if (st != Status::SUCCESS) {
+                if (stop_tok.stop_requested()) {
+                    result.status = Status::READ_TIMEOUT;
+                    return result;
+                }
+                if (!bInfinite) {
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       std::chrono::steady_clock::now() - tStart)
+                                       .count();
+                    if (elapsed >= timeout) {
                         result.status = Status::READ_TIMEOUT;
                         return result;
                     }
-                    if (!bInfinite) {
-                        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::steady_clock::now() - tStart).count();
-                        if (elapsed >= timeout) {
-                            result.status = Status::READ_TIMEOUT;
-                            return result;
-                        }
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    continue;
                 }
-
-                uint16_t len = (pkt[1]<<8) | pkt[2];
-                if (len > 0) {
-                    for (size_t i=0; i<len && offset < buffer.size()-1; ++i) {
-                        uint8_t b = pkt[3+i];
-                        buffer[offset++] = b;
-                        if (b == options.delimiter) {
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-                if (found) break;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
             }
 
-            result.status = found ? Status::SUCCESS : Status::READ_ERROR;
-            result.bytes_read = offset;
-            result.found_terminator = found;
-            break;
+            uint16_t len = (pkt[1] << 8) | pkt[2];
+            if (len > 0) {
+                for (size_t i = 0; i < len && offset < buffer.size() - 1; ++i) {
+                    uint8_t b        = pkt[3 + i];
+                    buffer[offset++] = b;
+                    if (b == options.delimiter) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (found) {
+                break;
+            }
         }
 
-        case ReadMode::UntilToken: {
-            result.status = Status::SUCCESS;
-            result.bytes_read = 0;
-            result.found_terminator = false;
-            break;
-        }
+        result.status           = found ? Status::SUCCESS : Status::READ_ERROR;
+        result.bytes_read       = offset;
+        result.found_terminator = found;
+        break;
+    }
 
-        default:
-            result.status = Status::INVALID_PARAM;
-            break;
+    case ReadMode::UntilToken: {
+        result.status           = Status::SUCCESS;
+        result.bytes_read       = 0;
+        result.found_terminator = false;
+        break;
+    }
+
+    default:
+        result.status = Status::INVALID_PARAM;
+        break;
     }
 
     return result;
@@ -277,12 +279,12 @@ Enc28J60Net::WriteResult Enc28J60Net::tout_write(uint32_t u32WriteTimeout,
     Status send_status = send_command(0x02, buffer.data(), buffer.size());
 
     if (send_status != Status::SUCCESS) {
-        result.status = send_status;
+        result.status        = send_status;
         result.bytes_written = 0;
         return result;
     }
 
-    result.status = Status::SUCCESS;
+    result.status        = Status::SUCCESS;
     result.bytes_written = buffer.size();
     return result;
 }

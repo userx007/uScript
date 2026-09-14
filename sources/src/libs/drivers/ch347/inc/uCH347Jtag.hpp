@@ -43,13 +43,13 @@
  * iClockRate 0-5, higher = faster.  Actual frequency is hardware-dependent.
  */
 
-#include "ch347_compat.h"   // platform-unified CH347 API + CH347_HANDLE
 #include "ICommDriver.hpp"
+#include "ch347_compat.h" // platform-unified CH347 API + CH347_HANDLE
 
-#include <string>
-#include <span>
-#include <vector>
 #include <cstdint>
+#include <span>
+#include <string>
+#include <vector>
 
 // ---------------------------------------------------------------------------
 // JTAG-specific enumerations
@@ -74,13 +74,13 @@ public:
     // -----------------------------------------------------------------------
     static constexpr uint32_t JTAG_READ_DEFAULT_TIMEOUT  = 5000; /**< ms */
     static constexpr uint32_t JTAG_WRITE_DEFAULT_TIMEOUT = 5000; /**< ms */
-    static constexpr uint8_t  JTAG_MAX_CLOCK_RATE        = 5;
+    static constexpr uint8_t JTAG_MAX_CLOCK_RATE         = 5;
 
     // -----------------------------------------------------------------------
     // Construction / destruction
     // -----------------------------------------------------------------------
 
-    CH347JTAG() = default;
+    CH347JTAG()                                          = default;
 
     /**
      * @brief Construct and immediately open the JTAG interface.
@@ -91,23 +91,27 @@ public:
      *                         describeConnection()), supplied separately from
      *                         strDevice — e.g. "/dev/ch34xpis0".
      */
-    explicit CH347JTAG(const std::string& strDevice,
-                       uint8_t            iClockRate = 2,
-                       const std::string& strIdentityLabel = {})
-        : m_iHandle(CH347_INVALID_HANDLE), m_strIdentityLabel(strIdentityLabel)
+    explicit CH347JTAG(const std::string &strDevice,
+                       uint8_t iClockRate                  = 2,
+                       const std::string &strIdentityLabel = {})
+        : m_iHandle(CH347_INVALID_HANDLE)
+        , m_strIdentityLabel(strIdentityLabel)
     {
         open(strDevice, iClockRate);
     }
 
-    virtual ~CH347JTAG() { close(); }
+    virtual ~CH347JTAG()
+    {
+        close();
+    }
 
     // -----------------------------------------------------------------------
     // Lifecycle
     // -----------------------------------------------------------------------
 
-    Status open(const std::string& strDevice, uint8_t iClockRate = 2);
+    Status open(const std::string &strDevice, uint8_t iClockRate = 2);
     Status close();
-    bool   is_open() const override;
+    bool is_open() const override;
 
     /**
      * @brief Describe this connection for the GUI comm-dump panel.
@@ -116,7 +120,7 @@ public:
     CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
     {
         return commdump_details(CommFamily::OTHER,
-                                 m_strIdentityLabel.empty() ? "CH347 JTAG" : m_strIdentityLabel);
+                                m_strIdentityLabel.empty() ? "CH347 JTAG" : m_strIdentityLabel);
     }
 
     // -----------------------------------------------------------------------
@@ -124,7 +128,7 @@ public:
     // -----------------------------------------------------------------------
 
     /** Get current JTAG clock-rate setting. */
-    Status get_clock_rate(uint8_t& iClockRate) const;
+    Status get_clock_rate(uint8_t &iClockRate) const;
 
     // -----------------------------------------------------------------------
     // ICommDriver interface
@@ -149,10 +153,10 @@ public:
      * @note ReadMode::UntilDelimiter / UntilToken → { Status::NotSupported, 0, false }
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t>  buffer,
-                         const ReadOptions& options,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
                          std::string_view xtra_params = {},
-                         std::stop_token stop_tok = {}) const override;
+                         std::stop_token stop_tok     = {}) const override;
 
     /**
      * @brief Write bytes to JTAG IR or DR register.
@@ -173,8 +177,7 @@ public:
     WriteResult tout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
                            std::string_view xtra_params = {},
-                           std::stop_token stop_tok = {}) const override;
-
+                           std::stop_token stop_tok     = {}) const override;
 
     // -----------------------------------------------------------------------
     // Extended JTAG helpers (non-virtual)
@@ -211,14 +214,14 @@ public:
      * @brief Write to IR or DR register (byte granularity).
      * State machine: Run-Test → Shift-IR/DR → Exit IR/DR → Run-Test.
      */
-    Status write_register(JtagRegister    reg,
+    Status write_register(JtagRegister reg,
                           std::span<const uint8_t> buffer) const;
 
     /**
      * @brief Read from IR or DR register (byte granularity).
      * State machine: Run-Test → Shift-IR/DR → Exit IR/DR → Run-Test.
      */
-    Status read_register(JtagRegister       reg,
+    Status read_register(JtagRegister reg,
                          std::span<uint8_t> buffer) const;
 
     /**
@@ -231,9 +234,9 @@ public:
      * @param readBuf     Buffer receiving read bits; size = expected read bits
      * @return ReadResult { status, bitsRead, false }
      */
-    ReadResult write_read(JtagRegister              reg,
-                          std::span<const uint8_t>  writeBuf,
-                          std::span<uint8_t>        readBuf) const;
+    ReadResult write_read(JtagRegister reg,
+                          std::span<const uint8_t> writeBuf,
+                          std::span<uint8_t> readBuf) const;
 
     /**
      * @brief Fast bulk write-then-read (optimised for firmware download).
@@ -245,9 +248,9 @@ public:
      * @param readBuf     Buffer receiving read bytes; size = expected bytes
      * @return ReadResult { status, bytesRead, false }
      */
-    ReadResult write_read_fast(JtagRegister              reg,
-                               std::span<const uint8_t>  writeBuf,
-                               std::span<uint8_t>        readBuf) const;
+    ReadResult write_read_fast(JtagRegister reg,
+                               std::span<const uint8_t> writeBuf,
+                               std::span<uint8_t> readBuf) const;
 
     /**
      * @brief Bitband-mode read/write staying in Shift-DR/IR across calls.
@@ -265,9 +268,9 @@ public:
      * @param isLastPacket true = exit to Exit-DR/IR after this packet
      */
     Status io_scan(std::span<uint8_t> dataBuffer,
-                   uint32_t           dataBitsNb,
-                   bool               isRead,
-                   bool               isLastPacket) const;
+                   uint32_t dataBitsNb,
+                   bool isRead,
+                   bool isLastPacket) const;
 
     /**
      * @brief Build a bit-bang protocol packet with TMS clock changes.
@@ -279,15 +282,15 @@ public:
      * @return New byte index after appending the TMS entry
      */
     static uint32_t build_tms_clock(std::span<uint8_t> pkt,
-                                    uint32_t           tms,
-                                    uint32_t           bi);
+                                    uint32_t tms,
+                                    uint32_t bi);
 
     /** Append an idle (TCK low) entry to a bit-bang packet. */
     static uint32_t build_idle_clock(std::span<uint8_t> pkt, uint32_t bi);
 
 private:
     CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
-    std::string  m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
+    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 
     /** Last target register used by tout_write (DR by default). */
     mutable JtagRegister m_lastReg = JtagRegister::DR;

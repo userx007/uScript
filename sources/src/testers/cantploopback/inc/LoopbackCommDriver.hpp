@@ -4,11 +4,11 @@
 #include "ICommDriver.hpp"
 #include "ICommDumpProtocol.hpp"
 
-#include <stdint.h>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <string_view>
@@ -40,30 +40,36 @@ class LoopbackCommDriver final : public ICommDriver
 {
 public:
     /** @param verbose  If true, prints every frame (id, direction, hex bytes) as it crosses the bus. */
-    explicit LoopbackCommDriver(bool verbose = false) : m_verbose(verbose) {}
+    explicit LoopbackCommDriver(bool verbose = false)
+        : m_verbose(verbose)
+    {}
 
     WriteResult tout_write(uint32_t u32WriteTimeout,
-                            std::span<const uint8_t> data,
-                            std::string_view xtra_params,
-                            std::stop_token stop_tok = {}) const override;
+                           std::span<const uint8_t> data,
+                           std::string_view xtra_params,
+                           std::stop_token stop_tok = {}) const override;
 
     ReadResult tout_read(uint32_t u32ReadTimeout,
-                          std::span<uint8_t> buffer,
-                          const ReadOptions& opts,
-                          std::string_view xtra_params,
-                          std::stop_token stop_tok = {}) const override;
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &opts,
+                         std::string_view xtra_params,
+                         std::stop_token stop_tok = {}) const override;
 
     /** Drops every queued-but-unread frame on every id. Call between test cases. */
     void reset() const;
 
-    CommDetails describeConnection(std::string_view xtra_params = {}) const {
+    CommDetails describeConnection(std::string_view xtra_params = {}) const
+    {
         CommDetails det = {
             .family = CommFamily::CAN,
         };
         return det;
     }
 
-    bool is_open() const { return true; }
+    bool is_open() const
+    {
+        return true;
+    }
 
 private:
     struct Frame

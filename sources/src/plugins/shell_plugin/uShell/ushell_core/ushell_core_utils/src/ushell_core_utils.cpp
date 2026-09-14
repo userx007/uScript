@@ -1,4 +1,5 @@
 #include "ushell_core_utils.h"
+
 #include "ushell_core_printout.h"
 
 #include <ctype.h>
@@ -7,7 +8,8 @@
 #include <string.h>
 
 /*----------------------------------------------------------------------------*/
-char *strtok_ex(char *str, const char *delim, char **saveptr) {
+char *strtok_ex(char *str, const char *delim, char **saveptr)
+{
     if (!delim || (!str && !*saveptr) || !*delim) {
         return nullptr;
     }
@@ -19,10 +21,12 @@ char *strtok_ex(char *str, const char *delim, char **saveptr) {
     // Skip leading delimiters
     while (*str) {
         const char *d = delim;
-        while (*d && *str != *d)
+        while (*d && *str != *d) {
             ++d;
-        if (!*d)
+        }
+        if (!*d) {
             break; // Not a delimiter
+        }
         ++str;
     }
 
@@ -35,15 +39,17 @@ char *strtok_ex(char *str, const char *delim, char **saveptr) {
     // Find end of ppstrToken
     while (*str) {
         const char *d = delim;
-        while (*d && *str != *d)
+        while (*d && *str != *d) {
             ++d;
-        if (*d)
+        }
+        if (*d) {
             break; // Found delimiter
+        }
         ++str;
     }
 
     if (*str) {
-        *str = '\0';
+        *str     = '\0';
         *saveptr = str + 1;
     } else {
         *saveptr = nullptr;
@@ -54,9 +60,10 @@ char *strtok_ex(char *str, const char *delim, char **saveptr) {
 
 /*----------------------------------------------------------------------------*/
 #if defined(BIGNUM_T)
-bool asc2int(const char *s, BIGNUM_T *pNumber) {
+bool asc2int(const char *s, BIGNUM_T *pNumber)
+{
     BIGNUM_T numValue = 0;
-    bool bRetVal = true;
+    bool bRetVal      = true;
 
     if (!s || *s == '\0') {
         return false;
@@ -116,9 +123,10 @@ bool asc2int(const char *s, BIGNUM_T *pNumber) {
 
 /*----------------------------------------------------------------------------*/
 #ifdef uSHELL_IMPLEMENTS_NUMBERS_FLOAT
-bool asc2float(const char *s, numfp_t *pFloatTypeVar) {
+bool asc2float(const char *s, numfp_t *pFloatTypeVar)
+{
     bool bNegative = false, bFraction = false;
-    long lValue = 0;
+    long lValue         = 0;
     numfp_t fptFraction = 1.0;
 
     if (!s || *s == '\0') {
@@ -153,7 +161,8 @@ bool asc2float(const char *s, numfp_t *pFloatTypeVar) {
 #endif /* uSHELL_IMPLEMENTS_NUMBERS_FLOAT */
 
 /*----------------------------------------------------------------------------*/
-int dump(BIGNUM_T address, num32_t length, bool show_address) {
+int dump(BIGNUM_T address, num32_t length, bool show_address)
+{
 #define uSHELL_DUMP_ELEM_PER_LINE (16)
 
 #if defined(__GNUC__) && defined(__AVR__)
@@ -166,23 +175,26 @@ int dump(BIGNUM_T address, num32_t length, bool show_address) {
         return 0;
     }
 
-    int nr_lines = length / uSHELL_DUMP_ELEM_PER_LINE;
+    int nr_lines      = length / uSHELL_DUMP_ELEM_PER_LINE;
     int last_line_len = length % uSHELL_DUMP_ELEM_PER_LINE;
-    if (last_line_len)
+    if (last_line_len) {
         nr_lines++;
+    }
 
     for (int i = 0; i < nr_lines; ++i) {
         int index = i * uSHELL_DUMP_ELEM_PER_LINE;
-        if (show_address)
+        if (show_address) {
             uSHELL_PRINTF("%p | ", (p + index));
+        }
 
         for (int k = 0; k < 2; ++k) {
             for (int j = 0; j < uSHELL_DUMP_ELEM_PER_LINE; ++j) {
                 unsigned char crt_byte = *(p + index + j);
-                if ((i == nr_lines - 1) && last_line_len && j >= last_line_len)
+                if ((i == nr_lines - 1) && last_line_len && j >= last_line_len) {
                     uSHELL_PRINTF((k == 0) ? "   " : " ");
-                else
+                } else {
                     uSHELL_PRINTF("%c", uSHELL_ISPRINT(crt_byte) ? crt_byte : '.');
+                }
             }
             uSHELL_PRINTF(" | ");
         }
@@ -193,17 +205,19 @@ int dump(BIGNUM_T address, num32_t length, bool show_address) {
 
 #if (1 == uSHELL_IMPLEMENTS_HEXLIFY)
 /*----------------------------------------------------------------------------*/
-void hexlify(const uint8_t *bytes, size_t length, char *output) {
+void hexlify(const uint8_t *bytes, size_t length, char *output)
+{
     const char hex_chars[] = "0123456789ABCDEF";
     for (size_t i = 0; i < length; ++i) {
-        output[i * 2] = hex_chars[(bytes[i] >> 4) & 0x0F];
+        output[i * 2]     = hex_chars[(bytes[i] >> 4) & 0x0F];
         output[i * 2 + 1] = hex_chars[bytes[i] & 0x0F];
     }
     output[length * 2] = '\0'; // Null-terminate the string
 }
 
 /*----------------------------------------------------------------------------*/
-bool unhexlify(const char *hexstr, uint8_t *output, size_t *out_len) {
+bool unhexlify(const char *hexstr, uint8_t *output, size_t *out_len)
+{
     size_t len = 0;
 
     // Must be even length
@@ -219,16 +233,16 @@ bool unhexlify(const char *hexstr, uint8_t *output, size_t *out_len) {
 
     for (size_t i = 0; i < *out_len; ++i) {
         char high = toupper(hexstr[i * 2]);
-        char low = toupper(hexstr[i * 2 + 1]);
+        char low  = toupper(hexstr[i * 2 + 1]);
 
         if (!isxdigit(high) || !isxdigit(low)) {
             return false;
         }
 
         uint8_t high_val = (high >= 'A') ? (high - 'A' + 10) : (high - '0');
-        uint8_t low_val = (low >= 'A') ? (low - 'A' + 10) : (low - '0');
+        uint8_t low_val  = (low >= 'A') ? (low - 'A' + 10) : (low - '0');
 
-        output[i] = (high_val << 4) | low_val;
+        output[i]        = (high_val << 4) | low_val;
     }
 
     return true;
@@ -236,9 +250,11 @@ bool unhexlify(const char *hexstr, uint8_t *output, size_t *out_len) {
 #endif /* (1 == uSHELL_IMPLEMENTS_HEXLIFY) */
 
 /*----------------------------------------------------------------------------*/
-char *trim_whitespace_inplace(char *str) {
-    if (!str)
+char *trim_whitespace_inplace(char *str)
+{
+    if (!str) {
         return str;
+    }
 
     // Trim leading whitespace
     while (*str && isspace((unsigned char)*str)) {
@@ -256,34 +272,42 @@ char *trim_whitespace_inplace(char *str) {
 }
 
 /*----------------------------------------------------------------------------*/
-bool strings_equal_trimmed(const char *s1, const char *s2) {
+bool strings_equal_trimmed(const char *s1, const char *s2)
+{
     // Skip leading whitespace
-    while (*s1 && isspace((unsigned char)*s1))
+    while (*s1 && isspace((unsigned char)*s1)) {
         s1++;
-    while (*s2 && isspace((unsigned char)*s2))
+    }
+    while (*s2 && isspace((unsigned char)*s2)) {
         s2++;
+    }
 
     // Compare content
     while (*s1 && *s2) {
-        if (*s1 != *s2)
+        if (*s1 != *s2) {
             return false;
+        }
         s1++;
         s2++;
     }
 
     // Skip trailing whitespace
-    while (*s1 && isspace((unsigned char)*s1))
+    while (*s1 && isspace((unsigned char)*s1)) {
         s1++;
-    while (*s2 && isspace((unsigned char)*s2))
+    }
+    while (*s2 && isspace((unsigned char)*s2)) {
         s2++;
+    }
 
     return (*s1 == '\0' && *s2 == '\0');
 }
 
 /*----------------------------------------------------------------------------*/
-void trim_whitespace(const char *input, char *output, size_t output_size) {
-    if (output_size == 0)
+void trim_whitespace(const char *input, char *output, size_t output_size)
+{
+    if (output_size == 0) {
         return;
+    }
 
     // Skip leading whitespace
     while (*input && isspace((unsigned char)*input)) {

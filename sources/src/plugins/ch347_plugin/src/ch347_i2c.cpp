@@ -28,14 +28,14 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <ch347_lib.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <array>
+#include <ch347_lib.h>
 #include <iomanip>
 #include <memory>
 #include <span>
 #include <sstream>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -45,14 +45,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "CH347_I2C   |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR        "CH347_I2C   |"
+#define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "I2C"
 
@@ -60,7 +60,7 @@
 //                       HELP                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_i2c_help(const std::string&, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_i2c_help(const std::string &, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<CH347Plugin>(this, PROTOCOL_NAME);
 }
@@ -69,7 +69,7 @@ bool CH347Plugin::m_handle_i2c_help(const std::string&, std::stop_token /*st*/) 
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_i2c_open(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -80,10 +80,15 @@ bool CH347Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*s
     }
 
     std::string devPath = m_sIniValues.strDevicePath;
-    if (!parseI2cParams(args, m_sI2cCfg, &devPath)) return false;
-    const_cast<CH347Plugin*>(this)->m_sIniValues.strDevicePath = devPath;
+    if (!parseI2cParams(args, m_sI2cCfg, &devPath)) {
+        return false;
+    }
+    const_cast<CH347Plugin *>(this)->m_sIniValues.strDevicePath = devPath;
 
-    if (m_pI2C) { m_pI2C->close(); m_pI2C.reset(); }
+    if (m_pI2C) {
+        m_pI2C->close();
+        m_pI2C.reset();
+    }
 
     m_pI2C = std::make_unique<CH347I2C>();
     auto s = m_pI2C->open(m_sIniValues.strDevicePath, m_sI2cCfg.speed);
@@ -103,7 +108,7 @@ bool CH347Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*s
 //                       CLOSE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_i2c_close(const std::string&, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_i2c_close(const std::string &, std::stop_token /*st*/) const
 {
     if (m_pI2C) {
         m_pI2C->close();
@@ -119,19 +124,22 @@ bool CH347Plugin::m_handle_i2c_close(const std::string&, std::stop_token /*st*/)
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_i2c_cfg(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_i2c_cfg(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C pending config:"));
         LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  speed="); LOG_UINT32(static_cast<int>(m_sI2cCfg.speed));
+                  LOG_STRING("  speed=");
+                  LOG_UINT32(static_cast<int>(m_sI2cCfg.speed));
                   LOG_STRING("addr="); LOG_HEX8(m_sI2cCfg.address));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [speed=20kHz|100kHz|400kHz|750kHz|1MHz] [addr=0xNN]"));
         return true;
     }
 
-    if (!parseI2cParams(args, m_sI2cCfg)) return false;
+    if (!parseI2cParams(args, m_sI2cCfg)) {
+        return false;
+    }
 
     // Apply to live driver if open
     if (m_pI2C && m_pI2C->is_open()) {
@@ -146,7 +154,7 @@ bool CH347Plugin::m_handle_i2c_cfg(const std::string& args, std::stop_token /*st
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_i2c_write(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_i2c_write(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -157,8 +165,10 @@ bool CH347Plugin::m_handle_i2c_write(const std::string& args, std::stop_token /*
                   LOG_STRING("  buffer[1..] = register + payload"));
         return true;
     }
-    auto* p = m_i2c();
-    if (!p) return false;
+    auto *p = m_i2c();
+    if (!p) {
+        return false;
+    }
 
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(args, data) || data.empty()) {
@@ -182,15 +192,17 @@ bool CH347Plugin::m_handle_i2c_write(const std::string& args, std::stop_token /*
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_i2c_read(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_i2c_read(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (reads N bytes from addr configured in open/cfg)"));
         return true;
     }
-    auto* p = m_i2c();
-    if (!p) return false;
+    auto *p = m_i2c();
+    if (!p) {
+        return false;
+    }
 
     size_t n = 0;
     if (!numeric::str2sizet(args, n) || n == 0) {
@@ -203,7 +215,7 @@ bool CH347Plugin::m_handle_i2c_read(const std::string& args, std::stop_token /*s
     opts.devAddr  = m_sI2cCfg.address;
     opts.writeLen = 0;
 
-    auto result = p->tout_read_i2c(buf, opts);
+    auto result   = p->tout_read_i2c(buf, opts);
     if (result.status != CH347I2C::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Read failed, bytes read:"); LOG_SIZET(result.bytes_read));
@@ -220,8 +232,10 @@ bool CH347Plugin::m_handle_i2c_read(const std::string& args, std::stop_token /*s
 
 bool CH347Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const
 {
-    auto* p = m_i2c();
-    if (!p) return false;
+    auto *p = m_i2c();
+    if (!p) {
+        return false;
+    }
 
     if (!req.empty()) {
         auto wr = p->tout_write(0, req);
@@ -237,7 +251,7 @@ bool CH347Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) cons
         opts.devAddr  = m_sI2cCfg.address;
         opts.writeLen = 0;
 
-        auto rd = p->tout_read_i2c(rxBuf, opts);
+        auto rd       = p->tout_read_i2c(rxBuf, opts);
         if (rd.status != CH347I2C::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("wrrd: read phase failed"));
             return false;
@@ -250,13 +264,13 @@ bool CH347Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) cons
     return true;
 }
 
-bool CH347Plugin::m_handle_i2c_wrrd(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_i2c_wrrd(const std::string &args, std::stop_token /*st*/) const
 {
     return generic_write_read_data<CH347Plugin>(
         this, args, &CH347Plugin::m_i2c_wrrd_cb);
 }
 
-bool CH347Plugin::m_handle_i2c_wrrdf(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_i2c_wrrdf(const std::string &args, std::stop_token /*st*/) const
 {
     return generic_write_read_file<CH347Plugin>(
         this, args, &CH347Plugin::m_i2c_wrrd_cb,
@@ -267,7 +281,7 @@ bool CH347Plugin::m_handle_i2c_wrrdf(const std::string& args, std::stop_token /*
 //                       SCAN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_i2c_scan(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Probe I2C addresses 0x08..0x77 for ACK"));
@@ -275,7 +289,7 @@ bool CH347Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*s
         return true;
     }
 
-    auto* p = m_i2c();
+    auto *p = m_i2c();
     if (!p) {
         // Open a temporary driver for the scan
         CH347I2C probe;
@@ -292,10 +306,11 @@ bool CH347Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*s
 
     for (uint8_t addr = 0x08u; addr <= 0x77u; ++addr) {
         // A zero-length write to (addr << 1)|0 probes for ACK
-        const uint8_t probe_buf[1] = { static_cast<uint8_t>(addr << 1) };
-        auto wr = p->tout_write(200, std::span<const uint8_t>(probe_buf, 1));
-        if (wr.status == CH347I2C::Status::SUCCESS)
+        const uint8_t probe_buf[1] = {static_cast<uint8_t>(addr << 1)};
+        auto wr                    = p->tout_write(200, std::span<const uint8_t>(probe_buf, 1));
+        if (wr.status == CH347I2C::Status::SUCCESS) {
             found.push_back(addr);
+        }
     }
 
     if (found.empty()) {
@@ -306,7 +321,7 @@ bool CH347Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*s
             oss << "Found device at 0x"
                 << std::hex << std::uppercase << std::setw(2) << std::setfill('0')
                 << static_cast<int>(a);
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
         }
     }
 
@@ -317,7 +332,7 @@ bool CH347Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*s
 //                       EEPROM                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_i2c_eeprom(const std::string& args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_i2c_eeprom(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help" || args.empty()) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: eeprom read  TYPE ADDR N"));
@@ -327,8 +342,10 @@ bool CH347Plugin::m_handle_i2c_eeprom(const std::string& args, std::stop_token /
         return true;
     }
 
-    auto* p = m_i2c();
-    if (!p) return false;
+    auto *p = m_i2c();
+    if (!p) {
+        return false;
+    }
 
     std::vector<std::string> parts;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
@@ -338,9 +355,9 @@ bool CH347Plugin::m_handle_i2c_eeprom(const std::string& args, std::stop_token /
         return false;
     }
 
-    const std::string& op = parts[0];
-    uint8_t  typeIdx = 0;
-    uint32_t addr    = 0;
+    const std::string &op = parts[0];
+    uint8_t typeIdx       = 0;
+    uint32_t addr         = 0;
 
     if (!numeric::str2uint8(parts[1], typeIdx) || typeIdx > 12) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid EEPROM type (0-12):"); LOG_STRING(parts[1]));
@@ -354,10 +371,14 @@ bool CH347Plugin::m_handle_i2c_eeprom(const std::string& args, std::stop_token /
     auto eeType = static_cast<EEPROM_TYPE>(typeIdx);
 
     if (op == "read") {
-        if (parts.size() < 4) { LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing read count")); return false; }
+        if (parts.size() < 4) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing read count"));
+            return false;
+        }
         size_t n = 0;
         if (!numeric::str2sizet(parts[3], n) || n == 0) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid byte count")); return false;
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid byte count"));
+            return false;
         }
         std::vector<uint8_t> buf(n);
         auto s = p->read_eeprom(eeType, static_cast<int>(addr), buf);
@@ -370,10 +391,14 @@ bool CH347Plugin::m_handle_i2c_eeprom(const std::string& args, std::stop_token /
     }
 
     if (op == "write") {
-        if (parts.size() < 4) { LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing write data")); return false; }
+        if (parts.size() < 4) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing write data"));
+            return false;
+        }
         std::vector<uint8_t> data;
         if (!hexutils::stringUnhexlify(parts[3], data) || data.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid hex data")); return false;
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid hex data"));
+            return false;
         }
         auto s = p->write_eeprom(eeType, static_cast<int>(addr), data);
         if (s != CH347I2C::Status::SUCCESS) {
@@ -393,7 +418,7 @@ bool CH347Plugin::m_handle_i2c_eeprom(const std::string& args, std::stop_token /
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_i2c_script(const std::string& args, std::stop_token st) const
+bool CH347Plugin::m_handle_i2c_script(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
@@ -402,13 +427,13 @@ bool CH347Plugin::m_handle_i2c_script(const std::string& args, std::stop_token s
         return true;
     }
 
-    auto* pI2c = m_i2c();
+    auto *pI2c = m_i2c();
     if (!pI2c) {
         return false;
     }
 
-    const auto* ini = getAccessIniValues(*this);
-    
+    const auto *ini = getAccessIniValues(*this);
+
     return generic_execute_script(
         pI2c,
         CH347_PLUGIN_NAME,
@@ -418,5 +443,5 @@ bool CH347Plugin::m_handle_i2c_script(const std::string& args, std::stop_token s
         ini->u32ReadTimeout,
         ini->u32ScriptDelay,
         m_bIsEnabled,
-            st);
+        st);
 }

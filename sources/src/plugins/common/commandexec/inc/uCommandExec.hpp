@@ -1,19 +1,19 @@
 #ifndef UCOMMANDEXEC_HPP
 #define UCOMMANDEXEC_HPP
+#include "uBoolEvaluator.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
+#include "uExecContext.hpp"
+#include "uFile.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
 #include "uNumeric.hpp"
-#include "uFile.hpp"
 #include "uString.hpp"
-#include "uHexlify.hpp"
-#include "uExecContext.hpp"
-#include "uBoolEvaluator.hpp"
 #include "uVolatileMacroStore.hpp"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <chrono>
 #include <memory>
 #include <numeric>
 #include <string>
@@ -22,114 +22,73 @@
 #include <vector>
 
 /**
-  * \brief Shared CMD/SCRIPT command-handler bodies used by the comm-driver
-  *        plugins (UART, KI2C, KSPI, CH341, KVCAN, DSPKI2C, DSPKSPI, PCAN,
-  *        SLCAN, TCPIP, UDP, LAN8720NET, W5500NET, ENC28J60NET, RawEth,
-  *        MQTT, ...).
-  *
-  *        Every one of these plugins' CMD/SCRIPT handlers follows the same
-  *        shape:
-  *          CMD:    reject empty args -> early-return true if the plugin
-  *                  isn't enabled (argument validation without execution)
-  *                  -> open the driver -> validate + run one command via
-  *                  CommScriptCommandInterpreter.
-  *          SCRIPT: tokenize "scriptpathname [|delay]" -> resolve and
-  *                  sanity-check the script file -> open the driver -> run
-  *                  it via CommScriptClient.
-  *          CYCLIC: parse "time1 val1 [id1], time2 val2 [id2], ..." -> derive a
-  *                  master tick (gcd of every time_i) and a super-period
-  *                  (lcm of every time_i) -> send whichever entries are due
-  *                  at every tick: once per full super-period when launched
-  *                  sequentially, or forever (until stop_token fires) when
-  *                  launched threaded ('&'). See generic_send_cyclic() below.
-  *
-  *        The only thing that actually differs between plugins is *how* a
-  *        driver instance gets opened/configured - constructor arguments,
-  *        is_open() vs. an open()+Status check, extra one-time setup like
-  *        KVCAN's set_tx_id()/set_filters(). That single difference is
-  *        captured by a caller-supplied "open" callable, the same
-  *        dependency-injection approach uKmpMatch.hpp uses for the
-  *        driver-level KMP token matching (there: inject how to read a
-  *        byte/chunk; here: inject how to open a driver).
-  *
-  *        This header used to be copy-pasted, boilerplate and all, into
-  *        every plugin's *_plugin.cpp. Factoring it out means a fix (e.g.
-  *        the SCRIPT arg-count bounds check below) only needs to be made
-  *        once instead of sixteen times.
-*/
-namespace ucmdexec
-{
+ * \brief Shared CMD/SCRIPT command-handler bodies used by the comm-driver
+ *        plugins (UART, KI2C, KSPI, CH341, KVCAN, DSPKI2C, DSPKSPI, PCAN,
+ *        SLCAN, TCPIP, UDP, LAN8720NET, W5500NET, ENC28J60NET, RawEth,
+ *        MQTT, ...).
+ *
+ *        Every one of these plugins' CMD/SCRIPT handlers follows the same
+ *        shape:
+ *          CMD:    reject empty args -> early-return true if the plugin
+ *                  isn't enabled (argument validation without execution)
+ *                  -> open the driver -> validate + run one command via
+ *                  CommScriptCommandInterpreter.
+ *          SCRIPT: tokenize "scriptpathname [|delay]" -> resolve and
+ *                  sanity-check the script file -> open the driver -> run
+ *                  it via CommScriptClient.
+ *          CYCLIC: parse "time1 val1 [id1], time2 val2 [id2], ..." -> derive a
+ *                  master tick (gcd of every time_i) and a super-period
+ *                  (lcm of every time_i) -> send whichever entries are due
+ *                  at every tick: once per full super-period when launched
+ *                  sequentially, or forever (until stop_token fires) when
+ *                  launched threaded ('&'). See generic_send_cyclic() below.
+ *
+ *        The only thing that actually differs between plugins is *how* a
+ *        driver instance gets opened/configured - constructor arguments,
+ *        is_open() vs. an open()+Status check, extra one-time setup like
+ *        KVCAN's set_tx_id()/set_filters(). That single difference is
+ *        captured by a caller-supplied "open" callable, the same
+ *        dependency-injection approach uKmpMatch.hpp uses for the
+ *        driver-level KMP token matching (there: inject how to read a
+ *        byte/chunk; here: inject how to open a driver).
+ *
+ *        This header used to be copy-pasted, boilerplate and all, into
+ *        every plugin's *_plugin.cpp. Factoring it out means a fix (e.g.
+ *        the SCRIPT arg-count bounds check below) only needs to be made
+ *        once instead of sixteen times.
+ */
+namespace ucmdexec {
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Shared ini-file key and CONFIG-command token for the "skip hexlification, return the raw
-  *        bytes as-is" flag every CMD-capable plugin now exposes (see generic_cmd()'s bRawResult
-  *        parameter below). Kept in one place so every plugin's ini file and CONFIG command use
-  *        exactly the same spelling.
-  *
-  *        ini file:     [PLUGIN]
-  *                       RAW_RESULT = true
-  *        CONFIG cmd:    PLUGIN.CONFIG ... raw=1 ...
-*/
+ * \brief Shared ini-file key and CONFIG-command token for the "skip hexlification, return the raw
+ *        bytes as-is" flag every CMD-capable plugin now exposes (see generic_cmd()'s bRawResult
+ *        parameter below). Kept in one place so every plugin's ini file and CONFIG command use
+ *        exactly the same spelling.
+ *
+ *        ini file:     [PLUGIN]
+ *                       RAW_RESULT = true
+ *        CONFIG cmd:    PLUGIN.CONFIG ... raw=1 ...
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-inline constexpr const char* RAW_RESULT_INI_KEY    = "RAW_RESULT";
-inline constexpr const char* RAW_RESULT_CONFIG_KEY = "raw";
+inline constexpr const char *RAW_RESULT_INI_KEY    = "RAW_RESULT";
+inline constexpr const char *RAW_RESULT_CONFIG_KEY = "raw";
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse a CONFIG-command "raw=..." value into a bool, using the same boolean grammar
-  *        ("1"/"0", "true"/"false", ...) as the ini-file loader (PluginSettingsBinder's bool
-  *        Convert() overload - see uPluginSettings.hpp). Every plugin's setRawResult() setter
-  *        should just forward to this so CONFIG and the ini file always agree on what counts
-  *        as "on"/"off".
-  *
-  * \param[in]  strValue  the raw "raw=..." token value
-  * \param[out] bOut      set to the parsed value on success; left untouched on failure
-  *
-  * \return true if strValue parsed as a valid boolean expression, false otherwise
-*/
+ * \brief Parse a CONFIG-command "raw=..." value into a bool, using the same boolean grammar
+ *        ("1"/"0", "true"/"false", ...) as the ini-file loader (PluginSettingsBinder's bool
+ *        Convert() overload - see uPluginSettings.hpp). Every plugin's setRawResult() setter
+ *        should just forward to this so CONFIG and the ini file always agree on what counts
+ *        as "on"/"off".
+ *
+ * \param[in]  strValue  the raw "raw=..." token value
+ * \param[out] bOut      set to the parsed value on success; left untouched on failure
+ *
+ * \return true if strValue parsed as a valid boolean expression, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-inline bool parseRawResultFlag(const std::string& strValue, bool& bOut)
-{
-    BoolExprEvaluator sEvaluator;
-    return sEvaluator.evaluate(strValue, bOut);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief Shared ini-file key and CONFIG-command token for the CYCLIC caching mode every
-  *        CYCLIC-capable plugin now exposes (see generic_send_cyclic()'s bCached parameter
-  *        below). Kept in one place so every plugin's ini file and CONFIG command use exactly
-  *        the same spelling - same convention as RAW_RESULT_INI_KEY/RAW_RESULT_CONFIG_KEY above.
-  *
-  *        ini file:     [PLUGIN]
-  *                       CYCLIC_CACHED = true
-  *        CONFIG cmd:    PLUGIN.CONFIG ... cached=1 ...
-  *
-  *        Default is true (cached) in every plugin, so nothing changes for a plugin/script that
-  *        never sets this: CYCLIC keeps validating/parsing each entry's command exactly once for
-  *        the whole session, as documented on generic_send_cyclic() below. Set to false only for
-  *        a CYCLIC session that needs to track a volatile ("?=") macro - one whose value a
-  *        background thread keeps updating (e.g. "VAL ?= PLUGIN.CMD args &") - used as one
-  *        entry's val/id: re-validating from scratch on every due tick is strictly more work,
-  *        so it is opt-in, not the default.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-inline constexpr const char* CYCLIC_CACHED_INI_KEY    = "CYCLIC_CACHED";
-inline constexpr const char* CYCLIC_CACHED_CONFIG_KEY = "cached";
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief Parse a CONFIG-command "cached=..." value into a bool - same boolean grammar as
-  *        parseRawResultFlag() above.
-  *
-  * \param[in]  strValue  the raw "cached=..." token value
-  * \param[out] bOut      set to the parsed value on success; left untouched on failure
-  *
-  * \return true if strValue parsed as a valid boolean expression, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-inline bool parseCyclicCachedFlag(const std::string& strValue, bool& bOut)
+inline bool parseRawResultFlag(const std::string &strValue, bool &bOut)
 {
     BoolExprEvaluator sEvaluator;
     return sEvaluator.evaluate(strValue, bOut);
@@ -137,59 +96,99 @@ inline bool parseCyclicCachedFlag(const std::string& strValue, bool& bOut)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Shared body for a plugin's *_CMD command.
-  *
-  *        DriverT is deduced from openFn's return type (std::shared_ptr<DriverT>),
-  *        so call sites never need to spell out an explicit template argument.
-  *
-  * \param[in] args              the command's argument string (as received by the plugin's dispatch)
-  * \param[in] bIsEnabled        the plugin's current enabled state
-  * \param[in] openFn            callable: () -> std::shared_ptr<DriverT>; returns nullptr (and should
-  *                                log why) on failure to open/configure the driver
-  * \param[in] pluginName        plugin identity for the GUI comm-dump panel (e.g. UART_PLUGIN_NAME),
-  *                                forwarded to CommScriptCommandInterpreter<DriverT>; see gui_notify_comm_dump()
-  * \param[in] u32ReadBufferSize  read-buffer size forwarded to CommScriptCommandInterpreter<DriverT>
-  * \param[in] u32ReadTimeout    default read timeout forwarded to CommScriptCommandInterpreter<DriverT>
-  * \param[in] pszLogHdr         log header literal used to prefix error messages, e.g. "UART        |"
-  * \param[out] pstrResult       optional; cleared at the start of every call, then - only when the
-  *                                command succeeds - overwritten with the bytes it actually received
-  *                                (empty string if the command performed no receive, or received
-  *                                nothing before its read timeout elapsed - see
-  *                                CommScriptCommandInterpreter::getLastReceived()). Left cleared on
-  *                                failure so a hard error never leaks stale/undefined buffer contents.
-  *                                Plugins pass their own m_strResultData here so that a "VAL ?= PLUGIN.CMD ..."
-  *                                capture picks up whatever was received - most notably the "receive
-  *                                whatever is sent" forms ("PLUGIN.CMD <" and "PLUGIN.CMD > ... |" with an
-  *                                empty receive side), but this also works for any other receive token type.
-  * \param[in] bRawResult        selects how the received bytes are written into *pstrResult:
-  *                                false (default) - hexlified, preserving the historical behaviour;
-  *                                true - the raw bytes, copied verbatim into a std::string as-is,
-  *                                       for callers/scripts that want the plain payload instead of
-  *                                       its hex representation. Every plugin exposes this as a
-  *                                       "RAW_RESULT"-style ini key and a matching CONFIG token, see
-  *                                       the individual plugins' *_setup.hpp for the exact key name.
-  *
-  * \return true on success (including the "plugin not enabled" early-out, which validates
-  *          arguments without executing), false on a validation or execution failure
-*/
+ * \brief Shared ini-file key and CONFIG-command token for the CYCLIC caching mode every
+ *        CYCLIC-capable plugin now exposes (see generic_send_cyclic()'s bCached parameter
+ *        below). Kept in one place so every plugin's ini file and CONFIG command use exactly
+ *        the same spelling - same convention as RAW_RESULT_INI_KEY/RAW_RESULT_CONFIG_KEY above.
+ *
+ *        ini file:     [PLUGIN]
+ *                       CYCLIC_CACHED = true
+ *        CONFIG cmd:    PLUGIN.CONFIG ... cached=1 ...
+ *
+ *        Default is true (cached) in every plugin, so nothing changes for a plugin/script that
+ *        never sets this: CYCLIC keeps validating/parsing each entry's command exactly once for
+ *        the whole session, as documented on generic_send_cyclic() below. Set to false only for
+ *        a CYCLIC session that needs to track a volatile ("?=") macro - one whose value a
+ *        background thread keeps updating (e.g. "VAL ?= PLUGIN.CMD args &") - used as one
+ *        entry's val/id: re-validating from scratch on every due tick is strictly more work,
+ *        so it is opt-in, not the default.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+inline constexpr const char *CYCLIC_CACHED_INI_KEY    = "CYCLIC_CACHED";
+inline constexpr const char *CYCLIC_CACHED_CONFIG_KEY = "cached";
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Parse a CONFIG-command "cached=..." value into a bool - same boolean grammar as
+ *        parseRawResultFlag() above.
+ *
+ * \param[in]  strValue  the raw "cached=..." token value
+ * \param[out] bOut      set to the parsed value on success; left untouched on failure
+ *
+ * \return true if strValue parsed as a valid boolean expression, false otherwise
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+inline bool parseCyclicCachedFlag(const std::string &strValue, bool &bOut)
+{
+    BoolExprEvaluator sEvaluator;
+    return sEvaluator.evaluate(strValue, bOut);
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Shared body for a plugin's *_CMD command.
+ *
+ *        DriverT is deduced from openFn's return type (std::shared_ptr<DriverT>),
+ *        so call sites never need to spell out an explicit template argument.
+ *
+ * \param[in] args              the command's argument string (as received by the plugin's dispatch)
+ * \param[in] bIsEnabled        the plugin's current enabled state
+ * \param[in] openFn            callable: () -> std::shared_ptr<DriverT>; returns nullptr (and should
+ *                                log why) on failure to open/configure the driver
+ * \param[in] pluginName        plugin identity for the GUI comm-dump panel (e.g. UART_PLUGIN_NAME),
+ *                                forwarded to CommScriptCommandInterpreter<DriverT>; see gui_notify_comm_dump()
+ * \param[in] u32ReadBufferSize  read-buffer size forwarded to CommScriptCommandInterpreter<DriverT>
+ * \param[in] u32ReadTimeout    default read timeout forwarded to CommScriptCommandInterpreter<DriverT>
+ * \param[in] pszLogHdr         log header literal used to prefix error messages, e.g. "UART        |"
+ * \param[out] pstrResult       optional; cleared at the start of every call, then - only when the
+ *                                command succeeds - overwritten with the bytes it actually received
+ *                                (empty string if the command performed no receive, or received
+ *                                nothing before its read timeout elapsed - see
+ *                                CommScriptCommandInterpreter::getLastReceived()). Left cleared on
+ *                                failure so a hard error never leaks stale/undefined buffer contents.
+ *                                Plugins pass their own m_strResultData here so that a "VAL ?= PLUGIN.CMD ..."
+ *                                capture picks up whatever was received - most notably the "receive
+ *                                whatever is sent" forms ("PLUGIN.CMD <" and "PLUGIN.CMD > ... |" with an
+ *                                empty receive side), but this also works for any other receive token type.
+ * \param[in] bRawResult        selects how the received bytes are written into *pstrResult:
+ *                                false (default) - hexlified, preserving the historical behaviour;
+ *                                true - the raw bytes, copied verbatim into a std::string as-is,
+ *                                       for callers/scripts that want the plain payload instead of
+ *                                       its hex representation. Every plugin exposes this as a
+ *                                       "RAW_RESULT"-style ini key and a matching CONFIG token, see
+ *                                       the individual plugins' *_setup.hpp for the exact key name.
+ *
+ * \return true on success (including the "plugin not enabled" early-out, which validates
+ *          arguments without executing), false on a validation or execution failure
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename OpenFn>
-bool generic_cmd(const std::string& args,
-                  bool bIsEnabled,
-                  OpenFn&& openFn,
-                  const std::string& pluginName,
-                  size_t u32ReadBufferSize,
-                  uint32_t u32ReadTimeout,
-                  const char* pszLogHdr,
-                  std::string* pstrResult = nullptr,
-                  bool bRawResult = false,
-                  typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
-                  typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {},
-                  std::stop_token stop_tok = {})
+bool generic_cmd(const std::string &args,
+                 bool bIsEnabled,
+                 OpenFn &&openFn,
+                 const std::string &pluginName,
+                 size_t u32ReadBufferSize,
+                 uint32_t u32ReadTimeout,
+                 const char *pszLogHdr,
+                 std::string *pstrResult                                                                                     = nullptr,
+                 bool bRawResult                                                                                             = false,
+                 typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
+                 typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {},
+                 std::stop_token stop_tok                                                                                    = {})
 {
     using DriverT = typename std::invoke_result_t<OpenFn>::element_type;
 
-    bool bRetVal = false;
+    bool bRetVal  = false;
 
     // Fresh on every call, whether or not this dispatch ends up performing a
     // receive, so a stale value from a previous CMD invocation is never
@@ -198,34 +197,28 @@ bool generic_cmd(const std::string& args,
         pstrResult->clear();
     }
 
-    do
-    {
-        if (args.empty())
-        {
+    do {
+        if (args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Missing command"));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (!bIsEnabled)
-        {
+        if (!bIsEnabled) {
             bRetVal = true;
             break;
         }
 
-        try
-        {
+        try {
             auto shpDriver = openFn();
 
-            if (shpDriver)
-            {
+            if (shpDriver) {
                 CommScriptCommandValidator validator;
                 CommCommand command;
 
-                if (validator.validateCommand(0, args, command))
-                {
+                if (validator.validateCommand(0, args, command)) {
                     CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
-                                                                        std::move(pfsend), std::move(pfrecv), stop_tok);
+                                                                      std::move(pfsend), std::move(pfrecv), stop_tok);
                     // interpretCommand()'s bRealExec parameter decides whether it may
                     // reach the actual send/receive interface: false during a script
                     // dry-run (see uExecContext.hpp), true otherwise. This used to be
@@ -235,27 +228,23 @@ bool generic_cmd(const std::string& args,
                     bRetVal = interpreter.interpretCommand(command, !uexec::isDryRun());
 
                     if (pstrResult && bRetVal) {
-                        const auto& vectReceived = interpreter.getLastReceived();
+                        const auto &vectReceived = interpreter.getLastReceived();
 
                         if (bRawResult) {
                             // Verbatim payload bytes, not a text representation of them -
                             // some of those bytes may be non-printable/embedded-NUL, which
                             // std::string tolerates fine (it's length-delimited, not
                             // NUL-terminated like a C string).
-                            pstrResult->assign(reinterpret_cast<const char*>(vectReceived.data()), vectReceived.size());
+                            pstrResult->assign(reinterpret_cast<const char *>(vectReceived.data()), vectReceived.size());
                         } else {
                             *pstrResult = hexutils::stringHexlify(vectReceived);
                         }
                     }
                 }
             }
-        }
-        catch (const std::bad_alloc& e)
-        {
+        } catch (const std::bad_alloc &e) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        }
-        catch (const std::exception& e)
-        {
+        } catch (const std::exception &e) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
         }
 
@@ -266,54 +255,52 @@ bool generic_cmd(const std::string& args,
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Shared body for a plugin's *_SCRIPT command.
-  *
-  *        DriverT is deduced the same way as in generic_cmd().
-  *
-  *        Note: the arg-count check below is `(szNrArgs < 1) || (szNrArgs > 2)`.
-  *        A couple of the original per-plugin copies had weakened this to
-  *        just `szNrArgs > 2` (reasoning that args being non-empty already
-  *        guarantees at least one token) - but a whitespace-only args string
-  *        tokenizes to zero tokens despite not being std::string::empty(),
-  *        which would have reached vstrArgs[0] with szNrArgs == 0. Keeping
-  *        the full bounds check here fixes that latent out-of-bounds access
-  *        for every plugin at once.
-  *
-  * \param[in] args              the command's argument string: "scriptpathname [|delay]"
-  * \param[in] bIsEnabled        the plugin's current enabled state (forwarded to CommScriptClient::execute)
-  * \param[in] openFn            callable: () -> std::shared_ptr<DriverT>, see generic_cmd()
-  * \param[in] pluginName        plugin identity for the GUI comm-dump panel, forwarded to
-  *                                CommScriptClient<DriverT>; see generic_cmd()
-  * \param[in] strArtefactsPath  base directory scriptpathname is resolved against
-  * \param[in] u32ReadBufferSize  read-buffer size forwarded to CommScriptClient<DriverT>
-  * \param[in] u32ReadTimeout    default read timeout forwarded to CommScriptClient<DriverT>
-  * \param[in] pszLogHdr         log header literal used to prefix error messages
-  *
-  * \return true on success, false on a validation, file, or execution failure
-*/
+ * \brief Shared body for a plugin's *_SCRIPT command.
+ *
+ *        DriverT is deduced the same way as in generic_cmd().
+ *
+ *        Note: the arg-count check below is `(szNrArgs < 1) || (szNrArgs > 2)`.
+ *        A couple of the original per-plugin copies had weakened this to
+ *        just `szNrArgs > 2` (reasoning that args being non-empty already
+ *        guarantees at least one token) - but a whitespace-only args string
+ *        tokenizes to zero tokens despite not being std::string::empty(),
+ *        which would have reached vstrArgs[0] with szNrArgs == 0. Keeping
+ *        the full bounds check here fixes that latent out-of-bounds access
+ *        for every plugin at once.
+ *
+ * \param[in] args              the command's argument string: "scriptpathname [|delay]"
+ * \param[in] bIsEnabled        the plugin's current enabled state (forwarded to CommScriptClient::execute)
+ * \param[in] openFn            callable: () -> std::shared_ptr<DriverT>, see generic_cmd()
+ * \param[in] pluginName        plugin identity for the GUI comm-dump panel, forwarded to
+ *                                CommScriptClient<DriverT>; see generic_cmd()
+ * \param[in] strArtefactsPath  base directory scriptpathname is resolved against
+ * \param[in] u32ReadBufferSize  read-buffer size forwarded to CommScriptClient<DriverT>
+ * \param[in] u32ReadTimeout    default read timeout forwarded to CommScriptClient<DriverT>
+ * \param[in] pszLogHdr         log header literal used to prefix error messages
+ *
+ * \return true on success, false on a validation, file, or execution failure
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename OpenFn>
-bool generic_script(const std::string& args,
-                     bool bIsEnabled,
-                     OpenFn&& openFn,
-                     const std::string& pluginName,
-                     const std::string& strArtefactsPath,
-                     size_t u32ReadBufferSize,
-                     uint32_t u32ReadTimeout,
-                     const char* pszLogHdr,
-                     typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
-                     typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {},
-                     std::stop_token stop_tok = {})
+bool generic_script(const std::string &args,
+                    bool bIsEnabled,
+                    OpenFn &&openFn,
+                    const std::string &pluginName,
+                    const std::string &strArtefactsPath,
+                    size_t u32ReadBufferSize,
+                    uint32_t u32ReadTimeout,
+                    const char *pszLogHdr,
+                    typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
+                    typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {},
+                    std::stop_token stop_tok                                                                        = {})
 {
     using DriverT = typename std::invoke_result_t<OpenFn>::element_type;
 
-    bool bRetVal = false;
+    bool bRetVal  = false;
 
-    do
-    {
+    do {
         // expected to have as parameter the name of the script
-        if (args.empty())
-        {
+        if (args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
             break;
         }
@@ -322,17 +309,14 @@ bool generic_script(const std::string& args,
         ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
         const size_t szNrArgs = vstrArgs.size();
 
-        if ((szNrArgs < 1) || (szNrArgs > 2))
-        {
+        if ((szNrArgs < 1) || (szNrArgs > 2)) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Expected: scriptpathname [|delay]"));
             break;
         }
 
         size_t szDelay = 0;
-        if (szNrArgs == 2)
-        {
-            if (!numeric::str2sizet(vstrArgs[1], szDelay))
-            {
+        if (szNrArgs == 2) {
+            if (!numeric::str2sizet(vstrArgs[1], szDelay)) {
                 break;
             }
         }
@@ -340,29 +324,22 @@ bool generic_script(const std::string& args,
         std::string strScriptPathName;
         ufile::buildFilePath(strArtefactsPath, vstrArgs[0], strScriptPathName);
 
-        if (!ufile::fileExistsAndNotEmpty(strScriptPathName))
-        {
+        if (!ufile::fileExistsAndNotEmpty(strScriptPathName)) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
             break;
         }
 
-        try
-        {
+        try {
             auto shpDriver = openFn();
 
-            if (shpDriver)
-            {
+            if (shpDriver) {
                 CommScriptClient<DriverT> client(strScriptPathName, shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
-                                                  szDelay, std::move(pfsend), std::move(pfrecv), stop_tok);
+                                                 szDelay, std::move(pfsend), std::move(pfrecv), stop_tok);
                 bRetVal = client.execute(bIsEnabled);
             }
-        }
-        catch (const std::bad_alloc& e)
-        {
+        } catch (const std::bad_alloc &e) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        }
-        catch (const std::exception& e)
-        {
+        } catch (const std::exception &e) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
         }
 
@@ -373,45 +350,44 @@ bool generic_script(const std::string& args,
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief One parsed "val time" entry out of a CYCLIC array (see generic_send_cyclic()).
-  *
-  *        strVal is intentionally opaque strings not parsed further by this header
-*/
+ * \brief One parsed "val time" entry out of a CYCLIC array (see generic_send_cyclic()).
+ *
+ *        strVal is intentionally opaque strings not parsed further by this header
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 struct CyclicEntry
 {
     std::string strVal;
-    uint32_t    u32PeriodMs;
+    uint32_t u32PeriodMs;
 };
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse a CYCLIC array argument string into a vector of CyclicEntry.
-  *
-  *        Grammar: "time1 val1 [id1], time2 val2 [id2], ..., timeN valN [idN]"
-  *          - entries are comma-separated
-  *          - each entry is 2 or 3 whitespace-separated tokens, in this order:
-  *              time_ms (> 0), val, id (optional)
-  *          - id is meaningful only to plugins with a per-message destination/address concept
-  *            (e.g. CAN id, I2C slave address, "host:port", dest MAC); when absent, the plugin's
-  *            sendFn falls back to whatever the plugin's own default destination is (typically
-  *            the destination configured via its CONFIG command) - see generic_send_cyclic().
-  *            Point-to-point plugins with no such concept (UART, KSPI, DSPKSPI, TCPIP, W5500NET,
-  *            ...) never need it at all.
-  *          - val/id may be double-quoted to embed whitespace (see tokenizeSpaceQuotesAware)
-  *          - entries are comma-separated, but a comma inside a '...'- or "..."-quoted val
-  *            (e.g. a JSON request body with more than one field) does not end that entry —
-  *            see ustring::tokenizeRespectingQuotes()'s doc comment
-  *
-  * \param[in]  strArray    the raw array argument
-  * \param[out] vEntries    parsed entries, cleared first; left in an unspecified state on failure
-  * \param[in]  pszLogHdr   log header literal used to prefix error messages
-  *
-  * \return true if strArray held at least one syntactically valid entry, false otherwise
-*/
+ * \brief Parse a CYCLIC array argument string into a vector of CyclicEntry.
+ *
+ *        Grammar: "time1 val1 [id1], time2 val2 [id2], ..., timeN valN [idN]"
+ *          - entries are comma-separated
+ *          - each entry is 2 or 3 whitespace-separated tokens, in this order:
+ *              time_ms (> 0), val, id (optional)
+ *          - id is meaningful only to plugins with a per-message destination/address concept
+ *            (e.g. CAN id, I2C slave address, "host:port", dest MAC); when absent, the plugin's
+ *            sendFn falls back to whatever the plugin's own default destination is (typically
+ *            the destination configured via its CONFIG command) - see generic_send_cyclic().
+ *            Point-to-point plugins with no such concept (UART, KSPI, DSPKSPI, TCPIP, W5500NET,
+ *            ...) never need it at all.
+ *          - val/id may be double-quoted to embed whitespace (see tokenizeSpaceQuotesAware)
+ *          - entries are comma-separated, but a comma inside a '...'- or "..."-quoted val
+ *            (e.g. a JSON request body with more than one field) does not end that entry —
+ *            see ustring::tokenizeRespectingQuotes()'s doc comment
+ *
+ * \param[in]  strArray    the raw array argument
+ * \param[out] vEntries    parsed entries, cleared first; left in an unspecified state on failure
+ * \param[in]  pszLogHdr   log header literal used to prefix error messages
+ *
+ * \return true if strArray held at least one syntactically valid entry, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-inline bool parseCyclicArray(const std::string& strArray, std::vector<CyclicEntry>& vEntries, const char* pszLogHdr)
+inline bool parseCyclicArray(const std::string &strArray, std::vector<CyclicEntry> &vEntries, const char *pszLogHdr)
 {
     vEntries.clear();
 
@@ -425,11 +401,11 @@ inline bool parseCyclicArray(const std::string& strArray, std::vector<CyclicEntr
     // before: nothing here changes for a val that never uses quoting.
     std::vector<std::string> vGroups = ustring::tokenizeRespectingQuotes(strArray, ',');
 
-    for(auto i: vGroups)
+    for (auto i : vGroups) {
         LOG_PRINT(LOG_DEBUG, LOG_STRING(i));
+    }
 
-    for (const auto& strGroup : vGroups)
-    {
+    for (const auto &strGroup : vGroups) {
         if (strGroup.empty()) {
             continue; // tolerate a trailing comma, same convention as ARRAY_MACRO parsing
         }
@@ -437,153 +413,146 @@ inline bool parseCyclicArray(const std::string& strArray, std::vector<CyclicEntr
         std::vector<std::string> vTokens;
         ustring::splitAtFirst(strGroup, ':', vTokens);
 
-        if (vTokens.size() != 2)
-        {
+        if (vTokens.size() != 2) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr);
                       LOG_STRING("CYCLIC: expected 'time val', got:"); LOG_STRING(strGroup));
             return false;
         }
 
         uint32_t u32Period = 0U;
-        if (!numeric::str2uint32(vTokens[0], u32Period) || (u32Period == 0U))
-        {
+        if (!numeric::str2uint32(vTokens[0], u32Period) || (u32Period == 0U)) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr);
                       LOG_STRING("CYCLIC: invalid (or zero) time:"); LOG_STRING(vTokens[0]));
             return false;
         }
 
-        const std::string& strVal = vTokens[1];
+        const std::string &strVal = vTokens[1];
 
-        vEntries.push_back(CyclicEntry{ strVal, u32Period });
+        vEntries.push_back(CyclicEntry{strVal, u32Period});
     }
 
-    if (vEntries.empty())
-    {
+    if (vEntries.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: empty array"));
         return false;
     }
 
-    for(auto& i : vEntries){
-        LOG_PRINT(LOG_DEBUG, LOG_STRING(pszLogHdr);LOG_STRING(i.strVal); LOG_UINT32(i.u32PeriodMs));
+    for (auto &i : vEntries) {
+        LOG_PRINT(LOG_DEBUG, LOG_STRING(pszLogHdr); LOG_STRING(i.strVal); LOG_UINT32(i.u32PeriodMs));
     }
 
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Shared body for a plugin's *_CYCLIC command.
-  *
-  *        Sends one or more periodic commands described by an array of "time:cmd"
-  *
-  *            time1:cmd1 , time2:cmd2 , ..., timeN:cmdN
-  *
-  *        The driver is opened once via openFn() (same dependency-injection shape as
-  *        generic_cmd()/generic_script() above) and kept open for the whole CYCLIC session —
-  *        one physical connection, however many entries/ticks it ends up serving.
-  *
-  *        A single master timer ticks at the greatest common divisor (gcd) of every time_i
-  *        (milliseconds). At every tick, each entry whose own period has elapsed since the
-  *        start is (re-)sent through sendFn(driver, id, val) - id being whatever strId
-  *        parseCyclicArray() extracted for that entry, or an empty string if that entry's
-  *        optional id was omitted (a plugin whose sendFn ignores id entirely, e.g. UART/KSPI,
-  *        is unaffected either way; a plugin that does use id, e.g. KVCAN/KI2C/UDP, should
-  *        treat an empty id the same way its CMD/SCRIPT commands already treat an absent
-  *        override - falling back to whatever destination is configured via CONFIG).
-  *
-  *        - Launched WITHOUT '&' (sequential): runs for exactly one super-period — the least
-  *          common multiple (lcm) of every time_i — then returns. This still sends every entry
-  *          at its correct relative cadence at least once, while guaranteeing the command
-  *          returns in bounded time, as required of a non-blocking command (see
-  *          PluginCommandEntry::bBlocking — CYCLIC is registered with bBlocking=false precisely
-  *          so it stays legal to call without '&').
-  *        - Launched WITH '&' (threaded): repeats forever, checking st.stop_requested() once
-  *          per tick, until the script interpreter requests a stop (end of script, or an
-  *          explicit cancellation) — see ScriptInterpreter's jthread dispatch.
-  *
-  *        Threaded vs. sequential is detected via st.stop_possible(): the stop_token a jthread
-  *        hands to doDispatch() is stop_possible()==true; the default-constructed token used
-  *        for a sequential (non-'&') dispatch is stop_possible()==false — see IPlugin.hpp's
-  *        doDispatch() doc comment. This is different from (and independent of) checking
-  *        stop_requested() alone, which stays false forever on a default-constructed token and
-  *        so cannot by itself distinguish "not threaded" from "threaded but not yet cancelled".
-  *
-  *        Tick scheduling is drift-free: every tick's wake-up is an absolute
-  *        std::chrono::steady_clock deadline computed once from a fixed session-start
-  *        reference point (tpStart + tickIdx * u64Tick), not a relative sleep_for(u64Tick)
-  *        re-measured after every iteration. A relative sleep would let each iteration's own
-  *        validate/interpret/send latency add on top of the sleep, so the achieved period
-  *        would creep past u64Tick and the error would compound tick after tick over a
-  *        long-running threaded session. Anchoring to tpStart keeps the average rate exact
-  *        regardless of per-tick jitter, while std::this_thread::sleep_until() still fully
-  *        blocks the thread whenever a tick isn't running late — so precision improves with
-  *        no added CPU load over the previous sleep_for()-based loop.
-  *
-  * \param[in] args        "time1 val1 [id1], time2 val2 [id2], ..." (see parseCyclicArray()).
-  *                          May still contain literal, unexpanded "$NAME" volatile-macro
-  *                          references — see bCached below and uVolatileMacroStore.hpp's
-  *                          rationale for why ScriptInterpreter deliberately leaves those in
-  *                          place for a CYCLIC dispatch instead of resolving them itself.
-  * \param[in] bIsEnabled  the plugin's current enabled state
-  * \param[in] openFn      callable: () -> std::shared_ptr<DriverT>; returns nullptr (and should
-  *                          log why) on failure to open/configure the driver — see generic_cmd()
-  * \param[in] pszLogHdr   log header literal used to prefix error messages
-  * \param[in] st          stop_token forwarded from doDispatch(), see behaviour above
-  * \param[in] bCached     selects the caching strategy for entry validation/parsing — see
-  *                          CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY above:
-  *                            true (default) - today's behaviour, unchanged: every entry's
-  *                              command string (and any leftover "$NAME" volatile-macro
-  *                              reference in it — see uvolatile::resolveVolatileMacros()) is
-  *                              resolved and validated exactly once, up front, then the
-  *                              resulting CommCommand is reused for every remaining tick of
-  *                              the session. Cheapest option; a volatile macro's value is
-  *                              whatever it held at the moment the CYCLIC line started.
-  *                            false - re-resolves and re-validates each DUE entry's command
-  *                              string fresh, on every single tick, instead of caching it.
-  *                              Needed to track a volatile ("?=") macro used as one entry's
-  *                              val/id when its value keeps changing at runtime (typically
-  *                              written by a background thread — e.g. "VAL ?= PLUGIN.CMD
-  *                              args &" — see uvolatile::VolatileMacroStore). Costs a full
-  *                              regex/decorator re-parse (and, for an F"file.bin" entry, a
-  *                              fresh filesystem stat()) per due entry per tick, for as long
-  *                              as the session runs — pay this only for a CYCLIC session that
-  *                              actually needs it.
-  * 
-  * \return true on success (including the "plugin not enabled" early-out, which validates
-  *          arguments without executing), false on a parse error, a driver-open failure, or if
-  *          sendFn() ever fails
-*/
+ * \brief Shared body for a plugin's *_CYCLIC command.
+ *
+ *        Sends one or more periodic commands described by an array of "time:cmd"
+ *
+ *            time1:cmd1 , time2:cmd2 , ..., timeN:cmdN
+ *
+ *        The driver is opened once via openFn() (same dependency-injection shape as
+ *        generic_cmd()/generic_script() above) and kept open for the whole CYCLIC session —
+ *        one physical connection, however many entries/ticks it ends up serving.
+ *
+ *        A single master timer ticks at the greatest common divisor (gcd) of every time_i
+ *        (milliseconds). At every tick, each entry whose own period has elapsed since the
+ *        start is (re-)sent through sendFn(driver, id, val) - id being whatever strId
+ *        parseCyclicArray() extracted for that entry, or an empty string if that entry's
+ *        optional id was omitted (a plugin whose sendFn ignores id entirely, e.g. UART/KSPI,
+ *        is unaffected either way; a plugin that does use id, e.g. KVCAN/KI2C/UDP, should
+ *        treat an empty id the same way its CMD/SCRIPT commands already treat an absent
+ *        override - falling back to whatever destination is configured via CONFIG).
+ *
+ *        - Launched WITHOUT '&' (sequential): runs for exactly one super-period — the least
+ *          common multiple (lcm) of every time_i — then returns. This still sends every entry
+ *          at its correct relative cadence at least once, while guaranteeing the command
+ *          returns in bounded time, as required of a non-blocking command (see
+ *          PluginCommandEntry::bBlocking — CYCLIC is registered with bBlocking=false precisely
+ *          so it stays legal to call without '&').
+ *        - Launched WITH '&' (threaded): repeats forever, checking st.stop_requested() once
+ *          per tick, until the script interpreter requests a stop (end of script, or an
+ *          explicit cancellation) — see ScriptInterpreter's jthread dispatch.
+ *
+ *        Threaded vs. sequential is detected via st.stop_possible(): the stop_token a jthread
+ *        hands to doDispatch() is stop_possible()==true; the default-constructed token used
+ *        for a sequential (non-'&') dispatch is stop_possible()==false — see IPlugin.hpp's
+ *        doDispatch() doc comment. This is different from (and independent of) checking
+ *        stop_requested() alone, which stays false forever on a default-constructed token and
+ *        so cannot by itself distinguish "not threaded" from "threaded but not yet cancelled".
+ *
+ *        Tick scheduling is drift-free: every tick's wake-up is an absolute
+ *        std::chrono::steady_clock deadline computed once from a fixed session-start
+ *        reference point (tpStart + tickIdx * u64Tick), not a relative sleep_for(u64Tick)
+ *        re-measured after every iteration. A relative sleep would let each iteration's own
+ *        validate/interpret/send latency add on top of the sleep, so the achieved period
+ *        would creep past u64Tick and the error would compound tick after tick over a
+ *        long-running threaded session. Anchoring to tpStart keeps the average rate exact
+ *        regardless of per-tick jitter, while std::this_thread::sleep_until() still fully
+ *        blocks the thread whenever a tick isn't running late — so precision improves with
+ *        no added CPU load over the previous sleep_for()-based loop.
+ *
+ * \param[in] args        "time1 val1 [id1], time2 val2 [id2], ..." (see parseCyclicArray()).
+ *                          May still contain literal, unexpanded "$NAME" volatile-macro
+ *                          references — see bCached below and uVolatileMacroStore.hpp's
+ *                          rationale for why ScriptInterpreter deliberately leaves those in
+ *                          place for a CYCLIC dispatch instead of resolving them itself.
+ * \param[in] bIsEnabled  the plugin's current enabled state
+ * \param[in] openFn      callable: () -> std::shared_ptr<DriverT>; returns nullptr (and should
+ *                          log why) on failure to open/configure the driver — see generic_cmd()
+ * \param[in] pszLogHdr   log header literal used to prefix error messages
+ * \param[in] st          stop_token forwarded from doDispatch(), see behaviour above
+ * \param[in] bCached     selects the caching strategy for entry validation/parsing — see
+ *                          CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY above:
+ *                            true (default) - today's behaviour, unchanged: every entry's
+ *                              command string (and any leftover "$NAME" volatile-macro
+ *                              reference in it — see uvolatile::resolveVolatileMacros()) is
+ *                              resolved and validated exactly once, up front, then the
+ *                              resulting CommCommand is reused for every remaining tick of
+ *                              the session. Cheapest option; a volatile macro's value is
+ *                              whatever it held at the moment the CYCLIC line started.
+ *                            false - re-resolves and re-validates each DUE entry's command
+ *                              string fresh, on every single tick, instead of caching it.
+ *                              Needed to track a volatile ("?=") macro used as one entry's
+ *                              val/id when its value keeps changing at runtime (typically
+ *                              written by a background thread — e.g. "VAL ?= PLUGIN.CMD
+ *                              args &" — see uvolatile::VolatileMacroStore). Costs a full
+ *                              regex/decorator re-parse (and, for an F"file.bin" entry, a
+ *                              fresh filesystem stat()) per due entry per tick, for as long
+ *                              as the session runs — pay this only for a CYCLIC session that
+ *                              actually needs it.
+ *
+ * \return true on success (including the "plugin not enabled" early-out, which validates
+ *          arguments without executing), false on a parse error, a driver-open failure, or if
+ *          sendFn() ever fails
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename OpenFn>
-bool generic_send_cyclic(const std::string& args,
-                          bool bIsEnabled,
-                          OpenFn&& openFn,
-                          const std::string& pluginName,
-                          uint32_t u32ReadBufferSize,
-                          uint32_t u32ReadTimeout,
-                          const char* pszLogHdr,
-                          std::stop_token st,
-                          bool bCached = true,
-                          typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
-                          typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {})
+bool generic_send_cyclic(const std::string &args,
+                         bool bIsEnabled,
+                         OpenFn &&openFn,
+                         const std::string &pluginName,
+                         uint32_t u32ReadBufferSize,
+                         uint32_t u32ReadTimeout,
+                         const char *pszLogHdr,
+                         std::stop_token st,
+                         bool bCached                                                                                                = true,
+                         typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
+                         typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {})
 {
     using DriverT = typename std::invoke_result_t<OpenFn>::element_type;
 
-    bool bRetVal = false;
+    bool bRetVal  = false;
 
-    do
-    {
-        if (args.empty())
-        {
+    do {
+        if (args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr);
                       LOG_STRING("Missing arg(s): time1:val1, time2:val2, ..."));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (!bIsEnabled)
-        {
+        if (!bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -605,8 +574,7 @@ bool generic_send_cyclic(const std::string& args,
         }
 
         std::vector<CyclicEntry> vEntries;
-        if (!parseCyclicArray(strArgs, vEntries, pszLogHdr))
-        {
+        if (!parseCyclicArray(strArgs, vEntries, pszLogHdr)) {
             break;
         }
 
@@ -615,27 +583,23 @@ bool generic_send_cyclic(const std::string& args,
         uint64_t u64Tick        = vEntries.front().u32PeriodMs;
         uint64_t u64SuperPeriod = vEntries.front().u32PeriodMs;
 
-        for (size_t i = 1; i < vEntries.size(); ++i)
-        {
+        for (size_t i = 1; i < vEntries.size(); ++i) {
             u64Tick        = std::gcd(u64Tick, static_cast<uint64_t>(vEntries[i].u32PeriodMs));
             u64SuperPeriod = std::lcm(u64SuperPeriod, static_cast<uint64_t>(vEntries[i].u32PeriodMs));
         }
 
-        if (u64Tick == 0U)
-        {
+        if (u64Tick == 0U) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: invalid (zero) tick"));
             break;
         }
 
-        const bool     bThreaded  = st.stop_possible();
+        const bool bThreaded      = st.stop_possible();
         const uint64_t u64NrTicks = u64SuperPeriod / u64Tick; // >= 1, ticks in one full pattern
 
-        try
-        {
+        try {
             std::shared_ptr<DriverT> shpDriver = openFn();
 
-            if (!shpDriver)
-            {
+            if (!shpDriver) {
                 break;
             }
 
@@ -671,40 +635,33 @@ bool generic_send_cyclic(const std::string& args,
             struct ResolvedCyclicEntry
             {
                 CommCommand command;
-                uint32_t    u32PeriodMs;
+                uint32_t u32PeriodMs;
             };
 
             std::vector<ResolvedCyclicEntry> vResolvedEntries;
 
-            if (bCached)
-            {
+            if (bCached) {
                 vResolvedEntries.reserve(vEntries.size());
 
                 CommScriptCommandValidator validator;
-                for (const auto& sEntry : vEntries)
-                {
+                for (const auto &sEntry : vEntries) {
                     CommCommand command;
-                    if (validator.validateCommand(0, sEntry.strVal, command))
-                    {
-                        vResolvedEntries.push_back(ResolvedCyclicEntry{ std::move(command), sEntry.u32PeriodMs });
+                    if (validator.validateCommand(0, sEntry.strVal, command)) {
+                        vResolvedEntries.push_back(ResolvedCyclicEntry{std::move(command), sEntry.u32PeriodMs});
                     }
                 }
 
-                if (vResolvedEntries.empty())
-                {
+                if (vResolvedEntries.empty()) {
                     LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: no valid entry to send"));
                     break;
                 }
-            }
-            else
-            {
+            } else {
                 // Un-cached: vEntries itself (strVal possibly still holding literal
                 // "$NAME" volatile-macro references) is what the tick loop below
                 // re-resolves and re-validates on every due tick - just make sure
                 // there is at least one entry to ever be due, same up-front check
                 // the cached branch gets for free out of vResolvedEntries.empty().
-                if (vEntries.empty())
-                {
+                if (vEntries.empty()) {
                     LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: no valid entry to send"));
                     break;
                 }
@@ -723,8 +680,8 @@ bool generic_send_cyclic(const std::string& args,
             // the same way one CommScriptCommandInterpreter already serves every
             // line of a whole SCRIPT/CMD run.
             CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
-                                                                std::move(pfsend), std::move(pfrecv), st);
-            bRetVal = true;
+                                                              std::move(pfsend), std::move(pfrecv), st);
+            bRetVal                                             = true;
 
             // Every tick's wake-up deadline is computed as an offset from this single
             // fixed reference point, rather than "now + u64Tick" measured freshly at the
@@ -749,30 +706,24 @@ bool generic_send_cyclic(const std::string& args,
             // the single long-lived `interpreter` above, just without a result cache behind it.
             CommScriptCommandValidator uncachedValidator;
 
-            for (uint64_t u64TickIdx = 0; ; ++u64TickIdx)
-            {
+            for (uint64_t u64TickIdx = 0;; ++u64TickIdx) {
                 const uint64_t u64Elapsed = u64TickIdx * u64Tick;
 
-                if (bCached)
-                {
-                    for (const auto& sEntry : vResolvedEntries)
-                    {
-                        if ((u64Elapsed % static_cast<uint64_t>(sEntry.u32PeriodMs)) == 0U)
-                        {
+                if (bCached) {
+                    for (const auto &sEntry : vResolvedEntries) {
+                        if ((u64Elapsed % static_cast<uint64_t>(sEntry.u32PeriodMs)) == 0U) {
                             // interpretCommand()'s bRealExec parameter decides whether it may
                             // reach the actual send/receive interface: false during a script
                             // dry-run (see uExecContext.hpp), true otherwise. This used to be
                             // fed bIsEnabled (the plugin's own hardware-enabled config flag),
                             // which is unrelated to dry-run and left the parameter effectively
                             // dead - interpretCommand always executed for real.
-                            if(false == (bRetVal = interpreter.interpretCommand(sEntry.command, !uexec::isDryRun()))) {
+                            if (false == (bRetVal = interpreter.interpretCommand(sEntry.command, !uexec::isDryRun()))) {
                                 break;
                             }
                         }
                     }
-                }
-                else
-                {
+                } else {
                     // Un-cached: re-resolve any "$NAME" volatile-macro reference in this
                     // due entry's strVal from uvolatile::VolatileMacroStore, then
                     // re-validate/re-parse it into a fresh, throwaway CommCommand - on
@@ -781,16 +732,13 @@ bool generic_send_cyclic(const std::string& args,
                     // thread's latest "VAL ?= PLUGIN.CMD args &" result for as long as
                     // the CYCLIC session runs; see bCached's doc comment above for the
                     // cost/benefit trade-off against the cached (default) branch.
-                    for (const auto& sEntry : vEntries)
-                    {
-                        if ((u64Elapsed % static_cast<uint64_t>(sEntry.u32PeriodMs)) == 0U)
-                        {
+                    for (const auto &sEntry : vEntries) {
+                        if ((u64Elapsed % static_cast<uint64_t>(sEntry.u32PeriodMs)) == 0U) {
                             std::string strResolvedVal = sEntry.strVal;
                             uvolatile::resolveVolatileMacros(strResolvedVal);
 
                             CommCommand command;
-                            if (!uncachedValidator.validateCommand(0, strResolvedVal, command))
-                            {
+                            if (!uncachedValidator.validateCommand(0, strResolvedVal, command)) {
                                 // Matches the cached branch's own silent-skip convention for an
                                 // entry that fails validation (see vResolvedEntries' doc comment
                                 // above) - except here it is re-attempted on every tick instead of
@@ -799,27 +747,22 @@ bool generic_send_cyclic(const std::string& args,
                                 continue;
                             }
 
-                            if(false == (bRetVal = interpreter.interpretCommand(command, !uexec::isDryRun()))) {
+                            if (false == (bRetVal = interpreter.interpretCommand(command, !uexec::isDryRun()))) {
                                 break;
                             }
                         }
                     }
                 }
 
-                if (!bRetVal)
-                {
+                if (!bRetVal) {
                     break;
                 }
 
-                if (bThreaded)
-                {
-                    if (st.stop_requested())
-                    {
+                if (bThreaded) {
+                    if (st.stop_requested()) {
                         break;
                     }
-                }
-                else if ((u64TickIdx + 1U) >= u64NrTicks)
-                {
+                } else if ((u64TickIdx + 1U) >= u64NrTicks) {
                     break; // sequential call: one full super-period done, return
                 }
 
@@ -837,14 +780,10 @@ bool generic_send_cyclic(const std::string& args,
                     tpStart + std::chrono::milliseconds(u64Tick * (u64TickIdx + 1U));
                 std::this_thread::sleep_until(tpNextTick);
             }
-        }
-        catch (const std::bad_alloc& e)
-        {
+        } catch (const std::bad_alloc &e) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
             bRetVal = false;
-        }
-        catch (const std::exception& e)
-        {
+        } catch (const std::exception &e) {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
             bRetVal = false;
         }

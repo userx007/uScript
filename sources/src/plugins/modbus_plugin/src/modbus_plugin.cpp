@@ -1,4 +1,5 @@
 #include "modbus_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
 #include "private/modbus_setup.hpp"
@@ -13,22 +14,20 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
-  * \brief The plugin's entry points
-*/
-extern "C"
+ * \brief The plugin's entry points
+ */
+extern "C" {
+EXPORTED ModbusPlugin *pluginEntry()
 {
-    EXPORTED ModbusPlugin* pluginEntry()
-    {
-        return new ModbusPlugin();
-    }
+    return new ModbusPlugin();
+}
 
-    EXPORTED void pluginExit( ModbusPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(ModbusPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 // -----------------------------------------------------------------------
@@ -53,7 +52,7 @@ std::shared_ptr<ModbusDriver> ModbusPlugin::m_OpenDriver(void) const
     cfg.responseTimeoutMs = m_u32ReadTimeout;
     cfg.strInstanceName   = m_strInstanceName;
 
-    auto driver = std::make_shared<ModbusDriver>(cfg);
+    auto driver           = std::make_shared<ModbusDriver>(cfg);
     if (!driver->open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ModbusDriver open failed"));
         return nullptr;
@@ -71,9 +70,10 @@ std::shared_ptr<ModbusDriver> ModbusPlugin::m_OpenDriver(void) const
 // MODBUS.INFO
 // ------------------------------------------------------------------------------
 
-bool ModbusPlugin::m_MODBUS_INFO(const std::string& args, std::stop_token st) const
+bool ModbusPlugin::m_MODBUS_INFO(const std::string &args, std::stop_token st) const
 {
-    (void)args; (void)st;
+    (void)args;
+    (void)st;
     resetData();
     std::ostringstream oss;
     oss << MODBUS_PLUGIN_NAME " v" << m_strVersion
@@ -122,14 +122,13 @@ bool ModbusPlugin::m_MODBUS_INFO(const std::string& args, std::stop_token st) co
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
 // -----------------------------------------------------------------------
 // MODBUS.CONFIG — see class doc comment (modbus_plugin.hpp)
 // -----------------------------------------------------------------------
-bool ModbusPlugin::m_MODBUS_CONFIG(const std::string& args, std::stop_token st) const
+bool ModbusPlugin::m_MODBUS_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -139,11 +138,10 @@ bool ModbusPlugin::m_MODBUS_CONFIG(const std::string& args, std::stop_token st) 
 
 } /* m_MODBUS_CONFIG() */
 
-
 // -----------------------------------------------------------------------
 // MODBUS.CMD / MODBUS.CMD — see class doc comment (modbus_plugin.hpp)
 // -----------------------------------------------------------------------
-bool ModbusPlugin::m_MODBUS_CMD(const std::string& args, std::stop_token st) const
+bool ModbusPlugin::m_MODBUS_CMD(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -158,16 +156,16 @@ bool ModbusPlugin::m_MODBUS_CMD(const std::string& args, std::stop_token st) con
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ModbusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ModbusDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const ModbusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 // -----------------------------------------------------------------------
 // MODBUS.CMD / MODBUS.SCRIPT — see class doc comment (modbus_plugin.hpp)
 // -----------------------------------------------------------------------
-bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string& args, std::stop_token st) const
+bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -179,16 +177,16 @@ bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string& args, std::stop_token st) 
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ModbusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ModbusDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const ModbusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 // -----------------------------------------------------------------------
 // MODBUS.CYCLIC — see class doc comment (modbus_plugin.hpp)
 // -----------------------------------------------------------------------
-bool ModbusPlugin::m_MODBUS_CYCLIC(const std::string& args, std::stop_token st) const
+bool ModbusPlugin::m_MODBUS_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -202,7 +200,7 @@ bool ModbusPlugin::m_MODBUS_CYCLIC(const std::string& args, std::stop_token st) 
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ModbusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ModbusDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const ModbusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
         });
 }

@@ -15,8 +15,12 @@ QTextCharFormat IniHighlighter::fmt(const QString &hex, bool bold, bool italic)
 {
     QTextCharFormat f;
     f.setForeground(QColor(hex));
-    if (bold)   f.setFontWeight(QFont::Bold);
-    if (italic) f.setFontItalic(true);
+    if (bold) {
+        f.setFontWeight(QFont::Bold);
+    }
+    if (italic) {
+        f.setFontItalic(true);
+    }
     return f;
 }
 
@@ -29,55 +33,55 @@ IniHighlighter::IniHighlighter(QTextDocument *parent)
 {
     // [section header]
     // Group 1 = opening '[',  group 2 = name,  group 3 = closing ']'
-    m_reSection       = QRegularExpression(R"(^\s*(\[)([^\]]+)(\]))");
-    m_fmtBracket      = fmt("#6272a4");                 // slate
-    m_fmtSectionName  = fmt("#E88873", /*bold=*/true);  // amber bold
+    m_reSection      = QRegularExpression(R"(^\s*(\[)([^\]]+)(\]))");
+    m_fmtBracket     = fmt("#6272a4");                // slate
+    m_fmtSectionName = fmt("#E88873", /*bold=*/true); // amber bold
 
     // key = value  (only matches when there is an '=' on the line,
     //               and there is no '[' before it — so section headers
     //               are not accidentally caught)
     // Group 1 = key name,  group 2 = '='
-    m_reKey    = QRegularExpression(R"(^\s*([A-Za-z_][\w.\-]*)\s*(=))");
-    m_fmtKey   = fmt("#8be9fd");         // cyan
-    m_fmtEquals = fmt("#ff79c6");        // pink
+    m_reKey          = QRegularExpression(R"(^\s*([A-Za-z_][\w.\-]*)\s*(=))");
+    m_fmtKey         = fmt("#8be9fd"); // cyan
+    m_fmtEquals      = fmt("#ff79c6"); // pink
 
     // ${…} variable interpolation / cross-section reference
-    m_reInterp     = QRegularExpression(R"(\$\{[^}]+\})");
-    m_fmtInterp    = fmt("#bd93f9");        // purple  (plain ${VAR})
+    m_reInterp       = QRegularExpression(R"(\$\{[^}]+\})");
+    m_fmtInterp      = fmt("#bd93f9"); // purple  (plain ${VAR})
 
     // Inside ${section:key} — the section-name part gets amber bold (same as [section])
     // Pattern captures: ${ (section) : (key) }
-    m_reInterpXRef  = QRegularExpression(R"(\$\{([^}:]+):([^}]+)\})");
-    m_fmtInterpPunct = fmt("#bd93f9", true);      // purple  — ${ : }
-    m_fmtInterpSect  = fmt("#E88873", /*bold=*/true);  // amber bold — section name
-    m_fmtInterpKey   = fmt("#8be9fd");      // cyan    — key name
+    m_reInterpXRef   = QRegularExpression(R"(\$\{([^}:]+):([^}]+)\})");
+    m_fmtInterpPunct = fmt("#bd93f9", true);          // purple  — ${ : }
+    m_fmtInterpSect  = fmt("#E88873", /*bold=*/true); // amber bold — section name
+    m_fmtInterpKey   = fmt("#8be9fd");                // cyan    — key name
 
     // Standalone section-include:  whole trimmed line is  ${SOMETHING}
     // (no '=' present anywhere on the line)
-    m_reInclude  = QRegularExpression(R"(^\s*\$\{[^}]+\}\s*$)");
-    m_fmtInclude = fmt("#bd93f9", /*bold=*/true);  // purple bold
+    m_reInclude      = QRegularExpression(R"(^\s*\$\{[^}]+\}\s*$)");
+    m_fmtInclude     = fmt("#bd93f9", /*bold=*/true); // purple bold
 
     // Quoted string value  "…"
-    m_reQuoted  = QRegularExpression(R"("(?:[^"\\]|\\.)*")");
-    m_fmtQuoted = fmt("#f1fa8c");        // yellow
+    m_reQuoted       = QRegularExpression(R"("(?:[^"\\]|\\.)*")");
+    m_fmtQuoted      = fmt("#f1fa8c"); // yellow
 
     // Boolean literals  TRUE / FALSE  (case-sensitive, whole word)
-    m_reBool    = QRegularExpression(R"((?<![A-Za-z0-9_])(TRUE|FALSE)(?![A-Za-z0-9_]))");
-    m_fmtTrue   = fmt("#0F956A", /*bold=*/false);   // green   — TRUE
-    m_fmtFalse  = fmt("#CB2C2A", /*bold=*/false);   // red     — FALSE
+    m_reBool         = QRegularExpression(R"((?<![A-Za-z0-9_])(TRUE|FALSE)(?![A-Za-z0-9_]))");
+    m_fmtTrue        = fmt("#0F956A", /*bold=*/false); // green   — TRUE
+    m_fmtFalse       = fmt("#CB2C2A", /*bold=*/false); // red     — FALSE
 
     // Numeric literals:
     //   hex  0x[0-9A-Fa-f]+   or   0X…
     //   dec  optional sign, digits, optional decimal part
     // Whole-word boundaries prevent matching numbers inside identifiers.
-    m_reHexNum  = QRegularExpression(R"((?<![A-Za-z0-9_])(0[xX][0-9A-Fa-f]+)(?![A-Za-z0-9_]))");
-    m_reDecNum  = QRegularExpression(R"((?<![A-Za-z0-9_.+-])([+-]?\d+(?:\.\d+)?)(?![A-Za-z0-9_.]))");
-    m_fmtHexNum = fmt("#1F7A8C");        // teal   — hex numbers
-    m_fmtDecNum = fmt("#1F7A8C");        // teal — decimal numbers
+    m_reHexNum       = QRegularExpression(R"((?<![A-Za-z0-9_])(0[xX][0-9A-Fa-f]+)(?![A-Za-z0-9_]))");
+    m_reDecNum       = QRegularExpression(R"((?<![A-Za-z0-9_.+-])([+-]?\d+(?:\.\d+)?)(?![A-Za-z0-9_.]))");
+    m_fmtHexNum      = fmt("#1F7A8C"); // teal   — hex numbers
+    m_fmtDecNum      = fmt("#1F7A8C"); // teal — decimal numbers
 
     // Line comments:  # … or ; …
-    m_reComment  = QRegularExpression(R"(^\s*[#;].*)");
-    m_fmtComment = fmt("#6272a4", /*bold=*/false, /*italic=*/true);  // slate italic
+    m_reComment      = QRegularExpression(R"(^\s*[#;].*)");
+    m_fmtComment     = fmt("#6272a4", /*bold=*/false, /*italic=*/true); // slate italic
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -91,7 +95,7 @@ void IniHighlighter::highlightBlock(const QString &text)
         const auto m = m_reComment.match(text);
         if (m.hasMatch()) {
             setFormat(m.capturedStart(), m.capturedLength(), m_fmtComment);
-            return;   // nothing else on a comment line
+            return; // nothing else on a comment line
         }
     }
 
@@ -102,7 +106,7 @@ void IniHighlighter::highlightBlock(const QString &text)
             setFormat(m.capturedStart(1), m.capturedLength(1), m_fmtBracket);     // [
             setFormat(m.capturedStart(2), m.capturedLength(2), m_fmtSectionName); // name
             setFormat(m.capturedStart(3), m.capturedLength(3), m_fmtBracket);     // ]
-            return;   // nothing else on a section-header line
+            return;                                                               // nothing else on a section-header line
         }
     }
 
@@ -131,7 +135,7 @@ void IniHighlighter::highlightBlock(const QString &text)
             {
                 auto it = m_reBool.globalMatch(text, valueStart);
                 while (it.hasNext()) {
-                    const auto bm = it.next();
+                    const auto bm     = it.next();
                     const bool isTrue = bm.captured(1).compare("true", Qt::CaseInsensitive) == 0;
                     setFormat(bm.capturedStart(1), bm.capturedLength(1),
                               isTrue ? m_fmtTrue : m_fmtFalse);
@@ -188,16 +192,16 @@ void IniHighlighter::highlightBlock(const QString &text)
                         QRegularExpression::AnchorAtOffsetMatchOption);
                     if (xm.hasMatch()) {
                         // ${ — purple
-                        setFormat(xm.capturedStart(),    2,                  m_fmtInterpPunct);
+                        setFormat(xm.capturedStart(), 2, m_fmtInterpPunct);
                         // SECTION — amber bold
-                        setFormat(xm.capturedStart(1),   xm.capturedLength(1), m_fmtInterpSect);
+                        setFormat(xm.capturedStart(1), xm.capturedLength(1), m_fmtInterpSect);
                         // : — purple
                         const int colonPos = xm.capturedStart(2) - 1;
-                        setFormat(colonPos, 1,                               m_fmtInterpPunct);
+                        setFormat(colonPos, 1, m_fmtInterpPunct);
                         // KEY — cyan
-                        setFormat(xm.capturedStart(2),   xm.capturedLength(2), m_fmtInterpKey);
+                        setFormat(xm.capturedStart(2), xm.capturedLength(2), m_fmtInterpKey);
                         // } — purple
-                        setFormat(xm.capturedEnd() - 1,  1,                  m_fmtInterpPunct);
+                        setFormat(xm.capturedEnd() - 1, 1, m_fmtInterpPunct);
                     } else {
                         // Plain ${VAR} — all purple
                         setFormat(im.capturedStart(), im.capturedLength(), m_fmtInterp);

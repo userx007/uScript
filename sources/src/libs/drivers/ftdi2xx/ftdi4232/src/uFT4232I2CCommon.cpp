@@ -7,11 +7,11 @@
 #include "uFT4232I2C.hpp"
 #include "uLogger.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <algorithm>
 #include <chrono>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string_view>
 #include <thread>
@@ -22,15 +22,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT4232_I2C  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "FT4232_I2C  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // MPSSE I²C bit-bang primer
@@ -62,15 +61,14 @@
 //   bit-bang the effective I²C speed is limited by USB latency rather than
 //   the divisor, but configuring a sensible divisor is good practice.
 
-
 // ============================================================================
 // open / close
 // ============================================================================
 
-FT4232I2C::Status FT4232I2C::open(uint8_t  u8I2CAddress,
-                                   uint32_t u32ClockHz,
-                                   Channel  channel,
-                                   uint8_t  u8DeviceIndex)
+FT4232I2C::Status FT4232I2C::open(uint8_t u8I2CAddress,
+                                  uint32_t u32ClockHz,
+                                  Channel channel,
+                                  uint8_t u8DeviceIndex)
 {
     if (u32ClockHz == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid clock speed"));
@@ -84,7 +82,7 @@ FT4232I2C::Status FT4232I2C::open(uint8_t  u8I2CAddress,
 
     m_u8I2CAddress = u8I2CAddress;
 
-    s = configure_mpsse_i2c(u32ClockHz);
+    s              = configure_mpsse_i2c(u32ClockHz);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("MPSSE I2C init failed, clock="); LOG_UINT32(u32ClockHz));
@@ -101,7 +99,6 @@ FT4232I2C::Status FT4232I2C::open(uint8_t  u8I2CAddress,
     return Status::SUCCESS;
 }
 
-
 FT4232I2C::Status FT4232I2C::close()
 {
     if (is_open()) {
@@ -112,16 +109,15 @@ FT4232I2C::Status FT4232I2C::close()
     return FT4232Base::close();
 }
 
-
 // ============================================================================
 // PUBLIC UNIFIED INTERFACE  (ICommDriver)
 // ============================================================================
 
 FT4232I2C::ReadResult FT4232I2C::tout_read(uint32_t u32ReadTimeout,
-                                            std::span<uint8_t> buffer,
-                                            const ReadOptions& options,
-                                            std::string_view /*xtra_params*/,
-                                            std::stop_token stop_tok) const
+                                           std::span<uint8_t> buffer,
+                                           const ReadOptions &options,
+                                           std::string_view /*xtra_params*/,
+                                           std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -133,126 +129,121 @@ FT4232I2C::ReadResult FT4232I2C::tout_read(uint32_t u32ReadTimeout,
     // 0 == infinite timeout: forwarded through unchanged.
     uint32_t timeout = u32ReadTimeout;
 
-    switch (options.mode)
-    {
-        // ------------------------------------------------------------------
-        case ReadMode::Exact:
-        {
-            size_t bytesRead = 0;
-            result.status           = i2c_read(buffer, bytesRead, timeout, stop_tok);
-            result.bytes_read       = bytesRead;
-            result.found_terminator = false;
-            break;
-        }
+    switch (options.mode) {
+    // ------------------------------------------------------------------
+    case ReadMode::Exact: {
+        size_t bytesRead        = 0;
+        result.status           = i2c_read(buffer, bytesRead, timeout, stop_tok);
+        result.bytes_read       = bytesRead;
+        result.found_terminator = false;
+        break;
+    }
 
-        // ------------------------------------------------------------------
-        case ReadMode::UntilDelimiter:
-        {
-            if (buffer.size() < 2) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Buffer too small for delimiter + null terminator"));
-                result.status = Status::INVALID_PARAM;
-                break;
-            }
-
-            size_t pos    = 0;
-            result.status = Status::READ_TIMEOUT;
-
-            while (pos < buffer.size() - 1) {
-                uint8_t byte = 0;
-                size_t  got  = 0;
-                Status  s    = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
-
-                if (s != Status::SUCCESS || got == 0) {
-                    result.status = s;
-                    break;
-                }
-
-                if (byte == options.delimiter) {
-                    buffer[pos]             = '\0';
-                    result.found_terminator = true;
-                    result.status           = Status::SUCCESS;
-                    break;
-                }
-
-                buffer[pos++] = byte;
-            }
-
-            if (pos == buffer.size() - 1 && result.status == Status::READ_TIMEOUT) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer full before delimiter found"));
-                result.status = Status::BUFFER_OVERFLOW;
-            }
-
-            result.bytes_read = pos;
-            break;
-        }
-
-        // ------------------------------------------------------------------
-        case ReadMode::UntilToken:
-        {
-            if (options.token.empty()) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty token"));
-                result.status = Status::INVALID_PARAM;
-                break;
-            }
-
-            const auto& token = options.token;
-
-            // Build KMP failure table
-            std::vector<int> lps(token.size(), 0);
-            for (size_t i = 1, len = 0; i < token.size(); ) {
-                if (token[i] == token[len]) {
-                    lps[i++] = static_cast<int>(++len);
-                } else if (len != 0) {
-                    len = static_cast<size_t>(lps[len - 1]);
-                } else {
-                    lps[i++] = 0;
-                }
-            }
-
-            size_t matched = 0;
-            result.status  = Status::READ_TIMEOUT;
-
-            while (true) {
-                uint8_t byte = 0;
-                size_t  got  = 0;
-                Status  s    = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
-
-                if (s != Status::SUCCESS || got == 0) {
-                    result.status = s;
-                    break;
-                }
-
-                while (matched > 0 && byte != token[matched]) {
-                    matched = static_cast<size_t>(lps[matched - 1]);
-                }
-                if (byte == token[matched]) {
-                    ++matched;
-                }
-                if (matched == token.size()) {
-                    result.found_terminator = true;
-                    result.status           = Status::SUCCESS;
-                    break;
-                }
-            }
-
-            result.bytes_read = 0;
-            break;
-        }
-
-        default:
+    // ------------------------------------------------------------------
+    case ReadMode::UntilDelimiter: {
+        if (buffer.size() < 2) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Buffer too small for delimiter + null terminator"));
             result.status = Status::INVALID_PARAM;
             break;
+        }
+
+        size_t pos    = 0;
+        result.status = Status::READ_TIMEOUT;
+
+        while (pos < buffer.size() - 1) {
+            uint8_t byte = 0;
+            size_t got   = 0;
+            Status s     = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
+
+            if (s != Status::SUCCESS || got == 0) {
+                result.status = s;
+                break;
+            }
+
+            if (byte == options.delimiter) {
+                buffer[pos]             = '\0';
+                result.found_terminator = true;
+                result.status           = Status::SUCCESS;
+                break;
+            }
+
+            buffer[pos++] = byte;
+        }
+
+        if (pos == buffer.size() - 1 && result.status == Status::READ_TIMEOUT) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer full before delimiter found"));
+            result.status = Status::BUFFER_OVERFLOW;
+        }
+
+        result.bytes_read = pos;
+        break;
+    }
+
+    // ------------------------------------------------------------------
+    case ReadMode::UntilToken: {
+        if (options.token.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty token"));
+            result.status = Status::INVALID_PARAM;
+            break;
+        }
+
+        const auto &token = options.token;
+
+        // Build KMP failure table
+        std::vector<int> lps(token.size(), 0);
+        for (size_t i = 1, len = 0; i < token.size();) {
+            if (token[i] == token[len]) {
+                lps[i++] = static_cast<int>(++len);
+            } else if (len != 0) {
+                len = static_cast<size_t>(lps[len - 1]);
+            } else {
+                lps[i++] = 0;
+            }
+        }
+
+        size_t matched = 0;
+        result.status  = Status::READ_TIMEOUT;
+
+        while (true) {
+            uint8_t byte = 0;
+            size_t got   = 0;
+            Status s     = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
+
+            if (s != Status::SUCCESS || got == 0) {
+                result.status = s;
+                break;
+            }
+
+            while (matched > 0 && byte != token[matched]) {
+                matched = static_cast<size_t>(lps[matched - 1]);
+            }
+            if (byte == token[matched]) {
+                ++matched;
+            }
+            if (matched == token.size()) {
+                result.found_terminator = true;
+                result.status           = Status::SUCCESS;
+                break;
+            }
+        }
+
+        result.bytes_read = 0;
+        break;
+    }
+
+    default:
+        result.status = Status::INVALID_PARAM;
+        break;
     }
 
     return result;
 }
 
-
 FT4232I2C::WriteResult FT4232I2C::tout_write(uint32_t u32WriteTimeout,
-                                              std::span<const uint8_t> buffer,
-                                              std::string_view /*xtra_params*/,
-                                              std::stop_token /*stop_tok*/) const
+                                             std::span<const uint8_t> buffer,
+                                             std::string_view /*xtra_params*/,
+                                             std::stop_token /*stop_tok*/) const
 {
     WriteResult result;
 
@@ -262,15 +253,14 @@ FT4232I2C::WriteResult FT4232I2C::tout_write(uint32_t u32WriteTimeout,
     }
 
     // 0 == infinite timeout: forwarded through unchanged.
-    uint32_t timeout      = u32WriteTimeout;
-    size_t   bytesWritten = 0;
+    uint32_t timeout     = u32WriteTimeout;
+    size_t bytesWritten  = 0;
 
     result.status        = i2c_write(buffer, timeout, bytesWritten);
     result.bytes_written = bytesWritten;
 
     return result;
 }
-
 
 // ============================================================================
 // MPSSE CONFIGURATION
@@ -282,27 +272,30 @@ FT4232I2C::Status FT4232I2C::configure_mpsse_i2c(uint32_t u32ClockHz) const
     // The chip echoes back 0xFA 0xAA to indicate it is in command mode.
     // This clears any leftover state from a previous session.
     {
-        const uint8_t sync[1] = { 0xAA };
-        Status s = mpsse_write(sync, sizeof(sync));
-        if (s != Status::SUCCESS) return s;
+        const uint8_t sync[1] = {0xAA};
+        Status s              = mpsse_write(sync, sizeof(sync));
+        if (s != Status::SUCCESS) {
+            return s;
+        }
 
-        uint8_t echo[2]   = { 0 };
-        size_t  got       = 0;
-        s = mpsse_read(echo, 2, 200, got);
+        uint8_t echo[2] = {0};
+        size_t got      = 0;
+        s               = mpsse_read(echo, 2, 200, got);
         // Non-fatal: some platforms return the echo, others don't in all modes.
-        (void)s; (void)got;
+        (void)s;
+        (void)got;
     }
 
     // Clock divisor for bit-bang I²C (no 3-phase):
     //   TCK = 60 MHz / ((1 + divisor) * 2)
     //   → divisor = (30,000,000 / clockHz) - 1
     // Clamp to [0, 0xFFFF].
-    uint32_t divisor = (u32ClockHz > 0 && u32ClockHz < 30000000u)
-                       ? (30000000u / u32ClockHz) - 1u
-                       : 0u;
-    divisor = std::min(divisor, static_cast<uint32_t>(0xFFFFu));
+    uint32_t divisor      = (u32ClockHz > 0 && u32ClockHz < 30000000u)
+                                ? (30000000u / u32ClockHz) - 1u
+                                : 0u;
+    divisor               = std::min(divisor, static_cast<uint32_t>(0xFFFFu));
 
-    const uint8_t divLow  = static_cast<uint8_t>( divisor       & 0xFFu);
+    const uint8_t divLow  = static_cast<uint8_t>(divisor & 0xFFu);
     const uint8_t divHigh = static_cast<uint8_t>((divisor >> 8) & 0xFFu);
 
     // Build the MPSSE initialisation sequence:
@@ -317,10 +310,10 @@ FT4232I2C::Status FT4232I2C::configure_mpsse_i2c(uint32_t u32ClockHz) const
     init.reserve(32);
 
     // ── Clock and feature configuration ─────────────────────────────────────
-    init.push_back(MPSSE_DIS_DIV5);      // 60 MHz base clock
-    init.push_back(MPSSE_DIS_ADAPTIVE);  // No adaptive clocking
-    init.push_back(MPSSE_DIS_3PHASE);    // No 3-phase clocking
-    init.push_back(MPSSE_LOOPBACK_OFF);  // No internal loopback
+    init.push_back(MPSSE_DIS_DIV5);     // 60 MHz base clock
+    init.push_back(MPSSE_DIS_ADAPTIVE); // No adaptive clocking
+    init.push_back(MPSSE_DIS_3PHASE);   // No 3-phase clocking
+    init.push_back(MPSSE_LOOPBACK_OFF); // No internal loopback
 
     // ── Clock divisor ────────────────────────────────────────────────────────
     init.push_back(MPSSE_SET_CLK_DIV);
@@ -337,8 +330,8 @@ FT4232I2C::Status FT4232I2C::configure_mpsse_i2c(uint32_t u32ClockHz) const
     //   SCL = output high:  direction bit 0 = 1, value bit 0 = 1
     //   SDA = input:        direction bit 1 = 0, value bit 1 = x
     init.push_back(MPSSE_SET_BITS_LOW);
-    init.push_back(I2C_SCL);           // value:     SCL=1, SDA_O=0 (don't care, pin is input)
-    init.push_back(DIR_SCL_ONLY);      // direction: SCL=output, SDA_O=input
+    init.push_back(I2C_SCL);      // value:     SCL=1, SDA_O=0 (don't care, pin is input)
+    init.push_back(DIR_SCL_ONLY); // direction: SCL=output, SDA_O=input
 
     // ── SEND_IMMEDIATE to flush the init sequence to the chip ────────────────
     init.push_back(MPSSE_SEND_IMMEDIATE);
@@ -352,7 +345,6 @@ FT4232I2C::Status FT4232I2C::configure_mpsse_i2c(uint32_t u32ClockHz) const
     return s;
 }
 
-
 // ============================================================================
 // MPSSE PIN-STATE HELPERS
 // ============================================================================
@@ -365,20 +357,19 @@ FT4232I2C::Status FT4232I2C::configure_mpsse_i2c(uint32_t u32ClockHz) const
  * @param drive_sda_low true  → drive SDA_O low  (direction=output, value=0)
  *                      false → release SDA       (direction=input,  float=high)
  */
-void FT4232I2C::push_pin_state(std::vector<uint8_t>& buf,
-                                bool scl,
-                                bool drive_sda_low)
+void FT4232I2C::push_pin_state(std::vector<uint8_t> &buf,
+                               bool scl,
+                               bool drive_sda_low)
 {
-    const uint8_t value = scl ? I2C_SCL : 0x00u;       // SDA_O value is 0; direction controls drive
+    const uint8_t value = scl ? I2C_SCL : 0x00u; // SDA_O value is 0; direction controls drive
     const uint8_t dir   = drive_sda_low
-                          ? DIR_SCL_SDA_OUT             // SCL=out, SDA_O=out (drive low)
-                          : DIR_SCL_ONLY;               // SCL=out, SDA_O=input (float high)
+                              ? DIR_SCL_SDA_OUT // SCL=out, SDA_O=out (drive low)
+                              : DIR_SCL_ONLY;   // SCL=out, SDA_O=input (float high)
 
     buf.push_back(MPSSE_SET_BITS_LOW);
     buf.push_back(value);
     buf.push_back(dir);
 }
-
 
 /**
  * @brief Append GET_BITS_LOW + SEND_IMMEDIATE (2 bytes) to a command buffer
@@ -388,12 +379,11 @@ void FT4232I2C::push_pin_state(std::vector<uint8_t>& buf,
  * without waiting for a full USB packet. Call mpsse_read(1 byte) after
  * sending the buffer to receive it. Bit 2 of the returned byte = SDA_I.
  */
-void FT4232I2C::push_read_sda(std::vector<uint8_t>& buf)
+void FT4232I2C::push_read_sda(std::vector<uint8_t> &buf)
 {
     buf.push_back(MPSSE_GET_BITS_LOW);
     buf.push_back(MPSSE_SEND_IMMEDIATE);
 }
-
 
 // ============================================================================
 // I²C BUS CONDITIONS
@@ -412,13 +402,12 @@ FT4232I2C::Status FT4232I2C::i2c_start() const
     std::vector<uint8_t> cmd;
     cmd.reserve(9);
 
-    push_pin_state(cmd, true,  false); // SCL=H, SDA=H (idle, ensure)
-    push_pin_state(cmd, true,  true ); // SCL=H, SDA=L → START
-    push_pin_state(cmd, false, true ); // SCL=L, SDA=L → data phase
+    push_pin_state(cmd, true, false); // SCL=H, SDA=H (idle, ensure)
+    push_pin_state(cmd, true, true);  // SCL=H, SDA=L → START
+    push_pin_state(cmd, false, true); // SCL=L, SDA=L → data phase
 
     return mpsse_write(cmd.data(), cmd.size());
 }
-
 
 /**
  * @brief Send I²C Repeated START condition
@@ -436,13 +425,12 @@ FT4232I2C::Status FT4232I2C::i2c_repeated_start() const
     cmd.reserve(12);
 
     push_pin_state(cmd, false, false); // SCL=L, SDA=H (release SDA)
-    push_pin_state(cmd, true,  false); // SCL=H, SDA=H
-    push_pin_state(cmd, true,  true ); // SCL=H, SDA=L → Repeated START
-    push_pin_state(cmd, false, true ); // SCL=L, SDA=L → data phase
+    push_pin_state(cmd, true, false);  // SCL=H, SDA=H
+    push_pin_state(cmd, true, true);   // SCL=H, SDA=L → Repeated START
+    push_pin_state(cmd, false, true);  // SCL=L, SDA=L → data phase
 
     return mpsse_write(cmd.data(), cmd.size());
 }
-
 
 /**
  * @brief Send I²C STOP condition
@@ -457,13 +445,12 @@ FT4232I2C::Status FT4232I2C::i2c_stop() const
     std::vector<uint8_t> cmd;
     cmd.reserve(9);
 
-    push_pin_state(cmd, false, true ); // SCL=L, SDA=L
-    push_pin_state(cmd, true,  true ); // SCL=H, SDA=L
-    push_pin_state(cmd, true,  false); // SCL=H, SDA=H → STOP
+    push_pin_state(cmd, false, true); // SCL=L, SDA=L
+    push_pin_state(cmd, true, true);  // SCL=H, SDA=L
+    push_pin_state(cmd, true, false); // SCL=H, SDA=H → STOP
 
     return mpsse_write(cmd.data(), cmd.size());
 }
-
 
 // ============================================================================
 // I²C BYTE TRANSFER
@@ -484,7 +471,7 @@ FT4232I2C::Status FT4232I2C::i2c_stop() const
  * @param byte  Byte to transmit
  * @param ack   Receives true if slave pulled SDA low (ACK), false = NAK
  */
-FT4232I2C::Status FT4232I2C::i2c_write_byte(uint8_t byte, bool& ack) const
+FT4232I2C::Status FT4232I2C::i2c_write_byte(uint8_t byte, bool &ack) const
 {
     ack = false;
 
@@ -496,7 +483,7 @@ FT4232I2C::Status FT4232I2C::i2c_write_byte(uint8_t byte, bool& ack) const
         bool bitVal = (byte >> bit) & 0x01u;
 
         push_pin_state(cmd, false, !bitVal); // SCL=L, set SDA
-        push_pin_state(cmd, true,  !bitVal); // SCL=H (slave samples)
+        push_pin_state(cmd, true, !bitVal);  // SCL=H (slave samples)
         push_pin_state(cmd, false, !bitVal); // SCL=L
     }
 
@@ -511,8 +498,8 @@ FT4232I2C::Status FT4232I2C::i2c_write_byte(uint8_t byte, bool& ack) const
     ackCmd.reserve(11);
 
     push_pin_state(ackCmd, false, false); // SCL=L, SDA=input (release for slave ACK)
-    push_pin_state(ackCmd, true,  false); // SCL=H  (slave drives ACK/NAK)
-    push_read_sda (ackCmd);               // GET_BITS_LOW + SEND_IMMEDIATE
+    push_pin_state(ackCmd, true, false);  // SCL=H  (slave drives ACK/NAK)
+    push_read_sda(ackCmd);                // GET_BITS_LOW + SEND_IMMEDIATE
     push_pin_state(ackCmd, false, false); // SCL=L
 
     s = mpsse_write(ackCmd.data(), ackCmd.size());
@@ -523,8 +510,8 @@ FT4232I2C::Status FT4232I2C::i2c_write_byte(uint8_t byte, bool& ack) const
 
     // ── Fetch 1-byte ACK response ─────────────────────────────────────────
     uint8_t response = 0xFF;
-    size_t  got      = 0;
-    s = mpsse_read(&response, 1, 200, got);
+    size_t got       = 0;
+    s                = mpsse_read(&response, 1, 200, got);
 
     if (s != Status::SUCCESS || got == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write_byte: ACK read failed"));
@@ -536,7 +523,6 @@ FT4232I2C::Status FT4232I2C::i2c_write_byte(uint8_t byte, bool& ack) const
 
     return Status::SUCCESS;
 }
-
 
 /**
  * @brief Read one byte MSB-first and send ACK or NAK
@@ -551,7 +537,7 @@ FT4232I2C::Status FT4232I2C::i2c_write_byte(uint8_t byte, bool& ack) const
  * @param byte     Receives the byte read from the slave
  * @param sendAck  true → drive SDA low (ACK), false → release SDA (NAK)
  */
-FT4232I2C::Status FT4232I2C::i2c_read_byte(uint8_t& byte, bool sendAck, std::stop_token stop_tok) const
+FT4232I2C::Status FT4232I2C::i2c_read_byte(uint8_t &byte, bool sendAck, std::stop_token stop_tok) const
 {
     byte = 0;
 
@@ -561,8 +547,8 @@ FT4232I2C::Status FT4232I2C::i2c_read_byte(uint8_t& byte, bool sendAck, std::sto
 
     for (int bit = 0; bit < 8; ++bit) {
         push_pin_state(cmd, false, false); // SCL=L, SDA=input
-        push_pin_state(cmd, true,  false); // SCL=H (master samples SDA here)
-        push_read_sda (cmd);               // GET_BITS_LOW + SEND_IMMEDIATE
+        push_pin_state(cmd, true, false);  // SCL=H (master samples SDA here)
+        push_read_sda(cmd);                // GET_BITS_LOW + SEND_IMMEDIATE
         push_pin_state(cmd, false, false); // SCL=L
     }
 
@@ -574,8 +560,8 @@ FT4232I2C::Status FT4232I2C::i2c_read_byte(uint8_t& byte, bool sendAck, std::sto
 
     // ── Fetch 8 response bytes (one per bit) ─────────────────────────────────
     uint8_t responses[8] = {0};
-    size_t  got          = 0;
-    s = mpsse_read(responses, 8, 500, got, stop_tok);
+    size_t got           = 0;
+    s                    = mpsse_read(responses, 8, 500, got, stop_tok);
 
     if (s != Status::SUCCESS || got != 8) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -594,7 +580,7 @@ FT4232I2C::Status FT4232I2C::i2c_read_byte(uint8_t& byte, bool sendAck, std::sto
     ackCmd.reserve(9);
 
     push_pin_state(ackCmd, false, sendAck); // SCL=L, SDA = ACK(low) or NAK(float)
-    push_pin_state(ackCmd, true,  sendAck); // SCL=H
+    push_pin_state(ackCmd, true, sendAck);  // SCL=H
     push_pin_state(ackCmd, false, sendAck); // SCL=L
 
     s = mpsse_write(ackCmd.data(), ackCmd.size());
@@ -605,14 +591,13 @@ FT4232I2C::Status FT4232I2C::i2c_read_byte(uint8_t& byte, bool sendAck, std::sto
     return s;
 }
 
-
 // ============================================================================
 // FULL I²C TRANSACTIONS
 // ============================================================================
 
 FT4232I2C::Status FT4232I2C::i2c_write(std::span<const uint8_t> data,
-                                        uint32_t timeoutMs,
-                                        size_t& bytesWritten) const
+                                       uint32_t timeoutMs,
+                                       size_t &bytesWritten) const
 {
     (void)timeoutMs; // per-bit timeout is fixed at the MPSSE level; kept for API symmetry
 
@@ -624,7 +609,7 @@ FT4232I2C::Status FT4232I2C::i2c_write(std::span<const uint8_t> data,
     bytesWritten = 0;
 
     // ── START ────────────────────────────────────────────────────────────────
-    Status s = i2c_start();
+    Status s     = i2c_start();
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write: START failed"));
         return s;
@@ -632,7 +617,7 @@ FT4232I2C::Status FT4232I2C::i2c_write(std::span<const uint8_t> data,
 
     // ── Slave address + W ────────────────────────────────────────────────────
     bool ack = false;
-    s = i2c_write_byte(static_cast<uint8_t>(m_u8I2CAddress << 1), ack);
+    s        = i2c_write_byte(static_cast<uint8_t>(m_u8I2CAddress << 1), ack);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write: address byte failed"));
         (void)i2c_stop();
@@ -672,14 +657,15 @@ FT4232I2C::Status FT4232I2C::i2c_write(std::span<const uint8_t> data,
     return s;
 }
 
-
 FT4232I2C::Status FT4232I2C::i2c_read(std::span<uint8_t> data,
-                                       size_t& bytesRead,
-                                       uint32_t timeoutMs,
-                                       std::stop_token stop_tok) const
+                                      size_t &bytesRead,
+                                      uint32_t timeoutMs,
+                                      std::stop_token stop_tok) const
 {
     (void)timeoutMs;
-    if (stop_tok.stop_requested()) return Status::READ_TIMEOUT;
+    if (stop_tok.stop_requested()) {
+        return Status::READ_TIMEOUT;
+    }
 
     if (data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_read: empty buffer"));
@@ -689,7 +675,7 @@ FT4232I2C::Status FT4232I2C::i2c_read(std::span<uint8_t> data,
     bytesRead = 0;
 
     // ── Repeated START ───────────────────────────────────────────────────────
-    Status s = i2c_repeated_start();
+    Status s  = i2c_repeated_start();
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_read: repeated START failed"));
         return s;
@@ -697,7 +683,7 @@ FT4232I2C::Status FT4232I2C::i2c_read(std::span<uint8_t> data,
 
     // ── Slave address + R ────────────────────────────────────────────────────
     bool ack = false;
-    s = i2c_write_byte(static_cast<uint8_t>((m_u8I2CAddress << 1) | 0x01u), ack);
+    s        = i2c_write_byte(static_cast<uint8_t>((m_u8I2CAddress << 1) | 0x01u), ack);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_read: address byte failed"));
         (void)i2c_stop();
@@ -713,7 +699,7 @@ FT4232I2C::Status FT4232I2C::i2c_read(std::span<uint8_t> data,
     // ── Data bytes — ACK all but last, NAK the last ──────────────────────────
     for (size_t i = 0; i < data.size(); ++i) {
         const bool isLast = (i == data.size() - 1);
-        s = i2c_read_byte(data[i], /*sendAck=*/!isLast, stop_tok);
+        s                 = i2c_read_byte(data[i], /*sendAck=*/!isLast, stop_tok);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("i2c_read: byte failed at index"); LOG_UINT32(i));

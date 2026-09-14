@@ -1,4 +1,5 @@
 #include "ScriptViewer.hpp"
+
 #include "CommScriptHighlighter.hpp"
 #include "IniHighlighter.hpp"
 #include "ScriptHighlighter.hpp"
@@ -50,10 +51,22 @@
 class LineNumberArea : public QWidget
 {
 public:
-    explicit LineNumberArea(CodeEditor *editor) : QWidget(editor), m_editor(editor) {}
-    QSize sizeHint() const override { return {m_editor->lineNumberAreaWidth(), 0}; }
+    explicit LineNumberArea(CodeEditor *editor)
+        : QWidget(editor)
+        , m_editor(editor)
+    {}
+
+    QSize sizeHint() const override
+    {
+        return {m_editor->lineNumberAreaWidth(), 0};
+    }
+
 protected:
-    void paintEvent(QPaintEvent *ev) override { m_editor->lineNumberAreaPaintEvent(ev); }
+    void paintEvent(QPaintEvent *ev) override
+    {
+        m_editor->lineNumberAreaPaintEvent(ev);
+    }
+
 private:
     CodeEditor *m_editor;
 };
@@ -65,7 +78,7 @@ CodeEditor::CodeEditor(QWidget *parent)
     : QPlainTextEdit(parent)
 {
     setObjectName("scriptView");
-    setReadOnly(false);           // editable by default for main script tabs
+    setReadOnly(false); // editable by default for main script tabs
     setLineWrapMode(QPlainTextEdit::NoWrap);
 
     // Use spaces for indentation — never insert real tabs
@@ -123,9 +136,14 @@ void CodeEditor::refreshGutter()
 
 void CodeEditor::updateLineNumberArea(const QRect &rect, int dy)
 {
-    if (dy) m_lineNumberArea->scroll(0, dy);
-    else    m_lineNumberArea->update(0, rect.y(), m_lineNumberArea->width(), rect.height());
-    if (rect.contains(viewport()->rect())) updateLineNumberAreaWidth(0);
+    if (dy) {
+        m_lineNumberArea->scroll(0, dy);
+    } else {
+        m_lineNumberArea->update(0, rect.y(), m_lineNumberArea->width(), rect.height());
+    }
+    if (rect.contains(viewport()->rect())) {
+        updateLineNumberAreaWidth(0);
+    }
 }
 
 void CodeEditor::resizeEvent(QResizeEvent *ev)
@@ -156,7 +174,7 @@ bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
                         blockBoundingGeometry(block).translated(contentOffset());
                     if (blockRect.intersects(pev->rect())) {
                         p.fillRect(QRectF(0, blockRect.top(),
-                                         viewport()->width(), blockRect.height()),
+                                          viewport()->width(), blockRect.height()),
                                    QColor(0xff, 0x6e, 0xff, 80));
                     }
                 }
@@ -165,33 +183,40 @@ bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
             // if they ever coincide, but in practice validation stops execution).
             for (int errLine : std::as_const(m_errorLines)) {
                 QTextBlock block = document()->findBlockByNumber(errLine - 1);
-                if (!block.isValid() || !block.isVisible()) continue;
+                if (!block.isValid() || !block.isVisible()) {
+                    continue;
+                }
                 const QRectF blockRect =
                     blockBoundingGeometry(block).translated(contentOffset());
-                if (blockRect.intersects(pev->rect()))
+                if (blockRect.intersects(pev->rect())) {
                     p.fillRect(QRectF(0, blockRect.top(),
-                                     viewport()->width(), blockRect.height()),
+                                      viewport()->width(), blockRect.height()),
                                QColor(0xff, 0x55, 0x55, 90));
+                }
             }
             // Bright-green outline rectangle for active '&' thread lines.
             // Drawn last so it sits on top of any fill underneath.
             // The rectangle persists until GUI:THREAD_DONE:<lineNo> arrives.
             if (!m_threadLines.isEmpty()) {
-	            static const QColor C_THREAD_RECT { 0x50, 0xfa, 0x7b };  // #50fa7b bright-green
-	            p.setPen(QPen(C_THREAD_RECT, 1));
-	            p.setBrush(Qt::NoBrush);
-	            for (int thrLine : std::as_const(m_threadLines)) {
-	                QTextBlock block = document()->findBlockByNumber(thrLine - 1);
-	                if (!block.isValid() || !block.isVisible()) continue;
-	                const QRectF blockRect =
-	                    blockBoundingGeometry(block).translated(contentOffset());
-                    if (!blockRect.intersects(pev->rect())) continue;
+                static const QColor C_THREAD_RECT{0x50, 0xfa, 0x7b}; // #50fa7b bright-green
+                p.setPen(QPen(C_THREAD_RECT, 1));
+                p.setBrush(Qt::NoBrush);
+                for (int thrLine : std::as_const(m_threadLines)) {
+                    QTextBlock block = document()->findBlockByNumber(thrLine - 1);
+                    if (!block.isValid() || !block.isVisible()) {
+                        continue;
+                    }
+                    const QRectF blockRect =
+                        blockBoundingGeometry(block).translated(contentOffset());
+                    if (!blockRect.intersects(pev->rect())) {
+                        continue;
+                    }
                     // Inset by 1 px so the full border is visible without clipping.
                     p.drawRect(blockRect.adjusted(1, 1, -1, -1));
-				}
+                }
             }
         }
-        return true;   // event handled — do not call the default viewport handler again
+        return true; // event handled — do not call the default viewport handler again
     }
     return QPlainTextEdit::eventFilter(obj, ev);
 }
@@ -203,13 +228,13 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
     //   numbers  → dim slate  #4b5263  (unobtrusive)
     //   separator→ #3b4048  (slightly lighter │ bar)
     //   active   → #ff6eff  (magenta, execution marker)
-    static const QColor C_BG     	{ 0x0d, 0x0f, 0x14 };
-    static const QColor C_NUM    	{ 0x4b, 0x52, 0x63 };   // dim slate
-    static const QColor C_SEP    	{ 0x3b, 0x40, 0x48 };   // separator │
-    static const QColor C_ACTIVE 	{ 0xff, 0x6e, 0xff };   // magenta execution line
-    static const QColor C_ERROR  	{ 0xff, 0x55, 0x55 };   // red validation-error line
-    static const QColor C_THREAD 	{ 0x50, 0xfa, 0x7b };   // bright-green active thread
-    static const QColor C_THREAD_NUM{ 0x50, 0xfa, 0x7b };
+    static const QColor C_BG{0x0d, 0x0f, 0x14};
+    static const QColor C_NUM{0x4b, 0x52, 0x63};    // dim slate
+    static const QColor C_SEP{0x3b, 0x40, 0x48};    // separator │
+    static const QColor C_ACTIVE{0xff, 0x6e, 0xff}; // magenta execution line
+    static const QColor C_ERROR{0xff, 0x55, 0x55};  // red validation-error line
+    static const QColor C_THREAD{0x50, 0xfa, 0x7b}; // bright-green active thread
+    static const QColor C_THREAD_NUM{0x50, 0xfa, 0x7b};
 
     QPainter painter(m_lineNumberArea);
     // Use the editor's font (as resolved by QSS) so the gutter tracks Ctrl+/-
@@ -218,18 +243,18 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
     painter.setFont(font());
     painter.fillRect(ev->rect(), C_BG);
 
-    QTextBlock block    = firstVisibleBlock();
-    int        blockNum = block.blockNumber();
-    int        top      = qRound(blockBoundingGeometry(block).translated(contentOffset()).top());
-    int        bottom   = top + qRound(blockBoundingRect(block).height());
-    const int  lineH    = fontMetrics().height();
-    const int  gutterW  = m_lineNumberArea->width();
+    QTextBlock block   = firstVisibleBlock();
+    int blockNum       = block.blockNumber();
+    int top            = qRound(blockBoundingGeometry(block).translated(contentOffset()).top());
+    int bottom         = top + qRound(blockBoundingRect(block).height());
+    const int lineH    = fontMetrics().height();
+    const int gutterW  = m_lineNumberArea->width();
     // Reserve the rightmost ~10 px for the "│" separator character.
-    const int  numRight = gutterW - 12;
+    const int numRight = gutterW - 12;
 
     while (block.isValid() && top <= ev->rect().bottom()) {
         if (block.isVisible() && bottom >= ev->rect().top()) {
-            const int  lineNo    = blockNum + 1;
+            const int lineNo     = blockNum + 1;
             const bool isCurrent = (lineNo == m_highlightedLine);
             const bool isError   = m_errorLines.contains(lineNo);
             const bool isThread  = m_threadLines.contains(lineNo);
@@ -301,8 +326,9 @@ void CodeEditor::highlightLine(int lineNo)
     // Skip entirely if nothing actually changed — cheap insurance against
     // duplicate consecutive calls for the same line (e.g. a REPEAT body
     // whose first executed line is the same one it last exited on).
-    if (lineNo == m_highlightedLine)
+    if (lineNo == m_highlightedLine) {
         return;
+    }
 
     m_highlightedLine = lineNo;
 
@@ -340,8 +366,9 @@ void CodeEditor::highlightLine(int lineNo)
 
 void CodeEditor::clearHighlight()
 {
-    if (m_highlightedLine == 0)
+    if (m_highlightedLine == 0) {
         return;
+    }
     m_highlightedLine = 0;
     viewport()->update();
     m_lineNumberArea->update();
@@ -350,7 +377,9 @@ void CodeEditor::clearHighlight()
 // ── Validation-error highlights (red) ────────────────────────────────────────
 void CodeEditor::setErrorLine(int lineNo)
 {
-    if (lineNo <= 0) return;
+    if (lineNo <= 0) {
+        return;
+    }
     m_errorLines.insert(lineNo);
     viewport()->update();
     m_lineNumberArea->update();
@@ -358,7 +387,9 @@ void CodeEditor::setErrorLine(int lineNo)
 
 void CodeEditor::clearErrorLines()
 {
-    if (m_errorLines.isEmpty()) return;
+    if (m_errorLines.isEmpty()) {
+        return;
+    }
     m_errorLines.clear();
     viewport()->update();
     m_lineNumberArea->update();
@@ -367,7 +398,9 @@ void CodeEditor::clearErrorLines()
 // ── Thread-active markers (bright-green rectangle outline) ─────────────────
 void CodeEditor::addThreadLine(int lineNo)
 {
-    if (lineNo <= 0) return;
+    if (lineNo <= 0) {
+        return;
+    }
     m_threadLines.insert(lineNo);
     viewport()->update();
     m_lineNumberArea->update();
@@ -375,19 +408,22 @@ void CodeEditor::addThreadLine(int lineNo)
 
 void CodeEditor::removeThreadLine(int lineNo)
 {
-    if (!m_threadLines.remove(lineNo)) return;
+    if (!m_threadLines.remove(lineNo)) {
+        return;
+    }
     viewport()->update();
     m_lineNumberArea->update();
 }
 
 void CodeEditor::clearThreadLines()
 {
-    if (m_threadLines.isEmpty()) return;
+    if (m_threadLines.isEmpty()) {
+        return;
+    }
     m_threadLines.clear();
     viewport()->update();
     m_lineNumberArea->update();
 }
-
 
 // ── Word-occurrence highlight (Ctrl+double-click) ───────────────────────────
 void CodeEditor::mousePressEvent(QMouseEvent *ev)
@@ -407,20 +443,25 @@ void CodeEditor::mouseDoubleClickEvent(QMouseEvent *ev)
     // highlighted set always matches what the user sees selected.
     QPlainTextEdit::mouseDoubleClickEvent(ev);
 
-    if (ev->modifiers() & Qt::ControlModifier)
+    if (ev->modifiers() & Qt::ControlModifier) {
         highlightOccurrences(textCursor().selectedText());
+    }
 }
 
 void CodeEditor::highlightOccurrences(const QString &word)
 {
-    if (word.trimmed().isEmpty()) return;
+    if (word.trimmed().isEmpty()) {
+        return;
+    }
 
     // QTextCursor::selectedText() can contain a Unicode paragraph separator
     // in place of '\n' for multi-block selections; a double-click never
     // selects across blocks, but guard anyway so we never search for that.
-    if (word.contains(QChar::ParagraphSeparator)) return;
+    if (word.contains(QChar::ParagraphSeparator)) {
+        return;
+    }
 
-    static const QColor C_WORD_HL{ 0xff, 0xb8, 0x6c, 70 };  // amber, semi-transparent
+    static const QColor C_WORD_HL{0xff, 0xb8, 0x6c, 70}; // amber, semi-transparent
 
     const QTextDocument::FindFlags flags =
         QTextDocument::FindCaseSensitively | QTextDocument::FindWholeWords;
@@ -428,7 +469,9 @@ void CodeEditor::highlightOccurrences(const QString &word)
     QTextCursor cursor(document());
     while (true) {
         cursor = document()->find(word, cursor, flags);
-        if (cursor.isNull()) break;
+        if (cursor.isNull()) {
+            break;
+        }
 
         QTextEdit::ExtraSelection sel;
         sel.cursor = cursor;
@@ -441,7 +484,9 @@ void CodeEditor::highlightOccurrences(const QString &word)
 
 void CodeEditor::clearWordHighlights()
 {
-    if (m_wordHighlights.isEmpty()) return;
+    if (m_wordHighlights.isEmpty()) {
+        return;
+    }
     m_wordHighlights.clear();
     setExtraSelections(m_wordHighlights);
 }
@@ -452,10 +497,12 @@ void CodeEditor::checkCurrentLineForCommScript()
 
     // Fire only once per line — suppress repeated signals from cursor
     // movement within the same block (click-drag, shift-arrows, etc.).
-    if (currentLine == m_lastCommScriptLine) return;
+    if (currentLine == m_lastCommScriptLine) {
+        return;
+    }
     m_lastCommScriptLine = currentLine;
 
-    const QString line = textCursor().block().text();
+    const QString line   = textCursor().block().text();
 
     // ── Pattern 1: INCLUDE "path"  ───────────────────────────────────────
     // Recognised by the reader as a pre-IR directive. NOTE: the keyword is
@@ -469,32 +516,34 @@ void CodeEditor::checkCurrentLineForCommScript()
     {
         const QString kw = QString::fromLatin1("INCLUDE");
         const QRegularExpression includeRe(
-            QString(R"re(^\s*%1\s+"([^"]+)")re").arg(kw)
-        );
+            QString(R"re(^\s*%1\s+"([^"]+)")re").arg(kw));
         const QRegularExpressionMatch im = includeRe.match(line);
         if (im.hasMatch()) {
             emit includeFileClicked(im.captured(1));
-            return;   // don't fall through to comm-script patterns
+            return; // don't fall through to comm-script patterns
         }
     }
 
     // ── Pattern 2: PLUGIN.SCRIPT <filename>   — "SCRIPT" must be uppercase
     //   e.g.  CP2112.SCRIPT cp2112_i2c.txt   or   UART:1.SCRIPT uart.txt
     static const QRegularExpression scriptCmd(
-        QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.SCRIPT\\s+(\\S+)")  // case-sensitive (no flag)
+        QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.SCRIPT\\s+(\\S+)") // case-sensitive (no flag)
     );
 
     // ── Pattern 3: PLUGIN.COMMAND script <filename>  — "script" must be lowercase
     //   e.g.  BUSPIRATE.I2C script ssd_1306bp.txt   or   UART:1.I2C script f.txt
     static const QRegularExpression scriptArg(
-        QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.(" SCRIPT_RX_UPPER_IDENT ")\\s+script\\s+(\\S+)")  // case-sensitive
+        QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.(" SCRIPT_RX_UPPER_IDENT ")\\s+script\\s+(\\S+)") // case-sensitive
     );
 
     QRegularExpressionMatch m = scriptCmd.match(line);
-    if (!m.hasMatch()) m = scriptArg.match(line);
+    if (!m.hasMatch()) {
+        m = scriptArg.match(line);
+    }
 
-    if (m.hasMatch())
+    if (m.hasMatch()) {
         emit commScriptLineClicked(m.captured(m.regularExpression() == scriptCmd ? 1 : 2));
+    }
 }
 
 void CodeEditor::setHighlighting(bool on)
@@ -507,8 +556,14 @@ void CodeEditor::setHighlighting(bool on)
     // uses today) would leave two QSyntaxHighlighters wired to the same
     // QTextDocument simultaneously, double-applying (and fighting over)
     // formatting on every block.
-    if (m_commHighlighter) { delete m_commHighlighter; m_commHighlighter = nullptr; }
-    if (m_iniHighlighter)  { delete m_iniHighlighter;  m_iniHighlighter  = nullptr; }
+    if (m_commHighlighter) {
+        delete m_commHighlighter;
+        m_commHighlighter = nullptr;
+    }
+    if (m_iniHighlighter) {
+        delete m_iniHighlighter;
+        m_iniHighlighter = nullptr;
+    }
 
     if (on && !m_highlighter) {
         m_highlighter = new ScriptHighlighter(document());
@@ -522,8 +577,14 @@ void CodeEditor::setCommHighlighting(bool on)
 {
     // Tear down the other two highlighter types defensively — see the
     // comment in setHighlighting() above; the same reasoning applies here.
-    if (m_highlighter)    { delete m_highlighter;    m_highlighter    = nullptr; }
-    if (m_iniHighlighter) { delete m_iniHighlighter; m_iniHighlighter = nullptr; }
+    if (m_highlighter) {
+        delete m_highlighter;
+        m_highlighter = nullptr;
+    }
+    if (m_iniHighlighter) {
+        delete m_iniHighlighter;
+        m_iniHighlighter = nullptr;
+    }
 
     if (on && !m_commHighlighter) {
         m_commHighlighter = new CommScriptHighlighter(document());
@@ -536,8 +597,14 @@ void CodeEditor::setCommHighlighting(bool on)
 void CodeEditor::setIniHighlighting(bool on)
 {
     // Remove all other highlighters — only one may be active at a time
-    if (m_highlighter)    { delete m_highlighter;    m_highlighter    = nullptr; }
-    if (m_commHighlighter){ delete m_commHighlighter; m_commHighlighter = nullptr; }
+    if (m_highlighter) {
+        delete m_highlighter;
+        m_highlighter = nullptr;
+    }
+    if (m_commHighlighter) {
+        delete m_commHighlighter;
+        m_commHighlighter = nullptr;
+    }
     if (on && !m_iniHighlighter) {
         m_iniHighlighter = new IniHighlighter(document());
     } else if (!on && m_iniHighlighter) {
@@ -573,16 +640,16 @@ void CodeEditor::keyPressEvent(QKeyEvent *ev)
         // Shift+Tab: remove up to TAB_WIDTH leading spaces from selection / line
         QTextCursor cursor = textCursor();
         cursor.beginEditBlock();
-        int start = cursor.selectionStart();
-        int end   = cursor.selectionEnd();
+        int start        = cursor.selectionStart();
+        int end          = cursor.selectionEnd();
 
         QTextBlock block = document()->findBlock(start);
         while (block.isValid() && block.position() <= end) {
             QString text = block.text();
-            int remove = 0;
-            for (int i = 0; i < TAB_WIDTH && i < text.length()
-                            && text[i] == QLatin1Char(' '); ++i)
+            int remove   = 0;
+            for (int i = 0; i < TAB_WIDTH && i < text.length() && text[i] == QLatin1Char(' '); ++i) {
                 ++remove;
+            }
             if (remove > 0) {
                 QTextCursor bc(block);
                 bc.movePosition(QTextCursor::StartOfBlock);
@@ -601,11 +668,14 @@ void CodeEditor::keyPressEvent(QKeyEvent *ev)
         QTextCursor cursor = textCursor();
         if (!cursor.hasSelection()) {
             const QString lineText = cursor.block().text();
-            const int col = cursor.positionInBlock();
+            const int col          = cursor.positionInBlock();
             // Only act if everything to the left is spaces
-            bool allSpaces = (col > 0);
-            for (int i = 0; i < col && allSpaces; ++i)
-                if (lineText[i] != QLatin1Char(' ')) allSpaces = false;
+            bool allSpaces         = (col > 0);
+            for (int i = 0; i < col && allSpaces; ++i) {
+                if (lineText[i] != QLatin1Char(' ')) {
+                    allSpaces = false;
+                }
+            }
 
             if (allSpaces && col > 0) {
                 const int del = ((col - 1) % TAB_WIDTH) + 1;
@@ -636,15 +706,15 @@ ScriptViewer::ScriptViewer(QWidget *parent)
 
     // Forward document modification signal
     connect(m_editor->document(), &QTextDocument::modificationChanged,
-            this,                 &ScriptViewer::onModificationChanged);
+            this, &ScriptViewer::onModificationChanged);
 
     // Forward comm-script click signal from CodeEditor
     connect(m_editor, &CodeEditor::commScriptLineClicked,
-            this,     &ScriptViewer::onCommScriptLineClicked);
+            this, &ScriptViewer::onCommScriptLineClicked);
 
     // Forward INCLUDE-file click: resolve path then re-emit as includeFileRequested
     connect(m_editor, &CodeEditor::includeFileClicked,
-            this,     &ScriptViewer::onIncludeFileClicked);
+            this, &ScriptViewer::onIncludeFileClicked);
 
     root->addWidget(m_editor, 1);
 }
@@ -656,11 +726,12 @@ void ScriptViewer::loadScript(const QString &filePath)
 
     // ── swap highlighter only when the file type changes ─────────────────
     if (filePath.endsWith(".ini", Qt::CaseInsensitive)) {
-        if (!m_editor->hasIniHighlighter())
+        if (!m_editor->hasIniHighlighter()) {
             m_editor->setIniHighlighting(true);
+        }
     } else {
         if (!m_editor->hasScriptHighlighter()) {
-            m_editor->setIniHighlighting(false);   // tears down INI if set
+            m_editor->setIniHighlighting(false); // tears down INI if set
             m_editor->setHighlighting(true);
         }
     }
@@ -695,7 +766,7 @@ void ScriptViewer::loadText(const QString &text)
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
     m_editor->clearThreadLines();
-    m_editor->resetCommScriptLineCache();   // reset guard so next click on same line re-emits
+    m_editor->resetCommScriptLineCache(); // reset guard so next click on same line re-emits
     m_currentLine = 0;
     updateInfo();
 }
@@ -714,7 +785,7 @@ void ScriptViewer::clear()
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
     m_editor->clearThreadLines();
-    m_editor->resetCommScriptLineCache();   // reset guard so next click on same line re-emits
+    m_editor->resetCommScriptLineCache(); // reset guard so next click on same line re-emits
     updateInfo();
 }
 
@@ -785,11 +856,12 @@ void ScriptViewer::setEditorFont(const QFont &font)
     // fallback and making spaces look collapsed.
     const QFontInfo info(font);
     m_editor->setStyleSheet(QString(
-        "QPlainTextEdit#scriptView {"
-        "  font-family: '%1';"   // resolved name — guaranteed to exist
-        "  font-size: %2pt;"
-        "}"
-    ).arg(info.family()).arg(font.pointSize()));
+                                "QPlainTextEdit#scriptView {"
+                                "  font-family: '%1';" // resolved name — guaranteed to exist
+                                "  font-size: %2pt;"
+                                "}")
+                                .arg(info.family())
+                                .arg(font.pointSize()));
     m_editor->refreshGutter();
     m_editor->viewport()->update();
 }
@@ -817,20 +889,23 @@ bool ScriptViewer::isModified() const
 
 bool ScriptViewer::save()
 {
-    if (m_currentFile.isEmpty())
+    if (m_currentFile.isEmpty()) {
         return saveAs();
+    }
     return writeFile(m_currentFile);
 }
 
 bool ScriptViewer::saveAs()
 {
     const QString start = m_currentFile.isEmpty()
-                          ? QDir::homePath()
-                          : QFileInfo(m_currentFile).absolutePath();
-    const QString path = QFileDialog::getSaveFileName(
+                              ? QDir::homePath()
+                              : QFileInfo(m_currentFile).absolutePath();
+    const QString path  = QFileDialog::getSaveFileName(
         this, "Save Script As", start,
         "Script files (*.txt *.scr *.script);;All files (*)");
-    if (path.isEmpty()) return false;
+    if (path.isEmpty()) {
+        return false;
+    }
     m_currentFile = path;
     return writeFile(path);
 }
@@ -841,7 +916,7 @@ bool ScriptViewer::writeFile(const QString &path)
     if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QMessageBox::warning(this, "Save failed",
                              QString("Could not write to:\n%1\n\n%2")
-                             .arg(path, f.errorString()));
+                                 .arg(path, f.errorString()));
         return false;
     }
     QTextStream ts(&f);
@@ -849,7 +924,7 @@ bool ScriptViewer::writeFile(const QString &path)
     if (!f.commit()) {
         QMessageBox::warning(this, "Save failed",
                              QString("Could not commit:\n%1\n\n%2")
-                             .arg(path, f.errorString()));
+                                 .arg(path, f.errorString()));
         return false;
     }
     m_editor->document()->setModified(false);
@@ -887,9 +962,11 @@ void ScriptViewer::onModificationChanged(bool modified)
 void ScriptViewer::updateInfo()
 {
     QString info;
-    if (!m_currentFile.isEmpty())
+    if (!m_currentFile.isEmpty()) {
         info += QFileInfo(m_currentFile).fileName();
-    if (m_currentLine > 0)
+    }
+    if (m_currentLine > 0) {
         info += QString("  :  ln %1").arg(m_currentLine);
+    }
     emit infoChanged(info);
 }

@@ -1,4 +1,5 @@
 #include "mqtt_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "PluginExport.hpp"
 #include "private/mqtt_setup.hpp"
@@ -9,28 +10,25 @@
 #include <sstream>
 #include <string_view>
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
-  * \brief The plugin's entry points
-*/
-extern "C"
+ * \brief The plugin's entry points
+ */
+extern "C" {
+EXPORTED MqttPlugin *pluginEntry()
 {
-    EXPORTED MqttPlugin* pluginEntry()
-    {
-        return new MqttPlugin();
-    }
+    return new MqttPlugin();
+}
 
-    EXPORTED void pluginExit( MqttPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(MqttPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 // -----------------------------------------------------------------------
@@ -49,30 +47,30 @@ std::shared_ptr<MqttDriver> MqttPlugin::m_OpenDriver(void) const
     }
 
     MqttDriver::Config cfg;
-    cfg.host             = m_strHost;
-    cfg.port             = m_u16Port;
-    cfg.connectTimeoutMs = 5000;
-    cfg.useTls           = m_bUseTls;
-    cfg.caCertPath       = m_strTlsCaPath;
-    cfg.clientCertPath   = m_strTlsCertPath;
-    cfg.clientKeyPath    = m_strTlsKeyPath;
-    cfg.clientId = m_strClientId.empty()
-        ? ("mqtt_plugin_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))
-        : m_strClientId;
-    cfg.username           = m_strUsername;
-    cfg.password           = m_strPassword;
-    cfg.willTopic          = m_strWillTopic;
-    cfg.willPayload        = m_strWillPayload;
-    cfg.willQos            = m_u8WillQos;
-    cfg.willRetain         = m_bWillRetain;
-    cfg.cleanSession       = m_bCleanSession;
-    cfg.keepAlive          = m_u16KeepAliveSeconds;
-    cfg.qos                = m_u8Qos;
+    cfg.host                = m_strHost;
+    cfg.port                = m_u16Port;
+    cfg.connectTimeoutMs    = 5000;
+    cfg.useTls              = m_bUseTls;
+    cfg.caCertPath          = m_strTlsCaPath;
+    cfg.clientCertPath      = m_strTlsCertPath;
+    cfg.clientKeyPath       = m_strTlsKeyPath;
+    cfg.clientId            = m_strClientId.empty()
+                                  ? ("mqtt_plugin_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))
+                                  : m_strClientId;
+    cfg.username            = m_strUsername;
+    cfg.password            = m_strPassword;
+    cfg.willTopic           = m_strWillTopic;
+    cfg.willPayload         = m_strWillPayload;
+    cfg.willQos             = m_u8WillQos;
+    cfg.willRetain          = m_bWillRetain;
+    cfg.cleanSession        = m_bCleanSession;
+    cfg.keepAlive           = m_u16KeepAliveSeconds;
+    cfg.qos                 = m_u8Qos;
     cfg.retain              = m_bRetain;
     cfg.receiveIncludeTopic = m_bReceiveIncludeTopic;
     cfg.strInstanceName     = m_strInstanceName;
 
-    auto driver = std::make_shared<MqttDriver>(cfg);
+    auto driver             = std::make_shared<MqttDriver>(cfg);
     if (!driver->open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("MqttDriver open failed"));
         return nullptr;
@@ -86,9 +84,10 @@ std::shared_ptr<MqttDriver> MqttPlugin::m_OpenDriver(void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
+bool MqttPlugin::m_MQTT_INFO(const std::string &args, std::stop_token st) const
 {
-    (void)args; (void)st;
+    (void)args;
+    (void)st;
     resetData();
     std::ostringstream oss;
     oss << MQTT_PLUGIN_NAME " v" << m_strVersion
@@ -165,7 +164,6 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
@@ -173,7 +171,7 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
 // MQTT.CONFIG — see class doc comment (mqtt_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) const
+bool MqttPlugin::m_MQTT_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
@@ -187,7 +185,7 @@ bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) cons
 // MQTT.CMD / MQTT.SCRIPT — see class doc comment (mqtt_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
+bool MqttPlugin::m_MQTT_CMD(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -202,12 +200,13 @@ bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
 
-bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) const
+bool MqttPlugin::m_MQTT_SCRIPT(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -219,16 +218,17 @@ bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) cons
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
-        }, st);
+        },
+        st);
 }
 
 // -----------------------------------------------------------------------
 // MQTT.CYCLIC — see class doc comment (mqtt_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool MqttPlugin::m_MQTT_CYCLIC(const std::string& args, std::stop_token st) const
+bool MqttPlugin::m_MQTT_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 
@@ -242,8 +242,7 @@ bool MqttPlugin::m_MQTT_CYCLIC(const std::string& args, std::stop_token st) cons
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->receive(t, b, o, x, tok);
         });
 }
-

@@ -1,4 +1,5 @@
 #include "uartmon_plugin.hpp"
+
 #include "PluginExport.hpp"
 #include "private/uartmon_setup.hpp"
 #include "uLogger.hpp"
@@ -7,42 +8,39 @@
 #include "uString.hpp"
 #include "uUartMonitor.hpp"
 
-#include <stddef.h>
 #include <optional>
+#include <stddef.h>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED UartmonPlugin *pluginEntry()
 {
-    EXPORTED UartmonPlugin* pluginEntry()
-    {
-        return new UartmonPlugin();
-    }
+    return new UartmonPlugin();
+}
 
-    EXPORTED void pluginExit( UartmonPlugin *ptrPlugin )
-    {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(UartmonPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args , std::stop_token st ) const
+bool UartmonPlugin::m_Uartmon_INFO(const std::string &args, std::stop_token st) const
 {
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -98,46 +96,40 @@ bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args , std::stop_token s
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
-
     return true;
-
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; override one or more ini parameters at runtime
-  *
-  * \note Usage example: <br>
-  *       UARTMON.CONFIG i=500
-  *
-  * \param[in] args space-separated key=value tokens (see inc/private/uartmon_setup.hpp)
-  *
-  * \return true if processing succeeded, false otherwise
-*/
+ * \brief CONFIG command implementation; override one or more ini parameters at runtime
+ *
+ * \note Usage example: <br>
+ *       UARTMON.CONFIG i=500
+ *
+ * \param[in] args space-separated key=value tokens (see inc/private/uartmon_setup.hpp)
+ *
+ * \return true if processing succeeded, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
-bool UartmonPlugin::m_Uartmon_CONFIG ( const std::string &args, std::stop_token st ) const
+bool UartmonPlugin::m_Uartmon_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     return generic_uartmon_set_params(this, args);
-
 }
 
-bool UartmonPlugin::m_Uartmon_LIST_PORTS (const std::string &args, std::stop_token st ) const
+bool UartmonPlugin::m_Uartmon_LIST_PORTS(const std::string &args, std::stop_token st) const
 {
-   bool bRetVal = false;
+    bool bRetVal = false;
 
     do {
-        if (false == args.empty())
-        {
+        if (false == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unexpected arguments:"); LOG_STRING(args));
             break;
         }
 
-        if (false == m_bIsEnabled)
-        {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -151,81 +143,76 @@ bool UartmonPlugin::m_Uartmon_LIST_PORTS (const std::string &args, std::stop_tok
                 portsList += ", ";
             }
         }
-        
+
         if (portsList.empty()) {
             portsList = "(no ports found)";
         }
-        
+
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Ports:"); LOG_STRING(portsList));
         bRetVal = true;
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
 }
 
-bool UartmonPlugin::m_Uartmon_WAIT_INSERT (const std::string &args, std::stop_token st ) const
+bool UartmonPlugin::m_Uartmon_WAIT_INSERT(const std::string &args, std::stop_token st) const
 {
     return m_GenericWaitFor(args, true /*insert*/, st);
 }
 
-bool UartmonPlugin::m_Uartmon_WAIT_REMOVE (const std::string &args, std::stop_token st ) const
+bool UartmonPlugin::m_Uartmon_WAIT_REMOVE(const std::string &args, std::stop_token st) const
 {
     return m_GenericWaitFor(args, false /*remove*/, st);
 }
 
-bool UartmonPlugin::m_Uartmon_START (const std::string &args, std::stop_token st ) const
+bool UartmonPlugin::m_Uartmon_START(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
-        if (false == args.empty())
-        {
+        if (false == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No argument expected"));
             break;
         }
 
-        if (true == m_isRunning)
-        {
+        if (true == m_isRunning) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Monitoring already running ..."));
             break;
         }
 
-        if (false == (m_isRunning = m_UartMonitor.startMonitoring())) 
-        {
+        if (false == (m_isRunning = m_UartMonitor.startMonitoring())) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to start monitoring ..."));
             break;
         }
 
         bRetVal = true;
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
 }
 
-bool UartmonPlugin::m_Uartmon_STOP (const std::string &args, std::stop_token st ) const
+bool UartmonPlugin::m_Uartmon_STOP(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
-        if (false == args.empty())
-        {
+        if (false == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No argument expected"));
             break;
         }
 
-        if (false == m_isRunning)
-        {
+        if (false == m_isRunning) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Monitoring not running ..."));
             break;
         }
 
         m_UartMonitor.stopMonitoring();
         m_isRunning = false;
-        bRetVal = true;
+        bRetVal     = true;
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
 }
@@ -234,13 +221,12 @@ bool UartmonPlugin::m_Uartmon_STOP (const std::string &args, std::stop_token st 
 //                      PRIVATE IMPLEMENTATION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert, std::stop_token st) const
+bool UartmonPlugin::m_GenericWaitFor(const std::string &args, bool bInsert, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
-        if (false == m_isRunning)
-        {
+        if (false == m_isRunning) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Monitoring not running ..."));
             break;
         }
@@ -258,16 +244,14 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert, std
             }
 
             if (1 == szNrArgs) {
-                if (false == numeric::str2uint32(vstrArgs[0], u32Delay))
-                {
+                if (false == numeric::str2uint32(vstrArgs[0], u32Delay)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value:"); LOG_STRING(args));
                     break;
                 }
             }
         }
 
-        if (false == m_bIsEnabled)
-        {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -301,19 +285,19 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert, std
             // Handle the result based on WaitResult enum
             if (result.result == uart::WaitResult::Success) {
                 LOG_PRINT(LOG_DEBUG, LOG_HDR;
-                         LOG_STRING("Port");
-                         LOG_STRING(bInsert ? "insertion" : "removal");
-                         LOG_STRING("detected:");
-                         LOG_STRING(result.port_name));
+                          LOG_STRING("Port");
+                          LOG_STRING(bInsert ? "insertion" : "removal");
+                          LOG_STRING("detected:");
+                          LOG_STRING(result.port_name));
                 this->m_strResultData.assign(result.port_name);
             } else if (result.result == uart::WaitResult::Timeout) {
                 LOG_PRINT(LOG_DEBUG, LOG_HDR;
-                         LOG_STRING("Timeout waiting for port");
-                         LOG_STRING(bInsert ? "insertion" : "removal"));
+                          LOG_STRING("Timeout waiting for port");
+                          LOG_STRING(bInsert ? "insertion" : "removal"));
                 this->m_strResultData.clear();
             } else { // WaitResult::Stopped
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
-                         LOG_STRING("Monitoring stopped during wait"));
+                          LOG_STRING("Monitoring stopped during wait"));
                 this->m_strResultData.clear();
             }
         };
@@ -321,8 +305,7 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert, std
         action();
         bRetVal = true;
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
 }
-

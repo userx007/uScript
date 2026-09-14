@@ -3,11 +3,11 @@
 
 #include "Protocol.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <memory>
 #include <optional>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <vector>
 
@@ -37,10 +37,10 @@ class Hydrabus;
  * auto response = uart.read(3);
  * @endcode
  */
-class UART : public Protocol {
+class UART : public Protocol
+{
 
 public:
-
     enum class Parity : uint8_t {
         None = 0b00,
         Even = 0b01,
@@ -122,12 +122,11 @@ public:
     void enter_bridge();
 
 private:
-
-    uint32_t _baud   {9600};
-    Parity   _parity {Parity::None};
-    bool     _echo   {false};
+    uint32_t _baud{9600};
+    Parity _parity{Parity::None};
+    bool _echo{false};
 };
 
 } // namespace HydraHAL
 
-#endif //HYDRABUS_UART_HPP
+#endif // HYDRABUS_UART_HPP

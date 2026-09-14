@@ -25,8 +25,8 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -35,59 +35,71 @@
 //                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+#undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR   "HB_MMC     |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR        "HB_MMC     |"
+#define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "MMC"
 
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_mmc_help(const std::string&, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_mmc_help(const std::string &, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
 
-bool HydrabusPlugin::m_handle_mmc_cfg(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_mmc_cfg(const std::string &args, std::stop_token /*st*/) const
 {
-    auto* p = m_mmc();
+    auto *p = m_mmc();
     if (args == "help" || args == "?") {
-        if (p)
+        if (p) {
             LOG_PRINT(LOG_EMPTY,
-                      LOG_STRING("width="); LOG_INT(p->get_bus_width()));
+                      LOG_STRING("width=");
+                      LOG_INT(p->get_bus_width()));
+        }
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cfg width=[1|4]"));
         return true;
     }
-    if (!p) return false;
+    if (!p) {
+        return false;
+    }
 
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
+        if (kv.size() != 2) {
+            continue;
+        }
         if (kv[0] == "width") {
             uint8_t v = 0;
-            if (!numeric::str2uint8(kv[1], v)) return false;
-            if (!p->set_bus_width(v)) return false;
+            if (!numeric::str2uint8(kv[1], v)) {
+                return false;
+            }
+            if (!p->set_bus_width(v)) {
+                return false;
+            }
         }
     }
     return true;
 }
 
-bool HydrabusPlugin::m_handle_mmc_cid(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_mmc_cid(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Read 16-byte CID register"));
         return true;
     }
-    auto* p = m_mmc();
-    if (!p) return false;
+    auto *p = m_mmc();
+    if (!p) {
+        return false;
+    }
 
     auto data = p->get_cid(st);
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CID:"));
@@ -95,14 +107,16 @@ bool HydrabusPlugin::m_handle_mmc_cid(const std::string& args, std::stop_token s
     return true;
 }
 
-bool HydrabusPlugin::m_handle_mmc_csd(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_mmc_csd(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Read 16-byte CSD register"));
         return true;
     }
-    auto* p = m_mmc();
-    if (!p) return false;
+    auto *p = m_mmc();
+    if (!p) {
+        return false;
+    }
 
     auto data = p->get_csd(st);
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CSD:"));
@@ -110,14 +124,16 @@ bool HydrabusPlugin::m_handle_mmc_csd(const std::string& args, std::stop_token s
     return true;
 }
 
-bool HydrabusPlugin::m_handle_mmc_ext_csd(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_mmc_ext_csd(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Read 512-byte EXT_CSD register"));
         return true;
     }
-    auto* p = m_mmc();
-    if (!p) return false;
+    auto *p = m_mmc();
+    if (!p) {
+        return false;
+    }
 
     auto data = p->get_ext_csd(st);
     LOG_PRINT(LOG_EMPTY, LOG_STRING("EXT_CSD:"));
@@ -125,14 +141,16 @@ bool HydrabusPlugin::m_handle_mmc_ext_csd(const std::string& args, std::stop_tok
     return true;
 }
 
-bool HydrabusPlugin::m_handle_mmc_read(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_mmc_read(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read block_num  (decimal block address)"));
         return true;
     }
-    auto* p = m_mmc();
-    if (!p) return false;
+    auto *p = m_mmc();
+    if (!p) {
+        return false;
+    }
 
     uint32_t blk = 0;
     if (!numeric::str2uint32(args, blk)) {
@@ -151,15 +169,17 @@ bool HydrabusPlugin::m_handle_mmc_read(const std::string& args, std::stop_token 
 }
 
 // write block_num HEXDATA(1024 chars = 512 bytes)
-bool HydrabusPlugin::m_handle_mmc_write(const std::string& args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_mmc_write(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write block_num HEXDATA  (512 bytes = 1024 hex chars)"));
         return true;
     }
-    auto* p = m_mmc();
-    if (!p) return false;
+    auto *p = m_mmc();
+    if (!p) {
+        return false;
+    }
 
     std::vector<std::string> parts;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
@@ -169,7 +189,9 @@ bool HydrabusPlugin::m_handle_mmc_write(const std::string& args, std::stop_token
     }
 
     uint32_t blk = 0;
-    if (!numeric::str2uint32(parts[0], blk)) return false;
+    if (!numeric::str2uint32(parts[0], blk)) {
+        return false;
+    }
 
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(parts[1], data) ||
@@ -182,7 +204,7 @@ bool HydrabusPlugin::m_handle_mmc_write(const std::string& args, std::stop_token
     return p->write(data, blk, st);
 }
 
-bool HydrabusPlugin::m_handle_mmc_aux(const std::string& args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_mmc_aux(const std::string &args, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(args, m_mmc());
 }

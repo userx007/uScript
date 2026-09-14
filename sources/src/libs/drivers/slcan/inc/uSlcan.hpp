@@ -31,24 +31,23 @@
  *   BEL (0x07) = failure
  */
 
-#include <stddef.h>
+#include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
+#include "uUart.hpp"
+
 #include <array>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <span>
+#include <stddef.h>
 #include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include "ICommDriver.hpp"
-#include "ICommDumpProtocol.hpp"
-#include "uUart.hpp"
-
 class UART;
-
 
 // ============================================================================
 // Public data types
@@ -58,16 +57,16 @@ class UART;
  * @brief CAN frame type tag.
  */
 enum class CanFrameType : uint8_t {
-    DataFrame,    ///< Data frame
-    RemoteFrame   ///< Remote (RTR) frame
+    DataFrame,  ///< Data frame
+    RemoteFrame ///< Remote (RTR) frame
 };
 
 /**
  * @brief CAN-FD Bit Rate Switch flag.
  */
 enum class CanFdBrs : uint8_t {
-    Disabled,     ///< No BRS
-    Enabled       ///< BRS enabled (data phase at higher bit rate)
+    Disabled, ///< No BRS
+    Enabled   ///< BRS enabled (data phase at higher bit rate)
 };
 
 /**
@@ -75,72 +74,72 @@ enum class CanFdBrs : uint8_t {
  *
  * Filled by SLCAN::decode_rx_frame() / SLCAN::receive_frame().
  */
-struct CanFrame {
-    bool        is_extended = false;   ///< True → 29-bit extended ID
-    bool        is_remote   = false;   ///< True → RTR frame
-    bool        is_canfd    = false;   ///< True → CAN-FD frame
-    bool        brs         = false;   ///< True → BRS enabled (CAN-FD only)
-    uint32_t    id          = 0;       ///< CAN ID (11-bit or 29-bit)
-    uint8_t     dlc         = 0;       ///< DLC code (0-15 for CAN-FD, 0-8 for CAN)
-    uint8_t     len         = 0;       ///< Actual data byte count
-    std::array<uint8_t, 64> data{};   ///< Payload bytes
+struct CanFrame
+{
+    bool is_extended = false;       ///< True → 29-bit extended ID
+    bool is_remote   = false;       ///< True → RTR frame
+    bool is_canfd    = false;       ///< True → CAN-FD frame
+    bool brs         = false;       ///< True → BRS enabled (CAN-FD only)
+    uint32_t id      = 0;           ///< CAN ID (11-bit or 29-bit)
+    uint8_t dlc      = 0;           ///< DLC code (0-15 for CAN-FD, 0-8 for CAN)
+    uint8_t len      = 0;           ///< Actual data byte count
+    std::array<uint8_t, 64> data{}; ///< Payload bytes
 };
 
 /**
  * @brief Nominal CAN bit rate presets (S command).
  */
 enum class CanBitrate : uint8_t {
-    BR_10K   = 0x00,   ///< S0 — 10 kbit/s
-    BR_20K   = 0x01,   ///< S1 — 20 kbit/s
-    BR_50K   = 0x02,   ///< S2 — 50 kbit/s
-    BR_100K  = 0x03,   ///< S3 — 100 kbit/s
-    BR_125K  = 0x04,   ///< S4 — 125 kbit/s  (adapter default)
-    BR_250K  = 0x05,   ///< S5 — 250 kbit/s
-    BR_500K  = 0x06,   ///< S6 — 500 kbit/s
-    BR_800K  = 0x07,   ///< S7 — 800 kbit/s
-    BR_1M    = 0x08,   ///< S8 — 1 Mbit/s
-    BR_83K3  = 0x09,   ///< S9 — 83.3 kbit/s
-    BR_75K   = 0x0A,   ///< SA — 75 kbit/s
-    BR_62K5  = 0x0B,   ///< SB — 62.5 kbit/s
-    BR_33K3  = 0x0C,   ///< SC — 33.3 kbit/s
-    BR_5K    = 0x0D,   ///< SD — 5 kbit/s
+    BR_10K  = 0x00, ///< S0 — 10 kbit/s
+    BR_20K  = 0x01, ///< S1 — 20 kbit/s
+    BR_50K  = 0x02, ///< S2 — 50 kbit/s
+    BR_100K = 0x03, ///< S3 — 100 kbit/s
+    BR_125K = 0x04, ///< S4 — 125 kbit/s  (adapter default)
+    BR_250K = 0x05, ///< S5 — 250 kbit/s
+    BR_500K = 0x06, ///< S6 — 500 kbit/s
+    BR_800K = 0x07, ///< S7 — 800 kbit/s
+    BR_1M   = 0x08, ///< S8 — 1 Mbit/s
+    BR_83K3 = 0x09, ///< S9 — 83.3 kbit/s
+    BR_75K  = 0x0A, ///< SA — 75 kbit/s
+    BR_62K5 = 0x0B, ///< SB — 62.5 kbit/s
+    BR_33K3 = 0x0C, ///< SC — 33.3 kbit/s
+    BR_5K   = 0x0D, ///< SD — 5 kbit/s
 };
 
 /**
  * @brief CAN-FD data segment bit rate presets (Y command).
  */
 enum class CanFdDataRate : uint8_t {
-    FD_1M  = 0x01,   ///< Y1 — 1 Mbit/s
-    FD_2M  = 0x02,   ///< Y2 — 2 Mbit/s  (adapter default)
-    FD_3M  = 0x03,   ///< Y3 — 3 Mbit/s
-    FD_4M  = 0x04,   ///< Y4 — 4 Mbit/s
-    FD_5M  = 0x05,   ///< Y5 — 5 Mbit/s
+    FD_1M = 0x01, ///< Y1 — 1 Mbit/s
+    FD_2M = 0x02, ///< Y2 — 2 Mbit/s  (adapter default)
+    FD_3M = 0x03, ///< Y3 — 3 Mbit/s
+    FD_4M = 0x04, ///< Y4 — 4 Mbit/s
+    FD_5M = 0x05, ///< Y5 — 5 Mbit/s
 };
 
 /**
  * @brief Bus mode (M command).
  */
 enum class CanMode : uint8_t {
-    Normal = 0,   ///< M0 — normal (default)
-    Silent = 1,   ///< M1 — listen-only / silent
+    Normal = 0, ///< M0 — normal (default)
+    Silent = 1, ///< M1 — listen-only / silent
 };
 
 /**
  * @brief Auto-retransmission (A command).
  */
 enum class CanAutoRetx : uint8_t {
-    Disabled = 0,   ///< A0 — off (default)
-    Enabled  = 1,   ///< A1 — on (not recommended)
+    Disabled = 0, ///< A0 — off (default)
+    Enabled  = 1, ///< A1 — on (not recommended)
 };
 
 /**
  * @brief SLCAN Enhance mode (H command).
  */
 enum class SlcanEnhance : uint8_t {
-    Disabled = 0,   ///< H0 — ASCII mode (default)
-    Enabled  = 1,   ///< H1 — binary enhance mode
+    Disabled = 0, ///< H0 — ASCII mode (default)
+    Enabled  = 1, ///< H1 — binary enhance mode
 };
-
 
 // ============================================================================
 // SLCAN driver class
@@ -168,20 +167,19 @@ enum class SlcanEnhance : uint8_t {
 class SLCAN : public ICommDriver
 {
 public:
-
     // ------------------------------------------------------------------
     // Constants
     // ------------------------------------------------------------------
 
-    static constexpr uint8_t  SLCAN_CR            = '\r';     ///< Command terminator
-    static constexpr uint8_t  SLCAN_ACK           = '\r';     ///< Success response
-    static constexpr uint8_t  SLCAN_NAK           = 0x07;     ///< Failure (BEL)
-    static constexpr uint32_t SLCAN_DEFAULT_TIMEOUT = 1000;   ///< ms
+    static constexpr uint8_t SLCAN_CR               = '\r'; ///< Command terminator
+    static constexpr uint8_t SLCAN_ACK              = '\r'; ///< Success response
+    static constexpr uint8_t SLCAN_NAK              = 0x07; ///< Failure (BEL)
+    static constexpr uint32_t SLCAN_DEFAULT_TIMEOUT = 1000; ///< ms
 
     /// Maximum ASCII frame string length: cmd(1) + id(8) + dlc(1) + data(128) + CR(1)
-    static constexpr size_t   SLCAN_MAX_FRAME_LEN  = 140;
+    static constexpr size_t SLCAN_MAX_FRAME_LEN     = 140;
     /// Maximum binary receive line length (same budget)
-    static constexpr size_t   SLCAN_RX_BUF_LEN     = 160;
+    static constexpr size_t SLCAN_RX_BUF_LEN        = 160;
 
     // ------------------------------------------------------------------
     // Construction / destruction
@@ -190,7 +188,7 @@ public:
     /**
      * @brief Construct without opening a port.
      */
-    SLCAN() = default;
+    SLCAN()                                         = default;
 
     /**
      * @brief Construct and immediately open the serial port.
@@ -202,8 +200,8 @@ public:
      *                         UART instance as well, so its own describeConnection()
      *                         (composed into ours) reflects it too.
      */
-    explicit SLCAN(const std::string& device, uint32_t speed,
-                   const std::string& strIdentityLabel = {});
+    explicit SLCAN(const std::string &device, uint32_t speed,
+                   const std::string &strIdentityLabel = {});
 
     virtual ~SLCAN();
 
@@ -217,7 +215,7 @@ public:
      * @param speed   UART baud rate
      * @return SUCCESS or error code
      */
-    Status open(const std::string& device, uint32_t speed);
+    Status open(const std::string &device, uint32_t speed);
 
     /**
      * @brief Close the serial port.
@@ -239,7 +237,7 @@ public:
     CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
     {
         return commdump_details(CommFamily::CAN,
-                                 m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel);
+                                m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel);
     }
 
     // ------------------------------------------------------------------
@@ -372,7 +370,7 @@ public:
      * @brief Read adapter firmware version (V command).
      * @param[out] version  Version string returned by the adapter
      */
-    Status get_version(std::string& version, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+    Status get_version(std::string &version, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
     /**
      * @brief Read failure state (E command).
@@ -389,7 +387,7 @@ public:
      *          will never come). Not currently called anywhere in
      *          slcan_plugin/ for exactly this reason.
      */
-    Status get_error_state(std::string& error_str, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+    Status get_error_state(std::string &error_str, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
     // ------------------------------------------------------------------
     // Frame TX / RX  (typed, preferred API)
@@ -407,7 +405,7 @@ public:
      * @param stop_tok    Allows cancelling the wait for the ACK/NAK early
      * @return SUCCESS, WRITE_ERROR, or WRITE_TIMEOUT
      */
-    Status send_frame(const CanFrame& frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
+    Status send_frame(const CanFrame &frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
                       std::stop_token stop_tok = {});
 
     /**
@@ -420,7 +418,7 @@ public:
      * @param      stop_tok   Allows cancelling the wait early
      * @return SUCCESS, READ_TIMEOUT, or READ_ERROR
      */
-    Status receive_frame(CanFrame& frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
+    Status receive_frame(CanFrame &frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
                          std::stop_token stop_tok = {});
 
     // ------------------------------------------------------------------
@@ -435,9 +433,9 @@ public:
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
                          std::span<uint8_t> buffer,
-                         const ReadOptions& options,
+                         const ReadOptions &options,
                          std::string_view xtra_params = {},
-                         std::stop_token stop_tok = {}) const override;
+                         std::stop_token stop_tok     = {}) const override;
 
     /**
      * @brief Generic write — sends @p buffer verbatim over the UART
@@ -446,7 +444,7 @@ public:
     WriteResult tout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
                            std::string_view xtra_params = {},
-                           std::stop_token stop_tok = {}) const override;
+                           std::stop_token stop_tok     = {}) const override;
 
     // ------------------------------------------------------------------
     // Encoding / decoding helpers (static, testable)
@@ -458,7 +456,7 @@ public:
      * @param[out] out  Output buffer; must be at least SLCAN_MAX_FRAME_LEN bytes
      * @return Number of bytes written (including trailing CR), or 0 on error
      */
-    static size_t encode_frame(const CanFrame& frame, std::span<uint8_t> out);
+    static size_t encode_frame(const CanFrame &frame, std::span<uint8_t> out);
 
     /**
      * @brief Decode an SLCAN ASCII receive line into a CanFrame.
@@ -467,7 +465,7 @@ public:
      * @param[out] frame  Decoded frame
      * @return true on success
      */
-    static bool decode_rx_frame(const uint8_t* line, size_t len, CanFrame& frame);
+    static bool decode_rx_frame(const uint8_t *line, size_t len, CanFrame &frame);
 
     /**
      * @brief Convert a CAN-FD DLC code to actual byte count.
@@ -484,7 +482,6 @@ public:
     static uint8_t len_to_dlc(uint8_t len);
 
 private:
-
     // ------------------------------------------------------------------
     // Internal helpers
     // ------------------------------------------------------------------
@@ -501,13 +498,13 @@ private:
      * @param cmd         Command string (without CR)
      * @param[out] resp   Response text (excluding CR)
      */
-    Status send_command_get_response(std::string_view cmd, std::string& resp,
+    Status send_command_get_response(std::string_view cmd, std::string &resp,
                                      uint32_t timeout_ms);
 
     /**
      * @brief Write raw bytes to the UART.
      */
-    Status uart_write(const uint8_t* data, size_t len, uint32_t timeout_ms,
+    Status uart_write(const uint8_t *data, size_t len, uint32_t timeout_ms,
                       std::stop_token stop_tok = {}) const;
 
     /**
@@ -515,18 +512,17 @@ private:
      * @param[out] buf     Destination buffer (including CR)
      * @param[out] out_len Number of bytes written into buf
      */
-    Status uart_read_line(uint8_t* buf, size_t buf_size,
-                          size_t& out_len, uint32_t timeout_ms,
+    Status uart_read_line(uint8_t *buf, size_t buf_size,
+                          size_t &out_len, uint32_t timeout_ms,
                           std::stop_token stop_tok = {}) const;
 
     // ------------------------------------------------------------------
     // Members
     // ------------------------------------------------------------------
 
-    std::shared_ptr<UART> m_uart;           ///< Underlying UART driver
-    bool                  m_channel_open = false; ///< Tracks open_channel state
-    std::string           m_strIdentityLabel;     ///< GUI comm-dump display label, see describeConnection()
+    std::shared_ptr<UART> m_uart;   ///< Underlying UART driver
+    bool m_channel_open = false;    ///< Tracks open_channel state
+    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 };
-
 
 #endif // U_SLCAN_DRIVER_HPP

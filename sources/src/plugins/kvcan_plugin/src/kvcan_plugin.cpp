@@ -1,9 +1,10 @@
+#include "kvcan_plugin.hpp"
+
 #include "ICommDriver.hpp"
 #include "ICommDumpProtocol.hpp"
 #include "ITransportProtocol.hpp"
 #include "PluginExport.hpp"
 #include "TpFactory.hpp"
-#include "kvcan_plugin.hpp"
 #include "kvcan_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -18,10 +19,10 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <cstdio>
 #include <memory>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <string_view>
@@ -33,22 +34,20 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
-  * \brief The plugin's entry points
-*/
-extern "C"
+ * \brief The plugin's entry points
+ */
+extern "C" {
+EXPORTED KVCANPlugin *pluginEntry()
 {
-    EXPORTED KVCANPlugin* pluginEntry()
-    {
-        return new KVCANPlugin();
-    }
+    return new KVCANPlugin();
+}
 
-    EXPORTED void pluginExit( KVCANPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(KVCANPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -57,31 +56,29 @@ extern "C"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command implementation; shows details about the plugin and
-  *        describes the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if plugin initialization fails.
-  *
-  * \note Usage example:
-  *       KVCAN.INFO
-  *
-  * \param[in] args  empty string (no arguments expected)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief INFO command implementation; shows details about the plugin and
+ *        describes the supported functions with examples of usage.
+ *        This command takes no arguments and is executed even if plugin initialization fails.
+ *
+ * \note Usage example:
+ *       KVCAN.INFO
+ *
+ * \param[in] args  empty string (no arguments expected)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_INFO(const std::string &args, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -174,78 +171,72 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current KVCAN parameters at runtime.
-  *
-  * \note Any subset of parameters can be specified; omitted keys retain their current values.
-  *
-  * \note The "x=" key sets both the default TX id (m_u32CanTxId) AND the default
-  *       RX id: setCanTxId() replaces m_vFilters with a single acceptance filter
-  *       that matches exactly the same CAN id (see setCanTxId() in kvcan_plugin.hpp).
-  *       These two members are therefore always the "default" Tx/Rx pair applied
-  *       to a freshly opened socket by m_KVCAN_CMD / m_KVCAN_SCRIPT. A per-call
-  *       xtra_params override (handled inside the KVCAN driver) only affects that
-  *       single tout_read()/tout_write() call; the driver restores the previous
-  *       filter/TX-id state immediately afterwards, so any following command
-  *       issued without xtra_params falls back to these CONFIG-set defaults.
-  *       Use the FILTER command afterwards if RX must listen on an id different
-  *       from TX.
-  *
-  * \note Usage example:
-  *       KVCAN.CONFIG i=vcan0 x=0x123 r=2000 w=2000 s=64
-  *       KVCAN.CONFIG i=can0 x=0x18DAF100
-  *
-  * \param[in] args  [i=iface] [x=tx_id] [r=read_tout] [w=write_tout] [s=recv_bufsize]
-  *
-  * \return true if parameters were updated successfully, false otherwise
-*/
+ * \brief CONFIG command implementation; overwrite the current KVCAN parameters at runtime.
+ *
+ * \note Any subset of parameters can be specified; omitted keys retain their current values.
+ *
+ * \note The "x=" key sets both the default TX id (m_u32CanTxId) AND the default
+ *       RX id: setCanTxId() replaces m_vFilters with a single acceptance filter
+ *       that matches exactly the same CAN id (see setCanTxId() in kvcan_plugin.hpp).
+ *       These two members are therefore always the "default" Tx/Rx pair applied
+ *       to a freshly opened socket by m_KVCAN_CMD / m_KVCAN_SCRIPT. A per-call
+ *       xtra_params override (handled inside the KVCAN driver) only affects that
+ *       single tout_read()/tout_write() call; the driver restores the previous
+ *       filter/TX-id state immediately afterwards, so any following command
+ *       issued without xtra_params falls back to these CONFIG-set defaults.
+ *       Use the FILTER command afterwards if RX must listen on an id different
+ *       from TX.
+ *
+ * \note Usage example:
+ *       KVCAN.CONFIG i=vcan0 x=0x123 r=2000 w=2000 s=64
+ *       KVCAN.CONFIG i=can0 x=0x18DAF100
+ *
+ * \param[in] args  [i=iface] [x=tx_id] [r=read_tout] [w=write_tout] [s=recv_bufsize]
+ *
+ * \return true if parameters were updated successfully, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KVCANPlugin::m_KVCAN_CONFIG (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_CONFIG(const std::string &args, std::stop_token st) const
 {
     return generic_can_set_params<KVCANPlugin>(this, args);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief FILTER command implementation; install KVCAN hardware acceptance filters.
-  *
-  * \note Filters are stored in m_vFilters and applied every time a CMD or SCRIPT
-  *       opens a new socket.  Calling FILTER with an empty argument clears all
-  *       filters (accept everything).
-  *
-  * \note Usage example:
-  *       KVCAN.FILTER 0x100:0x7FF
-  *       KVCAN.FILTER 0x100:0x7FF,0x200:0x7FF
-  *       KVCAN.FILTER
-  *
-  * \param[in] args  comma-separated list of <id>:<mask> pairs, or empty to clear
-  *
-  * \return true on success, false on parse error
-*/
+ * \brief FILTER command implementation; install KVCAN hardware acceptance filters.
+ *
+ * \note Filters are stored in m_vFilters and applied every time a CMD or SCRIPT
+ *       opens a new socket.  Calling FILTER with an empty argument clears all
+ *       filters (accept everything).
+ *
+ * \note Usage example:
+ *       KVCAN.FILTER 0x100:0x7FF
+ *       KVCAN.FILTER 0x100:0x7FF,0x200:0x7FF
+ *       KVCAN.FILTER
+ *
+ * \param[in] args  comma-separated list of <id>:<mask> pairs, or empty to clear
+ *
+ * \return true on success, false on parse error
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KVCANPlugin::m_KVCAN_FILTER (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_FILTER(const std::string &args, std::stop_token st) const
 {
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
     std::vector<KVCAN::CanFilter> vFilters;
 
-    if (!args.empty())
-    {
-        if (false == m_ParseFilters(args, vFilters))
-        {
+    if (!args.empty()) {
+        if (false == m_ParseFilters(args, vFilters)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(args));
             return false;
         }
@@ -259,25 +250,24 @@ bool KVCANPlugin::m_KVCAN_FILTER (const std::string &args, std::stop_token st) c
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation; execute a single send/receive operation over KVCAN.
-  *
-  * \note The KVCAN socket is opened for the duration of the call and closed automatically on return (RAII).
-  *       Filters stored in m_vFilters are applied immediately after open.
-  *
-  * \note Usage example:
-  *       KVCAN.CMD > H\"AABBCCDD\" | H\"06\"
-  *       KVCAN.CMD < \"Ready\" | \"Go!\"
-  *
-  * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CMD command implementation; execute a single send/receive operation over KVCAN.
+ *
+ * \note The KVCAN socket is opened for the duration of the call and closed automatically on return (RAII).
+ *       Filters stored in m_vFilters are applied immediately after open.
+ *
+ * \note Usage example:
+ *       KVCAN.CMD > H\"AABBCCDD\" | H\"06\"
+ *       KVCAN.CMD < \"Ready\" | \"Go!\"
+ *
+ * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_CMD(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
@@ -308,30 +298,30 @@ bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) cons
         [this](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const KVCAN> drv, std::string_view x, std::stop_token tok) {
             return m_Send(t, d, drv, x, tok);
         },
-        [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const KVCAN> drv, std::string_view x, std::stop_token tok) {
+        [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const KVCAN> drv, std::string_view x, std::stop_token tok) {
             return m_Receive(t, b, o, drv, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation; execute a multi-command script file over KVCAN.
-  *
-  * \note The KVCAN socket is opened once for the lifetime of the script and closed on return.
-  *       Filters stored in m_vFilters are applied immediately after open.
-  *
-  * \note Usage example:
-  *       KVCAN.SCRIPT obd_sequence.txt
-  *       KVCAN.SCRIPT uds_session.txt 10
-  *
-  * \param[in] args  filename [delay_ms]
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief SCRIPT command implementation; execute a multi-command script file over KVCAN.
+ *
+ * \note The KVCAN socket is opened once for the lifetime of the script and closed on return.
+ *       Filters stored in m_vFilters are applied immediately after open.
+ *
+ * \note Usage example:
+ *       KVCAN.SCRIPT obd_sequence.txt
+ *       KVCAN.SCRIPT uds_session.txt 10
+ *
+ * \param[in] args  filename [delay_ms]
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_SCRIPT(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
@@ -360,39 +350,39 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
         [this](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const KVCAN> drv, std::string_view x, std::stop_token tok) {
             return m_Send(t, d, drv, x, tok);
         },
-        [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const KVCAN> drv, std::string_view x, std::stop_token tok) {
+        [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions &o, std::shared_ptr<const KVCAN> drv, std::string_view x, std::stop_token tok) {
             return m_Receive(t, b, o, drv, x, tok);
-        }, st);
+        },
+        st);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic KVCAN messages.
-  *
-  * \note The KVCAN socket is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). Filters stored in m_vFilters are applied immediately
-  *       after open. Each entry's optional "id" is the KVCAN arbitration id (decimal or 0x-hex,
-  *       same syntax KVCAN::tout_write()'s xtra_params already accepts — an empty id falls back
-  *       to the TX id set via CONFIG/set_tx_id()) and "val" is the payload as a plain hex string
-  *       (e.g. "AABBCCDD"), <= 8 bytes classic KVCAN / <= 64 bytes KVCAN FD.
-  *
-  * \note This command bypasses m_Send()/the CAN-TP dispatch on purpose: a cyclic message is by
-  *       definition a single, self-contained frame per tick, so the segmented-transport path
-  *       (m_eTpProtocol != NONE) used by CMD/SCRIPT for multi-frame payloads does not apply here.
-  *
-  * \note Usage example:
-  *       KVCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
-  *       KVCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic KVCAN messages.
+ *
+ * \note The KVCAN socket is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). Filters stored in m_vFilters are applied immediately
+ *       after open. Each entry's optional "id" is the KVCAN arbitration id (decimal or 0x-hex,
+ *       same syntax KVCAN::tout_write()'s xtra_params already accepts — an empty id falls back
+ *       to the TX id set via CONFIG/set_tx_id()) and "val" is the payload as a plain hex string
+ *       (e.g. "AABBCCDD"), <= 8 bytes classic KVCAN / <= 64 bytes KVCAN FD.
+ *
+ * \note This command bypasses m_Send()/the CAN-TP dispatch on purpose: a cyclic message is by
+ *       definition a single, self-contained frame per tick, so the segmented-transport path
+ *       (m_eTpProtocol != NONE) used by CMD/SCRIPT for multi-frame payloads does not apply here.
+ *
+ * \note Usage example:
+ *       KVCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
+ *       KVCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KVCANPlugin::m_KVCAN_CYCLIC (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_CYCLIC(const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
@@ -415,7 +405,6 @@ bool KVCANPlugin::m_KVCAN_CYCLIC (const std::string &args, std::stop_token st) c
         },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN PRIVATE INTERFACES IMPLEMENTATION                    //
@@ -442,68 +431,65 @@ namespace {
  * \note  Not used on the TpProtocol::NONE path: there, one call already maps
  *        to exactly one physical frame, so KVCANPlugin::m_Send()/m_Receive()
  *        dump directly instead of paying for a decorator.
-*/
+ */
 class DumpingDriver : public ICommDriver
 {
-    public:
+public:
+    DumpingDriver(std::shared_ptr<const ICommDriver> shpInner, std::string strPluginName)
+        : m_shpInner(std::move(shpInner))
+        , m_strPluginName(std::move(strPluginName))
+    {}
 
-        DumpingDriver(std::shared_ptr<const ICommDriver> shpInner, std::string strPluginName)
-            : m_shpInner(std::move(shpInner))
-            , m_strPluginName(std::move(strPluginName))
-        {}
+    bool is_open() const override
+    {
+        return m_shpInner->is_open();
+    }
 
-        bool is_open() const override
-        {
-            return m_shpInner->is_open();
+    CommDetails describeConnection(std::string_view xtra_params = {}) const override
+    {
+        return m_shpInner->describeConnection(xtra_params);
+    }
+
+    ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
+                         const ReadOptions &options, std::string_view xtra_params = {},
+                         std::stop_token stop_tok = {}) const override
+    {
+        auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
+        if (result.status == Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
+            gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
+                                 CommDir::Rx, buffer.data(), static_cast<uint32_t>(result.bytes_read));
         }
+        return result;
+    }
 
-        CommDetails describeConnection(std::string_view xtra_params = {}) const override
-        {
-            return m_shpInner->describeConnection(xtra_params);
+    WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok     = {}) const override
+    {
+        auto result = m_shpInner->tout_write(u32WriteTimeout, buffer, xtra_params, stop_tok);
+        if (result.status == Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
+            gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
+                                 CommDir::Tx, buffer.data(), static_cast<uint32_t>(result.bytes_written));
         }
+        return result;
+    }
 
-        ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                              const ReadOptions& options, std::string_view xtra_params = {},
-                              std::stop_token stop_tok = {}) const override
-        {
-            auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
-            if (result.status == Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
-                gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
-                                      CommDir::Rx, buffer.data(), static_cast<uint32_t>(result.bytes_read));
-            }
-            return result;
-        }
-
-        WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                std::string_view xtra_params = {},
-                                std::stop_token stop_tok = {}) const override
-        {
-            auto result = m_shpInner->tout_write(u32WriteTimeout, buffer, xtra_params, stop_tok);
-            if (result.status == Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
-                gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
-                                      CommDir::Tx, buffer.data(), static_cast<uint32_t>(result.bytes_written));
-            }
-            return result;
-        }
-
-    private:
-
-        std::shared_ptr<const ICommDriver> m_shpInner;
-        std::string m_strPluginName;
+private:
+    std::shared_ptr<const ICommDriver> m_shpInner;
+    std::string m_strPluginName;
 };
 
 } // anonymous namespace
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse a comma-separated "<id>:<mask>" filter string into a vector of KVCAN::CanFilter.
-  *        Both id and mask fields accept decimal or 0x-prefixed hex values.
-  *        Example: "0x100:0x7FF,0x200:0x7FF"
-*/
+ * \brief Parse a comma-separated "<id>:<mask>" filter string into a vector of KVCAN::CanFilter.
+ *        Both id and mask fields accept decimal or 0x-prefixed hex values.
+ *        Example: "0x100:0x7FF,0x200:0x7FF"
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KVCANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<KVCAN::CanFilter>& vFilters) const
+bool KVCANPlugin::m_ParseFilters(const std::string &strFilters, std::vector<KVCAN::CanFilter> &vFilters) const
 {
     vFilters.clear();
 
@@ -519,8 +505,7 @@ bool KVCANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<KVCA
     std::vector<std::string> vstrEntries;
     ustring::tokenize(strFilters, ',', vstrEntries);
 
-    for (const auto& strEntry : vstrEntries)
-    {
+    for (const auto &strEntry : vstrEntries) {
         // Split each entry on ':' to separate id from mask
         std::vector<std::string> vstrParts;
         ustring::tokenize(strEntry, ':', vstrParts);
@@ -566,11 +551,11 @@ bool KVCANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<KVCA
         // can_mask, and clamp the id's data bits to the legal range for the
         // chosen frame format.
         const uint32_t flagsInId = filter.can_id & (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG);
-        filter.can_mask |= flagsInId;   // ensure every flag present in id is also masked
+        filter.can_mask |= flagsInId; // ensure every flag present in id is also masked
 
         if (filter.can_id & CAN_EFF_FLAG) {
             // 29-bit extended frame: id data bits must fit in CAN_EFF_MASK
-            filter.can_id  &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_EFF_MASK);
+            filter.can_id &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_EFF_MASK);
             filter.can_mask &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG | CAN_EFF_MASK);
         } else {
             // 11-bit standard frame: id data bits must fit in CAN_SFF_MASK.
@@ -581,12 +566,12 @@ bool KVCANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<KVCA
             if ((filter.can_id & CAN_EFF_MASK) > CAN_SFF_MASK) {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
                           LOG_STRING("Filter id > 0x7FF without CAN_EFF_FLAG — setting EFF flag automatically:"); LOG_STRING(strEntry));
-                filter.can_id  |= CAN_EFF_FLAG;
+                filter.can_id |= CAN_EFF_FLAG;
                 filter.can_mask |= CAN_EFF_FLAG;
-                filter.can_id  &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_EFF_MASK);
+                filter.can_id &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_EFF_MASK);
                 filter.can_mask &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG | CAN_EFF_MASK);
             } else {
-                filter.can_id  &= (CAN_RTR_FLAG | CAN_SFF_MASK);
+                filter.can_id &= (CAN_RTR_FLAG | CAN_SFF_MASK);
                 filter.can_mask &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG | CAN_SFF_MASK);
             }
         }
@@ -597,21 +582,19 @@ bool KVCANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<KVCA
     return true;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief message sender
-*/
+ * \brief message sender
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
 ICommDriver::WriteResult KVCANPlugin::m_Send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                              std::shared_ptr<const KVCAN> shpDriver, std::string_view xtra_params,
-                                              std::stop_token stop_tok) const
+                                             std::shared_ptr<const KVCAN> shpDriver, std::string_view xtra_params,
+                                             std::stop_token stop_tok) const
 {
     ICommDriver::WriteResult result;
 
-    if (m_eTpProtocol == TpProtocol::NONE)
-    {
+    if (m_eTpProtocol == TpProtocol::NONE) {
         if (dataSpan.size() > 8) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid length for a single CAN frame:"); LOG_SIZET(dataSpan.size()); LOG_STRING("(no TP protocol was set)"));
             result.status = ICommDriver::Status::INVALID_PARAM;
@@ -621,11 +604,9 @@ ICommDriver::WriteResult KVCANPlugin::m_Send(uint32_t u32WriteTimeout, std::span
 
         if (result.status == ICommDriver::Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
             gui_notify_comm_dump(m_strInstanceName, shpDriver->describeConnection(xtra_params),
-                                  CommDir::Tx, dataSpan.data(), static_cast<uint32_t>(result.bytes_written));
+                                 CommDir::Tx, dataSpan.data(), static_cast<uint32_t>(result.bytes_written));
         }
-    }
-    else
-    {
+    } else {
         // Segmented transport: payloads that still fit in a single frame take
         // the same one-frame path internally (see e.g. IsoTpProtocol::send()),
         // so enabling a protocol never changes behaviour for short payloads.
@@ -663,17 +644,16 @@ ICommDriver::WriteResult KVCANPlugin::m_Send(uint32_t u32WriteTimeout, std::span
     return result;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief message receiver
-*/
+ * \brief message receiver
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
 ICommDriver::ReadResult KVCANPlugin::m_Receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                                const ICommDriver::ReadOptions& options,
-                                                std::shared_ptr<const KVCAN> shpDriver, std::string_view xtra_params,
-                                                std::stop_token stop_tok) const
+                                               const ICommDriver::ReadOptions &options,
+                                               std::shared_ptr<const KVCAN> shpDriver, std::string_view xtra_params,
+                                               std::stop_token stop_tok) const
 {
     ICommDriver::ReadResult result;
 
@@ -684,8 +664,7 @@ ICommDriver::ReadResult KVCANPlugin::m_Receive(uint32_t u32ReadTimeout, std::spa
     // "exact/raw" read benefits from — and requires — TP reassembly.
     const bool bWantsRawExact = (options.mode == ICommDriver::ReadMode::Exact);
 
-    if (m_eTpProtocol != TpProtocol::NONE && bWantsRawExact)
-    {
+    if (m_eTpProtocol != TpProtocol::NONE && bWantsRawExact) {
         auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
         if (!upTp) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to instantiate transport protocol"));
@@ -705,9 +684,7 @@ ICommDriver::ReadResult KVCANPlugin::m_Receive(uint32_t u32ReadTimeout, std::spa
         // TODO(stop-token): upTp->receive() doesn't accept stop_tok yet, so a
         // segmented (ISO-TP) receive is not cancellable via the STOP button.
         result = upTp->receive(sDumpingDriver, u32ReadTimeout, dataSpan, szRxId, szTxId);
-    }
-    else
-    {
+    } else {
         // Raw single-frame path (TpProtocol::NONE, or a LINE/TOKEN read type
         // that always bypasses TP) — one call maps to one physical read,
         // exactly as before this feature existed; xtra_params still overrides
@@ -721,7 +698,7 @@ ICommDriver::ReadResult KVCANPlugin::m_Receive(uint32_t u32ReadTimeout, std::spa
         // > 0 guard below already skips it.
         if (result.status == ICommDriver::Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
             gui_notify_comm_dump(m_strInstanceName, shpDriver->describeConnection(xtra_params),
-                                  CommDir::Rx, dataSpan.data(), static_cast<uint32_t>(result.bytes_read));
+                                 CommDir::Rx, dataSpan.data(), static_cast<uint32_t>(result.bytes_read));
         }
     }
 

@@ -1,3 +1,5 @@
+#include "w5500net_plugin.hpp"
+
 #include "PluginExport.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
@@ -9,7 +11,6 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 #include "uW5500Net.hpp"
-#include "w5500net_plugin.hpp"
 #include "w5500net_setup.hpp"
 
 #include <memory>
@@ -20,27 +21,25 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C"
+extern "C" {
+EXPORTED W5500NetPlugin *pluginEntry()
 {
-    EXPORTED W5500NetPlugin* pluginEntry()
-    {
-        return new W5500NetPlugin();
-    }
+    return new W5500NetPlugin();
+}
 
-    EXPORTED void pluginExit( W5500NetPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
+EXPORTED void pluginExit(W5500NetPlugin *ptrPlugin)
+{
+    if (nullptr != ptrPlugin) {
+        delete ptrPlugin;
     }
+}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 // Driver factory
 /////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<W5500Net> W5500NetPlugin::m_OpenDriver (void) const
+std::shared_ptr<W5500Net> W5500NetPlugin::m_OpenDriver(void) const
 {
     if (m_strServerIp.empty() || m_u16ServerPort == 0U) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Server IP/Port not configured"));
@@ -63,20 +62,18 @@ std::shared_ptr<W5500Net> W5500NetPlugin::m_OpenDriver (void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool W5500NetPlugin::m_W5500NET_INFO(const std::string& args, std::stop_token st) const
+bool W5500NetPlugin::m_W5500NET_INFO(const std::string &args, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty())
-    {
+    if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-    if (!m_bIsEnabled)
-    {
+    if (!m_bIsEnabled) {
         return true;
     }
 
@@ -122,14 +119,13 @@ bool W5500NetPlugin::m_W5500NET_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 }
 
 // -----------------------------------------------------------------------
 // W5500NET.CONFIG
 // -----------------------------------------------------------------------
-bool W5500NetPlugin::m_W5500NET_CONFIG(const std::string& args, std::stop_token st) const
+bool W5500NetPlugin::m_W5500NET_CONFIG(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
@@ -139,7 +135,7 @@ bool W5500NetPlugin::m_W5500NET_CONFIG(const std::string& args, std::stop_token 
 // -----------------------------------------------------------------------
 // W5500NET.CMD
 // -----------------------------------------------------------------------
-bool W5500NetPlugin::m_W5500NET_CMD(const std::string& args, std::stop_token st) const
+bool W5500NetPlugin::m_W5500NET_CMD(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
@@ -151,7 +147,7 @@ bool W5500NetPlugin::m_W5500NET_CMD(const std::string& args, std::stop_token st)
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string& args, std::stop_token st) const
+bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string &args, std::stop_token st) const
 {
     (void)st;
     resetData();
@@ -163,27 +159,26 @@ bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string& args, std::stop_token 
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CYCLIC command implementation; send one or more periodic W5500NET messages.
-  *
-  * \note The connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
-  *       automatically on return (RAII). W5500NET is a single-peer stream with no addressable
-  *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
-  *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
-  *
-  * \note Usage example:
-  *       W5500NET.CYCLIC 100 AABBCCDD, 250 06
-  *       W5500NET.CYCLIC 100 AABBCCDD, 250 06 &
-  *
-  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
-  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
-  *
-  * \return true on success, false otherwise
-*/
+ * \brief CYCLIC command implementation; send one or more periodic W5500NET messages.
+ *
+ * \note The connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
+ *       automatically on return (RAII). W5500NET is a single-peer stream with no addressable
+ *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
+ *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+ *
+ * \note Usage example:
+ *       W5500NET.CYCLIC 100 AABBCCDD, 250 06
+ *       W5500NET.CYCLIC 100 AABBCCDD, 250 06 &
+ *
+ * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+ * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+ *
+ * \return true on success, false otherwise
+ */
 /*--------------------------------------------------------------------------------------------------------*/
-bool W5500NetPlugin::m_W5500NET_CYCLIC(const std::string& args, std::stop_token st) const
+bool W5500NetPlugin::m_W5500NET_CYCLIC(const std::string &args, std::stop_token st) const
 {
     resetData();
 

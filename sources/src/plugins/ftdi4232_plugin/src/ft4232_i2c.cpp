@@ -34,13 +34,13 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stddef.h>
-#include <stdint.h>
 #include <array>
 #include <iomanip>
 #include <memory>
 #include <span>
 #include <sstream>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <string_view>
@@ -50,14 +50,14 @@
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+#undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR   "FT_I2C     |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR        "FT_I2C     |"
+#define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "I2C"
 
@@ -65,7 +65,7 @@
 //                       HELP                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_i2c_help(const std::string&, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_i2c_help(const std::string &, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<FT4232Plugin>(this, PROTOCOL_NAME);
 }
@@ -74,7 +74,7 @@ bool FT4232Plugin::m_handle_i2c_help(const std::string&, std::stop_token /*st*/)
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_i2c_open(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -85,10 +85,12 @@ bool FT4232Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
 
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
+        if (kv.size() != 2) {
+            continue;
+        }
 
         bool ok = true;
         if (kv[0] == "addr" || kv[0] == "address") {
@@ -99,8 +101,10 @@ bool FT4232Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*
             ok = parseChannel(kv[1], m_sI2cCfg.channel);
         } else if (kv[0] == "device") {
             uint8_t v = 0;
-            ok = numeric::str2uint8(kv[1], v);
-            if (ok) const_cast<FT4232Plugin*>(this)->m_sIniValues.u8DeviceIndex = v;
+            ok        = numeric::str2uint8(kv[1], v);
+            if (ok) {
+                const_cast<FT4232Plugin *>(this)->m_sIniValues.u8DeviceIndex = v;
+            }
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown key:"); LOG_STRING(kv[0]));
             return false;
@@ -113,7 +117,10 @@ bool FT4232Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*
         }
     }
 
-    if (m_pI2C) { m_pI2C->close(); m_pI2C.reset(); }
+    if (m_pI2C) {
+        m_pI2C->close();
+        m_pI2C.reset();
+    }
 
     m_pI2C = std::make_unique<FT4232I2C>();
     auto s = m_pI2C->open(m_sI2cCfg.address,
@@ -137,7 +144,7 @@ bool FT4232Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*
 //                       CLOSE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_i2c_close(const std::string&, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_i2c_close(const std::string &, std::stop_token /*st*/) const
 {
     if (m_pI2C) {
         m_pI2C->close();
@@ -153,13 +160,14 @@ bool FT4232Plugin::m_handle_i2c_close(const std::string&, std::stop_token /*st*/
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_i2c_cfg(const std::string& args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_i2c_cfg(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C pending config:"));
         LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  addr=");  LOG_HEX8(m_sI2cCfg.address);
-                  LOG_STRING("clock=");     LOG_UINT32(m_sI2cCfg.clockHz));
+                  LOG_STRING("  addr=");
+                  LOG_HEX8(m_sI2cCfg.address);
+                  LOG_STRING("clock="); LOG_UINT32(m_sI2cCfg.clockHz));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [addr=0xNN] [clock=N]"));
         return true;
@@ -168,10 +176,12 @@ bool FT4232Plugin::m_handle_i2c_cfg(const std::string& args, std::stop_token /*s
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
 
-    for (const auto& pair : pairs) {
+    for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
+        if (kv.size() != 2) {
+            continue;
+        }
 
         bool ok = true;
         if (kv[0] == "addr" || kv[0] == "address") {
@@ -199,7 +209,7 @@ bool FT4232Plugin::m_handle_i2c_cfg(const std::string& args, std::stop_token /*s
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_i2c_write(const std::string& args, std::stop_token st) const
+bool FT4232Plugin::m_handle_i2c_write(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -207,8 +217,10 @@ bool FT4232Plugin::m_handle_i2c_write(const std::string& args, std::stop_token s
         return true;
     }
 
-    auto* p = m_i2c();
-    if (!p) return false;
+    auto *p = m_i2c();
+    if (!p) {
+        return false;
+    }
 
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(args, data) || data.empty()) {
@@ -232,7 +244,7 @@ bool FT4232Plugin::m_handle_i2c_write(const std::string& args, std::stop_token s
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_i2c_read(const std::string& args, std::stop_token st) const
+bool FT4232Plugin::m_handle_i2c_read(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -240,8 +252,10 @@ bool FT4232Plugin::m_handle_i2c_read(const std::string& args, std::stop_token st
         return true;
     }
 
-    auto* p = m_i2c();
-    if (!p) return false;
+    auto *p = m_i2c();
+    if (!p) {
+        return false;
+    }
 
     size_t n = 0;
     if (!numeric::str2sizet(args, n) || n == 0) {
@@ -251,7 +265,7 @@ bool FT4232Plugin::m_handle_i2c_read(const std::string& args, std::stop_token st
 
     std::vector<uint8_t> buf(n);
     ICommDriver::ReadOptions opts;
-    opts.mode = ICommDriver::ReadMode::Exact;
+    opts.mode   = ICommDriver::ReadMode::Exact;
 
     auto result = p->tout_read(p->FT4232_READ_DEFAULT_TIMEOUT, buf, opts, std::string_view{}, st);
     if (result.status != FT4232I2C::Status::SUCCESS) {
@@ -270,8 +284,10 @@ bool FT4232Plugin::m_handle_i2c_read(const std::string& args, std::stop_token st
 
 bool FT4232Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const
 {
-    auto* p = m_i2c();
-    if (!p) return false;
+    auto *p = m_i2c();
+    if (!p) {
+        return false;
+    }
 
     // Write phase (if any)
     if (!req.empty()) {
@@ -288,7 +304,7 @@ bool FT4232Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
         ICommDriver::ReadOptions opts;
         opts.mode = ICommDriver::ReadMode::Exact;
 
-        auto rd = p->tout_read(p->FT4232_READ_DEFAULT_TIMEOUT, rxBuf, opts, std::string_view{}, st);
+        auto rd   = p->tout_read(p->FT4232_READ_DEFAULT_TIMEOUT, rxBuf, opts, std::string_view{}, st);
         if (rd.status != FT4232I2C::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("wrrd: read phase failed"));
             return false;
@@ -301,13 +317,13 @@ bool FT4232Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
     return true;
 }
 
-bool FT4232Plugin::m_handle_i2c_wrrd(const std::string& args, std::stop_token st) const
+bool FT4232Plugin::m_handle_i2c_wrrd(const std::string &args, std::stop_token st) const
 {
     return generic_write_read_data<FT4232Plugin>(
         this, args, &FT4232Plugin::m_i2c_wrrd_cb, st);
 }
 
-bool FT4232Plugin::m_handle_i2c_wrrdf(const std::string& args, std::stop_token st) const
+bool FT4232Plugin::m_handle_i2c_wrrdf(const std::string &args, std::stop_token st) const
 {
     return generic_write_read_file<FT4232Plugin>(
         this, args, &FT4232Plugin::m_i2c_wrrd_cb,
@@ -318,7 +334,7 @@ bool FT4232Plugin::m_handle_i2c_wrrdf(const std::string& args, std::stop_token s
 //                       SCAN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_i2c_scan(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -339,7 +355,9 @@ bool FT4232Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*
                             m_sI2cCfg.clockHz,
                             m_sI2cCfg.channel,
                             m_sIniValues.u8DeviceIndex);
-        if (s != FT4232I2C::Status::SUCCESS) continue;
+        if (s != FT4232I2C::Status::SUCCESS) {
+            continue;
+        }
 
         const std::array<uint8_t, 1> buf{probe_byte};
         auto wr = probe.tout_write(200, buf);
@@ -369,22 +387,25 @@ bool FT4232Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_i2c_script(const std::string& args, std::stop_token st) const
+bool FT4232Plugin::m_handle_i2c_script(const std::string &args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
-    auto* pDrv = m_i2c(); if (!pDrv) return false;
-    const auto* ini = getAccessIniValues(*this);
+    auto *pDrv = m_i2c();
+    if (!pDrv) {
+        return false;
+    }
+    const auto *ini = getAccessIniValues(*this);
     return generic_execute_script(
-            pDrv, 
-            m_strInstanceName,
-            args, ini->strArtefactsPath,
-            FT_BULK_MAX_BYTES,
-            ini->u32ReadTimeout,
-            ini->u32ScriptDelay,
-            m_bIsEnabled,
-            st);
+        pDrv,
+        m_strInstanceName,
+        args, ini->strArtefactsPath,
+        FT_BULK_MAX_BYTES,
+        ini->u32ReadTimeout,
+        ini->u32ScriptDelay,
+        m_bIsEnabled,
+        st);
 }

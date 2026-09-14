@@ -2,32 +2,31 @@
 #define U_SCRIPT_READER_HPP
 
 #include "IScriptReader.hpp"
-#include "uSharedConfig.hpp"
-#include "uScriptDataTypes.hpp"
-#include "uString.hpp"
 #include "uLogger.hpp"
+#include "uScriptDataTypes.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
-#include <vector>
-#include <string>
-#include <fstream>
-#include <utility>
 #include <filesystem>
+#include <fstream>
+#include <string>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "CORE_SCR_R  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "CORE_SCR_R  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                    CLASS DECLARATION / DEFINITION                           //
@@ -62,28 +61,28 @@
 class ScriptReader : public IScriptReader
 {
 public:
-
-    explicit ScriptReader(const std::string& strScriptPathName)
+    explicit ScriptReader(const std::string &strScriptPathName)
         : m_strScriptPathName(strScriptPathName)
     {}
 
-    bool readScript(std::vector<ScriptRawLine>& vRawLines) override
+    bool readScript(std::vector<ScriptRawLine> &vRawLines) override
     {
         std::unordered_set<std::string> setVisitedPaths;
         return readScriptFile(m_strScriptPathName, vRawLines, setVisitedPaths);
     }
 
 private:
-
     // -------------------------------------------------------------------------
     // Resolve an INCLUDE target: relative paths are anchored to the directory
     // of the file that contains the INCLUDE, not the process working directory.
     // -------------------------------------------------------------------------
-    static std::string resolveIncludePath(const std::string& strIncludingFile,
-                                          const std::string& strIncludePath)
+    static std::string resolveIncludePath(const std::string &strIncludingFile,
+                                          const std::string &strIncludePath)
     {
         std::filesystem::path inc(strIncludePath);
-        if (inc.is_absolute()) return inc.string();
+        if (inc.is_absolute()) {
+            return inc.string();
+        }
         return (std::filesystem::path(strIncludingFile).parent_path() / inc).string();
     }
 
@@ -93,36 +92,52 @@ private:
     // Returns true and fills strOutPath on a match; false otherwise.
     // Uses a simple manual parse — avoids a <regex> dependency in the reader.
     // -------------------------------------------------------------------------
-    static bool matchIncludeDirective(const std::string& strContent,
-                                       std::string& strOutPath)
+    static bool matchIncludeDirective(const std::string &strContent,
+                                      std::string &strOutPath)
     {
         // Must start with the keyword followed by whitespace
         const std::string kw(SCRIPT_INCLUDE_KEYWORD);
-        if (strContent.size() <= kw.size()) return false;
-        if (strContent.compare(0, kw.size(), kw) != 0) return false;
-        if (!std::isspace(static_cast<unsigned char>(strContent[kw.size()]))) return false;
+        if (strContent.size() <= kw.size()) {
+            return false;
+        }
+        if (strContent.compare(0, kw.size(), kw) != 0) {
+            return false;
+        }
+        if (!std::isspace(static_cast<unsigned char>(strContent[kw.size()]))) {
+            return false;
+        }
 
         // Skip whitespace between keyword and opening quote
         size_t pos = kw.size();
         while (pos < strContent.size() &&
-               std::isspace(static_cast<unsigned char>(strContent[pos])))
+               std::isspace(static_cast<unsigned char>(strContent[pos]))) {
             ++pos;
+        }
 
         // Must be a double-quoted path
-        if (pos >= strContent.size() || strContent[pos] != '"') return false;
+        if (pos >= strContent.size() || strContent[pos] != '"') {
+            return false;
+        }
         ++pos; // skip opening quote
 
         const size_t pathStart = pos;
-        while (pos < strContent.size() && strContent[pos] != '"') ++pos;
-        if (pos >= strContent.size()) return false; // unterminated quote
+        while (pos < strContent.size() && strContent[pos] != '"') {
+            ++pos;
+        }
+        if (pos >= strContent.size()) {
+            return false; // unterminated quote
+        }
 
         // Trailing characters after the closing quote must be only whitespace
         const size_t closeQuote = pos;
         ++pos; // skip closing quote
         while (pos < strContent.size() &&
-               std::isspace(static_cast<unsigned char>(strContent[pos])))
+               std::isspace(static_cast<unsigned char>(strContent[pos]))) {
             ++pos;
-        if (pos != strContent.size()) return false; // junk after closing quote
+        }
+        if (pos != strContent.size()) {
+            return false; // junk after closing quote
+        }
 
         strOutPath = strContent.substr(pathStart, closeQuote - pathStart);
         return !strOutPath.empty();
@@ -136,9 +151,9 @@ private:
     // vOwnLines so that constants declared in an included file are visible
     // before this file's body regardless of where the INCLUDE physically sits.
     // -------------------------------------------------------------------------
-    bool readScriptFile(const std::string& strPathName,
-                         std::vector<ScriptRawLine>& vRawLines,
-                         std::unordered_set<std::string>& setVisitedPaths)
+    bool readScriptFile(const std::string &strPathName,
+                        std::vector<ScriptRawLine> &vRawLines,
+                        std::unordered_set<std::string> &setVisitedPaths)
     {
         // Canonicalise for the cycle-detection set — weakly_canonical tolerates
         // paths that do not yet exist, but the file check below will catch that.
@@ -168,7 +183,7 @@ private:
 
         std::string strLine;
         bool bIgnoreLines = false;
-        int  iLineNumber  = 0;
+        int iLineNumber   = 0;
 
         while (std::getline(file, strLine)) {
 
@@ -204,7 +219,9 @@ private:
                 return false;
             }
 
-            if (bIgnoreLines) continue;
+            if (bIgnoreLines) {
+                continue;
+            }
 
             // Strip trailing inline comment
             std::pair<std::string, std::string> strSplitLine;
@@ -220,7 +237,9 @@ private:
                 ustring::trimInPlace(strContent);
 
                 std::string strNextLine;
-                if (!std::getline(file, strNextLine)) break;
+                if (!std::getline(file, strNextLine)) {
+                    break;
+                }
                 ++iLineNumber;
                 ustring::trimInPlace(strNextLine);
 
@@ -261,7 +280,7 @@ private:
         vRawLines.insert(vRawLines.end(), vOwnLines.begin(), vOwnLines.end());
 
         if (!vRawLines.empty()) {
-            for (const auto& rawLine : vRawLines) {
+            for (const auto &rawLine : vRawLines) {
                 auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
                 LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING(rawLine.strContent));

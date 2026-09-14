@@ -1,4 +1,5 @@
 #include "ScriptHighlighter.hpp"
+
 #include "uSharedScriptRegex.hpp"
 
 #include <QList>
@@ -89,18 +90,30 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //   NAME ?=   (cyan + bold name, pink op)
     {
         const QString pat = R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\?=))";
-        Rule r2; r2.pattern = RE(pat); r2.format = fmt(C_KEYWORD);
-                 r2.captureGroup = 2; m_rules.append(r2);
-        Rule r1; r1.pattern = RE(pat); r1.format = fmt(C_VAR_NAME, true);
-                 r1.captureGroup = 1; m_rules.append(r1);
+        Rule r2;
+        r2.pattern      = RE(pat);
+        r2.format       = fmt(C_KEYWORD);
+        r2.captureGroup = 2;
+        m_rules.append(r2);
+        Rule r1;
+        r1.pattern      = RE(pat);
+        r1.format       = fmt(C_VAR_NAME, true);
+        r1.captureGroup = 1;
+        m_rules.append(r1);
     }
     //   NAME [=   (amber + bold name, pink op)
     {
         const QString pat = R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\[=))";
-        Rule r2; r2.pattern = RE(pat); r2.format = fmt(C_KEYWORD);
-                 r2.captureGroup = 2; m_rules.append(r2);
-        Rule r1; r1.pattern = RE(pat); r1.format = fmt(C_ARR_NAME, true);
-                 r1.captureGroup = 1; m_rules.append(r1);
+        Rule r2;
+        r2.pattern      = RE(pat);
+        r2.format       = fmt(C_KEYWORD);
+        r2.captureGroup = 2;
+        m_rules.append(r2);
+        Rule r1;
+        r1.pattern      = RE(pat);
+        r1.format       = fmt(C_ARR_NAME, true);
+        r1.captureGroup = 1;
+        m_rules.append(r1);
     }
 
     // ── 2. Macro variables  $VAR  $ARR.$IDX  — from base ─────────────────
@@ -119,12 +132,18 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  from a shared constant, so if it's ever renamed both copies need
     //  updating by hand.
     {
-        const QString kw   = QString::fromLatin1("INCLUDE");
-        const QString pat  = QString(R"re(^\s*(%1)\s+("(?:[^"\\]|\\.)*"))re").arg(kw);
-        Rule rPath; rPath.pattern = RE(pat); rPath.format = fmt(C_INCLUDE_PATH);
-                    rPath.captureGroup = 2; m_rules.append(rPath);
-        Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_INCLUDE_KW, true);
-                    rKw.captureGroup = 1; m_rules.append(rKw);
+        const QString kw  = QString::fromLatin1("INCLUDE");
+        const QString pat = QString(R"re(^\s*(%1)\s+("(?:[^"\\]|\\.)*"))re").arg(kw);
+        Rule rPath;
+        rPath.pattern      = RE(pat);
+        rPath.format       = fmt(C_INCLUDE_PATH);
+        rPath.captureGroup = 2;
+        m_rules.append(rPath);
+        Rule rKw;
+        rKw.pattern      = RE(pat);
+        rKw.format       = fmt(C_INCLUDE_KW, true);
+        rKw.captureGroup = 1;
+        m_rules.append(rKw);
     }
 
     // ── 4. Plugin commands  PLUGIN.COMMAND  and  PLUGIN:N.COMMAND ────────
@@ -132,10 +151,16 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     {
         const QString pat = QString(
             "\\b(" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX ")\\.(" SCRIPT_RX_UPPER_IDENT ")\\b");
-        Rule rCmd;  rCmd.pattern  = RE(pat); rCmd.format  = fmt(C_COMMAND, true);
-                    rCmd.captureGroup  = 2; m_rules.append(rCmd);
-        Rule rPlug; rPlug.pattern = RE(pat); rPlug.format = fmt(C_PLUGIN, true);
-                    rPlug.captureGroup = 1; m_rules.append(rPlug);
+        Rule rCmd;
+        rCmd.pattern      = RE(pat);
+        rCmd.format       = fmt(C_COMMAND, true);
+        rCmd.captureGroup = 2;
+        m_rules.append(rCmd);
+        Rule rPlug;
+        rPlug.pattern      = RE(pat);
+        rPlug.format       = fmt(C_PLUGIN, true);
+        rPlug.captureGroup = 1;
+        m_rules.append(rPlug);
     }
 
     // ── 4b. Array SIZE accessor  $NAME.SIZE  ──────────────────────────────
@@ -163,10 +188,16 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  literally named SIZEOF) is correctly left unmatched.
     {
         const QString pat = R"(\$([A-Za-z_][A-Za-z0-9_]*)\.(SIZE)(?![A-Za-z0-9_]))";
-        Rule rNm; rNm.pattern = RE(pat); rNm.format = fmt(C_ARR_NAME, true);
-                  rNm.captureGroup = 1; m_rules.append(rNm);
-        Rule rKw; rKw.pattern = RE(pat); rKw.format = fmt(C_HEX_WIDTH);
-                  rKw.captureGroup = 2; m_rules.append(rKw);
+        Rule rNm;
+        rNm.pattern      = RE(pat);
+        rNm.format       = fmt(C_ARR_NAME, true);
+        rNm.captureGroup = 1;
+        m_rules.append(rNm);
+        Rule rKw;
+        rKw.pattern      = RE(pat);
+        rKw.format       = fmt(C_HEX_WIDTH);
+        rKw.captureGroup = 2;
+        m_rules.append(rKw);
     }
 
     // ── 4c. Comm-script filename argument ─────────────────────────────────
@@ -188,18 +219,21 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     // ── 5. Control keywords ───────────────────────────────────────────────
     //  All control-flow keywords share pink (same as ?= / [= operators).
     for (const QString &kw : {
-            "LOAD_PLUGIN", "IF", "GOTO", "REPEAT", "END_REPEAT",
-            "UNTIL", "BREAK", "CONTINUE" })
+             "LOAD_PLUGIN", "IF", "GOTO", "REPEAT", "END_REPEAT",
+             "UNTIL", "BREAK", "CONTINUE"}) {
         addRule(QString(R"(\b%1\b)").arg(kw), fmt(C_KEYWORD, true));
+    }
 
     // LOAD_PLUGIN argument — full instance name (UART or UART:1) in green + bold
     //  Uses SCRIPT_RX_PLUGIN_TYPE_NAME (not the generic SCRIPT_RX_IDENT) so a
     //  leading underscore is never highlighted here — LOAD_PLUGIN's plugin-type
     //  name grammar never allows one (see uSharedScriptRegex.hpp).
     {
-        Rule r; r.pattern = RE(QString(
+        Rule r;
+        r.pattern      = RE(QString(
             "\\bLOAD_PLUGIN\\s+(" SCRIPT_RX_PLUGIN_TYPE_NAME SCRIPT_RX_INSTANCE_SUFFIX ")"));
-                r.format  = fmt(C_PLUGIN, true); r.captureGroup = 1;
+        r.format       = fmt(C_PLUGIN, true);
+        r.captureGroup = 1;
         m_rules.append(r);
     }
 
@@ -208,10 +242,16 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  label name    → purple (same family as constant names and numbers)
     {
         const QString pat = QString("\\b(LABEL)\\s+(" SCRIPT_RX_IDENT ")");
-        Rule rNm; rNm.pattern = RE(pat); rNm.format = fmt(C_LABEL_NAME);
-                  rNm.captureGroup = 2; m_rules.append(rNm);
-        Rule rKw; rKw.pattern = RE(pat); rKw.format = fmt(C_KEYWORD, true);
-                  rKw.captureGroup = 1; m_rules.append(rKw);
+        Rule rNm;
+        rNm.pattern      = RE(pat);
+        rNm.format       = fmt(C_LABEL_NAME);
+        rNm.captureGroup = 2;
+        m_rules.append(rNm);
+        Rule rKw;
+        rKw.pattern      = RE(pat);
+        rKw.format       = fmt(C_KEYWORD, true);
+        rKw.captureGroup = 1;
+        m_rules.append(rKw);
     }
 
     // ── 6a. Label references — GOTO, REPEAT, END_REPEAT ────────────────────
@@ -231,8 +271,8 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  \bREPEAT won't false-match inside END_REPEAT: '_' is a word
     //  character, so there's no \b boundary between the '_' and the 'R'.
 
-    addRule(QString("\\bGOTO\\s+(" SCRIPT_RX_IDENT ")"),       fmt(C_LABEL_REF), 1);
-    addRule(QString("\\bREPEAT\\s+(" SCRIPT_RX_IDENT ")"),     fmt(C_LABEL_REF), 1);
+    addRule(QString("\\bGOTO\\s+(" SCRIPT_RX_IDENT ")"), fmt(C_LABEL_REF), 1);
+    addRule(QString("\\bREPEAT\\s+(" SCRIPT_RX_IDENT ")"), fmt(C_LABEL_REF), 1);
     addRule(QString("\\bEND_REPEAT\\s+(" SCRIPT_RX_IDENT ")"), fmt(C_LABEL_REF), 1);
 
     // ── 6b. REPEAT range values  <begin>, <end>, <step>  ──────────────────
@@ -268,41 +308,56 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //    comma         → slate (C_SEPARATOR — unified structural-separator
     //                    colour, same as | and / everywhere else)
     {
-        const QString numTok = QString(SCRIPT_RX_NUMERIC_TOKEN);
+        const QString numTok   = QString(SCRIPT_RX_NUMERIC_TOKEN);
         const QString macroTok = QString(SCRIPT_RX_MACRO_REF);
         // One range token → two alternative capture groups (literal | macro).
-        const QString tok = QString(R"((%1)|(%2))").arg(numTok, macroTok);
-        const QString prefix = QString(SCRIPT_RX_REPEAT_PREFIX);
+        const QString tok      = QString(R"((%1)|(%2))").arg(numTok, macroTok);
+        const QString prefix   = QString(SCRIPT_RX_REPEAT_PREFIX);
 
-        struct Arity {
-            QString      suffix;
+        struct Arity
+        {
+            QString suffix;
             QVector<int> literalGroups;
             QVector<int> macroGroups;
             QVector<int> commaGroups;
         };
+
         const QVector<Arity> arities = {
             // <end>
-            { QString("(?:%1)$").arg(tok), {1}, {2}, {} },
+            {QString("(?:%1)$").arg(tok), {1}, {2}, {}},
             // <begin>, <end>
-            { QString(R"((?:%1)\s*(,)\s*(?:%1)$)").arg(tok),
-              {1, 4}, {2, 5}, {3} },
+            {QString(R"((?:%1)\s*(,)\s*(?:%1)$)").arg(tok),
+             {1, 4},
+             {2, 5},
+             {3}},
             // <begin>, <end>, <step>
-            { QString(R"((?:%1)\s*(,)\s*(?:%1)\s*(,)\s*(?:%1)$)").arg(tok),
-              {1, 4, 7}, {2, 5, 8}, {3, 6} },
+            {QString(R"((?:%1)\s*(,)\s*(?:%1)\s*(,)\s*(?:%1)$)").arg(tok),
+             {1, 4, 7},
+             {2, 5, 8},
+             {3, 6}},
         };
 
         for (const auto &a : arities) {
             const RE re(prefix + a.suffix);
             for (int g : a.literalGroups) {
-                Rule r; r.pattern = re; r.format = fmt(C_NUMBER); r.captureGroup = g;
+                Rule r;
+                r.pattern      = re;
+                r.format       = fmt(C_NUMBER);
+                r.captureGroup = g;
                 m_rules.append(r);
             }
             for (int g : a.macroGroups) {
-                Rule r; r.pattern = re; r.format = fmt(C_VAR_NAME); r.captureGroup = g;
+                Rule r;
+                r.pattern      = re;
+                r.format       = fmt(C_VAR_NAME);
+                r.captureGroup = g;
                 m_rules.append(r);
             }
             for (int g : a.commaGroups) {
-                Rule r; r.pattern = re; r.format = fmt(C_SEPARATOR); r.captureGroup = g;
+                Rule r;
+                r.pattern      = re;
+                r.format       = fmt(C_SEPARATOR);
+                r.captureGroup = g;
                 m_rules.append(r);
             }
         }
@@ -341,19 +396,28 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
         const QString numTok   = QString(SCRIPT_RX_NUMERIC_TOKEN);
         const QString macroTok = QString(SCRIPT_RX_MACRO_REF);
         const QString tok      = QString(R"((%1)|(%2))").arg(numTok, macroTok);
-        const RE      re(QString(R"(%1\s*(:)\s*%1\s*(:)\s*%1)").arg(tok));
+        const RE re(QString(R"(%1\s*(:)\s*%1\s*(:)\s*%1)").arg(tok));
         // Groups: 1,2 = offset (literal, macro) · 3 = ':' · 4,5 = length
         // (literal, macro) · 6 = ':' · 7,8 = value (literal, macro).
         for (int g : {1, 4, 7}) {
-            Rule r; r.pattern = re; r.format = fmt(C_NUMBER); r.captureGroup = g;
+            Rule r;
+            r.pattern      = re;
+            r.format       = fmt(C_NUMBER);
+            r.captureGroup = g;
             m_rules.append(r);
         }
         for (int g : {2, 5, 8}) {
-            Rule r; r.pattern = re; r.format = fmt(C_VAR_NAME); r.captureGroup = g;
+            Rule r;
+            r.pattern      = re;
+            r.format       = fmt(C_VAR_NAME);
+            r.captureGroup = g;
             m_rules.append(r);
         }
         for (int g : {3, 6}) {
-            Rule r; r.pattern = re; r.format = fmt(C_SEPARATOR); r.captureGroup = g;
+            Rule r;
+            r.pattern      = re;
+            r.format       = fmt(C_SEPARATOR);
+            r.captureGroup = g;
             m_rules.append(r);
         }
     }
@@ -390,19 +454,28 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
         const QString numTok   = QString(SCRIPT_RX_NUMERIC_TOKEN);
         const QString macroTok = QString(SCRIPT_RX_MACRO_REF);
         const QString tok      = QString(R"((%1)|(%2))").arg(numTok, macroTok);
-        const RE      re(QString(R"((?<!:\s*)%1\s*(:)\s*%1(?!\s*:))").arg(tok));
+        const RE re(QString(R"((?<!:\s*)%1\s*(:)\s*%1(?!\s*:))").arg(tok));
         // Groups: 1,2 = bit_offset (literal, macro) · 3 = ':' · 4,5 = value_size
         // (literal, macro).
         for (int g : {1, 4}) {
-            Rule r; r.pattern = re; r.format = fmt(C_NUMBER); r.captureGroup = g;
+            Rule r;
+            r.pattern      = re;
+            r.format       = fmt(C_NUMBER);
+            r.captureGroup = g;
             m_rules.append(r);
         }
         for (int g : {2, 5}) {
-            Rule r; r.pattern = re; r.format = fmt(C_VAR_NAME); r.captureGroup = g;
+            Rule r;
+            r.pattern      = re;
+            r.format       = fmt(C_VAR_NAME);
+            r.captureGroup = g;
             m_rules.append(r);
         }
         {
-            Rule r; r.pattern = re; r.format = fmt(C_SEPARATOR); r.captureGroup = 3;
+            Rule r;
+            r.pattern      = re;
+            r.format       = fmt(C_SEPARATOR);
+            r.captureGroup = 3;
             m_rules.append(r);
         }
     }
@@ -413,11 +486,12 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  MATH/FORMAT — same "native evaluator, no plugin required" family
     //  (see uScriptDataTypes.hpp's StreamStatement/StreamValStatement/
     //  StreamValArrayStatement doc comments).
-    for (const QString &fn : { "PRINT", "DELAY", "FORMAT", "MATH", "EVAL",
-                                "BITSTREAM", "BYTESTREAM",
-                                "BITSTREAMVAL", "BYTESTREAMVAL",
-                                "GENERATOR" })
+    for (const QString &fn : {"PRINT", "DELAY", "FORMAT", "MATH", "EVAL",
+                              "BITSTREAM", "BYTESTREAM",
+                              "BITSTREAMVAL", "BYTESTREAMVAL",
+                              "GENERATOR"}) {
         addRule(QString(R"(\b%1\b)").arg(fn), fmt(C_FUNC, true));
+    }
 
     // ── 7a. GENERATOR STOP / STOP ALL ───────────────────────────────────────
     //  "name ?= GENERATOR STOP" and the bare "GENERATOR STOP ALL" command
@@ -429,13 +503,17 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  Same periwinkle/bold as GENERATOR itself (C_FUNC) — STOP/STOP ALL are
     //  the same statement family, not a distinct control-flow keyword.
     {
-        Rule r; r.pattern = RE(R"(\bGENERATOR\s+(STOP)\b)");
-                r.format  = fmt(C_FUNC, true); r.captureGroup = 1;
+        Rule r;
+        r.pattern      = RE(R"(\bGENERATOR\s+(STOP)\b)");
+        r.format       = fmt(C_FUNC, true);
+        r.captureGroup = 1;
         m_rules.append(r);
     }
     {
-        Rule r; r.pattern = RE(R"(\bGENERATOR\s+STOP\s+(ALL)\b)");
-                r.format  = fmt(C_FUNC, true); r.captureGroup = 1;
+        Rule r;
+        r.pattern      = RE(R"(\bGENERATOR\s+STOP\s+(ALL)\b)");
+        r.format       = fmt(C_FUNC, true);
+        r.captureGroup = 1;
         m_rules.append(r);
     }
 
@@ -454,10 +532,16 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //                                        family as GENERATOR itself)
     {
         const QString pat = R"((\|)\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)\b)";
-        Rule rPipe; rPipe.pattern = RE(pat); rPipe.format = fmt(C_SEPARATOR);
-                    rPipe.captureGroup = 1; m_rules.append(rPipe);
-        Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_FUNC, true);
-                    rKw.captureGroup = 2; m_rules.append(rKw);
+        Rule rPipe;
+        rPipe.pattern      = RE(pat);
+        rPipe.format       = fmt(C_SEPARATOR);
+        rPipe.captureGroup = 1;
+        m_rules.append(rPipe);
+        Rule rKw;
+        rKw.pattern      = RE(pat);
+        rKw.format       = fmt(C_FUNC, true);
+        rKw.captureGroup = 2;
+        m_rules.append(rKw);
     }
 
     // ── 8. Debug ──────────────────────────────────────────────────────────
@@ -480,8 +564,8 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  split this token into a slate '|' plus a cyan TYPE word instead of
     //  one solid cyan token.
     addRule(R"(\|\s*(NUM|STR|VER|BOOL)\b)", fmt(C_STORAGE));
-    addRule(R"(==|!=|>=|<=|>|<)",       fmt(C_KEYWORD));
-    addRule(R"(\b(AND|OR|NOT)\b)",      fmt(C_KEYWORD));
+    addRule(R"(==|!=|>=|<=|>|<)", fmt(C_KEYWORD));
+    addRule(R"(\b(AND|OR|NOT)\b)", fmt(C_KEYWORD));
 
     //  Boolean literals TRUE / FALSE (SCRIPT_COND_TRUE / SCRIPT_COND_FALSE
     //  in uSharedConfig.hpp) — case-sensitive, whole word. Given their own
@@ -491,7 +575,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  colouring of uscript.ini (green TRUE / red FALSE — though that rule
     //  is case-insensitive and lives in a separate file; not shared here,
     //  it colours a different file format).
-    addRule(R"(\bTRUE\b)",  fmt(C_BOOL_TRUE));
+    addRule(R"(\bTRUE\b)", fmt(C_BOOL_TRUE));
     addRule(R"(\bFALSE\b)", fmt(C_BOOL_FALSE));
 
     // ── 10. Typed-token decorators  H/X/R/T/L/S/F'…'  — from base ────────
@@ -554,14 +638,26 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     {
         const QString pat =
             R"((\|)\s*(HEX)(?:_(8|16|32|64|128|FLOAT|DOUBLE))?(?:_(LE|BE))?\s*$)";
-        Rule rPipe; rPipe.pattern = RE(pat); rPipe.format = fmt(C_SEPARATOR);
-                    rPipe.captureGroup = 1; m_rules.append(rPipe);
-        Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_FUNC, true);
-                    rKw.captureGroup = 2; m_rules.append(rKw);
-        Rule rWid;  rWid.pattern  = RE(pat); rWid.format  = fmt(C_HEX_WIDTH);
-                    rWid.captureGroup = 3; m_rules.append(rWid);
-        Rule rEnd;  rEnd.pattern  = RE(pat); rEnd.format  = fmt(C_STORAGE);
-                    rEnd.captureGroup = 4; m_rules.append(rEnd);
+        Rule rPipe;
+        rPipe.pattern      = RE(pat);
+        rPipe.format       = fmt(C_SEPARATOR);
+        rPipe.captureGroup = 1;
+        m_rules.append(rPipe);
+        Rule rKw;
+        rKw.pattern      = RE(pat);
+        rKw.format       = fmt(C_FUNC, true);
+        rKw.captureGroup = 2;
+        m_rules.append(rKw);
+        Rule rWid;
+        rWid.pattern      = RE(pat);
+        rWid.format       = fmt(C_HEX_WIDTH);
+        rWid.captureGroup = 3;
+        m_rules.append(rWid);
+        Rule rEnd;
+        rEnd.pattern      = RE(pat);
+        rEnd.format       = fmt(C_STORAGE);
+        rEnd.captureGroup = 4;
+        m_rules.append(rEnd);
     }
 
     // ── 14c. MAC Addresses ──────────────────────────────────────────────────
@@ -570,8 +666,11 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  distinct from the plain blue used for generic numeric literals.
     {
         const QString pat = R"(\b([0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5})\b)";
-        Rule r; r.pattern = RE(pat); r.format = fmt(C_MAC_ADDR);
-                 r.captureGroup = 1; m_rules.append(r);
+        Rule r;
+        r.pattern      = RE(pat);
+        r.format       = fmt(C_MAC_ADDR);
+        r.captureGroup = 1;
+        m_rules.append(r);
     }
 
     // ── 14d. IPv4 Addresses ────────────────────────────────────────────────
@@ -580,8 +679,11 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  — both are network addresses, distinct from generic blue numbers.
     {
         const QString pat = R"(\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b)";
-        Rule r; r.pattern = RE(pat); r.format = fmt(C_IP_ADDR);
-                 r.captureGroup = 1; m_rules.append(r);
+        Rule r;
+        r.pattern      = RE(pat);
+        r.format       = fmt(C_IP_ADDR);
+        r.captureGroup = 1;
+        m_rules.append(r);
     }
 
     // ── 14e. BITSTREAM/BYTESTREAM | REVERSE_BIT|REVERSE_BYTE post-processor ─
@@ -611,10 +713,16 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  strictly before this trailing "| ..." suffix.
     {
         const QString pat = R"((\|)\s*(REVERSE_BIT|REVERSE_BYTE)\s*$)";
-        Rule rPipe; rPipe.pattern = RE(pat); rPipe.format = fmt(C_SEPARATOR);
-                    rPipe.captureGroup = 1; m_rules.append(rPipe);
-        Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_FUNC, true);
-                    rKw.captureGroup = 2; m_rules.append(rKw);
+        Rule rPipe;
+        rPipe.pattern      = RE(pat);
+        rPipe.format       = fmt(C_SEPARATOR);
+        rPipe.captureGroup = 1;
+        m_rules.append(rPipe);
+        Rule rKw;
+        rKw.pattern      = RE(pat);
+        rKw.format       = fmt(C_FUNC, true);
+        rKw.captureGroup = 2;
+        m_rules.append(rKw);
     }
 
     // ── 15. xtra_params  ~ param | param2  ───────────────────────────────

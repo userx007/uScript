@@ -26,10 +26,10 @@
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
 
-#include <stdint.h>
 #include <iomanip>
 #include <memory>
 #include <sstream>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -38,14 +38,14 @@
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+#undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+#undef LOG_HDR
 #endif
-#define LT_HDR   "FT245_GPIO |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR        "FT245_GPIO |"
+#define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "GPIO"
 
@@ -53,7 +53,7 @@
 //             Internal parse helpers                            //
 ///////////////////////////////////////////////////////////////////
 
-static bool parseHexByte(const std::string& s, uint8_t& out)
+static bool parseHexByte(const std::string &s, uint8_t &out)
 {
     return numeric::str2uint8(s, out);
 }
@@ -62,7 +62,7 @@ static bool parseHexByte(const std::string& s, uint8_t& out)
 //                       HELP                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_help(const std::string&, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_gpio_help(const std::string &, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<FT245Plugin>(this, PROTOCOL_NAME);
 }
@@ -71,7 +71,7 @@ bool FT245Plugin::m_handle_gpio_help(const std::string&, std::stop_token /*st*/)
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_gpio_open(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -84,29 +84,34 @@ bool FT245Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*
     }
 
     uint8_t devIdx = m_sIniValues.u8DeviceIndex;
-    if (!parseGpioParams(args, m_sGpioCfg, &devIdx)) return false;
-    const_cast<FT245Plugin*>(this)->m_sIniValues.u8DeviceIndex = devIdx;
+    if (!parseGpioParams(args, m_sGpioCfg, &devIdx)) {
+        return false;
+    }
+    const_cast<FT245Plugin *>(this)->m_sIniValues.u8DeviceIndex = devIdx;
 
-    if (m_pGPIO) { m_pGPIO->close(); m_pGPIO.reset(); }
+    if (m_pGPIO) {
+        m_pGPIO->close();
+        m_pGPIO.reset();
+    }
 
     FT245GPIO::GpioConfig cfg;
     cfg.variant      = m_sGpioCfg.variant;
     cfg.dirMask      = m_sGpioCfg.dirMask;
     cfg.initialValue = m_sGpioCfg.initValue;
 
-    m_pGPIO = std::make_unique<FT245GPIO>();
-    auto s = m_pGPIO->open(cfg, m_sIniValues.u8DeviceIndex);
+    m_pGPIO          = std::make_unique<FT245GPIO>();
+    auto s           = m_pGPIO->open(cfg, m_sIniValues.u8DeviceIndex);
     if (s != FT245GPIO::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("GPIO open failed"));
         m_pGPIO.reset();
         return false;
     }
 
-    const char* varStr = (cfg.variant == FT245Base::Variant::FT245BM) ? "BM" : "R";
+    const char *varStr = (cfg.variant == FT245Base::Variant::FT245BM) ? "BM" : "R";
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("GPIO opened: variant="); LOG_STRING(varStr);
-              LOG_STRING("dir=");  LOG_HEX8(cfg.dirMask);
-              LOG_STRING("val=");  LOG_HEX8(cfg.initialValue);
+              LOG_STRING("dir="); LOG_HEX8(cfg.dirMask);
+              LOG_STRING("val="); LOG_HEX8(cfg.initialValue);
               LOG_STRING("device="); LOG_UINT32(m_sIniValues.u8DeviceIndex));
     return true;
 }
@@ -115,7 +120,7 @@ bool FT245Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*
 //                       CLOSE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_gpio_close(const std::string &, std::stop_token /*st*/) const
 {
     if (m_pGPIO) {
         m_pGPIO->close();
@@ -131,21 +136,24 @@ bool FT245Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*/
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_cfg(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_gpio_cfg(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help" || args == "?") {
-        const char* varStr = (m_sGpioCfg.variant == FT245Base::Variant::FT245BM) ? "BM" : "R";
+        const char *varStr = (m_sGpioCfg.variant == FT245Base::Variant::FT245BM) ? "BM" : "R";
         LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
         LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  variant="); LOG_STRING(varStr);
-                  LOG_STRING("dir=");     LOG_HEX8(m_sGpioCfg.dirMask);
-                  LOG_STRING("val=");     LOG_HEX8(m_sGpioCfg.initValue));
+                  LOG_STRING("  variant=");
+                  LOG_STRING(varStr);
+                  LOG_STRING("dir="); LOG_HEX8(m_sGpioCfg.dirMask);
+                  LOG_STRING("val="); LOG_HEX8(m_sGpioCfg.initValue));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [variant=BM|R] [dir=0xNN] [val=0xNN]"));
         return true;
     }
 
-    if (!parseGpioParams(args, m_sGpioCfg)) return false;
+    if (!parseGpioParams(args, m_sGpioCfg)) {
+        return false;
+    }
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("GPIO config updated (takes effect on next open)"));
@@ -156,7 +164,7 @@ bool FT245Plugin::m_handle_gpio_cfg(const std::string& args, std::stop_token /*s
 //                       DIR                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_gpio_dir(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -166,8 +174,10 @@ bool FT245Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*s
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     std::vector<std::string> parts;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
@@ -177,10 +187,14 @@ bool FT245Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*s
     }
 
     uint8_t mask = 0;
-    if (!parseHexByte(parts[0], mask)) return false;
+    if (!parseHexByte(parts[0], mask)) {
+        return false;
+    }
 
     uint8_t initVal = 0x00u;
-    if (parts.size() >= 2 && !parseHexByte(parts[1], initVal)) return false;
+    if (parts.size() >= 2 && !parseHexByte(parts[1], initVal)) {
+        return false;
+    }
 
     auto s = p->set_direction(mask, initVal);
     if (s != FT245GPIO::Status::SUCCESS) {
@@ -198,7 +212,7 @@ bool FT245Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*s
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_gpio_write(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -206,11 +220,15 @@ bool FT245Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     uint8_t value = 0;
-    if (!parseHexByte(args, value)) return false;
+    if (!parseHexByte(args, value)) {
+        return false;
+    }
 
     auto s = p->write(value);
     if (s != FT245GPIO::Status::SUCCESS) {
@@ -227,7 +245,7 @@ bool FT245Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /
 //                       SET                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -235,11 +253,15 @@ bool FT245Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*s
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     uint8_t mask = 0;
-    if (!parseHexByte(args, mask)) return false;
+    if (!parseHexByte(args, mask)) {
+        return false;
+    }
 
     auto s = p->set_pins(mask);
     if (s != FT245GPIO::Status::SUCCESS) {
@@ -256,7 +278,7 @@ bool FT245Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*s
 //                       CLEAR                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -264,11 +286,15 @@ bool FT245Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     uint8_t mask = 0;
-    if (!parseHexByte(args, mask)) return false;
+    if (!parseHexByte(args, mask)) {
+        return false;
+    }
 
     auto s = p->clear_pins(mask);
     if (s != FT245GPIO::Status::SUCCESS) {
@@ -285,7 +311,7 @@ bool FT245Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /
 //                       TOGGLE                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_gpio_toggle(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -293,11 +319,15 @@ bool FT245Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token 
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     uint8_t mask = 0;
-    if (!parseHexByte(args, mask)) return false;
+    if (!parseHexByte(args, mask)) {
+        return false;
+    }
 
     auto s = p->toggle_pins(mask);
     if (s != FT245GPIO::Status::SUCCESS) {
@@ -314,7 +344,7 @@ bool FT245Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token 
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*st*/) const
+bool FT245Plugin::m_handle_gpio_read(const std::string &args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -322,11 +352,13 @@ bool FT245Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*
         return true;
     }
 
-    auto* p = m_gpio();
-    if (!p) return false;
+    auto *p = m_gpio();
+    if (!p) {
+        return false;
+    }
 
     uint8_t value = 0;
-    auto s = p->read(value);
+    auto s        = p->read(value);
     if (s != FT245GPIO::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read failed"));
         return false;
@@ -337,8 +369,9 @@ bool FT245Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*
         << std::hex << std::uppercase
         << std::setw(2) << std::setfill('0') << static_cast<int>(value)
         << "  [";
-    for (int bit = 7; bit >= 0; --bit)
+    for (int bit = 7; bit >= 0; --bit) {
         oss << ((value >> bit) & 1);
+    }
     oss << "]  (D7..D0)";
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));

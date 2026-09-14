@@ -4,41 +4,40 @@
 #include "uLogger.hpp"
 
 #include <chrono>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
-#include <optional>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "TIMER       |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR  "TIMER       |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace utime
-{
+namespace utime {
 
 class Timer
 {
 public:
-    using Clock = std::chrono::high_resolution_clock;
+    using Clock     = std::chrono::high_resolution_clock;
     using TimePoint = std::chrono::time_point<Clock>;
-    using Duration = std::chrono::duration<double>;
+    using Duration  = std::chrono::duration<double>;
 
     // Constructor - optionally auto-start
-    explicit Timer(const std::string& context = "", bool auto_start = true, bool auto_log = true)
+    explicit Timer(const std::string &context = "", bool auto_start = true, bool auto_log = true)
         : context_(context)
         , auto_log_(auto_log)
         , is_running_(false)
@@ -59,11 +58,11 @@ public:
     }
 
     // Delete copy operations (timers shouldn't be copied)
-    Timer(const Timer&) = delete;
-    Timer& operator=(const Timer&) = delete;
+    Timer(const Timer &)            = delete;
+    Timer &operator=(const Timer &) = delete;
 
     // Allow move operations
-    Timer(Timer&& other) noexcept
+    Timer(Timer &&other) noexcept
         : context_(std::move(other.context_))
         , auto_log_(other.auto_log_)
         , is_running_(other.is_running_)
@@ -73,22 +72,22 @@ public:
         , laps_(std::move(other.laps_))
     {
         other.is_running_ = false;
-        other.auto_log_ = false;  // Prevent moved-from object from logging
+        other.auto_log_   = false; // Prevent moved-from object from logging
     }
 
-    Timer& operator=(Timer&& other) noexcept
+    Timer &operator=(Timer &&other) noexcept
     {
         if (this != &other) {
-            context_ = std::move(other.context_);
-            auto_log_ = other.auto_log_;
-            is_running_ = other.is_running_;
-            has_started_ = other.has_started_;
-            start_time_ = other.start_time_;
+            context_          = std::move(other.context_);
+            auto_log_         = other.auto_log_;
+            is_running_       = other.is_running_;
+            has_started_      = other.has_started_;
+            start_time_       = other.start_time_;
             accumulated_time_ = other.accumulated_time_;
-            laps_ = std::move(other.laps_);
-            
+            laps_             = std::move(other.laps_);
+
             other.is_running_ = false;
-            other.auto_log_ = false;
+            other.auto_log_   = false;
         }
         return *this;
     }
@@ -97,8 +96,8 @@ public:
     void start()
     {
         if (!is_running_) {
-            start_time_ = Clock::now();
-            is_running_ = true;
+            start_time_  = Clock::now();
+            is_running_  = true;
             has_started_ = true;
         }
     }
@@ -117,7 +116,7 @@ public:
     {
         accumulated_time_ = Duration::zero();
         laps_.clear();
-        is_running_ = false;
+        is_running_  = false;
         has_started_ = false;
     }
 
@@ -131,18 +130,18 @@ public:
     // Record a lap time (returns lap duration)
     double lap()
     {
-        double total = elapsed_seconds();
+        double total    = elapsed_seconds();
         double lap_time = total - (laps_.empty() ? 0.0 : laps_.back());
         laps_.push_back(total);
-        
+
         if (auto_log_) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
-                     LOG_STRING(getContextPrefix());
-                     LOG_STRING("Lap #"); LOG_SIZET(laps_.size());
-                     LOG_STRING(": "); LOG_DOUBLE(lap_time); 
-                     LOG_STRING(" sec (total: "); LOG_DOUBLE(total); LOG_STRING(" sec)"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                      LOG_STRING(getContextPrefix());
+                      LOG_STRING("Lap #"); LOG_SIZET(laps_.size());
+                      LOG_STRING(": "); LOG_DOUBLE(lap_time);
+                      LOG_STRING(" sec (total: "); LOG_DOUBLE(total); LOG_STRING(" sec)"));
         }
-        
+
         return lap_time;
     }
 
@@ -168,7 +167,7 @@ public:
     }
 
     // Get lap times
-    const std::vector<double>& get_laps() const
+    const std::vector<double> &get_laps() const
     {
         return laps_;
     }
@@ -179,11 +178,25 @@ public:
     }
 
     // Query state
-    bool is_running() const { return is_running_; }
-    bool has_started() const { return has_started_; }
-    
-    const std::string& context() const { return context_; }
-    void set_context(const std::string& ctx) { context_ = ctx; }
+    bool is_running() const
+    {
+        return is_running_;
+    }
+
+    bool has_started() const
+    {
+        return has_started_;
+    }
+
+    const std::string &context() const
+    {
+        return context_;
+    }
+
+    void set_context(const std::string &ctx)
+    {
+        context_ = ctx;
+    }
 
     // Manual logging
     void log() const
@@ -234,9 +247,9 @@ private:
     {
         double seconds = elapsed_seconds();
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                 LOG_STRING(getContextPrefix());
-                 LOG_STRING("execution time:"); 
-                 LOG_STRING(formatTime(seconds)));
+                  LOG_STRING(getContextPrefix());
+                  LOG_STRING("execution time:");
+                  LOG_STRING(formatTime(seconds)));
     }
 
     // Format time in human-readable form
@@ -251,12 +264,12 @@ private:
         } else if (seconds < 60.0) {
             return std::to_string(seconds) + " sec";
         } else if (seconds < 3600.0) {
-            int mins = static_cast<int>(seconds / 60);
+            int mins    = static_cast<int>(seconds / 60);
             double secs = seconds - (mins * 60);
             return std::to_string(mins) + " min " + std::to_string(secs) + " sec";
         } else {
-            int hours = static_cast<int>(seconds / 3600);
-            int mins = static_cast<int>((seconds - hours * 3600) / 60);
+            int hours   = static_cast<int>(seconds / 3600);
+            int mins    = static_cast<int>((seconds - hours * 3600) / 60);
             double secs = seconds - (hours * 3600) - (mins * 60);
             return std::to_string(hours) + " hr " + std::to_string(mins) + " min " + std::to_string(secs) + " sec";
         }
@@ -267,8 +280,8 @@ private:
 class ScopedTimer : public Timer
 {
 public:
-    explicit ScopedTimer(const std::string& context = "")
-        : Timer(context, true, true)  // auto-start, auto-log
+    explicit ScopedTimer(const std::string &context = "")
+        : Timer(context, true, true) // auto-start, auto-log
     {}
 };
 
@@ -297,17 +310,17 @@ inline void delay_seconds(size_t seconds)
 // Get current timestamp as string
 inline std::string current_timestamp()
 {
-    auto now = std::chrono::system_clock::now();
-    auto time = std::chrono::system_clock::to_time_t(now);
+    auto now        = std::chrono::system_clock::now();
+    auto time       = std::chrono::system_clock::to_time_t(now);
     std::string str = std::ctime(&time);
-    str.pop_back();  // Remove trailing newline
+    str.pop_back(); // Remove trailing newline
     return str;
 }
 
 // Get high-precision timestamp in seconds since epoch
 inline double timestamp_seconds()
 {
-    auto now = std::chrono::high_resolution_clock::now();
+    auto now      = std::chrono::high_resolution_clock::now();
     auto duration = now.time_since_epoch();
     return std::chrono::duration<double>(duration).count();
 }
@@ -316,11 +329,9 @@ inline double timestamp_seconds()
 
 #endif // UTIMER_H
 
-
 ///////////////////////////////////////////////////////////////////////
 // USAGE:
 ///////////////////////////////////////////////////////////////////////
-
 
 /*
 // 1. Simple RAII timing (like original)

@@ -1,11 +1,11 @@
 #include "uLogger.hpp"
 #include "uW5500Net.hpp"
 
-#include <stdint.h>
 #include <chrono>
 #include <cstring>
 #include <mutex>
 #include <span>
+#include <stdint.h>
 #include <stop_token>
 #include <string>
 #include <string_view>
@@ -13,16 +13,16 @@
 #include <vector>
 
 #ifdef _WIN32
-    #include <winsock2.h>
+#include <winsock2.h>
 #else
-    #include <sys/socket.h>
+#include <sys/socket.h>
 #endif
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
-#define LT_HDR "W5500_NET   |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR  "W5500_NET   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================
 // PORTABLE recv()/send() WRAPPERS — see uEnc28J60NetCommon.cpp's identical
@@ -30,26 +30,26 @@
 // and the same int-fd convention).
 // ============================================================================
 namespace {
-    inline long net_recv(int iSocketFd, void* pBuf, size_t szLen, int iFlags)
-    {
+inline long net_recv(int iSocketFd, void *pBuf, size_t szLen, int iFlags)
+{
 #ifdef _WIN32
-        return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char*>(pBuf),
-                      static_cast<int>(szLen), iFlags);
+    return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char *>(pBuf),
+                  static_cast<int>(szLen), iFlags);
 #else
-        return ::recv(iSocketFd, pBuf, szLen, iFlags);
+    return ::recv(iSocketFd, pBuf, szLen, iFlags);
 #endif
-    }
-
-    inline long net_send(int iSocketFd, const void* pBuf, size_t szLen, int iFlags)
-    {
-#ifdef _WIN32
-        return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char*>(pBuf),
-                      static_cast<int>(szLen), iFlags);
-#else
-        return ::send(iSocketFd, pBuf, szLen, iFlags);
-#endif
-    }
 }
+
+inline long net_send(int iSocketFd, const void *pBuf, size_t szLen, int iFlags)
+{
+#ifdef _WIN32
+    return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char *>(pBuf),
+                  static_cast<int>(szLen), iFlags);
+#else
+    return ::send(iSocketFd, pBuf, szLen, iFlags);
+#endif
+}
+} // namespace
 
 // ============================================================================
 // PROTOCOL HELPERS
@@ -60,20 +60,20 @@ namespace {
  *
  * The server sends: [Status(1) | Length(2 Big Endian) | Payload(N)]
  */
-W5500Net::Status W5500Net::receive_packet(std::span<uint8_t> response_buffer, size_t max_len, size_t& bytes_read) const
+W5500Net::Status W5500Net::receive_packet(std::span<uint8_t> response_buffer, size_t max_len, size_t &bytes_read) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     // 1. Read Status Byte
     uint8_t status_byte = 0;
-    long n = net_recv(m_iSocketFd, &status_byte, 1, 0);
+    long n              = net_recv(m_iSocketFd, &status_byte, 1, 0);
     if (n <= 0) {
         return Status::READ_ERROR;
     }
 
     // 2. Read Length (2 bytes)
     uint8_t len_bytes[2] = {0};
-    n = net_recv(m_iSocketFd, len_bytes, 2, MSG_WAITALL);
+    n                    = net_recv(m_iSocketFd, len_bytes, 2, MSG_WAITALL);
     if (n != 2) {
         return Status::READ_ERROR;
     }
@@ -102,22 +102,22 @@ W5500Net::Status W5500Net::receive_packet(std::span<uint8_t> response_buffer, si
  *
  * Desktop sends: [CmdID(1) | Length(2 Big Endian) | Payload(N)]
  */
-W5500Net::Status W5500Net::send_command(uint8_t cmd_id, const uint8_t* payload, size_t payload_len) const
+W5500Net::Status W5500Net::send_command(uint8_t cmd_id, const uint8_t *payload, size_t payload_len) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     uint8_t header[3];
-    header[0] = cmd_id;
-    header[1] = (payload_len >> 8) & 0xFF;
-    header[2] = payload_len & 0xFF;
+    header[0]        = cmd_id;
+    header[1]        = (payload_len >> 8) & 0xFF;
+    header[2]        = payload_len & 0xFF;
 
     size_t total_len = 3 + payload_len;
-    size_t offset = 0;
+    size_t offset    = 0;
 
     // Loop to handle partial sends
     while (offset < total_len) {
         long n = net_send(m_iSocketFd,
-                          ((const uint8_t*)header) + offset,
+                          ((const uint8_t *)header) + offset,
                           total_len - offset,
                           0);
         if (n < 0) {
@@ -149,7 +149,7 @@ W5500Net::Status W5500Net::send_command(uint8_t cmd_id, const uint8_t* payload, 
 
 W5500Net::ReadResult W5500Net::tout_read(uint32_t u32ReadTimeout,
                                          std::span<uint8_t> buffer,
-                                         const ReadOptions& options,
+                                         const ReadOptions &options,
                                          std::string_view xtra_params,
                                          std::stop_token stop_tok) const
 {
@@ -161,142 +161,147 @@ W5500Net::ReadResult W5500Net::tout_read(uint32_t u32ReadTimeout,
     const uint32_t timeout = u32ReadTimeout;
 
     // Note: xtra_params can be used to specify "Socket ID" if the server supports multiple sockets
-    uint8_t socket_id = 0; // Default to socket 0
+    uint8_t socket_id      = 0; // Default to socket 0
     if (!xtra_params.empty()) {
         socket_id = static_cast<uint8_t>(std::stoi(std::string(xtra_params)));
     }
 
     switch (options.mode) {
-        case ReadMode::Exact: {
-            // 1. Ask server how many bytes are available on this socket
-            uint8_t cmd_payload = static_cast<uint8_t>(socket_id);
-            send_command(0x04, &cmd_payload, 1);
+    case ReadMode::Exact: {
+        // 1. Ask server how many bytes are available on this socket
+        uint8_t cmd_payload = static_cast<uint8_t>(socket_id);
+        send_command(0x04, &cmd_payload, 1);
 
-            // 2. Read response: [Status(1) | Count(2) | No Payload]
-            uint8_t resp_buf[3];
-            size_t bytes_read = 0;
-            Status status = receive_packet(resp_buf, sizeof(resp_buf), bytes_read);
+        // 2. Read response: [Status(1) | Count(2) | No Payload]
+        uint8_t resp_buf[3];
+        size_t bytes_read = 0;
+        Status status     = receive_packet(resp_buf, sizeof(resp_buf), bytes_read);
 
-            if (status != Status::SUCCESS) {
-                result.status = status;
-                return result;
-            }
-
-            uint16_t available_bytes = (resp_buf[1] << 8) | resp_buf[2];
-
-            if (available_bytes == 0) {
-                result.status = Status::READ_TIMEOUT; // No data available
-                result.bytes_read = 0;
-                return result;
-            }
-
-            // 3. Ask server to send data
-            send_command(0x05, &cmd_payload, 1);
-
-            // 4. Read response: [Status(1) | Length(2) | Data(N)]
-            // Ensure buffer is large enough
-            if (available_bytes > buffer.size()) {
-                result.status = Status::BUFFER_OVERFLOW;
-                result.bytes_read = 0;
-                return result;
-            }
-
-            uint8_t full_resp[1024]; // Assume max 1KB for demo
-            std::span<uint8_t> resp_span(full_resp, sizeof(full_resp));
-
-            status = receive_packet(resp_span, sizeof(full_resp), bytes_read);
-
-            if (status != Status::SUCCESS) {
-                result.status = status;
-                return result;
-            }
-
-            // Copy payload to user buffer
-            // Payload starts at index 3 (1 Status + 2 Length)
-            uint16_t data_len = (resp_span[1] << 8) | resp_span[2];
-            if (data_len > buffer.size()) data_len = buffer.size();
-
-            std::memcpy(buffer.data(), resp_span.data() + 3, data_len);
-            result.bytes_read = data_len;
-            result.status = Status::SUCCESS;
-            break;
+        if (status != Status::SUCCESS) {
+            result.status = status;
+            return result;
         }
 
-        case ReadMode::UntilDelimiter: {
-            // Simple implementation: Read until '\n' found in stream
-            size_t offset = 0;
-            bool found = false;
-            // 0 == infinite timeout: keep polling for availability forever.
-            const bool bInfinite = (timeout == 0);
-            auto tStart = std::chrono::steady_clock::now();
+        uint16_t available_bytes = (resp_buf[1] << 8) | resp_buf[2];
 
-            while (offset < buffer.size() - 1) {
-                uint8_t cmd_p = static_cast<uint8_t>(socket_id);
+        if (available_bytes == 0) {
+            result.status     = Status::READ_TIMEOUT; // No data available
+            result.bytes_read = 0;
+            return result;
+        }
 
-                // Check availability first
-                send_command(0x04, &cmd_p, 1);
-                uint8_t avail_buf[3];
-                size_t br = 0;
-                receive_packet(avail_buf, 3, br);
-                uint16_t avail = (avail_buf[1]<<8) | avail_buf[2];
+        // 3. Ask server to send data
+        send_command(0x05, &cmd_payload, 1);
 
-                if (avail == 0) {
-                    if (stop_tok.stop_requested()) {
+        // 4. Read response: [Status(1) | Length(2) | Data(N)]
+        // Ensure buffer is large enough
+        if (available_bytes > buffer.size()) {
+            result.status     = Status::BUFFER_OVERFLOW;
+            result.bytes_read = 0;
+            return result;
+        }
+
+        uint8_t full_resp[1024]; // Assume max 1KB for demo
+        std::span<uint8_t> resp_span(full_resp, sizeof(full_resp));
+
+        status = receive_packet(resp_span, sizeof(full_resp), bytes_read);
+
+        if (status != Status::SUCCESS) {
+            result.status = status;
+            return result;
+        }
+
+        // Copy payload to user buffer
+        // Payload starts at index 3 (1 Status + 2 Length)
+        uint16_t data_len = (resp_span[1] << 8) | resp_span[2];
+        if (data_len > buffer.size()) {
+            data_len = buffer.size();
+        }
+
+        std::memcpy(buffer.data(), resp_span.data() + 3, data_len);
+        result.bytes_read = data_len;
+        result.status     = Status::SUCCESS;
+        break;
+    }
+
+    case ReadMode::UntilDelimiter: {
+        // Simple implementation: Read until '\n' found in stream
+        size_t offset        = 0;
+        bool found           = false;
+        // 0 == infinite timeout: keep polling for availability forever.
+        const bool bInfinite = (timeout == 0);
+        auto tStart          = std::chrono::steady_clock::now();
+
+        while (offset < buffer.size() - 1) {
+            uint8_t cmd_p = static_cast<uint8_t>(socket_id);
+
+            // Check availability first
+            send_command(0x04, &cmd_p, 1);
+            uint8_t avail_buf[3];
+            size_t br = 0;
+            receive_packet(avail_buf, 3, br);
+            uint16_t avail = (avail_buf[1] << 8) | avail_buf[2];
+
+            if (avail == 0) {
+                if (stop_tok.stop_requested()) {
+                    result.status = Status::READ_TIMEOUT;
+                    return result;
+                }
+                if (!bInfinite) {
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       std::chrono::steady_clock::now() - tStart)
+                                       .count();
+                    if (elapsed >= timeout) {
                         result.status = Status::READ_TIMEOUT;
                         return result;
                     }
-                    if (!bInfinite) {
-                        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::steady_clock::now() - tStart).count();
-                        if (elapsed >= timeout) {
-                            result.status = Status::READ_TIMEOUT;
-                            return result;
-                        }
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    continue;
                 }
-
-                // Read one byte (or chunk)
-                send_command(0x05, &cmd_p, 1);
-                uint8_t pkt[1024];
-                size_t br2 = 0;
-                receive_packet(pkt, sizeof(pkt), br2);
-                uint16_t len = (pkt[1]<<8) | pkt[2];
-
-                if (len > 0) {
-                    for (size_t i=0; i<len && offset < buffer.size()-1; ++i) {
-                        uint8_t b = pkt[3+i];
-                        buffer[offset++] = b;
-                        if (b == options.delimiter) {
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-                if (found) break;
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
             }
 
-            result.status = found ? Status::SUCCESS : Status::READ_ERROR;
-            result.bytes_read = offset;
-            result.found_terminator = found;
-            if (found && result.bytes_read < buffer.size()) {
-                buffer[result.bytes_read] = '\0';
+            // Read one byte (or chunk)
+            send_command(0x05, &cmd_p, 1);
+            uint8_t pkt[1024];
+            size_t br2 = 0;
+            receive_packet(pkt, sizeof(pkt), br2);
+            uint16_t len = (pkt[1] << 8) | pkt[2];
+
+            if (len > 0) {
+                for (size_t i = 0; i < len && offset < buffer.size() - 1; ++i) {
+                    uint8_t b        = pkt[3 + i];
+                    buffer[offset++] = b;
+                    if (b == options.delimiter) {
+                        found = true;
+                        break;
+                    }
+                }
             }
-            break;
+            if (found) {
+                break;
+            }
         }
 
-        case ReadMode::UntilToken: {
-            // Placeholder for complex streaming logic
-            result.status = Status::SUCCESS;
-            result.bytes_read = 0;
-            result.found_terminator = false;
-            break;
+        result.status           = found ? Status::SUCCESS : Status::READ_ERROR;
+        result.bytes_read       = offset;
+        result.found_terminator = found;
+        if (found && result.bytes_read < buffer.size()) {
+            buffer[result.bytes_read] = '\0';
         }
+        break;
+    }
 
-        default:
-            result.status = Status::INVALID_PARAM;
-            break;
+    case ReadMode::UntilToken: {
+        // Placeholder for complex streaming logic
+        result.status           = Status::SUCCESS;
+        result.bytes_read       = 0;
+        result.found_terminator = false;
+        break;
+    }
+
+    default:
+        result.status = Status::INVALID_PARAM;
+        break;
     }
 
     return result;
@@ -326,12 +331,12 @@ W5500Net::WriteResult W5500Net::tout_write(uint32_t u32WriteTimeout,
     Status send_status = send_command(0x03, payload_buf.data(), payload_buf.size());
 
     if (send_status != Status::SUCCESS) {
-        result.status = send_status;
+        result.status        = send_status;
         result.bytes_written = 0;
         return result;
     }
 
-    result.status = Status::SUCCESS;
+    result.status        = Status::SUCCESS;
     result.bytes_written = buffer.size();
     return result;
 }

@@ -2,8 +2,8 @@
 #define KSPI_SETUP_HPP
 #include "PluginSetup.hpp"
 #include "kspi_plugin.hpp"
-#include "uPluginSettings.hpp"
 #include "uCommandExec.hpp"
+#include "uPluginSettings.hpp"
 
 #include <string>
 
@@ -12,36 +12,36 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "KSPI_P      |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR             "KSPI_P      |"
+#define LOG_HDR            LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  INI FILE CONFIGURATION ITEMS                               //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define    ARTEFACTS_PATH      "ARTEFACTS_PATH"
-#define    KSPI_DEVICE         "SPI_DEVICE"
-#define    KSPI_MODE           "SPI_MODE"
-#define    KSPI_SPEED_HZ       "SPI_SPEED_HZ"
-#define    KSPI_BITS_PER_WORD  "SPI_BITS_PER_WORD"
-#define    READ_TIMEOUT        "READ_TIMEOUT"
-#define    WRITE_TIMEOUT       "WRITE_TIMEOUT"
-#define    READ_BUF_SIZE       "READ_BUF_SIZE"
+#define ARTEFACTS_PATH     "ARTEFACTS_PATH"
+#define KSPI_DEVICE        "SPI_DEVICE"
+#define KSPI_MODE          "SPI_MODE"
+#define KSPI_SPEED_HZ      "SPI_SPEED_HZ"
+#define KSPI_BITS_PER_WORD "SPI_BITS_PER_WORD"
+#define READ_TIMEOUT       "READ_TIMEOUT"
+#define WRITE_TIMEOUT      "WRITE_TIMEOUT"
+#define READ_BUF_SIZE      "READ_BUF_SIZE"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief processing of the plugin specific settings.
-  *
-  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
-  * same setter surface the CONFIG command uses so an ini file
-  * and a runtime CONFIG command are always interpreted identically
-*/
+ * \brief processing of the plugin specific settings.
+ *
+ * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+ * same setter surface the CONFIG command uses so an ini file
+ * and a runtime CONFIG command are always interpreted identically
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 bool KSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
@@ -56,21 +56,21 @@ bool KSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH,   m_strArtefactsPath);
-    sSettings.Bind(KSPI_DEVICE,      m_strSpiDevice);
-    sSettings.Bind(KSPI_MODE,        [this](const std::string& v) { return setSpiMode(v); });
-    sSettings.Bind(KSPI_SPEED_HZ,    m_u32SpiSpeedHz);
-    sSettings.Bind(KSPI_BITS_PER_WORD, [this](const std::string& v) { return setSpiBitsPerWord(v); });
-    sSettings.Bind(READ_TIMEOUT,     m_u32ReadTimeout);
-    sSettings.Bind(WRITE_TIMEOUT,    m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE,    m_u32ReadBufferSize);
+    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
+    sSettings.Bind(KSPI_DEVICE, m_strSpiDevice);
+    sSettings.Bind(KSPI_MODE, [this](const std::string &v) { return setSpiMode(v); });
+    sSettings.Bind(KSPI_SPEED_HZ, m_u32SpiSpeedHz);
+    sSettings.Bind(KSPI_BITS_PER_WORD, [this](const std::string &v) { return setSpiBitsPerWord(v); });
+    sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE, m_u32ReadBufferSize);
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     return sSettings.Apply(psSetParams->mapSettings,
-        [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-        });
+                           [](const std::string &strKey, const std::string &strRawValue) {
+                               LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+                           });
 
 } /* m_LocalSetParams() */
 
@@ -83,21 +83,21 @@ bool KSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
  *                    (d=device  m=mode  z=speed_hz  b=bits_per_word
  *                     r=read_tout  w=write_tout  s=recv_bufsize)
  * \return true if processing succeeded, false otherwise
-*/
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename T>
-bool generic_spi_set_params (const T *pOwner, const std::string &args)
+bool generic_spi_set_params(const T *pOwner, const std::string &args)
 {
     static constexpr KVSetterEntry<T> table[] = {
-        { .key = "d",      .voidSetter = &T::setSpiDevice          },
-        { .key = "m",      .boolSetter = &T::setSpiMode            },
-        { .key = "z",      .boolSetter = &T::setSpiSpeedHz         },
-        { .key = "b",      .boolSetter = &T::setSpiBitsPerWord     },
-        { .key = "r",      .boolSetter = &T::setSpiReadTimeout     },
-        { .key = "w",      .boolSetter = &T::setSpiWriteTimeout    },
-        { .key = "s",      .boolSetter = &T::setSpiReadBufferSize  },
-        { .key = "raw",    .boolSetter = &T::setRawResult          },
-        { .key = "cached", .boolSetter = &T::setCyclicCached       },
+        {.key = "d", .voidSetter = &T::setSpiDevice},
+        {.key = "m", .boolSetter = &T::setSpiMode},
+        {.key = "z", .boolSetter = &T::setSpiSpeedHz},
+        {.key = "b", .boolSetter = &T::setSpiBitsPerWord},
+        {.key = "r", .boolSetter = &T::setSpiReadTimeout},
+        {.key = "w", .boolSetter = &T::setSpiWriteTimeout},
+        {.key = "s", .boolSetter = &T::setSpiReadBufferSize},
+        {.key = "raw", .boolSetter = &T::setRawResult},
+        {.key = "cached", .boolSetter = &T::setCyclicCached},
     };
 
     return generic_setup_params(pOwner, args, table, LT_HDR);

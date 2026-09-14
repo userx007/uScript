@@ -5,43 +5,41 @@
 
 #include "uLogger.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <charconv>
+#include <concepts>
+#include <cstdint>
+#include <iomanip>
+#include <limits>
+#include <optional>
+#include <span>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
-#include <algorithm>
-#include <utility>
-#include <sstream>
-#include <iomanip>
-#include <span>
-#include <vector>
-#include <cstdint>
-#include <cctype>
-#include <stdexcept>
-#include <optional>
 #include <type_traits>
-#include <concepts>
-#include <limits>
+#include <utility>
+#include <vector>
 
 #ifdef _MSC_VER
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
 #endif
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "NUMERIC     |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "NUMERIC     |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -50,8 +48,7 @@ typedef SSIZE_T ssize_t;
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-namespace numeric
-{
+namespace numeric {
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -59,19 +56,17 @@ namespace numeric
  * @brief Type constraints for numeric conversions
  */
 /*--------------------------------------------------------------------------------------------------------*/
-namespace concepts
-{
-    template<typename T>
-    concept SignedInteger = std::is_integral_v<T> && std::is_signed_v<T>;
+namespace concepts {
+template <typename T>
+concept SignedInteger = std::is_integral_v<T> && std::is_signed_v<T>;
 
-    template<typename T>
-    concept UnsignedInteger = std::is_integral_v<T> && std::is_unsigned_v<T>;
+template <typename T>
+concept UnsignedInteger = std::is_integral_v<T> && std::is_unsigned_v<T>;
 
-    template<typename T>
-    concept FloatingPoint = std::is_floating_point_v<T>;
+template <typename T>
+concept FloatingPoint = std::is_floating_point_v<T>;
 
 } // namespace concepts
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -79,8 +74,7 @@ namespace concepts
  * @brief Contains internal helper functions for numeric utilities.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-namespace internal
-{
+namespace internal {
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -96,21 +90,21 @@ namespace internal
 [[nodiscard]] inline constexpr std::string_view trim(std::string_view str) noexcept
 {
     // Find first non-whitespace character
-    auto start = std::find_if_not(str.begin(), str.end(), 
-        [](unsigned char c) { return std::isspace(c); });
-    
+    auto start = std::find_if_not(str.begin(), str.end(),
+                                  [](unsigned char c) { return std::isspace(c); });
+
     if (start == str.end()) {
         return std::string_view();
     }
 
     // Find last non-whitespace character
     auto end = std::find_if_not(str.rbegin(), str.rend(),
-        [](unsigned char c) { return std::isspace(c); }).base();
+                                [](unsigned char c) { return std::isspace(c); })
+                   .base();
 
-    return str.substr(std::distance(str.begin(), start), 
-                     std::distance(start, end));
+    return str.substr(std::distance(str.begin(), start),
+                      std::distance(start, end));
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -133,10 +127,10 @@ namespace internal
  * @return A pair consisting of the detected base and the string view with the prefix removed.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline constexpr std::pair<int, std::string_view> 
+[[nodiscard]] inline constexpr std::pair<int, std::string_view>
 detect_base_and_strip_prefix(std::string_view input) noexcept
 {
-    int base = 10;
+    int base              = 10;
     std::string_view view = input;
 
     if (view.size() > 2 && view[0] == '0') {
@@ -158,7 +152,6 @@ detect_base_and_strip_prefix(std::string_view input) noexcept
 
 } // namespace internal
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Result of detect_sign_and_base(): the decoded sign, numeric base, and remaining digit body.
@@ -166,9 +159,10 @@ detect_base_and_strip_prefix(std::string_view input) noexcept
  * `body` contains only the digits to be handed to std::from_chars — no sign, no base prefix.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-struct PrefixInfo {
-    bool             bNegative = false;
-    int              iBase     = 10;
+struct PrefixInfo
+{
+    bool bNegative = false;
+    int iBase      = 10;
     std::string_view body;
 };
 
@@ -195,7 +189,7 @@ struct PrefixInfo {
 [[nodiscard]] inline constexpr PrefixInfo detect_sign_and_base(std::string_view input) noexcept
 {
     std::string_view view = input;
-    bool bNeg = false;
+    bool bNeg             = false;
 
     if (!view.empty() && (view[0] == '+' || view[0] == '-')) {
         bNeg = (view[0] == '-');
@@ -203,7 +197,7 @@ struct PrefixInfo {
     }
 
     auto [base, body] = internal::detect_base_and_strip_prefix(view);
-    return { bNeg, base, body };
+    return {bNeg, base, body};
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -225,7 +219,6 @@ struct PrefixInfo {
     return detect_sign_and_base(input).iBase != 10;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Converts a string to a signed integer of type T with detailed error information.
@@ -241,8 +234,8 @@ struct PrefixInfo {
  * @return True if the conversion was successful, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-template<concepts::SignedInteger T>
-[[nodiscard]] bool string_to_signed(std::string_view input, T& output) noexcept
+template <concepts::SignedInteger T>
+[[nodiscard]] bool string_to_signed(std::string_view input, T &output) noexcept
 {
     std::string_view trimmed = internal::trim(input);
     if (trimmed.empty()) {
@@ -264,7 +257,7 @@ template<concepts::SignedInteger T>
     auto [ptr, ec] = std::from_chars(lit.body.data(), lit.body.data() + lit.body.size(), magnitude, lit.iBase);
 
     if (ec == std::errc() && ptr == lit.body.data() + lit.body.size()) {
-        constexpr UT maxPositive = static_cast<UT>(std::numeric_limits<T>::max());
+        constexpr UT maxPositive  = static_cast<UT>(std::numeric_limits<T>::max());
         constexpr UT maxMagnitude = maxPositive + UT{1}; // abs(numeric_limits<T>::min())
 
         if (lit.bNegative) {
@@ -297,12 +290,11 @@ template<concepts::SignedInteger T>
 }
 
 // Overload for std::string for backward compatibility
-template<concepts::SignedInteger T>
-[[nodiscard]] inline bool string_to_signed(const std::string& input, T& output) noexcept
+template <concepts::SignedInteger T>
+[[nodiscard]] inline bool string_to_signed(const std::string &input, T &output) noexcept
 {
     return string_to_signed<T>(std::string_view(input), output);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -318,8 +310,8 @@ template<concepts::SignedInteger T>
  * @return True if the conversion was successful, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-template<concepts::UnsignedInteger T>
-[[nodiscard]] bool string_to_unsigned(std::string_view input, T& output) noexcept
+template <concepts::UnsignedInteger T>
+[[nodiscard]] bool string_to_unsigned(std::string_view input, T &output) noexcept
 {
     std::string_view trimmed = internal::trim(input);
     if (trimmed.empty()) {
@@ -337,9 +329,9 @@ template<concepts::UnsignedInteger T>
         return false;
     }
     const std::string_view view = lit.body;
-    const int              base = lit.iBase;
+    const int base              = lit.iBase;
 
-    auto [ptr, ec] = std::from_chars(view.data(), view.data() + view.size(), output, base);
+    auto [ptr, ec]              = std::from_chars(view.data(), view.data() + view.size(), output, base);
 
     if (ec == std::errc() && ptr == view.data() + view.size()) {
         return true;
@@ -360,12 +352,11 @@ template<concepts::UnsignedInteger T>
 }
 
 // Overload for std::string for backward compatibility
-template<concepts::UnsignedInteger T>
-[[nodiscard]] inline bool string_to_unsigned(const std::string& input, T& output) noexcept
+template <concepts::UnsignedInteger T>
+[[nodiscard]] inline bool string_to_unsigned(const std::string &input, T &output) noexcept
 {
     return string_to_unsigned<T>(std::string_view(input), output);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -383,8 +374,8 @@ template<concepts::UnsignedInteger T>
 
 #if (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION)
 
-template<concepts::FloatingPoint T>
-[[nodiscard]] bool string_to_floating(std::string_view input, T& output) noexcept
+template <concepts::FloatingPoint T>
+[[nodiscard]] bool string_to_floating(std::string_view input, T &output) noexcept
 {
     std::string_view trimmed = internal::trim(input);
     if (trimmed.empty()) {
@@ -407,8 +398,8 @@ template<concepts::FloatingPoint T>
 
 #else
 
-template<concepts::FloatingPoint T>
-[[nodiscard]] bool string_to_floating(std::string_view input, T& output) noexcept
+template <concepts::FloatingPoint T>
+[[nodiscard]] bool string_to_floating(std::string_view input, T &output) noexcept
 {
     std::string_view trimmed = internal::trim(input);
     if (trimmed.empty()) {
@@ -417,7 +408,7 @@ template<concepts::FloatingPoint T>
     }
 
     auto [ptr, ec] = std::from_chars(trimmed.data(), trimmed.data() + trimmed.size(), output);
-    
+
     if (ec == std::errc()) {
         return true;
     }
@@ -436,23 +427,22 @@ template<concepts::FloatingPoint T>
 #endif /* (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION) */
 
 // Overload for std::string for backward compatibility
-template<concepts::FloatingPoint T>
-[[nodiscard]] inline bool string_to_floating(const std::string& input, T& output) noexcept
+template <concepts::FloatingPoint T>
+[[nodiscard]] inline bool string_to_floating(const std::string &input, T &output) noexcept
 {
     return string_to_floating<T>(std::string_view(input), output);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Alternative API: Converts string to value and returns std::optional
- * 
+ *
  * @tparam T Numeric type to convert to
  * @param input The input string to convert
  * @return std::optional<T> containing the value if successful, std::nullopt otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-template<typename T>
+template <typename T>
     requires concepts::SignedInteger<T> || concepts::UnsignedInteger<T> || concepts::FloatingPoint<T>
 [[nodiscard]] std::optional<T> parse(std::string_view input) noexcept
 {
@@ -470,7 +460,6 @@ template<typename T>
     return success ? std::optional<T>(result) : std::nullopt;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Converts a string to an int8_t value.
@@ -479,16 +468,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2int8(std::string_view s, int8_t& out) noexcept
+[[nodiscard]] inline bool str2int8(std::string_view s, int8_t &out) noexcept
 {
     return string_to_signed<int8_t>(s, out);
 }
 
-[[nodiscard]] inline bool str2int8(const std::string& s, int8_t& out) noexcept
+[[nodiscard]] inline bool str2int8(const std::string &s, int8_t &out) noexcept
 {
     return string_to_signed<int8_t>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -498,16 +486,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2int16(std::string_view s, int16_t& out) noexcept
+[[nodiscard]] inline bool str2int16(std::string_view s, int16_t &out) noexcept
 {
     return string_to_signed<int16_t>(s, out);
 }
 
-[[nodiscard]] inline bool str2int16(const std::string& s, int16_t& out) noexcept
+[[nodiscard]] inline bool str2int16(const std::string &s, int16_t &out) noexcept
 {
     return string_to_signed<int16_t>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -517,16 +504,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2int32(std::string_view s, int32_t& out) noexcept
+[[nodiscard]] inline bool str2int32(std::string_view s, int32_t &out) noexcept
 {
     return string_to_signed<int32_t>(s, out);
 }
 
-[[nodiscard]] inline bool str2int32(const std::string& s, int32_t& out) noexcept
+[[nodiscard]] inline bool str2int32(const std::string &s, int32_t &out) noexcept
 {
     return string_to_signed<int32_t>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -536,16 +522,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2int64(std::string_view s, int64_t& out) noexcept
+[[nodiscard]] inline bool str2int64(std::string_view s, int64_t &out) noexcept
 {
     return string_to_signed<int64_t>(s, out);
 }
 
-[[nodiscard]] inline bool str2int64(const std::string& s, int64_t& out) noexcept
+[[nodiscard]] inline bool str2int64(const std::string &s, int64_t &out) noexcept
 {
     return string_to_signed<int64_t>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -555,16 +540,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2ssize_t(std::string_view s, ssize_t& out) noexcept
+[[nodiscard]] inline bool str2ssize_t(std::string_view s, ssize_t &out) noexcept
 {
     return string_to_signed<ssize_t>(s, out);
 }
 
-[[nodiscard]] inline bool str2ssize_t(const std::string& s, ssize_t& out) noexcept
+[[nodiscard]] inline bool str2ssize_t(const std::string &s, ssize_t &out) noexcept
 {
     return string_to_signed<ssize_t>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -574,16 +558,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2uint8(std::string_view s, uint8_t& out) noexcept
+[[nodiscard]] inline bool str2uint8(std::string_view s, uint8_t &out) noexcept
 {
     return string_to_unsigned<uint8_t>(s, out);
 }
 
-[[nodiscard]] inline bool str2uint8(const std::string& s, uint8_t& out) noexcept
+[[nodiscard]] inline bool str2uint8(const std::string &s, uint8_t &out) noexcept
 {
     return string_to_unsigned<uint8_t>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -593,16 +576,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2uint16(std::string_view s, uint16_t& out) noexcept
+[[nodiscard]] inline bool str2uint16(std::string_view s, uint16_t &out) noexcept
 {
     return string_to_unsigned<uint16_t>(s, out);
 }
 
-[[nodiscard]] inline bool str2uint16(const std::string& s, uint16_t& out) noexcept
+[[nodiscard]] inline bool str2uint16(const std::string &s, uint16_t &out) noexcept
 {
     return string_to_unsigned<uint16_t>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -612,16 +594,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2uint32(std::string_view s, uint32_t& out) noexcept
+[[nodiscard]] inline bool str2uint32(std::string_view s, uint32_t &out) noexcept
 {
     return string_to_unsigned<uint32_t>(s, out);
 }
 
-[[nodiscard]] inline bool str2uint32(const std::string& s, uint32_t& out) noexcept
+[[nodiscard]] inline bool str2uint32(const std::string &s, uint32_t &out) noexcept
 {
     return string_to_unsigned<uint32_t>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -631,16 +612,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2uint64(std::string_view s, uint64_t& out) noexcept
+[[nodiscard]] inline bool str2uint64(std::string_view s, uint64_t &out) noexcept
 {
     return string_to_unsigned<uint64_t>(s, out);
 }
 
-[[nodiscard]] inline bool str2uint64(const std::string& s, uint64_t& out) noexcept
+[[nodiscard]] inline bool str2uint64(const std::string &s, uint64_t &out) noexcept
 {
     return string_to_unsigned<uint64_t>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -650,16 +630,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2int(std::string_view s, int& out) noexcept
+[[nodiscard]] inline bool str2int(std::string_view s, int &out) noexcept
 {
     return string_to_signed<int>(s, out);
 }
 
-[[nodiscard]] inline bool str2int(const std::string& s, int& out) noexcept
+[[nodiscard]] inline bool str2int(const std::string &s, int &out) noexcept
 {
     return string_to_signed<int>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -669,16 +648,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2uint(std::string_view s, unsigned int& out) noexcept
+[[nodiscard]] inline bool str2uint(std::string_view s, unsigned int &out) noexcept
 {
     return string_to_unsigned<unsigned int>(s, out);
 }
 
-[[nodiscard]] inline bool str2uint(const std::string& s, unsigned int& out) noexcept
+[[nodiscard]] inline bool str2uint(const std::string &s, unsigned int &out) noexcept
 {
     return string_to_unsigned<unsigned int>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -688,16 +666,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2sizet(std::string_view s, size_t& out) noexcept
+[[nodiscard]] inline bool str2sizet(std::string_view s, size_t &out) noexcept
 {
     return string_to_unsigned<size_t>(s, out);
 }
 
-[[nodiscard]] inline bool str2sizet(const std::string& s, size_t& out) noexcept
+[[nodiscard]] inline bool str2sizet(const std::string &s, size_t &out) noexcept
 {
     return string_to_unsigned<size_t>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -707,16 +684,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2float(std::string_view s, float& out) noexcept
+[[nodiscard]] inline bool str2float(std::string_view s, float &out) noexcept
 {
     return string_to_floating<float>(s, out);
 }
 
-[[nodiscard]] inline bool str2float(const std::string& s, float& out) noexcept
+[[nodiscard]] inline bool str2float(const std::string &s, float &out) noexcept
 {
     return string_to_floating<float>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -726,16 +702,15 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2double(std::string_view s, double& out) noexcept
+[[nodiscard]] inline bool str2double(std::string_view s, double &out) noexcept
 {
     return string_to_floating<double>(s, out);
 }
 
-[[nodiscard]] inline bool str2double(const std::string& s, double& out) noexcept
+[[nodiscard]] inline bool str2double(const std::string &s, double &out) noexcept
 {
     return string_to_floating<double>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -745,44 +720,43 @@ template<typename T>
  * @return True if conversion succeeds, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2long_double(std::string_view s, long double& out) noexcept
+[[nodiscard]] inline bool str2long_double(std::string_view s, long double &out) noexcept
 {
     return string_to_floating<long double>(s, out);
 }
 
-[[nodiscard]] inline bool str2long_double(const std::string& s, long double& out) noexcept
+[[nodiscard]] inline bool str2long_double(const std::string &s, long double &out) noexcept
 {
     return string_to_floating<long double>(s, out);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Convert ASCII character to hexadecimal value.
- * 
+ *
  * @param c ASCII character ('0'-'9', 'a'-'f', 'A'-'F')
  * @return uint16_t value (0-15) or 0xFFFF if invalid
  */
 /*--------------------------------------------------------------------------------------------------------*/
 [[nodiscard]] constexpr uint16_t ascii2val(char c) noexcept
 {
-    if (c >= '0' && c <= '9')
+    if (c >= '0' && c <= '9') {
         return static_cast<uint16_t>(c - '0');
-    else if (c >= 'a' && c <= 'f')
+    } else if (c >= 'a' && c <= 'f') {
         return static_cast<uint16_t>(c - 'a' + 10);
-    else if (c >= 'A' && c <= 'F')
+    } else if (c >= 'A' && c <= 'F') {
         return static_cast<uint16_t>(c - 'A' + 10);
+    }
 
     return 0xFFFF;
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Compare two spans for equality up to a given count.
- * 
+ *
  * More flexible than the original vector-only version, works with any contiguous containers.
- * 
+ *
  * @tparam T Element type
  * @param a First span to compare
  * @param b Second span to compare
@@ -790,29 +764,28 @@ template<typename T>
  * @return true if equal, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-template<typename T>
+template <typename T>
 [[nodiscard]] bool compareSpans(std::span<const T> a, std::span<const T> b, size_t count) noexcept
 {
     if (a.size() < count || b.size() < count) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Span size less than compare size"));
         return false;
     }
-    
+
     return std::equal(a.begin(), a.begin() + count, b.begin());
 }
 
 // Backward compatibility: vector version
-template<typename T>
-[[nodiscard]] inline bool compareVectors(const std::vector<T>& a, const std::vector<T>& b, size_t count) noexcept
+template <typename T>
+[[nodiscard]] inline bool compareVectors(const std::vector<T> &a, const std::vector<T> &b, size_t count) noexcept
 {
     return compareSpans(std::span<const T>(a), std::span<const T>(b), count);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Print binary data as hexadecimal string.
- * 
+ *
  * @param caption Description text to print before the hex data
  * @param dataSpan Span of bytes to print as hex
  */
@@ -821,19 +794,18 @@ inline void printHexData(std::string_view caption, std::span<const uint8_t> data
 {
     std::ostringstream oss;
     oss << std::hex << std::setfill('0');
-    
+
     for (uint8_t byte : dataSpan) {
         oss << std::setw(2) << static_cast<unsigned int>(byte) << ' ';
     }
-    
+
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(std::string(caption)); LOG_STRING(oss.str()));
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Convert C-style array to span.
- * 
+ *
  * @tparam T Element type
  * @tparam N Array size
  * @param buffer Reference to array
@@ -847,16 +819,15 @@ template <typename T, size_t N>
 }
 
 template <typename T>
-[[nodiscard]] constexpr std::span<T> byte2span(T& value) noexcept
+[[nodiscard]] constexpr std::span<T> byte2span(T &value) noexcept
 {
     return std::span<T>(&value, 1);
 }
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Convert byte buffer to uint8_t span.
- * 
+ *
  * @tparam ByteType Type that must be 1 byte in size
  * @tparam N Array size
  * @param buffer Reference to byte array
@@ -867,9 +838,8 @@ template <typename ByteType, size_t N>
 [[nodiscard]] constexpr std::span<uint8_t> buf2span(ByteType (&buffer)[N]) noexcept
 {
     static_assert(sizeof(ByteType) == 1, "Buffer element type must be 1 byte");
-    return std::span<uint8_t>(reinterpret_cast<uint8_t*>(buffer), N);
+    return std::span<uint8_t>(reinterpret_cast<uint8_t *>(buffer), N);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -881,7 +851,7 @@ template <typename ByteType, size_t N>
  * @return std::optional<std::span<uint8_t>> — nullopt if length exceeds bufferSize
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline std::optional<std::span<uint8_t>> buflen2span(uint8_t* buffer, size_t bufferSize, size_t length) noexcept
+[[nodiscard]] inline std::optional<std::span<uint8_t>> buflen2span(uint8_t *buffer, size_t bufferSize, size_t length) noexcept
 {
     if (length > bufferSize) {
         return std::nullopt;
@@ -889,7 +859,7 @@ template <typename ByteType, size_t N>
     return std::span<uint8_t>{buffer, length};
 }
 
-[[nodiscard]] inline std::optional<std::span<const uint8_t>> buflen2span(const uint8_t* buffer, size_t bufferSize, size_t length) noexcept
+[[nodiscard]] inline std::optional<std::span<const uint8_t>> buflen2span(const uint8_t *buffer, size_t bufferSize, size_t length) noexcept
 {
     if (length > bufferSize) {
         return std::nullopt;
@@ -898,13 +868,13 @@ template <typename ByteType, size_t N>
 }
 
 // Non-throwing version
-[[nodiscard]] inline std::span<uint8_t> buflen2span_safe(uint8_t* buffer, size_t bufferSize, size_t length) noexcept
+[[nodiscard]] inline std::span<uint8_t> buflen2span_safe(uint8_t *buffer, size_t bufferSize, size_t length) noexcept
 {
     length = std::min(length, bufferSize);
     return std::span<uint8_t>{buffer, length};
 }
 
-[[nodiscard]] inline std::span<const uint8_t> buflen2span_safe(const uint8_t* buffer, size_t bufferSize, size_t length) noexcept
+[[nodiscard]] inline std::span<const uint8_t> buflen2span_safe(const uint8_t *buffer, size_t bufferSize, size_t length) noexcept
 {
     length = std::min(length, bufferSize);
     return std::span<const uint8_t>{buffer, length};
@@ -916,11 +886,9 @@ template <size_t N>
     static_assert(N > 0, "String must not be empty");
     // N includes '\0', so we subtract 1
     return std::span<const uint8_t>(
-        reinterpret_cast<const uint8_t*>(str),
-        N - 1
-    );
+        reinterpret_cast<const uint8_t *>(str),
+        N - 1);
 }
-
 
 } // namespace numeric
 

@@ -3,32 +3,31 @@
 #include "uLogger.hpp"
 #include "uNumeric.hpp"
 
-#include <errno.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <sys/ioctl.h>
 #include <array>
+#include <errno.h>
+#include <linux/i2c-dev.h> // I2C_SLAVE
 #include <mutex>
 #include <span>
+#include <stddef.h>
+#include <stdint.h>
 #include <stop_token>
 #include <string_view>
+#include <sys/ioctl.h>
 #include <vector>
-#include <linux/i2c-dev.h>   // I2C_SLAVE
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "KI2C_DRV    |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "KI2C_DRV    |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 bool KI2C::is_open() const
 {
@@ -36,16 +35,15 @@ bool KI2C::is_open() const
     return m_iHandle >= 0;
 }
 
-
 // ============================================================================
 // PUBLIC UNIFIED INTERFACE IMPLEMENTATION
 // ============================================================================
 
 KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
-                               std::span<uint8_t> buffer,
-                               const ReadOptions& options,
-                               std::string_view xtra_params,
-                               std::stop_token stop_tok) const
+                                 std::span<uint8_t> buffer,
+                                 const ReadOptions &options,
+                                 std::string_view xtra_params,
+                                 std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     ReadResult result;
@@ -68,84 +66,70 @@ KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
      */
     bool bTransientAddr = false;
 
-    if (!xtra_params.empty())
-    {
+    if (!xtra_params.empty()) {
         uint8_t u8Override = 0;
 
-        if (numeric::str2uint8(xtra_params, u8Override))
-        {
-            if (u8Override != m_u8Addr)
-            {
-                if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(u8Override)) == 0)
-                {
+        if (numeric::str2uint8(xtra_params, u8Override)) {
+            if (u8Override != m_u8Addr) {
+                if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(u8Override)) == 0) {
                     bTransientAddr = true;
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                               LOG_STRING("tout_read: transient slave address:");
                               LOG_HEX8(u8Override));
-                }
-                else
-                {
+                } else {
                     LOG_PRINT(LOG_WARNING, LOG_HDR;
                               LOG_STRING("tout_read: failed to set transient address, errno:");
                               LOG_INT(errno));
                 }
             }
             // else: override equals the already-bound default — nothing to do.
-        }
-        else
-        {
+        } else {
             LOG_PRINT(LOG_WARNING, LOG_HDR;
                       LOG_STRING("tout_read: xtra_params not a valid I2C address, ignored"));
         }
     }
 
-    switch (options.mode)
-    {
-        case ReadMode::Exact:
-        {
-            size_t bytes_read = 0;
-            result.status         = timeout_read(u32ReadTimeout, buffer, bytes_read, stop_tok);
-            result.bytes_read     = bytes_read;
-            result.found_terminator = false;
-            break;
-        }
+    switch (options.mode) {
+    case ReadMode::Exact: {
+        size_t bytes_read       = 0;
+        result.status           = timeout_read(u32ReadTimeout, buffer, bytes_read, stop_tok);
+        result.bytes_read       = bytes_read;
+        result.found_terminator = false;
+        break;
+    }
 
-        case ReadMode::UntilDelimiter:
-        {
-            size_t bytes_read = 0;
-            result.status         = timeout_read_until(u32ReadTimeout, buffer,
-                                                       options.delimiter, bytes_read, stop_tok);
-            result.bytes_read     = bytes_read;
-            result.found_terminator = (result.status == Status::SUCCESS);
-            break;
-        }
+    case ReadMode::UntilDelimiter: {
+        size_t bytes_read       = 0;
+        result.status           = timeout_read_until(u32ReadTimeout, buffer,
+                                                     options.delimiter, bytes_read, stop_tok);
+        result.bytes_read       = bytes_read;
+        result.found_terminator = (result.status == Status::SUCCESS);
+        break;
+    }
 
-        case ReadMode::UntilToken:
-        {
-            result.status         = timeout_wait_for_token(u32ReadTimeout,
-                                                           options.token,
-                                                           options.use_buffer,
-                                                           stop_tok);
-            result.bytes_read     = 0; // Token search does not fill the user buffer
-            result.found_terminator = (result.status == Status::SUCCESS);
-            break;
-        }
+    case ReadMode::UntilToken: {
+        result.status           = timeout_wait_for_token(u32ReadTimeout,
+                                                         options.token,
+                                                         options.use_buffer,
+                                                         stop_tok);
+        result.bytes_read       = 0; // Token search does not fill the user buffer
+        result.found_terminator = (result.status == Status::SUCCESS);
+        break;
+    }
 
-        default:
-            result.status         = Status::INVALID_PARAM;
-            result.bytes_read     = 0;
-            result.found_terminator = false;
-            break;
+    default:
+        result.status           = Status::INVALID_PARAM;
+        result.bytes_read       = 0;
+        result.found_terminator = false;
+        break;
     }
 
     /* ---------- restore the default slave address --------------------------
      * Errors here are non-fatal and only logged; the read result above is
      * already determined at this point.
      */
-    if (bTransientAddr)
-    {
-        if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(m_u8Addr)) < 0)
-        {
+    if (bTransientAddr) {
+        if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(m_u8Addr)) < 0) {
             LOG_PRINT(LOG_WARNING, LOG_HDR;
                       LOG_STRING("tout_read: failed to restore default address, errno:");
                       LOG_INT(errno));
@@ -157,11 +141,10 @@ KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
     return result;
 }
 
-
 KI2C::WriteResult KI2C::tout_write(uint32_t u32WriteTimeout,
-                                 std::span<const uint8_t> buffer,
-                                 std::string_view xtra_params,
-                                 std::stop_token /*stop_tok*/) const
+                                   std::span<const uint8_t> buffer,
+                                   std::string_view xtra_params,
+                                   std::stop_token /*stop_tok*/) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     WriteResult result;
@@ -170,31 +153,23 @@ KI2C::WriteResult KI2C::tout_write(uint32_t u32WriteTimeout,
     // sufficient here and doesn't need KVCAN's snapshot/restore machinery.
     bool bTransientAddr = false;
 
-    if (!xtra_params.empty())
-    {
+    if (!xtra_params.empty()) {
         uint8_t u8Override = 0;
 
-        if (numeric::str2uint8(xtra_params, u8Override))
-        {
-            if (u8Override != m_u8Addr)
-            {
-                if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(u8Override)) == 0)
-                {
+        if (numeric::str2uint8(xtra_params, u8Override)) {
+            if (u8Override != m_u8Addr) {
+                if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(u8Override)) == 0) {
                     bTransientAddr = true;
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                               LOG_STRING("tout_write: transient slave address:");
                               LOG_HEX8(u8Override));
-                }
-                else
-                {
+                } else {
                     LOG_PRINT(LOG_WARNING, LOG_HDR;
                               LOG_STRING("tout_write: failed to set transient address, errno:");
                               LOG_INT(errno));
                 }
             }
-        }
-        else
-        {
+        } else {
             LOG_PRINT(LOG_WARNING, LOG_HDR;
                       LOG_STRING("tout_write: xtra_params not a valid I2C address, ignored"));
         }
@@ -205,10 +180,8 @@ KI2C::WriteResult KI2C::tout_write(uint32_t u32WriteTimeout,
     result.status        = timeout_write(u32WriteTimeout, buffer, bytes_written);
     result.bytes_written = bytes_written;
 
-    if (bTransientAddr)
-    {
-        if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(m_u8Addr)) < 0)
-        {
+    if (bTransientAddr) {
+        if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(m_u8Addr)) < 0) {
             LOG_PRINT(LOG_WARNING, LOG_HDR;
                       LOG_STRING("tout_write: failed to restore default address, errno:");
                       LOG_INT(errno));
@@ -220,25 +193,23 @@ KI2C::WriteResult KI2C::tout_write(uint32_t u32WriteTimeout,
     return result;
 }
 
-
 // ============================================================================
 // PRIVATE LEGACY IMPLEMENTATION (INTERNAL USE ONLY)
 // ============================================================================
 
 KI2C::Status KI2C::timeout_wait_for_token(uint32_t u32ReadTimeout,
-                                        std::span<const uint8_t> token,
-                                        bool useBuffer,
-                                        std::stop_token stop_tok) const
+                                          std::span<const uint8_t> token,
+                                          bool useBuffer,
+                                          std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
-    if (token.empty() || szTokenLength == 0 || szTokenLength >= KI2C_MAX_BUFLENGTH)
-    {
+    if (token.empty() || szTokenLength == 0 || szTokenLength >= KI2C_MAX_BUFLENGTH) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid token or length"));
         return Status::INVALID_PARAM;
     }
 
-    uint32_t u32Timeout     = (u32ReadTimeout == 0) ? KI2C_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
-    bool     bReturnOnTimeout = (u32ReadTimeout != 0);
+    uint32_t u32Timeout   = (u32ReadTimeout == 0) ? KI2C_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    bool bReturnOnTimeout = (u32ReadTimeout != 0);
 
     std::vector<int> viLps;
     build_kmp_table(token, szTokenLength, viLps);
@@ -246,75 +217,63 @@ KI2C::Status KI2C::timeout_wait_for_token(uint32_t u32ReadTimeout,
     return kmp_stream_match(token, viLps, u32Timeout, bReturnOnTimeout, useBuffer, stop_tok);
 }
 
-
 void KI2C::build_kmp_table(std::span<const uint8_t> pattern,
-                          size_t szLength,
-                          std::vector<int>& viLps) const
+                           size_t szLength,
+                           std::vector<int> &viLps) const
 {
     ukmp::build_kmp_table(pattern, szLength, viLps);
 }
 
-
 KI2C::Status KI2C::kmp_stream_match(std::span<const uint8_t> token,
-                                  const std::vector<int>& viLps,
-                                  uint32_t u32Timeout,
-                                  bool bReturnOnTimeout,
-                                  bool useBuffer,
-                                  std::stop_token stop_tok) const
+                                    const std::vector<int> &viLps,
+                                    uint32_t u32Timeout,
+                                    bool bReturnOnTimeout,
+                                    bool useBuffer,
+                                    std::stop_token stop_tok) const
 {
     return ukmp::kmp_stream_match(
-        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
+        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t &bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
         token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
         /*szChunkBufferSize=*/1, /*szRingBufferSize=*/KI2C_MAX_BUFLENGTH);
 }
 
-
 KI2C::Status KI2C::timeout_read_until(uint32_t u32ReadTimeout,
-                                    std::span<uint8_t> buffer,
-                                    uint8_t cDelimiter,
-                                    size_t& szBytesRead,
-                                    std::stop_token stop_tok) const
+                                      std::span<uint8_t> buffer,
+                                      uint8_t cDelimiter,
+                                      size_t &szBytesRead,
+                                      std::stop_token stop_tok) const
 {
-    if (buffer.size() < 2)
-    {
+    if (buffer.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Buffer too small for delimiter + null terminator"));
         return Status::INVALID_PARAM;
     }
 
-    szBytesRead = 0;
+    szBytesRead          = 0;
     KI2C::Status eResult = Status::RETVAL_NOT_SET;
 
-    while (eResult == Status::RETVAL_NOT_SET)
-    {
+    while (eResult == Status::RETVAL_NOT_SET) {
         const size_t bytesRemaining = buffer.size() - szBytesRead - 1; // reserve for '\0'
-        if (bytesRemaining == 0)
-        {
+        if (bytesRemaining == 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer full before delimiter found"));
             return Status::BUFFER_OVERFLOW;
         }
 
         uint8_t cByte          = 0;
-        size_t  actualBytesRead = 0;
+        size_t actualBytesRead = 0;
 
         KI2C::Status readResult =
             timeout_read(u32ReadTimeout, std::span<uint8_t>(&cByte, 1), actualBytesRead, stop_tok);
 
-        if (readResult == Status::SUCCESS && actualBytesRead > 0)
-        {
-            if (cByte == cDelimiter)
-            {
+        if (readResult == Status::SUCCESS && actualBytesRead > 0) {
+            if (cByte == cDelimiter) {
                 buffer[szBytesRead] = '\0';
                 return Status::SUCCESS;
             }
             buffer[szBytesRead++] = cByte;
-        }
-        else if (readResult == Status::READ_TIMEOUT)
-        {
+        } else if (readResult == Status::READ_TIMEOUT) {
             eResult = (u32ReadTimeout > 0) ? Status::READ_TIMEOUT : Status::PORT_ACCESS;
-        }
-        else
-        {
+        } else {
             eResult = Status::PORT_ACCESS;
         }
     }

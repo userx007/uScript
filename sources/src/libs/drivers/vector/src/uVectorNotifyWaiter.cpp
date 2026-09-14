@@ -1,30 +1,30 @@
 #include "uVectorNotifyWaiter.hpp"
+
 #include "uLogger.hpp"
 
 #if defined(__linux__)
-#  include <sys/eventfd.h>
-#  include <poll.h>
-#  include <cerrno>
-#  include <cstring>
+#include <cerrno>
+#include <cstring>
+#include <poll.h>
+#include <sys/eventfd.h>
 #endif
 
 #ifdef LT_HDR
-#  undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-#  undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "VECTOR_WAIT |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
-
+#define LT_HDR  "VECTOR_WAIT |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 ICommDriver::Status VectorNotifyWaiter::open(XLportHandle port)
 {
     close();
 
     XLhandle handle = {};
-    XLstatus sts = xlSetNotification(port, &handle, 1);
+    XLstatus sts    = xlSetNotification(port, &handle, 1);
     if (sts != XL_SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlSetNotification failed:"); LOG_STRING(xlGetErrorString(sts)));
@@ -36,14 +36,12 @@ ICommDriver::Status VectorNotifyWaiter::open(XLportHandle port)
     return ICommDriver::Status::SUCCESS;
 }
 
-
 void VectorNotifyWaiter::adopt(XLhandle handle)
 {
     close();
     m_handle = handle;
     m_bOpen  = true;
 }
-
 
 VectorNotifyWaiter::WaitResult VectorNotifyWaiter::wait(uint32_t u32TimeoutMs, std::stop_token stop_tok) const
 {
@@ -54,7 +52,7 @@ VectorNotifyWaiter::WaitResult VectorNotifyWaiter::wait(uint32_t u32TimeoutMs, s
 #if defined(_WIN32)
 
     const DWORD dwTimeout = (u32TimeoutMs == 0) ? INFINITE : static_cast<DWORD>(u32TimeoutMs);
-    DWORD dwResult = WaitForSingleObject(m_handle, dwTimeout);
+    DWORD dwResult        = WaitForSingleObject(m_handle, dwTimeout);
 
     if (stop_tok.stop_requested()) {
         // dwResult may be WAIT_OBJECT_0 because of our own forceWake() rather
@@ -76,12 +74,12 @@ VectorNotifyWaiter::WaitResult VectorNotifyWaiter::wait(uint32_t u32TimeoutMs, s
 #elif defined(__linux__)
 
     struct pollfd pfd;
-    pfd.fd     = m_handle;
-    pfd.events = POLLIN;
-    pfd.revents = 0;
+    pfd.fd             = m_handle;
+    pfd.events         = POLLIN;
+    pfd.revents        = 0;
 
     const int iTimeout = (u32TimeoutMs == 0) ? -1 : static_cast<int>(u32TimeoutMs);
-    int iRet = poll(&pfd, 1, iTimeout);
+    int iRet           = poll(&pfd, 1, iTimeout);
 
     if (stop_tok.stop_requested()) {
         return WaitResult::TIMEOUT; // see the Windows branch's comment above - applies identically here
@@ -121,7 +119,6 @@ VectorNotifyWaiter::WaitResult VectorNotifyWaiter::wait(uint32_t u32TimeoutMs, s
 #endif
 }
 
-
 void VectorNotifyWaiter::forceWake() const
 {
     if (!m_bOpen) {
@@ -136,7 +133,6 @@ void VectorNotifyWaiter::forceWake() const
     }
 #endif
 }
-
 
 void VectorNotifyWaiter::close()
 {

@@ -4,11 +4,11 @@
 #include "AUXPin.hpp"
 #include "Hydrabus.hpp"
 
-#include <stddef.h>
 #include <array>
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <stddef.h>
 #include <stop_token>
 #include <string>
 #include <vector>
@@ -26,7 +26,7 @@ class AUXPin;
  * +-----------------+
  * | Ownership model |
  * +-----------------+
- * 
+ *
  * The caller is responsible for constructing both the ICommDriver and the
  * Hydrabus wrapper.  Passing the same Hydrabus instance to multiple Protocol
  * objects simultaneously is not supported — each Protocol instance owns its
@@ -42,7 +42,8 @@ class AUXPin;
  * @endcode
  */
 
-class Protocol {
+class Protocol
+{
 public:
     /**
      * @param hydrabus  Open, BBIO-enabled Hydrabus instance.
@@ -52,16 +53,16 @@ public:
      * @param mode_byte Command byte sent to enter this mode.
      */
     Protocol(std::shared_ptr<Hydrabus> hydrabus,
-             std::string               name,
-             std::string               fname,
-             uint8_t                   mode_byte);
+             std::string name,
+             std::string fname,
+             uint8_t mode_byte);
 
-    virtual ~Protocol() = default;
+    virtual ~Protocol()                   = default;
 
-    Protocol(const Protocol&)            = delete;
-    Protocol& operator=(const Protocol&) = delete;
-    Protocol(Protocol&&)                 = default;
-    Protocol& operator=(Protocol&&)      = default;
+    Protocol(const Protocol &)            = delete;
+    Protocol &operator=(const Protocol &) = delete;
+    Protocol(Protocol &&)                 = default;
+    Protocol &operator=(Protocol &&)      = default;
 
     // -------------------------------------------------------------------------
     // AUX GPIO
@@ -71,8 +72,8 @@ public:
      * @brief Access one of the four AUX GPIO pins by index (0–3).
      * @throws std::out_of_range for index > 3.
      */
-    AUXPin&       aux(size_t index);
-    const AUXPin& aux(size_t index) const;
+    AUXPin &aux(size_t index);
+    const AUXPin &aux(size_t index) const;
 
     // -------------------------------------------------------------------------
     // Utility
@@ -87,33 +88,32 @@ public:
     void close();
 
     /** @brief Direct access to the underlying Hydrabus instance. */
-    std::shared_ptr<Hydrabus>       hydrabus();
+    std::shared_ptr<Hydrabus> hydrabus();
     std::shared_ptr<const Hydrabus> hydrabus() const;
 
 protected:
-
     // -------------------------------------------------------------------------
     // I/O primitives (used by subclasses)
     // -------------------------------------------------------------------------
 
-    bool                  _write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
-    bool                  _write_byte(uint8_t b, std::stop_token stop_tok = {});
-    bool                  _write_u16_be(uint16_t v, std::stop_token stop_tok = {});
-    bool                  _write_u32_be(uint32_t v, std::stop_token stop_tok = {});
-    bool                  _write_u32_le(uint32_t v, std::stop_token stop_tok = {});
+    bool _write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
+    bool _write_byte(uint8_t b, std::stop_token stop_tok = {});
+    bool _write_u16_be(uint16_t v, std::stop_token stop_tok = {});
+    bool _write_u32_be(uint32_t v, std::stop_token stop_tok = {});
+    bool _write_u32_le(uint32_t v, std::stop_token stop_tok = {});
 
-    std::vector<uint8_t>  _read(size_t n, std::stop_token stop_tok = {});
-    std::vector<uint8_t>  _read_with_timeout(size_t n, uint32_t timeout_ms, std::stop_token stop_tok = {});
-    uint8_t               _read_byte(std::stop_token stop_tok = {});
+    std::vector<uint8_t> _read(size_t n, std::stop_token stop_tok = {});
+    std::vector<uint8_t> _read_with_timeout(size_t n, uint32_t timeout_ms, std::stop_token stop_tok = {});
+    uint8_t _read_byte(std::stop_token stop_tok = {});
 
     /**
      * @brief Read one byte and return true if it equals `expected`.
      * Logs an error if the value differs.
      */
-    bool _expect_byte(uint8_t expected, const char* context = nullptr, std::stop_token stop_tok = {});
+    bool _expect_byte(uint8_t expected, const char *context = nullptr, std::stop_token stop_tok = {});
 
     /** @brief Convenience: expect 0x01 (ACK). */
-    bool _ack(const char* context = nullptr, std::stop_token stop_tok = {});
+    bool _ack(const char *context = nullptr, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Mode management
@@ -131,16 +131,15 @@ protected:
      */
     bool _exit();
 
-    std::shared_ptr<Hydrabus>   _hydrabus;
-    std::string                 _name;       ///< e.g. "SPI1"
-    std::string                 _fname;      ///< e.g. "SPI"
-    uint8_t                     _mode_byte;
+    std::shared_ptr<Hydrabus> _hydrabus;
+    std::string _name;  ///< e.g. "SPI1"
+    std::string _fname; ///< e.g. "SPI"
+    uint8_t _mode_byte;
 
 private:
-
-    std::array<AUXPin, 4>       _aux_pins;
+    std::array<AUXPin, 4> _aux_pins;
 };
 
 } // namespace HydraHAL
 
-#endif //HYDRABUS_PROTOCOL_HPP
+#endif // HYDRABUS_PROTOCOL_HPP

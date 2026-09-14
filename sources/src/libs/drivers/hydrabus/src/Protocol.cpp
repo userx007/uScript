@@ -1,4 +1,5 @@
 #include "Protocol.hpp"
+
 #include "AUXPin.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
@@ -11,20 +12,18 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-    #undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-    #undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRA_PROTO |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
+#define LT_HDR  "HYDRA_PROTO |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                         NAMESPACE IMPLEMENTATION                            //
 /////////////////////////////////////////////////////////////////////////////////
-
 
 namespace HydraHAL {
 
@@ -33,18 +32,18 @@ namespace HydraHAL {
 // ---------------------------------------------------------------------------
 
 Protocol::Protocol(std::shared_ptr<Hydrabus> hydrabus,
-                   std::string               name,
-                   std::string               fname,
-                   uint8_t                   mode_byte)
-    : _hydrabus  (std::move(hydrabus))
-    , _name      (std::move(name))
-    , _fname     (std::move(fname))
-    , _mode_byte (mode_byte)
+                   std::string name,
+                   std::string fname,
+                   uint8_t mode_byte)
+    : _hydrabus(std::move(hydrabus))
+    , _name(std::move(name))
+    , _fname(std::move(fname))
+    , _mode_byte(mode_byte)
     // Initialise all 4 AUX pins with their index and a reference to Hydrabus
-    , _aux_pins  { AUXPin{0, _hydrabus},
-                   AUXPin{1, _hydrabus},
-                   AUXPin{2, _hydrabus},
-                   AUXPin{3, _hydrabus} }
+    , _aux_pins{AUXPin{0, _hydrabus},
+                AUXPin{1, _hydrabus},
+                AUXPin{2, _hydrabus},
+                AUXPin{3, _hydrabus}}
 {
     _enter();
     _hydrabus->flush_input();
@@ -54,17 +53,19 @@ Protocol::Protocol(std::shared_ptr<Hydrabus> hydrabus,
 // AUX pins
 // ---------------------------------------------------------------------------
 
-AUXPin& Protocol::aux(size_t index)
+AUXPin &Protocol::aux(size_t index)
 {
-    if (index >= _aux_pins.size())
+    if (index >= _aux_pins.size()) {
         throw std::out_of_range("AUX pin index out of range (0–3)");
+    }
     return _aux_pins[index];
 }
 
-const AUXPin& Protocol::aux(size_t index) const
+const AUXPin &Protocol::aux(size_t index) const
 {
-    if (index >= _aux_pins.size())
+    if (index >= _aux_pins.size()) {
         throw std::out_of_range("AUX pin index out of range (0–3)");
+    }
     return _aux_pins[index];
 }
 
@@ -142,21 +143,17 @@ uint8_t Protocol::_read_byte(std::stop_token stop_tok)
     return resp.empty() ? 0u : resp[0];
 }
 
-bool Protocol::_expect_byte(uint8_t expected, const char* context, std::stop_token stop_tok)
+bool Protocol::_expect_byte(uint8_t expected, const char *context, std::stop_token stop_tok)
 {
     uint8_t got = _read_byte(stop_tok);
     if (got != expected) {
-        LOG_PRINT(LOG_ERROR,
-            LOG_STRING(_fname.c_str());
-            if (context) { LOG_STRING(context); LOG_STRING(":"); }
-            LOG_STRING("expected"); LOG_HEX8(expected);
-            LOG_STRING("got"); LOG_HEX8(got));
+        LOG_PRINT(LOG_ERROR, LOG_STRING(_fname.c_str()); if (context) { LOG_STRING(context); LOG_STRING(":"); } LOG_STRING("expected"); LOG_HEX8(expected); LOG_STRING("got"); LOG_HEX8(got));
         return false;
     }
     return true;
 }
 
-bool Protocol::_ack(const char* context, std::stop_token stop_tok)
+bool Protocol::_ack(const char *context, std::stop_token stop_tok)
 {
     return _expect_byte(0x01, context, stop_tok);
 }

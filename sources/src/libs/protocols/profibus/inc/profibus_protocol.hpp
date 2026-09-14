@@ -58,49 +58,54 @@ class ProfibusProtocol
 public:
     // Start/end delimiters — identical across every open PROFIBUS
     // reference (see e.g. https://www.felser.ch/profibus-manual/telegrammformate.html).
-    static constexpr uint8_t kSD1 = 0x10; // Telegram without data field
-    static constexpr uint8_t kSD2 = 0x68; // Telegram with variable-length data field
-    static constexpr uint8_t kSD3 = 0xA2; // Telegram with fixed 8-byte data field
-    static constexpr uint8_t kSD4 = 0xDC; // Token telegram (3 bytes, no FCS/ED) — not built by this class, see class doc comment
-    static constexpr uint8_t kSC  = 0xE5; // Short acknowledgement (single byte, no other fields)
-    static constexpr uint8_t kED  = 0x16; // End delimiter
+    static constexpr uint8_t kSD1                    = 0x10; // Telegram without data field
+    static constexpr uint8_t kSD2                    = 0x68; // Telegram with variable-length data field
+    static constexpr uint8_t kSD3                    = 0xA2; // Telegram with fixed 8-byte data field
+    static constexpr uint8_t kSD4                    = 0xDC; // Token telegram (3 bytes, no FCS/ED) — not built by this class, see class doc comment
+    static constexpr uint8_t kSC                     = 0xE5; // Short acknowledgement (single byte, no other fields)
+    static constexpr uint8_t kED                     = 0x16; // End delimiter
 
-    static constexpr uint8_t kBroadcastAddress = 127; // FDL broadcast (all slaves), used with SDN
+    static constexpr uint8_t kBroadcastAddress       = 127; // FDL broadcast (all slaves), used with SDN
 
     // FC (Frame Control), REQUEST direction, bits 3-0 — function selector.
     // Combined with the frame-type bit (0x40) and FCB/FCV (see
     // buildRequestFc()) to form the complete byte. Values per the PROFIBUS
     // Manual's function-code table (felser.ch, cited in the class doc
     // comment above).
-    static constexpr uint8_t kFnSdaLow          = 0x03; // Send Data with Acknowledge, low priority
-    static constexpr uint8_t kFnSdnLow          = 0x04; // Send Data with No acknowledge, low priority
-    static constexpr uint8_t kFnSdaHigh         = 0x05;
-    static constexpr uint8_t kFnSdnHigh         = 0x06;
-    static constexpr uint8_t kFnRequestFdlStatus = 0x09;
-    static constexpr uint8_t kFnSrdLow          = 0x0C; // Send and Request Data, low priority
-    static constexpr uint8_t kFnSrdHigh         = 0x0D;
+    static constexpr uint8_t kFnSdaLow               = 0x03; // Send Data with Acknowledge, low priority
+    static constexpr uint8_t kFnSdnLow               = 0x04; // Send Data with No acknowledge, low priority
+    static constexpr uint8_t kFnSdaHigh              = 0x05;
+    static constexpr uint8_t kFnSdnHigh              = 0x06;
+    static constexpr uint8_t kFnRequestFdlStatus     = 0x09;
+    static constexpr uint8_t kFnSrdLow               = 0x0C; // Send and Request Data, low priority
+    static constexpr uint8_t kFnSrdHigh              = 0x0D;
 
     // FC (Frame Control), RESPONSE direction, bits 3-0 — status code.
-    static constexpr uint8_t kRspOk            = 0x00;
-    static constexpr uint8_t kRspUserError     = 0x01;
-    static constexpr uint8_t kRspNoResources   = 0x02;
-    static constexpr uint8_t kRspSapNotEnabled = 0x03;
-    static constexpr uint8_t kRspDataLow       = 0x08; // Normal case for a DP data response
-    static constexpr uint8_t kRspNoResponseData = 0x09;
-    static constexpr uint8_t kRspDataHigh      = 0x0A; // Data ready, diagnostic pending
+    static constexpr uint8_t kRspOk                  = 0x00;
+    static constexpr uint8_t kRspUserError           = 0x01;
+    static constexpr uint8_t kRspNoResources         = 0x02;
+    static constexpr uint8_t kRspSapNotEnabled       = 0x03;
+    static constexpr uint8_t kRspDataLow             = 0x08; // Normal case for a DP data response
+    static constexpr uint8_t kRspNoResponseData      = 0x09;
+    static constexpr uint8_t kRspDataHigh            = 0x0A; // Data ready, diagnostic pending
     static constexpr uint8_t kRspDataNotReceivedLow  = 0x0C;
     static constexpr uint8_t kRspDataNotReceivedHigh = 0x0D;
 
-    enum class TelegramKind : uint8_t { SD1, SD2, SD3, SC, SD4, Malformed };
+    enum class TelegramKind : uint8_t { SD1,
+                                        SD2,
+                                        SD3,
+                                        SC,
+                                        SD4,
+                                        Malformed };
 
     struct DecodedTelegram
     {
         TelegramKind kind = TelegramKind::Malformed;
-        uint8_t da = 0;                 // Destination Address (SD1/SD2/SD3/SD4 only)
-        uint8_t sa = 0;                 // Source Address (SD1/SD2/SD3/SD4 only)
-        uint8_t fc = 0;                 // Frame Control (SD1/SD2/SD3 only)
-        std::vector<uint8_t> du;        // Data Unit / payload (SD2/SD3 only; empty for SD1/SC/SD4)
-        bool fcsOk = false;             // Checksum verified (SD1/SD2/SD3 only; always true for SC/SD4, which carry none)
+        uint8_t da        = 0;   // Destination Address (SD1/SD2/SD3/SD4 only)
+        uint8_t sa        = 0;   // Source Address (SD1/SD2/SD3/SD4 only)
+        uint8_t fc        = 0;   // Frame Control (SD1/SD2/SD3 only)
+        std::vector<uint8_t> du; // Data Unit / payload (SD2/SD3 only; empty for SD1/SC/SD4)
+        bool fcsOk = false;      // Checksum verified (SD1/SD2/SD3 only; always true for SC/SD4, which carry none)
     };
 
     // Decoded meaning of a RESPONSE FC byte (see decodeResponseFc()).
@@ -122,26 +127,29 @@ public:
     // Used for broadcasts (da == kBroadcastAddress, e.g. Global_Control) as
     // well as unicast "don't care about the reply" exchanges. FCB/FCV are
     // always 0 for SDN, per the security-sequence rules (no ack to track).
-    std::vector<uint8_t> buildSdn(uint8_t da, uint8_t sa, const std::vector<uint8_t>& data, bool highPriority = false) const;
+    std::vector<uint8_t> buildSdn(uint8_t da, uint8_t sa, const std::vector<uint8_t> &data, bool highPriority = false) const;
 
     // Send Data with Acknowledge: the responder replies with a bare SC
     // (or, on a malformed/rejected request, nothing — the caller's read
     // will simply time out). Carries the FCB/FCV security sequence, so the
     // per-da FCB state (m_lastFcbForDa) is read and updated here.
-    std::vector<uint8_t> buildSda(uint8_t da, uint8_t sa, const std::vector<uint8_t>& data, bool highPriority = false);
+    std::vector<uint8_t> buildSda(uint8_t da, uint8_t sa, const std::vector<uint8_t> &data, bool highPriority = false);
 
     // Send and Request Data: the FDL service PROFIBUS-DP's own Data_Exchange
     // is built on top of — send data out, get the responder's reply data
     // back in the very same telegram cycle. Also carries the FCB/FCV
     // security sequence.
-    std::vector<uint8_t> buildSrd(uint8_t da, uint8_t sa, const std::vector<uint8_t>& data, bool highPriority = false);
+    std::vector<uint8_t> buildSrd(uint8_t da, uint8_t sa, const std::vector<uint8_t> &data, bool highPriority = false);
 
     // Request FDL Status: SD1, no data. FCB=FCV=0 always (excluded from
     // the security sequence, same as SDN — see the PROFIBUS Manual's
     // "Function code" page, Frame Count Bit section).
     std::vector<uint8_t> buildFdlStatusRequest(uint8_t da, uint8_t sa, bool highPriority = false) const;
 
-    static std::vector<uint8_t> buildShortAck() { return { kSC }; }
+    static std::vector<uint8_t> buildShortAck()
+    {
+        return {kSC};
+    }
 
     // ---- Decoders ----
 
@@ -155,7 +163,7 @@ public:
     // kind == Malformed on any structural problem (bad length, mismatched
     // LE/LEr, wrong end delimiter, ...); fcsOk == false on a checksum
     // mismatch in an otherwise well-formed telegram.
-    static DecodedTelegram decodeTelegram(const std::vector<uint8_t>& raw);
+    static DecodedTelegram decodeTelegram(const std::vector<uint8_t> &raw);
 
     // Decodes a RESPONSE FC byte per the PROFIBUS Manual's function-code
     // table (station type + status). isRequestFrame == true signals the
@@ -164,17 +172,20 @@ public:
 
     // Human-readable label for a decoded response status code, for
     // ProfibusDriver's receive()/monitor output (e.g. "DATA_LOW", "USER_ERROR").
-    static const char* responseStatusName(uint8_t statusCode);
+    static const char *responseStatusName(uint8_t statusCode);
 
     // ---- FCS (Frame Check Sequence) ----
     // Simple 8-bit arithmetic sum (no carry) of DA, SA, FC and DU — NOT a
     // CRC. Per the PROFIBUS Manual's "Checksum" page: SD1 sums DA+SA+FC
     // only (du is expected empty); SD2/SD3 additionally sum every DU byte.
-    static uint8_t computeFcs(uint8_t da, uint8_t sa, uint8_t fc, const std::vector<uint8_t>& du);
+    static uint8_t computeFcs(uint8_t da, uint8_t sa, uint8_t fc, const std::vector<uint8_t> &du);
 
     // Forgets all per-destination FCB state — call when (re)opening the
     // session, mirroring MqttProtocol::resetPacketIdSequence().
-    void resetFcbState() { m_lastFcbForDa.clear(); }
+    void resetFcbState()
+    {
+        m_lastFcbForDa.clear();
+    }
 
 private:
     // FC (Frame Control) for a REQUEST telegram: bit6=1 (request), bit5=FCB,
@@ -197,7 +208,7 @@ private:
     // fixed-length wire format when data.size() == 8; SD1 when data is
     // empty. Shared by buildSdn()/buildSda()/buildSrd() (buildFdlStatusRequest()
     // always uses SD1 directly, since Request FDL Status never carries data).
-    static std::vector<uint8_t> m_BuildDataTelegram(uint8_t da, uint8_t sa, uint8_t fc, const std::vector<uint8_t>& data);
+    static std::vector<uint8_t> m_BuildDataTelegram(uint8_t da, uint8_t sa, uint8_t fc, const std::vector<uint8_t> &data);
 
     // Per-destination-address FCB state for the acknowledged services
     // (SDA/SRD) — see m_NextFcbFcv(). Keyed by DA; absent == "no request

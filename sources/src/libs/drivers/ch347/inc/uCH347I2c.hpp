@@ -41,11 +41,11 @@
  * as non-virtual methods (read_eeprom / write_eeprom).
  */
 
-#include "ch347_compat.h"   // platform-unified CH347 API + CH347_HANDLE
 #include "ICommDriver.hpp"
+#include "ch347_compat.h" // platform-unified CH347 API + CH347_HANDLE
 
-#include <string>
 #include <span>
+#include <string>
 
 // ---------------------------------------------------------------------------
 // I2C bus speed presets
@@ -76,8 +76,9 @@ enum class I2cSpeed : int {
  *
  * @note Prefer using tout_read_i2c() which accepts this struct directly.
  */
-struct I2cReadOptions {
-    uint8_t  devAddr  = 0x00; /**< 7-bit I2C device address (un-shifted) */
+struct I2cReadOptions
+{
+    uint8_t devAddr   = 0x00; /**< 7-bit I2C device address (un-shifted) */
     uint16_t writeLen = 0;    /**< Bytes at the front of buffer to write before reading */
 };
 
@@ -96,7 +97,7 @@ public:
     // Construction / destruction
     // -----------------------------------------------------------------------
 
-    CH347I2C() = default;
+    CH347I2C()                                          = default;
 
     /**
      * @brief Construct and immediately open a CH347 I2C device.
@@ -107,24 +108,27 @@ public:
      *                         describeConnection()), supplied separately from
      *                         strDevice — e.g. "/dev/ch34xpis0" or a friendlier name.
      */
-    explicit CH347I2C(const std::string& strDevice,
-                      I2cSpeed           speed = I2cSpeed::Fast,
-                      const std::string& strIdentityLabel = {})
+    explicit CH347I2C(const std::string &strDevice,
+                      I2cSpeed speed                      = I2cSpeed::Fast,
+                      const std::string &strIdentityLabel = {})
         : m_iHandle(CH347_INVALID_HANDLE)
         , m_strIdentityLabel(strIdentityLabel)
     {
         open(strDevice, speed);
     }
 
-    virtual ~CH347I2C() { close(); }
+    virtual ~CH347I2C()
+    {
+        close();
+    }
 
     // -----------------------------------------------------------------------
     // Lifecycle
     // -----------------------------------------------------------------------
 
-    Status open(const std::string& strDevice, I2cSpeed speed = I2cSpeed::Fast);
+    Status open(const std::string &strDevice, I2cSpeed speed = I2cSpeed::Fast);
     Status close();
-    bool   is_open() const override;
+    bool is_open() const override;
 
     /**
      * @brief Describe this connection for the GUI comm-dump panel.
@@ -137,7 +141,7 @@ public:
     CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
     {
         return commdump_details(CommFamily::I2C,
-                                 m_strIdentityLabel.empty() ? "CH347 I2C" : m_strIdentityLabel);
+                                m_strIdentityLabel.empty() ? "CH347 I2C" : m_strIdentityLabel);
     }
 
     // -----------------------------------------------------------------------
@@ -203,11 +207,10 @@ public:
      * @note ReadMode::UntilDelimiter / UntilToken → { Status::NotSupported, 0, false }
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t>  buffer,
-                         const ReadOptions& options,
+                         std::span<uint8_t> buffer,
+                         const ReadOptions &options,
                          std::string_view xtra_params = {},
-                         std::stop_token stop_tok = {}) const override;
-
+                         std::stop_token stop_tok     = {}) const override;
 
     /**
      * @brief Pure-write I2C transaction.
@@ -222,8 +225,7 @@ public:
     WriteResult tout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
                            std::string_view xtra_params = {},
-                           std::stop_token stop_tok = {}) const override;
-
+                           std::stop_token stop_tok     = {}) const override;
 
     // -----------------------------------------------------------------------
     // Extended helpers (I2C-specific, not part of ICommDriver)
@@ -237,9 +239,9 @@ public:
      * @param retAck     If non-null, receives the number of ACKs seen
      * @return ReadResult { status, readBytesReceived, false }
      */
-    ReadResult tout_read_i2c(std::span<uint8_t>      buffer,
-                             const I2cReadOptions&   opts,
-                             int*                    retAck = nullptr) const;
+    ReadResult tout_read_i2c(std::span<uint8_t> buffer,
+                             const I2cReadOptions &opts,
+                             int *retAck = nullptr) const;
 
     // -----------------------------------------------------------------------
     // EEPROM helpers
@@ -253,9 +255,9 @@ public:
      * @param buffer      Destination buffer; reads buffer.size() bytes
      * @return Status
      */
-    Status read_eeprom(EEPROM_TYPE         eepromType,
-                       int                 iAddr,
-                       std::span<uint8_t>  buffer) const;
+    Status read_eeprom(EEPROM_TYPE eepromType,
+                       int iAddr,
+                       std::span<uint8_t> buffer) const;
 
     /**
      * @brief Write bytes to an I2C EEPROM connected to the CH347.
@@ -265,13 +267,13 @@ public:
      * @param buffer      Source data; writes buffer.size() bytes
      * @return Status
      */
-    Status write_eeprom(EEPROM_TYPE              eepromType,
-                        int                      iAddr,
+    Status write_eeprom(EEPROM_TYPE eepromType,
+                        int iAddr,
                         std::span<const uint8_t> buffer) const;
 
 private:
     CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
-    std::string  m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
+    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 };
 
 #endif // U_CH347_I2C_DRIVER_H

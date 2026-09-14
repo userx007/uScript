@@ -1,69 +1,78 @@
 #include "uVectorEth.hpp"
+
 #include "uLogger.hpp"
 
-#include <cstring>
-#include <charconv>
 #include <algorithm>
 #include <cctype>
+#include <charconv>
+#include <cstring>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
-#  undef LT_HDR
+#undef LT_HDR
 #endif
 #ifdef LOG_HDR
-#  undef LOG_HDR
+#undef LOG_HDR
 #endif
 
-#define LT_HDR   "VECTORETH_DRV|"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR  "VECTORETH_DRV|"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 namespace {
-    /** Ethernet frames carry EtherType/length fields in network (big-endian) byte
-     *  order; every XL-API host this driver targets (x86-64 Windows and Linux)
-     *  is little-endian, so this swap is unconditional - there is no htons()
-     *  dependency to pull in winsock2.h for. */
-    constexpr uint16_t hostToNetU16(uint16_t v)
-    {
-        return static_cast<uint16_t>((v << 8) | (v >> 8));
-    }
+/** Ethernet frames carry EtherType/length fields in network (big-endian) byte
+ *  order; every XL-API host this driver targets (x86-64 Windows and Linux)
+ *  is little-endian, so this swap is unconditional - there is no htons()
+ *  dependency to pull in winsock2.h for. */
+constexpr uint16_t hostToNetU16(uint16_t v)
+{
+    return static_cast<uint16_t>((v << 8) | (v >> 8));
 }
-
+} // namespace
 
 // ============================================================================
 // MAC ADDRESS HELPERS
 // ============================================================================
 
-bool VectorEth::parseMac(std::string_view sv, MacAddress& out)
+bool VectorEth::parseMac(std::string_view sv, MacAddress &out)
 {
     MacAddress result{};
-    size_t     byteIdx = 0;
-    size_t     pos     = 0;
+    size_t byteIdx = 0;
+    size_t pos     = 0;
 
     while (byteIdx < 6) {
-        if (pos + 2 > sv.size()) return false;
+        if (pos + 2 > sv.size()) {
+            return false;
+        }
 
         auto [ptr, ec] = std::from_chars(sv.data() + pos, sv.data() + pos + 2, result[byteIdx], 16);
-        if (ec != std::errc{} || ptr != sv.data() + pos + 2) return false;
+        if (ec != std::errc{} || ptr != sv.data() + pos + 2) {
+            return false;
+        }
 
         pos += 2;
         ++byteIdx;
 
-        if (byteIdx == 6) break;
-        if (pos >= sv.size() || (sv[pos] != ':' && sv[pos] != '-')) return false;
+        if (byteIdx == 6) {
+            break;
+        }
+        if (pos >= sv.size() || (sv[pos] != ':' && sv[pos] != '-')) {
+            return false;
+        }
         ++pos;
     }
 
-    if (pos != sv.size()) return false;
+    if (pos != sv.size()) {
+        return false;
+    }
 
     out = result;
     return true;
 }
 
-
-std::string VectorEth::formatMac(const MacAddress& mac)
+std::string VectorEth::formatMac(const MacAddress &mac)
 {
     char buf[18];
     std::snprintf(buf, sizeof(buf), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -71,19 +80,20 @@ std::string VectorEth::formatMac(const MacAddress& mac)
     return buf;
 }
 
-
-void VectorEth::resolveDest(std::string_view xtra_params, MacAddress& outMac, uint16_t& outEtherType) const
+void VectorEth::resolveDest(std::string_view xtra_params, MacAddress &outMac, uint16_t &outEtherType) const
 {
     outMac       = m_defaultDestMac;
     outEtherType = m_u16DefaultEtherType;
 
-    if (xtra_params.empty()) return;
+    if (xtra_params.empty()) {
+        return;
+    }
 
-    const auto slashPos = xtra_params.find('/');
+    const auto slashPos             = xtra_params.find('/');
     const std::string_view macPart  = xtra_params.substr(0, slashPos);
     const std::string_view typePart = (slashPos == std::string_view::npos)
-                                       ? std::string_view{}
-                                       : xtra_params.substr(slashPos + 1);
+                                          ? std::string_view{}
+                                          : xtra_params.substr(slashPos + 1);
 
     if (!macPart.empty()) {
         MacAddress mac;
@@ -97,11 +107,11 @@ void VectorEth::resolveDest(std::string_view xtra_params, MacAddress& outMac, ui
     }
 
     if (!typePart.empty()) {
-        uint32_t u32Type = 0;
-        int base = 10;
+        uint32_t u32Type    = 0;
+        int base            = 10;
         std::string_view sv = typePart;
         if (sv.size() > 2 && sv[0] == '0' && (sv[1] == 'x' || sv[1] == 'X')) {
-            sv = sv.substr(2);
+            sv   = sv.substr(2);
             base = 16;
         }
         auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), u32Type, base);
@@ -115,22 +125,28 @@ void VectorEth::resolveDest(std::string_view xtra_params, MacAddress& outMac, ui
     }
 }
 
-
 // ============================================================================
 // STATIC HELPERS
 // ============================================================================
 
 ICommDriver::Status VectorEth::mapXlError(XLstatus sts)
 {
-    if (sts == XL_SUCCESS)             return Status::SUCCESS;
-    if (sts == XL_ERR_QUEUE_IS_EMPTY)  return Status::READ_TIMEOUT;
-    if (sts == XL_ERR_INVALID_ACCESS)  return Status::PORT_ACCESS;
-    if (sts == XL_ERR_PORT_IS_OFFLINE) return Status::PORT_ACCESS;
+    if (sts == XL_SUCCESS) {
+        return Status::SUCCESS;
+    }
+    if (sts == XL_ERR_QUEUE_IS_EMPTY) {
+        return Status::READ_TIMEOUT;
+    }
+    if (sts == XL_ERR_INVALID_ACCESS) {
+        return Status::PORT_ACCESS;
+    }
+    if (sts == XL_ERR_PORT_IS_OFFLINE) {
+        return Status::PORT_ACCESS;
+    }
     return Status::READ_ERROR;
 }
 
-
-void VectorEth::dumpFrame(CommDir dir, const MacAddress& peerMac, uint16_t u16EtherType, std::span<const uint8_t> data) const
+void VectorEth::dumpFrame(CommDir dir, const MacAddress &peerMac, uint16_t u16EtherType, std::span<const uint8_t> data) const
 {
     if (!gui_mode_active()) {
         return;
@@ -141,11 +157,10 @@ void VectorEth::dumpFrame(CommDir dir, const MacAddress& peerMac, uint16_t u16Et
                   (dir == CommDir::Tx) ? "dst" : "src",
                   formatMac(peerMac).c_str(), u16EtherType);
     gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::NET, label),
-                          dir, data.data(), static_cast<uint32_t>(data.size()));
+                         dir, data.data(), static_cast<uint32_t>(data.size()));
 }
 
-
-bool VectorEth::frameMatchesFilter(const VectorEthRxFrame& frame) const
+bool VectorEth::frameMatchesFilter(const VectorEthRxFrame &frame) const
 {
     if (m_rxFilterSrcMac.has_value() && frame.srcMac != m_rxFilterSrcMac.value()) {
         return false;
@@ -156,25 +171,35 @@ bool VectorEth::frameMatchesFilter(const VectorEthRxFrame& frame) const
     return true;
 }
 
-
-std::vector<Vector::ChannelInfo> VectorEth::matchChannels(const Vector::DeviceSelector& sel)
+std::vector<Vector::ChannelInfo> VectorEth::matchChannels(const Vector::DeviceSelector &sel)
 {
     std::vector<Vector::ChannelInfo> vResult;
 
-    for (auto& info : Vector::enumerateChannels()) {
-        if (!info.bSupportsEthernet) continue;
-        if (sel.i32HwType >= 0 && info.u32HwType != static_cast<uint32_t>(sel.i32HwType)) continue;
-        if (sel.u32SerialNumber != 0 && info.u32SerialNumber != sel.u32SerialNumber) continue;
-        if (!sel.strChannelName.empty() && info.strName != sel.strChannelName) continue;
-        if (sel.i32HwIndex >= 0 && info.u32HwIndex != static_cast<uint32_t>(sel.i32HwIndex)) continue;
-        if (sel.i32HwChannel >= 0 && info.u32HwChannel != static_cast<uint32_t>(sel.i32HwChannel)) continue;
+    for (auto &info : Vector::enumerateChannels()) {
+        if (!info.bSupportsEthernet) {
+            continue;
+        }
+        if (sel.i32HwType >= 0 && info.u32HwType != static_cast<uint32_t>(sel.i32HwType)) {
+            continue;
+        }
+        if (sel.u32SerialNumber != 0 && info.u32SerialNumber != sel.u32SerialNumber) {
+            continue;
+        }
+        if (!sel.strChannelName.empty() && info.strName != sel.strChannelName) {
+            continue;
+        }
+        if (sel.i32HwIndex >= 0 && info.u32HwIndex != static_cast<uint32_t>(sel.i32HwIndex)) {
+            continue;
+        }
+        if (sel.i32HwChannel >= 0 && info.u32HwChannel != static_cast<uint32_t>(sel.i32HwChannel)) {
+            continue;
+        }
 
         vResult.push_back(std::move(info));
     }
 
     return vResult;
 }
-
 
 // ============================================================================
 // LIFECYCLE
@@ -193,10 +218,10 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
 #if defined(_WIN32)
 
     XLportHandle portHandle = XL_INVALID_PORTHANDLE;
-    XLaccess     permissionMask = accessMask;
+    XLaccess permissionMask = accessMask;
 
-    XLstatus sts = xlOpenPort(&portHandle, const_cast<char*>("VectorEth"), accessMask, &permissionMask,
-                              VECTOR_ETH_RX_QUEUE_SIZE, XL_INTERFACE_VERSION_V4, XL_BUS_TYPE_ETHERNET);
+    XLstatus sts            = xlOpenPort(&portHandle, const_cast<char *>("VectorEth"), accessMask, &permissionMask,
+                                         VECTOR_ETH_RX_QUEUE_SIZE, XL_INTERFACE_VERSION_V4, XL_BUS_TYPE_ETHERNET);
     if (sts != XL_SUCCESS || portHandle == XL_INVALID_PORTHANDLE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlOpenPort failed:"); LOG_STRING(xlGetErrorString(sts)));
@@ -214,7 +239,7 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
         cfg.mdiMode   = m_phyConfig.u32MdiMode;
         cfg.brPairs   = m_phyConfig.u32BrPairs;
 
-        sts = xlEthSetConfig(portHandle, accessMask, 0, &cfg);
+        sts           = xlEthSetConfig(portHandle, accessMask, 0, &cfg);
         if (sts != XL_SUCCESS) {
             // Non-fatal: some Ethernet channels (e.g. plain RJ-45-only boards)
             // reject settings that only make sense for BroadR-Reach and
@@ -279,8 +304,8 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
     }
 
     XLnetworkHandle netHandle = 0;
-    XLstatus sts = xlNetEthOpenNetwork(strNetName.c_str(), &netHandle, "VectorEth",
-                                       XL_ACCESS_TYPE_RELIABLE, VECTOR_ETH_NET_QUEUE_BYTES);
+    XLstatus sts              = xlNetEthOpenNetwork(strNetName.c_str(), &netHandle, "VectorEth",
+                                                    XL_ACCESS_TYPE_RELIABLE, VECTOR_ETH_NET_QUEUE_BYTES);
     if (sts != XL_SUCCESS || netHandle == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlNetEthOpenNetwork failed:"); LOG_STRING(xlGetErrorString(sts));
@@ -289,7 +314,7 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
     }
 
     XLethPortHandle ethPortHandle = 0;
-    sts = xlNetConnectMeasurementPoint(netHandle, strMpName.c_str(), &ethPortHandle, /*rxHandle=*/0);
+    sts                           = xlNetConnectMeasurementPoint(netHandle, strMpName.c_str(), &ethPortHandle, /*rxHandle=*/0);
     if (sts != XL_SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlNetConnectMeasurementPoint failed:"); LOG_STRING(xlGetErrorString(sts));
@@ -299,7 +324,7 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
     }
 
     XLhandle waitHandle = {};
-    sts = xlNetSetNotification(netHandle, &waitHandle, 1);
+    sts                 = xlNetSetNotification(netHandle, &waitHandle, 1);
     if (sts != XL_SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlNetSetNotification failed:"); LOG_STRING(xlGetErrorString(sts)));
@@ -336,11 +361,10 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
 #endif
 }
 
-
 #if defined(__linux__)
 ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelIndex,
-                                                         std::string& outMeasurementPointName,
-                                                         std::string& outNetworkName) const
+                                                         std::string &outMeasurementPointName,
+                                                         std::string &outNetworkName) const
 {
     // Self-contained driver-config query, same pattern (and same underlying
     // XL-API interface) Vector::enumerateChannels() uses on Linux - see that
@@ -355,7 +379,7 @@ ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelInd
     std::memset(&configIface, 0, sizeof(configIface));
 
     XLstatus sts = xlCreateDriverConfig(XL_IDRIVER_CONFIG_VERSION_1,
-                                        reinterpret_cast<struct XLIDriverConfig*>(&configIface));
+                                        reinterpret_cast<struct XLIDriverConfig *>(&configIface));
     if (sts != XL_SUCCESS || configIface.fctGetMeasurementPointConfig == nullptr ||
         configIface.fctGetNetworkConfig == nullptr) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -375,9 +399,9 @@ ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelInd
         return Status::PORT_ACCESS;
     }
 
-    const XLmeasurementpointDrvConfigV1* pFound = nullptr;
+    const XLmeasurementpointDrvConfigV1 *pFound = nullptr;
     for (unsigned int i = 0; i < mpList.count; ++i) {
-        const auto& mp = mpList.item[i];
+        const auto &mp = mpList.item[i];
         if (mp.channel != nullptr && mp.channel->channelIndex == channelIndex) {
             pFound = &mp;
             break;
@@ -394,7 +418,7 @@ ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelInd
         return Status::PORT_ACCESS;
     }
 
-    outMeasurementPointName = (pFound->measurementPointName != nullptr) ? pFound->measurementPointName : "";
+    outMeasurementPointName       = (pFound->measurementPointName != nullptr) ? pFound->measurementPointName : "";
     const unsigned int networkIdx = pFound->networkIdx;
 
     XLnetworkDrvConfigListV1 netList;
@@ -409,8 +433,8 @@ ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelInd
         return Status::PORT_ACCESS;
     }
 
-    const auto& net = netList.item[networkIdx];
-    outNetworkName = (net.networkName != nullptr) ? net.networkName : "";
+    const auto &net = netList.item[networkIdx];
+    outNetworkName  = (net.networkName != nullptr) ? net.networkName : "";
 
     if (net.statusCode != 0) {
         LOG_PRINT(LOG_WARNING, LOG_HDR;
@@ -430,8 +454,7 @@ ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelInd
 }
 #endif
 
-
-ICommDriver::Status VectorEth::open(const std::string& strAppName, uint32_t u32AppChannel)
+ICommDriver::Status VectorEth::open(const std::string &strAppName, uint32_t u32AppChannel)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -477,7 +500,7 @@ ICommDriver::Status VectorEth::open(const std::string& strAppName, uint32_t u32A
     }
     XLaccess accessMask = static_cast<XLaccess>(1) << channelIndex;
 
-    Status openSts = m_OpenWithMask_locked(accessMask);
+    Status openSts      = m_OpenWithMask_locked(accessMask);
     if (openSts != Status::SUCCESS) {
         VectorDriverHandle::Release();
         return openSts;
@@ -490,8 +513,7 @@ ICommDriver::Status VectorEth::open(const std::string& strAppName, uint32_t u32A
     return Status::SUCCESS;
 }
 
-
-ICommDriver::Status VectorEth::openDirect(const Vector::DeviceSelector& sel)
+ICommDriver::Status VectorEth::openDirect(const Vector::DeviceSelector &sel)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -516,7 +538,7 @@ ICommDriver::Status VectorEth::openDirect(const Vector::DeviceSelector& sel)
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("openDirect: selector is ambiguous,"); LOG_UINT32(static_cast<uint32_t>(vMatches.size()));
                   LOG_STRING("channels matched - narrow it with hwidx=/hwch=/serial="));
-        for (const auto& info : vMatches) {
+        for (const auto &info : vMatches) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("  candidate:"); LOG_STRING(info.strName.c_str());
                       LOG_STRING(info.strHwType.c_str());
@@ -527,9 +549,9 @@ ICommDriver::Status VectorEth::openDirect(const Vector::DeviceSelector& sel)
         return Status::INVALID_PARAM;
     }
 
-    const Vector::ChannelInfo& matched = vMatches.front();
+    const Vector::ChannelInfo &matched = vMatches.front();
 
-    Status s = VectorDriverHandle::Acquire();
+    Status s                           = VectorDriverHandle::Acquire();
     if (s != Status::SUCCESS) {
         return s;
     }
@@ -547,7 +569,6 @@ ICommDriver::Status VectorEth::openDirect(const Vector::DeviceSelector& sel)
 
     return Status::SUCCESS;
 }
-
 
 ICommDriver::Status VectorEth::close()
 {
@@ -567,12 +588,11 @@ ICommDriver::Status VectorEth::close()
 #endif
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VectorEth channel closed"));
         m_notifyWaiter.close();
-        m_bOpen        = false;
+        m_bOpen = false;
         VectorDriverHandle::Release();
     }
     return Status::SUCCESS;
 }
-
 
 bool VectorEth::is_open() const
 {
@@ -580,12 +600,11 @@ bool VectorEth::is_open() const
     return m_bOpen;
 }
 
-
 // ============================================================================
 // FRAME-LEVEL PRIMITIVES
 // ============================================================================
 
-ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame& out, std::stop_token stop_tok) const
+ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame &out, std::stop_token stop_tok) const
 {
     std::stop_callback onStop(stop_tok, [this]() {
         m_notifyWaiter.forceWake();
@@ -600,17 +619,17 @@ ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame
 
         T_XL_ETH_EVENT evt;
         std::memset(&evt, 0, sizeof(evt));
-        evt.size = sizeof(evt);
+        evt.size     = sizeof(evt);
 
         XLstatus sts = xlEthReceive(m_xlPort, &evt);
 
         if (sts == XL_SUCCESS) {
             if (evt.tag == XL_ETH_EVENT_TAG_FRAMERX) {
-                const auto& rx = evt.tagData.frameRxOk;
+                const auto &rx = evt.tagData.frameRxOk;
 
-                out.u16Len = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
+                out.u16Len     = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
                 std::memcpy(out.destMac.data(), rx.destMAC, out.destMac.size());
-                std::memcpy(out.srcMac.data(),  rx.sourceMAC, out.srcMac.size());
+                std::memcpy(out.srcMac.data(), rx.sourceMAC, out.srcMac.size());
                 out.u16EtherType = hostToNetU16(rx.frameData.ethFrame.etherType); // network -> host order
                 std::memcpy(out.data.data(), rx.frameData.ethFrame.payload, out.u16Len);
                 return Status::SUCCESS;
@@ -631,10 +650,10 @@ ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame
 
         T_XL_NET_ETH_EVENT evt;
         std::memset(&evt, 0, sizeof(evt));
-        evt.size = sizeof(evt);
+        evt.size                   = sizeof(evt);
 
         unsigned int rxHandleCount = 1;
-        XLrxHandle   rxHandleBuf[1] = {0};
+        XLrxHandle rxHandleBuf[1]  = {0};
 
         // pRxHandleCount/pRxHandle: undocumented beyond "[IN/OUT] Number of RX
         // handles in list" / "[OUT] RX handle list" in the header - this driver
@@ -642,15 +661,15 @@ ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame
         // xlNetConnectMeasurementPoint() above), so the values placed here are
         // never actually consulted; only whether the call itself succeeds and
         // what tag the returned event carries matters below.
-        XLstatus sts = xlNetEthReceive(m_netHandle, &evt, &rxHandleCount, rxHandleBuf);
+        XLstatus sts               = xlNetEthReceive(m_netHandle, &evt, &rxHandleCount, rxHandleBuf);
 
         if (sts == XL_SUCCESS) {
             if (evt.tag == XL_ETH_EVENT_TAG_FRAMERX_MEASUREMENT) {
-                const auto& rx = evt.tagData.frameMeasureRx;
+                const auto &rx = evt.tagData.frameMeasureRx;
 
-                out.u16Len = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
+                out.u16Len     = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
                 std::memcpy(out.destMac.data(), rx.destMAC, out.destMac.size());
-                std::memcpy(out.srcMac.data(),  rx.sourceMAC, out.srcMac.size());
+                std::memcpy(out.srcMac.data(), rx.sourceMAC, out.srcMac.size());
                 out.u16EtherType = hostToNetU16(rx.frameData.ethFrame.etherType); // network -> host order
                 std::memcpy(out.data.data(), rx.frameData.ethFrame.payload, out.u16Len);
                 return Status::SUCCESS;
@@ -685,8 +704,7 @@ ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame
     }
 }
 
-
-ICommDriver::Status VectorEth::sendFrame(const MacAddress& destMac, uint16_t u16EtherType, std::span<const uint8_t> data) const
+ICommDriver::Status VectorEth::sendFrame(const MacAddress &destMac, uint16_t u16EtherType, std::span<const uint8_t> data) const
 {
     if (data.size() > VECTOR_ETH_MAX_PAYLOAD) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -698,7 +716,7 @@ ICommDriver::Status VectorEth::sendFrame(const MacAddress& destMac, uint16_t u16
     std::memset(&tx, 0, sizeof(tx));
     tx.frameIdentifier = ++m_u32TxFrameId;
     tx.flags           = 0; // never XL_ETH_DATAFRAME_FLAGS_USE_SOURCE_MAC - hardware fills the source MAC
-    tx.dataLen          = static_cast<unsigned short>(data.size());
+    tx.dataLen         = static_cast<unsigned short>(data.size());
     std::memcpy(tx.destMAC, destMac.data(), destMac.size());
     tx.frameData.ethFrame.etherType = hostToNetU16(u16EtherType); // host -> network order
     std::memcpy(tx.frameData.ethFrame.payload, data.data(), data.size());
@@ -720,18 +738,17 @@ ICommDriver::Status VectorEth::sendFrame(const MacAddress& destMac, uint16_t u16
     return Status::SUCCESS;
 }
 
-
 // ============================================================================
 // READ-MODE IMPLEMENTATIONS (identical structure to uVector.cpp)
 // ============================================================================
 
-void VectorEth::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int>& viLps)
+void VectorEth::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &viLps)
 {
     const size_t n = pattern.size();
     viLps.assign(n, 0);
     int len = 0;
 
-    for (size_t i = 1; i < n; ) {
+    for (size_t i = 1; i < n;) {
         if (pattern[i] == pattern[len]) {
             viLps[i++] = ++len;
         } else if (len != 0) {
@@ -742,19 +759,22 @@ void VectorEth::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int>
     }
 }
 
-
-ICommDriver::Status VectorEth::readExact(uint32_t           u32TimeoutMs,
+ICommDriver::Status VectorEth::readExact(uint32_t u32TimeoutMs,
                                          std::span<uint8_t> buffer,
-                                         size_t&            szBytesRead,
-                                         std::stop_token    stop_tok) const
+                                         size_t &szBytesRead,
+                                         std::stop_token stop_tok) const
 {
     szBytesRead = 0;
     VectorEthRxFrame frame;
 
     while (szBytesRead < buffer.size()) {
         Status s = recvFrame(u32TimeoutMs, frame, stop_tok);
-        if (s != Status::SUCCESS) return s;
-        if (!frameMatchesFilter(frame)) continue;
+        if (s != Status::SUCCESS) {
+            return s;
+        }
+        if (!frameMatchesFilter(frame)) {
+            continue;
+        }
 
         dumpFrame(CommDir::Rx, frame.srcMac, frame.u16EtherType,
                   std::span<const uint8_t>(frame.data.data(), frame.u16Len));
@@ -767,12 +787,11 @@ ICommDriver::Status VectorEth::readExact(uint32_t           u32TimeoutMs,
     return Status::SUCCESS;
 }
 
-
-ICommDriver::Status VectorEth::readUntilDelimiter(uint32_t           u32TimeoutMs,
-                                                   std::span<uint8_t> buffer,
-                                                   uint8_t            cDelimiter,
-                                                   size_t&            szBytesRead,
-                                                   std::stop_token    stop_tok) const
+ICommDriver::Status VectorEth::readUntilDelimiter(uint32_t u32TimeoutMs,
+                                                  std::span<uint8_t> buffer,
+                                                  uint8_t cDelimiter,
+                                                  size_t &szBytesRead,
+                                                  std::stop_token stop_tok) const
 {
     if (buffer.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("readUntilDelimiter: buffer too small"));
@@ -784,8 +803,12 @@ ICommDriver::Status VectorEth::readUntilDelimiter(uint32_t           u32TimeoutM
 
     while (true) {
         Status s = recvFrame(u32TimeoutMs, frame, stop_tok);
-        if (s != Status::SUCCESS) return s;
-        if (!frameMatchesFilter(frame)) continue;
+        if (s != Status::SUCCESS) {
+            return s;
+        }
+        if (!frameMatchesFilter(frame)) {
+            continue;
+        }
 
         dumpFrame(CommDir::Rx, frame.srcMac, frame.u16EtherType,
                   std::span<const uint8_t>(frame.data.data(), frame.u16Len));
@@ -807,10 +830,9 @@ ICommDriver::Status VectorEth::readUntilDelimiter(uint32_t           u32TimeoutM
     }
 }
 
-
-ICommDriver::Status VectorEth::readUntilToken(uint32_t                 u32TimeoutMs,
+ICommDriver::Status VectorEth::readUntilToken(uint32_t u32TimeoutMs,
                                               std::span<const uint8_t> token,
-                                              std::stop_token          stop_tok) const
+                                              std::stop_token stop_tok) const
 {
     if (token.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("readUntilToken: empty token"));
@@ -821,12 +843,16 @@ ICommDriver::Status VectorEth::readUntilToken(uint32_t                 u32Timeou
     buildKmpTable(token, viLps);
 
     VectorEthRxFrame frame;
-    size_t           szMatched = 0;
+    size_t szMatched = 0;
 
     while (true) {
         Status s = recvFrame(u32TimeoutMs, frame, stop_tok);
-        if (s != Status::SUCCESS) return s;
-        if (!frameMatchesFilter(frame)) continue;
+        if (s != Status::SUCCESS) {
+            return s;
+        }
+        if (!frameMatchesFilter(frame)) {
+            continue;
+        }
 
         dumpFrame(CommDir::Rx, frame.srcMac, frame.u16EtherType,
                   std::span<const uint8_t>(frame.data.data(), frame.u16Len));
@@ -847,16 +873,15 @@ ICommDriver::Status VectorEth::readUntilToken(uint32_t                 u32Timeou
     }
 }
 
-
 // ============================================================================
 // PUBLIC UNIFIED INTERFACE
 // ============================================================================
 
-ICommDriver::ReadResult VectorEth::tout_read(uint32_t           u32ReadTimeout,
+ICommDriver::ReadResult VectorEth::tout_read(uint32_t u32ReadTimeout,
                                              std::span<uint8_t> buffer,
-                                             const ReadOptions& options,
-                                             std::string_view   /*xtra_params*/,
-                                             std::stop_token    stop_tok) const
+                                             const ReadOptions &options,
+                                             std::string_view /*xtra_params*/,
+                                             std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -870,43 +895,42 @@ ICommDriver::ReadResult VectorEth::tout_read(uint32_t           u32ReadTimeout,
 
     switch (options.mode) {
 
-        case ReadMode::Exact: {
-            size_t bytesRead = 0;
-            result.status           = readExact(u32ReadTimeout, buffer, bytesRead, stop_tok);
-            result.bytes_read       = bytesRead;
-            result.found_terminator = false;
-            break;
-        }
+    case ReadMode::Exact: {
+        size_t bytesRead        = 0;
+        result.status           = readExact(u32ReadTimeout, buffer, bytesRead, stop_tok);
+        result.bytes_read       = bytesRead;
+        result.found_terminator = false;
+        break;
+    }
 
-        case ReadMode::UntilDelimiter: {
-            size_t bytesRead = 0;
-            result.status           = readUntilDelimiter(u32ReadTimeout, buffer, options.delimiter, bytesRead, stop_tok);
-            result.bytes_read       = bytesRead;
-            result.found_terminator = (result.status == Status::SUCCESS);
-            break;
-        }
+    case ReadMode::UntilDelimiter: {
+        size_t bytesRead        = 0;
+        result.status           = readUntilDelimiter(u32ReadTimeout, buffer, options.delimiter, bytesRead, stop_tok);
+        result.bytes_read       = bytesRead;
+        result.found_terminator = (result.status == Status::SUCCESS);
+        break;
+    }
 
-        case ReadMode::UntilToken: {
-            result.status           = readUntilToken(u32ReadTimeout, options.token, stop_tok);
-            result.bytes_read       = 0;
-            result.found_terminator = (result.status == Status::SUCCESS);
-            break;
-        }
+    case ReadMode::UntilToken: {
+        result.status           = readUntilToken(u32ReadTimeout, options.token, stop_tok);
+        result.bytes_read       = 0;
+        result.found_terminator = (result.status == Status::SUCCESS);
+        break;
+    }
 
-        default:
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: unknown ReadMode"));
-            result.status = Status::INVALID_PARAM;
-            break;
+    default:
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: unknown ReadMode"));
+        result.status = Status::INVALID_PARAM;
+        break;
     }
 
     return result;
 }
 
-
-ICommDriver::WriteResult VectorEth::tout_write(uint32_t                 u32WriteTimeout,
+ICommDriver::WriteResult VectorEth::tout_write(uint32_t u32WriteTimeout,
                                                std::span<const uint8_t> buffer,
-                                               std::string_view         xtra_params,
-                                               std::stop_token          /*stop_tok*/) const
+                                               std::string_view xtra_params,
+                                               std::stop_token /*stop_tok*/) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -927,13 +951,13 @@ ICommDriver::WriteResult VectorEth::tout_write(uint32_t                 u32Write
     (void)u32WriteTimeout; // xlEthTransmit is non-blocking; timeout reserved for future use.
 
     MacAddress destMac;
-    uint16_t   etherType;
+    uint16_t etherType;
     resolveDest(xtra_params, destMac, etherType);
 
     size_t offset = 0;
     while (offset < buffer.size()) {
         size_t frameLen = std::min(VECTOR_ETH_MAX_PAYLOAD, buffer.size() - offset);
-        Status s = sendFrame(destMac, etherType, buffer.subspan(offset, frameLen));
+        Status s        = sendFrame(destMac, etherType, buffer.subspan(offset, frameLen));
         if (s != Status::SUCCESS) {
             result.status        = s;
             result.bytes_written = offset;
