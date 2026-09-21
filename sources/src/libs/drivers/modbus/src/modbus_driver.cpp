@@ -14,10 +14,24 @@
 #include <sstream>
 #include <utility>
 
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+#undef LT_HDR
+#endif
 #ifdef LOG_HDR
 #undef LOG_HDR
 #endif
-#define LOG_HDR "MODBUS_DRV  |"
+
+#define LT_HDR  "MODBUS_DRV  |"
+#define LOG_HDR LOG_STRING(LT_HDR)
+
+// ============================================================================
+// PUBLIC INTERFACE IMPLEMENTATION
+// ============================================================================
 
 static constexpr const char *kPluginNameForDump = "MODBUS";
 

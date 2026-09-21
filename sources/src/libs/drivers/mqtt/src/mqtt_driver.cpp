@@ -15,6 +15,10 @@
 #include <poll.h> // TLS path only — mirrors how TCPIP itself bounds plain recv()/send() with poll() first
 #include <utility>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LT_HDR
 #undef LT_HDR
 #endif
@@ -24,6 +28,10 @@
 
 #define LT_HDR  "MQTT_DRV    |"
 #define LOG_HDR LOG_STRING(LT_HDR)
+
+// ============================================================================
+// PUBLIC INTERFACE IMPLEMENTATION
+// ============================================================================
 
 static constexpr uint32_t kAckTimeoutMs                = 5000;
 static constexpr uint32_t kPacketContinuationTimeoutMs = 5000;
