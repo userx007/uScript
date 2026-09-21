@@ -13,6 +13,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LT_HDR
 #undef LT_HDR
 #endif
@@ -20,8 +24,12 @@
 #undef LOG_HDR
 #endif
 
-#define LT_HDR  "ENC28J60_NET_POSIX"
+#define LT_HDR  "ENC28J60_DRV|"
 #define LOG_HDR LOG_STRING(LT_HDR)
+
+// ============================================================================
+// PUBLIC INTERFACE IMPLEMENTATION
+// ============================================================================
 
 Enc28J60Net::Status Enc28J60Net::open(const std::string &ipAddr, uint16_t u16Port)
 {

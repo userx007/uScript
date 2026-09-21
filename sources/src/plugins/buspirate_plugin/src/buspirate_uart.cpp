@@ -16,7 +16,7 @@ http://dangerousprototypes.com/docs/UART_(binary)
 #include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR

@@ -70,23 +70,6 @@ enum class CanFdBrs : uint8_t {
 };
 
 /**
- * @brief Decoded CAN / CAN-FD receive frame.
- *
- * Filled by SLCAN::decode_rx_frame() / SLCAN::receive_frame().
- */
-struct CanFrame
-{
-    bool is_extended = false;       ///< True → 29-bit extended ID
-    bool is_remote   = false;       ///< True → RTR frame
-    bool is_canfd    = false;       ///< True → CAN-FD frame
-    bool brs         = false;       ///< True → BRS enabled (CAN-FD only)
-    uint32_t id      = 0;           ///< CAN ID (11-bit or 29-bit)
-    uint8_t dlc      = 0;           ///< DLC code (0-15 for CAN-FD, 0-8 for CAN)
-    uint8_t len      = 0;           ///< Actual data byte count
-    std::array<uint8_t, 64> data{}; ///< Payload bytes
-};
-
-/**
  * @brief Nominal CAN bit rate presets (S command).
  */
 enum class CanBitrate : uint8_t {
@@ -466,20 +449,6 @@ public:
      * @return true on success
      */
     static bool decode_rx_frame(const uint8_t *line, size_t len, CanFrame &frame);
-
-    /**
-     * @brief Convert a CAN-FD DLC code to actual byte count.
-     * @param dlc  DLC nibble (0x00 – 0x0F)
-     * @return Byte count (0–64)
-     */
-    static uint8_t dlc_to_len(uint8_t dlc);
-
-    /**
-     * @brief Convert a byte count to the nearest valid CAN-FD DLC code.
-     * @param len  Byte count (0–64)
-     * @return DLC nibble
-     */
-    static uint8_t len_to_dlc(uint8_t len);
 
 private:
     // ------------------------------------------------------------------

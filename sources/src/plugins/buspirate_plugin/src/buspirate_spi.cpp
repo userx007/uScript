@@ -19,7 +19,7 @@ http://dangerousprototypes.com/docs/SPI_(binary)
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR

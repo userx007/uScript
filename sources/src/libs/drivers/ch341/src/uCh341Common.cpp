@@ -12,19 +12,11 @@
 #include <string_view>
 #include <vector>
 
-/////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
-/////////////////////////////////////////////////////////////////////////////////
 
-#ifdef LT_HDR
-#undef LT_HDR
-#endif
-#ifdef LOG_HDR
-#undef LOG_HDR
-#endif
 
-#define LT_HDR  "CH341_DRV   |"
-#define LOG_HDR LOG_STRING(LT_HDR)
+// ============================================================================
+// PUBLIC INTERFACE IMPLEMENTATION
+// ============================================================================
 
 bool CH341::is_open() const
 {

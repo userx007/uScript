@@ -6,14 +6,9 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-#pragma comment(lib, "ws2_32.lib")
-
-// Winsock port of uEnc28J60NetPosix.cpp. See uTcpipWindows.cpp's
-// WinsockGuard for the reasoning behind a self-contained, per-translation-
-// unit WSAStartup()/WSACleanup() pair; the same pattern is repeated here
-// (and in uLan8720NetWindows.cpp / uW5500NetWindows.cpp) rather than shared,
-// since these three "*Net" drivers don't otherwise share a translation unit
-// with uTcpip/uUdp.
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
 #undef LT_HDR
@@ -22,8 +17,21 @@
 #undef LOG_HDR
 #endif
 
-#define LT_HDR  "ENC28J60_NET_WIN"
+#define LT_HDR  "ENC28J60_DRV|"
 #define LOG_HDR LOG_STRING(LT_HDR)
+
+// ============================================================================
+// PUBLIC INTERFACE IMPLEMENTATION
+// ============================================================================
+
+#pragma comment(lib, "ws2_32.lib")
+
+// Winsock port of uEnc28J60NetPosix.cpp. See uTcpipWindows.cpp's
+// WinsockGuard for the reasoning behind a self-contained, per-translation-
+// unit WSAStartup()/WSACleanup() pair; the same pattern is repeated here
+// (and in uLan8720NetWindows.cpp / uW5500NetWindows.cpp) rather than shared,
+// since these three "*Net" drivers don't otherwise share a translation unit
+// with uTcpip/uUdp.
 
 namespace {
 class WinsockGuard

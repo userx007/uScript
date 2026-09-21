@@ -10,6 +10,24 @@
 #include <string_view>
 #include <vector>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+#undef LT_HDR
+#endif
+#ifdef LOG_HDR
+#undef LOG_HDR
+#endif
+
+#define LT_HDR  "CH341_DRV   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
+
+// ============================================================================
+// PUBLIC INTERFACE 
+// ============================================================================
+
 /**
  * @brief Userspace wrapper for the CH340/CH341 USB-to-serial kernel driver.
  *

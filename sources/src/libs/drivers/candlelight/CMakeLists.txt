@@ -39,8 +39,5 @@ endif()
 target_link_libraries(${PROJECT_NAME} PUBLIC
     uICommDriver
     uUtils
-    # Reuses SLCAN's public CAN data types and DLC<->length tables
-    # (CanFrame, SLCAN::dlc_to_len/len_to_dlc) — see uCandlelight.hpp's
-    # header comment.
-    uSlcan
+    uCanFrame
 )

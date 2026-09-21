@@ -15,10 +15,24 @@
 #include <sstream>
 #include <utility>
 
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+#undef LT_HDR
+#endif
 #ifdef LOG_HDR
 #undef LOG_HDR
 #endif
-#define LOG_HDR "GRPC_DRV    |"
+
+#define LT_HDR  "GRPC_DRV    |"
+#define LOG_HDR LOG_STRING(LT_HDR)
+
+// ============================================================================
+// PUBLIC INTERFACE IMPLEMENTATION
+// ============================================================================
 
 static constexpr const char *kPluginNameForDump = "GRPC";
 

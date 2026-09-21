@@ -5,28 +5,6 @@
  * @file  uCandlelight.hpp
  * @brief Candlelight (gs_usb) driver — a native-USB CAN adapter protocol.
  *
- * "Candlelight" (a.k.a. "gs_usb", after the Linux kernel driver that speaks
- * it — drivers/net/can/usb/gs_usb.c) is a widely-deployed open protocol for
- * USB CAN/CAN-FD adapters (CANable, canable.io's stock firmware, the
- * candleLight-fw project, Elmue's CANable 2.5 firmware referenced by this
- * plugin's docs, and several commercial CAN-FD dongles). Unlike SLCAN/UCAN
- * (see uSlcan.hpp / uUcan.hpp), it is **not** a byte-stream-over-UART
- * protocol at all: the adapter enumerates as its own USB device (vendor
- * class), configuration is a set of USB *control* transfers, and CAN frames
- * travel over a bulk IN/OUT endpoint pair as fixed binary structures. This
- * driver talks to the device directly via libusb-1.0 (already a dependency
- * of this codebase's ftdi2xx driver — see its third_party/CMakeLists.txt).
- *
- * This is a straight C++/libusb port of the protocol exactly as specified
- * by the gs_usb Linux kernel driver and used by candleLight-fw / CANable's
- * Candlelight firmware (including Elmue's CANable 2.5 fork referenced by
- * this plugin's docs) — struct layouts, enum values and the USB
- * request/response sequence below are not this codebase's invention; see
- * https://github.com/torvalds/linux/blob/master/drivers/net/can/usb/gs_usb.c
- * and https://github.com/candle-usb/candleLight_fw for the canonical
- * reference, and https://github.com/Elmue/CANable-2.5-firmware-Slcan-and-Candlelight
- * for the specific firmware this plugin was written against.
- *
  * USB identification
  * -------------------
  * gs_usb devices are vendor-class (no standard USB class fits "raw CAN
@@ -43,34 +21,6 @@
  * plugin's CONFIG vid=/pid= tokens — since which pair a given adapter
  * actually enumerates under isn't otherwise knowable in advance; check
  * `lsusb`/Device Manager if unsure.
- *
- * Compatibility with Elmue's CANable 2.5 firmware
- * --------------------------------------------------
- * This driver was written against, and targets, the "legacy Geschwister
- * Schneider protocol" mode that
- * https://github.com/Elmue/CANable-2.5-firmware-Slcan-and-Candlelight's own
- * User & Developer Manual documents as staying available on USB interface 0
- * for backward compatibility, alongside that project's own extended
- * "ElmüSoft" protocol (per-frame USB overhead reduction, multi-frame USB
- * "blob" packing, host-side hardware filters, bus-load reporting, and more —
- * none of which this driver speaks; see that project's manual if any of
- * those are needed). Two real interop details this driver accounts for,
- * confirmed against that manual and the upstream Linux kernel gs_usb driver's
- * own history:
- *   - All multi-byte fields are little-endian on the wire, unconditionally —
- *     the HOST_FORMAT byte-order negotiation the original Geschwister
- *     Schneider firmware defined is not honoured by candleLight-derived
- *     firmware (including Elmue's), which always speaks little-endian
- *     regardless of what byte_order value the host sends. This driver still
- *     sends the HOST_FORMAT probe (matching every real host stack's
- *     behaviour) but never relies on the device actually switching modes.
- *   - DEVICE_CONFIG's reply can legitimately be shorter than its full
- *     12-byte definition (reserved1-3 + icount + sw_version + hw_version) —
- *     some firmwares only ever fill the first 8, omitting hw_version. A
- *     short USB control-IN completion is valid USB behaviour, not a transfer
- *     error, and probe() zero-initialises the buffer before reading so a
- *     short reply just leaves hw_version defaulted to 0 (see ctrl_in()'s doc
- *     comment).
  *
  * Protocol sequence
  * ------------------
@@ -103,7 +53,7 @@
  * wire bytes — see those functions' doc comments for the exact byte
  * layout used for each of the four tail shapes.
  *
- * echo_id has a dual role that has no equivalent in SLCAN/UCAN:
+ * echo_id has a dual role
  *   - Host → device (TX): echo_id is a caller-chosen cookie (this driver
  *     uses a simple incrementing counter, wrapping before 0xFFFFFFFF).
  *   - Device → host: the device echoes that same frame back once the
@@ -113,7 +63,7 @@
  *     bits set, i.e. -1 as an unsigned 32-bit value) — there is no host
  *     cookie to echo for a frame the adapter didn't originate.
  *   send_frame() below folds this into the same synchronous, one-call-in
- *   one-call-out shape SLCAN/UCAN's send_frame() has: it writes the frame,
+ *   one-call-out shape: it writes the frame,
  *   then reads bulk-IN packets (silently absorbing any unrelated RX frames
  *   that happen to arrive first, exactly as candleLight's own driver does)
  *   until it either sees the matching TX-complete echo or times out.
@@ -123,24 +73,13 @@
  *
  * No on-device acceptance filtering
  * -----------------------------------
- * Unlike SLCAN/UCAN (one hardware standard + one hardware extended filter
- * slot each), gs_usb has **no filtering USB request at all** — every real
+ * gs_usb has **no filtering USB request at all** — every real
  * gs_usb host stack (the Linux kernel driver included) receives every
  * frame the bus carries and filters in software. This driver follows the
  * same model: there is no set_std_filter()/set_ext_filter() here at all
  * (compare UCAN, which has both). Acceptance filtering, if wanted, belongs
  * one layer up, in CandlelightFrameDriver — see candlelight_frame_driver.hpp.
  *
- * Class shape
- * -----------
- * Loosely mirrors SLCAN's/UCAN's public method surface (same send_frame()/
- * receive_frame()/open_channel()/close_channel() names and Status/CanFrame
- * semantics) so the plugin layer stays structurally close to slcan_plugin/
- * and ucan_plugin/ — but the configuration surface (set_bittiming(),
- * set_mode() taking a GS_CAN_MODE_* flag bitmask, no filter setters at all)
- * necessarily follows gs_usb's own shape rather than SLCAN/UCAN's, since
- * this driver is a faithful implementation of a protocol this codebase
- * doesn't own, not a new design of its own.
  */
 
 #include "ICommDriver.hpp"
@@ -154,11 +93,6 @@
 #include <string>
 #include <string_view>
 #include <vector>
-// Reused as-is — CanFrame describes a CAN frame's content, not how it
-// travels on the wire, so it is exactly as valid for gs_usb's native-USB
-// framing as it is for SLCAN's ASCII lines or UCAN's UART packets. See
-// this file's header comment.
-#include "uSlcan.hpp"
 
 struct CanFrame;
 struct libusb_context;

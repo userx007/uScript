@@ -28,7 +28,7 @@
 #undef LOG_HDR
 #endif
 
-#define LT_HDR  "DDST_DRV    |"
+#define LT_HDR  "DDSTY_DRV   |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================

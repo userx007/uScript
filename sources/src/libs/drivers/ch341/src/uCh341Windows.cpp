@@ -25,19 +25,9 @@
 // same set of non-standard rates CH341SER.SYS's Windows driver documents as
 // supported.
 
-/////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
-/////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-#undef LT_HDR
-#endif
-#ifdef LOG_HDR
-#undef LOG_HDR
-#endif
-
-#define LT_HDR  "CH341_DRV   |"
-#define LOG_HDR LOG_STRING(LT_HDR)
+// ============================================================================
+// PUBLIC INTERFACE IMPLEMENTATION
+// ============================================================================
 
 // Mirrors the Linux <asm/termbits.h> TIOCM_* bit values used by
 // uCh341Linux.cpp's get_modem_lines()/set_dtr_rts(), so callers see the same

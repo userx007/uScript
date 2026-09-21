@@ -2,18 +2,10 @@
  * @file  uCandlelight.cpp
  * @brief Candlelight (gs_usb) driver implementation over libusb-1.0.
  *
- * See uCandlelight.hpp for the protocol reference this implements. This
- * file's structure mirrors uUcan.cpp's/uSlcan.cpp's section-by-section
- * layout (construction → port management → probe → channel config → open/
- * close → diagnostics → frame encode/decode → send_frame/receive_frame →
- * ICommDriver interface), with USB control/bulk transfers standing in for
- * UART reads/writes.
  */
-
+#include "uCanFrame.hpp"
 #include "uCandlelight.hpp"
-
 #include "uLogger.hpp"
-#include "uSlcan.hpp"
 
 #include <algorithm>
 #include <array>
@@ -25,7 +17,7 @@
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -37,6 +29,10 @@
 
 #define LT_HDR  "CANDLE_DRV  |"
 #define LOG_HDR LOG_STRING(LT_HDR)
+
+// ============================================================================
+// PUBLIC INTERFACE IMPLEMENTATION
+// ============================================================================
 
 namespace {
 
@@ -641,7 +637,7 @@ size_t Candlelight::encode_frame(uint32_t echo_id, const CanFrame &frame, std::s
     uint8_t *p = out.data();
     put_u32le(p + 0, echo_id);
     put_u32le(p + 4, can_id);
-    p[8]                  = frame.is_canfd ? SLCAN::len_to_dlc(frame.len) : dataLen; // can_dlc: DLC code for FD, byte count for classic
+    p[8]                  = frame.is_canfd ? ucanframe::len_to_dlc(frame.len) : dataLen; // can_dlc: DLC code for FD, byte count for classic
     p[9]                  = 0;                                                       // channel — single-channel adapters only (see class doc comment)
     p[10]                 = flags;
     p[11]                 = 0; // reserved
@@ -683,7 +679,7 @@ bool Candlelight::decode_frame(const uint8_t *pkt, size_t len, uint32_t &echo_id
     frame.brs         = is_fd && (flags & GS_CAN_FLAG_BRS) != 0;
     frame.id          = frame.is_extended ? (can_id_raw & GS_CAN_EFF_MASK) : (can_id_raw & GS_CAN_SFF_MASK);
     frame.dlc         = can_dlc;
-    frame.len         = is_fd ? SLCAN::dlc_to_len(can_dlc) : std::min<uint8_t>(can_dlc, 8);
+    frame.len         = is_fd ? ucanframe::dlc_to_len(can_dlc) : std::min<uint8_t>(can_dlc, 8);
 
     frame.data.fill(0);
     if (!frame.is_remote) {
@@ -983,3 +979,5 @@ Candlelight::WriteResult Candlelight::tout_write(uint32_t u32WriteTimeout,
     result.bytes_written = (rc == LIBUSB_SUCCESS) ? static_cast<size_t>(transferred) : 0;
     return result;
 }
+
+

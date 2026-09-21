@@ -16,7 +16,7 @@ http://dangerousprototypes.com/docs/Bitbang
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR

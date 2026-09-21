@@ -188,7 +188,7 @@ public:
         , m_u32ReadBufferSize(8U)
     {
 #define CANDLELIGHT_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                              PluginCommandEntry<CandlelightPlugin>{&CandlelightPlugin::m_CANDLELIGHT_##a, CANDLELIGHT_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<CandlelightPlugin>{&CandlelightPlugin::m_CANDLELIGHT_##a, CANDLELIGHT_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
         CANDLELIGHT_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef CANDLELIGHT_PLUGIN_CMD_RECORD
     }

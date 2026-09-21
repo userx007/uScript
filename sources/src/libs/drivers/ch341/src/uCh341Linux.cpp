@@ -33,19 +33,9 @@
 #define BOTHER 0010000
 #endif
 
-/////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
-/////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-#undef LT_HDR
-#endif
-#ifdef LOG_HDR
-#undef LOG_HDR
-#endif
-
-#define LT_HDR  "CH341_DRV   |"
-#define LOG_HDR LOG_STRING(LT_HDR)
+// ============================================================================
+// PUBLIC INTERFACE IMPLEMENTATION
+// ============================================================================
 
 CH341::Status CH341::open(const std::string &strDevice, uint32_t u32Speed)
 {

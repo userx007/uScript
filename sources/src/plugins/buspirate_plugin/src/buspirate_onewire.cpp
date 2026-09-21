@@ -17,7 +17,7 @@ http://dangerousprototypes.com/docs/1-Wire_(binary)
 #include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR

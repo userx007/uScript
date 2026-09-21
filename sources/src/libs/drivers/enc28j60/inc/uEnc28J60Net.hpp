@@ -19,6 +19,10 @@
 #include <sys/socket.h>
 #endif
 
+// ============================================================================
+// PUBLIC INTERFACE
+// ============================================================================
+
 /**
  * @brief Network Driver that communicates with a remote ENC28J60 board.
  *

@@ -19,7 +19,7 @@
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -32,6 +32,10 @@
 #define LT_HDR  "KVCAN_DRV   |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
+// ============================================================================
+// PUBLIC UNIFIED INTERFACE IMPLEMENTATION
+// ============================================================================
+
 bool KVCAN::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -43,10 +47,6 @@ void KVCAN::set_tx_id(uint32_t u32Id)
     std::lock_guard<std::mutex> lock(m_mutex);
     m_u32TxId = u32Id;
 }
-
-// ============================================================================
-// PUBLIC UNIFIED INTERFACE IMPLEMENTATION
-// ============================================================================
 
 KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
                                    std::span<uint8_t> buffer,

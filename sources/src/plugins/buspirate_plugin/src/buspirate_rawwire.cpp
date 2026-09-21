@@ -21,7 +21,7 @@ http://dangerousprototypes.com/docs/Raw-wire_(binary)
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR

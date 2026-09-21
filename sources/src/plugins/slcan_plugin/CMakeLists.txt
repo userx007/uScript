@@ -28,4 +28,5 @@ target_link_libraries( ${PROJECT_NAME}
         uIsoTp
         uJ1939Tp        
         uSlcan
+        uCanFrame
 )

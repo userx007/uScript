@@ -78,6 +78,7 @@
  */
 
 #include "ICommDriver.hpp"
+#include "uCanFrame.hpp"
 #include "uGuiNotify.hpp"
 #include "uNumeric.hpp"
 #include "uSlcan.hpp"

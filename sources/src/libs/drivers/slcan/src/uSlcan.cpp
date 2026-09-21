@@ -45,8 +45,8 @@
  * included, don't implement — errors are push-only events there). Neither
  * is called anywhere in slcan_plugin/.
  */
+#include "uCanFrame.hpp"
 #include "uSlcan.hpp"
-
 #include "uLogger.hpp"
 #include "uUart.hpp"
 
@@ -58,7 +58,7 @@
 #include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -71,46 +71,7 @@
 #define LT_HDR  "SLCAN_DRV   |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
-// ============================================================================
-// DLC ↔ length tables  (CAN-FD ISO 11898-1)
-// ============================================================================
 
-static constexpr std::array<uint8_t, 16> DLC_TO_LEN_TABLE = {
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64};
-
-uint8_t SLCAN::dlc_to_len(uint8_t dlc)
-{
-    if (dlc >= DLC_TO_LEN_TABLE.size()) {
-        return 64;
-    }
-    return DLC_TO_LEN_TABLE[dlc];
-}
-
-uint8_t SLCAN::len_to_dlc(uint8_t len)
-{
-    if (len <= 8) {
-        return len;
-    }
-    if (len <= 12) {
-        return 9;
-    }
-    if (len <= 16) {
-        return 10;
-    }
-    if (len <= 20) {
-        return 11;
-    }
-    if (len <= 24) {
-        return 12;
-    }
-    if (len <= 32) {
-        return 13;
-    }
-    if (len <= 48) {
-        return 14;
-    }
-    return 15;
-}
 
 // ============================================================================
 // Hex helpers
@@ -539,7 +500,7 @@ size_t SLCAN::encode_frame(const CanFrame &frame, std::span<uint8_t> out)
     }
 
     // DLC / length character
-    uint8_t dlc = frame.is_canfd ? len_to_dlc(frame.len) : frame.len;
+    uint8_t dlc = frame.is_canfd ? ucanframe::len_to_dlc(frame.len) : frame.len;
 
     // For CANFD the DLC character is the hex nibble ('0'–'F')
     if (frame.is_canfd) {
@@ -555,7 +516,7 @@ size_t SLCAN::encode_frame(const CanFrame &frame, std::span<uint8_t> out)
 
     // Data bytes (not for remote frames)
     if (!frame.is_remote) {
-        uint8_t data_len = frame.is_canfd ? dlc_to_len(dlc) : frame.len;
+        uint8_t data_len = frame.is_canfd ? ucanframe::dlc_to_len(dlc) : frame.len;
         for (uint8_t i = 0; i < data_len; ++i) {
             p[n++] = static_cast<uint8_t>(nibble_to_hex((frame.data[i] >> 4) & 0x0F));
             p[n++] = static_cast<uint8_t>(nibble_to_hex(frame.data[i] & 0x0F));
@@ -679,7 +640,7 @@ bool SLCAN::decode_rx_frame(const uint8_t *line, size_t len, CanFrame &frame)
         return false;
     }
 
-    uint8_t data_len = is_canfd ? dlc_to_len(dlc_code) : (dlc_code <= 8 ? dlc_code : 8);
+    uint8_t data_len = is_canfd ? ucanframe::dlc_to_len(dlc_code) : (dlc_code <= 8 ? dlc_code : 8);
 
     // Parse data bytes (not for remote frames)
     std::array<uint8_t, 64> data{};

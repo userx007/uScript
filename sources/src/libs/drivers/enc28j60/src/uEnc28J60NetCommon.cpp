@@ -16,6 +16,10 @@
 #include <sys/socket.h>
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LT_HDR
 #undef LT_HDR
 #endif
@@ -23,7 +27,7 @@
 #undef LOG_HDR
 #endif
 
-#define LT_HDR  "ENC28J60_NET |"
+#define LT_HDR  "ENC28J60_DRV|"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 // ============================================================================

@@ -14,4 +14,5 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     uICommDriver
     uUart
     uUtils
+    uCanFrame
 )
