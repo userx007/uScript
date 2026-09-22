@@ -12,19 +12,29 @@
 #include <string_view>
 #include <vector>
 
-// ============================================================================
-// PUBLIC INTERFACE IMPLEMENTATION
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+#undef LT_HDR
+#endif
+#ifdef LOG_HDR
+#undef LOG_HDR
+#endif
+
+#define LT_HDR  "CH341_DRV   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool CH341::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_iHandle >= 0;
 }
-
-// ============================================================================
-// PUBLIC UNIFIED INTERFACE IMPLEMENTATION
-// ============================================================================
 
 CH341::ReadResult CH341::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                    const ReadOptions &options,

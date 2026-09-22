@@ -25,8 +25,12 @@
 #undef LOG_HDR
 #endif
 
-#define LT_HDR  "UDP_DRV_WIN |"
+#define LT_HDR  "UDP_DRV     |"
 #define LOG_HDR LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace {
 

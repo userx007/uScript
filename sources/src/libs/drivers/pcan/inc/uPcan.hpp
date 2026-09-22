@@ -105,7 +105,6 @@
  *      tout_read() or re-lock m_mutex.
  */
 class PCAN : public ICommDriver {
-
     public:
         // ------------------------------------------------------------------ //
         //  Constants                                                           //

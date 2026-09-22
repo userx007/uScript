@@ -16,11 +16,23 @@
 #include <sys/socket.h>
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LT_HDR
 #undef LT_HDR
 #endif
-#define LT_HDR  "LAN8720_NET  |"
+#ifdef LOG_HDR
+#undef LOG_HDR
+#endif
+
+#define LT_HDR  "LAN8720_DRV |"
 #define LOG_HDR LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 // ============================================================================
 // PORTABLE recv()/send() WRAPPERS — see uEnc28J60NetCommon.cpp's identical

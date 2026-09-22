@@ -29,9 +29,9 @@
 #define LT_HDR  "MQTT_DRV    |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
-// ============================================================================
-// PUBLIC INTERFACE IMPLEMENTATION
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 static constexpr uint32_t kAckTimeoutMs                = 5000;
 static constexpr uint32_t kPacketContinuationTimeoutMs = 5000;

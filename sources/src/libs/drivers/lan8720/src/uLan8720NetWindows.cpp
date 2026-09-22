@@ -8,18 +8,23 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-// Winsock port of uLan8720NetPosix.cpp. See uTcpipWindows.cpp's
-// WinsockGuard for the reasoning behind a self-contained, per-translation-
-// unit WSAStartup()/WSACleanup() pair; the same pattern is repeated here
-// (and in uW5500NetWindows.cpp) rather than shared,
-// since these three "*Net" drivers don't otherwise share a translation unit
-// with uTcpip/uUdp.
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
 #undef LT_HDR
 #endif
-#define LT_HDR  "LAN8720_NET_WIN"
+#ifdef LOG_HDR
+#undef LOG_HDR
+#endif
+
+#define LT_HDR  "LAN8720_DRV |"
 #define LOG_HDR LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace {
     class WinsockGuard {

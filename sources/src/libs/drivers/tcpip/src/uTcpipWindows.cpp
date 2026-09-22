@@ -13,6 +13,24 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+#undef LT_HDR
+#endif
+#ifdef LOG_HDR
+#undef LOG_HDR
+#endif
+
+#define LT_HDR  "TCPIP_DRV   |"
+#define LOG_HDR LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
 // ─────────────────────────────────────────────────────────────────────────────
 // This is a straight Winsock port of uTcpipPosix.cpp: same non-blocking
 // connect()+poll()-for-writable pattern, same poll-in-bounded-slices read/
@@ -32,20 +50,6 @@
 // this class and by nativeHandle()'s callers (e.g. MqttDriver's
 // SSL_set_fd(), which itself expects a plain int on every platform).
 // ─────────────────────────────────────────────────────────────────────────────
-
-/////////////////////////////////////////////////////////////////////////////////
-//                            LOG DEFINITIONS                                  //
-/////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-#undef LT_HDR
-#endif
-#ifdef LOG_HDR
-#undef LOG_HDR
-#endif
-
-#define LT_HDR  "TCPIP_DRV   |"
-#define LOG_HDR LOG_STRING(LT_HDR)
 
 namespace {
 

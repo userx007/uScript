@@ -15,7 +15,7 @@ class IGpioDriver {
     public:
         using Status                     = ICommDriver::Status;
 
-        // ── Convenience pin-mask constants ──────────────────────────────────
+        /* Convenience pin-mask constants */
         static constexpr uint8_t PIN_0   = (1u << 0);
         static constexpr uint8_t PIN_1   = (1u << 1);
         static constexpr uint8_t PIN_2   = (1u << 2);

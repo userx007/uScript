@@ -13,11 +13,23 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LT_HDR
 #undef LT_HDR
 #endif
-#define LT_HDR  "LAN8720_NET_POSIX"
+#ifdef LOG_HDR
+#undef LOG_HDR
+#endif
+
+#define LT_HDR  "LAN8720_DRV |"
 #define LOG_HDR LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 Lan8720Net::Status Lan8720Net::open(const std::string &ipAddr, uint16_t u16Port)
 {

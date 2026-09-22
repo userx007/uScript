@@ -234,7 +234,7 @@ namespace numeric {
      */
     /*--------------------------------------------------------------------------------------------------------*/
     template <concepts::SignedInteger T>
-    [[nodiscard]] bool string_to_signed(std::string_view input, T &output) noexcept
+    [[nodiscard]] bool string_to_signed(std::string_view input, T &output, bool bFailOnZero = false) noexcept
     {
         std::string_view trimmed = internal::trim(input);
         if (trimmed.empty()) {
@@ -274,6 +274,12 @@ namespace numeric {
                 }
                 output = static_cast<T>(magnitude);
             }
+
+            if (bFailOnZero && output == T{0}) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Result is zero, which is not allowed:"); LOG_STRING(std::string(input)));
+                return false;
+            }
+
             return true;
         }
 
@@ -290,9 +296,9 @@ namespace numeric {
 
     // Overload for std::string for backward compatibility
     template <concepts::SignedInteger T>
-    [[nodiscard]] inline bool string_to_signed(const std::string &input, T &output) noexcept
+    [[nodiscard]] inline bool string_to_signed(const std::string &input, T &output, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<T>(std::string_view(input), output);
+        return string_to_signed<T>(std::string_view(input), output, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -310,7 +316,7 @@ namespace numeric {
      */
     /*--------------------------------------------------------------------------------------------------------*/
     template <concepts::UnsignedInteger T>
-    [[nodiscard]] bool string_to_unsigned(std::string_view input, T &output) noexcept
+    [[nodiscard]] bool string_to_unsigned(std::string_view input, T &output, bool bFailOnZero = false) noexcept
     {
         std::string_view trimmed = internal::trim(input);
         if (trimmed.empty()) {
@@ -333,6 +339,10 @@ namespace numeric {
         auto [ptr, ec]              = std::from_chars(view.data(), view.data() + view.size(), output, base);
 
         if (ec == std::errc() && ptr == view.data() + view.size()) {
+            if (bFailOnZero && output == T{0}) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Result is zero, which is not allowed:"); LOG_STRING(std::string(input)));
+                return false;
+            }
             return true;
         }
 
@@ -352,9 +362,9 @@ namespace numeric {
 
     // Overload for std::string for backward compatibility
     template <concepts::UnsignedInteger T>
-    [[nodiscard]] inline bool string_to_unsigned(const std::string &input, T &output) noexcept
+    [[nodiscard]] inline bool string_to_unsigned(const std::string &input, T &output, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<T>(std::string_view(input), output);
+        return string_to_unsigned<T>(std::string_view(input), output, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -374,7 +384,7 @@ namespace numeric {
 #if (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION)
 
     template <concepts::FloatingPoint T>
-    [[nodiscard]] bool string_to_floating(std::string_view input, T &output) noexcept
+    [[nodiscard]] bool string_to_floating(std::string_view input, T &output, bool bFailOnZero = false) noexcept
     {
         std::string_view trimmed = internal::trim(input);
         if (trimmed.empty()) {
@@ -392,13 +402,18 @@ namespace numeric {
             return false;
         }
 
+        if (bFailOnZero && output == T{0}) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Result is zero, which is not allowed:"); LOG_STRING(str));
+            return false;
+        }
+
         return true;
     }
 
 #else
 
     template <concepts::FloatingPoint T>
-    [[nodiscard]] bool string_to_floating(std::string_view input, T &output) noexcept
+    [[nodiscard]] bool string_to_floating(std::string_view input, T &output, bool bFailOnZero = false) noexcept
     {
         std::string_view trimmed = internal::trim(input);
         if (trimmed.empty()) {
@@ -409,6 +424,10 @@ namespace numeric {
         auto [ptr, ec] = std::from_chars(trimmed.data(), trimmed.data() + trimmed.size(), output);
 
         if (ec == std::errc()) {
+            if (bFailOnZero && output == T{0}) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Result is zero, which is not allowed:"); LOG_STRING(std::string(input)));
+                return false;
+            }
             return true;
         }
 
@@ -427,9 +446,9 @@ namespace numeric {
 
     // Overload for std::string for backward compatibility
     template <concepts::FloatingPoint T>
-    [[nodiscard]] inline bool string_to_floating(const std::string &input, T &output) noexcept
+    [[nodiscard]] inline bool string_to_floating(const std::string &input, T &output, bool bFailOnZero = false) noexcept
     {
-        return string_to_floating<T>(std::string_view(input), output);
+        return string_to_floating<T>(std::string_view(input), output, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -443,17 +462,17 @@ namespace numeric {
     /*--------------------------------------------------------------------------------------------------------*/
     template <typename T>
         requires concepts::SignedInteger<T> || concepts::UnsignedInteger<T> || concepts::FloatingPoint<T>
-    [[nodiscard]] std::optional<T> parse(std::string_view input) noexcept
+    [[nodiscard]] std::optional<T> parse(std::string_view input, bool bFailOnZero = false) noexcept
     {
         T result{};
         bool success = false;
 
         if constexpr (concepts::SignedInteger<T>) {
-            success = string_to_signed<T>(input, result);
+            success = string_to_signed<T>(input, result, bFailOnZero);
         } else if constexpr (concepts::UnsignedInteger<T>) {
-            success = string_to_unsigned<T>(input, result);
+            success = string_to_unsigned<T>(input, result, bFailOnZero);
         } else if constexpr (concepts::FloatingPoint<T>) {
-            success = string_to_floating<T>(input, result);
+            success = string_to_floating<T>(input, result, bFailOnZero);
         }
 
         return success ? std::optional<T>(result) : std::nullopt;
@@ -467,14 +486,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2int8(std::string_view s, int8_t &out) noexcept
+    [[nodiscard]] inline bool str2int8(std::string_view s, int8_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<int8_t>(s, out);
+        return string_to_signed<int8_t>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2int8(const std::string &s, int8_t &out) noexcept
+    [[nodiscard]] inline bool str2int8(const std::string &s, int8_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<int8_t>(s, out);
+        return string_to_signed<int8_t>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -485,14 +504,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2int16(std::string_view s, int16_t &out) noexcept
+    [[nodiscard]] inline bool str2int16(std::string_view s, int16_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<int16_t>(s, out);
+        return string_to_signed<int16_t>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2int16(const std::string &s, int16_t &out) noexcept
+    [[nodiscard]] inline bool str2int16(const std::string &s, int16_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<int16_t>(s, out);
+        return string_to_signed<int16_t>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -503,14 +522,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2int32(std::string_view s, int32_t &out) noexcept
+    [[nodiscard]] inline bool str2int32(std::string_view s, int32_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<int32_t>(s, out);
+        return string_to_signed<int32_t>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2int32(const std::string &s, int32_t &out) noexcept
+    [[nodiscard]] inline bool str2int32(const std::string &s, int32_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<int32_t>(s, out);
+        return string_to_signed<int32_t>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -521,14 +540,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2int64(std::string_view s, int64_t &out) noexcept
+    [[nodiscard]] inline bool str2int64(std::string_view s, int64_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<int64_t>(s, out);
+        return string_to_signed<int64_t>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2int64(const std::string &s, int64_t &out) noexcept
+    [[nodiscard]] inline bool str2int64(const std::string &s, int64_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<int64_t>(s, out);
+        return string_to_signed<int64_t>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -539,14 +558,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2ssize_t(std::string_view s, ssize_t &out) noexcept
+    [[nodiscard]] inline bool str2ssize_t(std::string_view s, ssize_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<ssize_t>(s, out);
+        return string_to_signed<ssize_t>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2ssize_t(const std::string &s, ssize_t &out) noexcept
+    [[nodiscard]] inline bool str2ssize_t(const std::string &s, ssize_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<ssize_t>(s, out);
+        return string_to_signed<ssize_t>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -557,14 +576,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2uint8(std::string_view s, uint8_t &out) noexcept
+    [[nodiscard]] inline bool str2uint8(std::string_view s, uint8_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<uint8_t>(s, out);
+        return string_to_unsigned<uint8_t>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2uint8(const std::string &s, uint8_t &out) noexcept
+    [[nodiscard]] inline bool str2uint8(const std::string &s, uint8_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<uint8_t>(s, out);
+        return string_to_unsigned<uint8_t>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -575,14 +594,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2uint16(std::string_view s, uint16_t &out) noexcept
+    [[nodiscard]] inline bool str2uint16(std::string_view s, uint16_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<uint16_t>(s, out);
+        return string_to_unsigned<uint16_t>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2uint16(const std::string &s, uint16_t &out) noexcept
+    [[nodiscard]] inline bool str2uint16(const std::string &s, uint16_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<uint16_t>(s, out);
+        return string_to_unsigned<uint16_t>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -593,14 +612,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2uint32(std::string_view s, uint32_t &out) noexcept
+    [[nodiscard]] inline bool str2uint32(std::string_view s, uint32_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<uint32_t>(s, out);
+        return string_to_unsigned<uint32_t>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2uint32(const std::string &s, uint32_t &out) noexcept
+    [[nodiscard]] inline bool str2uint32(const std::string &s, uint32_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<uint32_t>(s, out);
+        return string_to_unsigned<uint32_t>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -611,14 +630,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2uint64(std::string_view s, uint64_t &out) noexcept
+    [[nodiscard]] inline bool str2uint64(std::string_view s, uint64_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<uint64_t>(s, out);
+        return string_to_unsigned<uint64_t>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2uint64(const std::string &s, uint64_t &out) noexcept
+    [[nodiscard]] inline bool str2uint64(const std::string &s, uint64_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<uint64_t>(s, out);
+        return string_to_unsigned<uint64_t>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -629,14 +648,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2int(std::string_view s, int &out) noexcept
+    [[nodiscard]] inline bool str2int(std::string_view s, int &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<int>(s, out);
+        return string_to_signed<int>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2int(const std::string &s, int &out) noexcept
+    [[nodiscard]] inline bool str2int(const std::string &s, int &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_signed<int>(s, out);
+        return string_to_signed<int>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -647,14 +666,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2uint(std::string_view s, unsigned int &out) noexcept
+    [[nodiscard]] inline bool str2uint(std::string_view s, unsigned int &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<unsigned int>(s, out);
+        return string_to_unsigned<unsigned int>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2uint(const std::string &s, unsigned int &out) noexcept
+    [[nodiscard]] inline bool str2uint(const std::string &s, unsigned int &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<unsigned int>(s, out);
+        return string_to_unsigned<unsigned int>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -665,14 +684,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2sizet(std::string_view s, size_t &out) noexcept
+    [[nodiscard]] inline bool str2sizet(std::string_view s, size_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<size_t>(s, out);
+        return string_to_unsigned<size_t>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2sizet(const std::string &s, size_t &out) noexcept
+    [[nodiscard]] inline bool str2sizet(const std::string &s, size_t &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_unsigned<size_t>(s, out);
+        return string_to_unsigned<size_t>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -683,14 +702,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2float(std::string_view s, float &out) noexcept
+    [[nodiscard]] inline bool str2float(std::string_view s, float &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_floating<float>(s, out);
+        return string_to_floating<float>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2float(const std::string &s, float &out) noexcept
+    [[nodiscard]] inline bool str2float(const std::string &s, float &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_floating<float>(s, out);
+        return string_to_floating<float>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -701,14 +720,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2double(std::string_view s, double &out) noexcept
+    [[nodiscard]] inline bool str2double(std::string_view s, double &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_floating<double>(s, out);
+        return string_to_floating<double>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2double(const std::string &s, double &out) noexcept
+    [[nodiscard]] inline bool str2double(const std::string &s, double &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_floating<double>(s, out);
+        return string_to_floating<double>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -719,14 +738,14 @@ namespace numeric {
      * @return True if conversion succeeds, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool str2long_double(std::string_view s, long double &out) noexcept
+    [[nodiscard]] inline bool str2long_double(std::string_view s, long double &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_floating<long double>(s, out);
+        return string_to_floating<long double>(s, out, bFailOnZero);
     }
 
-    [[nodiscard]] inline bool str2long_double(const std::string &s, long double &out) noexcept
+    [[nodiscard]] inline bool str2long_double(const std::string &s, long double &out, bool bFailOnZero = false) noexcept
     {
-        return string_to_floating<long double>(s, out);
+        return string_to_floating<long double>(s, out, bFailOnZero);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/

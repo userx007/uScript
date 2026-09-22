@@ -10,24 +10,6 @@
 #include <string_view>
 #include <vector>
 
-/////////////////////////////////////////////////////////////////////////////////
-//                            LOG DEFINITIONS                                  //
-/////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-#undef LT_HDR
-#endif
-#ifdef LOG_HDR
-#undef LOG_HDR
-#endif
-
-#define LT_HDR  "CH341_DRV   |"
-#define LOG_HDR LOG_STRING(LT_HDR)
-
-// ============================================================================
-// PUBLIC INTERFACE
-// ============================================================================
-
 /**
  * @brief Userspace wrapper for the CH340/CH341 USB-to-serial kernel driver.
  *
@@ -47,13 +29,12 @@
  * consistent and interchangeable behind ICommDriver.
  */
 class CH341 : public ICommDriver {
-
     public:
         static constexpr size_t CH341_MAX_BUFLENGTH           = 256;  /**< Maximum CH341 buffer length. */
         static constexpr uint32_t CH341_READ_DEFAULT_TIMEOUT  = 5000; /**< Default CH341 read timeout in milliseconds. */
         static constexpr uint32_t CH341_WRITE_DEFAULT_TIMEOUT = 5000; /**< Default CH341 write timeout in milliseconds. */
 
-        CH341()                                               = default;
+        CH341() = default;
 
         /**
          * @param strDevice        tty path passed straight to open(), e.g. "/dev/ttyCH341USB0".

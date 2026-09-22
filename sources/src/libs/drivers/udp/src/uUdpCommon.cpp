@@ -25,6 +25,10 @@
 #define LT_HDR  "UDP_DRV     |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
 bool UDP::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);

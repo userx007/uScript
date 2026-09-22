@@ -26,6 +26,10 @@
 #define LT_HDR  "SPI_BRIDGE  |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
 /** hidapi write needs a leading Report-ID byte (0x00 for single-report devices). */
 static constexpr size_t HID_REPORT_ID_SIZE = 1;
 static constexpr size_t HID_WRITE_SIZE     = SPIBridge::SPI_PKT_SIZE + HID_REPORT_ID_SIZE;

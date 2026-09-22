@@ -27,8 +27,10 @@
  */
 class CP2112Gpio : public CP2112Base, public IGpioDriver {
     public:
-        // Both CP2112Base and IGpioDriver introduce a 'Status' name.
-        // Explicitly pull in the one canonical definition to remove ambiguity.
+        /**
+         * Both CP2112Base and IGpioDriver introduce a 'Status' name.
+         * Explicitly pull in the one canonical definition to remove ambiguity.
+         */
         using Status = ICommDriver::Status;
 
         CP2112Gpio() = default;

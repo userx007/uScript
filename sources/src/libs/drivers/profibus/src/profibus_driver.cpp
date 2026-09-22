@@ -26,9 +26,9 @@
 #define LT_HDR  "PROFIBUS_DRV|"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
-// ============================================================================
-// PUBLIC INTERFACE IMPLEMENTATION
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 static constexpr uint32_t kTelegramContinuationTimeoutMs = 100;
 static constexpr const char *kPluginNameForDump          = "PROFIBUS";

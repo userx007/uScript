@@ -26,6 +26,10 @@
 #define LT_HDR  "UART_DRV    |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
 bool UART::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);

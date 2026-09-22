@@ -32,6 +32,10 @@
 #define LT_HDR  "SYSTEC_DRV  |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
 bool SYSTECCAN::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);

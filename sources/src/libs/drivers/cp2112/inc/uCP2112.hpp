@@ -24,8 +24,10 @@
  */
 class CP2112 : public CP2112Base, public ICommDriver {
     public:
-        // Both CP2112Base and ICommDriver introduce a 'Status' name.
-        // Explicitly pull in the one canonical definition to remove ambiguity.
+        /**
+         * Both CP2112Base and IGpioDriver introduce a 'Status' name.
+         * Explicitly pull in the one canonical definition to remove ambiguity.
+         */        
         using Status                                  = ICommDriver::Status;
 
         static constexpr size_t MAX_I2C_WRITE_PAYLOAD = 61u;  ///< Bytes per HID write report

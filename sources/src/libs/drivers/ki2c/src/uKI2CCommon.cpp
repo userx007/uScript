@@ -29,6 +29,10 @@
 #define LT_HDR  "KI2C_DRV    |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
 bool KI2C::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);

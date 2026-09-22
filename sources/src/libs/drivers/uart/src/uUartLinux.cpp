@@ -30,6 +30,10 @@
 #define LT_HDR  "UART_DRV    |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
 UART::Status UART::open(const std::string &strDevice, uint32_t u32Speed,
                         Parity parity, uint8_t u8DataBits, uint8_t u8StopBits)
 {
