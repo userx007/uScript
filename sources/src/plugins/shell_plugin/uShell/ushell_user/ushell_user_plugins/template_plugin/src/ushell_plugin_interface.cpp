@@ -156,61 +156,61 @@ extern "C" {
  */
 #if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)
 
-EXPORTED uShellPluginInterface *uShellPluginEntry(void *pvUserData)
-{
-    pvLocalUserData = pvUserData;
-    return &sShellInstance;
-} /* uShellPluginEntry( void *pvUserData ) */
+    EXPORTED uShellPluginInterface *uShellPluginEntry(void *pvUserData)
+    {
+        pvLocalUserData = pvUserData;
+        return &sShellInstance;
+    } /* uShellPluginEntry( void *pvUserData ) */
 
 #else
 
-EXPORTED uShellPluginInterface *uShellPluginEntry(void)
-{
-    return &sShellInstance;
-} /*uShellPluginEntry() */
+    EXPORTED uShellPluginInterface *uShellPluginEntry(void)
+    {
+        return &sShellInstance;
+    } /*uShellPluginEntry() */
 
 #endif /*(1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)*/
 
-/******************************************************************************/
-/**
- * @brief Plugin exit point - performs cleanup when plugin is unloaded
- * @param ptrPlugin Pointer to the plugin interface being cleaned up
- *
- * This function is called when a plugin is being unloaded or when the shell
- * instance is being destroyed. It provides a hook for resource cleanup.
- */
-EXPORTED void uShellPluginExit(uShellPluginInterface *ptrPlugin)
-{
-    if (!ptrPlugin) {
-        return;
-    }
-
-    /* Reset the bKeepRunning flag to ensure clean shutdown */
-#if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
-    ptrPlugin->bKeepRuning = false;
-#endif
-
-    /* Clear autocomplete index array if present */
-#if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-    if (ptrPlugin->piAutocompleteIndexArray) {
-        for (int i = 0; i < ptrPlugin->iNrFunctions; i++) {
-            ptrPlugin->piAutocompleteIndexArray[i] = 0;
-        }
-    }
-#endif
-
-    /* Clear prompt */
-    if (ptrPlugin->vstrPrompt[0] != '\0') {
-        ptrPlugin->vstrPrompt[0] = '\0';
-        ptrPlugin->iPromptLength = 0;
-    }
-
-    /* Note: We don't free the static arrays (g_vsFuncDefArray, etc.) as they
-     * are statically allocated and will be cleaned up when the program exits.
-     * For dynamically loaded plugins, the OS will reclaim this memory when
-     * the shared library is unloaded.
+    /******************************************************************************/
+    /**
+     * @brief Plugin exit point - performs cleanup when plugin is unloaded
+     * @param ptrPlugin Pointer to the plugin interface being cleaned up
+     *
+     * This function is called when a plugin is being unloaded or when the shell
+     * instance is being destroyed. It provides a hook for resource cleanup.
      */
-} /* uShellPluginExit() */
+    EXPORTED void uShellPluginExit(uShellPluginInterface *ptrPlugin)
+    {
+        if (!ptrPlugin) {
+            return;
+        }
+
+        /* Reset the bKeepRunning flag to ensure clean shutdown */
+#if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
+        ptrPlugin->bKeepRuning = false;
+#endif
+
+        /* Clear autocomplete index array if present */
+#if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
+        if (ptrPlugin->piAutocompleteIndexArray) {
+            for (int i = 0; i < ptrPlugin->iNrFunctions; i++) {
+                ptrPlugin->piAutocompleteIndexArray[i] = 0;
+            }
+        }
+#endif
+
+        /* Clear prompt */
+        if (ptrPlugin->vstrPrompt[0] != '\0') {
+            ptrPlugin->vstrPrompt[0] = '\0';
+            ptrPlugin->iPromptLength = 0;
+        }
+
+        /* Note: We don't free the static arrays (g_vsFuncDefArray, etc.) as they
+         * are statically allocated and will be cleaned up when the program exits.
+         * For dynamically loaded plugins, the OS will reclaim this memory when
+         * the shared library is unloaded.
+         */
+    } /* uShellPluginExit() */
 } /* extern "C" */
 
 /******************************************************************************/

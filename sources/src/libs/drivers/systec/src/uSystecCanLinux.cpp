@@ -360,54 +360,54 @@ SYSTECCAN::Status SYSTECCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
 
 namespace {
 
-std::string sysfs_device_path(const std::string &strIface, const char *pszAttr)
-{
-    return "/sys/class/net/" + strIface + "/device/" + pszAttr;
-}
-
-std::string sysfs_iface_path(const std::string &strIface, const char *pszAttr)
-{
-    return "/sys/class/net/" + strIface + "/" + pszAttr;
-}
-
-/** @brief Read a sysfs attribute file and parse it as an unsigned integer (0=auto base). */
-SYSTECCAN::Status sysfs_read_uint(const std::string &strPath, uint32_t &u32Out)
-{
-    std::ifstream file(strPath);
-    if (!file.is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs read: cannot open"); LOG_STRING(strPath.c_str()));
-        return SYSTECCAN::Status::PORT_ACCESS;
+    std::string sysfs_device_path(const std::string &strIface, const char *pszAttr)
+    {
+        return "/sys/class/net/" + strIface + "/device/" + pszAttr;
     }
 
-    unsigned long ulValue = 0;
-    file >> ulValue;
-    if (file.fail()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs read: malformed value in"); LOG_STRING(strPath.c_str()));
-        return SYSTECCAN::Status::READ_ERROR;
+    std::string sysfs_iface_path(const std::string &strIface, const char *pszAttr)
+    {
+        return "/sys/class/net/" + strIface + "/" + pszAttr;
     }
 
-    u32Out = static_cast<uint32_t>(ulValue);
-    return SYSTECCAN::Status::SUCCESS;
-}
+    /** @brief Read a sysfs attribute file and parse it as an unsigned integer (0=auto base). */
+    SYSTECCAN::Status sysfs_read_uint(const std::string &strPath, uint32_t &u32Out)
+    {
+        std::ifstream file(strPath);
+        if (!file.is_open()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs read: cannot open"); LOG_STRING(strPath.c_str()));
+            return SYSTECCAN::Status::PORT_ACCESS;
+        }
 
-/** @brief Write an unsigned integer (decimal) to a sysfs attribute file. */
-SYSTECCAN::Status sysfs_write_uint(const std::string &strPath, uint32_t u32Value)
-{
-    std::ofstream file(strPath);
-    if (!file.is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs write: cannot open"); LOG_STRING(strPath.c_str()));
-        return SYSTECCAN::Status::PORT_ACCESS;
+        unsigned long ulValue = 0;
+        file >> ulValue;
+        if (file.fail()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs read: malformed value in"); LOG_STRING(strPath.c_str()));
+            return SYSTECCAN::Status::READ_ERROR;
+        }
+
+        u32Out = static_cast<uint32_t>(ulValue);
+        return SYSTECCAN::Status::SUCCESS;
     }
 
-    file << u32Value;
-    file.flush();
-    if (file.fail()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs write: failed for"); LOG_STRING(strPath.c_str()));
-        return SYSTECCAN::Status::WRITE_ERROR;
-    }
+    /** @brief Write an unsigned integer (decimal) to a sysfs attribute file. */
+    SYSTECCAN::Status sysfs_write_uint(const std::string &strPath, uint32_t u32Value)
+    {
+        std::ofstream file(strPath);
+        if (!file.is_open()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs write: cannot open"); LOG_STRING(strPath.c_str()));
+            return SYSTECCAN::Status::PORT_ACCESS;
+        }
 
-    return SYSTECCAN::Status::SUCCESS;
-}
+        file << u32Value;
+        file.flush();
+        if (file.fail()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("sysfs write: failed for"); LOG_STRING(strPath.c_str()));
+            return SYSTECCAN::Status::WRITE_ERROR;
+        }
+
+        return SYSTECCAN::Status::SUCCESS;
+    }
 
 } // anonymous namespace
 

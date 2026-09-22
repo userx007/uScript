@@ -7,20 +7,19 @@
  * @tparam TScriptEntries Type representing script entries/commands
  */
 template <typename TScriptEntries>
-class IScriptInterpreter
-{
-public:
-    virtual ~IScriptInterpreter()                                                = default;
+class IScriptInterpreter {
+    public:
+        virtual ~IScriptInterpreter()                                                = default;
 
-    /**
-     * @brief Interpret and execute a script
-     * @param sScriptEntries Script entries to interpret
-     * @return true if interpretation succeeded, false otherwise
-     */
-    virtual bool interpretScript(TScriptEntries &sScriptEntries, bool bRealExec) = 0;
+        /**
+         * @brief Interpret and execute a script
+         * @param sScriptEntries Script entries to interpret
+         * @return true if interpretation succeeded, false otherwise
+         */
+        virtual bool interpretScript(TScriptEntries &sScriptEntries, bool bRealExec) = 0;
 
-protected:
-    IScriptInterpreter() = default;
+    protected:
+        IScriptInterpreter() = default;
 };
 
 #endif // ISCRIPTINTERPRETER_HPP

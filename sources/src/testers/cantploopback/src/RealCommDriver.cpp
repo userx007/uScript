@@ -14,10 +14,10 @@
 #include <unistd.h>
 
 namespace {
-// Legacy fixed ids kept only so any old caller still spelling out "A2B"/"B2A"
-// keeps working; every other xtra_params value is parsed as a CAN id below.
-constexpr uint32_t kIdA2B_CAN = 0x100;
-constexpr uint32_t kIdB2A_CAN = 0x200;
+    // Legacy fixed ids kept only so any old caller still spelling out "A2B"/"B2A"
+    // keeps working; every other xtra_params value is parsed as a CAN id below.
+    constexpr uint32_t kIdA2B_CAN = 0x100;
+    constexpr uint32_t kIdB2A_CAN = 0x200;
 } // namespace
 
 RealCommDriver::RealCommDriver(const std::string &interfaceName)

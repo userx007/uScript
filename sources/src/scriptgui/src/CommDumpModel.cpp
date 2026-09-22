@@ -18,48 +18,48 @@
 #include <utility>
 
 namespace {
-constexpr quintptr kTopLevelSentinel = static_cast<quintptr>(-1);
+    constexpr quintptr kTopLevelSentinel = static_cast<quintptr>(-1);
 
-QString hexByte(unsigned char b)
-{
-    return QString("%1").arg(b, 2, 16, QChar('0')).toUpper();
-}
+    QString hexByte(unsigned char b)
+    {
+        return QString("%1").arg(b, 2, 16, QChar('0')).toUpper();
+    }
 
-char asciiOrDot(unsigned char b)
-{
-    return (b >= 0x20 && b < 0x7F) ? char(b) : '.';
-}
+    char asciiOrDot(unsigned char b)
+    {
+        return (b >= 0x20 && b < 0x7F) ? char(b) : '.';
+    }
 
-// Appended to a column header's label so double-click-to-cycle columns are
-// visually distinguishable from ordinary ones without needing per-section
-// QSS (QHeaderView styles all sections uniformly; singling one out would
-// need a custom-painted header). A small suffix glyph + a matching
-// Qt::ToolTipRole (see headerData()) is simpler and just as discoverable.
-const QString kDoubleClickMarker = QStringLiteral(" ⟲");
+    // Appended to a column header's label so double-click-to-cycle columns are
+    // visually distinguishable from ordinary ones without needing per-section
+    // QSS (QHeaderView styles all sections uniformly; singling one out would
+    // need a custom-painted header). A small suffix glyph + a matching
+    // Qt::ToolTipRole (see headerData()) is simpler and just as discoverable.
+    const QString kDoubleClickMarker = QStringLiteral(" ⟲");
 
-// Palette for per-plugin colouring of ColPlugin. Chosen to sit alongside the
-// other fixed accent colours already used in this view (Dracula-ish: the
-// Tx/Rx green/blue, the Length orange, the Data yellow, the Ascii cyan) —
-// bright enough to read on the dark tree background without repeating any
-// of those exact hues, so the plugin name doesn't get visually confused with
-// direction/length/data colouring in the same row. Cycles if there are more
-// distinct plugins than colours.
-const QVector<QColor> &pluginColorPalette()
-{
-    static const QVector<QColor> kPalette = {
-        QColor("#ff79c6"), // pink
-        QColor("#bd93f9"), // purple
-        QColor("#ffcb6b"), // amber
-        QColor("#69f0ae"), // mint
-        QColor("#82aaff"), // periwinkle
-        QColor("#ff8b94"), // coral
-        QColor("#c3e88d"), // lime
-        QColor("#f78c6c"), // salmon orange
-        QColor("#89ddff"), // pale cyan
-        QColor("#d0a3ff"), // lavender
-    };
-    return kPalette;
-}
+    // Palette for per-plugin colouring of ColPlugin. Chosen to sit alongside the
+    // other fixed accent colours already used in this view (Dracula-ish: the
+    // Tx/Rx green/blue, the Length orange, the Data yellow, the Ascii cyan) —
+    // bright enough to read on the dark tree background without repeating any
+    // of those exact hues, so the plugin name doesn't get visually confused with
+    // direction/length/data colouring in the same row. Cycles if there are more
+    // distinct plugins than colours.
+    const QVector<QColor> &pluginColorPalette()
+    {
+        static const QVector<QColor> kPalette = {
+            QColor("#ff79c6"), // pink
+            QColor("#bd93f9"), // purple
+            QColor("#ffcb6b"), // amber
+            QColor("#69f0ae"), // mint
+            QColor("#82aaff"), // periwinkle
+            QColor("#ff8b94"), // coral
+            QColor("#c3e88d"), // lime
+            QColor("#f78c6c"), // salmon orange
+            QColor("#89ddff"), // pale cyan
+            QColor("#d0a3ff"), // lavender
+        };
+        return kPalette;
+    }
 } // namespace
 
 // ─────────────────────────────────────────────────────────────────────────────

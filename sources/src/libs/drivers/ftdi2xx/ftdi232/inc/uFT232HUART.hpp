@@ -36,131 +36,129 @@
  *        the MPSSE engine.  The device is opened directly through the D2XX /
  *        libftdi serial interface.
  */
-class FT232HUART : public ICommDriver
-{
-public:
-    using Status                                                = ICommDriver::Status;
+class FT232HUART : public ICommDriver {
+    public:
+        using Status                                                = ICommDriver::Status;
 
-    // ── Timeouts ─────────────────────────────────────────────────────────
-    static constexpr uint32_t FT232H_UART_READ_DEFAULT_TIMEOUT  = 1000u; ///< ms
-    static constexpr uint32_t FT232H_UART_WRITE_DEFAULT_TIMEOUT = 1000u; ///< ms
+        // ── Timeouts ─────────────────────────────────────────────────────────
+        static constexpr uint32_t FT232H_UART_READ_DEFAULT_TIMEOUT  = 1000u; ///< ms
+        static constexpr uint32_t FT232H_UART_WRITE_DEFAULT_TIMEOUT = 1000u; ///< ms
 
-    // ── UART bus configuration ────────────────────────────────────────────
-    /**
-     * @brief Complete UART configuration for the FT232H
-     *
-     * No channel or variant field — the FT232H is a single-interface chip.
-     *
-     * stopBits encoding (mirrors D2XX FT_SetDataCharacteristics):
-     *   0 = 1 stop bit  |  1 = 1.5 stop bits  |  2 = 2 stop bits
-     *
-     * parity encoding:
-     *   0 = none  |  1 = odd  |  2 = even  |  3 = mark  |  4 = space
-     */
-    struct UartConfig
-    {
-        uint32_t baudRate{115200u}; ///< Baud rate in bps
-        uint8_t dataBits{8u};       ///< Data bits (7 or 8)
-        uint8_t stopBits{0u};       ///< 0=1bit 1=1.5bits 2=2bits
-        uint8_t parity{0u};         ///< 0=none 1=odd 2=even 3=mark 4=space
-        bool hwFlowCtrl{false};     ///< true = RTS/CTS hardware flow control
-    };
+        // ── UART bus configuration ────────────────────────────────────────────
+        /**
+         * @brief Complete UART configuration for the FT232H
+         *
+         * No channel or variant field — the FT232H is a single-interface chip.
+         *
+         * stopBits encoding (mirrors D2XX FT_SetDataCharacteristics):
+         *   0 = 1 stop bit  |  1 = 1.5 stop bits  |  2 = 2 stop bits
+         *
+         * parity encoding:
+         *   0 = none  |  1 = odd  |  2 = even  |  3 = mark  |  4 = space
+         */
+        struct UartConfig {
+                uint32_t baudRate{115200u}; ///< Baud rate in bps
+                uint8_t dataBits{8u};       ///< Data bits (7 or 8)
+                uint8_t stopBits{0u};       ///< 0=1bit 1=1.5bits 2=2bits
+                uint8_t parity{0u};         ///< 0=none 1=odd 2=even 3=mark 4=space
+                bool hwFlowCtrl{false};     ///< true = RTS/CTS hardware flow control
+        };
 
-    FT232HUART() = default;
+        FT232HUART() = default;
 
-    /**
-     * @brief Construct and immediately open the device
-     * @param config           Full UART configuration
-     * @param u8DeviceIndex    Zero-based index when multiple FT232H chips are connected
-     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-     *                         describeConnection()), supplied separately.
-     */
-    explicit FT232HUART(const UartConfig &config, uint8_t u8DeviceIndex = 0u,
-                        const std::string &strIdentityLabel = {})
-        : m_strIdentityLabel(strIdentityLabel)
-    {
-        this->open(config, u8DeviceIndex);
-    }
+        /**
+         * @brief Construct and immediately open the device
+         * @param config           Full UART configuration
+         * @param u8DeviceIndex    Zero-based index when multiple FT232H chips are connected
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately.
+         */
+        explicit FT232HUART(const UartConfig &config, uint8_t u8DeviceIndex = 0u,
+                            const std::string &strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
+        {
+            this->open(config, u8DeviceIndex);
+        }
 
-    ~FT232HUART() override
-    {
-        close();
-    }
+        ~FT232HUART() override
+        {
+            close();
+        }
 
-    // Non-copyable
-    FT232HUART(const FT232HUART &)            = delete;
-    FT232HUART &operator=(const FT232HUART &) = delete;
+        // Non-copyable
+        FT232HUART(const FT232HUART &)            = delete;
+        FT232HUART &operator=(const FT232HUART &) = delete;
 
-    /**
-     * @brief Open the FT232H and configure for async UART
-     *
-     * @param config        UART parameters
-     * @param u8DeviceIndex Physical device index (0 = first FT232H found)
-     */
-    Status open(const UartConfig &config, uint8_t u8DeviceIndex = 0u);
+        /**
+         * @brief Open the FT232H and configure for async UART
+         *
+         * @param config        UART parameters
+         * @param u8DeviceIndex Physical device index (0 = first FT232H found)
+         */
+        Status open(const UartConfig &config, uint8_t u8DeviceIndex = 0u);
 
-    /**
-     * @brief Close the device handle (safe to call more than once)
-     */
-    Status close();
+        /**
+         * @brief Close the device handle (safe to call more than once)
+         */
+        Status close();
 
-    bool is_open() const override;
+        bool is_open() const override;
 
-    /**
-     * @brief Describe this connection for the GUI comm-dump panel.
-     * Point-to-point async UART, no addressable peers — xtra_params ignored.
-     */
-    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-    {
-        return commdump_details(CommFamily::SERIAL,
-                                m_strIdentityLabel.empty() ? "FT232H UART" : m_strIdentityLabel);
-    }
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * Point-to-point async UART, no addressable peers — xtra_params ignored.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return commdump_details(CommFamily::SERIAL,
+                                    m_strIdentityLabel.empty() ? "FT232H UART" : m_strIdentityLabel);
+        }
 
-    /**
-     * @brief Reconfigure an already-open device without closing it
-     */
-    Status configure(const UartConfig &config);
+        /**
+         * @brief Reconfigure an already-open device without closing it
+         */
+        Status configure(const UartConfig &config);
 
-    /**
-     * @brief Change baud rate on an already-open device
-     */
-    Status set_baud(uint32_t baudRate);
+        /**
+         * @brief Change baud rate on an already-open device
+         */
+        Status set_baud(uint32_t baudRate);
 
-    /**
-     * @brief Blocking write  (implements ICommDriver)
-     * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
-     */
-    WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {},
-                           std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Blocking write  (implements ICommDriver)
+         * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
+         */
+        WriteResult tout_write(uint32_t u32WriteTimeout,
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok     = {}) const override;
 
-    /**
-     * @brief Blocking read  (implements ICommDriver)
-     *
-     * Supports ReadMode::Exact, UntilDelimiter, and UntilToken.
-     *
-     * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
-     */
-    ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t> buffer,
-                         const ReadOptions &options,
-                         std::string_view xtra_params = {},
-                         std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Blocking read  (implements ICommDriver)
+         *
+         * Supports ReadMode::Exact, UntilDelimiter, and UntilToken.
+         *
+         * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
+         */
+        ReadResult tout_read(uint32_t u32ReadTimeout,
+                             std::span<uint8_t> buffer,
+                             const ReadOptions &options,
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok     = {}) const override;
 
-private:
-    // Platform handle — void* keeps D2XX / libftdi headers out of this header.
-    //   Linux   : struct ftdi_context*
-    //   Windows : FT_HANDLE
-    // nullptr = device not open.
-    void *m_hDevice = nullptr;
+    private:
+        // Platform handle — void* keeps D2XX / libftdi headers out of this header.
+        //   Linux   : struct ftdi_context*
+        //   Windows : FT_HANDLE
+        // nullptr = device not open.
+        void *m_hDevice = nullptr;
 
-    UartConfig m_config;
-    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
+        UartConfig m_config;
+        std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 
-    // Platform helpers (uFT232HUARTCommon.cpp + platform .cpp files)
-    Status open_device(uint8_t u8DeviceIndex);
-    Status apply_config(const UartConfig &config) const;
+        // Platform helpers (uFT232HUARTCommon.cpp + platform .cpp files)
+        Status open_device(uint8_t u8DeviceIndex);
+        Status apply_config(const UartConfig &config) const;
 };
 
 #endif // U_FT232H_UART_DRIVER_H

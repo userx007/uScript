@@ -39,73 +39,73 @@
  * @tparam TScriptEntries Type representing script entries/commands
  */
 template <typename TScriptEntries>
-class ScriptRunner : public IScriptRunner
-{
-public:
-    /**
-     * @brief Construct a basic script runner
-     * @param shpScriptReader Script reader component
-     * @param shvScriptValidator Script validator component
-     * @param shvScriptInterpreter Script interpreter component (Level 1)
-     */
-    explicit ScriptRunner(std::shared_ptr<IScriptReader> shpScriptReader,
-                          std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
-                          std::shared_ptr<IScriptInterpreter<TScriptEntries>> shvScriptInterpreter)
-        : m_shpScriptReader(std::move(shpScriptReader))
-        , m_shpScriptValidator(std::move(shvScriptValidator))
-        , m_shpScriptInterpreter(std::move(shvScriptInterpreter))
-    {}
+class ScriptRunner : public IScriptRunner {
+    public:
+        /**
+         * @brief Construct a basic script runner
+         * @param shpScriptReader Script reader component
+         * @param shvScriptValidator Script validator component
+         * @param shvScriptInterpreter Script interpreter component (Level 1)
+         */
+        explicit ScriptRunner(std::shared_ptr<IScriptReader> shpScriptReader,
+                              std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
+                              std::shared_ptr<IScriptInterpreter<TScriptEntries>> shvScriptInterpreter)
+            : m_shpScriptReader(std::move(shpScriptReader))
+            , m_shpScriptValidator(std::move(shvScriptValidator))
+            , m_shpScriptInterpreter(std::move(shvScriptInterpreter))
+        {
+        }
 
-    bool runScript(const char *pstrCallCtx, bool bRealExec, bool bUseDryRun) override
-    {
-        bool bRetVal = false;
+        bool runScript(const char *pstrCallCtx, bool bRealExec, bool bUseDryRun) override
+        {
+            bool bRetVal = false;
 
-        do {
+            do {
 
-            // validation phase
-            if (!bRealExec) {
-                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Reading"); LOG_STRING(pstrCallCtx));
-                if (false == m_shpScriptReader->readScript(m_vRawScriptLines)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script reading failed"));
-                    break;
+                // validation phase
+                if (!bRealExec) {
+                    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Reading"); LOG_STRING(pstrCallCtx));
+                    if (false == m_shpScriptReader->readScript(m_vRawScriptLines)) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script reading failed"));
+                        break;
+                    }
+
+                    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Validating"); LOG_STRING(pstrCallCtx));
+                    if (false == m_shpScriptValidator->validateScript(m_vRawScriptLines, m_sScriptEntries)) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script validation failed"));
+                        break;
+                    }
+
+                    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Dry interpreting"); LOG_STRING(pstrCallCtx));
+                    if (false == m_shpScriptInterpreter->interpretScript(m_sScriptEntries, false)) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script dry interpretation failed"));
+                        break;
+                    }
+
+                    // execution phase
+                } else {
+                    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Interpreting"); LOG_STRING(pstrCallCtx));
+                    if (false == m_shpScriptInterpreter->interpretScript(m_sScriptEntries, true)) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script interpretation failed"));
+                        break;
+                    }
                 }
 
-                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Validating"); LOG_STRING(pstrCallCtx));
-                if (false == m_shpScriptValidator->validateScript(m_vRawScriptLines, m_sScriptEntries)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script validation failed"));
-                    break;
-                }
+                bRetVal = true;
 
-                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Dry interpreting"); LOG_STRING(pstrCallCtx));
-                if (false == m_shpScriptInterpreter->interpretScript(m_sScriptEntries, false)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script dry interpretation failed"));
-                    break;
-                }
+            } while (false);
 
-                // execution phase
-            } else {
-                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Interpreting"); LOG_STRING(pstrCallCtx));
-                if (false == m_shpScriptInterpreter->interpretScript(m_sScriptEntries, true)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script interpretation failed"));
-                    break;
-                }
-            }
+            return bRetVal;
+        }
 
-            bRetVal = true;
+    protected:
+        std::shared_ptr<IScriptReader> m_shpScriptReader;
+        std::shared_ptr<IScriptValidator<TScriptEntries>> m_shpScriptValidator;
+        std::shared_ptr<IScriptInterpreter<TScriptEntries>> m_shpScriptInterpreter;
 
-        } while (false);
-
-        return bRetVal;
-    }
-
-protected:
-    std::shared_ptr<IScriptReader> m_shpScriptReader;
-    std::shared_ptr<IScriptValidator<TScriptEntries>> m_shpScriptValidator;
-    std::shared_ptr<IScriptInterpreter<TScriptEntries>> m_shpScriptInterpreter;
-
-private:
-    std::vector<ScriptRawLine> m_vRawScriptLines;
-    TScriptEntries m_sScriptEntries;
+    private:
+        std::vector<ScriptRawLine> m_vRawScriptLines;
+        TScriptEntries m_sScriptEntries;
 };
 
 #endif // U_SCRIPT_RUNNER_HPP

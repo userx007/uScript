@@ -16,17 +16,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED UartmonPlugin *pluginEntry()
-{
-    return new UartmonPlugin();
-}
-
-EXPORTED void pluginExit(UartmonPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED UartmonPlugin *pluginEntry()
+    {
+        return new UartmonPlugin();
     }
-}
+
+    EXPORTED void pluginExit(UartmonPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -260,9 +260,7 @@ bool UartmonPlugin::m_GenericWaitFor(const std::string &args, bool bInsert, std:
         // cancellation (via stop_token), the monitor is signalled to stop,
         // which causes waitForInsert/waitForRemoval to return immediately
         // with WaitResult::Stopped.
-        std::stop_callback stopCb(st, [this]() {
-            m_UartMonitor.stopMonitoring();
-        });
+        std::stop_callback stopCb(st, [this]() { m_UartMonitor.stopMonitoring(); });
 
         auto action = [&]() {
             // Use new PortWaitResult API

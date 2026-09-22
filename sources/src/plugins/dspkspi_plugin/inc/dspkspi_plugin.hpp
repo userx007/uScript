@@ -56,368 +56,367 @@
  * Transport : USB HID via SPIBridge / hidapi
  * Default   : VID 0x16C0, PID 0x05DF, Mode0, Div4
  */
-class DSPKSPIPlugin : public PluginInterface
-{
-public:
-    /**
-     * \brief class constructor
-     */
-    DSPKSPIPlugin()
-        : m_strVersion(DSPKSPI_PLUGIN_VERSION)
-        , m_strInstanceName(DSPKSPI_PLUGIN_NAME)
-        , m_bIsInitialized(false)
-        , m_bIsEnabled(false)
-        , m_bIsFaultTolerant(false)
-        , m_bIsPrivileged(false)
-        , m_strResultData("")
-        , m_bRawResult(false)
-        , m_bCyclicCached(true)
-        , m_u16Vid(SPIBridge::SPI_DIGISPARK_VID)
-        , m_u16Pid(SPIBridge::SPI_DIGISPARK_PID)
-        , m_eSpiMode(SPIBridge::SPIMode::Mode0)
-        , m_eClockDiv(SPIBridge::SPIClockDiv::Div4)
-        , m_u32ReadTimeout(SPIBridge::SPI_READ_DEFAULT_TIMEOUT)
-        , m_u32WriteTimeout(SPIBridge::SPI_WRITE_DEFAULT_TIMEOUT)
-        , m_u32ReadBufferSize(SPIBridge::SPI_MAX_READ_PAYLOAD)
-    {
+class DSPKSPIPlugin : public PluginInterface {
+    public:
+        /**
+         * \brief class constructor
+         */
+        DSPKSPIPlugin()
+            : m_strVersion(DSPKSPI_PLUGIN_VERSION)
+            , m_strInstanceName(DSPKSPI_PLUGIN_NAME)
+            , m_bIsInitialized(false)
+            , m_bIsEnabled(false)
+            , m_bIsFaultTolerant(false)
+            , m_bIsPrivileged(false)
+            , m_strResultData("")
+            , m_bRawResult(false)
+            , m_bCyclicCached(true)
+            , m_u16Vid(SPIBridge::SPI_DIGISPARK_VID)
+            , m_u16Pid(SPIBridge::SPI_DIGISPARK_PID)
+            , m_eSpiMode(SPIBridge::SPIMode::Mode0)
+            , m_eClockDiv(SPIBridge::SPIClockDiv::Div4)
+            , m_u32ReadTimeout(SPIBridge::SPI_READ_DEFAULT_TIMEOUT)
+            , m_u32WriteTimeout(SPIBridge::SPI_WRITE_DEFAULT_TIMEOUT)
+            , m_u32ReadBufferSize(SPIBridge::SPI_MAX_READ_PAYLOAD)
+        {
 #define DSPKSPI_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
                                                                           PluginCommandEntry<DSPKSPIPlugin>{&DSPKSPIPlugin::m_DSPKSPI_##a, DSPKSPI_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
-        DSPKSPI_PLUGIN_COMMANDS_CONFIG_TABLE
+            DSPKSPI_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef DSPKSPI_PLUGIN_CMD_RECORD
-    }
+        }
 
-    /**
-     * \brief class destructor
-     */
-    ~DSPKSPIPlugin()
-    {
-    }
+        /**
+         * \brief class destructor
+         */
+        ~DSPKSPIPlugin()
+        {
+        }
 
-    /**
-     * \brief get the plugin initialization status
-     */
-    bool isInitialized(void) const
-    {
-        return m_bIsInitialized;
-    }
+        /**
+         * \brief get the plugin initialization status
+         */
+        bool isInitialized(void) const
+        {
+            return m_bIsInitialized;
+        }
 
-    /**
-     * \brief get enabling status
-     */
-    bool isEnabled(void) const
-    {
-        return m_bIsEnabled;
-    }
+        /**
+         * \brief get enabling status
+         */
+        bool isEnabled(void) const
+        {
+            return m_bIsEnabled;
+        }
 
-    /**
-     * \brief Import external settings into the plugin
-     */
-    bool setParams(const PluginDataSet *psSetParams)
-    {
-        bool bRetVal = false;
+        /**
+         * \brief Import external settings into the plugin
+         */
+        bool setParams(const PluginDataSet *psSetParams)
+        {
+            bool bRetVal = false;
 
-        if (true == generic_setparams<DSPKSPIPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-            if (true == m_LocalSetParams(psSetParams)) {
-                bRetVal = true;
+            if (true == generic_setparams<DSPKSPIPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+                if (true == m_LocalSetParams(psSetParams)) {
+                    bRetVal = true;
+                }
             }
+
+            return bRetVal;
         }
 
-        return bRetVal;
-    }
-
-    /**
-     * \brief function to retrieve information from plugin
-     */
-    void getParams(PluginDataGet *psGetParams) const
-    {
-        generic_getparams<DSPKSPIPlugin>(this, psGetParams);
-    }
-
-    /**
-     * \brief dispatch commands
-     */
-    bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st = {}) const
-    {
-        return generic_dispatch<DSPKSPIPlugin>(this, strCmd, strParams, st);
-    }
-
-    /**
-     * \brief get a pointer to the plugin map
-     */
-    const PluginCommandsMap<DSPKSPIPlugin> *getMap(void) const
-    {
-        return &m_mapCmds;
-    }
-
-    /**
-     * \brief get the plugin version
-     */
-    const std::string &getVersion(void) const
-    {
-        return m_strVersion;
-    }
-
-    /**
-     * \brief get the result data
-     */
-    const std::string &getData(void) const
-    {
-        return m_strResultData;
-    }
-
-    /**
-     * \brief clear the result data
-     */
-    void resetData(void) const
-    {
-        m_strResultData.clear();
-    }
-
-    /**
-     * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-     */
-    bool setRawResult(const std::string &strValue) const
-    {
-        return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
-    }
-
-    /**
-     * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-     */
-    bool setCyclicCached(const std::string &strValue) const
-    {
-        return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
-    }
-
-    /**
-     * \brief perform the initialization of modules used by the plugin
-     * \note public because it needs to be called explicitly after loading the plugin
-     */
-    bool doInit(void *pvUserData)
-    {
-        m_bIsInitialized = true;
-        return m_bIsInitialized;
-    }
-
-    /**
-     * \brief perform the de-initialization of modules used by the plugin
-     * \note public because it needs to be called explicitly before closing/freeing the shared library
-     */
-    void doCleanup(void)
-    {
-        m_bIsInitialized = false;
-        m_bIsEnabled     = false;
-    }
-
-    /**
-     * \brief perform the enabling of the plugin
-     */
-    bool doEnable(void)
-    {
-        m_bIsEnabled = true;
-        return true;
-    }
-
-    /**
-     * \brief get fault tolerant flag status
-     */
-    bool isFaultTolerant(void) const
-    {
-        return m_bIsFaultTolerant;
-    }
-
-    /**
-     * \brief get the privileged status
-     */
-    bool isPrivileged(void) const
-    {
-        return m_bIsPrivileged;
-    }
-
-    // ── SPI-specific setters (used by dspkspi_setup.hpp) ─────────────────
-
-    /**
-     * \brief set USB VID (hex string, e.g. "16C0")
-     */
-    bool setSpiVid(const std::string &strVid) const
-    {
-        if (false == numeric::str2uint16(strVid, m_u16Vid)) {
-            return false;
+        /**
+         * \brief function to retrieve information from plugin
+         */
+        void getParams(PluginDataGet *psGetParams) const
+        {
+            generic_getparams<DSPKSPIPlugin>(this, psGetParams);
         }
-        return true;
-    }
 
-    /**
-     * \brief set USB PID (hex string, e.g. "05DF")
-     */
-    bool setSpiPid(const std::string &strPid) const
-    {
-        if (false == numeric::str2uint16(strPid, m_u16Pid)) {
-            return false;
+        /**
+         * \brief dispatch commands
+         */
+        bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st = {}) const
+        {
+            return generic_dispatch<DSPKSPIPlugin>(this, strCmd, strParams, st);
         }
-        return true;
-    }
 
-    /**
-     * \brief set SPI mode (0-3)
-     */
-    bool setSpiMode(const std::string &strMode) const
-    {
-        uint8_t u8Tmp = 0;
-        if (false == numeric::str2uint8(strMode, u8Tmp) || u8Tmp > static_cast<uint8_t>(SPIBridge::SPIMode::Mode_Last)) {
-            return false;
+        /**
+         * \brief get a pointer to the plugin map
+         */
+        const PluginCommandsMap<DSPKSPIPlugin> *getMap(void) const
+        {
+            return &m_mapCmds;
         }
-        m_eSpiMode = static_cast<SPIBridge::SPIMode>(u8Tmp);
-        return true;
-    }
 
-    /**
-     * \brief set SPI clock divider (0=Div2, 1=Div4, 2=Div8, 3=Div16)
-     */
-    bool setSpiClockDiv(const std::string &strDiv) const
-    {
-        uint8_t u8Tmp = 0;
-        if (false == numeric::str2uint8(strDiv, u8Tmp) || u8Tmp > static_cast<uint8_t>(SPIBridge::SPIClockDiv::Div_Last)) {
-            return false;
+        /**
+         * \brief get the plugin version
+         */
+        const std::string &getVersion(void) const
+        {
+            return m_strVersion;
         }
-        m_eClockDiv = static_cast<SPIBridge::SPIClockDiv>(u8Tmp);
-        return true;
-    }
 
-    /**
-     * \brief set SPI read timeout [ms]
-     */
-    bool setSpiReadTimeout(const std::string &strReadTimeout) const
-    {
-        return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
-    }
+        /**
+         * \brief get the result data
+         */
+        const std::string &getData(void) const
+        {
+            return m_strResultData;
+        }
 
-    /**
-     * \brief set SPI write timeout [ms]
-     */
-    bool setSpiWriteTimeout(const std::string &strWriteTimeout) const
-    {
-        return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
-    }
+        /**
+         * \brief clear the result data
+         */
+        void resetData(void) const
+        {
+            m_strResultData.clear();
+        }
 
-    /**
-     * \brief set SPI read buffer size [bytes, <= SPI_MAX_READ_PAYLOAD]
-     */
-    bool setSpiReadBufferSize(const std::string &strBufSize) const
-    {
-        return numeric::str2uint32(strBufSize, m_u32ReadBufferSize);
-    }
+        /**
+         * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+         */
+        bool setRawResult(const std::string &strValue) const
+        {
+            return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
+        }
 
-private:
-    /**
-     * \brief message sender
-     */
-    bool m_Send(std::span<const uint8_t> data, std::shared_ptr<const ICommDriver> shpDriver) const;
+        /**
+         * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+         */
+        bool setCyclicCached(const std::string &strValue) const
+        {
+            return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
+        }
 
-    /**
-     * \brief message receiver
-     */
-    bool m_Receive(std::span<uint8_t> data, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const;
+        /**
+         * \brief perform the initialization of modules used by the plugin
+         * \note public because it needs to be called explicitly after loading the plugin
+         */
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            return m_bIsInitialized;
+        }
 
-    /**
-     * \brief processing of the plugin specific settings
-     */
-    bool m_LocalSetParams(const PluginDataSet *psSetParams);
+        /**
+         * \brief perform the de-initialization of modules used by the plugin
+         * \note public because it needs to be called explicitly before closing/freeing the shared library
+         */
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+        }
 
-    /**
-     * \brief map with association between the command string and the execution function
-     */
-    PluginCommandsMap<DSPKSPIPlugin> m_mapCmds;
+        /**
+         * \brief perform the enabling of the plugin
+         */
+        bool doEnable(void)
+        {
+            m_bIsEnabled = true;
+            return true;
+        }
 
-    /**
-     * \brief plugin version
-     */
-    std::string m_strVersion;
+        /**
+         * \brief get fault tolerant flag status
+         */
+        bool isFaultTolerant(void) const
+        {
+            return m_bIsFaultTolerant;
+        }
 
-    /**
-     * \brief runtime instance identity used for the GUI comm-dump panel
-     *        (e.g. "DSPKSPI" or "DSPKSPI:1" -- see
-     *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
-     *        name macro when unset (e.g. standalone construction outside the
-     *        script interpreter).
-     */
-    std::string m_strInstanceName;
-    /**
-     * \brief data returned by plugin
-     */
-    mutable std::string m_strResultData;
+        /**
+         * \brief get the privileged status
+         */
+        bool isPrivileged(void) const
+        {
+            return m_bIsPrivileged;
+        }
 
-    /**
-     * \brief when true, CMD returns the raw received bytes as-is instead of
-     *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
-     *        settable via the ini file's RAW_RESULT key or the CONFIG command's
-     *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
-     */
-    mutable bool m_bRawResult;
+        // ── SPI-specific setters (used by dspkspi_setup.hpp) ─────────────────
 
-    /**
-     * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
-     *        command exactly once for the whole session; false re-resolves and re-validates
-     *        every due entry on every tick, needed to track a volatile ("?=") macro used as
-     *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
-     *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
-     *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
-     */
-    mutable bool m_bCyclicCached;
+        /**
+         * \brief set USB VID (hex string, e.g. "16C0")
+         */
+        bool setSpiVid(const std::string &strVid) const
+        {
+            if (false == numeric::str2uint16(strVid, m_u16Vid)) {
+                return false;
+            }
+            return true;
+        }
 
-    /**
-     * \brief plugin initialization status
-     */
-    bool m_bIsInitialized;
+        /**
+         * \brief set USB PID (hex string, e.g. "05DF")
+         */
+        bool setSpiPid(const std::string &strPid) const
+        {
+            if (false == numeric::str2uint16(strPid, m_u16Pid)) {
+                return false;
+            }
+            return true;
+        }
 
-    /**
-     * \brief plugin enabling status
-     */
-    bool m_bIsEnabled;
+        /**
+         * \brief set SPI mode (0-3)
+         */
+        bool setSpiMode(const std::string &strMode) const
+        {
+            uint8_t u8Tmp = 0;
+            if (false == numeric::str2uint8(strMode, u8Tmp) || u8Tmp > static_cast<uint8_t>(SPIBridge::SPIMode::Mode_Last)) {
+                return false;
+            }
+            m_eSpiMode = static_cast<SPIBridge::SPIMode>(u8Tmp);
+            return true;
+        }
 
-    /**
-     * \brief plugin fault tolerant mode
-     */
-    bool m_bIsFaultTolerant;
+        /**
+         * \brief set SPI clock divider (0=Div2, 1=Div4, 2=Div8, 3=Div16)
+         */
+        bool setSpiClockDiv(const std::string &strDiv) const
+        {
+            uint8_t u8Tmp = 0;
+            if (false == numeric::str2uint8(strDiv, u8Tmp) || u8Tmp > static_cast<uint8_t>(SPIBridge::SPIClockDiv::Div_Last)) {
+                return false;
+            }
+            m_eClockDiv = static_cast<SPIBridge::SPIClockDiv>(u8Tmp);
+            return true;
+        }
 
-    /**
-     * \brief plugin is privileged
-     */
-    bool m_bIsPrivileged;
+        /**
+         * \brief set SPI read timeout [ms]
+         */
+        bool setSpiReadTimeout(const std::string &strReadTimeout) const
+        {
+            return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
+        }
 
-    /**
-     * \brief the artefacts path got from command line
-     */
-    std::string m_strArtefactsPath;
+        /**
+         * \brief set SPI write timeout [ms]
+         */
+        bool setSpiWriteTimeout(const std::string &strWriteTimeout) const
+        {
+            return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
+        }
 
-    // ── SPI / USB configuration ───────────────────────────────────────────
+        /**
+         * \brief set SPI read buffer size [bytes, <= SPI_MAX_READ_PAYLOAD]
+         */
+        bool setSpiReadBufferSize(const std::string &strBufSize) const
+        {
+            return numeric::str2uint32(strBufSize, m_u32ReadBufferSize);
+        }
 
-    /** USB Vendor ID */
-    mutable uint16_t m_u16Vid;
+    private:
+        /**
+         * \brief message sender
+         */
+        bool m_Send(std::span<const uint8_t> data, std::shared_ptr<const ICommDriver> shpDriver) const;
 
-    /** USB Product ID */
-    mutable uint16_t m_u16Pid;
+        /**
+         * \brief message receiver
+         */
+        bool m_Receive(std::span<uint8_t> data, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const;
 
-    /** SPI clock mode (CPOL/CPHA) */
-    mutable SPIBridge::SPIMode m_eSpiMode;
+        /**
+         * \brief processing of the plugin specific settings
+         */
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
-    /** SPI clock divider */
-    mutable SPIBridge::SPIClockDiv m_eClockDiv;
+        /**
+         * \brief map with association between the command string and the execution function
+         */
+        PluginCommandsMap<DSPKSPIPlugin> m_mapCmds;
 
-    /** Read timeout [ms] */
-    mutable uint32_t m_u32ReadTimeout;
+        /**
+         * \brief plugin version
+         */
+        std::string m_strVersion;
 
-    /** Write timeout [ms] */
-    mutable uint32_t m_u32WriteTimeout;
+        /**
+         * \brief runtime instance identity used for the GUI comm-dump panel
+         *        (e.g. "DSPKSPI" or "DSPKSPI:1" -- see
+         *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
+         *        name macro when unset (e.g. standalone construction outside the
+         *        script interpreter).
+         */
+        std::string m_strInstanceName;
+        /**
+         * \brief data returned by plugin
+         */
+        mutable std::string m_strResultData;
 
-    /** Maximum bytes to read in a single operation */
-    mutable uint32_t m_u32ReadBufferSize;
+        /**
+         * \brief when true, CMD returns the raw received bytes as-is instead of
+         *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+         *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+         *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+         */
+        mutable bool m_bRawResult;
+
+        /**
+         * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+         *        command exactly once for the whole session; false re-resolves and re-validates
+         *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+         *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+         *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+         *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+         */
+        mutable bool m_bCyclicCached;
+
+        /**
+         * \brief plugin initialization status
+         */
+        bool m_bIsInitialized;
+
+        /**
+         * \brief plugin enabling status
+         */
+        bool m_bIsEnabled;
+
+        /**
+         * \brief plugin fault tolerant mode
+         */
+        bool m_bIsFaultTolerant;
+
+        /**
+         * \brief plugin is privileged
+         */
+        bool m_bIsPrivileged;
+
+        /**
+         * \brief the artefacts path got from command line
+         */
+        std::string m_strArtefactsPath;
+
+        // ── SPI / USB configuration ───────────────────────────────────────────
+
+        /** USB Vendor ID */
+        mutable uint16_t m_u16Vid;
+
+        /** USB Product ID */
+        mutable uint16_t m_u16Pid;
+
+        /** SPI clock mode (CPOL/CPHA) */
+        mutable SPIBridge::SPIMode m_eSpiMode;
+
+        /** SPI clock divider */
+        mutable SPIBridge::SPIClockDiv m_eClockDiv;
+
+        /** Read timeout [ms] */
+        mutable uint32_t m_u32ReadTimeout;
+
+        /** Write timeout [ms] */
+        mutable uint32_t m_u32WriteTimeout;
+
+        /** Maximum bytes to read in a single operation */
+        mutable uint32_t m_u32ReadBufferSize;
 
 /**
  * \brief functions associated to the plugin commands
  */
 #define DSPKSPI_PLUGIN_CMD_RECORD(a, ...) bool m_DSPKSPI_##a(const std::string &args, std::stop_token st) const;
-    DSPKSPI_PLUGIN_COMMANDS_CONFIG_TABLE
+        DSPKSPI_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef DSPKSPI_PLUGIN_CMD_RECORD
 };
 

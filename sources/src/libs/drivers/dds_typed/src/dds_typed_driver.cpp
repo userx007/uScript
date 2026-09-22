@@ -35,58 +35,58 @@
 // ============================================================================
 
 namespace {
-constexpr const char *kPluginNameForDump = "DDS_TYPED";
-constexpr uint32_t kBuiltinReadBatch     = 64;
-constexpr size_t kEncodeBufCap           = 4096; // see DdsTypeEntry::encode()'s doc comment — generous, fixed, stack-resident
+    constexpr const char *kPluginNameForDump = "DDS_TYPED";
+    constexpr uint32_t kBuiltinReadBatch     = 64;
+    constexpr size_t kEncodeBufCap           = 4096; // see DdsTypeEntry::encode()'s doc comment — generous, fixed, stack-resident
 
-std::string guidToHex(const dds_guid_t &g)
-{
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
-    for (uint8_t b : g.v) {
-        oss << std::setw(2) << static_cast<int>(b);
-    }
-    return oss.str();
-}
-
-std::string xmlEscape(const std::string &in)
-{
-    std::string out;
-    out.reserve(in.size());
-    for (char c : in) {
-        switch (c) {
-        case '&':
-            out += "&amp;";
-            break;
-        case '<':
-            out += "&lt;";
-            break;
-        case '>':
-            out += "&gt;";
-            break;
-        case '"':
-            out += "&quot;";
-            break;
-        case '\'':
-            out += "&apos;";
-            break;
-        default:
-            out += c;
-            break;
+    std::string guidToHex(const dds_guid_t &g)
+    {
+        std::ostringstream oss;
+        oss << std::hex << std::setfill('0');
+        for (uint8_t b : g.v) {
+            oss << std::setw(2) << static_cast<int>(b);
         }
+        return oss.str();
     }
-    return out;
-}
 
-bool looksLikeIpLiteral(const std::string &s)
-{
-    return s.find(':') != std::string::npos || s.find('.') != std::string::npos;
-}
+    std::string xmlEscape(const std::string &in)
+    {
+        std::string out;
+        out.reserve(in.size());
+        for (char c : in) {
+            switch (c) {
+            case '&':
+                out += "&amp;";
+                break;
+            case '<':
+                out += "&lt;";
+                break;
+            case '>':
+                out += "&gt;";
+                break;
+            case '"':
+                out += "&quot;";
+                break;
+            case '\'':
+                out += "&apos;";
+                break;
+            default:
+                out += c;
+                break;
+            }
+        }
+        return out;
+    }
 
-inline const DdsTypeEntry *asTypeEntry(const void *p)
-{
-    return static_cast<const DdsTypeEntry *>(p);
-}
+    bool looksLikeIpLiteral(const std::string &s)
+    {
+        return s.find(':') != std::string::npos || s.find('.') != std::string::npos;
+    }
+
+    inline const DdsTypeEntry *asTypeEntry(const void *p)
+    {
+        return static_cast<const DdsTypeEntry *>(p);
+    }
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -567,8 +567,8 @@ std::vector<DdsTypedDriver::DiscoveredEndpointView> DdsTypedDriver::listEndpoint
 
     const struct
     {
-        DdsEntity reader;
-        bool isWriter;
+            DdsEntity reader;
+            bool isWriter;
     } kBuiltinReaders[] = {
         {m_biPublicationReader, true},
         {m_biSubscriptionReader, false},
@@ -664,32 +664,32 @@ std::string DdsTypedDriver::m_BuildListText() const
 // Intermediary layer: DDS_TYPED.CMD argument decomposition
 // ---------------------------------------------------------------------------
 namespace {
-void tokenize(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens)
-{
-    outTokens.clear();
-    size_t len = dataSpan.size();
-    while (len > 0 && dataSpan[len - 1] == 0) {
-        --len;
-    }
-    std::string text(reinterpret_cast<const char *>(dataSpan.data()), len);
-    text           = ustring::trim(text);
+    void tokenize(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens)
+    {
+        outTokens.clear();
+        size_t len = dataSpan.size();
+        while (len > 0 && dataSpan[len - 1] == 0) {
+            --len;
+        }
+        std::string text(reinterpret_cast<const char *>(dataSpan.data()), len);
+        text           = ustring::trim(text);
 
-    size_t i       = 0;
-    const size_t n = text.size();
-    while (i < n) {
-        while (i < n && std::isspace(static_cast<unsigned char>(text[i]))) {
-            ++i;
+        size_t i       = 0;
+        const size_t n = text.size();
+        while (i < n) {
+            while (i < n && std::isspace(static_cast<unsigned char>(text[i]))) {
+                ++i;
+            }
+            if (i >= n) {
+                break;
+            }
+            const size_t start = i;
+            while (i < n && !std::isspace(static_cast<unsigned char>(text[i]))) {
+                ++i;
+            }
+            outTokens.push_back(text.substr(start, i - start));
         }
-        if (i >= n) {
-            break;
-        }
-        const size_t start = i;
-        while (i < n && !std::isspace(static_cast<unsigned char>(text[i]))) {
-            ++i;
-        }
-        outTokens.push_back(text.substr(start, i - start));
     }
-}
 } // namespace
 
 ICommDriver::WriteResult DdsTypedDriver::send(uint32_t, std::span<const uint8_t> dataSpan, std::string_view xtra_params,

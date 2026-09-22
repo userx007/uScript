@@ -121,20 +121,20 @@ inline std::optional<LogLevel> sizet2loglevel(size_t v)
  * @brief Type concepts for logger
  */
 namespace log_concepts {
-template <typename T>
-concept Integral = std::is_integral_v<T> && !std::is_same_v<T, bool>;
+    template <typename T>
+    concept Integral = std::is_integral_v<T> && !std::is_same_v<T, bool>;
 
-template <typename T>
-concept FloatingPoint = std::is_floating_point_v<T>;
+    template <typename T>
+    concept FloatingPoint = std::is_floating_point_v<T>;
 
-template <typename T>
-concept Pointer = std::is_pointer_v<T> &&
-                  !std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, char>;
+    template <typename T>
+    concept Pointer = std::is_pointer_v<T> &&
+                      !std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, char>;
 
-template <typename T>
-concept StringLike = std::is_same_v<T, const char *> ||
-                     std::is_same_v<T, std::string> ||
-                     std::is_same_v<T, std::string_view>;
+    template <typename T>
+    concept StringLike = std::is_same_v<T, const char *> ||
+                         std::is_same_v<T, std::string> ||
+                         std::is_same_v<T, std::string_view>;
 } // namespace log_concepts
 
 /**
@@ -233,570 +233,568 @@ concept StringLike = std::is_same_v<T, const char *> ||
 /**
  * @brief Structure for log buffer with optimized performance and safety.
  */
-struct LogBuffer
-{
-    static constexpr size_t BUFFER_SIZE      = 1024; /**< Buffer size constant. */
-    static constexpr const char *RESET_COLOR = "\033[0m";
+struct LogBuffer {
+        static constexpr size_t BUFFER_SIZE      = 1024; /**< Buffer size constant. */
+        static constexpr const char *RESET_COLOR = "\033[0m";
 
-    // LogBuffer owns a mutex and an ofstream — neither is copyable or movable.
-    // Spell this out explicitly so the compiler gives a clear error rather than
-    // a cryptic "use of deleted function" deep in a template.
-    LogBuffer()                              = default;
-    LogBuffer(const LogBuffer &)             = delete;
-    LogBuffer &operator=(const LogBuffer &)  = delete;
-    LogBuffer(LogBuffer &&)                  = delete;
-    LogBuffer &operator=(LogBuffer &&)       = delete;
+        // LogBuffer owns a mutex and an ofstream — neither is copyable or movable.
+        // Spell this out explicitly so the compiler gives a clear error rather than
+        // a cryptic "use of deleted function" deep in a template.
+        LogBuffer()                              = default;
+        LogBuffer(const LogBuffer &)             = delete;
+        LogBuffer &operator=(const LogBuffer &)  = delete;
+        LogBuffer(LogBuffer &&)                  = delete;
+        LogBuffer &operator=(LogBuffer &&)       = delete;
 
-    // ── Shared configuration (read by all threads, written only at init time) ──
-    // Declared as atomics so that setXxx() writers and print() readers on
-    // different threads do not constitute a data race under the C++ memory model.
-    std::atomic<LogLevel> consoleThreshold{LOGGER_DEFAULT_CONSOLE_SEVERITY}; /**< Console log level threshold. */
-    std::atomic<LogLevel> fileThreshold{LOGGER_DEFAULT_LOGFILE_SEVERITY};    /**< File log level threshold. */
-    std::atomic<bool> fileLoggingEnabled{LOGGER_DEFAULT_ENABLE_FILELOG};     /**< Flag indicating if file logging is enabled. */
-    std::atomic<bool> useColors{LOGGER_DEFAULT_USE_COLORS};                  /**< Flag indicating if colors are used in console logging. */
-    std::atomic<bool> includeDate{LOGGER_DEFAULT_INCLUDE_DATE};              /**< Flag indicating if date is included in log messages. */
-    std::atomic<bool> includeThreadId{LOGGER_DEFAULT_INCLUDE_THREAD_ID};     /**< Flag indicating if the calling thread's numeric ID is included after the timestamp. */
+        // ── Shared configuration (read by all threads, written only at init time) ──
+        // Declared as atomics so that setXxx() writers and print() readers on
+        // different threads do not constitute a data race under the C++ memory model.
+        std::atomic<LogLevel> consoleThreshold{LOGGER_DEFAULT_CONSOLE_SEVERITY}; /**< Console log level threshold. */
+        std::atomic<LogLevel> fileThreshold{LOGGER_DEFAULT_LOGFILE_SEVERITY};    /**< File log level threshold. */
+        std::atomic<bool> fileLoggingEnabled{LOGGER_DEFAULT_ENABLE_FILELOG};     /**< Flag indicating if file logging is enabled. */
+        std::atomic<bool> useColors{LOGGER_DEFAULT_USE_COLORS};                  /**< Flag indicating if colors are used in console logging. */
+        std::atomic<bool> includeDate{LOGGER_DEFAULT_INCLUDE_DATE};              /**< Flag indicating if date is included in log messages. */
+        std::atomic<bool> includeThreadId{LOGGER_DEFAULT_INCLUDE_THREAD_ID};     /**< Flag indicating if the calling thread's numeric ID is included after the timestamp. */
 
-    std::ofstream logFile; /**< File stream for logging to a file. */
-    std::mutex logMutex;   /**< Serialises stdout/file writes across threads. */
+        std::ofstream logFile; /**< File stream for logging to a file. */
+        std::mutex logMutex;   /**< Serialises stdout/file writes across threads. */
 
-    // ── Per-thread message state ──────────────────────────────────────────────
-    //
-    // Each thread builds its log line independently in its own slot so that
-    // concurrent LOG_PRINT calls from different threads never corrupt each
-    // other's buffer, level, or size.  Only the final printf / fwrite in
-    // print() needs to be serialised (via logMutex) to prevent interleaved
-    // output on stdout / the log file.
-    //
-    // These fields were previously non-static members of LogBuffer, which
-    // meant all threads shared a single buffer — the root cause of the
-    // truncated / interleaved log lines observed when a threaded (&) comm
-    // script and the main execution thread logged simultaneously.
-    struct ThreadSlot
-    {
-        char buffer[BUFFER_SIZE]{};
-        size_t size           = 0;
-        LogLevel currentLevel = LOG_INFO;
-    };
+        // ── Per-thread message state ──────────────────────────────────────────────
+        //
+        // Each thread builds its log line independently in its own slot so that
+        // concurrent LOG_PRINT calls from different threads never corrupt each
+        // other's buffer, level, or size.  Only the final printf / fwrite in
+        // print() needs to be serialised (via logMutex) to prevent interleaved
+        // output on stdout / the log file.
+        //
+        // These fields were previously non-static members of LogBuffer, which
+        // meant all threads shared a single buffer — the root cause of the
+        // truncated / interleaved log lines observed when a threaded (&) comm
+        // script and the main execution thread logged simultaneously.
+        struct ThreadSlot {
+                char buffer[BUFFER_SIZE]{};
+                size_t size           = 0;
+                LogLevel currentLevel = LOG_INFO;
+        };
 
-    // Returns the calling thread's private slot (created on first access).
-    static ThreadSlot &slot() noexcept
-    {
-        thread_local ThreadSlot s;
-        return s;
-    }
-
-    /**
-     * @brief Resets the log buffer.
-     */
-    void reset() noexcept
-    {
-        auto &s        = slot();
-        s.size         = 0;
-        s.buffer[0]    = '\0';
-        s.currentLevel = LOG_INFO;
-    }
-
-    /**
-     * @brief Checks if there's enough space in the buffer
-     * @param needed Amount of space needed
-     * @return true if space available, false otherwise
-     */
-    [[nodiscard]] bool hasSpace(size_t needed) const noexcept
-    {
-        return (slot().size + needed) < BUFFER_SIZE;
-    }
-
-    /**
-     * @brief Safely appends formatted data to buffer with overflow protection
-     * @return Number of characters actually written
-     */
-    template <typename... Args>
-    size_t appendSafe(const char *format, Args &&...args) noexcept
-    {
-        auto &s = slot();
-        if (s.size >= BUFFER_SIZE) {
-            return 0;
+        // Returns the calling thread's private slot (created on first access).
+        static ThreadSlot &slot() noexcept
+        {
+            thread_local ThreadSlot s;
+            return s;
         }
 
-        int written = std::snprintf(s.buffer + s.size, BUFFER_SIZE - s.size, format, std::forward<Args>(args)...);
-        if (written < 0) {
-            return 0;
+        /**
+         * @brief Resets the log buffer.
+         */
+        void reset() noexcept
+        {
+            auto &s        = slot();
+            s.size         = 0;
+            s.buffer[0]    = '\0';
+            s.currentLevel = LOG_INFO;
         }
 
-        size_t actual = static_cast<size_t>(written);
-        if (s.size + actual >= BUFFER_SIZE) {
-            // Truncation occurred
-            actual                    = BUFFER_SIZE - s.size - 1;
-            s.buffer[BUFFER_SIZE - 1] = '\0';
+        /**
+         * @brief Checks if there's enough space in the buffer
+         * @param needed Amount of space needed
+         * @return true if space available, false otherwise
+         */
+        [[nodiscard]] bool hasSpace(size_t needed) const noexcept
+        {
+            return (slot().size + needed) < BUFFER_SIZE;
         }
 
-        s.size += actual;
-        return actual;
-    }
+        /**
+         * @brief Safely appends formatted data to buffer with overflow protection
+         * @return Number of characters actually written
+         */
+        template <typename... Args>
+        size_t appendSafe(const char *format, Args &&...args) noexcept
+        {
+            auto &s = slot();
+            if (s.size >= BUFFER_SIZE) {
+                return 0;
+            }
 
-    /**
-     * @brief Appends a single character to the log buffer.
-     * @param c The character to append.
-     */
-    void append(char c) noexcept
-    {
-        appendSafe("%c ", c);
-    }
+            int written = std::snprintf(s.buffer + s.size, BUFFER_SIZE - s.size, format, std::forward<Args>(args)...);
+            if (written < 0) {
+                return 0;
+            }
 
-    /**
-     * @brief Appends a text message to the log buffer.
-     * @param text The text message to append. If 'text' is 'nullptr', no action is taken.
-     */
-    void append(const char *text) noexcept
-    {
-        if (text != nullptr) {
-            appendSafe("%s ", text);
-        }
-    }
+            size_t actual = static_cast<size_t>(written);
+            if (s.size + actual >= BUFFER_SIZE) {
+                // Truncation occurred
+                actual                    = BUFFER_SIZE - s.size - 1;
+                s.buffer[BUFFER_SIZE - 1] = '\0';
+            }
 
-    /**
-     * @brief Appends a string message to the log buffer.
-     * @param text The string message to append. If 'text' is empty, no action is taken.
-     */
-    void append(const std::string &text) noexcept
-    {
-        if (!text.empty()) {
-            append(text.c_str());
-        }
-    }
-
-    /**
-     * @brief Appends a string_view message to the log buffer (optimized, no allocation).
-     * @param text_view The string view to append. If 'text_view' is empty, no action is taken.
-     */
-    void append(std::string_view text_view) noexcept
-    {
-        auto &s = slot();
-        if (text_view.empty() || s.size + 2 >= BUFFER_SIZE) {
-            return;
+            s.size += actual;
+            return actual;
         }
 
-        // Direct copy for string_view to avoid allocation
-        size_t available = BUFFER_SIZE - s.size - 2; // -2 for space and null terminator
-        size_t toCopy    = std::min(text_view.size(), available);
-
-        if (toCopy > 0) {
-            std::memcpy(s.buffer + s.size, text_view.data(), toCopy);
-            s.size += toCopy;
-            s.buffer[s.size++] = ' ';
-            s.buffer[s.size]   = '\0';
+        /**
+         * @brief Appends a single character to the log buffer.
+         * @param c The character to append.
+         */
+        void append(char c) noexcept
+        {
+            appendSafe("%c ", c);
         }
-    }
 
-    /**
-     * @brief Appends a char array (e.g. char buf[N]) to the log buffer as a string.
-     *        Prevents decay to pointer — prints content, not the address.
-     * @tparam N The array size (deduced automatically).
-     * @param text The char array to append.
-     */
-    template <size_t N>
-    void append(const char (&text)[N]) noexcept
-    {
-        appendSafe("%.*s ", static_cast<int>(strnlen(text, N)), text);
-    }
-
-    /**
-     * @brief Appends a std::array<char, N> to the log buffer as a string.
-     *        Reads up to the first null terminator or N characters, whichever comes first.
-     * @tparam N The array size (deduced automatically).
-     * @param text The char array to append.
-     */
-    template <size_t N>
-    void append(const std::array<char, N> &text) noexcept
-    {
-        // string_view stops at the null terminator thanks to strnlen
-        append(std::string_view{text.data(), strnlen(text.data(), N)});
-    }
-
-    /**
-     * @brief Appends a boolean value to the internal buffer as a string.
-     *
-     * It appends the string "true" or "false" to the buffer, followed by a space.
-     *
-     * @param value The boolean value to append.
-     */
-    void append(bool value) noexcept
-    {
-        appendSafe("%s ", value ? "true" : "false");
-    }
-
-    /**
-     * @brief Appends an integral value to the log buffer.
-     * @tparam T The integral type.
-     * @param value The value to append.
-     */
-    template <log_concepts::Integral T>
-    void append(T value) noexcept
-    {
-        if constexpr (std::is_same_v<T, int8_t>) {
-            appendSafe("%d ", static_cast<int>(value));
-        } else if constexpr (std::is_same_v<T, uint8_t>) {
-            appendSafe("%u ", static_cast<unsigned>(value));
-        } else if constexpr (std::is_same_v<T, int16_t>) {
-            appendSafe("%hd ", value);
-        } else if constexpr (std::is_same_v<T, uint16_t>) {
-            appendSafe("%hu ", value);
-        } else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, int>) {
-            appendSafe("%d ", value);
-        } else if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, unsigned int>) {
-            appendSafe("%u ", value);
-        } else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, long long>) {
-            appendSafe("%lld ", static_cast<long long>(value));
-        } else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, unsigned long long>) {
-            appendSafe("%llu ", static_cast<unsigned long long>(value));
-        } else if constexpr (std::is_same_v<T, size_t>) {
-            appendSafe("%zu ", value);
-        } else if constexpr (std::is_signed_v<T>) {
-            appendSafe("%lld ", static_cast<long long>(value));
-        } else {
-            appendSafe("%llu ", static_cast<unsigned long long>(value));
+        /**
+         * @brief Appends a text message to the log buffer.
+         * @param text The text message to append. If 'text' is 'nullptr', no action is taken.
+         */
+        void append(const char *text) noexcept
+        {
+            if (text != nullptr) {
+                appendSafe("%s ", text);
+            }
         }
-    }
 
-    /**
-     * @brief Appends an integral value as hexadecimal to the log buffer.
-     * @tparam T The integral type.
-     * @param value The value to append.
-     */
-    template <log_concepts::Integral T>
-    void appendHex(T value) noexcept
-    {
-        if constexpr (std::is_same_v<T, uint8_t>) {
-            appendSafe("0x%02X ", static_cast<unsigned>(value));
-        } else if constexpr (std::is_same_v<T, uint16_t>) {
-            appendSafe("0x%04X ", value);
-        } else if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, unsigned int>) {
-            appendSafe("0x%08X ", value);
-        } else if constexpr (std::is_same_v<T, uint64_t>) {
-            appendSafe("0x%016llX ", static_cast<unsigned long long>(value));
-        } else if constexpr (std::is_same_v<T, size_t>) {
-            if constexpr (sizeof(size_t) == 8) {
+        /**
+         * @brief Appends a string message to the log buffer.
+         * @param text The string message to append. If 'text' is empty, no action is taken.
+         */
+        void append(const std::string &text) noexcept
+        {
+            if (!text.empty()) {
+                append(text.c_str());
+            }
+        }
+
+        /**
+         * @brief Appends a string_view message to the log buffer (optimized, no allocation).
+         * @param text_view The string view to append. If 'text_view' is empty, no action is taken.
+         */
+        void append(std::string_view text_view) noexcept
+        {
+            auto &s = slot();
+            if (text_view.empty() || s.size + 2 >= BUFFER_SIZE) {
+                return;
+            }
+
+            // Direct copy for string_view to avoid allocation
+            size_t available = BUFFER_SIZE - s.size - 2; // -2 for space and null terminator
+            size_t toCopy    = std::min(text_view.size(), available);
+
+            if (toCopy > 0) {
+                std::memcpy(s.buffer + s.size, text_view.data(), toCopy);
+                s.size += toCopy;
+                s.buffer[s.size++] = ' ';
+                s.buffer[s.size]   = '\0';
+            }
+        }
+
+        /**
+         * @brief Appends a char array (e.g. char buf[N]) to the log buffer as a string.
+         *        Prevents decay to pointer — prints content, not the address.
+         * @tparam N The array size (deduced automatically).
+         * @param text The char array to append.
+         */
+        template <size_t N>
+        void append(const char (&text)[N]) noexcept
+        {
+            appendSafe("%.*s ", static_cast<int>(strnlen(text, N)), text);
+        }
+
+        /**
+         * @brief Appends a std::array<char, N> to the log buffer as a string.
+         *        Reads up to the first null terminator or N characters, whichever comes first.
+         * @tparam N The array size (deduced automatically).
+         * @param text The char array to append.
+         */
+        template <size_t N>
+        void append(const std::array<char, N> &text) noexcept
+        {
+            // string_view stops at the null terminator thanks to strnlen
+            append(std::string_view{text.data(), strnlen(text.data(), N)});
+        }
+
+        /**
+         * @brief Appends a boolean value to the internal buffer as a string.
+         *
+         * It appends the string "true" or "false" to the buffer, followed by a space.
+         *
+         * @param value The boolean value to append.
+         */
+        void append(bool value) noexcept
+        {
+            appendSafe("%s ", value ? "true" : "false");
+        }
+
+        /**
+         * @brief Appends an integral value to the log buffer.
+         * @tparam T The integral type.
+         * @param value The value to append.
+         */
+        template <log_concepts::Integral T>
+        void append(T value) noexcept
+        {
+            if constexpr (std::is_same_v<T, int8_t>) {
+                appendSafe("%d ", static_cast<int>(value));
+            } else if constexpr (std::is_same_v<T, uint8_t>) {
+                appendSafe("%u ", static_cast<unsigned>(value));
+            } else if constexpr (std::is_same_v<T, int16_t>) {
+                appendSafe("%hd ", value);
+            } else if constexpr (std::is_same_v<T, uint16_t>) {
+                appendSafe("%hu ", value);
+            } else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, int>) {
+                appendSafe("%d ", value);
+            } else if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, unsigned int>) {
+                appendSafe("%u ", value);
+            } else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, long long>) {
+                appendSafe("%lld ", static_cast<long long>(value));
+            } else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, unsigned long long>) {
+                appendSafe("%llu ", static_cast<unsigned long long>(value));
+            } else if constexpr (std::is_same_v<T, size_t>) {
+                appendSafe("%zu ", value);
+            } else if constexpr (std::is_signed_v<T>) {
+                appendSafe("%lld ", static_cast<long long>(value));
+            } else {
+                appendSafe("%llu ", static_cast<unsigned long long>(value));
+            }
+        }
+
+        /**
+         * @brief Appends an integral value as hexadecimal to the log buffer.
+         * @tparam T The integral type.
+         * @param value The value to append.
+         */
+        template <log_concepts::Integral T>
+        void appendHex(T value) noexcept
+        {
+            if constexpr (std::is_same_v<T, uint8_t>) {
+                appendSafe("0x%02X ", static_cast<unsigned>(value));
+            } else if constexpr (std::is_same_v<T, uint16_t>) {
+                appendSafe("0x%04X ", value);
+            } else if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, unsigned int>) {
+                appendSafe("0x%08X ", value);
+            } else if constexpr (std::is_same_v<T, uint64_t>) {
                 appendSafe("0x%016llX ", static_cast<unsigned long long>(value));
-            } else {
-                appendSafe("0x%08llX ", static_cast<unsigned long long>(value));
-            }
-        } else {
-            // Generic fallback for other integral types
-            appendSafe("0x%llX ", static_cast<unsigned long long>(value));
-        }
-    }
-
-    /**
-     * @brief Appends a floating-point value to the log buffer.
-     * @tparam T The floating-point type.
-     * @param value The value to append.
-     */
-    template <log_concepts::FloatingPoint T>
-    void append(T value) noexcept
-    {
-        appendSafe("%.8f ", static_cast<double>(value));
-    }
-
-    /**
-     * @brief Appends a pointer to the log buffer.
-     * @tparam T The pointer type.
-     * @param ptr The pointer to append.
-     */
-    template <log_concepts::Pointer T>
-    void append(T ptr) noexcept
-    {
-        appendSafe("%p ", static_cast<const void *>(ptr));
-    }
-
-    /**
-     * @brief Gets the current timestamp as a formatted prefix segment.
-     *
-     * Output format examples:
-     *   includeDate = false:  "14:03:22.048712 | "
-     *   includeDate = true:   "2026-05-27 14:03:22.048712 | "
-     *
-     *
-     * @return The formatted timestamp string ending with "| ".
-     */
-    [[nodiscard]] std::string getTimestamp() const
-    {
-        using namespace std::chrono;
-        auto now      = system_clock::now();
-        auto micros   = duration_cast<microseconds>(now.time_since_epoch()) % 1'000'000;
-
-        std::time_t t = system_clock::to_time_t(now);
-        std::tm tm{};
-#ifdef _WIN32
-        localtime_s(&tm, &t);
-#else
-        localtime_r(&t, &tm);
-#endif
-        // Stack buffer: "YYYY-MM-DD HH:MM:SS.uuuuuu | " = 30 chars max
-        char buf[32];
-        int pos = 0;
-        if (includeDate.load(std::memory_order_relaxed)) {
-            pos += std::snprintf(buf, sizeof(buf),
-                                 "%04d-%02d-%02d %02d:%02d:%02d",
-                                 tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-                                 tm.tm_hour, tm.tm_min, tm.tm_sec);
-        } else {
-            pos += std::snprintf(buf, sizeof(buf),
-                                 "%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
-        }
-        pos += std::snprintf(buf + pos, sizeof(buf) - static_cast<size_t>(pos),
-                             ".%06lld | ", static_cast<long long>(micros.count()));
-        return std::string(buf, static_cast<size_t>(pos));
-    }
-
-    /**
-     * @brief Returns the calling thread's hex ID as a prefix segment.
-     *
-     * Output format: "A3F2B1C0 | "
-     * Returns an empty string when includeThreadId is false, so the caller
-     * can unconditionally append it without branching.
-     *
-     * Note: although declared `const`, this returns a different value per
-     * thread because it reads a thread-local OS ID — not LogBuffer state.
-     *
-     * @return The formatted thread ID prefix, or an empty string.
-     */
-    [[nodiscard]] std::string getThreadIdPrefix() const
-    {
-        if (!includeThreadId.load(std::memory_order_relaxed)) {
-            return {};
-        }
-
-        // Stack buffer: "XXXXXXXX | " = 11 chars
-        char buf[16];
-        int n = std::snprintf(buf, sizeof(buf), "%X | ", getThreadId());
-        return std::string(buf, static_cast<size_t>(n));
-    }
-
-    /**
-     * @brief Prints the log message with optimized string concatenation.
-     */
-    void print()
-    {
-        // Snapshot the calling thread's slot so we can release it (reset)
-        // before yielding the mutex, keeping the critical section short.
-        auto &s                   = slot();
-        const LogLevel level      = s.currentLevel;
-
-        // Snapshot config atomics once — avoids repeated loads and ensures a
-        // consistent view of settings for the duration of this print() call.
-        const bool colorsOn       = useColors.load(std::memory_order_relaxed);
-        const bool fileLogOn      = fileLoggingEnabled.load(std::memory_order_relaxed);
-        const LogLevel conThresh  = consoleThreshold.load(std::memory_order_relaxed);
-        const LogLevel fileThresh = fileThreshold.load(std::memory_order_relaxed);
-
-        // LOG_EMPTY: bypass timestamp/severity prefix entirely.
-        // Prints the raw buffer content followed by a newline, or just a blank
-        // line when the buffer is empty (i.e. called with an empty string).
-        if (level == LOG_EMPTY) {
-            // Copy content out of the thread slot before locking so the slot
-            // can be reset immediately and the mutex is held only for the write.
-            std::string lineContent(s.buffer, s.size);
-            reset(); // release slot early
-
-            std::lock_guard<std::mutex> lock(logMutex);
-            const char *raw = lineContent.empty() ? "" : lineContent.c_str();
-
-            if (gui_mode_active()) {
-                std::printf("\nGUI:LOG:%s%s%s\n", getColor(LOG_EMPTY), raw, RESET_COLOR);
-                std::fflush(stdout);
-            } else {
-                if (colorsOn) {
-                    std::printf("%s%s%s\n", getColor(LOG_EMPTY), raw, RESET_COLOR);
+            } else if constexpr (std::is_same_v<T, size_t>) {
+                if constexpr (sizeof(size_t) == 8) {
+                    appendSafe("0x%016llX ", static_cast<unsigned long long>(value));
                 } else {
-                    std::printf("%s\n", raw);
+                    appendSafe("0x%08llX ", static_cast<unsigned long long>(value));
                 }
-                std::fflush(stdout);
-            }
-
-            if (fileLogOn && logFile.is_open()) {
-                logFile << raw << '\n';
-                logFile.flush();
-            }
-            return;
-        }
-
-        if (s.size == 0) {
-            reset();
-            return;
-        }
-
-        // Build the full message from the thread-local slot *before* locking.
-        // This keeps the critical section as short as possible: the mutex is
-        // held only for the actual write to stdout / file, not for string work.
-        std::string timestamp    = getTimestamp();
-        std::string threadPrefix = getThreadIdPrefix();
-        const char *levelStr     = toString(level);
-
-        // +3 for " | ", +1 for '\n' headroom (not strictly needed for string but
-        // avoids a realloc if the caller appends later).  Note: reserve() counts
-        // characters, not including the implicit null — no manual +1 needed.
-        size_t totalSize         = timestamp.size() + threadPrefix.size() + std::strlen(levelStr) + 3 + s.size;
-        std::string fullMessage;
-        fullMessage.reserve(totalSize);
-        fullMessage.append(timestamp);
-        fullMessage.append(threadPrefix);
-        fullMessage.append(levelStr);
-        fullMessage.append(" | ");
-        fullMessage.append(s.buffer, s.size);
-
-        reset(); // slot is no longer needed; release before locking
-
-        std::lock_guard<std::mutex> lock(logMutex);
-
-        // Console output
-        if (level >= conThresh) {
-            if (gui_mode_active()) {
-                std::printf("\nGUI:LOG:%s%s%s\n", getColor(level), fullMessage.c_str(), RESET_COLOR);
-            } else if (colorsOn) {
-                std::printf("%s%s%s\n", getColor(level), fullMessage.c_str(), RESET_COLOR);
             } else {
-                // Fix: avoid temporary std::string allocation; use two writes instead.
-                std::fputs(fullMessage.c_str(), stdout);
-                std::fputc('\n', stdout);
+                // Generic fallback for other integral types
+                appendSafe("0x%llX ", static_cast<unsigned long long>(value));
             }
-            std::fflush(stdout);
         }
 
-        // File output
-        if (fileLogOn && level >= fileThresh && logFile.is_open()) {
-            logFile.write(fullMessage.data(), static_cast<std::streamsize>(fullMessage.size()));
-            logFile.put('\n');
-            logFile.flush();
-        }
-        // reset() already called above — do NOT call it again here.
-    }
-
-    /**
-     * @brief Sets the current log level.
-     * @param level The log level to set.
-     */
-    void setLevel(LogLevel level) noexcept
-    {
-        slot().currentLevel = level;
-    }
-
-    /**
-     * @brief Sets the console log level threshold.
-     * @param level The log level threshold to set.
-     */
-    void setConsoleThreshold(LogLevel level) noexcept
-    {
-        consoleThreshold.store(level, std::memory_order_relaxed);
-    }
-
-    /**
-     * @brief Sets the file log level threshold.
-     * @param level The log level threshold to set.
-     */
-    void setFileThreshold(LogLevel level) noexcept
-    {
-        fileThreshold.store(level, std::memory_order_relaxed);
-    }
-
-    /**
-     * @brief Sets the usage of colored logs
-     * @param value The boolean value to set.
-     */
-    void setColoredLogs(bool value) noexcept
-    {
-        useColors.store(value, std::memory_order_relaxed);
-    }
-
-    /**
-     * @brief Sets the usage of date in logs
-     * @param value The boolean value to set.
-     */
-    void setIncludeDate(bool value) noexcept
-    {
-        includeDate.store(value, std::memory_order_relaxed);
-    }
-
-    /**
-     * @brief Enables or disables printing the calling thread's numeric ID.
-     *
-     * When enabled (the default) every log line carries the OS thread ID
-     * immediately after the timestamp, separated by " | ".  Disable this
-     * for single-threaded programs or when thread attribution is not needed.
-     *
-     * @param value true → include thread ID; false → omit it.
-     */
-    void setIncludeThreadId(bool value) noexcept
-    {
-        includeThreadId.store(value, std::memory_order_relaxed);
-    }
-
-    /**
-     * @brief Enables file logging with optional custom filename.
-     * @param filename Optional custom filename. If empty, auto-generates timestamp-based name.
-     * @return true if file logging was successfully enabled, false otherwise.
-     */
-    bool enableFileLogging(const std::string &filename = "")
-    {
-        std::lock_guard<std::mutex> lock(logMutex);
-
-        if (fileLoggingEnabled.load(std::memory_order_relaxed) && logFile.is_open()) {
-            return true; // Already enabled
+        /**
+         * @brief Appends a floating-point value to the log buffer.
+         * @tparam T The floating-point type.
+         * @param value The value to append.
+         */
+        template <log_concepts::FloatingPoint T>
+        void append(T value) noexcept
+        {
+            appendSafe("%.8f ", static_cast<double>(value));
         }
 
-        std::string actualFilename;
-        if (filename.empty()) {
-            // Auto-generate filename with timestamp
-            auto now      = std::chrono::system_clock::now();
-            std::time_t t = std::chrono::system_clock::to_time_t(now);
-            std::tm tm;
+        /**
+         * @brief Appends a pointer to the log buffer.
+         * @tparam T The pointer type.
+         * @param ptr The pointer to append.
+         */
+        template <log_concepts::Pointer T>
+        void append(T ptr) noexcept
+        {
+            appendSafe("%p ", static_cast<const void *>(ptr));
+        }
+
+        /**
+         * @brief Gets the current timestamp as a formatted prefix segment.
+         *
+         * Output format examples:
+         *   includeDate = false:  "14:03:22.048712 | "
+         *   includeDate = true:   "2026-05-27 14:03:22.048712 | "
+         *
+         *
+         * @return The formatted timestamp string ending with "| ".
+         */
+        [[nodiscard]] std::string getTimestamp() const
+        {
+            using namespace std::chrono;
+            auto now      = system_clock::now();
+            auto micros   = duration_cast<microseconds>(now.time_since_epoch()) % 1'000'000;
+
+            std::time_t t = system_clock::to_time_t(now);
+            std::tm tm{};
 #ifdef _WIN32
             localtime_s(&tm, &t);
 #else
             localtime_r(&t, &tm);
 #endif
-            std::ostringstream oss;
-            oss << "log_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".txt";
-            actualFilename = oss.str();
-        } else {
-            actualFilename = filename;
+            // Stack buffer: "YYYY-MM-DD HH:MM:SS.uuuuuu | " = 30 chars max
+            char buf[32];
+            int pos = 0;
+            if (includeDate.load(std::memory_order_relaxed)) {
+                pos += std::snprintf(buf, sizeof(buf),
+                                     "%04d-%02d-%02d %02d:%02d:%02d",
+                                     tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                                     tm.tm_hour, tm.tm_min, tm.tm_sec);
+            } else {
+                pos += std::snprintf(buf, sizeof(buf),
+                                     "%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+            }
+            pos += std::snprintf(buf + pos, sizeof(buf) - static_cast<size_t>(pos),
+                                 ".%06lld | ", static_cast<long long>(micros.count()));
+            return std::string(buf, static_cast<size_t>(pos));
         }
 
-        logFile.open(actualFilename, std::ios::out | std::ios::app);
-        fileLoggingEnabled.store(logFile.is_open(), std::memory_order_relaxed);
+        /**
+         * @brief Returns the calling thread's hex ID as a prefix segment.
+         *
+         * Output format: "A3F2B1C0 | "
+         * Returns an empty string when includeThreadId is false, so the caller
+         * can unconditionally append it without branching.
+         *
+         * Note: although declared `const`, this returns a different value per
+         * thread because it reads a thread-local OS ID — not LogBuffer state.
+         *
+         * @return The formatted thread ID prefix, or an empty string.
+         */
+        [[nodiscard]] std::string getThreadIdPrefix() const
+        {
+            if (!includeThreadId.load(std::memory_order_relaxed)) {
+                return {};
+            }
 
-        return fileLoggingEnabled.load(std::memory_order_relaxed);
-    }
-
-    /**
-     * @brief Disables file logging.
-     */
-    void disableFileLogging()
-    {
-        std::lock_guard<std::mutex> lock(logMutex);
-
-        if (logFile.is_open()) {
-            logFile.flush();
-            logFile.close();
+            // Stack buffer: "XXXXXXXX | " = 11 chars
+            char buf[16];
+            int n = std::snprintf(buf, sizeof(buf), "%X | ", getThreadId());
+            return std::string(buf, static_cast<size_t>(n));
         }
-        fileLoggingEnabled.store(false, std::memory_order_relaxed);
-    }
 
-    /**
-     * @brief Check if file logging is currently enabled
-     */
-    [[nodiscard]] bool isFileLoggingEnabled() const noexcept
-    {
-        return fileLoggingEnabled.load(std::memory_order_relaxed) && logFile.is_open();
-    }
+        /**
+         * @brief Prints the log message with optimized string concatenation.
+         */
+        void print()
+        {
+            // Snapshot the calling thread's slot so we can release it (reset)
+            // before yielding the mutex, keeping the critical section short.
+            auto &s                   = slot();
+            const LogLevel level      = s.currentLevel;
 
-    /**
-     * @brief Destructor - ensures file is closed properly
-     */
-    ~LogBuffer()
-    {
-        disableFileLogging();
-    }
+            // Snapshot config atomics once — avoids repeated loads and ensures a
+            // consistent view of settings for the duration of this print() call.
+            const bool colorsOn       = useColors.load(std::memory_order_relaxed);
+            const bool fileLogOn      = fileLoggingEnabled.load(std::memory_order_relaxed);
+            const LogLevel conThresh  = consoleThreshold.load(std::memory_order_relaxed);
+            const LogLevel fileThresh = fileThreshold.load(std::memory_order_relaxed);
+
+            // LOG_EMPTY: bypass timestamp/severity prefix entirely.
+            // Prints the raw buffer content followed by a newline, or just a blank
+            // line when the buffer is empty (i.e. called with an empty string).
+            if (level == LOG_EMPTY) {
+                // Copy content out of the thread slot before locking so the slot
+                // can be reset immediately and the mutex is held only for the write.
+                std::string lineContent(s.buffer, s.size);
+                reset(); // release slot early
+
+                std::lock_guard<std::mutex> lock(logMutex);
+                const char *raw = lineContent.empty() ? "" : lineContent.c_str();
+
+                if (gui_mode_active()) {
+                    std::printf("\nGUI:LOG:%s%s%s\n", getColor(LOG_EMPTY), raw, RESET_COLOR);
+                    std::fflush(stdout);
+                } else {
+                    if (colorsOn) {
+                        std::printf("%s%s%s\n", getColor(LOG_EMPTY), raw, RESET_COLOR);
+                    } else {
+                        std::printf("%s\n", raw);
+                    }
+                    std::fflush(stdout);
+                }
+
+                if (fileLogOn && logFile.is_open()) {
+                    logFile << raw << '\n';
+                    logFile.flush();
+                }
+                return;
+            }
+
+            if (s.size == 0) {
+                reset();
+                return;
+            }
+
+            // Build the full message from the thread-local slot *before* locking.
+            // This keeps the critical section as short as possible: the mutex is
+            // held only for the actual write to stdout / file, not for string work.
+            std::string timestamp    = getTimestamp();
+            std::string threadPrefix = getThreadIdPrefix();
+            const char *levelStr     = toString(level);
+
+            // +3 for " | ", +1 for '\n' headroom (not strictly needed for string but
+            // avoids a realloc if the caller appends later).  Note: reserve() counts
+            // characters, not including the implicit null — no manual +1 needed.
+            size_t totalSize         = timestamp.size() + threadPrefix.size() + std::strlen(levelStr) + 3 + s.size;
+            std::string fullMessage;
+            fullMessage.reserve(totalSize);
+            fullMessage.append(timestamp);
+            fullMessage.append(threadPrefix);
+            fullMessage.append(levelStr);
+            fullMessage.append(" | ");
+            fullMessage.append(s.buffer, s.size);
+
+            reset(); // slot is no longer needed; release before locking
+
+            std::lock_guard<std::mutex> lock(logMutex);
+
+            // Console output
+            if (level >= conThresh) {
+                if (gui_mode_active()) {
+                    std::printf("\nGUI:LOG:%s%s%s\n", getColor(level), fullMessage.c_str(), RESET_COLOR);
+                } else if (colorsOn) {
+                    std::printf("%s%s%s\n", getColor(level), fullMessage.c_str(), RESET_COLOR);
+                } else {
+                    // Fix: avoid temporary std::string allocation; use two writes instead.
+                    std::fputs(fullMessage.c_str(), stdout);
+                    std::fputc('\n', stdout);
+                }
+                std::fflush(stdout);
+            }
+
+            // File output
+            if (fileLogOn && level >= fileThresh && logFile.is_open()) {
+                logFile.write(fullMessage.data(), static_cast<std::streamsize>(fullMessage.size()));
+                logFile.put('\n');
+                logFile.flush();
+            }
+            // reset() already called above — do NOT call it again here.
+        }
+
+        /**
+         * @brief Sets the current log level.
+         * @param level The log level to set.
+         */
+        void setLevel(LogLevel level) noexcept
+        {
+            slot().currentLevel = level;
+        }
+
+        /**
+         * @brief Sets the console log level threshold.
+         * @param level The log level threshold to set.
+         */
+        void setConsoleThreshold(LogLevel level) noexcept
+        {
+            consoleThreshold.store(level, std::memory_order_relaxed);
+        }
+
+        /**
+         * @brief Sets the file log level threshold.
+         * @param level The log level threshold to set.
+         */
+        void setFileThreshold(LogLevel level) noexcept
+        {
+            fileThreshold.store(level, std::memory_order_relaxed);
+        }
+
+        /**
+         * @brief Sets the usage of colored logs
+         * @param value The boolean value to set.
+         */
+        void setColoredLogs(bool value) noexcept
+        {
+            useColors.store(value, std::memory_order_relaxed);
+        }
+
+        /**
+         * @brief Sets the usage of date in logs
+         * @param value The boolean value to set.
+         */
+        void setIncludeDate(bool value) noexcept
+        {
+            includeDate.store(value, std::memory_order_relaxed);
+        }
+
+        /**
+         * @brief Enables or disables printing the calling thread's numeric ID.
+         *
+         * When enabled (the default) every log line carries the OS thread ID
+         * immediately after the timestamp, separated by " | ".  Disable this
+         * for single-threaded programs or when thread attribution is not needed.
+         *
+         * @param value true → include thread ID; false → omit it.
+         */
+        void setIncludeThreadId(bool value) noexcept
+        {
+            includeThreadId.store(value, std::memory_order_relaxed);
+        }
+
+        /**
+         * @brief Enables file logging with optional custom filename.
+         * @param filename Optional custom filename. If empty, auto-generates timestamp-based name.
+         * @return true if file logging was successfully enabled, false otherwise.
+         */
+        bool enableFileLogging(const std::string &filename = "")
+        {
+            std::lock_guard<std::mutex> lock(logMutex);
+
+            if (fileLoggingEnabled.load(std::memory_order_relaxed) && logFile.is_open()) {
+                return true; // Already enabled
+            }
+
+            std::string actualFilename;
+            if (filename.empty()) {
+                // Auto-generate filename with timestamp
+                auto now      = std::chrono::system_clock::now();
+                std::time_t t = std::chrono::system_clock::to_time_t(now);
+                std::tm tm;
+#ifdef _WIN32
+                localtime_s(&tm, &t);
+#else
+                localtime_r(&t, &tm);
+#endif
+                std::ostringstream oss;
+                oss << "log_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".txt";
+                actualFilename = oss.str();
+            } else {
+                actualFilename = filename;
+            }
+
+            logFile.open(actualFilename, std::ios::out | std::ios::app);
+            fileLoggingEnabled.store(logFile.is_open(), std::memory_order_relaxed);
+
+            return fileLoggingEnabled.load(std::memory_order_relaxed);
+        }
+
+        /**
+         * @brief Disables file logging.
+         */
+        void disableFileLogging()
+        {
+            std::lock_guard<std::mutex> lock(logMutex);
+
+            if (logFile.is_open()) {
+                logFile.flush();
+                logFile.close();
+            }
+            fileLoggingEnabled.store(false, std::memory_order_relaxed);
+        }
+
+        /**
+         * @brief Check if file logging is currently enabled
+         */
+        [[nodiscard]] bool isFileLoggingEnabled() const noexcept
+        {
+            return fileLoggingEnabled.load(std::memory_order_relaxed) && logFile.is_open();
+        }
+
+        /**
+         * @brief Destructor - ensures file is closed properly
+         */
+        ~LogBuffer()
+        {
+            disableFileLogging();
+        }
 };
 
 /**

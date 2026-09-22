@@ -38,17 +38,17 @@ class ICommDriver;
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED HydrabusPlugin *pluginEntry()
-{
-    return new HydrabusPlugin();
-}
-
-EXPORTED void pluginExit(HydrabusPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED HydrabusPlugin *pluginEntry()
+    {
+        return new HydrabusPlugin();
     }
-}
+
+    EXPORTED void pluginExit(HydrabusPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

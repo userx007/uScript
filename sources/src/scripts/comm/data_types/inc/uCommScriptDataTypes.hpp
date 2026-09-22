@@ -41,31 +41,30 @@ enum class CommCommandTokenType {
 /**
  * @brief Script token structure containing parsed command information
  */
-struct CommCommand
-{
-    CommCommandDirection direction;                               ///< Send-Recv or Recv-Send
-    std::pair<std::string, std::string> values;                   ///< First and second expression values
-    std::pair<CommCommandTokenType, CommCommandTokenType> tokens; ///< First and second expression token types
-    std::pair<std::string, std::string> xtra_params;              ///< Optional xtra_params for first and second operations
-                                                                  ///< Sourced from '~ param' (both ops) or '~ param1 | param2' (per-op)
-    int iLineNumber;
+struct CommCommand {
+        CommCommandDirection direction;                               ///< Send-Recv or Recv-Send
+        std::pair<std::string, std::string> values;                   ///< First and second expression values
+        std::pair<CommCommandTokenType, CommCommandTokenType> tokens; ///< First and second expression token types
+        std::pair<std::string, std::string> xtra_params;              ///< Optional xtra_params for first and second operations
+                                                                      ///< Sourced from '~ param' (both ops) or '~ param1 | param2' (per-op)
+        int iLineNumber;
 
-    CommCommand()
-        : direction(CommCommandDirection::INVALID)
-        , values{"", ""}
-        , tokens{CommCommandTokenType::INVALID, CommCommandTokenType::INVALID}
-        , xtra_params{"", ""}
-        , iLineNumber{0}
-    {}
+        CommCommand()
+            : direction(CommCommandDirection::INVALID)
+            , values{"", ""}
+            , tokens{CommCommandTokenType::INVALID, CommCommandTokenType::INVALID}
+            , xtra_params{"", ""}
+            , iLineNumber{0}
+        {
+        }
 };
 
 /**
  * @brief definition of storage structure for plugin tokens
  */
-struct CommCommandsType
-{
-    std::vector<CommCommand> vCommands;
-    std::unordered_map<std::string, std::string> mapMacros;
+struct CommCommandsType {
+        std::vector<CommCommand> vCommands;
+        std::unordered_map<std::string, std::string> mapMacros;
 };
 
 /**

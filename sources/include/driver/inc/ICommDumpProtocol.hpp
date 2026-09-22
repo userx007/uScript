@@ -106,8 +106,10 @@ enum class CommFamily : uint8_t {
     OTHER  = 5  // GPIO, JTAG, or anything that doesn't fit the above
 };
 
-enum class CommDir : uint8_t { Rx = 0,
-                               Tx = 1 };
+enum class CommDir : uint8_t {
+    Rx = 0,
+    Tx = 1
+};
 
 // ---------------------------------------------------------------------------
 // CommDetails — the "Details" column content.
@@ -118,11 +120,10 @@ enum class CommDir : uint8_t { Rx = 0,
 // ---------------------------------------------------------------------------
 inline constexpr int k_labelSize = 64; // includes the NULL terminator
 
-struct CommDetails
-{
-    CommFamily family       = CommFamily::OTHER;
-    char label[k_labelSize] = {}; // e.g. "/dev/ttyUSB0", "192.168.1.5:502",
-                                  // "PCAN-USB ch0 id=0x123", "i2c-1 addr=0x50"
+struct CommDetails {
+        CommFamily family       = CommFamily::OTHER;
+        char label[k_labelSize] = {}; // e.g. "/dev/ttyUSB0", "192.168.1.5:502",
+                                      // "PCAN-USB ch0 id=0x123", "i2c-1 addr=0x50"
 };
 
 // Builds a CommDetails from a family + arbitrary string, truncating safely

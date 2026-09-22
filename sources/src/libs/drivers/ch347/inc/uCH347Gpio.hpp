@@ -82,173 +82,172 @@ using GpioIrqHandler = std::function<void(uint8_t pinIndex)>;
 
 // ---------------------------------------------------------------------------
 
-class CH347GPIO : public ICommDriver
-{
-public:
-    // -----------------------------------------------------------------------
-    // Constants
-    // -----------------------------------------------------------------------
+class CH347GPIO : public ICommDriver {
+    public:
+        // -----------------------------------------------------------------------
+        // Constants
+        // -----------------------------------------------------------------------
 
-    static constexpr size_t GPIO_BUFFER_SIZE             = 3;    /**< Bytes in write buffer */
-    static constexpr size_t GPIO_READ_BUFFER_SIZE        = 2;    /**< Bytes in read  buffer */
-    static constexpr uint32_t GPIO_READ_DEFAULT_TIMEOUT  = 1000; /**< ms */
-    static constexpr uint32_t GPIO_WRITE_DEFAULT_TIMEOUT = 1000; /**< ms */
+        static constexpr size_t GPIO_BUFFER_SIZE             = 3;    /**< Bytes in write buffer */
+        static constexpr size_t GPIO_READ_BUFFER_SIZE        = 2;    /**< Bytes in read  buffer */
+        static constexpr uint32_t GPIO_READ_DEFAULT_TIMEOUT  = 1000; /**< ms */
+        static constexpr uint32_t GPIO_WRITE_DEFAULT_TIMEOUT = 1000; /**< ms */
 
-    static constexpr uint8_t BUF_IDX_ENABLE              = 0; /**< Enable mask index   */
-    static constexpr uint8_t BUF_IDX_DIR                 = 1; /**< Direction mask index */
-    static constexpr uint8_t BUF_IDX_DATA                = 2; /**< Data mask index      */
+        static constexpr uint8_t BUF_IDX_ENABLE              = 0; /**< Enable mask index   */
+        static constexpr uint8_t BUF_IDX_DIR                 = 1; /**< Direction mask index */
+        static constexpr uint8_t BUF_IDX_DATA                = 2; /**< Data mask index      */
 
-    // -----------------------------------------------------------------------
-    // Construction / destruction
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Construction / destruction
+        // -----------------------------------------------------------------------
 
-    CH347GPIO()                                          = default;
+        CH347GPIO()                                          = default;
 
-    /**
-     * @brief Construct and immediately open the GPIO interface.
-     *
-     * @param strDevice        Device path (Linux) or decimal index string (Windows).
-     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-     *                         describeConnection()), supplied separately from
-     *                         strDevice — e.g. "/dev/ch34xpis0".
-     */
-    explicit CH347GPIO(const std::string &strDevice, const std::string &strIdentityLabel = {})
-        : m_iHandle(CH347_INVALID_HANDLE)
-        , m_strIdentityLabel(strIdentityLabel)
-    {
-        open(strDevice);
-    }
+        /**
+         * @brief Construct and immediately open the GPIO interface.
+         *
+         * @param strDevice        Device path (Linux) or decimal index string (Windows).
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately from
+         *                         strDevice — e.g. "/dev/ch34xpis0".
+         */
+        explicit CH347GPIO(const std::string &strDevice, const std::string &strIdentityLabel = {})
+            : m_iHandle(CH347_INVALID_HANDLE)
+            , m_strIdentityLabel(strIdentityLabel)
+        {
+            open(strDevice);
+        }
 
-    virtual ~CH347GPIO()
-    {
-        close();
-    }
+        virtual ~CH347GPIO()
+        {
+            close();
+        }
 
-    // -----------------------------------------------------------------------
-    // Lifecycle
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Lifecycle
+        // -----------------------------------------------------------------------
 
-    Status open(const std::string &strDevice);
-    Status close();
-    bool is_open() const override;
+        Status open(const std::string &strDevice);
+        Status close();
+        bool is_open() const override;
 
-    /**
-     * @brief Describe this connection for the GUI comm-dump panel.
-     * Register-like pin control, not an addressable channel — xtra_params ignored.
-     */
-    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-    {
-        return commdump_details(CommFamily::OTHER,
-                                m_strIdentityLabel.empty() ? "CH347 GPIO" : m_strIdentityLabel);
-    }
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * Register-like pin control, not an addressable channel — xtra_params ignored.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return commdump_details(CommFamily::OTHER,
+                                    m_strIdentityLabel.empty() ? "CH347 GPIO" : m_strIdentityLabel);
+        }
 
-    // -----------------------------------------------------------------------
-    // ICommDriver interface
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // ICommDriver interface
+        // -----------------------------------------------------------------------
 
-    /**
-     * @brief Read current GPIO directions and levels.
-     *
-     * @param u32ReadTimeout  Unused (GPIO reads are synchronous USB commands).
-     * @param buffer          Must be ≥ 2 bytes.
-     *                          buffer[0] ← direction bitmask (1 = output)
-     *                          buffer[1] ← data bitmask      (1 = high)
-     * @param options         ReadMode::Exact only.
-     * @param xtra_params     Optional driver-specific addressing hint (ignored)
-     *                        the parameter is accepted for interface conformance).
+        /**
+         * @brief Read current GPIO directions and levels.
+         *
+         * @param u32ReadTimeout  Unused (GPIO reads are synchronous USB commands).
+         * @param buffer          Must be ≥ 2 bytes.
+         *                          buffer[0] ← direction bitmask (1 = output)
+         *                          buffer[1] ← data bitmask      (1 = high)
+         * @param options         ReadMode::Exact only.
+         * @param xtra_params     Optional driver-specific addressing hint (ignored)
+         *                        the parameter is accepted for interface conformance).
 
-     * @return ReadResult { status, 2, false }
-     */
-    ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t> buffer,
-                         const ReadOptions &options,
-                         std::string_view xtra_params = {},
-                         std::stop_token stop_tok     = {}) const override;
+         * @return ReadResult { status, 2, false }
+         */
+        ReadResult tout_read(uint32_t u32ReadTimeout,
+                             std::span<uint8_t> buffer,
+                             const ReadOptions &options,
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok     = {}) const override;
 
-    /**
-     * @brief Set GPIO pin directions and output levels.
-     *
-     * @param u32WriteTimeout Unused.
-     * @param buffer          Must be exactly 3 bytes:
-     *                          buffer[0] = enable mask  (GpioPin bitmask)
-     *                          buffer[1] = direction    (1 = output)
-     *                          buffer[2] = data         (1 = high)
-     * @param xtra_params     Optional driver-specific addressing hint (ignored by KI2C)
-     *                        the parameter is accepted for interface conformance).
-     * @return WriteResult { status, 3 }
-     */
-    WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {},
-                           std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Set GPIO pin directions and output levels.
+         *
+         * @param u32WriteTimeout Unused.
+         * @param buffer          Must be exactly 3 bytes:
+         *                          buffer[0] = enable mask  (GpioPin bitmask)
+         *                          buffer[1] = direction    (1 = output)
+         *                          buffer[2] = data         (1 = high)
+         * @param xtra_params     Optional driver-specific addressing hint (ignored by KI2C)
+         *                        the parameter is accepted for interface conformance).
+         * @return WriteResult { status, 3 }
+         */
+        WriteResult tout_write(uint32_t u32WriteTimeout,
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok     = {}) const override;
 
-    // -----------------------------------------------------------------------
-    // Single-pin helpers (non-virtual, preferred for application code)
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Single-pin helpers (non-virtual, preferred for application code)
+        // -----------------------------------------------------------------------
 
-    /**
-     * @brief Configure one pin as output and drive it to a level.
-     *
-     * @param pin    GpioPin bitmask (single bit)
-     * @param level  true = high, false = low
-     */
-    Status pin_write(uint8_t pin, bool level) const;
+        /**
+         * @brief Configure one pin as output and drive it to a level.
+         *
+         * @param pin    GpioPin bitmask (single bit)
+         * @param level  true = high, false = low
+         */
+        Status pin_write(uint8_t pin, bool level) const;
 
-    /**
-     * @brief Read the current level of one or more input pins.
-     *
-     * @param pinMask  GpioPin bitmask of pins to read
-     * @param level    Receives the raw data bitmask (masked by pinMask)
-     */
-    Status pin_read(uint8_t pinMask, uint8_t &level) const;
+        /**
+         * @brief Read the current level of one or more input pins.
+         *
+         * @param pinMask  GpioPin bitmask of pins to read
+         * @param level    Receives the raw data bitmask (masked by pinMask)
+         */
+        Status pin_read(uint8_t pinMask, uint8_t &level) const;
 
-    /**
-     * @brief Set the direction of one or more pins without changing levels.
-     *
-     * @param pinMask   Pins to configure
-     * @param isOutput  true = output, false = input
-     */
-    Status pin_set_direction(uint8_t pinMask, bool isOutput) const;
+        /**
+         * @brief Set the direction of one or more pins without changing levels.
+         *
+         * @param pinMask   Pins to configure
+         * @param isOutput  true = output, false = input
+         */
+        Status pin_set_direction(uint8_t pinMask, bool isOutput) const;
 
-    /**
-     * @brief Drive multiple output pins simultaneously.
-     *
-     * @param pinMask   Pins to update (must already be configured as outputs)
-     * @param levelMask Desired levels for each selected pin
-     */
-    Status pins_write(uint8_t pinMask, uint8_t levelMask) const;
+        /**
+         * @brief Drive multiple output pins simultaneously.
+         *
+         * @param pinMask   Pins to update (must already be configured as outputs)
+         * @param levelMask Desired levels for each selected pin
+         */
+        Status pins_write(uint8_t pinMask, uint8_t levelMask) const;
 
-    // -----------------------------------------------------------------------
-    // Interrupt / IRQ helpers
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Interrupt / IRQ helpers
+        // -----------------------------------------------------------------------
 
-    /**
-     * @brief Configure and enable a GPIO interrupt.
-     *
-     * Valid GPIO indices for IRQ: 0, 2, 3, 4, 5, 6, 7 (index 1 is reserved).
-     *
-     * @param pinIndex  0-based pin number
-     * @param edge      Trigger edge(s)
-     * @param handler   C-style function pointer.
-     *                  Linux  : plain function pointer compatible with the
-     *                           ch347_lib ISR signature.
-     *                  Windows: must be declared with the CALLBACK calling
-     *                           convention (mPCH347_INT_ROUTINE signature).
-     *                  For C++ lambda callbacks, wrap in a static trampoline
-     *                  function.
-     * @return Status
-     */
-    Status irq_set(uint8_t pinIndex, GpioIrqEdge edge, void *handler) const;
+        /**
+         * @brief Configure and enable a GPIO interrupt.
+         *
+         * Valid GPIO indices for IRQ: 0, 2, 3, 4, 5, 6, 7 (index 1 is reserved).
+         *
+         * @param pinIndex  0-based pin number
+         * @param edge      Trigger edge(s)
+         * @param handler   C-style function pointer.
+         *                  Linux  : plain function pointer compatible with the
+         *                           ch347_lib ISR signature.
+         *                  Windows: must be declared with the CALLBACK calling
+         *                           convention (mPCH347_INT_ROUTINE signature).
+         *                  For C++ lambda callbacks, wrap in a static trampoline
+         *                  function.
+         * @return Status
+         */
+        Status irq_set(uint8_t pinIndex, GpioIrqEdge edge, void *handler) const;
 
-    /**
-     * @brief Disable a previously configured GPIO interrupt.
-     * @param pinIndex  0-based pin number
-     */
-    Status irq_disable(uint8_t pinIndex) const;
+        /**
+         * @brief Disable a previously configured GPIO interrupt.
+         * @param pinIndex  0-based pin number
+         */
+        Status irq_disable(uint8_t pinIndex) const;
 
-private:
-    CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
-    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
+    private:
+        CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
+        std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 };
 
 #endif // U_CH347_GPIO_DRIVER_H

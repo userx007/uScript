@@ -68,112 +68,112 @@
 #include <unistd.h>
 
 namespace {
-constexpr size_t FRAME_BUF_SIZE = 65536; // generous; covers jumbo frames too
-constexpr size_t ETH_HDR_LEN    = 14;    // dst(6) + src(6) + ethertype(2)
-constexpr size_t MAC_LEN        = 6;
-// Ethernet payloads can run into the tens of KB (jumbo frames) — unlike
-// a CAN frame's 8 bytes, printing every byte would flood the terminal.
-// Cap the console dump and note how much was left out, same idea as
-// CommDumpModel's preview truncation in the GUI.
-constexpr size_t DUMP_MAX_BYTES = 64;
+    constexpr size_t FRAME_BUF_SIZE = 65536; // generous; covers jumbo frames too
+    constexpr size_t ETH_HDR_LEN    = 14;    // dst(6) + src(6) + ethertype(2)
+    constexpr size_t MAC_LEN        = 6;
+    // Ethernet payloads can run into the tens of KB (jumbo frames) — unlike
+    // a CAN frame's 8 bytes, printing every byte would flood the terminal.
+    // Cap the console dump and note how much was left out, same idea as
+    // CommDumpModel's preview truncation in the GUI.
+    constexpr size_t DUMP_MAX_BYTES = 64;
 
-volatile sig_atomic_t g_stop    = 0;
+    volatile sig_atomic_t g_stop    = 0;
 
-void on_signal(int /*sig*/)
-{
-    g_stop = 1;
-}
-
-std::string mac_to_string(const uint8_t *mac)
-{
-    char sz[18];
-    std::snprintf(sz, sizeof(sz), "%02x:%02x:%02x:%02x:%02x:%02x",
-                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    return std::string(sz);
-}
-
-bool mac_equal(const uint8_t *a, const uint8_t *b)
-{
-    return std::memcmp(a, b, MAC_LEN) == 0;
-}
-
-/** Print one Ethernet frame in a candump-like table row: DIR, SRC MAC,
- *  DST MAC, ETHERTYPE, LEN, and a hex dump of the payload (the bytes
- *  after the 14-byte header) — the raw-Ethernet analogue of
- *  kvcan_loopback.c's print_frame(), with CAN's ID/DLC swapped out for
- *  the fields that actually identify an Ethernet frame. Reads the
- *  frame straight out of the wire buffer (`frame`/`frameLen`) rather
- *  than taking the header fields as separate arguments, so the exact
- *  same call works for both the as-received RX frame and the
- *  address-swapped TX frame that gets echoed back — same as kvcan's
- *  print_frame(prefix, &frame) being called before AND after the frame
- *  is reused for the echoed reply.
- */
-void print_frame(const char *prefix, const uint8_t *frame, size_t frameLen)
-{
-    if (frameLen < ETH_HDR_LEN) {
-        return; // caller already rejects runts before this would be called
+    void on_signal(int /*sig*/)
+    {
+        g_stop = 1;
     }
 
-    const uint8_t *dst       = frame;
-    const uint8_t *src       = frame + MAC_LEN;
-    const uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t *>(frame + 2 * MAC_LEN));
-    const uint8_t *payload   = frame + ETH_HDR_LEN;
-    const size_t payloadLen  = frameLen - ETH_HDR_LEN;
-
-    std::printf("%-4s  %-17s  %-17s  0x%04x  %-6zu ",
-                prefix, mac_to_string(src).c_str(), mac_to_string(dst).c_str(),
-                ethertype, payloadLen);
-
-    const size_t shown = std::min(payloadLen, DUMP_MAX_BYTES);
-    for (size_t i = 0; i < shown; ++i) {
-        std::printf("%02X ", payload[i]);
+    std::string mac_to_string(const uint8_t *mac)
+    {
+        char sz[18];
+        std::snprintf(sz, sizeof(sz), "%02x:%02x:%02x:%02x:%02x:%02x",
+                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        return std::string(sz);
     }
-    if (payloadLen > shown) {
-        std::printf("... (+%zu more bytes)", payloadLen - shown);
+
+    bool mac_equal(const uint8_t *a, const uint8_t *b)
+    {
+        return std::memcmp(a, b, MAC_LEN) == 0;
     }
-    std::printf("\n");
-    std::fflush(stdout);
-}
 
-// Look up an interface's index and MAC address via ioctl(). Returns
-// false on failure (e.g. unknown interface name, insufficient perms).
-bool resolve_interface(int fd, const std::string &ifname, int &ifindex, uint8_t ownMac[MAC_LEN])
-{
-    struct ifreq sIfr = {};
-    std::strncpy(sIfr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
+    /** Print one Ethernet frame in a candump-like table row: DIR, SRC MAC,
+     *  DST MAC, ETHERTYPE, LEN, and a hex dump of the payload (the bytes
+     *  after the 14-byte header) — the raw-Ethernet analogue of
+     *  kvcan_loopback.c's print_frame(), with CAN's ID/DLC swapped out for
+     *  the fields that actually identify an Ethernet frame. Reads the
+     *  frame straight out of the wire buffer (`frame`/`frameLen`) rather
+     *  than taking the header fields as separate arguments, so the exact
+     *  same call works for both the as-received RX frame and the
+     *  address-swapped TX frame that gets echoed back — same as kvcan's
+     *  print_frame(prefix, &frame) being called before AND after the frame
+     *  is reused for the echoed reply.
+     */
+    void print_frame(const char *prefix, const uint8_t *frame, size_t frameLen)
+    {
+        if (frameLen < ETH_HDR_LEN) {
+            return; // caller already rejects runts before this would be called
+        }
 
-    if (::ioctl(fd, SIOCGIFINDEX, &sIfr) < 0) {
-        std::fprintf(stderr, "ioctl(SIOCGIFINDEX, %s) failed, errno=%d (%s)\n",
-                     ifname.c_str(), errno, std::strerror(errno));
-        return false;
+        const uint8_t *dst       = frame;
+        const uint8_t *src       = frame + MAC_LEN;
+        const uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t *>(frame + 2 * MAC_LEN));
+        const uint8_t *payload   = frame + ETH_HDR_LEN;
+        const size_t payloadLen  = frameLen - ETH_HDR_LEN;
+
+        std::printf("%-4s  %-17s  %-17s  0x%04x  %-6zu ",
+                    prefix, mac_to_string(src).c_str(), mac_to_string(dst).c_str(),
+                    ethertype, payloadLen);
+
+        const size_t shown = std::min(payloadLen, DUMP_MAX_BYTES);
+        for (size_t i = 0; i < shown; ++i) {
+            std::printf("%02X ", payload[i]);
+        }
+        if (payloadLen > shown) {
+            std::printf("... (+%zu more bytes)", payloadLen - shown);
+        }
+        std::printf("\n");
+        std::fflush(stdout);
     }
-    ifindex = sIfr.ifr_ifindex;
 
-    std::memset(&sIfr, 0, sizeof(sIfr));
-    std::strncpy(sIfr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
-    if (::ioctl(fd, SIOCGIFHWADDR, &sIfr) < 0) {
-        std::fprintf(stderr, "ioctl(SIOCGIFHWADDR, %s) failed, errno=%d (%s)\n",
-                     ifname.c_str(), errno, std::strerror(errno));
-        return false;
+    // Look up an interface's index and MAC address via ioctl(). Returns
+    // false on failure (e.g. unknown interface name, insufficient perms).
+    bool resolve_interface(int fd, const std::string &ifname, int &ifindex, uint8_t ownMac[MAC_LEN])
+    {
+        struct ifreq sIfr = {};
+        std::strncpy(sIfr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
+
+        if (::ioctl(fd, SIOCGIFINDEX, &sIfr) < 0) {
+            std::fprintf(stderr, "ioctl(SIOCGIFINDEX, %s) failed, errno=%d (%s)\n",
+                         ifname.c_str(), errno, std::strerror(errno));
+            return false;
+        }
+        ifindex = sIfr.ifr_ifindex;
+
+        std::memset(&sIfr, 0, sizeof(sIfr));
+        std::strncpy(sIfr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
+        if (::ioctl(fd, SIOCGIFHWADDR, &sIfr) < 0) {
+            std::fprintf(stderr, "ioctl(SIOCGIFHWADDR, %s) failed, errno=%d (%s)\n",
+                         ifname.c_str(), errno, std::strerror(errno));
+            return false;
+        }
+        std::memcpy(ownMac, sIfr.ifr_hwaddr.sa_data, MAC_LEN);
+        return true;
     }
-    std::memcpy(ownMac, sIfr.ifr_hwaddr.sa_data, MAC_LEN);
-    return true;
-}
 
-bool enable_promiscuous(int fd, int ifindex)
-{
-    struct packet_mreq sMreq = {};
-    sMreq.mr_ifindex         = ifindex;
-    sMreq.mr_type            = PACKET_MR_PROMISC;
+    bool enable_promiscuous(int fd, int ifindex)
+    {
+        struct packet_mreq sMreq = {};
+        sMreq.mr_ifindex         = ifindex;
+        sMreq.mr_type            = PACKET_MR_PROMISC;
 
-    if (::setsockopt(fd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &sMreq, sizeof(sMreq)) < 0) {
-        std::fprintf(stderr, "setsockopt(PACKET_ADD_MEMBERSHIP) failed, errno=%d (%s)\n",
-                     errno, std::strerror(errno));
-        return false;
+        if (::setsockopt(fd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &sMreq, sizeof(sMreq)) < 0) {
+            std::fprintf(stderr, "setsockopt(PACKET_ADD_MEMBERSHIP) failed, errno=%d (%s)\n",
+                         errno, std::strerror(errno));
+            return false;
+        }
+        return true;
     }
-    return true;
-}
 } // namespace
 
 int main(int argc, char **argv)

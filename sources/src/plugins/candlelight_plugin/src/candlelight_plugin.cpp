@@ -28,17 +28,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED CandlelightPlugin *pluginEntry()
-{
-    return new CandlelightPlugin();
-}
-
-EXPORTED void pluginExit(CandlelightPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED CandlelightPlugin *pluginEntry()
+    {
+        return new CandlelightPlugin();
     }
-}
+
+    EXPORTED void pluginExit(CandlelightPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -18,37 +18,40 @@
 #include <sys/socket.h>
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LT_HDR
 #undef LT_HDR
 #endif
-#define LT_HDR  "W5500_NET   |"
+#define LT_HDR  "W5500_NET_DRV"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
-// ============================================================================
-// PORTABLE recv()/send() WRAPPERS — see uEnc28J60NetCommon.cpp's identical
-// helper for the full rationale (this driver uses the same wire protocol
-// and the same int-fd convention).
-// ============================================================================
-namespace {
-inline long net_recv(int iSocketFd, void *pBuf, size_t szLen, int iFlags)
-{
-#ifdef _WIN32
-    return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char *>(pBuf),
-                  static_cast<int>(szLen), iFlags);
-#else
-    return ::recv(iSocketFd, pBuf, szLen, iFlags);
-#endif
-}
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
-inline long net_send(int iSocketFd, const void *pBuf, size_t szLen, int iFlags)
-{
+namespace {
+    inline long net_recv(int iSocketFd, void *pBuf, size_t szLen, int iFlags)
+    {
 #ifdef _WIN32
-    return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char *>(pBuf),
-                  static_cast<int>(szLen), iFlags);
+        return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char *>(pBuf),
+                      static_cast<int>(szLen), iFlags);
 #else
-    return ::send(iSocketFd, pBuf, szLen, iFlags);
+        return ::recv(iSocketFd, pBuf, szLen, iFlags);
 #endif
-}
+    }
+
+    inline long net_send(int iSocketFd, const void *pBuf, size_t szLen, int iFlags)
+    {
+#ifdef _WIN32
+        return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char *>(pBuf),
+                      static_cast<int>(szLen), iFlags);
+#else
+        return ::send(iSocketFd, pBuf, szLen, iFlags);
+#endif
+    }
 } // namespace
 
 // ============================================================================

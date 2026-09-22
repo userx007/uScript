@@ -48,27 +48,27 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //  LineNumberArea
 // ─────────────────────────────────────────────────────────────────────────────
-class LineNumberArea : public QWidget
-{
-public:
-    explicit LineNumberArea(CodeEditor *editor)
-        : QWidget(editor)
-        , m_editor(editor)
-    {}
+class LineNumberArea : public QWidget {
+    public:
+        explicit LineNumberArea(CodeEditor *editor)
+            : QWidget(editor)
+            , m_editor(editor)
+        {
+        }
 
-    QSize sizeHint() const override
-    {
-        return {m_editor->lineNumberAreaWidth(), 0};
-    }
+        QSize sizeHint() const override
+        {
+            return {m_editor->lineNumberAreaWidth(), 0};
+        }
 
-protected:
-    void paintEvent(QPaintEvent *ev) override
-    {
-        m_editor->lineNumberAreaPaintEvent(ev);
-    }
+    protected:
+        void paintEvent(QPaintEvent *ev) override
+        {
+            m_editor->lineNumberAreaPaintEvent(ev);
+        }
 
-private:
-    CodeEditor *m_editor;
+    private:
+        CodeEditor *m_editor;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

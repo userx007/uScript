@@ -28,25 +28,25 @@
 // and the same int-fd convention).
 // ============================================================================
 namespace {
-inline long net_recv(int iSocketFd, void *pBuf, size_t szLen, int iFlags)
-{
+    inline long net_recv(int iSocketFd, void *pBuf, size_t szLen, int iFlags)
+    {
 #ifdef _WIN32
-    return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char *>(pBuf),
-                  static_cast<int>(szLen), iFlags);
+        return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char *>(pBuf),
+                      static_cast<int>(szLen), iFlags);
 #else
-    return ::recv(iSocketFd, pBuf, szLen, iFlags);
+        return ::recv(iSocketFd, pBuf, szLen, iFlags);
 #endif
-}
+    }
 
-inline long net_send(int iSocketFd, const void *pBuf, size_t szLen, int iFlags)
-{
+    inline long net_send(int iSocketFd, const void *pBuf, size_t szLen, int iFlags)
+    {
 #ifdef _WIN32
-    return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char *>(pBuf),
-                  static_cast<int>(szLen), iFlags);
+        return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char *>(pBuf),
+                      static_cast<int>(szLen), iFlags);
 #else
-    return ::send(iSocketFd, pBuf, szLen, iFlags);
+        return ::send(iSocketFd, pBuf, szLen, iFlags);
 #endif
-}
+    }
 } // namespace
 
 // ============================================================================

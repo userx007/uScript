@@ -36,171 +36,175 @@
 #define LT_HDR  "WS_DRV      |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            IMPLEMENTATION                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
 namespace {
-// RFC 6455 s.1.3 - fixed GUID concatenated with the client's Sec-WebSocket-Key
-// nonce, SHA-1 hashed, then base64 encoded, to derive Sec-WebSocket-Accept.
-constexpr const char *WS_GUID          = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+    // RFC 6455 s.1.3 - fixed GUID concatenated with the client's Sec-WebSocket-Key
+    // nonce, SHA-1 hashed, then base64 encoded, to derive Sec-WebSocket-Accept.
+    constexpr const char *WS_GUID          = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-// Sanity bound on the *assembled* payload of one WS message (after
-// defragmenting Continuation frames), independent of WS_MAX_BUFLENGTH
-// (which only bounds what tout_read() ultimately copies out / accumulates
-// across the delimiter+token read modes). This exists purely to stop a
-// broken or hostile peer from growing payload vectors without bound; it
-// is intentionally generous (1 MiB) since legitimate JSON/text payloads
-// can comfortably exceed WS_MAX_BUFLENGTH.
-constexpr size_t WS_MAX_MESSAGE_LENGTH = 1u * 1024u * 1024u;
+    // Sanity bound on the *assembled* payload of one WS message (after
+    // defragmenting Continuation frames), independent of WS_MAX_BUFLENGTH
+    // (which only bounds what tout_read() ultimately copies out / accumulates
+    // across the delimiter+token read modes). This exists purely to stop a
+    // broken or hostile peer from growing payload vectors without bound; it
+    // is intentionally generous (1 MiB) since legitimate JSON/text payloads
+    // can comfortably exceed WS_MAX_BUFLENGTH.
+    constexpr size_t WS_MAX_MESSAGE_LENGTH = 1u * 1024u * 1024u;
 
-// -----------------------------------------------------------------------
-// SHA-1 (RFC 3174) - self-contained, used only to derive Sec-WebSocket-Accept.
-// -----------------------------------------------------------------------
-void sha1(std::span<const uint8_t> data, std::array<uint8_t, 20> &digestOut)
-{
-    uint32_t h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE,
-             h3 = 0x10325476, h4 = 0xC3D2E1F0;
+    // -----------------------------------------------------------------------
+    // SHA-1 (RFC 3174) - self-contained, used only to derive Sec-WebSocket-Accept.
+    // -----------------------------------------------------------------------
+    void sha1(std::span<const uint8_t> data, std::array<uint8_t, 20> &digestOut)
+    {
+        uint32_t h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE,
+                 h3 = 0x10325476, h4 = 0xC3D2E1F0;
 
-    std::vector<uint8_t> msg(data.begin(), data.end());
-    const uint64_t ml = static_cast<uint64_t>(data.size()) * 8ULL;
+        std::vector<uint8_t> msg(data.begin(), data.end());
+        const uint64_t ml = static_cast<uint64_t>(data.size()) * 8ULL;
 
-    msg.push_back(0x80);
-    while ((msg.size() % 64) != 56) {
-        msg.push_back(0x00);
-    }
-    for (int i = 7; i >= 0; --i) {
-        msg.push_back(static_cast<uint8_t>((ml >> (8 * i)) & 0xFF));
-    }
-
-    for (size_t chunkStart = 0; chunkStart < msg.size(); chunkStart += 64) {
-        uint32_t w[80];
-        for (int i = 0; i < 16; ++i) {
-            w[i] = (static_cast<uint32_t>(msg[chunkStart + static_cast<size_t>(i) * 4]) << 24) |
-                   (static_cast<uint32_t>(msg[chunkStart + static_cast<size_t>(i) * 4 + 1]) << 16) |
-                   (static_cast<uint32_t>(msg[chunkStart + static_cast<size_t>(i) * 4 + 2]) << 8) |
-                   static_cast<uint32_t>(msg[chunkStart + static_cast<size_t>(i) * 4 + 3]);
+        msg.push_back(0x80);
+        while ((msg.size() % 64) != 56) {
+            msg.push_back(0x00);
         }
-        for (int i = 16; i < 80; ++i) {
-            const uint32_t v = w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16];
-            w[i]             = (v << 1) | (v >> 31);
+        for (int i = 7; i >= 0; --i) {
+            msg.push_back(static_cast<uint8_t>((ml >> (8 * i)) & 0xFF));
         }
 
-        uint32_t a = h0, b = h1, c = h2, d = h3, e = h4;
-        for (int i = 0; i < 80; ++i) {
-            uint32_t f, k;
-            if (i < 20) {
-                f = (b & c) | ((~b) & d);
-                k = 0x5A827999;
-            } else if (i < 40) {
-                f = b ^ c ^ d;
-                k = 0x6ED9EBA1;
-            } else if (i < 60) {
-                f = (b & c) | (b & d) | (c & d);
-                k = 0x8F1BBCDC;
-            } else {
-                f = b ^ c ^ d;
-                k = 0xCA62C1D6;
+        for (size_t chunkStart = 0; chunkStart < msg.size(); chunkStart += 64) {
+            uint32_t w[80];
+            for (int i = 0; i < 16; ++i) {
+                w[i] = (static_cast<uint32_t>(msg[chunkStart + static_cast<size_t>(i) * 4]) << 24) |
+                       (static_cast<uint32_t>(msg[chunkStart + static_cast<size_t>(i) * 4 + 1]) << 16) |
+                       (static_cast<uint32_t>(msg[chunkStart + static_cast<size_t>(i) * 4 + 2]) << 8) |
+                       static_cast<uint32_t>(msg[chunkStart + static_cast<size_t>(i) * 4 + 3]);
+            }
+            for (int i = 16; i < 80; ++i) {
+                const uint32_t v = w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16];
+                w[i]             = (v << 1) | (v >> 31);
             }
 
-            const uint32_t temp = ((a << 5) | (a >> 27)) + f + e + k + w[i];
-            e                   = d;
-            d                   = c;
-            c                   = (b << 30) | (b >> 2);
-            b                   = a;
-            a                   = temp;
+            uint32_t a = h0, b = h1, c = h2, d = h3, e = h4;
+            for (int i = 0; i < 80; ++i) {
+                uint32_t f, k;
+                if (i < 20) {
+                    f = (b & c) | ((~b) & d);
+                    k = 0x5A827999;
+                } else if (i < 40) {
+                    f = b ^ c ^ d;
+                    k = 0x6ED9EBA1;
+                } else if (i < 60) {
+                    f = (b & c) | (b & d) | (c & d);
+                    k = 0x8F1BBCDC;
+                } else {
+                    f = b ^ c ^ d;
+                    k = 0xCA62C1D6;
+                }
+
+                const uint32_t temp = ((a << 5) | (a >> 27)) + f + e + k + w[i];
+                e                   = d;
+                d                   = c;
+                c                   = (b << 30) | (b >> 2);
+                b                   = a;
+                a                   = temp;
+            }
+
+            h0 += a;
+            h1 += b;
+            h2 += c;
+            h3 += d;
+            h4 += e;
         }
 
-        h0 += a;
-        h1 += b;
-        h2 += c;
-        h3 += d;
-        h4 += e;
+        const uint32_t hs[5] = {h0, h1, h2, h3, h4};
+        for (int i = 0; i < 5; ++i) {
+            digestOut[static_cast<size_t>(i) * 4]     = static_cast<uint8_t>((hs[i] >> 24) & 0xFF);
+            digestOut[static_cast<size_t>(i) * 4 + 1] = static_cast<uint8_t>((hs[i] >> 16) & 0xFF);
+            digestOut[static_cast<size_t>(i) * 4 + 2] = static_cast<uint8_t>((hs[i] >> 8) & 0xFF);
+            digestOut[static_cast<size_t>(i) * 4 + 3] = static_cast<uint8_t>(hs[i] & 0xFF);
+        }
     }
 
-    const uint32_t hs[5] = {h0, h1, h2, h3, h4};
-    for (int i = 0; i < 5; ++i) {
-        digestOut[static_cast<size_t>(i) * 4]     = static_cast<uint8_t>((hs[i] >> 24) & 0xFF);
-        digestOut[static_cast<size_t>(i) * 4 + 1] = static_cast<uint8_t>((hs[i] >> 16) & 0xFF);
-        digestOut[static_cast<size_t>(i) * 4 + 2] = static_cast<uint8_t>((hs[i] >> 8) & 0xFF);
-        digestOut[static_cast<size_t>(i) * 4 + 3] = static_cast<uint8_t>(hs[i] & 0xFF);
+    // -----------------------------------------------------------------------
+    // Small helpers: RNG, header parsing
+    // -----------------------------------------------------------------------
+    void fill_random(uint8_t *pBuffer, size_t szLen)
+    {
+        static thread_local std::mt19937 rng{std::random_device{}()};
+        std::uniform_int_distribution<int> dist(0, 255);
+        for (size_t i = 0; i < szLen; ++i) {
+            pBuffer[i] = static_cast<uint8_t>(dist(rng));
+        }
     }
-}
 
-// -----------------------------------------------------------------------
-// Small helpers: RNG, header parsing
-// -----------------------------------------------------------------------
-void fill_random(uint8_t *pBuffer, size_t szLen)
-{
-    static thread_local std::mt19937 rng{std::random_device{}()};
-    std::uniform_int_distribution<int> dist(0, 255);
-    for (size_t i = 0; i < szLen; ++i) {
-        pBuffer[i] = static_cast<uint8_t>(dist(rng));
+    std::string generate_websocket_key()
+    {
+        std::vector<uint8_t> nonce(16);
+        fill_random(nonce.data(), nonce.size());
+        return commdump_base64_encode(nonce);
     }
-}
 
-std::string generate_websocket_key()
-{
-    std::vector<uint8_t> nonce(16);
-    fill_random(nonce.data(), nonce.size());
-    return commdump_base64_encode(nonce);
-}
-
-std::string compute_accept_key(const std::string &strClientKey)
-{
-    const std::string strConcat = strClientKey + WS_GUID;
-    std::array<uint8_t, 20> digest{};
-    sha1(std::span<const uint8_t>(reinterpret_cast<const uint8_t *>(strConcat.data()), strConcat.size()), digest);
-    return commdump_base64_encode(std::vector<uint8_t>(digest.begin(), digest.end()));
-}
-
-std::string to_lower(std::string_view sv)
-{
-    std::string s(sv);
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    return s;
-}
-
-bool ci_contains(std::string_view haystack, std::string_view needle)
-{
-    return to_lower(haystack).find(to_lower(needle)) != std::string::npos;
-}
-
-// Looks up a header (case-insensitive name) in an HTTP header block
-// (status line + "Name: value" lines separated by "\r\n", no trailing
-// blank line). Returns the trimmed value, or nullopt if absent.
-std::optional<std::string> find_header_value(const std::string &strHeaderBlock, std::string_view svName)
-{
-    std::istringstream iss(strHeaderBlock);
-    std::string strLine;
-    bool bFirst = true;
-
-    while (std::getline(iss, strLine)) {
-        if (!strLine.empty() && strLine.back() == '\r') {
-            strLine.pop_back();
-        }
-        if (bFirst) {
-            bFirst = false;
-            continue;
-        } // skip the HTTP status line
-
-        const auto colonPos = strLine.find(':');
-        if (colonPos == std::string::npos) {
-            continue;
-        }
-
-        std::string_view svKey(strLine.data(), colonPos);
-        if (to_lower(svKey) != to_lower(svName)) {
-            continue;
-        }
-
-        std::string_view svVal(strLine.data() + colonPos + 1, strLine.size() - colonPos - 1);
-        while (!svVal.empty() && (svVal.front() == ' ' || svVal.front() == '\t')) {
-            svVal.remove_prefix(1);
-        }
-        while (!svVal.empty() && (svVal.back() == ' ' || svVal.back() == '\t')) {
-            svVal.remove_suffix(1);
-        }
-        return std::string(svVal);
+    std::string compute_accept_key(const std::string &strClientKey)
+    {
+        const std::string strConcat = strClientKey + WS_GUID;
+        std::array<uint8_t, 20> digest{};
+        sha1(std::span<const uint8_t>(reinterpret_cast<const uint8_t *>(strConcat.data()), strConcat.size()), digest);
+        return commdump_base64_encode(std::vector<uint8_t>(digest.begin(), digest.end()));
     }
-    return std::nullopt;
-}
+
+    std::string to_lower(std::string_view sv)
+    {
+        std::string s(sv);
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        return s;
+    }
+
+    bool ci_contains(std::string_view haystack, std::string_view needle)
+    {
+        return to_lower(haystack).find(to_lower(needle)) != std::string::npos;
+    }
+
+    // Looks up a header (case-insensitive name) in an HTTP header block
+    // (status line + "Name: value" lines separated by "\r\n", no trailing
+    // blank line). Returns the trimmed value, or nullopt if absent.
+    std::optional<std::string> find_header_value(const std::string &strHeaderBlock, std::string_view svName)
+    {
+        std::istringstream iss(strHeaderBlock);
+        std::string strLine;
+        bool bFirst = true;
+
+        while (std::getline(iss, strLine)) {
+            if (!strLine.empty() && strLine.back() == '\r') {
+                strLine.pop_back();
+            }
+            if (bFirst) {
+                bFirst = false;
+                continue;
+            } // skip the HTTP status line
+
+            const auto colonPos = strLine.find(':');
+            if (colonPos == std::string::npos) {
+                continue;
+            }
+
+            std::string_view svKey(strLine.data(), colonPos);
+            if (to_lower(svKey) != to_lower(svName)) {
+                continue;
+            }
+
+            std::string_view svVal(strLine.data() + colonPos + 1, strLine.size() - colonPos - 1);
+            while (!svVal.empty() && (svVal.front() == ' ' || svVal.front() == '\t')) {
+                svVal.remove_prefix(1);
+            }
+            while (!svVal.empty() && (svVal.back() == ' ' || svVal.back() == '\t')) {
+                svVal.remove_suffix(1);
+            }
+            return std::string(svVal);
+        }
+        return std::nullopt;
+    }
 
 } // namespace
 

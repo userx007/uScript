@@ -28,17 +28,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED KSPIPlugin *pluginEntry()
-{
-    return new KSPIPlugin();
-}
-
-EXPORTED void pluginExit(KSPIPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED KSPIPlugin *pluginEntry()
+    {
+        return new KSPIPlugin();
     }
-}
+
+    EXPORTED void pluginExit(KSPIPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

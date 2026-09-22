@@ -211,13 +211,10 @@ CommDumpView::CommDumpView(QWidget *parent)
 
     connect(m_clearBtn, &QPushButton::clicked, this, &CommDumpView::clear);
     connect(m_autoScrollCb, &QCheckBox::toggled, this, &CommDumpView::setAutoScroll);
-    connect(m_dirFilterCb, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
-        reapplyAllFilters();
-    });
+    connect(m_dirFilterCb, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) { reapplyAllFilters(); });
     connect(m_asciiCb, &QCheckBox::toggled, this, [this](bool on) {
         m_model->setShowAscii(on);
-        m_tree->setColumnHidden(CommDumpModel::ColAscii, !on);
-    });
+        m_tree->setColumnHidden(CommDumpModel::ColAscii, !on); });
     connect(m_collapsedCb, &QCheckBox::toggled, this, [this](bool on) {
         m_model->setCollapsedMode(on);
         m_tree->setColumnHidden(CommDumpModel::ColRepeatCount, !on);
@@ -225,8 +222,7 @@ CommDumpView::CommDumpView(QWidget *parent)
         // filter-visibility/span state is gone and needs rebuilding from
         // scratch, the same way onLoadTriggered() does after a reload.
         rebuildRowViewStateAfterReset();
-        updateCountLabel();
-    });
+        updateCountLabel(); });
     // Double-click a header to cycle that column's display mode — the sole
     // control for both now that the Timestamp-format dropdown is gone (see
     // header comment above); TimeFormatCount is the enum's own sentinel so
@@ -241,8 +237,7 @@ CommDumpView::CommDumpView(QWidget *parent)
             const int next = (cur == 8) ? 16 : (cur == 16) ? 32
                                                            : 8;
             m_model->setDumpBytesPerLine(next);
-        }
-    });
+        } });
 
     // Span the child (full-dump) row's first column across the whole row
     // width, but ONLY once a row is actually expanded — not eagerly for
@@ -266,9 +261,7 @@ CommDumpView::CommDumpView(QWidget *parent)
     // cost O(rows the user actually expands) instead of O(total rows).
     // expand()/expandAll()/double-click-to-expand all funnel through this
     // same signal, so every expansion path is covered.
-    connect(m_tree, &QTreeView::expanded, this, [this](const QModelIndex &index) {
-        m_tree->setFirstColumnSpanned(0, index.sibling(index.row(), 0), true);
-    });
+    connect(m_tree, &QTreeView::expanded, this, [this](const QModelIndex &index) { m_tree->setFirstColumnSpanned(0, index.sibling(index.row(), 0), true); });
 
     // Handle double-click on the Timestamp column to expand/collapse
     // Expansion only occurs if the data exceeds the preview size
@@ -305,8 +298,7 @@ CommDumpView::CommDumpView(QWidget *parent)
             if (m_tree->isExpanded(index)) {
                 m_tree->collapse(index);
             }
-        }
-    });
+        } });
 
     updateCountLabel();
 

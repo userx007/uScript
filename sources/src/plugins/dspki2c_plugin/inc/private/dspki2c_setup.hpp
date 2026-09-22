@@ -66,22 +66,19 @@ bool DSPKi2cPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_VID value"));
             return false;
         }
-        return true;
-    });
+        return true; });
     sSettings.Bind(I2C_PID, [this](const std::string &v) {
         if (false == setPid(v)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_PID value"));
             return false;
         }
-        return true;
-    });
+        return true; });
     sSettings.Bind(I2C_SLAVE_ADDR, [this](const std::string &v) {
         if (false == setSlaveAddr(v)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_SLAVE_ADDR (must be 7-bit hex, 00-7F)"));
             return false;
         }
-        return true;
-    });
+        return true; });
     sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
     sSettings.Bind(READ_BUF_SIZE, m_u32ReadBufferSize);

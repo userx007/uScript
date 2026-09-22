@@ -77,38 +77,33 @@ enum class Token {
 // iLineNumber is the 1-based line number in the original .script file so that
 // every downstream component (validator, frontend) can refer back to it.
 // ---------------------------------------------------------------------------
-struct ScriptRawLine
-{
-    int iLineNumber = 0;
-    std::string strContent;
+struct ScriptRawLine {
+        int iLineNumber = 0;
+        std::string strContent;
 };
 
-struct MacroCommand
-{
-    std::string strPlugin;
-    std::string strCommand;
-    std::string strParams;
-    std::string strVarMacroName;
-    bool bThreaded = false;
+struct MacroCommand {
+        std::string strPlugin;
+        std::string strCommand;
+        std::string strParams;
+        std::string strVarMacroName;
+        bool bThreaded = false;
 };
 
-struct Command
-{
-    std::string strPlugin;
-    std::string strCommand;
-    std::string strParams;
-    bool bThreaded = false;
+struct Command {
+        std::string strPlugin;
+        std::string strCommand;
+        std::string strParams;
+        bool bThreaded = false;
 };
 
-struct Condition
-{
-    std::string strCondition;
-    std::string strLabelName;
+struct Condition {
+        std::string strCondition;
+        std::string strLabelName;
 };
 
-struct Label
-{
-    std::string strLabelName;
+struct Label {
+        std::string strLabelName;
 };
 
 // ---------------------------------------------------------------------------
@@ -128,13 +123,12 @@ struct Label
 // only meaningful when bIsMacro is false (deferred macro/array-size values
 // are re-typed at runtime, see parseRepeatNumber()).
 // ---------------------------------------------------------------------------
-struct RepeatRangeValue
-{
-    std::string strExpr;       // raw literal text, or "$macroname" (deferred)
-    bool bIsMacro     = false; // true => strExpr is "$macroname", resolved at runtime
-    bool bIsInteger   = true;  // true => integer literal; false => floating-point literal
-    long long llValue = 0;     // resolved integer value (valid when !bIsMacro && bIsInteger)
-    double dValue     = 0.0;   // resolved double  value (valid when !bIsMacro && !bIsInteger)
+struct RepeatRangeValue {
+        std::string strExpr;       // raw literal text, or "$macroname" (deferred)
+        bool bIsMacro     = false; // true => strExpr is "$macroname", resolved at runtime
+        bool bIsInteger   = true;  // true => integer literal; false => floating-point literal
+        long long llValue = 0;     // resolved integer value (valid when !bIsMacro && bIsInteger)
+        double dValue     = 0.0;   // resolved double  value (valid when !bIsMacro && !bIsInteger)
 };
 
 // Repeat over the numeric range [begin, end) with the given step; body is delimited
@@ -156,13 +150,12 @@ struct RepeatRangeValue
 // variable macro at the start of every iteration and is accessible via
 // $strVarMacroName. When all of begin/end/step resolve to integers the value
 // is rendered as a plain integer string; otherwise it is rendered as a double.
-struct RepeatTimes
-{
-    std::string strLabel;
-    RepeatRangeValue begin; // defaults to literal "0" when only <end> is given
-    RepeatRangeValue end;
-    RepeatRangeValue step;       // defaults to literal "1" when no <step> is given
-    std::string strVarMacroName; // iteration-value capture macro (empty = no capture)
+struct RepeatTimes {
+        std::string strLabel;
+        RepeatRangeValue begin; // defaults to literal "0" when only <end> is given
+        RepeatRangeValue end;
+        RepeatRangeValue step;       // defaults to literal "1" when no <step> is given
+        std::string strVarMacroName; // iteration-value capture macro (empty = no capture)
 };
 
 // ---------------------------------------------------------------------------
@@ -253,34 +246,30 @@ inline std::string formatRepeatDouble(double dValue) noexcept
 // The condition is evaluated at END_REPEAT after each iteration.
 // strVarMacroName: if non-empty, an internal 0-based iteration counter is written to this
 // variable macro at the start of each iteration and is accessible via $strVarMacroName.
-struct RepeatUntil
-{
-    std::string strLabel;
-    std::string strCondition;    // raw expression (may contain $macros, expanded at run time)
-    std::string strVarMacroName; // iteration-counter capture macro (empty = no capture)
+struct RepeatUntil {
+        std::string strLabel;
+        std::string strCondition;    // raw expression (may contain $macros, expanded at run time)
+        std::string strVarMacroName; // iteration-counter capture macro (empty = no capture)
 };
 
 // Closing marker shared by both REPEAT counted and REPEAT UNTIL.
-struct RepeatEnd
-{
-    std::string strLabel;
+struct RepeatEnd {
+        std::string strLabel;
 };
 
 // BREAK <loop-label>
 // Immediately exits the named enclosing loop. All loops between the current
 // innermost and the named target are also unwound (their LoopStates are popped).
-struct LoopBreak
-{
-    std::string strLabel; // label of the enclosing loop to exit
+struct LoopBreak {
+        std::string strLabel; // label of the enclosing loop to exit
 };
 
 // CONTINUE <loop-label>
 // Skips the remainder of the current body and resumes at END_REPEAT of the
 // named enclosing loop, which runs its normal exit-or-loop-back logic.
 // All loops between the current innermost and the target are also unwound.
-struct LoopContinue
-{
-    std::string strLabel; // label of the enclosing loop to continue
+struct LoopContinue {
+        std::string strLabel; // label of the enclosing loop to continue
 };
 
 // PRINT <text>
@@ -289,9 +278,8 @@ struct LoopContinue
 // is performed at runtime immediately before output, so volatile macro values
 // and loop index macros are always reflected correctly.
 // An empty PRINT (bare keyword with no text) prints a blank line.
-struct PrintStatement
-{
-    std::string strText; // raw text template (may contain $macros)
+struct PrintStatement {
+        std::string strText; // raw text template (may contain $macros)
 };
 
 // name ?= <string value>
@@ -303,10 +291,9 @@ struct PrintStatement
 // An empty value is valid and initialises the macro to an empty string.
 // Like MacroCommand, writes to m_RuntimeVarMacros at execution time, so the
 // value is immediately visible to all subsequent $macro lookups.
-struct VarMacroInit
-{
-    std::string strName;     // macro name (identifier)
-    std::string strValueTpl; // raw value template (may contain $macros)
+struct VarMacroInit {
+        std::string strName;     // macro name (identifier)
+        std::string strValueTpl; // raw value template (may contain $macros)
 };
 
 // name ?= FORMAT input | format_pattern
@@ -317,27 +304,27 @@ struct VarMacroInit
 // Both the input and the format template may contain $macros; expansion is
 // deferred to execution time.
 // Stores the result string in m_RuntimeVarMacros[strName].
-struct FormatStatement
-{
-    std::string strName;      // destination macro name (identifier)
-    std::string strInputTpl;  // raw input template   (may contain $macros)
-    std::string strFormatTpl; // raw format template  (may contain $macros and %N)
+struct FormatStatement {
+        std::string strName;      // destination macro name (identifier)
+        std::string strInputTpl;  // raw input template   (may contain $macros)
+        std::string strFormatTpl; // raw format template  (may contain $macros and %N)
 };
 
 // Time unit for a DELAY statement.
-enum class DelayUnit { US,
-                       MS,
-                       SEC };
+enum class DelayUnit {
+    US,
+    MS,
+    SEC
+};
 
 // DELAY <value> <unit>
 // Native busy-wait / sleep — no plugin required.
 // The value and unit are fully resolved at validation time; the interpreter
 // simply calls the appropriate utime::delay_* function.
 // Syntax:   DELAY 300 ms   |   DELAY 50 us   |   DELAY 2 sec
-struct DelayStatement
-{
-    size_t szValue;  // delay amount (>= 1)
-    DelayUnit eUnit; // US | MS | SEC
+struct DelayStatement {
+        size_t szValue;  // delay amount (>= 1)
+        DelayUnit eUnit; // US | MS | SEC
 };
 
 // Output format requested by an optional "| HEX..." MATH post-processor.
@@ -395,11 +382,10 @@ enum class HexOutputFormat {
 //           result ?= MATH 255          | HEX_16_LE      (-> "FF00")
 //           result ?= MATH -1.0         | HEX_FLOAT_BE   (-> "BF800000")
 //           result ?= MATH pi           | HEX_DOUBLE_LE  (-> raw IEEE-754 binary64 bytes, little-endian)
-struct MathStatement
-{
-    std::string strName;    // destination macro name (identifier)
-    std::string strExprTpl; // raw expression template (may contain $macros)
-    HexOutputFormat eHexFormat = HexOutputFormat::NONE;
+struct MathStatement {
+        std::string strName;    // destination macro name (identifier)
+        std::string strExprTpl; // raw expression template (may contain $macros)
+        HexOutputFormat eHexFormat = HexOutputFormat::NONE;
 };
 
 // Waveform shape requested by a GENERATOR statement's "| WAVEFORM" field.
@@ -418,13 +404,15 @@ struct MathStatement
 // (ping-pong through the elements) and RANDOM (uniform pick of one element)
 // are meaningful — SINE/SQUARE/EXP/LOG are rejected for array sources at
 // validation time (ScriptValidator::m_HandleGeneratorStmt()).
-enum class GeneratorWaveform { SAWTOOTH,
-                               TRIANGLE,
-                               SINE,
-                               SQUARE,
-                               EXP,
-                               LOG,
-                               RANDOM };
+enum class GeneratorWaveform {
+    SAWTOOTH,
+    TRIANGLE,
+    SINE,
+    SQUARE,
+    EXP,
+    LOG,
+    RANDOM
+};
 
 // name ?= GENERATOR <count> <unit> <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
 // name ?= GENERATOR <count> <unit> <elem1>,<elem2>,...                | WAVEFORM [| ENCODING]
@@ -539,18 +527,17 @@ enum class GeneratorWaveform { SAWTOOTH,
 // then (stops that one name's generator thread; every other field is
 // default-initialised and unused). See GeneratorStopAllStatement below for
 // the bare, no-destination "GENERATOR STOP ALL" form.
-struct GeneratorStatement
-{
-    std::string strName;                        // destination macro name (identifier)
-    bool bStop           = false;               // true => "val ?= GENERATOR STOP"
-    uint64_t uIntervalUs = 0;                   // tick interval, normalised to microseconds (DELAY-style)
-    bool bIsArraySource  = false;               // true => vArrayValues drives the generator, begin/end/step unused
-    RepeatRangeValue begin, end, step;          // deferred $macro-capable, resolved once at (re)launch. Meaningful only when !bIsArraySource
-    std::vector<RepeatRangeValue> vArrayValues; // >= 1 element, each deferred $macro-capable. Meaningful only when bIsArraySource
-    bool bHasK = false;                         // true => the optional 4th range field (k) was present
-    RepeatRangeValue k;                         // curve-steepness constant; only meaningful when bHasK
-    GeneratorWaveform eWaveform = GeneratorWaveform::SAWTOOTH;
-    HexOutputFormat eHexFormat  = HexOutputFormat::NONE;
+struct GeneratorStatement {
+        std::string strName;                        // destination macro name (identifier)
+        bool bStop           = false;               // true => "val ?= GENERATOR STOP"
+        uint64_t uIntervalUs = 0;                   // tick interval, normalised to microseconds (DELAY-style)
+        bool bIsArraySource  = false;               // true => vArrayValues drives the generator, begin/end/step unused
+        RepeatRangeValue begin, end, step;          // deferred $macro-capable, resolved once at (re)launch. Meaningful only when !bIsArraySource
+        std::vector<RepeatRangeValue> vArrayValues; // >= 1 element, each deferred $macro-capable. Meaningful only when bIsArraySource
+        bool bHasK = false;                         // true => the optional 4th range field (k) was present
+        RepeatRangeValue k;                         // curve-steepness constant; only meaningful when bHasK
+        GeneratorWaveform eWaveform = GeneratorWaveform::SAWTOOTH;
+        HexOutputFormat eHexFormat  = HexOutputFormat::NONE;
 };
 
 // GENERATOR STOP ALL — bare command (no destination macro, no "?="),
@@ -560,28 +547,28 @@ struct GeneratorStatement
 // running at that point in the script — enforced at validation time by the
 // same START/STOP pairing pass GeneratorStatement's STOP form uses (see
 // ScriptValidator's generator-pairing validation).
-struct GeneratorStopAllStatement
-{
+struct GeneratorStopAllStatement {
 };
 
 // Post-processing mirror requested by an optional "| REVERSE_BIT" or
 // "| REVERSE_BYTE" suffix on a BITSTREAM/BYTESTREAM statement. Applied to
 // the fully-packed byte buffer, after every field has been written and
 // before it is hexlified. See StreamStatement below.
-enum class StreamReverseMode { NONE,
-                               REVERSE_BIT,
-                               REVERSE_BYTE };
+enum class StreamReverseMode {
+    NONE,
+    REVERSE_BIT,
+    REVERSE_BYTE
+};
 
 // One "offset:length:value" field of a BITSTREAM/BYTESTREAM statement.
 // All three are stored as raw templates (may contain $macros — constant or
 // variable — resolved at execution time, same deferred-macro pattern as
 // MathStatement/FormatStatement/RepeatRangeValue) rather than pre-resolved,
 // since a variable macro's value is only known once the script is running.
-struct StreamField
-{
-    std::string strOffsetTpl; // BITSTREAM: absolute bit offset. BYTESTREAM: byte offset.
-    std::string strLengthTpl; // number of bits the value occupies
-    std::string strValueTpl;  // the value to store — must fit in strLengthTpl bits
+struct StreamField {
+        std::string strOffsetTpl; // BITSTREAM: absolute bit offset. BYTESTREAM: byte offset.
+        std::string strLengthTpl; // number of bits the value occupies
+        std::string strValueTpl;  // the value to store — must fit in strLengthTpl bits
 };
 
 // name ?= BITSTREAM  offset:length:value [offset:length:value ...] [| REVERSE_BIT|REVERSE_BYTE]
@@ -624,12 +611,11 @@ struct StreamField
 // Field order in the statement is irrelevant — fields are sorted by offset
 // before packing, purely so the size/overlap logic has one canonical order
 // to reason about; it does not change the result.
-struct StreamStatement
-{
-    std::string strName;              // destination macro name (identifier)
-    std::vector<StreamField> vFields; // one or more offset:length:value fields
-    StreamReverseMode eReverse = StreamReverseMode::NONE;
-    bool bByteMode             = false; // false = BITSTREAM, true = BYTESTREAM
+struct StreamStatement {
+        std::string strName;              // destination macro name (identifier)
+        std::vector<StreamField> vFields; // one or more offset:length:value fields
+        StreamReverseMode eReverse = StreamReverseMode::NONE;
+        bool bByteMode             = false; // false = BITSTREAM, true = BYTESTREAM
 };
 
 // name ?= <hex_source> | BITSTREAMVAL  <bit_offset>:<value_size>
@@ -684,14 +670,13 @@ struct StreamStatement
 // single scalar and "[=" always yields an array — see parseStreamValStatement()
 // (uStreamStatementParser.hpp) which rejects a "?=" line with more than one
 // field.
-struct StreamValStatement
-{
-    std::string strName;          // destination macro name (identifier)
-    std::string strSourceTpl;     // hexlified source buffer (may contain $macros)
-    std::string strByteOffsetTpl; // BYTESTREAMVAL only: byte offset. Empty for BITSTREAMVAL.
-    std::string strBitOffsetTpl;  // BITSTREAMVAL: absolute bit offset. BYTESTREAMVAL: bit offset within the byte (0-7).
-    std::string strValueSizeTpl;  // number of bits to extract (1-64)
-    bool bByteMode = false;       // false = BITSTREAMVAL, true = BYTESTREAMVAL
+struct StreamValStatement {
+        std::string strName;          // destination macro name (identifier)
+        std::string strSourceTpl;     // hexlified source buffer (may contain $macros)
+        std::string strByteOffsetTpl; // BYTESTREAMVAL only: byte offset. Empty for BITSTREAMVAL.
+        std::string strBitOffsetTpl;  // BITSTREAMVAL: absolute bit offset. BYTESTREAMVAL: bit offset within the byte (0-7).
+        std::string strValueSizeTpl;  // number of bits to extract (1-64)
+        bool bByteMode = false;       // false = BITSTREAMVAL, true = BYTESTREAMVAL
 };
 
 // One "<bit_offset>:<value_size>" (BITSTREAMVAL) or
@@ -699,11 +684,10 @@ struct StreamValStatement
 // StreamValArrayStatement. Same templates/conventions as StreamValStatement's
 // own strByteOffsetTpl/strBitOffsetTpl/strValueSizeTpl, just repeated once
 // per array element instead of exactly once per statement.
-struct StreamValField
-{
-    std::string strByteOffsetTpl; // BYTESTREAMVAL only: byte offset. Empty for BITSTREAMVAL.
-    std::string strBitOffsetTpl;  // BITSTREAMVAL: absolute bit offset. BYTESTREAMVAL: bit offset within the byte (0-7).
-    std::string strValueSizeTpl;  // number of bits to extract (1-64)
+struct StreamValField {
+        std::string strByteOffsetTpl; // BYTESTREAMVAL only: byte offset. Empty for BITSTREAMVAL.
+        std::string strBitOffsetTpl;  // BITSTREAMVAL: absolute bit offset. BYTESTREAMVAL: bit offset within the byte (0-7).
+        std::string strValueSizeTpl;  // number of bits to extract (1-64)
 };
 
 // name [= <hex_source> | BITSTREAMVAL  <bit_offset1>:<value_size1> [<bit_offset2>:<value_size2> ...]
@@ -728,12 +712,11 @@ struct StreamValField
 // runtime variable macro; "name [= ..." (this struct) accepts any number of
 // fields >= 1 and always yields an array macro, even when it only has one
 // element — see parseStreamValArrayStatement() (uStreamStatementParser.hpp).
-struct StreamValArrayStatement
-{
-    std::string strName;                 // destination array macro name (identifier)
-    std::string strSourceTpl;            // hexlified source buffer (may contain $macros)
-    std::vector<StreamValField> vFields; // one or more fields, extracted in order
-    bool bByteMode = false;              // false = BITSTREAMVAL, true = BYTESTREAMVAL
+struct StreamValArrayStatement {
+        std::string strName;                 // destination array macro name (identifier)
+        std::string strSourceTpl;            // hexlified source buffer (may contain $macros)
+        std::vector<StreamValField> vFields; // one or more fields, extracted in order
+        bool bByteMode = false;              // false = BITSTREAMVAL, true = BYTESTREAMVAL
 };
 
 // BREAKPOINT [label]
@@ -750,9 +733,8 @@ struct StreamValArrayStatement
 //
 // During the dry-run validation pass the node is silently skipped.
 // Inside a GOTO/BREAK/CONTINUE skip region it is also transparent.
-struct BreakpointStatement
-{
-    std::string strLabelTpl; // optional label template (may contain $macros; may be empty)
+struct BreakpointStatement {
+        std::string strLabelTpl; // optional label template (may contain $macros; may be empty)
 };
 
 // ---------------------------------------------------------------------------
@@ -769,10 +751,9 @@ using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        StreamValStatement, StreamValArrayStatement,
                                        GeneratorStatement, GeneratorStopAllStatement>;
 
-struct ScriptLine
-{
-    int iLineNumber = 0;
-    ScriptCommandType command;
+struct ScriptLine {
+        int iLineNumber = 0;
+        ScriptCommandType command;
 };
 
 using CommandsStorageType   = std::vector<ScriptLine>;
@@ -784,12 +765,11 @@ using PluginStorageType     = std::vector<PluginDataType>;
 // the $NAME.$index_macro syntax at runtime.
 using ArrayMacroStorageType = std::unordered_map<std::string, std::vector<std::string>>;
 
-struct ScriptEntries
-{
-    PluginStorageType vPlugins;
-    MacroStorageType mapMacros;
-    ArrayMacroStorageType mapArrayMacros;
-    CommandsStorageType vCommands;
+struct ScriptEntries {
+        PluginStorageType vPlugins;
+        MacroStorageType mapMacros;
+        ArrayMacroStorageType mapArrayMacros;
+        CommandsStorageType vCommands;
 };
 
 using ScriptEntriesType = ScriptEntries;

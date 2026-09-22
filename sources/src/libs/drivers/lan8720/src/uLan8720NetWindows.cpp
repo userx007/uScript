@@ -22,39 +22,38 @@
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 namespace {
-class WinsockGuard
-{
-public:
-    WinsockGuard()
+    class WinsockGuard {
+        public:
+            WinsockGuard()
+            {
+                WSADATA wsaData;
+                m_bOk = (::WSAStartup(MAKEWORD(2, 2), &wsaData) == 0);
+                if (!m_bOk) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WSAStartup() failed"));
+                }
+            }
+
+            ~WinsockGuard()
+            {
+                if (m_bOk) {
+                    ::WSACleanup();
+                }
+            }
+
+            bool ok() const
+            {
+                return m_bOk;
+            }
+
+        private:
+            bool m_bOk = false;
+    };
+
+    WinsockGuard &winsock()
     {
-        WSADATA wsaData;
-        m_bOk = (::WSAStartup(MAKEWORD(2, 2), &wsaData) == 0);
-        if (!m_bOk) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WSAStartup() failed"));
-        }
+        static WinsockGuard sInstance;
+        return sInstance;
     }
-
-    ~WinsockGuard()
-    {
-        if (m_bOk) {
-            ::WSACleanup();
-        }
-    }
-
-    bool ok() const
-    {
-        return m_bOk;
-    }
-
-private:
-    bool m_bOk = false;
-};
-
-WinsockGuard &winsock()
-{
-    static WinsockGuard sInstance;
-    return sInstance;
-}
 } // namespace
 
 // ============================================================================

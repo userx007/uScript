@@ -35,12 +35,12 @@
 // definitions, so they're reproduced locally rather than pulled from a
 // system header.
 namespace {
-constexpr unsigned int kTiocmDtr = 0x002;
-constexpr unsigned int kTiocmRts = 0x004;
-constexpr unsigned int kTiocmCts = 0x020;
-constexpr unsigned int kTiocmCd  = 0x040; // Carrier Detect / RLSD
-constexpr unsigned int kTiocmRi  = 0x080; // Ring Indicator
-constexpr unsigned int kTiocmDsr = 0x100;
+    constexpr unsigned int kTiocmDtr = 0x002;
+    constexpr unsigned int kTiocmRts = 0x004;
+    constexpr unsigned int kTiocmCts = 0x020;
+    constexpr unsigned int kTiocmCd  = 0x040; // Carrier Detect / RLSD
+    constexpr unsigned int kTiocmRi  = 0x080; // Ring Indicator
+    constexpr unsigned int kTiocmDsr = 0x100;
 } // namespace
 
 CH341::Status CH341::open(const std::string &strDevice, uint32_t u32Speed)

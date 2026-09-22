@@ -37,17 +37,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED FT245Plugin *pluginEntry()
-{
-    return new FT245Plugin();
-}
-
-EXPORTED void pluginExit(FT245Plugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED FT245Plugin *pluginEntry()
+    {
+        return new FT245Plugin();
     }
-}
+
+    EXPORTED void pluginExit(FT245Plugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

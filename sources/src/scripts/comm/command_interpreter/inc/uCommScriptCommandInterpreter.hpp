@@ -53,1076 +53,1072 @@
  * @tparam TDriver The concrete driver type (must derive from ICommDriver)
  */
 template <typename TDriver>
-class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCommand, TDriver>
-{
-public:
-    using SendFunc = SendFunction<TDriver>;
-    using RecvFunc = RecvFunction<TDriver>;
+class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCommand, TDriver> {
+    public:
+        using SendFunc = SendFunction<TDriver>;
+        using RecvFunc = RecvFunction<TDriver>;
 
-    /**
-     * @brief Constructor
-     * @param driver Shared pointer to the communication driver
-     * @param pluginName Plugin identity for the GUI comm-dump panel (e.g. UART_PLUGIN_NAME).
-     *                    Forwarded verbatim as the "Plugin" column; see gui_notify_comm_dump().
-     * @param maxRecvSize Maximum buffer size for receive operations
-     * @param defaultTimeout Default timeout in milliseconds (0 = use driver default)
-     * @param pfsend Optional override for the physical write primitive. When empty
-     *               (default), every send goes straight to driver->tout_write() and
-     *               this class produces the GUI comm-dump row itself, exactly as
-     *               before this parameter existed — every plugin that doesn't pass
-     *               one is completely unaffected.
-     *               When set, the interpreter calls pfsend(...) instead of
-     *               driver->tout_write() directly, and — since only the injected
-     *               function actually knows what went out on the wire (e.g. a
-     *               transport protocol that turns one logical send into several
-     *               physical frames) — this class stops emitting its own
-     *               comm-dump row for that direction, trusting pfsend to report
-     *               whatever rows are accurate (see KVCANPlugin::m_Send()).
-     * @param pfrecv Same idea as pfsend, for the read side (driver->tout_read()).
-     * @param stop_tok Cooperative cancellation token forwarded verbatim into every
-     *                 driver->tout_read()/tout_write() call this instance makes (both
-     *                 directly, and via generic_cmd()/generic_send_cyclic()'s injected
-     *                 pfsend/pfrecv, which receive it as their own last argument — see
-     *                 SendFunction<TDriver>/RecvFunction<TDriver>). A default-constructed
-     *                 token disables cancellation and preserves pre-existing behaviour.
-     */
-    explicit CommScriptCommandInterpreter(
-        std::shared_ptr<const TDriver> driver,
-        std::string pluginName,
-        size_t maxRecvSize       = 4096,
-        uint32_t defaultTimeout  = 5000,
-        SendFunc pfsend          = SendFunc{},
-        RecvFunc pfrecv          = RecvFunc{},
-        std::stop_token stop_tok = {})
-        : m_driver(driver)
-        , m_pluginName(std::move(pluginName))
-        , m_maxRecvSize(maxRecvSize)
-        , m_defaultTimeout(defaultTimeout)
-        , m_pfsend(std::move(pfsend))
-        , m_pfrecv(std::move(pfrecv))
-        , m_stopTok(std::move(stop_tok))
-    {
-        static_assert(std::is_base_of<ICommDriver, TDriver>::value,
-                      "TDriver must derive from ICommDriver");
-    }
+        /**
+         * @brief Constructor
+         * @param driver Shared pointer to the communication driver
+         * @param pluginName Plugin identity for the GUI comm-dump panel (e.g. UART_PLUGIN_NAME).
+         *                    Forwarded verbatim as the "Plugin" column; see gui_notify_comm_dump().
+         * @param maxRecvSize Maximum buffer size for receive operations
+         * @param defaultTimeout Default timeout in milliseconds (0 = use driver default)
+         * @param pfsend Optional override for the physical write primitive. When empty
+         *               (default), every send goes straight to driver->tout_write() and
+         *               this class produces the GUI comm-dump row itself, exactly as
+         *               before this parameter existed — every plugin that doesn't pass
+         *               one is completely unaffected.
+         *               When set, the interpreter calls pfsend(...) instead of
+         *               driver->tout_write() directly, and — since only the injected
+         *               function actually knows what went out on the wire (e.g. a
+         *               transport protocol that turns one logical send into several
+         *               physical frames) — this class stops emitting its own
+         *               comm-dump row for that direction, trusting pfsend to report
+         *               whatever rows are accurate (see KVCANPlugin::m_Send()).
+         * @param pfrecv Same idea as pfsend, for the read side (driver->tout_read()).
+         * @param stop_tok Cooperative cancellation token forwarded verbatim into every
+         *                 driver->tout_read()/tout_write() call this instance makes (both
+         *                 directly, and via generic_cmd()/generic_send_cyclic()'s injected
+         *                 pfsend/pfrecv, which receive it as their own last argument — see
+         *                 SendFunction<TDriver>/RecvFunction<TDriver>). A default-constructed
+         *                 token disables cancellation and preserves pre-existing behaviour.
+         */
+        explicit CommScriptCommandInterpreter(
+            std::shared_ptr<const TDriver> driver,
+            std::string pluginName,
+            size_t maxRecvSize       = 4096,
+            uint32_t defaultTimeout  = 5000,
+            SendFunc pfsend          = SendFunc{},
+            RecvFunc pfrecv          = RecvFunc{},
+            std::stop_token stop_tok = {})
+            : m_driver(driver)
+            , m_pluginName(std::move(pluginName))
+            , m_maxRecvSize(maxRecvSize)
+            , m_defaultTimeout(defaultTimeout)
+            , m_pfsend(std::move(pfsend))
+            , m_pfrecv(std::move(pfrecv))
+            , m_stopTok(std::move(stop_tok))
+        {
+            static_assert(std::is_base_of<ICommDriver, TDriver>::value,
+                          "TDriver must derive from ICommDriver");
+        }
 
-    /**
-     * @brief Returns true if cooperative cancellation has been requested.
-     *        Lets the owning CommScriptInterpreter's command loop bail out
-     *        between commands, in addition to the cancellation that already
-     *        happens naturally inside sendData()/recvData() for whichever
-     *        command is currently blocked on device I/O.
-     */
-    bool isStopRequested() const
-    {
-        return m_stopTok.stop_requested();
-    }
+        /**
+         * @brief Returns true if cooperative cancellation has been requested.
+         *        Lets the owning CommScriptInterpreter's command loop bail out
+         *        between commands, in addition to the cancellation that already
+         *        happens naturally inside sendData()/recvData() for whichever
+         *        command is currently blocked on device I/O.
+         */
+        bool isStopRequested() const
+        {
+            return m_stopTok.stop_requested();
+        }
 
-    /**
-     * @brief Interpret and execute a single command
-     * @param command   The parsed command to execute
-     * @param bRealExec false during a script dry-run/validation pass: the driver
-     *                  must already be open (validated by the caller) and the
-     *                  command's grammar has already been validated, but this
-     *                  call stops one step short of the actual send/receive
-     *                  interface and returns success without touching real
-     *                  hardware I/O. true for normal execution.
-     * @return true if execution (or dry-run validation) successful, false otherwise
-     */
-    bool interpretCommand(const CommCommand &command, bool bRealExec) override
-    {
-        /* PRINT is a pure logging statement - it performs no driver I/O, so it
-         * is handled before the driver-availability check and does not require
-         * an open port. */
-        if (command.direction == CommCommandDirection::PRINT) {
+        /**
+         * @brief Interpret and execute a single command
+         * @param command   The parsed command to execute
+         * @param bRealExec false during a script dry-run/validation pass: the driver
+         *                  must already be open (validated by the caller) and the
+         *                  command's grammar has already been validated, but this
+         *                  call stops one step short of the actual send/receive
+         *                  interface and returns success without touching real
+         *                  hardware I/O. true for normal execution.
+         * @return true if execution (or dry-run validation) successful, false otherwise
+         */
+        bool interpretCommand(const CommCommand &command, bool bRealExec) override
+        {
+            /* PRINT is a pure logging statement - it performs no driver I/O, so it
+             * is handled before the driver-availability check and does not require
+             * an open port. */
+            if (command.direction == CommCommandDirection::PRINT) {
+                auto lineNr = ustring::fmtLineNr(command.iLineNumber);
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(command.values.first));
+                return true;
+            }
+
+            if (!m_driver || !m_driver->is_open()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not available or port not open"));
+                return false;
+            }
             auto lineNr = ustring::fmtLineNr(command.iLineNumber);
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(command.values.first));
-            return true;
-        }
 
-        if (!m_driver || !m_driver->is_open()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not available or port not open"));
-            return false;
-        }
-        auto lineNr = ustring::fmtLineNr(command.iLineNumber);
-
-        if (!bRealExec && ((command.direction == CommCommandDirection::SEND_RECV) ||
-                           (command.direction == CommCommandDirection::RECV_SEND))) {
-            // Dry-run: the caller (ucmdexec::generic_cmd) has already validated the
-            // command's grammar and successfully opened/configured the driver above -
-            // this is deliberately the one place left to stop, one step short of the
-            // actual send/receive interface, so a dry-run pass never puts a byte on
-            // the wire or blocks on a real read. DELAY has no hardware side effect so
-            // it is allowed to fall through unchanged; PRINT was already handled above.
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
-                      LOG_STRING("Dry-run: valid, skipping send/receive"));
-            return true;
-        }
-
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("Exec:");
-                  LOG_STRING(getDirectionName(command.direction));
-                  LOG_STRING("["); LOG_STRING(command.values.first);
-                  LOG_STRING(":"); LOG_STRING(command.values.second);
-                  LOG_STRING("]=[");
-                  LOG_STRING(getTokenTypeName(command.tokens.first));
-                  LOG_STRING(":");
-                  LOG_STRING(getTokenTypeName(command.tokens.second));
-                  LOG_STRING("] xtra=[");
-                  LOG_STRING(command.xtra_params.first);
-                  LOG_STRING(":");
-                  LOG_STRING(command.xtra_params.second);
-                  LOG_STRING("]"));
-
-        bool result = false;
-
-        // Execute based on direction
-        if (command.direction == CommCommandDirection::SEND_RECV) {
-            // Send first (first xtra_param), then receive (second xtra_param)
-            result = executeSend(command.values.first, command.tokens.first, command.xtra_params.first);
-            if (result && command.tokens.second != CommCommandTokenType::EMPTY) {
-                result = executeReceive(command.values.second, command.tokens.second, command.xtra_params.second);
+            if (!bRealExec && ((command.direction == CommCommandDirection::SEND_RECV) ||
+                               (command.direction == CommCommandDirection::RECV_SEND))) {
+                // Dry-run: the caller (ucmdexec::generic_cmd) has already validated the
+                // command's grammar and successfully opened/configured the driver above -
+                // this is deliberately the one place left to stop, one step short of the
+                // actual send/receive interface, so a dry-run pass never puts a byte on
+                // the wire or blocks on a real read. DELAY has no hardware side effect so
+                // it is allowed to fall through unchanged; PRINT was already handled above.
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("Dry-run: valid, skipping send/receive"));
+                return true;
             }
-        } else if (command.direction == CommCommandDirection::RECV_SEND) {
-            // Receive first (first xtra_param), then send (second xtra_param)
-            result = executeReceive(command.values.first, command.tokens.first, command.xtra_params.first);
-            if (result && command.tokens.second != CommCommandTokenType::EMPTY) {
-                result = executeSend(command.values.second, command.tokens.second, command.xtra_params.second);
-            }
-        } else if (command.direction == CommCommandDirection::DELAY) {
-            size_t szDelay = 0;
-            if (numeric::str2sizet(command.values.first, szDelay)) {
-                if (command.values.second == TIME_MICROSECONDS) {
-                    utime::delay_us(szDelay);
-                } else if (command.values.second == TIME_MILISECONDS) {
-                    utime::delay_ms(szDelay);
-                } else if (command.values.second == TIME_SECONDS) {
-                    utime::delay_seconds(szDelay);
-                } else {
-                    LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No delay execution (invalid unit)"));
-                }
-                result = true;
-            }
-        } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command type"));
-            return false;
-        }
 
-        if (!result) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Comm command failed"));
-        }
-
-        return result;
-    }
-
-    /**
-     * @brief Get last received data
-     */
-    const std::vector<uint8_t> &getLastReceived() const
-    {
-        return m_lastReceived;
-    }
-
-    /**
-     * @brief Set default timeout for operations
-     */
-    void setDefaultTimeout(uint32_t timeout)
-    {
-        m_defaultTimeout = timeout;
-    }
-
-    /**
-     * @brief Set maximum receive buffer size
-     */
-    void setMaxRecvSize(size_t size)
-    {
-        m_maxRecvSize = size;
-    }
-
-private:
-    std::shared_ptr<const TDriver> m_driver;
-    std::string m_pluginName;
-    size_t m_maxRecvSize;
-    uint32_t m_defaultTimeout;
-    SendFunc m_pfsend;
-    RecvFunc m_pfrecv;
-    std::stop_token m_stopTok;
-    std::vector<uint8_t> m_lastReceived;
-    std::vector<uint8_t> m_recvScratch; /* reused I/O buffer, see doReceiveInto() */
-
-    /**
-     * @brief Per-(pattern) compiled-regex cache and per-(type, value)
-     *        converted-bytes cache — both scoped to *this interpreter
-     *        instance*, deliberately not to CommCommand.
-     *
-     * A CommCommand can be, and is, read concurrently by multiple threads:
-     * CommScriptInterpreter::m_getCache() is a process-wide static
-     * unordered_map<std::string, std::vector<CommCommand>> keyed by script
-     * path, populated once by a dry-run pass and then read by every
-     * subsequent real-execution pass — including passes running on
-     * different threads against the same script path (e.g. the same test
-     * script driving several units in parallel, one thread each). Adding
-     * mutable cache state to CommCommand itself would mean multiple threads
-     * lazily populating the same shared object's cache fields with no
-     * synchronization - a data race.
-     *
-     * CommScriptCommandInterpreter itself is not shared that way: every
-     * thread constructs (via its own CommScriptClient -> CommScriptRunner ->
-     * CommScriptInterpreter chain) its own CommScriptCommandInterpreter
-     * instance, each wrapping its own m_lastReceived/m_recvScratch/driver
-     * handle - state that already couldn't be shared across threads safely
-     * for other reasons (concurrent reads into the same buffer would
-     * corrupt each other regardless of caching). So a cache living here,
-     * keyed purely by the (immutable) pattern/type/value content rather
-     * than by any CommCommand identity, is only ever touched by the one
-     * thread that owns this interpreter instance - no locking needed.
-     *
-     * Bounded by construction: the key space is the set of distinct literal
-     * regex patterns / (type, value) pairs that actually appear in the
-     * script text, so cache size tracks script size, not iteration count -
-     * safe to leave unbounded (no eviction) across REPEAT loops.
-     */
-    struct CachedRegex
-    {
-        std::shared_ptr<std::regex> compiled; ///< null if `pattern` failed to compile
-        std::string error;                    ///< populated only when compiled == null
-    };
-
-    std::unordered_map<std::string, CachedRegex> m_regexCache;
-
-    struct DataCacheKey
-    {
-        CommCommandTokenType type;
-        std::string value;
-
-        bool operator==(const DataCacheKey &other) const noexcept
-        {
-            return type == other.type && value == other.value;
-        }
-    };
-
-    struct DataCacheKeyHash
-    {
-        size_t operator()(const DataCacheKey &k) const noexcept
-        {
-            return std::hash<std::string>{}(k.value) ^ (std::hash<int>{}(static_cast<int>(k.type)) << 1);
-        }
-    };
-
-    std::unordered_map<DataCacheKey, std::vector<uint8_t>, DataCacheKeyHash> m_dataCache;
-
-    /**
-     * @brief Physical write primitive — pfsend override if one was injected,
-     *        otherwise m_driver->tout_write() directly (today's behaviour).
-     */
-    ICommDriver::WriteResult doWrite(std::span<const uint8_t> data, const std::string &xtra_params) const
-    {
-        return m_pfsend ? m_pfsend(m_defaultTimeout, data, m_driver, xtra_params, m_stopTok)
-                        : m_driver->tout_write(m_defaultTimeout, data, xtra_params, m_stopTok);
-    }
-
-    /**
-     * @brief Physical read primitive — pfrecv override if one was injected,
-     *        otherwise m_driver->tout_read() directly (today's behaviour).
-     */
-    ICommDriver::ReadResult doRead(std::span<uint8_t> buffer, const ICommDriver::ReadOptions &options,
-                                   const std::string &xtra_params) const
-    {
-        return m_pfrecv ? m_pfrecv(m_defaultTimeout, buffer, options, m_driver, xtra_params, m_stopTok)
-                        : m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params, m_stopTok);
-    }
-
-    /**
-     * @brief Perform one read into the reusable scratch buffer, then copy
-     *        exactly the bytes obtained into m_lastReceived
-     *
-     * The previous pattern was, on every single receive call:
-     *   m_lastReceived.resize(m_maxRecvSize);   // grows + value-initializes
-     *                                            // (zero-fills) the newly
-     *                                            // visible range every time,
-     *                                            // even though it's about to
-     *                                            // be overwritten by doRead()
-     *   doRead(std::span<uint8_t>(m_lastReceived), ...);
-     *   m_lastReceived.resize(result.bytes_read); // shrink back down
-     *
-     * std::vector::resize() cannot skip that zero-fill on grow - it has no
-     * way to know the memory in [old_size, new_size) isn't garbage, so it
-     * must value-initialize it regardless of whether m_lastReceived had
-     * already been at m_maxRecvSize on a previous call.
-     *
-     * Here, m_recvScratch is grown to m_maxRecvSize at most once (only when
-     * it needs to get bigger - e.g. the very first call, or after
-     * setMaxRecvSize() raises the limit) and is never shrunk, so it pays
-     * that zero-fill at most once instead of on every call. Each read then
-     * writes into that already-appropriately-sized buffer, and only the
-     * actual bytes obtained are copied into m_lastReceived - one memcpy of
-     * exactly bytes_read bytes (typically « m_maxRecvSize) instead of one
-     * memset of m_maxRecvSize bytes.
-     *
-     * This is done unconditionally on both success and failure, which also
-     * normalizes a pre-existing inconsistency: previously, on a failed read,
-     * m_lastReceived was left at its full m_maxRecvSize (mostly zero-filled)
-     * size rather than reflecting the (possibly partial) bytes actually
-     * obtained - exactly the "garbage bytes via getLastReceived()" problem
-     * that receiveUntilToken() already special-cased for its own zero-byte
-     * result. This makes that guarantee hold for every receive path.
-     */
-    ICommDriver::ReadResult doReceiveInto(const ICommDriver::ReadOptions &options, const std::string &xtra_params)
-    {
-        if (m_recvScratch.size() < m_maxRecvSize) {
-            m_recvScratch.resize(m_maxRecvSize);
-        }
-
-        auto result = doRead(std::span<uint8_t>(m_recvScratch.data(), m_maxRecvSize), options, xtra_params);
-
-        m_lastReceived.assign(m_recvScratch.begin(), m_recvScratch.begin() + result.bytes_read);
-        return result;
-    }
-
-    /**
-     * @brief Compile (or fetch from cache) the std::regex for `pattern`
-     * @return The cache entry: `.compiled` is null if `pattern` failed to
-     *         compile, in which case `.error` holds the exception message
-     *         (captured once, on the first failing attempt, and reused on
-     *         every subsequent cache hit so a persistently-invalid pattern
-     *         inside a retry loop doesn't keep re-throwing regex_error).
-     *
-     * See m_regexCache's doc comment for why this cache lives here (per
-     * interpreter instance) rather than on CommCommand.
-     */
-    const CachedRegex &getCompiledRegex(const std::string &pattern)
-    {
-        auto it = m_regexCache.find(pattern);
-        if (it != m_regexCache.end()) {
-            return it->second;
-        }
-
-        CachedRegex entry;
-        try {
-            entry.compiled = std::make_shared<std::regex>(pattern);
-        } catch (const std::regex_error &e) {
-            entry.error = e.what();
-        }
-
-        return m_regexCache.emplace(pattern, std::move(entry)).first->second;
-    }
-
-    /**
-     * @brief convertToData() with a per-interpreter-instance cache
-     * @return Pointer to the cached bytes, or nullptr if conversion failed
-     *
-     * The same (type, value) pair always converts to the same bytes - it's
-     * a pure function of its inputs - so for a CommCommand executed
-     * repeatedly (a script loop, a retry), this avoids rebuilding an
-     * identical vector<uint8_t> from the string representation on every
-     * single call. References into the returned vector stay valid for the
-     * interpreter's lifetime: unordered_map never invalidates existing
-     * elements on insertion (only on erasure, which this cache never does),
-     * so callers can hold a span/reference into it directly instead of
-     * copying out. See m_dataCache's doc comment for the threading rationale.
-     *
-     * Note for callers: the returned vector must not be mutated in place
-     * (e.g. no pop_back()) since it may be shared across future lookups of
-     * the same key - see receiveUntilDelimiter() for how to adjust a
-     * comparison range instead of trimming the cached vector.
-     */
-    const std::vector<uint8_t> *getConvertedData(const std::string &value, CommCommandTokenType type)
-    {
-        DataCacheKey key{type, value};
-        auto it = m_dataCache.find(key);
-        if (it != m_dataCache.end()) {
-            return &it->second;
-        }
-
-        std::vector<uint8_t> converted;
-        if (!convertToData(value, type, converted)) {
-            return nullptr;
-        }
-
-        return &m_dataCache.emplace(std::move(key), std::move(converted)).first->second;
-    }
-
-    /**
-     * @brief Append one Rx/Tx record to the GUI comm-dump panel, if enabled.
-     *
-     * No-op (single bool check) outside GUI mode, so it is safe to call
-     * unconditionally after every tout_read()/tout_write(). describeConnection()
-     * is documented as cheap/no-I/O, but we still gate it behind gui_mode_active()
-     * so CLI runs pay nothing beyond the flag check. Zero-length transfers are
-     * skipped (nothing meaningful to show, and avoids a stray row on timeouts
-     * that returned 0 bytes).
-     *
-     * @param dir         Rx or Tx
-     * @param xtra_params Same xtra_params passed to the tout_read()/tout_write()
-     *                    call this record is reporting on, so describeConnection()
-     *                    reflects the resolved channel/address for that exchange.
-     * @param data        Pointer to the bytes actually transferred
-     * @param len         Number of bytes actually transferred (bytes_read/bytes_written)
-     */
-    void notifyCommDump(CommDir dir, std::string_view xtra_params,
-                        const uint8_t *data, size_t len) const
-    {
-        if (len == 0 || !gui_mode_active()) {
-            return;
-        }
-        gui_notify_comm_dump(m_pluginName,
-                             m_driver->describeConnection(xtra_params),
-                             dir, data, static_cast<uint32_t>(len));
-    }
-
-    /**
-     * @brief Execute a send operation
-     * @param value       The data value to send (string representation)
-     * @param type        The token type indicating how to interpret the value
-     * @param xtra_params Optional channel/address identifier forwarded to tout_write
-     * @return true if send successful, false otherwise
-     */
-    bool executeSend(const std::string &value, CommCommandTokenType type,
-                     const std::string &xtra_params = {})
-    {
-        // Empty token means no send operation
-        if (type == CommCommandTokenType::EMPTY) {
-            return true;
-        }
-
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                  LOG_STRING("Send:"); LOG_STRING(value);
-                  LOG_STRING("["); LOG_STRING(getTokenTypeName(type))
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("Exec:");
+                      LOG_STRING(getDirectionName(command.direction));
+                      LOG_STRING("["); LOG_STRING(command.values.first);
+                      LOG_STRING(":"); LOG_STRING(command.values.second);
+                      LOG_STRING("]=[");
+                      LOG_STRING(getTokenTypeName(command.tokens.first));
+                      LOG_STRING(":");
+                      LOG_STRING(getTokenTypeName(command.tokens.second));
+                      LOG_STRING("] xtra=[");
+                      LOG_STRING(command.xtra_params.first);
+                      LOG_STRING(":");
+                      LOG_STRING(command.xtra_params.second);
                       LOG_STRING("]"));
 
-        // Handle file send specially
-        if (type == CommCommandTokenType::FILENAME) {
-            return sendFile(value, xtra_params);
-        }
+            bool result = false;
 
-        // Convert value to bytes based on type (cached - see getConvertedData())
-        const std::vector<uint8_t> *data = getConvertedData(value, type);
-        if (!data) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Failed to convert data for send"));
-            return false;
-        }
-
-        // Send the data
-        auto result = doWrite(std::span<const uint8_t>(*data), xtra_params);
-
-        if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Write failed:");
-                      LOG_STRING(ICommDriver::to_string(result.status));
-                      LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
-            return false;
-        }
-
-        // A pfsend override (e.g. a segmented transport protocol) knows what
-        // actually went out on the wire and is responsible for its own
-        // comm-dump row(s); this generic row would otherwise show the pre-
-        // segmentation logical payload instead of the real physical frames.
-        if (!m_pfsend) {
-            notifyCommDump(CommDir::Tx, xtra_params, data->data(), result.bytes_written);
-        }
-
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                  LOG_STRING("Sent:"); LOG_SIZET(result.bytes_written);
-                  LOG_STRING("bytes"));
-        return true;
-    }
-
-    /**
-     * @brief Execute a receive operation
-     * @param value       The expected data value or pattern (string representation)
-     * @param type        The token type indicating how to interpret the value
-     * @param xtra_params Optional channel/address identifier forwarded to tout_read
-     * @return true if receive successful and data matches expectation, false otherwise
-     */
-    bool executeReceive(const std::string &value, CommCommandTokenType type,
-                        const std::string &xtra_params = {})
-    {
-        // Empty token means no receive operation
-        if (type == CommCommandTokenType::EMPTY) {
-            return true;
-        }
-
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                  LOG_STRING("Recv:"); LOG_STRING(value);
-                  LOG_STRING("["); LOG_STRING(getTokenTypeName(type));
-                  LOG_STRING("]"));
-
-        switch (type) {
-        case CommCommandTokenType::REGEX:
-            return receiveAndMatchRegex(value, xtra_params);
-
-        case CommCommandTokenType::TOKEN_STRING:
-            return receiveUntilToken(value, false, xtra_params);
-
-        case CommCommandTokenType::TOKEN_HEXSTREAM:
-            return receiveUntilToken(value, true, xtra_params);
-
-        case CommCommandTokenType::SIZEOF:
-            return receiveExactSize(value, xtra_params);
-
-        case CommCommandTokenType::LINE:
-            return receiveUntilDelimiter('\n', value, xtra_params);
-
-        case CommCommandTokenType::FILENAME:
-            return receiveToFile(value, xtra_params);
-
-        case CommCommandTokenType::HEXSTREAM:
-        case CommCommandTokenType::STRING_DELIMITED:
-        case CommCommandTokenType::STRING_DELIMITED_EMPTY:
-        case CommCommandTokenType::STRING_RAW:
-            return receiveAndCompare(value, type, xtra_params);
-
-        case CommCommandTokenType::ANYTHING:
-            return receiveAndHexdump(value, xtra_params);
-
-        default:
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported receive token type"));
-            return false;
-        }
-    }
-
-    /**
-     * @brief Receive data and match against regex pattern
-     */
-    bool receiveAndMatchRegex(const std::string &pattern, const std::string &xtra_params = {})
-    {
-        // Read exact bytes from driver
-        ICommDriver::ReadOptions options;
-        options.mode = ICommDriver::ReadMode::Exact;
-
-        auto result  = doReceiveInto(options, xtra_params);
-
-        if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Read failed:");
-                      LOG_STRING(ICommDriver::to_string(result.status)));
-            return false;
-        }
-
-        if (!m_pfrecv) {
-            notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
-        }
-
-        // Match against pattern directly over the received bytes - uint8_t and
-        // char share representation, so a reinterpret_cast pair of pointers is
-        // a valid bidirectional char iterator range for std::regex_match,
-        // avoiding a full copy of m_lastReceived into a temporary std::string
-        // just to hand it to regex_match().
-        const char *first         = reinterpret_cast<const char *>(m_lastReceived.data());
-        const char *last          = first + m_lastReceived.size();
-
-        const CachedRegex &cached = getCompiledRegex(pattern);
-        if (!cached.compiled) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Invalid regex pattern:");
-                      LOG_STRING(cached.error));
-            return false;
-        }
-
-        try {
-            bool matched = std::regex_match(first, last, *cached.compiled);
-
-            if (!matched) {
-                // Only pay for the string copy when we actually need it for the log.
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Regex match failed. Received:");
-                          LOG_STRING(std::string(first, last)));
+            // Execute based on direction
+            if (command.direction == CommCommandDirection::SEND_RECV) {
+                // Send first (first xtra_param), then receive (second xtra_param)
+                result = executeSend(command.values.first, command.tokens.first, command.xtra_params.first);
+                if (result && command.tokens.second != CommCommandTokenType::EMPTY) {
+                    result = executeReceive(command.values.second, command.tokens.second, command.xtra_params.second);
+                }
+            } else if (command.direction == CommCommandDirection::RECV_SEND) {
+                // Receive first (first xtra_param), then send (second xtra_param)
+                result = executeReceive(command.values.first, command.tokens.first, command.xtra_params.first);
+                if (result && command.tokens.second != CommCommandTokenType::EMPTY) {
+                    result = executeSend(command.values.second, command.tokens.second, command.xtra_params.second);
+                }
+            } else if (command.direction == CommCommandDirection::DELAY) {
+                size_t szDelay = 0;
+                if (numeric::str2sizet(command.values.first, szDelay)) {
+                    if (command.values.second == TIME_MICROSECONDS) {
+                        utime::delay_us(szDelay);
+                    } else if (command.values.second == TIME_MILISECONDS) {
+                        utime::delay_ms(szDelay);
+                    } else if (command.values.second == TIME_SECONDS) {
+                        utime::delay_seconds(szDelay);
+                    } else {
+                        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No delay execution (invalid unit)"));
+                    }
+                    result = true;
+                }
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command type"));
+                return false;
             }
 
-            return matched;
-        } catch (const std::regex_error &e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Invalid regex pattern:");
-                      LOG_STRING(e.what()));
-            return false;
-        }
-    }
+            if (!result) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Comm command failed"));
+            }
 
-    /**
-     * @brief Receive data until a specific token is found
-     */
-    bool receiveUntilToken(const std::string &tokenStr, bool isHexStream = false,
-                           const std::string &xtra_params = {})
-    {
-        // Convert token string to bytes (cached - see getConvertedData())
-        const std::vector<uint8_t> *token = getConvertedData(tokenStr, (isHexStream ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::TOKEN_STRING));
-        if (!token) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert token"));
-            return false;
+            return result;
         }
 
-        // Setup read options for token search
-        ICommDriver::ReadOptions options;
-        options.mode       = ICommDriver::ReadMode::UntilToken;
-        options.token      = std::span<const uint8_t>(*token);
-        options.use_buffer = true;
-
-        auto result        = doReceiveInto(options, xtra_params);
-
-        if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Token search failed:");
-                      LOG_STRING(ICommDriver::to_string(result.status)));
-            return false;
+        /**
+         * @brief Get last received data
+         */
+        const std::vector<uint8_t> &getLastReceived() const
+        {
+            return m_lastReceived;
         }
 
-        if (!result.found_terminator) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Token not found within timeout"));
-            return false;
+        /**
+         * @brief Set default timeout for operations
+         */
+        void setDefaultTimeout(uint32_t timeout)
+        {
+            m_defaultTimeout = timeout;
         }
 
-        // No comm-dump record here: every driver's ReadMode::UntilToken leaves
-        // result.bytes_read == 0 by design (the matched bytes are consumed
-        // internally by the KMP scan and never copied into the caller's
-        // buffer), so there is nothing to hand to notifyCommDump(). doReceiveInto()
-        // already sized m_lastReceived to that 0-byte result, so getLastReceived()
-        // - and therefore a "VAL ?= PLUGIN.CMD ..." capture - never surfaces
-        // garbage bytes for this receive type. Widening
-        // ICommDriver::tout_read()/ReadResult to also expose the consumed
-        // bytes for this mode is a possible follow-up, but out of scope here.
-        return true;
-    }
-
-    /**
-     * @brief Receive exact number of bytes specified as size
-     */
-    bool receiveExactSize(const std::string &sizeStr, const std::string &xtra_params = {})
-    {
-        size_t expectedSize = 0;
-        if (!numeric::str2sizet(sizeStr, expectedSize)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid size value:"); LOG_STRING(sizeStr));
-            return false;
+        /**
+         * @brief Set maximum receive buffer size
+         */
+        void setMaxRecvSize(size_t size)
+        {
+            m_maxRecvSize = size;
         }
 
-        if (expectedSize == 0 || expectedSize > m_maxRecvSize) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Size out of range:"); LOG_SIZET(expectedSize));
-            return false;
+    private:
+        std::shared_ptr<const TDriver> m_driver;
+        std::string m_pluginName;
+        size_t m_maxRecvSize;
+        uint32_t m_defaultTimeout;
+        SendFunc m_pfsend;
+        RecvFunc m_pfrecv;
+        std::stop_token m_stopTok;
+        std::vector<uint8_t> m_lastReceived;
+        std::vector<uint8_t> m_recvScratch; /* reused I/O buffer, see doReceiveInto() */
+
+        /**
+         * @brief Per-(pattern) compiled-regex cache and per-(type, value)
+         *        converted-bytes cache — both scoped to *this interpreter
+         *        instance*, deliberately not to CommCommand.
+         *
+         * A CommCommand can be, and is, read concurrently by multiple threads:
+         * CommScriptInterpreter::m_getCache() is a process-wide static
+         * unordered_map<std::string, std::vector<CommCommand>> keyed by script
+         * path, populated once by a dry-run pass and then read by every
+         * subsequent real-execution pass — including passes running on
+         * different threads against the same script path (e.g. the same test
+         * script driving several units in parallel, one thread each). Adding
+         * mutable cache state to CommCommand itself would mean multiple threads
+         * lazily populating the same shared object's cache fields with no
+         * synchronization - a data race.
+         *
+         * CommScriptCommandInterpreter itself is not shared that way: every
+         * thread constructs (via its own CommScriptClient -> CommScriptRunner ->
+         * CommScriptInterpreter chain) its own CommScriptCommandInterpreter
+         * instance, each wrapping its own m_lastReceived/m_recvScratch/driver
+         * handle - state that already couldn't be shared across threads safely
+         * for other reasons (concurrent reads into the same buffer would
+         * corrupt each other regardless of caching). So a cache living here,
+         * keyed purely by the (immutable) pattern/type/value content rather
+         * than by any CommCommand identity, is only ever touched by the one
+         * thread that owns this interpreter instance - no locking needed.
+         *
+         * Bounded by construction: the key space is the set of distinct literal
+         * regex patterns / (type, value) pairs that actually appear in the
+         * script text, so cache size tracks script size, not iteration count -
+         * safe to leave unbounded (no eviction) across REPEAT loops.
+         */
+        struct CachedRegex {
+                std::shared_ptr<std::regex> compiled; ///< null if `pattern` failed to compile
+                std::string error;                    ///< populated only when compiled == null
+        };
+
+        std::unordered_map<std::string, CachedRegex> m_regexCache;
+
+        struct DataCacheKey {
+                CommCommandTokenType type;
+                std::string value;
+
+                bool operator==(const DataCacheKey &other) const noexcept
+                {
+                    return type == other.type && value == other.value;
+                }
+        };
+
+        struct DataCacheKeyHash {
+                size_t operator()(const DataCacheKey &k) const noexcept
+                {
+                    return std::hash<std::string>{}(k.value) ^ (std::hash<int>{}(static_cast<int>(k.type)) << 1);
+                }
+        };
+
+        std::unordered_map<DataCacheKey, std::vector<uint8_t>, DataCacheKeyHash> m_dataCache;
+
+        /**
+         * @brief Physical write primitive — pfsend override if one was injected,
+         *        otherwise m_driver->tout_write() directly (today's behaviour).
+         */
+        ICommDriver::WriteResult doWrite(std::span<const uint8_t> data, const std::string &xtra_params) const
+        {
+            return m_pfsend ? m_pfsend(m_defaultTimeout, data, m_driver, xtra_params, m_stopTok)
+                            : m_driver->tout_write(m_defaultTimeout, data, xtra_params, m_stopTok);
         }
 
-        ICommDriver::ReadOptions options;
-        options.mode = ICommDriver::ReadMode::Exact;
-
-        auto result  = doReceiveInto(options, xtra_params);
-
-        if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Read failed:");
-                      LOG_STRING(ICommDriver::to_string(result.status)));
-            return false;
+        /**
+         * @brief Physical read primitive — pfrecv override if one was injected,
+         *        otherwise m_driver->tout_read() directly (today's behaviour).
+         */
+        ICommDriver::ReadResult doRead(std::span<uint8_t> buffer, const ICommDriver::ReadOptions &options,
+                                       const std::string &xtra_params) const
+        {
+            return m_pfrecv ? m_pfrecv(m_defaultTimeout, buffer, options, m_driver, xtra_params, m_stopTok)
+                            : m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params, m_stopTok);
         }
 
-        if (!m_pfrecv) {
-            notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        /**
+         * @brief Perform one read into the reusable scratch buffer, then copy
+         *        exactly the bytes obtained into m_lastReceived
+         *
+         * The previous pattern was, on every single receive call:
+         *   m_lastReceived.resize(m_maxRecvSize);   // grows + value-initializes
+         *                                            // (zero-fills) the newly
+         *                                            // visible range every time,
+         *                                            // even though it's about to
+         *                                            // be overwritten by doRead()
+         *   doRead(std::span<uint8_t>(m_lastReceived), ...);
+         *   m_lastReceived.resize(result.bytes_read); // shrink back down
+         *
+         * std::vector::resize() cannot skip that zero-fill on grow - it has no
+         * way to know the memory in [old_size, new_size) isn't garbage, so it
+         * must value-initialize it regardless of whether m_lastReceived had
+         * already been at m_maxRecvSize on a previous call.
+         *
+         * Here, m_recvScratch is grown to m_maxRecvSize at most once (only when
+         * it needs to get bigger - e.g. the very first call, or after
+         * setMaxRecvSize() raises the limit) and is never shrunk, so it pays
+         * that zero-fill at most once instead of on every call. Each read then
+         * writes into that already-appropriately-sized buffer, and only the
+         * actual bytes obtained are copied into m_lastReceived - one memcpy of
+         * exactly bytes_read bytes (typically « m_maxRecvSize) instead of one
+         * memset of m_maxRecvSize bytes.
+         *
+         * This is done unconditionally on both success and failure, which also
+         * normalizes a pre-existing inconsistency: previously, on a failed read,
+         * m_lastReceived was left at its full m_maxRecvSize (mostly zero-filled)
+         * size rather than reflecting the (possibly partial) bytes actually
+         * obtained - exactly the "garbage bytes via getLastReceived()" problem
+         * that receiveUntilToken() already special-cased for its own zero-byte
+         * result. This makes that guarantee hold for every receive path.
+         */
+        ICommDriver::ReadResult doReceiveInto(const ICommDriver::ReadOptions &options, const std::string &xtra_params)
+        {
+            if (m_recvScratch.size() < m_maxRecvSize) {
+                m_recvScratch.resize(m_maxRecvSize);
+            }
+
+            auto result = doRead(std::span<uint8_t>(m_recvScratch.data(), m_maxRecvSize), options, xtra_params);
+
+            m_lastReceived.assign(m_recvScratch.begin(), m_recvScratch.begin() + result.bytes_read);
+            return result;
         }
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                  LOG_STRING("Received:"); LOG_SIZET(result.bytes_read);
-                  LOG_STRING("bytes"));
-        return (result.bytes_read == expectedSize);
-    }
+        /**
+         * @brief Compile (or fetch from cache) the std::regex for `pattern`
+         * @return The cache entry: `.compiled` is null if `pattern` failed to
+         *         compile, in which case `.error` holds the exception message
+         *         (captured once, on the first failing attempt, and reused on
+         *         every subsequent cache hit so a persistently-invalid pattern
+         *         inside a retry loop doesn't keep re-throwing regex_error).
+         *
+         * See m_regexCache's doc comment for why this cache lives here (per
+         * interpreter instance) rather than on CommCommand.
+         */
+        const CachedRegex &getCompiledRegex(const std::string &pattern)
+        {
+            auto it = m_regexCache.find(pattern);
+            if (it != m_regexCache.end()) {
+                return it->second;
+            }
 
-    /**
-     * @brief Receive data until delimiter character
-     */
-    bool receiveUntilDelimiter(uint8_t delimiter, const std::string &expectedStr,
-                               const std::string &xtra_params = {})
-    {
-        ICommDriver::ReadOptions options;
-        options.mode      = ICommDriver::ReadMode::UntilDelimiter;
-        options.delimiter = delimiter;
+            CachedRegex entry;
+            try {
+                entry.compiled = std::make_shared<std::regex>(pattern);
+            } catch (const std::regex_error &e) {
+                entry.error = e.what();
+            }
 
-        auto result       = doReceiveInto(options, xtra_params);
-
-        if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Read until delimiter failed:");
-                      LOG_STRING(ICommDriver::to_string(result.status)));
-            return false;
+            return m_regexCache.emplace(pattern, std::move(entry)).first->second;
         }
 
-        if (!m_pfrecv) {
-            notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        /**
+         * @brief convertToData() with a per-interpreter-instance cache
+         * @return Pointer to the cached bytes, or nullptr if conversion failed
+         *
+         * The same (type, value) pair always converts to the same bytes - it's
+         * a pure function of its inputs - so for a CommCommand executed
+         * repeatedly (a script loop, a retry), this avoids rebuilding an
+         * identical vector<uint8_t> from the string representation on every
+         * single call. References into the returned vector stay valid for the
+         * interpreter's lifetime: unordered_map never invalidates existing
+         * elements on insertion (only on erasure, which this cache never does),
+         * so callers can hold a span/reference into it directly instead of
+         * copying out. See m_dataCache's doc comment for the threading rationale.
+         *
+         * Note for callers: the returned vector must not be mutated in place
+         * (e.g. no pop_back()) since it may be shared across future lookups of
+         * the same key - see receiveUntilDelimiter() for how to adjust a
+         * comparison range instead of trimming the cached vector.
+         */
+        const std::vector<uint8_t> *getConvertedData(const std::string &value, CommCommandTokenType type)
+        {
+            DataCacheKey key{type, value};
+            auto it = m_dataCache.find(key);
+            if (it != m_dataCache.end()) {
+                return &it->second;
+            }
+
+            std::vector<uint8_t> converted;
+            if (!convertToData(value, type, converted)) {
+                return nullptr;
+            }
+
+            return &m_dataCache.emplace(std::move(key), std::move(converted)).first->second;
         }
 
-        // If no expected string provided, just return success
-        if (expectedStr.empty()) {
+        /**
+         * @brief Append one Rx/Tx record to the GUI comm-dump panel, if enabled.
+         *
+         * No-op (single bool check) outside GUI mode, so it is safe to call
+         * unconditionally after every tout_read()/tout_write(). describeConnection()
+         * is documented as cheap/no-I/O, but we still gate it behind gui_mode_active()
+         * so CLI runs pay nothing beyond the flag check. Zero-length transfers are
+         * skipped (nothing meaningful to show, and avoids a stray row on timeouts
+         * that returned 0 bytes).
+         *
+         * @param dir         Rx or Tx
+         * @param xtra_params Same xtra_params passed to the tout_read()/tout_write()
+         *                    call this record is reporting on, so describeConnection()
+         *                    reflects the resolved channel/address for that exchange.
+         * @param data        Pointer to the bytes actually transferred
+         * @param len         Number of bytes actually transferred (bytes_read/bytes_written)
+         */
+        void notifyCommDump(CommDir dir, std::string_view xtra_params,
+                            const uint8_t *data, size_t len) const
+        {
+            if (len == 0 || !gui_mode_active()) {
+                return;
+            }
+            gui_notify_comm_dump(m_pluginName,
+                                 m_driver->describeConnection(xtra_params),
+                                 dir, data, static_cast<uint32_t>(len));
+        }
+
+        /**
+         * @brief Execute a send operation
+         * @param value       The data value to send (string representation)
+         * @param type        The token type indicating how to interpret the value
+         * @param xtra_params Optional channel/address identifier forwarded to tout_write
+         * @return true if send successful, false otherwise
+         */
+        bool executeSend(const std::string &value, CommCommandTokenType type,
+                         const std::string &xtra_params = {})
+        {
+            // Empty token means no send operation
+            if (type == CommCommandTokenType::EMPTY) {
+                return true;
+            }
+
             LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                      LOG_STRING("Received line:"); LOG_SIZET(result.bytes_read);
+                      LOG_STRING("Send:"); LOG_STRING(value);
+                      LOG_STRING("["); LOG_STRING(getTokenTypeName(type))
+                          LOG_STRING("]"));
+
+            // Handle file send specially
+            if (type == CommCommandTokenType::FILENAME) {
+                return sendFile(value, xtra_params);
+            }
+
+            // Convert value to bytes based on type (cached - see getConvertedData())
+            const std::vector<uint8_t> *data = getConvertedData(value, type);
+            if (!data) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Failed to convert data for send"));
+                return false;
+            }
+
+            // Send the data
+            auto result = doWrite(std::span<const uint8_t>(*data), xtra_params);
+
+            if (result.status != ICommDriver::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Write failed:");
+                          LOG_STRING(ICommDriver::to_string(result.status));
+                          LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
+                return false;
+            }
+
+            // A pfsend override (e.g. a segmented transport protocol) knows what
+            // actually went out on the wire and is responsible for its own
+            // comm-dump row(s); this generic row would otherwise show the pre-
+            // segmentation logical payload instead of the real physical frames.
+            if (!m_pfsend) {
+                notifyCommDump(CommDir::Tx, xtra_params, data->data(), result.bytes_written);
+            }
+
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                      LOG_STRING("Sent:"); LOG_SIZET(result.bytes_written);
                       LOG_STRING("bytes"));
             return true;
         }
 
-        // Compare with expected (add newline to expected for comparison) - cached, see getConvertedData()
-        const std::vector<uint8_t> *expected = getConvertedData(expectedStr, CommCommandTokenType::LINE);
-        if (!expected) {
-            return false;
-        }
-
-        // Note: m_lastReceived won't have the delimiter, but expected will have '\0'
-        // appended by stringToVector() when the expected delimiter was encountered.
-        // expected now comes from the per-interpreter cache and may be shared with
-        // future lookups of the same expectedStr, so we adjust the comparison
-        // length instead of mutating it in place with pop_back().
-        size_t expectedLen = expected->size();
-        if (expectedLen > 0 && (*expected)[expectedLen - 1] == '\0') {
-            --expectedLen;
-        }
-
-        bool matched = std::equal(m_lastReceived.begin(), m_lastReceived.end(),
-                                  expected->begin(), expected->begin() + expectedLen);
-
-        if (!matched) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Line content mismatch"));
-        }
-
-        return matched;
-    }
-
-    /**
-     * @brief Receive data and compare with expected value
-     */
-    bool receiveAndCompare(const std::string &expectedStr, CommCommandTokenType type,
-                           const std::string &xtra_params = {})
-    {
-        // First receive the data
-        ICommDriver::ReadOptions options;
-        options.mode = ICommDriver::ReadMode::Exact;
-
-        auto result  = doReceiveInto(options, xtra_params);
-
-        if (result.status != ICommDriver::Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Read failed:");
-                      LOG_STRING(ICommDriver::to_string(result.status)));
-            return false;
-        }
-
-        if (!m_pfrecv) {
-            notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
-        }
-
-        // Convert expected string to bytes (cached - see getConvertedData())
-        const std::vector<uint8_t> *expected = getConvertedData(expectedStr, type);
-        if (!expected) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert expected data"));
-            return false;
-        }
-
-        // Compare
-        bool matched = (result.bytes_read == expected->size()) &&
-                       std::equal(m_lastReceived.begin(), m_lastReceived.end(),
-                                  expected->begin(), expected->end());
-
-        if (!matched) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Data mismatch. Expected:"); LOG_SIZET(expected->size());
-                      LOG_STRING("Received:"); LOG_SIZET(result.bytes_read));
-        }
-
-        return matched;
-    }
-
-    /**
-     * @brief Receive data and print is as hexdump
-     */
-    bool receiveAndHexdump(const std::string &expectedStr, const std::string &xtra_params = {})
-    {
-        // First receive the data
-        ICommDriver::ReadOptions options;
-        options.mode = ICommDriver::ReadMode::Exact;
-
-        auto result  = doReceiveInto(options, xtra_params);
-
-        if (result.status != ICommDriver::Status::SUCCESS) {
-            // "Receive whatever is sent" is a best-effort read: the driver is
-            // expected to unblock either when some data arrives or when the
-            // timeout elapses, and the caller/script sees neither of those as
-            // an error - a timeout with nothing to show for it is a valid,
-            // successful outcome (0 bytes), not a failure. A real I/O problem
-            // (anything other than READ_TIMEOUT) is still reported as a
-            // failure since it means the port itself is unusable.
-            if (result.status == ICommDriver::Status::READ_TIMEOUT) {
-                // doReceiveInto() already sized m_lastReceived to bytes_read,
-                // which should be 0 here - clear() explicitly anyway in case
-                // a driver ever reports a nonzero partial count alongside
-                // READ_TIMEOUT, to keep the "0 bytes on timeout" guarantee airtight.
-                m_lastReceived.clear();
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                          LOG_STRING("No data received within timeout (receive-anything is best-effort)"));
+        /**
+         * @brief Execute a receive operation
+         * @param value       The expected data value or pattern (string representation)
+         * @param type        The token type indicating how to interpret the value
+         * @param xtra_params Optional channel/address identifier forwarded to tout_read
+         * @return true if receive successful and data matches expectation, false otherwise
+         */
+        bool executeReceive(const std::string &value, CommCommandTokenType type,
+                            const std::string &xtra_params = {})
+        {
+            // Empty token means no receive operation
+            if (type == CommCommandTokenType::EMPTY) {
                 return true;
             }
 
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Read failed:");
-                      LOG_STRING(ICommDriver::to_string(result.status)));
-            return false;
-        }
-        if (!m_pfrecv) {
-            notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
-        }
-        hexutils::logHexdump(LOG_WERBOSE, "Recv:", "SAoC", m_lastReceived);
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                      LOG_STRING("Recv:"); LOG_STRING(value);
+                      LOG_STRING("["); LOG_STRING(getTokenTypeName(type));
+                      LOG_STRING("]"));
 
-        return true;
-    }
+            switch (type) {
+            case CommCommandTokenType::REGEX:
+                return receiveAndMatchRegex(value, xtra_params);
 
-    /**
-     * @brief Send file in chunks
-     * Format: "filename" or "filename,chunksize"
-     */
-    bool sendFile(const std::string &fileSpec, const std::string &xtra_params = {})
-    {
-        // Parse filename and optional chunk size
-        std::pair<std::string, std::string> parts;
-        ustring::splitAtFirst(fileSpec, CHAR_SEPARATOR_COMMA, parts);
+            case CommCommandTokenType::TOKEN_STRING:
+                return receiveUntilToken(value, false, xtra_params);
 
-        std::string filepath = parts.first;
-        size_t chunkSize     = 1024; // Default chunk size
+            case CommCommandTokenType::TOKEN_HEXSTREAM:
+                return receiveUntilToken(value, true, xtra_params);
 
-        // Parse chunk size if provided
-        if (!parts.second.empty()) {
-            if (!numeric::str2sizet(parts.second, chunkSize)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid chunk size:"); LOG_STRING(parts.second));
+            case CommCommandTokenType::SIZEOF:
+                return receiveExactSize(value, xtra_params);
+
+            case CommCommandTokenType::LINE:
+                return receiveUntilDelimiter('\n', value, xtra_params);
+
+            case CommCommandTokenType::FILENAME:
+                return receiveToFile(value, xtra_params);
+
+            case CommCommandTokenType::HEXSTREAM:
+            case CommCommandTokenType::STRING_DELIMITED:
+            case CommCommandTokenType::STRING_DELIMITED_EMPTY:
+            case CommCommandTokenType::STRING_RAW:
+                return receiveAndCompare(value, type, xtra_params);
+
+            case CommCommandTokenType::ANYTHING:
+                return receiveAndHexdump(value, xtra_params);
+
+            default:
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported receive token type"));
                 return false;
             }
         }
 
-        // Validate file exists
-        if (!std::filesystem::exists(filepath) ||
-            !std::filesystem::is_regular_file(filepath)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File not found:"); LOG_STRING(filepath));
-            return false;
-        }
+        /**
+         * @brief Receive data and match against regex pattern
+         */
+        bool receiveAndMatchRegex(const std::string &pattern, const std::string &xtra_params = {})
+        {
+            // Read exact bytes from driver
+            ICommDriver::ReadOptions options;
+            options.mode = ICommDriver::ReadMode::Exact;
 
-        // Get file size
-        auto fileSize = std::filesystem::file_size(filepath);
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                  LOG_STRING("Sending file:"); LOG_STRING(filepath);
-                  LOG_STRING("Size:"); LOG_UINT64(fileSize);
-                  LOG_STRING("Chunk:"); LOG_SIZET(chunkSize));
-
-        // Open file
-        std::ifstream file(filepath, std::ios::binary);
-        if (!file) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open file:"); LOG_STRING(filepath));
-            return false;
-        }
-
-        // Send file in chunks
-        std::vector<uint8_t> chunk(chunkSize);
-        size_t totalSent = 0;
-
-        while (file) {
-            file.read(reinterpret_cast<char *>(chunk.data()), chunkSize);
-            std::streamsize bytesRead = file.gcount();
-
-            if (bytesRead > 0) {
-                std::span<const uint8_t> dataSpan(chunk.data(), bytesRead);
-                auto result = doWrite(dataSpan, xtra_params);
-
-                if (result.status != ICommDriver::Status::SUCCESS) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR;
-                              LOG_STRING("File write failed at offset:");
-                              LOG_SIZET(totalSent);
-                              LOG_STRING("Status:");
-                              LOG_STRING(ICommDriver::to_string(result.status)));
-                    return false;
-                }
-
-                if (!m_pfsend) {
-                    notifyCommDump(CommDir::Tx, xtra_params, chunk.data(), result.bytes_written);
-                }
-                totalSent += result.bytes_written;
-            }
-        }
-
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                  LOG_STRING("File sent successfully. Total:");
-                  LOG_SIZET(totalSent); LOG_STRING("bytes"));
-        return true;
-    }
-
-    /**
-     * @brief Receive data to file
-     * Format: "filename" or "filename,expected_size" or "filename,expected_size,chunksize"
-     */
-    bool receiveToFile(const std::string &fileSpec, const std::string &xtra_params = {})
-    {
-        // Parse the file specification
-        std::vector<std::string> parts;
-        ustring::tokenize(fileSpec, CHAR_SEPARATOR_COMMA, parts);
-
-        if (parts.empty() || parts[0].empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid file specification"));
-            return false;
-        }
-
-        std::string filepath = parts[0];
-        size_t expectedSize  = 0;
-        size_t chunkSize     = 1024;
-
-        // Parse optional expected size
-        if (parts.size() > 1 && !parts[1].empty()) {
-            if (!numeric::str2sizet(parts[1], expectedSize)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid expected size:"); LOG_STRING(parts[1]));
-                return false;
-            }
-        }
-
-        // Parse optional chunk size
-        if (parts.size() > 2 && !parts[2].empty()) {
-            if (!numeric::str2sizet(parts[2], chunkSize)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid chunk size:"); LOG_STRING(parts[2]));
-                return false;
-            }
-        }
-
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                  LOG_STRING("Receiving to file:"); LOG_STRING(filepath);
-                  LOG_STRING("Expected:"); LOG_SIZET(expectedSize);
-                  LOG_STRING("Chunk:"); LOG_SIZET(chunkSize));
-
-        // Open output file
-        std::ofstream file(filepath, std::ios::binary);
-        if (!file) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to create file:"); LOG_STRING(filepath));
-            return false;
-        }
-
-        // Receive file in chunks
-        std::vector<uint8_t> chunk(chunkSize);
-        size_t totalReceived = 0;
-        ICommDriver::ReadOptions options;
-        options.mode = ICommDriver::ReadMode::Exact;
-
-        while (true) {
-            // Determine how many bytes to read in this iteration
-            size_t bytesToRead = chunkSize;
-            if (expectedSize > 0 && (totalReceived + chunkSize > expectedSize)) {
-                bytesToRead = expectedSize - totalReceived;
-                if (bytesToRead == 0) {
-                    break; // All expected data received
-                }
-            }
-
-            // Read chunk
-            std::span<uint8_t> buffer(chunk.data(), bytesToRead);
-            auto result = doRead(buffer, options, xtra_params);
+            auto result  = doReceiveInto(options, xtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
-                // Check if we've received all expected data
-                if (expectedSize > 0 && totalReceived == expectedSize) {
-                    break;
-                }
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("File read failed:");
+                          LOG_STRING("Read failed:");
                           LOG_STRING(ICommDriver::to_string(result.status)));
                 return false;
             }
 
-            if (result.bytes_read == 0) {
-                break; // No more data
-            }
-
             if (!m_pfrecv) {
-                notifyCommDump(CommDir::Rx, xtra_params, chunk.data(), result.bytes_read);
+                notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
             }
 
-            // Write to file
-            file.write(reinterpret_cast<const char *>(chunk.data()), result.bytes_read);
-            if (!file) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File write failed"));
+            // Match against pattern directly over the received bytes - uint8_t and
+            // char share representation, so a reinterpret_cast pair of pointers is
+            // a valid bidirectional char iterator range for std::regex_match,
+            // avoiding a full copy of m_lastReceived into a temporary std::string
+            // just to hand it to regex_match().
+            const char *first         = reinterpret_cast<const char *>(m_lastReceived.data());
+            const char *last          = first + m_lastReceived.size();
+
+            const CachedRegex &cached = getCompiledRegex(pattern);
+            if (!cached.compiled) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Invalid regex pattern:");
+                          LOG_STRING(cached.error));
                 return false;
             }
 
-            totalReceived += result.bytes_read;
+            try {
+                bool matched = std::regex_match(first, last, *cached.compiled);
 
-            // Stop if we've received expected amount
-            if (expectedSize > 0 && totalReceived >= expectedSize) {
-                break;
+                if (!matched) {
+                    // Only pay for the string copy when we actually need it for the log.
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("Regex match failed. Received:");
+                              LOG_STRING(std::string(first, last)));
+                }
+
+                return matched;
+            } catch (const std::regex_error &e) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Invalid regex pattern:");
+                          LOG_STRING(e.what()));
+                return false;
             }
         }
 
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                  LOG_STRING("File received successfully. Total:");
-                  LOG_SIZET(totalReceived); LOG_STRING("bytes"));
-        return true;
-    }
+        /**
+         * @brief Receive data until a specific token is found
+         */
+        bool receiveUntilToken(const std::string &tokenStr, bool isHexStream = false,
+                               const std::string &xtra_params = {})
+        {
+            // Convert token string to bytes (cached - see getConvertedData())
+            const std::vector<uint8_t> *token = getConvertedData(tokenStr, (isHexStream ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::TOKEN_STRING));
+            if (!token) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert token"));
+                return false;
+            }
 
-    /**
-     * @brief Convert string value to data bytes based on token type
-     */
-    bool convertToData(const std::string &value,
-                       CommCommandTokenType type,
-                       std::vector<uint8_t> &data) const
-    {
-        switch (type) {
-        case CommCommandTokenType::HEXSTREAM:
-            return hexutils::hexstringToVector(value, data);
-        case CommCommandTokenType::LINE:
-        case CommCommandTokenType::STRING_RAW:
-        case CommCommandTokenType::STRING_DELIMITED:
-        case CommCommandTokenType::STRING_DELIMITED_EMPTY:
-            /* Skip the expandEscapes() allocation+copy entirely when there is
-             * no backslash to expand (the common case) - go straight from the
-             * already-owned `value` into the byte vector, which needs exactly
-             * one copy regardless (stringToVector always builds a fresh
-             * vector<uint8_t>), instead of string-copy-then-vector-copy. */
-            return (value.find('\\') == std::string::npos)
-                       ? ustring::stringToVector(value, data)
-                       : ustring::stringToVector(expandEscapes(value), data);
-        case CommCommandTokenType::TOKEN_STRING:
-            return (value.find('\\') == std::string::npos)
-                       ? ustring::stringToVector(value, data, false)
-                       : ustring::stringToVector(expandEscapes(value), data, false);
-        case CommCommandTokenType::TOKEN_HEXSTREAM:
-            return hexutils::stringUnhexlify(value, data);
-        default:
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported token type for data conversion"));
-            return false;
+            // Setup read options for token search
+            ICommDriver::ReadOptions options;
+            options.mode       = ICommDriver::ReadMode::UntilToken;
+            options.token      = std::span<const uint8_t>(*token);
+            options.use_buffer = true;
+
+            auto result        = doReceiveInto(options, xtra_params);
+
+            if (result.status != ICommDriver::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Token search failed:");
+                          LOG_STRING(ICommDriver::to_string(result.status)));
+                return false;
+            }
+
+            if (!result.found_terminator) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Token not found within timeout"));
+                return false;
+            }
+
+            // No comm-dump record here: every driver's ReadMode::UntilToken leaves
+            // result.bytes_read == 0 by design (the matched bytes are consumed
+            // internally by the KMP scan and never copied into the caller's
+            // buffer), so there is nothing to hand to notifyCommDump(). doReceiveInto()
+            // already sized m_lastReceived to that 0-byte result, so getLastReceived()
+            // - and therefore a "VAL ?= PLUGIN.CMD ..." capture - never surfaces
+            // garbage bytes for this receive type. Widening
+            // ICommDriver::tout_read()/ReadResult to also expose the consumed
+            // bytes for this mode is a possible follow-up, but out of scope here.
+            return true;
         }
-    }
 
-    /**
-     * @brief Expand literal escape sequences into their actual byte values
-     * @param value Input string possibly containing literal \r and \n sequences
-     * @return String with \r replaced by 0x0D and \n replaced by 0x0A
-     *
-     * Handles:
-     *   \r        → 0x0D
-     *   \n        → 0x0A
-     *   \r\n      → 0x0D 0x0A
-     *   \\r \\n   → left as-is (escaped backslash)
-     */
-    std::string expandEscapes(const std::string &value) const
-    {
-        std::string result;
-        result.reserve(value.size());
+        /**
+         * @brief Receive exact number of bytes specified as size
+         */
+        bool receiveExactSize(const std::string &sizeStr, const std::string &xtra_params = {})
+        {
+            size_t expectedSize = 0;
+            if (!numeric::str2sizet(sizeStr, expectedSize)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid size value:"); LOG_STRING(sizeStr));
+                return false;
+            }
 
-        for (size_t i = 0; i < value.size(); ++i) {
-            if (value[i] == '\\' && (i + 1) < value.size()) {
-                switch (value[i + 1]) {
-                case 'r':
-                    result += '\r'; // 0x0D
-                    ++i;
-                    continue;
-                case 'n':
-                    result += '\n'; // 0x0A
-                    ++i;
-                    continue;
-                case '\\':
-                    result += '\\'; // escaped backslash → keep one
-                    ++i;
-                    continue;
-                default:
+            if (expectedSize == 0 || expectedSize > m_maxRecvSize) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Size out of range:"); LOG_SIZET(expectedSize));
+                return false;
+            }
+
+            ICommDriver::ReadOptions options;
+            options.mode = ICommDriver::ReadMode::Exact;
+
+            auto result  = doReceiveInto(options, xtra_params);
+
+            if (result.status != ICommDriver::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Read failed:");
+                          LOG_STRING(ICommDriver::to_string(result.status)));
+                return false;
+            }
+
+            if (!m_pfrecv) {
+                notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+            }
+
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                      LOG_STRING("Received:"); LOG_SIZET(result.bytes_read);
+                      LOG_STRING("bytes"));
+            return (result.bytes_read == expectedSize);
+        }
+
+        /**
+         * @brief Receive data until delimiter character
+         */
+        bool receiveUntilDelimiter(uint8_t delimiter, const std::string &expectedStr,
+                                   const std::string &xtra_params = {})
+        {
+            ICommDriver::ReadOptions options;
+            options.mode      = ICommDriver::ReadMode::UntilDelimiter;
+            options.delimiter = delimiter;
+
+            auto result       = doReceiveInto(options, xtra_params);
+
+            if (result.status != ICommDriver::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Read until delimiter failed:");
+                          LOG_STRING(ICommDriver::to_string(result.status)));
+                return false;
+            }
+
+            if (!m_pfrecv) {
+                notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+            }
+
+            // If no expected string provided, just return success
+            if (expectedStr.empty()) {
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                          LOG_STRING("Received line:"); LOG_SIZET(result.bytes_read);
+                          LOG_STRING("bytes"));
+                return true;
+            }
+
+            // Compare with expected (add newline to expected for comparison) - cached, see getConvertedData()
+            const std::vector<uint8_t> *expected = getConvertedData(expectedStr, CommCommandTokenType::LINE);
+            if (!expected) {
+                return false;
+            }
+
+            // Note: m_lastReceived won't have the delimiter, but expected will have '\0'
+            // appended by stringToVector() when the expected delimiter was encountered.
+            // expected now comes from the per-interpreter cache and may be shared with
+            // future lookups of the same expectedStr, so we adjust the comparison
+            // length instead of mutating it in place with pop_back().
+            size_t expectedLen = expected->size();
+            if (expectedLen > 0 && (*expected)[expectedLen - 1] == '\0') {
+                --expectedLen;
+            }
+
+            bool matched = std::equal(m_lastReceived.begin(), m_lastReceived.end(),
+                                      expected->begin(), expected->begin() + expectedLen);
+
+            if (!matched) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Line content mismatch"));
+            }
+
+            return matched;
+        }
+
+        /**
+         * @brief Receive data and compare with expected value
+         */
+        bool receiveAndCompare(const std::string &expectedStr, CommCommandTokenType type,
+                               const std::string &xtra_params = {})
+        {
+            // First receive the data
+            ICommDriver::ReadOptions options;
+            options.mode = ICommDriver::ReadMode::Exact;
+
+            auto result  = doReceiveInto(options, xtra_params);
+
+            if (result.status != ICommDriver::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Read failed:");
+                          LOG_STRING(ICommDriver::to_string(result.status)));
+                return false;
+            }
+
+            if (!m_pfrecv) {
+                notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+            }
+
+            // Convert expected string to bytes (cached - see getConvertedData())
+            const std::vector<uint8_t> *expected = getConvertedData(expectedStr, type);
+            if (!expected) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert expected data"));
+                return false;
+            }
+
+            // Compare
+            bool matched = (result.bytes_read == expected->size()) &&
+                           std::equal(m_lastReceived.begin(), m_lastReceived.end(),
+                                      expected->begin(), expected->end());
+
+            if (!matched) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Data mismatch. Expected:"); LOG_SIZET(expected->size());
+                          LOG_STRING("Received:"); LOG_SIZET(result.bytes_read));
+            }
+
+            return matched;
+        }
+
+        /**
+         * @brief Receive data and print is as hexdump
+         */
+        bool receiveAndHexdump(const std::string &expectedStr, const std::string &xtra_params = {})
+        {
+            // First receive the data
+            ICommDriver::ReadOptions options;
+            options.mode = ICommDriver::ReadMode::Exact;
+
+            auto result  = doReceiveInto(options, xtra_params);
+
+            if (result.status != ICommDriver::Status::SUCCESS) {
+                // "Receive whatever is sent" is a best-effort read: the driver is
+                // expected to unblock either when some data arrives or when the
+                // timeout elapses, and the caller/script sees neither of those as
+                // an error - a timeout with nothing to show for it is a valid,
+                // successful outcome (0 bytes), not a failure. A real I/O problem
+                // (anything other than READ_TIMEOUT) is still reported as a
+                // failure since it means the port itself is unusable.
+                if (result.status == ICommDriver::Status::READ_TIMEOUT) {
+                    // doReceiveInto() already sized m_lastReceived to bytes_read,
+                    // which should be 0 here - clear() explicitly anyway in case
+                    // a driver ever reports a nonzero partial count alongside
+                    // READ_TIMEOUT, to keep the "0 bytes on timeout" guarantee airtight.
+                    m_lastReceived.clear();
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                              LOG_STRING("No data received within timeout (receive-anything is best-effort)"));
+                    return true;
+                }
+
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Read failed:");
+                          LOG_STRING(ICommDriver::to_string(result.status)));
+                return false;
+            }
+            if (!m_pfrecv) {
+                notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+            }
+            hexutils::logHexdump(LOG_WERBOSE, "Recv:", "SAoC", m_lastReceived);
+
+            return true;
+        }
+
+        /**
+         * @brief Send file in chunks
+         * Format: "filename" or "filename,chunksize"
+         */
+        bool sendFile(const std::string &fileSpec, const std::string &xtra_params = {})
+        {
+            // Parse filename and optional chunk size
+            std::pair<std::string, std::string> parts;
+            ustring::splitAtFirst(fileSpec, CHAR_SEPARATOR_COMMA, parts);
+
+            std::string filepath = parts.first;
+            size_t chunkSize     = 1024; // Default chunk size
+
+            // Parse chunk size if provided
+            if (!parts.second.empty()) {
+                if (!numeric::str2sizet(parts.second, chunkSize)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid chunk size:"); LOG_STRING(parts.second));
+                    return false;
+                }
+            }
+
+            // Validate file exists
+            if (!std::filesystem::exists(filepath) ||
+                !std::filesystem::is_regular_file(filepath)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File not found:"); LOG_STRING(filepath));
+                return false;
+            }
+
+            // Get file size
+            auto fileSize = std::filesystem::file_size(filepath);
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                      LOG_STRING("Sending file:"); LOG_STRING(filepath);
+                      LOG_STRING("Size:"); LOG_UINT64(fileSize);
+                      LOG_STRING("Chunk:"); LOG_SIZET(chunkSize));
+
+            // Open file
+            std::ifstream file(filepath, std::ios::binary);
+            if (!file) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open file:"); LOG_STRING(filepath));
+                return false;
+            }
+
+            // Send file in chunks
+            std::vector<uint8_t> chunk(chunkSize);
+            size_t totalSent = 0;
+
+            while (file) {
+                file.read(reinterpret_cast<char *>(chunk.data()), chunkSize);
+                std::streamsize bytesRead = file.gcount();
+
+                if (bytesRead > 0) {
+                    std::span<const uint8_t> dataSpan(chunk.data(), bytesRead);
+                    auto result = doWrite(dataSpan, xtra_params);
+
+                    if (result.status != ICommDriver::Status::SUCCESS) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                  LOG_STRING("File write failed at offset:");
+                                  LOG_SIZET(totalSent);
+                                  LOG_STRING("Status:");
+                                  LOG_STRING(ICommDriver::to_string(result.status)));
+                        return false;
+                    }
+
+                    if (!m_pfsend) {
+                        notifyCommDump(CommDir::Tx, xtra_params, chunk.data(), result.bytes_written);
+                    }
+                    totalSent += result.bytes_written;
+                }
+            }
+
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                      LOG_STRING("File sent successfully. Total:");
+                      LOG_SIZET(totalSent); LOG_STRING("bytes"));
+            return true;
+        }
+
+        /**
+         * @brief Receive data to file
+         * Format: "filename" or "filename,expected_size" or "filename,expected_size,chunksize"
+         */
+        bool receiveToFile(const std::string &fileSpec, const std::string &xtra_params = {})
+        {
+            // Parse the file specification
+            std::vector<std::string> parts;
+            ustring::tokenize(fileSpec, CHAR_SEPARATOR_COMMA, parts);
+
+            if (parts.empty() || parts[0].empty()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid file specification"));
+                return false;
+            }
+
+            std::string filepath = parts[0];
+            size_t expectedSize  = 0;
+            size_t chunkSize     = 1024;
+
+            // Parse optional expected size
+            if (parts.size() > 1 && !parts[1].empty()) {
+                if (!numeric::str2sizet(parts[1], expectedSize)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid expected size:"); LOG_STRING(parts[1]));
+                    return false;
+                }
+            }
+
+            // Parse optional chunk size
+            if (parts.size() > 2 && !parts[2].empty()) {
+                if (!numeric::str2sizet(parts[2], chunkSize)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid chunk size:"); LOG_STRING(parts[2]));
+                    return false;
+                }
+            }
+
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                      LOG_STRING("Receiving to file:"); LOG_STRING(filepath);
+                      LOG_STRING("Expected:"); LOG_SIZET(expectedSize);
+                      LOG_STRING("Chunk:"); LOG_SIZET(chunkSize));
+
+            // Open output file
+            std::ofstream file(filepath, std::ios::binary);
+            if (!file) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to create file:"); LOG_STRING(filepath));
+                return false;
+            }
+
+            // Receive file in chunks
+            std::vector<uint8_t> chunk(chunkSize);
+            size_t totalReceived = 0;
+            ICommDriver::ReadOptions options;
+            options.mode = ICommDriver::ReadMode::Exact;
+
+            while (true) {
+                // Determine how many bytes to read in this iteration
+                size_t bytesToRead = chunkSize;
+                if (expectedSize > 0 && (totalReceived + chunkSize > expectedSize)) {
+                    bytesToRead = expectedSize - totalReceived;
+                    if (bytesToRead == 0) {
+                        break; // All expected data received
+                    }
+                }
+
+                // Read chunk
+                std::span<uint8_t> buffer(chunk.data(), bytesToRead);
+                auto result = doRead(buffer, options, xtra_params);
+
+                if (result.status != ICommDriver::Status::SUCCESS) {
+                    // Check if we've received all expected data
+                    if (expectedSize > 0 && totalReceived == expectedSize) {
+                        break;
+                    }
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("File read failed:");
+                              LOG_STRING(ICommDriver::to_string(result.status)));
+                    return false;
+                }
+
+                if (result.bytes_read == 0) {
+                    break; // No more data
+                }
+
+                if (!m_pfrecv) {
+                    notifyCommDump(CommDir::Rx, xtra_params, chunk.data(), result.bytes_read);
+                }
+
+                // Write to file
+                file.write(reinterpret_cast<const char *>(chunk.data()), result.bytes_read);
+                if (!file) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File write failed"));
+                    return false;
+                }
+
+                totalReceived += result.bytes_read;
+
+                // Stop if we've received expected amount
+                if (expectedSize > 0 && totalReceived >= expectedSize) {
                     break;
                 }
             }
-            result += value[i];
+
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                      LOG_STRING("File received successfully. Total:");
+                      LOG_SIZET(totalReceived); LOG_STRING("bytes"));
+            return true;
         }
 
-        return result;
-    }
+        /**
+         * @brief Convert string value to data bytes based on token type
+         */
+        bool convertToData(const std::string &value,
+                           CommCommandTokenType type,
+                           std::vector<uint8_t> &data) const
+        {
+            switch (type) {
+            case CommCommandTokenType::HEXSTREAM:
+                return hexutils::hexstringToVector(value, data);
+            case CommCommandTokenType::LINE:
+            case CommCommandTokenType::STRING_RAW:
+            case CommCommandTokenType::STRING_DELIMITED:
+            case CommCommandTokenType::STRING_DELIMITED_EMPTY:
+                /* Skip the expandEscapes() allocation+copy entirely when there is
+                 * no backslash to expand (the common case) - go straight from the
+                 * already-owned `value` into the byte vector, which needs exactly
+                 * one copy regardless (stringToVector always builds a fresh
+                 * vector<uint8_t>), instead of string-copy-then-vector-copy. */
+                return (value.find('\\') == std::string::npos)
+                           ? ustring::stringToVector(value, data)
+                           : ustring::stringToVector(expandEscapes(value), data);
+            case CommCommandTokenType::TOKEN_STRING:
+                return (value.find('\\') == std::string::npos)
+                           ? ustring::stringToVector(value, data, false)
+                           : ustring::stringToVector(expandEscapes(value), data, false);
+            case CommCommandTokenType::TOKEN_HEXSTREAM:
+                return hexutils::stringUnhexlify(value, data);
+            default:
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported token type for data conversion"));
+                return false;
+            }
+        }
+
+        /**
+         * @brief Expand literal escape sequences into their actual byte values
+         * @param value Input string possibly containing literal \r and \n sequences
+         * @return String with \r replaced by 0x0D and \n replaced by 0x0A
+         *
+         * Handles:
+         *   \r        → 0x0D
+         *   \n        → 0x0A
+         *   \r\n      → 0x0D 0x0A
+         *   \\r \\n   → left as-is (escaped backslash)
+         */
+        std::string expandEscapes(const std::string &value) const
+        {
+            std::string result;
+            result.reserve(value.size());
+
+            for (size_t i = 0; i < value.size(); ++i) {
+                if (value[i] == '\\' && (i + 1) < value.size()) {
+                    switch (value[i + 1]) {
+                    case 'r':
+                        result += '\r'; // 0x0D
+                        ++i;
+                        continue;
+                    case 'n':
+                        result += '\n'; // 0x0A
+                        ++i;
+                        continue;
+                    case '\\':
+                        result += '\\'; // escaped backslash → keep one
+                        ++i;
+                        continue;
+                    default:
+                        break;
+                    }
+                }
+                result += value[i];
+            }
+
+            return result;
+        }
 };
 
 #endif // U_COMM_SCRIPT_COMMAND_INTERPRETER_HPP

@@ -71,198 +71,197 @@ static constexpr std::string_view kPrintPrefix = "PRINT ";
 
 namespace {
 
-// Per-thread waveform state, seeded by the caller on every GENERATOR
-// (re)launch (see the GeneratorStatement launch code in m_executeCommand):
-// `current` starts at dBegin for SAWTOOTH/TRIANGLE/SQUARE, or at 0.0 (the
-// normalised phase carrier) for EXP/LOG; SINE ignores `current` entirely.
-// arrIndex/arrDirection are the array-source equivalent of current/direction,
-// used only by nextGeneratorArraySample(). rng backs RANDOM, in both the
-// range form (nextGeneratorSample) and the array form (nextGeneratorArraySample).
-struct GeneratorSampleState
-{
-    double current        = 0.0;              // SAWTOOTH/TRIANGLE/SQUARE: last emitted value. EXP/LOG: normalised [0,1) phase carrier.
-    int direction         = 1;                // TRIANGLE ping-pong: +1 rising, -1 falling
-    double phaseDeg       = 0.0;              // SINE: accumulated phase, degrees, wrapped at 360
-    uint64_t ticksAtLevel = 0;                // SQUARE: ticks spent at the current level so far
-    size_t arrIndex       = 0;                // array source: index of the last emitted element
-    int arrDirection      = 1;                // array source TRIANGLE ping-pong: +1 forward, -1 backward
-    std::vector<size_t> arrShuffleOrder;      // array source RANDOM: current shuffled permutation of indices
-    size_t arrShufflePos = 0;                 // array source RANDOM: position within arrShuffleOrder
-    std::mt19937 rng{std::random_device{}()}; // RANDOM (range or array source)
-};
+    // Per-thread waveform state, seeded by the caller on every GENERATOR
+    // (re)launch (see the GeneratorStatement launch code in m_executeCommand):
+    // `current` starts at dBegin for SAWTOOTH/TRIANGLE/SQUARE, or at 0.0 (the
+    // normalised phase carrier) for EXP/LOG; SINE ignores `current` entirely.
+    // arrIndex/arrDirection are the array-source equivalent of current/direction,
+    // used only by nextGeneratorArraySample(). rng backs RANDOM, in both the
+    // range form (nextGeneratorSample) and the array form (nextGeneratorArraySample).
+    struct GeneratorSampleState {
+            double current        = 0.0;              // SAWTOOTH/TRIANGLE/SQUARE: last emitted value. EXP/LOG: normalised [0,1) phase carrier.
+            int direction         = 1;                // TRIANGLE ping-pong: +1 rising, -1 falling
+            double phaseDeg       = 0.0;              // SINE: accumulated phase, degrees, wrapped at 360
+            uint64_t ticksAtLevel = 0;                // SQUARE: ticks spent at the current level so far
+            size_t arrIndex       = 0;                // array source: index of the last emitted element
+            int arrDirection      = 1;                // array source TRIANGLE ping-pong: +1 forward, -1 backward
+            std::vector<size_t> arrShuffleOrder;      // array source RANDOM: current shuffled permutation of indices
+            size_t arrShufflePos = 0;                 // array source RANDOM: position within arrShuffleOrder
+            std::mt19937 rng{std::random_device{}()}; // RANDOM (range or array source)
+    };
 
-// Computes the next sample for one tick of a range-sourced GENERATOR and
-// updates state in place. dStep is always a magnitude for SAWTOOTH/TRIANGLE
-// (the caller derives the actual direction from dBegin vs dEnd and folds it
-// into dStep's sign before calling — see the GeneratorStatement launch code
-// in m_executeCommand); SQUARE/SINE/EXP/LOG use dStep as documented in
-// GeneratorWaveform's doc comment (uScriptDataTypes.hpp).
-double nextGeneratorSample(GeneratorWaveform eWaveform, double dMin, double dMax, double dStep,
-                           double dK, GeneratorSampleState &state) noexcept
-{
-    switch (eWaveform) {
+    // Computes the next sample for one tick of a range-sourced GENERATOR and
+    // updates state in place. dStep is always a magnitude for SAWTOOTH/TRIANGLE
+    // (the caller derives the actual direction from dBegin vs dEnd and folds it
+    // into dStep's sign before calling — see the GeneratorStatement launch code
+    // in m_executeCommand); SQUARE/SINE/EXP/LOG use dStep as documented in
+    // GeneratorWaveform's doc comment (uScriptDataTypes.hpp).
+    double nextGeneratorSample(GeneratorWaveform eWaveform, double dMin, double dMax, double dStep,
+                               double dK, GeneratorSampleState &state) noexcept
+    {
+        switch (eWaveform) {
 
-    case GeneratorWaveform::SAWTOOTH: {
-        state.current += dStep;
-        if ((dStep >= 0.0 && state.current > dMax) ||
-            (dStep < 0.0 && state.current < dMax)) {
-            state.current = dMin;
+        case GeneratorWaveform::SAWTOOTH: {
+            state.current += dStep;
+            if ((dStep >= 0.0 && state.current > dMax) ||
+                (dStep < 0.0 && state.current < dMax)) {
+                state.current = dMin;
+            }
+            return state.current;
         }
-        return state.current;
-    }
 
-    case GeneratorWaveform::TRIANGLE: {
-        // Clamp against the numeric low/high bound rather than assuming
-        // dMax > dMin, so a reversed range (begin > end) ping-pongs
-        // exactly the same as a forward one — only the seeded initial
-        // direction (state.direction, set by the caller) differs.
-        const double dLow  = std::min(dMin, dMax);
-        const double dHigh = std::max(dMin, dMax);
-        state.current += dStep * state.direction;
-        if (state.current >= dHigh) {
-            state.current   = dHigh;
-            state.direction = -1;
+        case GeneratorWaveform::TRIANGLE: {
+            // Clamp against the numeric low/high bound rather than assuming
+            // dMax > dMin, so a reversed range (begin > end) ping-pongs
+            // exactly the same as a forward one — only the seeded initial
+            // direction (state.direction, set by the caller) differs.
+            const double dLow  = std::min(dMin, dMax);
+            const double dHigh = std::max(dMin, dMax);
+            state.current += dStep * state.direction;
+            if (state.current >= dHigh) {
+                state.current   = dHigh;
+                state.direction = -1;
+            }
+            if (state.current <= dLow) {
+                state.current   = dLow;
+                state.direction = 1;
+            }
+            return state.current;
         }
-        if (state.current <= dLow) {
-            state.current   = dLow;
-            state.direction = 1;
+
+        case GeneratorWaveform::SQUARE: {
+            // dStep is reinterpreted as "ticks to hold each level" (a positive
+            // integer, already checked at validation/resolution time).
+            // Assumes state.current was seeded to dMin by the caller (see the
+            // GeneratorStatement launch code in m_executeCommand). Order of
+            // dMin/dMax doesn't matter here — it just toggles between the
+            // two configured levels.
+            if (++state.ticksAtLevel >= static_cast<uint64_t>(dStep)) {
+                state.current      = (state.current == dMin) ? dMax : dMin;
+                state.ticksAtLevel = 0;
+            }
+            return state.current;
         }
-        return state.current;
-    }
 
-    case GeneratorWaveform::SQUARE: {
-        // dStep is reinterpreted as "ticks to hold each level" (a positive
-        // integer, already checked at validation/resolution time).
-        // Assumes state.current was seeded to dMin by the caller (see the
-        // GeneratorStatement launch code in m_executeCommand). Order of
-        // dMin/dMax doesn't matter here — it just toggles between the
-        // two configured levels.
-        if (++state.ticksAtLevel >= static_cast<uint64_t>(dStep)) {
-            state.current      = (state.current == dMin) ? dMax : dMin;
-            state.ticksAtLevel = 0;
+        case GeneratorWaveform::SINE: {
+            const double dMid = (dMin + dMax) / 2.0;
+            const double dAmp = (dMax - dMin) / 2.0;
+            state.phaseDeg += dStep;
+            if (state.phaseDeg >= 360.0) {
+                state.phaseDeg = std::fmod(state.phaseDeg, 360.0);
+            }
+            return dMid + dAmp * std::sin(state.phaseDeg * M_PI / 180.0);
         }
-        return state.current;
-    }
 
-    case GeneratorWaveform::SINE: {
-        const double dMid = (dMin + dMax) / 2.0;
-        const double dAmp = (dMax - dMin) / 2.0;
-        state.phaseDeg += dStep;
-        if (state.phaseDeg >= 360.0) {
-            state.phaseDeg = std::fmod(state.phaseDeg, 360.0);
+        case GeneratorWaveform::EXP: {
+            double t = state.current + dStep / (dMax - dMin);
+            if (t > 1.0) {
+                t -= 1.0;
+            }
+            state.current = t;
+            return dMin + (dMax - dMin) * ((std::exp(dK * t) - 1.0) / (std::exp(dK) - 1.0));
         }
-        return dMid + dAmp * std::sin(state.phaseDeg * M_PI / 180.0);
-    }
 
-    case GeneratorWaveform::EXP: {
-        double t = state.current + dStep / (dMax - dMin);
-        if (t > 1.0) {
-            t -= 1.0;
+        case GeneratorWaveform::LOG: {
+            double t = state.current + dStep / (dMax - dMin);
+            if (t > 1.0) {
+                t -= 1.0;
+            }
+            state.current = t;
+            return dMin + (dMax - dMin) * std::log1p(dK * t);
         }
-        state.current = t;
-        return dMin + (dMax - dMin) * ((std::exp(dK * t) - 1.0) / (std::exp(dK) - 1.0));
-    }
 
-    case GeneratorWaveform::LOG: {
-        double t = state.current + dStep / (dMax - dMin);
-        if (t > 1.0) {
-            t -= 1.0;
+        case GeneratorWaveform::RANDOM: {
+            const double dLow  = std::min(dMin, dMax);
+            const double dHigh = std::max(dMin, dMax);
+            std::uniform_real_distribution<double> dist(dLow, dHigh);
+            return dist(state.rng);
         }
-        state.current = t;
-        return dMin + (dMax - dMin) * std::log1p(dK * t);
-    }
-
-    case GeneratorWaveform::RANDOM: {
-        const double dLow  = std::min(dMin, dMax);
-        const double dHigh = std::max(dMin, dMax);
-        std::uniform_real_distribution<double> dist(dLow, dHigh);
-        return dist(state.rng);
-    }
-    }
-    return dMin; // unreachable — silences -Wreturn-type on some compilers
-}
-
-// Computes the next sample for one tick of an array-sourced GENERATOR (see
-// GeneratorStatement::bIsArraySource) and updates state in place. vValues is
-// guaranteed non-empty (validated at compile time — m_HandleGeneratorStmt —
-// and re-guaranteed at resolution time — m_resolveGeneratorRange). Only
-// SAWTOOTH/LINEAR, TRIANGLE and RANDOM are ever passed in (every other
-// waveform is rejected for an array source at validation time).
-double nextGeneratorArraySample(GeneratorWaveform eWaveform, const std::vector<double> &vValues,
-                                GeneratorSampleState &state) noexcept
-{
-    const size_t n = vValues.size();
-
-    if (eWaveform == GeneratorWaveform::RANDOM) {
-        // "Shuffle through" semantics, not an independent uniform pick every
-        // tick: draw a fresh random permutation of every element's index,
-        // walk it in order (so all n elements are emitted exactly once, in a
-        // random order, with no immediate repeats across the reshuffle
-        // boundary other than by chance), then reshuffle once exhausted.
-        if (state.arrShuffleOrder.size() != n || state.arrShufflePos >= n) {
-            state.arrShuffleOrder.resize(n);
-            std::iota(state.arrShuffleOrder.begin(), state.arrShuffleOrder.end(), size_t{0});
-            std::shuffle(state.arrShuffleOrder.begin(), state.arrShuffleOrder.end(), state.rng);
-            state.arrShufflePos = 0;
         }
-        const double dVal = vValues[state.arrShuffleOrder[state.arrShufflePos]];
-        ++state.arrShufflePos;
-        return dVal;
+        return dMin; // unreachable — silences -Wreturn-type on some compilers
     }
 
-    if (eWaveform == GeneratorWaveform::TRIANGLE) {
-        const double dVal = vValues[state.arrIndex];
-        if (n > 1) {
-            if (state.arrDirection > 0) {
-                if (state.arrIndex + 1 >= n) {
-                    state.arrDirection = -1;
-                    state.arrIndex -= 1;
+    // Computes the next sample for one tick of an array-sourced GENERATOR (see
+    // GeneratorStatement::bIsArraySource) and updates state in place. vValues is
+    // guaranteed non-empty (validated at compile time — m_HandleGeneratorStmt —
+    // and re-guaranteed at resolution time — m_resolveGeneratorRange). Only
+    // SAWTOOTH/LINEAR, TRIANGLE and RANDOM are ever passed in (every other
+    // waveform is rejected for an array source at validation time).
+    double nextGeneratorArraySample(GeneratorWaveform eWaveform, const std::vector<double> &vValues,
+                                    GeneratorSampleState &state) noexcept
+    {
+        const size_t n = vValues.size();
+
+        if (eWaveform == GeneratorWaveform::RANDOM) {
+            // "Shuffle through" semantics, not an independent uniform pick every
+            // tick: draw a fresh random permutation of every element's index,
+            // walk it in order (so all n elements are emitted exactly once, in a
+            // random order, with no immediate repeats across the reshuffle
+            // boundary other than by chance), then reshuffle once exhausted.
+            if (state.arrShuffleOrder.size() != n || state.arrShufflePos >= n) {
+                state.arrShuffleOrder.resize(n);
+                std::iota(state.arrShuffleOrder.begin(), state.arrShuffleOrder.end(), size_t{0});
+                std::shuffle(state.arrShuffleOrder.begin(), state.arrShuffleOrder.end(), state.rng);
+                state.arrShufflePos = 0;
+            }
+            const double dVal = vValues[state.arrShuffleOrder[state.arrShufflePos]];
+            ++state.arrShufflePos;
+            return dVal;
+        }
+
+        if (eWaveform == GeneratorWaveform::TRIANGLE) {
+            const double dVal = vValues[state.arrIndex];
+            if (n > 1) {
+                if (state.arrDirection > 0) {
+                    if (state.arrIndex + 1 >= n) {
+                        state.arrDirection = -1;
+                        state.arrIndex -= 1;
+                    } else {
+                        state.arrIndex += 1;
+                    }
                 } else {
-                    state.arrIndex += 1;
-                }
-            } else {
-                if (state.arrIndex == 0) {
-                    state.arrDirection = 1;
-                    state.arrIndex     = 1;
-                } else {
-                    state.arrIndex -= 1;
+                    if (state.arrIndex == 0) {
+                        state.arrDirection = 1;
+                        state.arrIndex     = 1;
+                    } else {
+                        state.arrIndex -= 1;
+                    }
                 }
             }
+            return dVal;
         }
+
+        // SAWTOOTH/LINEAR: sequential, wraps back to element 0 after the last one.
+        const double dVal = vValues[state.arrIndex];
+        state.arrIndex    = (state.arrIndex + 1) % n;
         return dVal;
     }
 
-    // SAWTOOTH/LINEAR: sequential, wraps back to element 0 after the last one.
-    const double dVal = vValues[state.arrIndex];
-    state.arrIndex    = (state.arrIndex + 1) % n;
-    return dVal;
-}
+    // Renders a computed sample exactly the way MathStatement renders its own
+    // result (see the MATH_STMT branch of m_executeCommand) — deliberately
+    // duplicated here rather than shared, same as every other built-in
+    // (BITSTREAM/BITSTREAMVAL/...) keeping its own small rendering step.
+    std::string renderGeneratorValue(double dResult, HexOutputFormat eHexFormat)
+    {
+        if (eHexFormat == HexOutputFormat::NONE) {
+            std::ostringstream oss;
+            oss << std::defaultfloat << std::setprecision(15) << dResult;
+            return oss.str();
+        }
 
-// Renders a computed sample exactly the way MathStatement renders its own
-// result (see the MATH_STMT branch of m_executeCommand) — deliberately
-// duplicated here rather than shared, same as every other built-in
-// (BITSTREAM/BITSTREAMVAL/...) keeping its own small rendering step.
-std::string renderGeneratorValue(double dResult, HexOutputFormat eHexFormat)
-{
-    if (eHexFormat == HexOutputFormat::NONE) {
-        std::ostringstream oss;
-        oss << std::defaultfloat << std::setprecision(15) << dResult;
-        return oss.str();
+        const hexutils::Endianness eEndian = isHexFormatBigEndian(eHexFormat)
+                                                 ? hexutils::Endianness::Big
+                                                 : hexutils::Endianness::Little;
+
+        if (isHexFormatFloatingPoint(eHexFormat)) {
+            return isHexFormatSinglePrecision(eHexFormat)
+                       ? hexutils::floatToHexStringFixed(static_cast<float>(dResult), eEndian)
+                       : hexutils::doubleToHexStringFixed(dResult, eEndian);
+        }
+
+        const uint64_t uVal = static_cast<uint64_t>(static_cast<int64_t>(dResult));
+        return hexutils::intToHexStringFixed(uVal, getHexFormatByteWidth(eHexFormat), eEndian);
     }
-
-    const hexutils::Endianness eEndian = isHexFormatBigEndian(eHexFormat)
-                                             ? hexutils::Endianness::Big
-                                             : hexutils::Endianness::Little;
-
-    if (isHexFormatFloatingPoint(eHexFormat)) {
-        return isHexFormatSinglePrecision(eHexFormat)
-                   ? hexutils::floatToHexStringFixed(static_cast<float>(dResult), eEndian)
-                   : hexutils::doubleToHexStringFixed(dResult, eEndian);
-    }
-
-    const uint64_t uVal = static_cast<uint64_t>(static_cast<int64_t>(dResult));
-    return hexutils::intToHexStringFixed(uVal, getHexFormatByteWidth(eHexFormat), eEndian);
-}
 
 } // anonymous namespace
 
@@ -299,7 +298,6 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType &sScriptEntries, bool 
             if (false == m_executeCommands(false)) {
                 break;
             }
-
         } else {
 
             // if plugins argument validation passed then we enable the plugins for the real execution
@@ -403,8 +401,7 @@ bool ScriptInterpreter::listCommands()
                           using T = std::decay_t<decltype(command)>;
                           if constexpr (std::is_same_v<T, Command> || std::is_same_v<T, MacroCommand>) {
                               LOG_PRINT(LOG_EMPTY, LOG_STRING(command.strPlugin + "." + command.strCommand + " " + command.strParams));
-                          }
-                      },
+                          } },
                                  data.command);
                   });
 
@@ -537,11 +534,10 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
 {
     const char *pszKind = command.bByteMode ? "BYTESTREAM" : "BITSTREAM";
 
-    struct ResolvedField
-    {
-        uint64_t offset;
-        uint64_t length;
-        uint64_t value;
+    struct ResolvedField {
+            uint64_t offset;
+            uint64_t length;
+            uint64_t value;
     };
 
     std::vector<ResolvedField> vResolved;
@@ -1458,8 +1454,7 @@ void ScriptInterpreter::m_autoInstantiatePlugins() noexcept
                 if (name.find(':') != std::string::npos) {
                     usedInstances.insert(name);
                 }
-            }
-        },
+            } },
                    line.command);
     }
 
@@ -1533,8 +1528,7 @@ bool ScriptInterpreter::m_crossCheckCommands() noexcept
                         bRetVal = false;
                     }
                 }
-            }
-        },
+            } },
                    data.command);
     }
 
@@ -3233,8 +3227,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                 m_stopAllGenerators();
                 LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("GENERATOR STOP ALL"));
             }
-        }
-    },
+        } },
                data.command);
 
     if (bRealExec && m_eSkipReason == SkipReason::NONE && bIsPluginCommand) {

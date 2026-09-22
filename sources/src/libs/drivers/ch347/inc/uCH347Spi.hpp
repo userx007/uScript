@@ -56,176 +56,174 @@ enum class SpiCS : uint8_t {
  * Embed inside the generic ReadOptions::token field (reinterpreted as a
  * single-byte span) OR use the extended tout_xfer() helper directly.
  */
-struct SpiXferOptions
-{
-    SpiCS chipSelect = SpiCS::CS1; /**< CS line to use */
-    bool ignoreCS    = false;      /**< Pass true to skip CS toggling */
-    int writeStep    = 512;        /**< Bytes per USB packet for writes */
+struct SpiXferOptions {
+        SpiCS chipSelect = SpiCS::CS1; /**< CS line to use */
+        bool ignoreCS    = false;      /**< Pass true to skip CS toggling */
+        int writeStep    = 512;        /**< Bytes per USB packet for writes */
 };
 
 // ---------------------------------------------------------------------------
 
-class CH347SPI : public ICommDriver
-{
-public:
-    // -----------------------------------------------------------------------
-    // Constants
-    // -----------------------------------------------------------------------
-    static constexpr uint32_t SPI_READ_DEFAULT_TIMEOUT  = 5000; /**< ms */
-    static constexpr uint32_t SPI_WRITE_DEFAULT_TIMEOUT = 5000; /**< ms */
+class CH347SPI : public ICommDriver {
+    public:
+        // -----------------------------------------------------------------------
+        // Constants
+        // -----------------------------------------------------------------------
+        static constexpr uint32_t SPI_READ_DEFAULT_TIMEOUT  = 5000; /**< ms */
+        static constexpr uint32_t SPI_WRITE_DEFAULT_TIMEOUT = 5000; /**< ms */
 
-    // -----------------------------------------------------------------------
-    // Construction / destruction
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Construction / destruction
+        // -----------------------------------------------------------------------
 
-    CH347SPI()                                          = default;
+        CH347SPI()                                          = default;
 
-    /**
-     * @brief Construct and immediately open a CH347 SPI device.
-     *
-     * @param strDevice        Device path (Linux) or decimal index string (Windows).
-     * @param cfg              SPI bus configuration (mode, clock, byte-order …)
-     * @param xferOpts         Default per-transfer chip-select options
-     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-     *                         describeConnection()), supplied separately from
-     *                         strDevice — e.g. "/dev/ch34xpis0" or a friendlier name.
-     */
-    explicit CH347SPI(const std::string &strDevice,
-                      const mSpiCfgS &cfg,
-                      const SpiXferOptions &xferOpts      = {},
-                      const std::string &strIdentityLabel = {})
-        : m_iHandle(CH347_INVALID_HANDLE)
-        , m_xferOpts(xferOpts)
-        , m_strIdentityLabel(strIdentityLabel)
-    {
-        open(strDevice, cfg);
-    }
+        /**
+         * @brief Construct and immediately open a CH347 SPI device.
+         *
+         * @param strDevice        Device path (Linux) or decimal index string (Windows).
+         * @param cfg              SPI bus configuration (mode, clock, byte-order …)
+         * @param xferOpts         Default per-transfer chip-select options
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately from
+         *                         strDevice — e.g. "/dev/ch34xpis0" or a friendlier name.
+         */
+        explicit CH347SPI(const std::string &strDevice,
+                          const mSpiCfgS &cfg,
+                          const SpiXferOptions &xferOpts      = {},
+                          const std::string &strIdentityLabel = {})
+            : m_iHandle(CH347_INVALID_HANDLE)
+            , m_xferOpts(xferOpts)
+            , m_strIdentityLabel(strIdentityLabel)
+        {
+            open(strDevice, cfg);
+        }
 
-    virtual ~CH347SPI()
-    {
-        close();
-    }
+        virtual ~CH347SPI()
+        {
+            close();
+        }
 
-    // -----------------------------------------------------------------------
-    // Lifecycle
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Lifecycle
+        // -----------------------------------------------------------------------
 
-    Status open(const std::string &strDevice, const mSpiCfgS &cfg);
-    Status close();
-    bool is_open() const override;
+        Status open(const std::string &strDevice, const mSpiCfgS &cfg);
+        Status close();
+        bool is_open() const override;
 
-    /**
-     * @brief Describe this connection for the GUI comm-dump panel.
-     *
-     * The CS line actually used for a given transfer can be overridden via
-     * options.token / SpiXferOptions (see tout_read()/tout_xfer() above), not
-     * via xtra_params — so xtra_params is accepted but ignored here, and the
-     * label reflects the *default* CS configured at construction/open() time.
-     */
-    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-    {
-        char label[k_labelSize];
-        std::snprintf(label, sizeof(label), "%s CS=0x%02X",
-                      m_strIdentityLabel.empty() ? "CH347 SPI" : m_strIdentityLabel.c_str(),
-                      static_cast<uint8_t>(m_xferOpts.chipSelect));
-        return commdump_details(CommFamily::SPI, label);
-    }
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         *
+         * The CS line actually used for a given transfer can be overridden via
+         * options.token / SpiXferOptions (see tout_read()/tout_xfer() above), not
+         * via xtra_params — so xtra_params is accepted but ignored here, and the
+         * label reflects the *default* CS configured at construction/open() time.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s CS=0x%02X",
+                          m_strIdentityLabel.empty() ? "CH347 SPI" : m_strIdentityLabel.c_str(),
+                          static_cast<uint8_t>(m_xferOpts.chipSelect));
+            return commdump_details(CommFamily::SPI, label);
+        }
 
-    // -----------------------------------------------------------------------
-    // Configuration helpers (callable after open)
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Configuration helpers (callable after open)
+        // -----------------------------------------------------------------------
 
-    /** Change SPI clock frequency (Hz).  Valid range: 218 750 – 60 000 000. */
-    Status set_frequency(uint32_t iHz);
+        /** Change SPI clock frequency (Hz).  Valid range: 218 750 – 60 000 000. */
+        Status set_frequency(uint32_t iHz);
 
-    /** Switch between 8-bit (0) and 16-bit (1) data frames. */
-    Status set_data_bits(uint8_t iDataBits);
+        /** Switch between 8-bit (0) and 16-bit (1) data frames. */
+        Status set_data_bits(uint8_t iDataBits);
 
-    /**
-     * @brief Enable or disable automatic CS management on WriteRead calls.
-     *
-     * @note No-op on Windows.  Set mSpiCfgS::iIsAutoDeativeCS in the config
-     *       passed to open() instead.
-     */
-    Status set_auto_cs(bool disable);
+        /**
+         * @brief Enable or disable automatic CS management on WriteRead calls.
+         *
+         * @note No-op on Windows.  Set mSpiCfgS::iIsAutoDeativeCS in the config
+         *       passed to open() instead.
+         */
+        Status set_auto_cs(bool disable);
 
-    /** Manually assert (iStatus=1) or de-assert (iStatus=0) the CS line. */
-    Status change_cs(uint8_t iStatus);
+        /** Manually assert (iStatus=1) or de-assert (iStatus=0) the CS line. */
+        Status change_cs(uint8_t iStatus);
 
-    /** Read back the current hardware SPI configuration. */
-    Status get_config(mSpiCfgS &cfg) const;
+        /** Read back the current hardware SPI configuration. */
+        Status get_config(mSpiCfgS &cfg) const;
 
-    // -----------------------------------------------------------------------
-    // ICommDriver interface
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // ICommDriver interface
+        // -----------------------------------------------------------------------
 
-    /**
-     * @brief Full-duplex SPI transfer (WriteRead).
-     *
-     * @param u32ReadTimeout  Ignored for SPI (USB bulk transactions are
-     *                        synchronous); kept for interface parity.
-     * @param buffer          In:  MOSI bytes to clock out  (buffer.size() bytes)
-     *                        Out: MISO bytes clocked in    (same buffer)
-     * @param options         ReadMode::Exact required.
-     *                        options.token (if non-empty and size()==1) is
-     *                        reinterpreted as the CS selector byte:
-     *                          bit7 = 1 → use CS line; value = iChipSelect arg.
-     *                        Leave token empty to use the default CS configured
-     *                        at open() time.
-     * @param xtra_params     Optional driver-specific addressing hint (ignored by KI2C)
-     *                        the parameter is accepted for interface conformance).
-     * @return ReadResult  { status, bytesRead == buffer.size(), false }
-     *
-     * @note ReadMode::UntilDelimiter and ReadMode::UntilToken return
-     *       { Status::INVALID_PARAM, 0, false }.
-     */
-    ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t> buffer,
-                         const ReadOptions &options,
-                         std::string_view xtra_params = {},
-                         std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Full-duplex SPI transfer (WriteRead).
+         *
+         * @param u32ReadTimeout  Ignored for SPI (USB bulk transactions are
+         *                        synchronous); kept for interface parity.
+         * @param buffer          In:  MOSI bytes to clock out  (buffer.size() bytes)
+         *                        Out: MISO bytes clocked in    (same buffer)
+         * @param options         ReadMode::Exact required.
+         *                        options.token (if non-empty and size()==1) is
+         *                        reinterpreted as the CS selector byte:
+         *                          bit7 = 1 → use CS line; value = iChipSelect arg.
+         *                        Leave token empty to use the default CS configured
+         *                        at open() time.
+         * @param xtra_params     Optional driver-specific addressing hint (ignored by KI2C)
+         *                        the parameter is accepted for interface conformance).
+         * @return ReadResult  { status, bytesRead == buffer.size(), false }
+         *
+         * @note ReadMode::UntilDelimiter and ReadMode::UntilToken return
+         *       { Status::INVALID_PARAM, 0, false }.
+         */
+        ReadResult tout_read(uint32_t u32ReadTimeout,
+                             std::span<uint8_t> buffer,
+                             const ReadOptions &options,
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok     = {}) const override;
 
-    /**
-     * @brief Write-only SPI transfer (MOSI only, MISO discarded).
-     *
-     * @param u32WriteTimeout Ignored for SPI; kept for interface parity.
-     * @param buffer          Bytes to clock out on MOSI.
-     * @param xtra_params     Optional driver-specific addressing hint (ignored)
-     *                        the parameter is accepted for interface conformance).
-     * @return WriteResult { status, bytesWritten }
-     */
-    WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {},
-                           std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Write-only SPI transfer (MOSI only, MISO discarded).
+         *
+         * @param u32WriteTimeout Ignored for SPI; kept for interface parity.
+         * @param buffer          Bytes to clock out on MOSI.
+         * @param xtra_params     Optional driver-specific addressing hint (ignored)
+         *                        the parameter is accepted for interface conformance).
+         * @return WriteResult { status, bytesWritten }
+         */
+        WriteResult tout_write(uint32_t u32WriteTimeout,
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok     = {}) const override;
 
-    // -----------------------------------------------------------------------
-    // Extended helpers (SPI-specific, not part of ICommDriver)
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Extended helpers (SPI-specific, not part of ICommDriver)
+        // -----------------------------------------------------------------------
 
-    /**
-     * @brief Full-duplex transfer with explicit per-call options.
-     *
-     * @param buffer    In: MOSI data / Out: MISO data (same buffer, same length)
-     * @param opts      Per-transfer chip-select and packet-size options
-     * @return ReadResult { status, bytesXfered, false }
-     */
-    ReadResult tout_xfer(std::span<uint8_t> buffer,
-                         const SpiXferOptions &opts) const;
+        /**
+         * @brief Full-duplex transfer with explicit per-call options.
+         *
+         * @param buffer    In: MOSI data / Out: MISO data (same buffer, same length)
+         * @param opts      Per-transfer chip-select and packet-size options
+         * @return ReadResult { status, bytesXfered, false }
+         */
+        ReadResult tout_xfer(std::span<uint8_t> buffer,
+                             const SpiXferOptions &opts) const;
 
-    /**
-     * @brief Write-only transfer with explicit per-call options.
-     */
-    WriteResult tout_write_ex(std::span<const uint8_t> buffer,
-                              const SpiXferOptions &opts) const;
+        /**
+         * @brief Write-only transfer with explicit per-call options.
+         */
+        WriteResult tout_write_ex(std::span<const uint8_t> buffer,
+                                  const SpiXferOptions &opts) const;
 
-private:
-    CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
-    SpiXferOptions m_xferOpts{};
-    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
+    private:
+        CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
+        SpiXferOptions m_xferOpts{};
+        std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 
-    /** Resolve effective CS value for CH347SPI_* calls. */
-    std::pair<bool, uint8_t> resolve_cs(const SpiXferOptions &opts) const;
+        /** Resolve effective CS value for CH347SPI_* calls. */
+        std::pair<bool, uint8_t> resolve_cs(const SpiXferOptions &opts) const;
 };
 
 #endif // U_CH347_SPI_DRIVER_H

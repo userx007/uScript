@@ -32,60 +32,60 @@
 // ============================================================================
 
 namespace {
-constexpr const char *kPluginNameForDump = "DDS";
-constexpr uint32_t kBuiltinReadBatch     = 64; // see listParticipants()/listEndpoints()'s doc comment on this cap
+    constexpr const char *kPluginNameForDump = "DDS";
+    constexpr uint32_t kBuiltinReadBatch     = 64; // see listParticipants()/listEndpoints()'s doc comment on this cap
 
-std::string guidToHex(const dds_guid_t &g)
-{
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
-    for (uint8_t b : g.v) {
-        oss << std::setw(2) << static_cast<int>(b);
-    }
-    return oss.str();
-}
-
-/// Minimal XML text escaping for the handful of Config strings (iface
-/// name/address, multicast group, ...) that end up as attribute/element
-/// text in m_BuildDomainConfigXml()'s generated config document.
-std::string xmlEscape(const std::string &in)
-{
-    std::string out;
-    out.reserve(in.size());
-    for (char c : in) {
-        switch (c) {
-        case '&':
-            out += "&amp;";
-            break;
-        case '<':
-            out += "&lt;";
-            break;
-        case '>':
-            out += "&gt;";
-            break;
-        case '"':
-            out += "&quot;";
-            break;
-        case '\'':
-            out += "&apos;";
-            break;
-        default:
-            out += c;
-            break;
+    std::string guidToHex(const dds_guid_t &g)
+    {
+        std::ostringstream oss;
+        oss << std::hex << std::setfill('0');
+        for (uint8_t b : g.v) {
+            oss << std::setw(2) << static_cast<int>(b);
         }
+        return oss.str();
     }
-    return out;
-}
 
-/// Crude but sufficient (same convention the previous socket-based
-/// driver used for its own IPv4-vs-IPv6 address detection): a dotted
-/// IPv4 quad or bracketed/colon IPv6 literal is an *address*; anything
-/// else (e.g. "eth0") is an interface *name*. Cyclone's NetworkInterface
-/// element accepts either, just as a different attribute.
-bool looksLikeIpLiteral(const std::string &s)
-{
-    return s.find(':') != std::string::npos || s.find('.') != std::string::npos;
-}
+    /// Minimal XML text escaping for the handful of Config strings (iface
+    /// name/address, multicast group, ...) that end up as attribute/element
+    /// text in m_BuildDomainConfigXml()'s generated config document.
+    std::string xmlEscape(const std::string &in)
+    {
+        std::string out;
+        out.reserve(in.size());
+        for (char c : in) {
+            switch (c) {
+            case '&':
+                out += "&amp;";
+                break;
+            case '<':
+                out += "&lt;";
+                break;
+            case '>':
+                out += "&gt;";
+                break;
+            case '"':
+                out += "&quot;";
+                break;
+            case '\'':
+                out += "&apos;";
+                break;
+            default:
+                out += c;
+                break;
+            }
+        }
+        return out;
+    }
+
+    /// Crude but sufficient (same convention the previous socket-based
+    /// driver used for its own IPv4-vs-IPv6 address detection): a dotted
+    /// IPv4 quad or bracketed/colon IPv6 literal is an *address*; anything
+    /// else (e.g. "eth0") is an interface *name*. Cyclone's NetworkInterface
+    /// element accepts either, just as a different attribute.
+    bool looksLikeIpLiteral(const std::string &s)
+    {
+        return s.find(':') != std::string::npos || s.find('.') != std::string::npos;
+    }
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -518,8 +518,8 @@ std::vector<DdsDriver::DiscoveredEndpointView> DdsDriver::listEndpoints() const
 
     const struct
     {
-        DdsEntity reader;
-        bool isWriter;
+            DdsEntity reader;
+            bool isWriter;
     } kBuiltinReaders[] = {
         {m_biPublicationReader, true},
         {m_biSubscriptionReader, false},
@@ -613,32 +613,32 @@ std::string DdsDriver::m_BuildListText() const
 // Intermediary layer: DDS.CMD argument decomposition
 // ---------------------------------------------------------------------------
 namespace {
-void tokenize(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens)
-{
-    outTokens.clear();
-    size_t len = dataSpan.size();
-    while (len > 0 && dataSpan[len - 1] == 0) {
-        --len; // strip trailing NUL, same convention as MqttDriver
-    }
-    std::string text(reinterpret_cast<const char *>(dataSpan.data()), len);
-    text           = ustring::trim(text);
+    void tokenize(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens)
+    {
+        outTokens.clear();
+        size_t len = dataSpan.size();
+        while (len > 0 && dataSpan[len - 1] == 0) {
+            --len; // strip trailing NUL, same convention as MqttDriver
+        }
+        std::string text(reinterpret_cast<const char *>(dataSpan.data()), len);
+        text           = ustring::trim(text);
 
-    size_t i       = 0;
-    const size_t n = text.size();
-    while (i < n) {
-        while (i < n && std::isspace(static_cast<unsigned char>(text[i]))) {
-            ++i;
+        size_t i       = 0;
+        const size_t n = text.size();
+        while (i < n) {
+            while (i < n && std::isspace(static_cast<unsigned char>(text[i]))) {
+                ++i;
+            }
+            if (i >= n) {
+                break;
+            }
+            const size_t start = i;
+            while (i < n && !std::isspace(static_cast<unsigned char>(text[i]))) {
+                ++i;
+            }
+            outTokens.push_back(text.substr(start, i - start));
         }
-        if (i >= n) {
-            break;
-        }
-        const size_t start = i;
-        while (i < n && !std::isspace(static_cast<unsigned char>(text[i]))) {
-            ++i;
-        }
-        outTokens.push_back(text.substr(start, i - start));
     }
-}
 } // namespace
 
 ICommDriver::WriteResult DdsDriver::send(uint32_t, std::span<const uint8_t> dataSpan, std::string_view xtra_params,

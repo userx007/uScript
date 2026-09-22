@@ -59,98 +59,97 @@
 #include <string>
 
 namespace {
-constexpr int DEFAULT_PORT         = 50051;
-constexpr const char *DEFAULT_BIND = "0.0.0.0";
+    constexpr int DEFAULT_PORT         = 50051;
+    constexpr const char *DEFAULT_BIND = "0.0.0.0";
 
-std::unique_ptr<grpc::Server> g_server;
+    std::unique_ptr<grpc::Server> g_server;
 
-void on_signal(int /*sig*/)
-{
-    // Server::Shutdown() is safe to call from a signal handler's
-    // context here since it just posts to the completion queue the
-    // server's own accept loop is already waiting on; Wait() below
-    // then returns and main() exits normally.
-    if (g_server) {
-        g_server->Shutdown();
-    }
-}
-
-class LoopbackServiceImpl final : public loopback::LoopbackService::Service
-{
-public:
-    grpc::Status Echo(grpc::ServerContext *, const loopback::EchoRequest *request,
-                      loopback::EchoResponse *response) override
+    void on_signal(int /*sig*/)
     {
-        const int32_t callNumber = ++m_echoCounter;
-        std::printf("[Echo] #%d text=\"%s\"\n", callNumber, request->text().c_str());
-        response->set_text(request->text());
-        response->set_call_number(callNumber);
-        return grpc::Status::OK;
-    }
-
-    grpc::Status Ping(grpc::ServerContext *, const loopback::PingRequest *,
-                      loopback::PingResponse *response) override
-    {
-        std::printf("[Ping]\n");
-        response->set_ok(true);
-        return grpc::Status::OK;
-    }
-
-    grpc::Status EchoStream(grpc::ServerContext *, const loopback::EchoStreamRequest *request,
-                            grpc::ServerWriter<loopback::EchoResponse> *writer) override
-    {
-        const int32_t count = request->count() > 0 ? request->count() : 1;
-        std::printf("[EchoStream] text=\"%s\" count=%d\n", request->text().c_str(), count);
-        for (int32_t i = 1; i <= count; ++i) {
-            loopback::EchoResponse response;
-            response.set_text(request->text());
-            response.set_call_number(i);
-            writer->Write(response);
+        // Server::Shutdown() is safe to call from a signal handler's
+        // context here since it just posts to the completion queue the
+        // server's own accept loop is already waiting on; Wait() below
+        // then returns and main() exits normally.
+        if (g_server) {
+            g_server->Shutdown();
         }
-        return grpc::Status::OK;
     }
 
-    grpc::Status EchoCollect(grpc::ServerContext *, grpc::ServerReader<loopback::EchoRequest> *reader,
-                             loopback::EchoResponse *response) override
-    {
-        loopback::EchoRequest request;
-        std::ostringstream joined;
-        int32_t received = 0;
-        bool first       = true;
-        while (reader->Read(&request)) {
-            if (!first) {
-                joined << ", ";
+    class LoopbackServiceImpl final : public loopback::LoopbackService::Service {
+        public:
+            grpc::Status Echo(grpc::ServerContext *, const loopback::EchoRequest *request,
+                              loopback::EchoResponse *response) override
+            {
+                const int32_t callNumber = ++m_echoCounter;
+                std::printf("[Echo] #%d text=\"%s\"\n", callNumber, request->text().c_str());
+                response->set_text(request->text());
+                response->set_call_number(callNumber);
+                return grpc::Status::OK;
             }
-            joined << request.text();
-            first = false;
-            ++received;
-        }
-        std::printf("[EchoCollect] received=%d joined=\"%s\"\n", received, joined.str().c_str());
-        response->set_text(joined.str());
-        response->set_call_number(received);
-        return grpc::Status::OK;
-    }
 
-    grpc::Status EchoChat(grpc::ServerContext *,
-                          grpc::ServerReaderWriter<loopback::EchoResponse, loopback::EchoRequest> *stream) override
-    {
-        loopback::EchoRequest request;
-        int32_t callNumber = 0;
-        while (stream->Read(&request)) {
-            ++callNumber;
-            std::printf("[EchoChat] #%d text=\"%s\"\n", callNumber, request.text().c_str());
-            loopback::EchoResponse response;
-            response.set_text(request.text());
-            response.set_call_number(callNumber);
-            stream->Write(response);
-        }
-        std::printf("[EchoChat] client half-closed after %d message(s)\n", callNumber);
-        return grpc::Status::OK;
-    }
+            grpc::Status Ping(grpc::ServerContext *, const loopback::PingRequest *,
+                              loopback::PingResponse *response) override
+            {
+                std::printf("[Ping]\n");
+                response->set_ok(true);
+                return grpc::Status::OK;
+            }
 
-private:
-    std::atomic<int32_t> m_echoCounter{0};
-};
+            grpc::Status EchoStream(grpc::ServerContext *, const loopback::EchoStreamRequest *request,
+                                    grpc::ServerWriter<loopback::EchoResponse> *writer) override
+            {
+                const int32_t count = request->count() > 0 ? request->count() : 1;
+                std::printf("[EchoStream] text=\"%s\" count=%d\n", request->text().c_str(), count);
+                for (int32_t i = 1; i <= count; ++i) {
+                    loopback::EchoResponse response;
+                    response.set_text(request->text());
+                    response.set_call_number(i);
+                    writer->Write(response);
+                }
+                return grpc::Status::OK;
+            }
+
+            grpc::Status EchoCollect(grpc::ServerContext *, grpc::ServerReader<loopback::EchoRequest> *reader,
+                                     loopback::EchoResponse *response) override
+            {
+                loopback::EchoRequest request;
+                std::ostringstream joined;
+                int32_t received = 0;
+                bool first       = true;
+                while (reader->Read(&request)) {
+                    if (!first) {
+                        joined << ", ";
+                    }
+                    joined << request.text();
+                    first = false;
+                    ++received;
+                }
+                std::printf("[EchoCollect] received=%d joined=\"%s\"\n", received, joined.str().c_str());
+                response->set_text(joined.str());
+                response->set_call_number(received);
+                return grpc::Status::OK;
+            }
+
+            grpc::Status EchoChat(grpc::ServerContext *,
+                                  grpc::ServerReaderWriter<loopback::EchoResponse, loopback::EchoRequest> *stream) override
+            {
+                loopback::EchoRequest request;
+                int32_t callNumber = 0;
+                while (stream->Read(&request)) {
+                    ++callNumber;
+                    std::printf("[EchoChat] #%d text=\"%s\"\n", callNumber, request.text().c_str());
+                    loopback::EchoResponse response;
+                    response.set_text(request.text());
+                    response.set_call_number(callNumber);
+                    stream->Write(response);
+                }
+                std::printf("[EchoChat] client half-closed after %d message(s)\n", callNumber);
+                return grpc::Status::OK;
+            }
+
+        private:
+            std::atomic<int32_t> m_echoCounter{0};
+    };
 } // namespace
 
 int main(int argc, char **argv)

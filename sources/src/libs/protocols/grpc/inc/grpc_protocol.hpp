@@ -72,62 +72,61 @@
  * every field optional (or none at all, e.g. `google.protobuf.Empty`) may
  * omit the JSON body entirely: `GRPC.CMD > 'CALL pkg.Health/Check'`.
  */
-class GrpcProtocol
-{
-public:
-    GrpcProtocol() = default;
+class GrpcProtocol {
+    public:
+        GrpcProtocol() = default;
 
-    /**
-     * @brief Load a FileDescriptorSet (.protoset, see class doc comment)
-     *        from disk and build every file it contains into this
-     *        instance's DescriptorPool. Call once, before resolving any
-     *        method — mirrors MqttDriver::open()'s one-time session setup.
-     * @return true if the file was read and every contained descriptor
-     *         built successfully.
-     */
-    bool loadDescriptorSet(const std::string &protosetPath, std::string &outError);
+        /**
+         * @brief Load a FileDescriptorSet (.protoset, see class doc comment)
+         *        from disk and build every file it contains into this
+         *        instance's DescriptorPool. Call once, before resolving any
+         *        method — mirrors MqttDriver::open()'s one-time session setup.
+         * @return true if the file was read and every contained descriptor
+         *         built successfully.
+         */
+        bool loadDescriptorSet(const std::string &protosetPath, std::string &outError);
 
-    /**
-     * @brief Resolve "package.Service/Method" (or "package.Service.Method",
-     *        both are accepted) into the corresponding MethodDescriptor.
-     * @return nullptr if the descriptor set has no such service/method.
-     *         Every RPC shape (unary, server-streaming, client-streaming,
-     *         bidi) is returned normally; grpc_driver.hpp's send()
-     *         dispatches on method->client_streaming()/server_streaming()
-     *         to decide which of the four it's doing.
-     */
-    const google::protobuf::MethodDescriptor *resolveMethod(const std::string &methodPath,
-                                                            std::string &outError) const;
+        /**
+         * @brief Resolve "package.Service/Method" (or "package.Service.Method",
+         *        both are accepted) into the corresponding MethodDescriptor.
+         * @return nullptr if the descriptor set has no such service/method.
+         *         Every RPC shape (unary, server-streaming, client-streaming,
+         *         bidi) is returned normally; grpc_driver.hpp's send()
+         *         dispatches on method->client_streaming()/server_streaming()
+         *         to decide which of the four it's doing.
+         */
+        const google::protobuf::MethodDescriptor *resolveMethod(const std::string &methodPath,
+                                                                std::string &outError) const;
 
-    /** @brief Build a fresh, empty, writable request message for a method. */
-    std::unique_ptr<google::protobuf::Message> newRequestMessage(
-        const google::protobuf::MethodDescriptor *method) const;
+        /** @brief Build a fresh, empty, writable request message for a method. */
+        std::unique_ptr<google::protobuf::Message> newRequestMessage(
+            const google::protobuf::MethodDescriptor *method) const;
 
-    /** @brief Build a fresh, empty, writable response message for a method. */
-    std::unique_ptr<google::protobuf::Message> newResponseMessage(
-        const google::protobuf::MethodDescriptor *method) const;
+        /** @brief Build a fresh, empty, writable response message for a method. */
+        std::unique_ptr<google::protobuf::Message> newResponseMessage(
+            const google::protobuf::MethodDescriptor *method) const;
 
-    /**
-     * @brief Parse real JSON text (see class doc comment) into an
-     *        already-allocated message. `message` is cleared first, so a
-     *        failed parse never leaves partial fields. An empty
-     *        `jsonText` is treated as `{}` (every field defaulted).
-     */
-    bool parseJsonIntoMessage(const std::string &jsonText, google::protobuf::Message &message,
-                              std::string &outError) const;
+        /**
+         * @brief Parse real JSON text (see class doc comment) into an
+         *        already-allocated message. `message` is cleared first, so a
+         *        failed parse never leaves partial fields. An empty
+         *        `jsonText` is treated as `{}` (every field defaulted).
+         */
+        bool parseJsonIntoMessage(const std::string &jsonText, google::protobuf::Message &message,
+                                  std::string &outError) const;
 
-    /** @brief Serialize a message to real JSON text. */
-    bool messageToJson(const google::protobuf::Message &message, std::string &outText) const;
+        /** @brief Serialize a message to real JSON text. */
+        bool messageToJson(const google::protobuf::Message &message, std::string &outText) const;
 
-private:
-    // Owns every descriptor built from the loaded .protoset; the pool (and
-    // therefore every MethodDescriptor/Descriptor handed out) lives exactly
-    // as long as this GrpcProtocol instance does, which — like MqttDriver's
-    // TCPIP session — is the whole plugin session (see grpc_plugin.hpp's
-    // "Session lifetime").
-    google::protobuf::DescriptorPool m_pool;
-    mutable google::protobuf::DynamicMessageFactory m_factory{&m_pool};
-    bool m_bLoaded = false;
+    private:
+        // Owns every descriptor built from the loaded .protoset; the pool (and
+        // therefore every MethodDescriptor/Descriptor handed out) lives exactly
+        // as long as this GrpcProtocol instance does, which — like MqttDriver's
+        // TCPIP session — is the whole plugin session (see grpc_plugin.hpp's
+        // "Session lifetime").
+        google::protobuf::DescriptorPool m_pool;
+        mutable google::protobuf::DynamicMessageFactory m_factory{&m_pool};
+        bool m_bLoaded = false;
 };
 
 #endif // GRPC_PROTOCOL_HPP

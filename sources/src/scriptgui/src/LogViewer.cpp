@@ -110,10 +110,9 @@ static QColor sgrCodeToColor(int code)
 
 // Decomposes an ANSI-coloured string into a list of (text, QTextCharFormat)
 // segments.  Returns one segment per colour run.
-struct Segment
-{
-    QString text;
-    QTextCharFormat fmt;
+struct Segment {
+        QString text;
+        QTextCharFormat fmt;
 };
 
 static QList<Segment> ansiToSegments(const QString &input,
@@ -170,27 +169,27 @@ static QList<Segment> ansiToSegments(const QString &input,
 // ─────────────────────────────────────────────────────────────────────────────
 //  LogLineNumberArea  –  thin companion widget painted by LogEdit
 // ─────────────────────────────────────────────────────────────────────────────
-class LogLineNumberArea : public QWidget
-{
-public:
-    explicit LogLineNumberArea(LogEdit *editor)
-        : QWidget(editor)
-        , m_editor(editor)
-    {}
+class LogLineNumberArea : public QWidget {
+    public:
+        explicit LogLineNumberArea(LogEdit *editor)
+            : QWidget(editor)
+            , m_editor(editor)
+        {
+        }
 
-    QSize sizeHint() const override
-    {
-        return {m_editor->lineNumberAreaWidth(), 0};
-    }
+        QSize sizeHint() const override
+        {
+            return {m_editor->lineNumberAreaWidth(), 0};
+        }
 
-protected:
-    void paintEvent(QPaintEvent *ev) override
-    {
-        m_editor->lineNumberAreaPaintEvent(ev);
-    }
+    protected:
+        void paintEvent(QPaintEvent *ev) override
+        {
+            m_editor->lineNumberAreaPaintEvent(ev);
+        }
 
-private:
-    LogEdit *m_editor;
+    private:
+        LogEdit *m_editor;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

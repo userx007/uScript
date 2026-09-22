@@ -20,90 +20,89 @@
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-class FlagParser
-{
-public:
-    /*--------------------------------------------------------------------------------------------------------*/
-    /**
-     * @brief Constructs a FlagParser from a flag string.
-     *
-     * Each character in the string represents a flag. Uppercase characters are interpreted
-     * as `true`, lowercase as `false`. If the same letter appears in both cases the parser
-     * is left in an invalid state; call isValid() before use.
-     *
-     * @param flags A string containing flag characters.
-     */
-    /*--------------------------------------------------------------------------------------------------------*/
+class FlagParser {
+    public:
+        /*--------------------------------------------------------------------------------------------------------*/
+        /**
+         * @brief Constructs a FlagParser from a flag string.
+         *
+         * Each character in the string represents a flag. Uppercase characters are interpreted
+         * as `true`, lowercase as `false`. If the same letter appears in both cases the parser
+         * is left in an invalid state; call isValid() before use.
+         *
+         * @param flags A string containing flag characters.
+         */
+        /*--------------------------------------------------------------------------------------------------------*/
 
-    FlagParser(std::string_view flags)
-        : m_bValid(false)
-    {
-        if (!validate_flag_string(flags)) {
-            // Conflict detected — parser remains invalid; caller should check isValid()
-            return;
+        FlagParser(std::string_view flags)
+            : m_bValid(false)
+        {
+            if (!validate_flag_string(flags)) {
+                // Conflict detected — parser remains invalid; caller should check isValid()
+                return;
+            }
+            for (char c : flags) {
+                m_umapFlags[std::tolower(c)] = std::isupper(c);
+            }
+            m_bValid = true;
         }
-        for (char c : flags) {
-            m_umapFlags[std::tolower(c)] = std::isupper(c);
+
+        /*--------------------------------------------------------------------------------------------------------*/
+        /**
+         * @brief Returns whether the flag string was valid at construction time.
+         *
+         * @return `true` if the flag string contained no conflicting cases, `false` otherwise.
+         */
+        /*--------------------------------------------------------------------------------------------------------*/
+
+        [[nodiscard]] bool isValid() const noexcept
+        {
+            return m_bValid;
         }
-        m_bValid = true;
-    }
 
-    /*--------------------------------------------------------------------------------------------------------*/
-    /**
-     * @brief Returns whether the flag string was valid at construction time.
-     *
-     * @return `true` if the flag string contained no conflicting cases, `false` otherwise.
-     */
-    /*--------------------------------------------------------------------------------------------------------*/
+        /*--------------------------------------------------------------------------------------------------------*/
+        /**
+         * @brief Retrieves the boolean value of a given flag.
+         *
+         * @param flag The character representing the flag to query.
+         * @return `true` if the flag was set as uppercase, `false` if lowercase or not present.
+         */
+        /*--------------------------------------------------------------------------------------------------------*/
 
-    [[nodiscard]] bool isValid() const noexcept
-    {
-        return m_bValid;
-    }
-
-    /*--------------------------------------------------------------------------------------------------------*/
-    /**
-     * @brief Retrieves the boolean value of a given flag.
-     *
-     * @param flag The character representing the flag to query.
-     * @return `true` if the flag was set as uppercase, `false` if lowercase or not present.
-     */
-    /*--------------------------------------------------------------------------------------------------------*/
-
-    bool get_flag(char flag) const
-    {
-        auto it = m_umapFlags.find(std::tolower(flag));
-        if (it == m_umapFlags.end()) {
-            return false;
-        }
-        return it->second;
-    } /* get_flag() */
-
-private:
-    std::unordered_map<char, bool> m_umapFlags; ///< Stores flags with their boolean values.
-    bool m_bValid = false;                      ///< True iff the flag string passed validation.
-
-    /*--------------------------------------------------------------------------------------------------------*/
-    /**
-     * @brief Validates that the flag string does not contain both cases of the same letter.
-     *
-     * @param flags The flag string to validate.
-     * @return `true` if valid, `false` if both cases of any letter are present.
-     */
-    /*--------------------------------------------------------------------------------------------------------*/
-
-    bool validate_flag_string(std::string_view flags)
-    {
-        std::unordered_set<char> seen;
-        for (char c : flags) {
-            char lower = std::tolower(c);
-            if (seen.count(lower)) {
+        bool get_flag(char flag) const
+        {
+            auto it = m_umapFlags.find(std::tolower(flag));
+            if (it == m_umapFlags.end()) {
                 return false;
             }
-            seen.insert(lower);
-        }
-        return true;
-    } /* validate_flag_string() */
+            return it->second;
+        } /* get_flag() */
+
+    private:
+        std::unordered_map<char, bool> m_umapFlags; ///< Stores flags with their boolean values.
+        bool m_bValid = false;                      ///< True iff the flag string passed validation.
+
+        /*--------------------------------------------------------------------------------------------------------*/
+        /**
+         * @brief Validates that the flag string does not contain both cases of the same letter.
+         *
+         * @param flags The flag string to validate.
+         * @return `true` if valid, `false` if both cases of any letter are present.
+         */
+        /*--------------------------------------------------------------------------------------------------------*/
+
+        bool validate_flag_string(std::string_view flags)
+        {
+            std::unordered_set<char> seen;
+            for (char c : flags) {
+                char lower = std::tolower(c);
+                if (seen.count(lower)) {
+                    return false;
+                }
+                seen.insert(lower);
+            }
+            return true;
+        } /* validate_flag_string() */
 };
 
 #endif // UFLAG_PARSER_H

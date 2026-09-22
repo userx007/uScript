@@ -266,7 +266,6 @@ bool generic_execute_script(const T *pOwner, const std::string &pluginName, cons
 
             // run it either in dry validation mode or in real mode depending of bEnabled flag
             bRetVal = client.execute(bEnabled);
-
         } catch (const std::bad_alloc &e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
         } catch (const std::runtime_error &e) {

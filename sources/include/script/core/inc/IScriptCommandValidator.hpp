@@ -4,13 +4,12 @@
 #include <string>
 
 template <typename TCommand>
-class IScriptCommandValidator
-{
-public:
-    IScriptCommandValidator()                                                                 = default;
-    virtual ~IScriptCommandValidator()                                                        = default;
+class IScriptCommandValidator {
+    public:
+        IScriptCommandValidator()                                                                 = default;
+        virtual ~IScriptCommandValidator()                                                        = default;
 
-    virtual bool validateCommand(int iLineNumber, const std::string &command, TCommand &type) = 0;
+        virtual bool validateCommand(int iLineNumber, const std::string &command, TCommand &type) = 0;
 };
 
 #endif // ISCRIPTITEMVALIDATOR_HPP

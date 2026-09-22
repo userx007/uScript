@@ -31,101 +31,100 @@ class QMouseEvent;
 //    Backspace → if cursor is at an indent boundary, deletes TAB_WIDTH spaces
 //    Otherwise → standard QPlainTextEdit behaviour
 // ─────────────────────────────────────────────────────────────────────────────
-class CodeEditor : public QPlainTextEdit
-{
-    Q_OBJECT
-public:
-    static constexpr int TAB_WIDTH = 4;
+class CodeEditor : public QPlainTextEdit {
+        Q_OBJECT
+    public:
+        static constexpr int TAB_WIDTH = 4;
 
-    explicit CodeEditor(QWidget *parent = nullptr);
+        explicit CodeEditor(QWidget *parent = nullptr);
 
-    void highlightLine(int lineNo); // 1-based; 0 = clear
-    void clearHighlight();
-    void setHighlighting(bool on);
-    void setCommHighlighting(bool on);
-    void setIniHighlighting(bool on); // switch to INI highlighter (clears others)
+        void highlightLine(int lineNo); // 1-based; 0 = clear
+        void clearHighlight();
+        void setHighlighting(bool on);
+        void setCommHighlighting(bool on);
+        void setIniHighlighting(bool on); // switch to INI highlighter (clears others)
 
-    // Error markers (validation phase) — red bar(s), independent of exec bar
-    void setErrorLine(int lineNo); // 1-based; accumulates (call once per error line)
-    void clearErrorLines();        // clear all error markers
+        // Error markers (validation phase) — red bar(s), independent of exec bar
+        void setErrorLine(int lineNo); // 1-based; accumulates (call once per error line)
+        void clearErrorLines();        // clear all error markers
 
-    bool hasErrorLines() const
-    {
-        return !m_errorLines.isEmpty();
-    }
+        bool hasErrorLines() const
+        {
+            return !m_errorLines.isEmpty();
+        }
 
-    // Thread-active markers — bright-green rectangle outline while a & thread runs
-    void addThreadLine(int lineNo);    // 1-based; draw rectangle until removed
-    void removeThreadLine(int lineNo); // remove rectangle when thread joins
-    void clearThreadLines();           // clear all (called on script finish)
+        // Thread-active markers — bright-green rectangle outline while a & thread runs
+        void addThreadLine(int lineNo);    // 1-based; draw rectangle until removed
+        void removeThreadLine(int lineNo); // remove rectangle when thread joins
+        void clearThreadLines();           // clear all (called on script finish)
 
-    bool hasScriptHighlighter() const
-    {
-        return m_highlighter != nullptr;
-    }
+        bool hasScriptHighlighter() const
+        {
+            return m_highlighter != nullptr;
+        }
 
-    bool hasIniHighlighter() const
-    {
-        return m_iniHighlighter != nullptr;
-    }
+        bool hasIniHighlighter() const
+        {
+            return m_iniHighlighter != nullptr;
+        }
 
-    // Reset the "already emitted for this line" guard so the next cursor move
-    // onto a COMM-script or INCLUDE line re-emits the click signal even when
-    // the line number hasn't changed (e.g. after loading a new file).
-    void resetCommScriptLineCache()
-    {
-        m_lastCommScriptLine = -1;
-    }
+        // Reset the "already emitted for this line" guard so the next cursor move
+        // onto a COMM-script or INCLUDE line re-emits the click signal even when
+        // the line number hasn't changed (e.g. after loading a new file).
+        void resetCommScriptLineCache()
+        {
+            m_lastCommScriptLine = -1;
+        }
 
-    // Gutter (called by LineNumberArea)
-    int lineNumberAreaWidth() const;
-    void lineNumberAreaPaintEvent(QPaintEvent *ev);
+        // Gutter (called by LineNumberArea)
+        int lineNumberAreaWidth() const;
+        void lineNumberAreaPaintEvent(QPaintEvent *ev);
 
-    // Call after a font change to recalculate gutter width and repaint.
-    void refreshGutter();
+        // Call after a font change to recalculate gutter width and repaint.
+        void refreshGutter();
 
-    // Word-occurrence highlighting — Ctrl+double-click a word to highlight
-    // every occurrence of it in the document (like Qt Creator / VS Code).
-    // Cleared automatically on plain click, Escape, or any text edit.
-    void clearWordHighlights();
+        // Word-occurrence highlighting — Ctrl+double-click a word to highlight
+        // every occurrence of it in the document (like Qt Creator / VS Code).
+        // Cleared automatically on plain click, Escape, or any text edit.
+        void clearWordHighlights();
 
-signals:
-    void commScriptLineClicked(const QString &scriptName);
+    signals:
+        void commScriptLineClicked(const QString &scriptName);
 
-    // Emitted when the cursor lands on an  INCLUDE "path"  line.
-    // The raw (unresolved) path string extracted from the directive is passed;
-    // ScriptViewer::onIncludeFileRequested() resolves it to an absolute path
-    // before re-emitting includeFileRequested to MainWindow.
-    void includeFileClicked(const QString &rawPath);
+        // Emitted when the cursor lands on an  INCLUDE "path"  line.
+        // The raw (unresolved) path string extracted from the directive is passed;
+        // ScriptViewer::onIncludeFileRequested() resolves it to an absolute path
+        // before re-emitting includeFileRequested to MainWindow.
+        void includeFileClicked(const QString &rawPath);
 
-protected:
-    void resizeEvent(QResizeEvent *ev) override;
-    void keyPressEvent(QKeyEvent *ev) override;
-    void mousePressEvent(QMouseEvent *ev) override;
-    void mouseDoubleClickEvent(QMouseEvent *ev) override;
-    bool eventFilter(QObject *obj, QEvent *ev) override;
+    protected:
+        void resizeEvent(QResizeEvent *ev) override;
+        void keyPressEvent(QKeyEvent *ev) override;
+        void mousePressEvent(QMouseEvent *ev) override;
+        void mouseDoubleClickEvent(QMouseEvent *ev) override;
+        bool eventFilter(QObject *obj, QEvent *ev) override;
 
-private slots:
-    void updateLineNumberAreaWidth(int newBlockCount);
-    void updateLineNumberArea(const QRect &rect, int dy);
-    void checkCurrentLineForCommScript(); // fires on every cursor move
+    private slots:
+        void updateLineNumberAreaWidth(int newBlockCount);
+        void updateLineNumberArea(const QRect &rect, int dy);
+        void checkCurrentLineForCommScript(); // fires on every cursor move
 
-private:
-    void highlightOccurrences(const QString &word); // populate m_wordHighlights
+    private:
+        void highlightOccurrences(const QString &word); // populate m_wordHighlights
 
-    LineNumberArea *m_lineNumberArea;
-    int m_highlightedLine = 0;
-    QSet<int> m_errorLines;  // validation-error lines (red bar)
-    QSet<int> m_threadLines; // active & thread lines (green rectangle)
-    ScriptHighlighter *m_highlighter      = nullptr;
-    QSyntaxHighlighter *m_commHighlighter = nullptr;
-    QSyntaxHighlighter *m_iniHighlighter  = nullptr;
-    int m_lastCommScriptLine              = -1; // guard: only emit once per line
+        LineNumberArea *m_lineNumberArea;
+        int m_highlightedLine = 0;
+        QSet<int> m_errorLines;  // validation-error lines (red bar)
+        QSet<int> m_threadLines; // active & thread lines (green rectangle)
+        ScriptHighlighter *m_highlighter      = nullptr;
+        QSyntaxHighlighter *m_commHighlighter = nullptr;
+        QSyntaxHighlighter *m_iniHighlighter  = nullptr;
+        int m_lastCommScriptLine              = -1; // guard: only emit once per line
 
-    // Ctrl+double-click word-occurrence highlighting (rendered via Qt's
-    // built-in ExtraSelection mechanism, so it composes for free with normal
-    // text selection and doesn't need any custom painting).
-    QList<QTextEdit::ExtraSelection> m_wordHighlights;
+        // Ctrl+double-click word-occurrence highlighting (rendered via Qt's
+        // built-in ExtraSelection mechanism, so it composes for free with normal
+        // text selection and doesn't need any custom painting).
+        QList<QTextEdit::ExtraSelection> m_wordHighlights;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,83 +135,82 @@ private:
 //    save() / saveAs()     write to disk, clears modified flag
 //    modificationChanged   emitted whenever the flag flips
 // ─────────────────────────────────────────────────────────────────────────────
-class ScriptViewer : public QFrame
-{
-    Q_OBJECT
-public:
-    explicit ScriptViewer(QWidget *parent = nullptr);
+class ScriptViewer : public QFrame {
+        Q_OBJECT
+    public:
+        explicit ScriptViewer(QWidget *parent = nullptr);
 
-    // ── Loading ──────────────────────────────────────────────────────────
-    void loadScript(const QString &filePath);
-    void loadText(const QString &text);
-    void clear();
+        // ── Loading ──────────────────────────────────────────────────────────
+        void loadScript(const QString &filePath);
+        void loadText(const QString &text);
+        void clear();
 
-    // ── Execution marker ─────────────────────────────────────────────────
-    void setCurrentLine(int lineNo);
-    QString lineText(int lineNo) const; // 1-based; empty string if out of range
-    int lineCount() const;              // total number of lines in the document
+        // ── Execution marker ─────────────────────────────────────────────────
+        void setCurrentLine(int lineNo);
+        QString lineText(int lineNo) const; // 1-based; empty string if out of range
+        int lineCount() const;              // total number of lines in the document
 
-    // ── Editor configuration ──────────────────────────────────────────────
-    void setEditorFont(const QFont &font);
-    void enableHighlighting(bool on);     // use ScriptHighlighter
-    void enableCommHighlighting(bool on); // use CommScriptHighlighter
-    void setReadOnly(bool ro);
+        // ── Editor configuration ──────────────────────────────────────────────
+        void setEditorFont(const QFont &font);
+        void enableHighlighting(bool on);     // use ScriptHighlighter
+        void enableCommHighlighting(bool on); // use CommScriptHighlighter
+        void setReadOnly(bool ro);
 
-    // ── Persistence ───────────────────────────────────────────────────────
-    bool save();   // save to currentFile(); returns false on error
-    bool saveAs(); // open dialog, then save
-    bool isModified() const;
+        // ── Persistence ───────────────────────────────────────────────────────
+        bool save();   // save to currentFile(); returns false on error
+        bool saveAs(); // open dialog, then save
+        bool isModified() const;
 
-    // ── Accessors ─────────────────────────────────────────────────────────
-    QString currentFile() const
-    {
-        return m_currentFile;
-    }
+        // ── Accessors ─────────────────────────────────────────────────────────
+        QString currentFile() const
+        {
+            return m_currentFile;
+        }
 
-    bool isIniFile() const
-    {
-        return m_currentFile.endsWith(".ini", Qt::CaseInsensitive);
-    }
+        bool isIniFile() const
+        {
+            return m_currentFile.endsWith(".ini", Qt::CaseInsensitive);
+        }
 
-    // ── Highlight ─────────────────────────────────────────────────────────
-    void clearHighlight();
+        // ── Highlight ─────────────────────────────────────────────────────────
+        void clearHighlight();
 
-    // Error markers (validation phase) — red bar(s), independent of exec bar
-    void setErrorLine(int lineNo); // 1-based; accumulates
-    void clearErrorLines();        // clear all error markers
-    bool hasErrorLines() const;    // true if any error markers are set
+        // Error markers (validation phase) — red bar(s), independent of exec bar
+        void setErrorLine(int lineNo); // 1-based; accumulates
+        void clearErrorLines();        // clear all error markers
+        bool hasErrorLines() const;    // true if any error markers are set
 
-    // Thread markers — outline rectangle shown while a '&' thread is running
-    void addThreadLine(int lineNo);    // start showing rectangle on lineNo
-    void removeThreadLine(int lineNo); // remove it (thread joined)
-    void clearThreadLines();           // remove all (script reset / new load)
+        // Thread markers — outline rectangle shown while a '&' thread is running
+        void addThreadLine(int lineNo);    // start showing rectangle on lineNo
+        void removeThreadLine(int lineNo); // remove it (thread joined)
+        void clearThreadLines();           // remove all (script reset / new load)
 
-signals:
-    void modificationChanged(bool modified);             // forwarded from QTextDocument
-    void commScriptRequested(const QString &scriptName); // user clicked a .SCRIPT line
+    signals:
+        void modificationChanged(bool modified);             // forwarded from QTextDocument
+        void commScriptRequested(const QString &scriptName); // user clicked a .SCRIPT line
 
-    // Emitted when the cursor lands on an INCLUDE "path" line.
-    // resolvedPath is already an absolute filesystem path (resolved by
-    // onIncludeFileClicked relative to the current script's directory).
-    // MainWindow connects this to onIncludeFileRequested to open the file in
-    // a new core-script tab (or switch to an already-open one).
-    void includeFileRequested(const QString &resolvedPath);
+        // Emitted when the cursor lands on an INCLUDE "path" line.
+        // resolvedPath is already an absolute filesystem path (resolved by
+        // onIncludeFileClicked relative to the current script's directory).
+        // MainWindow connects this to onIncludeFileRequested to open the file in
+        // a new core-script tab (or switch to an already-open one).
+        void includeFileRequested(const QString &resolvedPath);
 
-    void infoChanged(const QString &info); // filename + current line text for external display
+        void infoChanged(const QString &info); // filename + current line text for external display
 
-private slots:
-    void onModificationChanged(bool modified);
-    void onCommScriptLineClicked(const QString &scriptName);
+    private slots:
+        void onModificationChanged(bool modified);
+        void onCommScriptLineClicked(const QString &scriptName);
 
-    // Resolves rawPath relative to m_currentFile's directory and re-emits
-    // includeFileRequested with the resulting absolute path.
-    void onIncludeFileClicked(const QString &rawPath);
+        // Resolves rawPath relative to m_currentFile's directory and re-emits
+        // includeFileRequested with the resulting absolute path.
+        void onIncludeFileClicked(const QString &rawPath);
 
-private:
-    void updateInfo();
-    bool writeFile(const QString &path);
+    private:
+        void updateInfo();
+        bool writeFile(const QString &path);
 
-    CodeEditor *m_editor;
-    QString m_currentFile;
-    int m_currentLine = 0;
+        CodeEditor *m_editor;
+        QString m_currentFile;
+        int m_currentLine = 0;
 };

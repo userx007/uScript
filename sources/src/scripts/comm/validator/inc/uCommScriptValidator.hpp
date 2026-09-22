@@ -27,56 +27,56 @@
 //                            CLASS DEFINITION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-class CommScriptValidator : public IScriptValidator<CommCommandsType>
-{
-public:
-    explicit CommScriptValidator(std::shared_ptr<CommScriptCommandValidator> shpCommandValidator)
-        : m_shpCommandValidator(std::move(shpCommandValidator))
-    {}
+class CommScriptValidator : public IScriptValidator<CommCommandsType> {
+    public:
+        explicit CommScriptValidator(std::shared_ptr<CommScriptCommandValidator> shpCommandValidator)
+            : m_shpCommandValidator(std::move(shpCommandValidator))
+        {
+        }
 
-    bool validateScript(std::vector<ScriptRawLine> &vRawLines, CommCommandsType &sScriptEntries) override
-    {
-        CommCommand token;
+        bool validateScript(std::vector<ScriptRawLine> &vRawLines, CommCommandsType &sScriptEntries) override
+        {
+            CommCommand token;
 
-        bool bRetVal = std::all_of(vRawLines.begin(), vRawLines.end(),
-                                   [&](ScriptRawLine &rawLine) {
-                                       std::string &command = rawLine.strContent;
+            bool bRetVal = std::all_of(vRawLines.begin(), vRawLines.end(),
+                                       [&](ScriptRawLine &rawLine) {
+                                           std::string &command = rawLine.strContent;
 
-                                       // replace the macros declared so far
-                                       ustring::replaceMacros(command, sScriptEntries.mapMacros, SCRIPT_MACRO_MARKER);
+                                           // replace the macros declared so far
+                                           ustring::replaceMacros(command, sScriptEntries.mapMacros, SCRIPT_MACRO_MARKER);
 
-                                       // validate as macro
-                                       if (true == usyntax::m_isConstantMacro(command)) {
-                                           std::vector<std::string> vstrTokens;
-                                           ustring::tokenize(command, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
-                                           sScriptEntries.mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
-                                           return true;
-                                       }
+                                           // validate as macro
+                                           if (true == usyntax::m_isConstantMacro(command)) {
+                                               std::vector<std::string> vstrTokens;
+                                               ustring::tokenize(command, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
+                                               sScriptEntries.mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
+                                               return true;
+                                           }
 
-                                       // validate as command
-                                       if (true == m_shpCommandValidator->validateCommand(rawLine.iLineNumber, command, token)) {
-                                           sScriptEntries.vCommands.emplace_back(token);
-                                           return true;
-                                       }
+                                           // validate as command
+                                           if (true == m_shpCommandValidator->validateCommand(rawLine.iLineNumber, command, token)) {
+                                               sScriptEntries.vCommands.emplace_back(token);
+                                               return true;
+                                           }
 
-                                       // none of expected
-                                       auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
-                                       LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                                                 LOG_STRING("Failed to validate [");
-                                                 LOG_STRING(command);
-                                                 LOG_STRING("]"));
-                                       gui_notify_error_comm(rawLine.iLineNumber);
-                                       return false;
-                                   });
+                                           // none of expected
+                                           auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+                                           LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                                     LOG_STRING("Failed to validate [");
+                                                     LOG_STRING(command);
+                                                     LOG_STRING("]"));
+                                           gui_notify_error_comm(rawLine.iLineNumber);
+                                           return false;
+                                       });
 
-        LOG_PRINT(((true == bRetVal) ? LOG_WERBOSE : LOG_ERROR), LOG_HDR;
-                  LOG_STRING("Comm script validation");
-                  LOG_STRING((true == bRetVal) ? "ok" : "failed"));
-        return bRetVal;
-    }
+            LOG_PRINT(((true == bRetVal) ? LOG_WERBOSE : LOG_ERROR), LOG_HDR;
+                      LOG_STRING("Comm script validation");
+                      LOG_STRING((true == bRetVal) ? "ok" : "failed"));
+            return bRetVal;
+        }
 
-private:
-    std::shared_ptr<IScriptCommandValidator<CommCommand>> m_shpCommandValidator;
+    private:
+        std::shared_ptr<IScriptCommandValidator<CommCommand>> m_shpCommandValidator;
 };
 
 #endif // U_COMM_SCRIPT_VALIDATOR_HPP

@@ -314,12 +314,11 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
         const QString tok      = QString(R"((%1)|(%2))").arg(numTok, macroTok);
         const QString prefix   = QString(SCRIPT_RX_REPEAT_PREFIX);
 
-        struct Arity
-        {
-            QString suffix;
-            QVector<int> literalGroups;
-            QVector<int> macroGroups;
-            QVector<int> commaGroups;
+        struct Arity {
+                QString suffix;
+                QVector<int> literalGroups;
+                QVector<int> macroGroups;
+                QVector<int> commaGroups;
         };
 
         const QVector<Arity> arities = {

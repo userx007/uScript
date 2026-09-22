@@ -41,8 +41,8 @@ static constexpr const char *kPluginNameForDump = "GRPC";
 // reasoning as MqttDriver's tl_bAwaitingAck/tl_pendingAckType.
 // -----------------------------------------------------------------------
 namespace {
-thread_local bool tl_bResponsePending = false;
-thread_local std::string tl_strPendingResponseJson;
+    thread_local bool tl_bResponsePending = false;
+    thread_local std::string tl_strPendingResponseJson;
 } // namespace
 
 GrpcDriver::GrpcDriver(Config config)
@@ -51,20 +51,20 @@ GrpcDriver::GrpcDriver(Config config)
 }
 
 namespace {
-bool readFileIntoString(const std::string &path, std::string &out)
-{
-    if (path.empty()) {
-        return true; // optional file — leaving `out` untouched is fine
+    bool readFileIntoString(const std::string &path, std::string &out)
+    {
+        if (path.empty()) {
+            return true; // optional file — leaving `out` untouched is fine
+        }
+        std::ifstream in(path, std::ios::binary);
+        if (!in) {
+            return false;
+        }
+        std::ostringstream ss;
+        ss << in.rdbuf();
+        out = ss.str();
+        return true;
     }
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
-        return false;
-    }
-    std::ostringstream ss;
-    ss << in.rdbuf();
-    out = ss.str();
-    return true;
-}
 } // namespace
 
 bool GrpcDriver::open()
@@ -301,9 +301,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodD
     // mutex-guarded m_pStreamContext), so a stop_callback can bind directly
     // to it with no locking concerns at all.
     const bool bWasStopRequestedBeforeCall = stop_tok.stop_requested();
-    std::stop_callback onStop(stop_tok, [&ctx]() {
-        ctx.TryCancel();
-    });
+    std::stop_callback onStop(stop_tok, [&ctx]() { ctx.TryCancel(); });
 
     // methodPath may have used "package.Service/Method" or
     // "package.Service.Method"; the wire path is always "/Service/Method"
@@ -664,8 +662,7 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         std::stop_callback onStop(stop_tok, [pStopCtx]() {
             if (pStopCtx) {
                 pStopCtx->TryCancel();
-            }
-        });
+            } });
 
         auto response = m_protocol.newResponseMessage(m_pActiveStreamMethod);
         if (m_pServerStreamReader->Read(response.get())) {
@@ -732,8 +729,7 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         std::stop_callback onStop(stop_tok, [pStopCtx]() {
             if (pStopCtx) {
                 pStopCtx->TryCancel();
-            }
-        });
+            } });
 
         auto response = m_protocol.newResponseMessage(m_pActiveStreamMethod);
         if (m_pBidiStream->Read(response.get())) {

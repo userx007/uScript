@@ -1,26 +1,31 @@
----
 Language: Cpp
 BasedOnStyle: LLVM
 
-BreakBeforeBraces: Custom
-BraceWrapping:
-  AfterFunction:        true
-  AfterClass:           true
-  AfterControlStatement: false
-  AfterEnum:            false
-  AfterNamespace:       false
-  AfterStruct:          true
-  AfterUnion:           false
-  AfterExternBlock:     false
-  BeforeCatch:          false
-  BeforeElse:           false
-  BeforeWhile:          false
-  IndentBraces:         false
-  SplitEmptyFunction:   false
-  SplitEmptyRecord:     false
-  SplitEmptyNamespace:  false
+# Indentation
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
 
-# Always add braces to if/else/for/while/do bodies, even single statements
+BreakBeforeBraces: Custom
+
+BraceWrapping:
+  AfterFunction: true
+  AfterClass: false
+  AfterControlStatement: false
+  AfterEnum: false
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+# Always add braces to if/else/for/while/do bodies
 InsertBraces: true
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
@@ -40,23 +45,18 @@ IncludeCategories:
 # Ignore line length entirely
 ColumnLimit: 0
 
-# Constructor initializer list: always one per line, leading comma aligned under the colon
+# Constructor initializer list
 BreakConstructorInitializers: BeforeComma
 PackConstructorInitializers: Never
 
-# Class members/methods stay at the same indent regardless of access specifier
-AccessModifierOffset: -4
-IndentAccessModifiers: false
-IndentWidth: 4
+# Access Modifiers
+AccessModifierOffset: 0
+IndentAccessModifiers: true
 
-# Spaces only, never tabs (trailing whitespace/tabs are always stripped by clang-format)
-UseTab: Never
-TabWidth: 4
-
-# Align "=" across consecutive enum values
+# Alignment
 AlignConsecutiveAssignments: AcrossEmptyLinesAndComments
-
-# Align values across consecutive #define macros
 AlignConsecutiveMacros: AcrossEmptyLinesAndComments
 
 SeparateDefinitionBlocks: Always
+IndentExternBlock: Indent
+NamespaceIndentation: All

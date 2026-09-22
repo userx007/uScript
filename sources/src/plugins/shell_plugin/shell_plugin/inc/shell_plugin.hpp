@@ -54,228 +54,227 @@
 //                          PLUGIN INTERFACE                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-class ShellPlugin : public PluginInterface
-{
-public:
-    /**
-     * \brief class constructor
-     */
-    ShellPlugin()
-        : m_strVersion(SHELL_PLUGIN_VERSION)
-        , m_bIsInitialized(false)
-        , m_bIsEnabled(false)
-        , m_bIsFaultTolerant(false)
-        , m_bIsPrivileged(false)
-        , m_pvUserData(nullptr)
-        , m_strResultData("")
-    {
+class ShellPlugin : public PluginInterface {
+    public:
+        /**
+         * \brief class constructor
+         */
+        ShellPlugin()
+            : m_strVersion(SHELL_PLUGIN_VERSION)
+            , m_bIsInitialized(false)
+            , m_bIsEnabled(false)
+            , m_bIsFaultTolerant(false)
+            , m_bIsPrivileged(false)
+            , m_pvUserData(nullptr)
+            , m_strResultData("")
+        {
 #define SHELL_PLUGIN_CMD_RECORD(a, ...) \
     m_mapCmds.insert(std::make_pair(#a, \
                                     PluginCommandEntry<ShellPlugin>{&ShellPlugin::m_Shell_##a, SHELL_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
-        SHELL_PLUGIN_COMMANDS_CONFIG_TABLE
+            SHELL_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef SHELL_PLUGIN_CMD_RECORD
-    }
-
-    /**
-     * \brief class destructor
-     */
-    ~ShellPlugin()
-    {
-    }
-
-    /**
-     * \brief get the plugin initialization status
-     */
-    bool isInitialized(void) const
-    {
-        return m_bIsInitialized;
-    }
-
-    /**
-     * \brief get enabling status
-     */
-    bool isEnabled(void) const
-    {
-        return m_bIsEnabled;
-    }
-
-    /**
-     * \brief Import external settings into the plugin
-     */
-    bool setParams(const PluginDataSet *psSetParams)
-    {
-        bool bRetVal = false;
-
-        if (true == generic_setparams<ShellPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-            if (true == m_LocalSetParams(psSetParams)) {
-                bRetVal = true;
-            }
         }
 
-        return bRetVal;
-    }
+        /**
+         * \brief class destructor
+         */
+        ~ShellPlugin()
+        {
+        }
 
-    /**
-     * \brief function to retrieve information from plugin
-     */
-    void getParams(PluginDataGet *psGetParams) const
-    {
-        generic_getparams<ShellPlugin>(this, psGetParams);
-    }
+        /**
+         * \brief get the plugin initialization status
+         */
+        bool isInitialized(void) const
+        {
+            return m_bIsInitialized;
+        }
 
-    /**
-     * \brief dispatch commands
-     */
-    bool doDispatch(const std::string &strCmd, const std::string &strParams,
-                    std::stop_token st = {}) const
-    {
-        return generic_dispatch<ShellPlugin>(this, strCmd, strParams, st);
-    }
+        /**
+         * \brief get enabling status
+         */
+        bool isEnabled(void) const
+        {
+            return m_bIsEnabled;
+        }
 
-    /**
-     * \brief get a pointer to the plugin map
-     */
-    const PluginCommandsMap<ShellPlugin> *getMap(void) const
-    {
-        return &m_mapCmds;
-    }
+        /**
+         * \brief Import external settings into the plugin
+         */
+        bool setParams(const PluginDataSet *psSetParams)
+        {
+            bool bRetVal = false;
 
-    /**
-     * \brief get the plugin version
-     */
-    const std::string &getVersion(void) const
-    {
-        return m_strVersion;
-    }
+            if (true == generic_setparams<ShellPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+                if (true == m_LocalSetParams(psSetParams)) {
+                    bRetVal = true;
+                }
+            }
 
-    /**
-     * \brief get the result data
-     */
-    const std::string &getData(void) const
-    {
-        return m_strResultData;
-    }
+            return bRetVal;
+        }
 
-    /**
-     * \brief clear the result data (avoid that some data to be returned by other command)
-     */
-    void resetData(void) const
-    {
-        m_strResultData.clear();
-    }
+        /**
+         * \brief function to retrieve information from plugin
+         */
+        void getParams(PluginDataGet *psGetParams) const
+        {
+            generic_getparams<ShellPlugin>(this, psGetParams);
+        }
 
-    /**
-     * \brief perform the initialization of modules used by the plugin
-     * \note public because it needs to be called explicitely after loading the plugin
-     */
-    bool doInit(void *pvUserData)
-    {
-        m_bIsInitialized = true;
-        m_pvUserData     = pvUserData;
+        /**
+         * \brief dispatch commands
+         */
+        bool doDispatch(const std::string &strCmd, const std::string &strParams,
+                        std::stop_token st = {}) const
+        {
+            return generic_dispatch<ShellPlugin>(this, strCmd, strParams, st);
+        }
 
-        return m_bIsInitialized;
-    }
+        /**
+         * \brief get a pointer to the plugin map
+         */
+        const PluginCommandsMap<ShellPlugin> *getMap(void) const
+        {
+            return &m_mapCmds;
+        }
 
-    /**
-     * \brief perform the enabling of the plugin
-     * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
-     *       This mode is used for the command validation
-     */
-    bool doEnable(void)
-    {
-        m_bIsEnabled = true;
-        return true;
-    }
+        /**
+         * \brief get the plugin version
+         */
+        const std::string &getVersion(void) const
+        {
+            return m_strVersion;
+        }
 
-    /**
-     * \brief perform the de-initialization of modules used by the plugin
-     * \note public because need to be called explicitely before closing/freeing the shared library
-     */
-    void doCleanup(void)
-    {
-        m_bIsInitialized = false;
-        m_bIsEnabled     = false;
-    }
+        /**
+         * \brief get the result data
+         */
+        const std::string &getData(void) const
+        {
+            return m_strResultData;
+        }
 
-    /**
-     * \brief get fault tolerant flag status
-     */
-    bool isFaultTolerant(void) const
-    {
-        return m_bIsFaultTolerant;
-    }
+        /**
+         * \brief clear the result data (avoid that some data to be returned by other command)
+         */
+        void resetData(void) const
+        {
+            m_strResultData.clear();
+        }
 
-    /**
-     * \brief get the privileged status
-     */
-    bool isPrivileged(void) const
-    {
-        return m_bIsPrivileged;
-    }
+        /**
+         * \brief perform the initialization of modules used by the plugin
+         * \note public because it needs to be called explicitely after loading the plugin
+         */
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            m_pvUserData     = pvUserData;
 
-private:
-    bool m_LocalSetParams(const PluginDataSet *psSetParams)
-    {
-        if (true == psSetParams->mapSettings.empty()) {
-            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+            return m_bIsInitialized;
+        }
+
+        /**
+         * \brief perform the enabling of the plugin
+         * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
+         *       This mode is used for the command validation
+         */
+        bool doEnable(void)
+        {
+            m_bIsEnabled = true;
             return true;
         }
 
-        // No plugin-specific ini keys used so far; kept as an empty binder so the
-        // pattern is consistent with every other plugin and ready for future keys.
-        PluginSettingsBinder sSettings;
+        /**
+         * \brief perform the de-initialization of modules used by the plugin
+         * \note public because need to be called explicitely before closing/freeing the shared library
+         */
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+        }
 
-        return sSettings.Apply(psSetParams->mapSettings,
-                               [](const std::string &strKey, const std::string &strRawValue) {
-                                   LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-                               });
-    }
+        /**
+         * \brief get fault tolerant flag status
+         */
+        bool isFaultTolerant(void) const
+        {
+            return m_bIsFaultTolerant;
+        }
 
-    /**
-     * \brief map with association between the command string and the execution function
-     */
-    PluginCommandsMap<ShellPlugin> m_mapCmds;
+        /**
+         * \brief get the privileged status
+         */
+        bool isPrivileged(void) const
+        {
+            return m_bIsPrivileged;
+        }
 
-    /**
-     * \brief plugin version
-     */
-    std::string m_strVersion;
+    private:
+        bool m_LocalSetParams(const PluginDataSet *psSetParams)
+        {
+            if (true == psSetParams->mapSettings.empty()) {
+                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+                return true;
+            }
 
-    /**
-     * \brief data returned by plugin
-     */
-    mutable std::string m_strResultData;
+            // No plugin-specific ini keys used so far; kept as an empty binder so the
+            // pattern is consistent with every other plugin and ready for future keys.
+            PluginSettingsBinder sSettings;
 
-    /**
-     * \brief plugin initialization status
-     */
-    bool m_bIsInitialized;
+            return sSettings.Apply(psSetParams->mapSettings,
+                                   [](const std::string &strKey, const std::string &strRawValue) {
+                                       LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+                                   });
+        }
 
-    /**
-     * \brief plugin enabling status
-     */
-    bool m_bIsEnabled;
+        /**
+         * \brief map with association between the command string and the execution function
+         */
+        PluginCommandsMap<ShellPlugin> m_mapCmds;
 
-    /**
-     * \brief plugin fault tolerant mode
-     */
-    bool m_bIsFaultTolerant;
+        /**
+         * \brief plugin version
+         */
+        std::string m_strVersion;
 
-    /**
-     * \brief plugin is privileged
-     */
-    bool m_bIsPrivileged;
+        /**
+         * \brief data returned by plugin
+         */
+        mutable std::string m_strResultData;
 
-    /**
-     * \brief pointer to the user data structure
-     */
-    void *m_pvUserData;
+        /**
+         * \brief plugin initialization status
+         */
+        bool m_bIsInitialized;
 
-    /**
-     * \brief functions associated to the plugin commands
-     */
+        /**
+         * \brief plugin enabling status
+         */
+        bool m_bIsEnabled;
+
+        /**
+         * \brief plugin fault tolerant mode
+         */
+        bool m_bIsFaultTolerant;
+
+        /**
+         * \brief plugin is privileged
+         */
+        bool m_bIsPrivileged;
+
+        /**
+         * \brief pointer to the user data structure
+         */
+        void *m_pvUserData;
+
+        /**
+         * \brief functions associated to the plugin commands
+         */
 #define SHELL_PLUGIN_CMD_RECORD(a, ...) bool m_Shell_##a(const std::string &args, std::stop_token st) const;
-    SHELL_PLUGIN_COMMANDS_CONFIG_TABLE
+        SHELL_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef SHELL_PLUGIN_CMD_RECORD
 };
 

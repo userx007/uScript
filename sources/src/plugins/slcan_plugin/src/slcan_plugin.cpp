@@ -29,17 +29,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED SLCANPlugin *pluginEntry()
-{
-    return new SLCANPlugin();
-}
-
-EXPORTED void pluginExit(SLCANPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED SLCANPlugin *pluginEntry()
+    {
+        return new SLCANPlugin();
     }
-}
+
+    EXPORTED void pluginExit(SLCANPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

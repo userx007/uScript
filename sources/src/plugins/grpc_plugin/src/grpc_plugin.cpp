@@ -21,17 +21,17 @@
  * \brief The plugin's entry points
  */
 extern "C" {
-EXPORTED GrpcPlugin *pluginEntry()
-{
-    return new GrpcPlugin();
-}
-
-EXPORTED void pluginExit(GrpcPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED GrpcPlugin *pluginEntry()
+    {
+        return new GrpcPlugin();
     }
-}
+
+    EXPORTED void pluginExit(GrpcPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 // -----------------------------------------------------------------------

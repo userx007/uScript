@@ -7,33 +7,33 @@
 #include <thread>
 
 namespace {
-constexpr size_t kFrameLen              = 8;
-constexpr size_t kDtMaxLen              = 7; // TP.DT: 1 sequence byte + up to 7 data bytes
+    constexpr size_t kFrameLen              = 8;
+    constexpr size_t kDtMaxLen              = 7; // TP.DT: 1 sequence byte + up to 7 data bytes
 
-constexpr uint8_t kCtrlBam              = 0x20;
-constexpr uint8_t kCtrlRts              = 0x10;
-constexpr uint8_t kCtrlCts              = 0x11;
-constexpr uint8_t kCtrlEndOfMsg         = 0x13;
-constexpr uint8_t kCtrlAbort            = 0xFF;
+    constexpr uint8_t kCtrlBam              = 0x20;
+    constexpr uint8_t kCtrlRts              = 0x10;
+    constexpr uint8_t kCtrlCts              = 0x11;
+    constexpr uint8_t kCtrlEndOfMsg         = 0x13;
+    constexpr uint8_t kCtrlAbort            = 0xFF;
 
-// BAM's minimum broadcast gap per SAE J1939-21 (50-200ms, use the
-// commonly-used 50ms floor when the caller hasn't tuned timeouts).
-constexpr uint32_t kBamInterPacketGapMs = 50;
+    // BAM's minimum broadcast gap per SAE J1939-21 (50-200ms, use the
+    // commonly-used 50ms floor when the caller hasn't tuned timeouts).
+    constexpr uint32_t kBamInterPacketGapMs = 50;
 
-inline void pack_size_pgn(std::array<uint8_t, kFrameLen> &f, uint8_t ctrl,
-                          size_t totalSize, uint8_t totalPackets, uint8_t byte4)
-{
-    f[0] = ctrl;
-    f[1] = static_cast<uint8_t>(totalSize & 0xFF);
-    f[2] = static_cast<uint8_t>((totalSize >> 8) & 0xFF);
-    f[3] = totalPackets;
-    f[4] = byte4;
-    // Bytes 5-7 (PGN of the data message) are intentionally left 0: the
-    // caller distinguishes streams via txId/rxId, not the PGN payload
-    // field, so this implementation does not require the data PGN to
-    // decide anything. Fill with 0xFF per convention for unused bytes.
-    f[5] = f[6] = f[7] = 0xFF;
-}
+    inline void pack_size_pgn(std::array<uint8_t, kFrameLen> &f, uint8_t ctrl,
+                              size_t totalSize, uint8_t totalPackets, uint8_t byte4)
+    {
+        f[0] = ctrl;
+        f[1] = static_cast<uint8_t>(totalSize & 0xFF);
+        f[2] = static_cast<uint8_t>((totalSize >> 8) & 0xFF);
+        f[3] = totalPackets;
+        f[4] = byte4;
+        // Bytes 5-7 (PGN of the data message) are intentionally left 0: the
+        // caller distinguishes streams via txId/rxId, not the PGN payload
+        // field, so this implementation does not require the data PGN to
+        // decide anything. Fill with 0xFF per convention for unused bytes.
+        f[5] = f[6] = f[7] = 0xFF;
+    }
 } // namespace
 
 // ============================================================================

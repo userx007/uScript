@@ -29,12 +29,11 @@ class QList;
 // ─────────────────────────────────────────────────────────────────────────────
 //  TermCell  —  one character cell in the grid
 // ─────────────────────────────────────────────────────────────────────────────
-struct TermCell
-{
-    QString text = QStringLiteral(" "); // 1 QChar for BMP, 2 for supplementary plane
-    QColor fg;                          // invalid = use default
-    QColor bg;                          // invalid = use default (transparent)
-    bool bold = false;
+struct TermCell {
+        QString text = QStringLiteral(" "); // 1 QChar for BMP, 2 for supplementary plane
+        QColor fg;                          // invalid = use default
+        QColor bg;                          // invalid = use default (transparent)
+        bool bold = false;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,142 +51,142 @@ struct TermCell
 //    ESC [ n m   SGR colour / attribute
 //    ESC [ ? h/l private modes (cursor show/hide)
 // ─────────────────────────────────────────────────────────────────────────────
-class TermView : public QAbstractScrollArea
-{
-    Q_OBJECT
-public:
-    explicit TermView(QWidget *parent = nullptr);
+class TermView : public QAbstractScrollArea {
+        Q_OBJECT
+    public:
+        explicit TermView(QWidget *parent = nullptr);
 
-    void setTermFont(const QFont &font);
-    void processBytes(const QByteArray &data);
-    void clearAll();
-    void clearKeepPrompt();
+        void setTermFont(const QFont &font);
+        void processBytes(const QByteArray &data);
+        void clearAll();
+        void clearKeepPrompt();
 
-protected:
-    void paintEvent(QPaintEvent *) override;
-    void resizeEvent(QResizeEvent *) override;
-    void keyPressEvent(QKeyEvent *ev) override;
-    void mousePressEvent(QMouseEvent *ev) override;
-    void mouseMoveEvent(QMouseEvent *ev) override;
-    void mouseReleaseEvent(QMouseEvent *ev) override;
-    void contextMenuEvent(QContextMenuEvent *ev) override;
+    protected:
+        void paintEvent(QPaintEvent *) override;
+        void resizeEvent(QResizeEvent *) override;
+        void keyPressEvent(QKeyEvent *ev) override;
+        void mousePressEvent(QMouseEvent *ev) override;
+        void mouseMoveEvent(QMouseEvent *ev) override;
+        void mouseReleaseEvent(QMouseEvent *ev) override;
+        void contextMenuEvent(QContextMenuEvent *ev) override;
 
-signals:
-    void keyBytesReady(const QByteArray &bytes);
+    signals:
+        void keyBytesReady(const QByteArray &bytes);
 
-private slots:
-    void blinkCursor();
+    private slots:
+        void blinkCursor();
 
-private:
-    void ensureLine(int row);
-    TermCell &cell(int row, int col);
-    void putChar(QChar c);
-    void newline();
-    void eraseToEndOfLine();
-    void applySgr(const QList<int> &params);
-    static QColor sgrColor(int code);
-    void updateScrollbar();
-    // Scrolls the viewport to the bottom, matching what every newline() used
-    // to do individually — now called at most once per processBytes() batch
-    // (see m_scrollToBottomPending).
-    void scrollToBottom();
+    private:
+        void ensureLine(int row);
+        TermCell &cell(int row, int col);
+        void putChar(QChar c);
+        void newline();
+        void eraseToEndOfLine();
+        void applySgr(const QList<int> &params);
+        static QColor sgrColor(int code);
+        void updateScrollbar();
+        // Scrolls the viewport to the bottom, matching what every newline() used
+        // to do individually — now called at most once per processBytes() batch
+        // (see m_scrollToBottomPending).
+        void scrollToBottom();
 
-    // ── selection helpers ─────────────────────────────────────────────────
-    // Convert a viewport pixel position to a character-grid cell (col, row).
-    // X positions inside the gutter clamp to col 0 so the gutter is never
-    // part of a selection.
-    QPoint pixToCell(const QPoint &vp) const;
+        // ── selection helpers ─────────────────────────────────────────────────
+        // Convert a viewport pixel position to a character-grid cell (col, row).
+        // X positions inside the gutter clamp to col 0 so the gutter is never
+        // part of a selection.
+        QPoint pixToCell(const QPoint &vp) const;
 
-    // Normalise anchor/end so that "start" is always top-left of selection.
-    std::pair<QPoint, QPoint> normSel() const;
+        // Normalise anchor/end so that "start" is always top-left of selection.
+        std::pair<QPoint, QPoint> normSel() const;
 
-    bool hasSelection() const;
-    void clearSelection();
-    QString selectedText() const;
-    void copySelectionToClipboard() const;
+        bool hasSelection() const;
+        void clearSelection();
+        QString selectedText() const;
+        void copySelectionToClipboard() const;
 
-    // Reads plain text off the system clipboard and sends it to the shell
-    // exactly as if it had been typed (one keyBytesReady emission for the
-    // whole chunk). CR/CRLF are normalised to LF first, matching what Enter
-    // itself sends, so pasted multi-line text doesn't confuse uShell's line
-    // editing with a bare '\r'.
-    void pasteFromClipboard();
+        // Reads plain text off the system clipboard and sends it to the shell
+        // exactly as if it had been typed (one keyBytesReady emission for the
+        // whole chunk). CR/CRLF are normalised to LF first, matching what Enter
+        // itself sends, so pasted multi-line text doesn't confuse uShell's line
+        // editing with a bare '\r'.
+        void pasteFromClipboard();
 
-    QVector<QVector<TermCell>> m_grid;
-    QPoint m_cursor{0, 0};
+        QVector<QVector<TermCell>> m_grid;
+        QPoint m_cursor{0, 0};
 
-    // Set by newline() and consumed once at the end of processBytes() —
-    // avoids recomputing the scrollbar range and re-snapping to the bottom
-    // once per '\n' in a chunk (a script that prints thousands of lines in
-    // one burst used to pay for that on every single line).
-    bool m_scrollToBottomPending = false;
+        // Set by newline() and consumed once at the end of processBytes() —
+        // avoids recomputing the scrollbar range and re-snapping to the bottom
+        // once per '\n' in a chunk (a script that prints thousands of lines in
+        // one burst used to pay for that on every single line).
+        bool m_scrollToBottomPending = false;
 
-    // ── selection state ───────────────────────────────────────────────────
-    // Both points are in character-grid coordinates (col, row).
-    // (-1,-1) means no selection.
-    QPoint m_selAnchor{-1, -1};
-    QPoint m_selEnd{-1, -1};
-    bool m_selecting = false;
+        // ── selection state ───────────────────────────────────────────────────
+        // Both points are in character-grid coordinates (col, row).
+        // (-1,-1) means no selection.
+        QPoint m_selAnchor{-1, -1};
+        QPoint m_selEnd{-1, -1};
+        bool m_selecting = false;
 
-    // ── gutter ────────────────────────────────────────────────────────────
-    // Width in pixels of the line-number margin painted to the left of the
-    // character grid.  Computed from font metrics in setTermFont / ctor.
-    int m_gutterW    = 0;
+        // ── gutter ────────────────────────────────────────────────────────────
+        // Width in pixels of the line-number margin painted to the left of the
+        // character grid.  Computed from font metrics in setTermFont / ctor.
+        int m_gutterW    = 0;
 
-    QColor m_fgCur;
-    QColor m_bgCur;
-    bool m_boldCur                 = false;
+        QColor m_fgCur;
+        QColor m_bgCur;
+        bool m_boldCur                 = false;
 
-    static constexpr QRgb C_BG     = 0xFF0A0C10;
-    static constexpr QRgb C_FG     = 0xFFABB2BF;
-    static constexpr QRgb C_CURSOR = 0xFF528BFF;
+        static constexpr QRgb C_BG     = 0xFF0A0C10;
+        static constexpr QRgb C_FG     = 0xFFABB2BF;
+        static constexpr QRgb C_CURSOR = 0xFF528BFF;
 
-    enum class St { Text,
-                    Esc,
-                    Csi,
-                    CsiPriv };
-    St m_state = St::Text;
-    QString m_param;
+        enum class St {
+            Text,
+            Esc,
+            Csi,
+            CsiPriv
+        };
+        St m_state = St::Text;
+        QString m_param;
 
-    // ── UTF-8 multi-byte decoder ──────────────────────────────────────────
-    // Accumulates continuation bytes until a full codepoint is ready.
-    char32_t m_utf8Codepoint = 0; // codepoint being assembled
-    int m_utf8Remaining      = 0; // continuation bytes still expected
+        // ── UTF-8 multi-byte decoder ──────────────────────────────────────────
+        // Accumulates continuation bytes until a full codepoint is ready.
+        char32_t m_utf8Codepoint = 0; // codepoint being assembled
+        int m_utf8Remaining      = 0; // continuation bytes still expected
 
-    QFont m_font;
-    int m_cw = 10;
-    int m_ch = 18;
+        QFont m_font;
+        int m_cw = 10;
+        int m_ch = 18;
 
-    QTimer m_blinkTimer;
-    bool m_cursorVisible = true;
-    bool m_cursorEnabled = true;
+        QTimer m_blinkTimer;
+        bool m_cursorVisible = true;
+        bool m_cursorEnabled = true;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ShellTerminal  —  header bar + TermView
 // ─────────────────────────────────────────────────────────────────────────────
-class ShellTerminal : public QFrame
-{
-    Q_OBJECT
-public:
-    explicit ShellTerminal(QWidget *parent = nullptr);
+class ShellTerminal : public QFrame {
+        Q_OBJECT
+    public:
+        explicit ShellTerminal(QWidget *parent = nullptr);
 
-    void setActive(bool active);
-    void processRawBytes(const QByteArray &bytes);
-    void setTerminalFont(const QFont &font);
-    void clear();       // full wipe (used on new session)
-    void clearPrompt(); // wipe history, keep current prompt line + cursor
+        void setActive(bool active);
+        void processRawBytes(const QByteArray &bytes);
+        void setTerminalFont(const QFont &font);
+        void clear();       // full wipe (used on new session)
+        void clearPrompt(); // wipe history, keep current prompt line + cursor
 
-signals:
-    void keyBytesReady(const QByteArray &bytes);
+    signals:
+        void keyBytesReady(const QByteArray &bytes);
 
-private:
-    void updateHeaderState();
+    private:
+        void updateHeaderState();
 
-    QLabel *m_titleLabel;
-    QLabel *m_stateLabel;
-    QPushButton *m_clearBtn;
-    QPushButton *m_stopBtn;
-    TermView *m_view;
-    bool m_active = false;
+        QLabel *m_titleLabel;
+        QLabel *m_stateLabel;
+        QPushButton *m_clearBtn;
+        QPushButton *m_stopBtn;
+        TermView *m_view;
+        bool m_active = false;
 };

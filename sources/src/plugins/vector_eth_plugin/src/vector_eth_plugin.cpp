@@ -20,17 +20,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED VectorEthPlugin *pluginEntry()
-{
-    return new VectorEthPlugin();
-}
-
-EXPORTED void pluginExit(VectorEthPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED VectorEthPlugin *pluginEntry()
+    {
+        return new VectorEthPlugin();
     }
-}
+
+    EXPORTED void pluginExit(VectorEthPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -500,7 +500,6 @@ std::shared_ptr<VectorEth> VectorEthPlugin::m_OpenAndConfigure(void) const
                                  "run VECTOR_ETH.DEVICES to see what's currently connected"));
             return nullptr;
         }
-
     } else {
 
         sts = shpDriver->open(m_strAppName, m_u32AppChannel);

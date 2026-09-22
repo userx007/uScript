@@ -47,63 +47,63 @@
 #include <thread>
 
 namespace loopback {
-volatile sig_atomic_t g_stop = 0;
+    volatile sig_atomic_t g_stop = 0;
 
-static void onSignal(int /*sig*/)
-{
-    g_stop = 1;
-}
+    static void onSignal(int /*sig*/)
+    {
+        g_stop = 1;
+    }
 
-void install_signal_handlers()
-{
-    // SA_RESTART deliberately left off: without this, glibc's signal()
-    // wrapper would transparently restart an interrupted blocking
-    // read()/recv()/accept(), and Ctrl-C would appear to do nothing until
-    // the next byte/frame/datagram arrived.
-    struct sigaction sa;
-    std::memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = onSignal;
-    sa.sa_flags   = 0;
-    sigemptyset(&sa.sa_mask);
-    sigaction(SIGINT, &sa, nullptr);
-    sigaction(SIGTERM, &sa, nullptr);
-}
+    void install_signal_handlers()
+    {
+        // SA_RESTART deliberately left off: without this, glibc's signal()
+        // wrapper would transparently restart an interrupted blocking
+        // read()/recv()/accept(), and Ctrl-C would appear to do nothing until
+        // the next byte/frame/datagram arrived.
+        struct sigaction sa;
+        std::memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = onSignal;
+        sa.sa_flags   = 0;
+        sigemptyset(&sa.sa_mask);
+        sigaction(SIGINT, &sa, nullptr);
+        sigaction(SIGTERM, &sa, nullptr);
+    }
 } // namespace loopback
 
 namespace {
 
-void printUsage(const char *argv0)
-{
-    std::fprintf(stderr,
-                 "Usage: %s -i <input-spec> [-o <output-spec>] [-t <delay-ms>]\n"
-                 "\n"
-                 "  -i   input channel (required)\n"
-                 "  -o   output channel (default: mirror the input channel back to itself)\n"
-                 "  -t   delay in ms between RX and the mirrored/forwarded TX (default: 0)\n"
-                 "\n"
-                 "  spec := uart:<device>[/<baud>]\n"
-                 "        | kvcan:<iface>[/<can_id>]\n"
-                 "        | tcpip:[server/]<port>[/<bindaddr>] | tcpip:client/<host>/<port>\n"
-                 "        | udp:[server/]<port>[/<bindaddr>]   | udp:client/<host>/<port>\n"
-                 "        | raweth:<ifname>[/<ethertype>][/promisc]\n"
-                 "\n"
-                 "Examples:\n"
-                 "  %s -i uart:/dev/tnt0/115200\n"
-                 "  %s -i kvcan:vcan0\n"
-                 "  %s -i uart:/dev/tnt0/115200 -o kvcan:vcan0/0x100 -t 500\n",
-                 argv0, argv0, argv0, argv0);
-}
-
-void sleepInterruptible(int delay_ms)
-{
-    const int step_ms = 20;
-    int remaining     = delay_ms;
-    while (remaining > 0 && !loopback::g_stop) {
-        int chunk = std::min(remaining, step_ms);
-        std::this_thread::sleep_for(std::chrono::milliseconds(chunk));
-        remaining -= chunk;
+    void printUsage(const char *argv0)
+    {
+        std::fprintf(stderr,
+                     "Usage: %s -i <input-spec> [-o <output-spec>] [-t <delay-ms>]\n"
+                     "\n"
+                     "  -i   input channel (required)\n"
+                     "  -o   output channel (default: mirror the input channel back to itself)\n"
+                     "  -t   delay in ms between RX and the mirrored/forwarded TX (default: 0)\n"
+                     "\n"
+                     "  spec := uart:<device>[/<baud>]\n"
+                     "        | kvcan:<iface>[/<can_id>]\n"
+                     "        | tcpip:[server/]<port>[/<bindaddr>] | tcpip:client/<host>/<port>\n"
+                     "        | udp:[server/]<port>[/<bindaddr>]   | udp:client/<host>/<port>\n"
+                     "        | raweth:<ifname>[/<ethertype>][/promisc]\n"
+                     "\n"
+                     "Examples:\n"
+                     "  %s -i uart:/dev/tnt0/115200\n"
+                     "  %s -i kvcan:vcan0\n"
+                     "  %s -i uart:/dev/tnt0/115200 -o kvcan:vcan0/0x100 -t 500\n",
+                     argv0, argv0, argv0, argv0);
     }
-}
+
+    void sleepInterruptible(int delay_ms)
+    {
+        const int step_ms = 20;
+        int remaining     = delay_ms;
+        while (remaining > 0 && !loopback::g_stop) {
+            int chunk = std::min(remaining, step_ms);
+            std::this_thread::sleep_for(std::chrono::milliseconds(chunk));
+            remaining -= chunk;
+        }
+    }
 
 } // namespace
 

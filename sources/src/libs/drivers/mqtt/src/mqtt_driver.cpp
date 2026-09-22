@@ -64,9 +64,9 @@ static constexpr const char *kPluginNameForDump        = "MQTT";
 // corruption. Always pair a `>` command with its `| expected` to avoid it.
 // -----------------------------------------------------------------------
 namespace {
-thread_local bool tl_bAwaitingAck        = false;
-thread_local uint8_t tl_pendingAckType   = 0;
-thread_local uint16_t tl_pendingPacketId = 0;
+    thread_local bool tl_bAwaitingAck        = false;
+    thread_local uint8_t tl_pendingAckType   = 0;
+    thread_local uint16_t tl_pendingPacketId = 0;
 } // namespace
 
 MqttDriver::MqttDriver(Config config)

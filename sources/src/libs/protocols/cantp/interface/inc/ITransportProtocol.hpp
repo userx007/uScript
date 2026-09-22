@@ -42,64 +42,63 @@ enum class TpProtocol : uint8_t {
  *     protocols use it to address the frames they build (SF/FF/CF on txId,
  *     Flow-Control / TP.CM / TP.DT on the matching id).
  */
-class ITransportProtocol
-{
-public:
-    virtual ~ITransportProtocol() = default;
+class ITransportProtocol {
+    public:
+        virtual ~ITransportProtocol() = default;
 
-    /**
-     * @brief Segment (if needed) and transmit @p data over @p driver.
-     *
-     * For payloads that fit in a single frame this degrades to exactly
-     * one tout_write() call — functionally equivalent to the current
-     * TpProtocol::NONE path, just wrapped in protocol framing (e.g. the
-     * ISO-TP Single-Frame PCI byte).
-     *
-     * @param driver           Concrete ICommDriver to send frames over.
-     * @param u32WriteTimeout  Overall operation deadline in milliseconds
-     *                         (applies to the whole segmented transfer,
-     *                         not to each individual frame).
-     * @param data             Full message to transmit (may exceed one frame).
-     * @param txId             CAN ID to stamp on frames we transmit
-     *                         (SF / FF / CF, or Flow-Control replies when
-     *                         acting as the receiving side of a handshake).
-     * @param rxId             CAN ID to filter handshake frames coming back
-     *                         from the peer (e.g. ISO-TP Flow Control,
-     *                         J1939 CTS/EOM). May be empty for protocols /
-     *                         payload sizes that need no peer handshake.
-     * @return WriteResult; bytes_written == data.size() on full success.
-     */
-    virtual ICommDriver::WriteResult send(
-        const ICommDriver &driver,
-        uint32_t u32WriteTimeout,
-        std::span<const uint8_t> data,
-        std::string_view txId,
-        std::string_view rxId = {}) const = 0;
+        /**
+         * @brief Segment (if needed) and transmit @p data over @p driver.
+         *
+         * For payloads that fit in a single frame this degrades to exactly
+         * one tout_write() call — functionally equivalent to the current
+         * TpProtocol::NONE path, just wrapped in protocol framing (e.g. the
+         * ISO-TP Single-Frame PCI byte).
+         *
+         * @param driver           Concrete ICommDriver to send frames over.
+         * @param u32WriteTimeout  Overall operation deadline in milliseconds
+         *                         (applies to the whole segmented transfer,
+         *                         not to each individual frame).
+         * @param data             Full message to transmit (may exceed one frame).
+         * @param txId             CAN ID to stamp on frames we transmit
+         *                         (SF / FF / CF, or Flow-Control replies when
+         *                         acting as the receiving side of a handshake).
+         * @param rxId             CAN ID to filter handshake frames coming back
+         *                         from the peer (e.g. ISO-TP Flow Control,
+         *                         J1939 CTS/EOM). May be empty for protocols /
+         *                         payload sizes that need no peer handshake.
+         * @return WriteResult; bytes_written == data.size() on full success.
+         */
+        virtual ICommDriver::WriteResult send(
+            const ICommDriver &driver,
+            uint32_t u32WriteTimeout,
+            std::span<const uint8_t> data,
+            std::string_view txId,
+            std::string_view rxId = {}) const = 0;
 
-    /**
-     * @brief Receive and reassemble a (possibly multi-frame) message into @p buffer.
-     *
-     * @param driver          Concrete ICommDriver to receive frames from.
-     * @param u32ReadTimeout  Overall operation deadline in milliseconds.
-     * @param buffer          Destination for the reassembled message.
-     *                        Status::BUFFER_OVERFLOW if the announced
-     *                        message length exceeds buffer.size().
-     * @param rxId            CAN ID identifying frames belonging to this
-     *                        message (SF / FF / CF from the peer).
-     * @param txId            CAN ID to stamp on any handshake frames we
-     *                        send back to the peer (Flow Control, CTS...).
-     *                        May be empty for protocols that never talk back.
-     * @return ReadResult; bytes_read == reassembled message length on success.
-     */
-    virtual ICommDriver::ReadResult receive(
-        const ICommDriver &driver,
-        uint32_t u32ReadTimeout,
-        std::span<uint8_t> buffer,
-        std::string_view rxId,
-        std::string_view txId = {}) const = 0;
+        /**
+         * @brief Receive and reassemble a (possibly multi-frame) message into @p buffer.
+         *
+         * @param driver          Concrete ICommDriver to receive frames from.
+         * @param u32ReadTimeout  Overall operation deadline in milliseconds.
+         * @param buffer          Destination for the reassembled message.
+         *                        Status::BUFFER_OVERFLOW if the announced
+         *                        message length exceeds buffer.size().
+         * @param rxId            CAN ID identifying frames belonging to this
+         *                        message (SF / FF / CF from the peer).
+         * @param txId            CAN ID to stamp on any handshake frames we
+         *                        send back to the peer (Flow Control, CTS...).
+         *                        May be empty for protocols that never talk back.
+         * @return ReadResult; bytes_read == reassembled message length on success.
+         */
+        virtual ICommDriver::ReadResult receive(
+            const ICommDriver &driver,
+            uint32_t u32ReadTimeout,
+            std::span<uint8_t> buffer,
+            std::string_view rxId,
+            std::string_view txId = {}) const = 0;
 
-    /** @brief Identifies which protocol this instance implements. */
-    virtual TpProtocol id() const         = 0;
+        /** @brief Identifies which protocol this instance implements. */
+        virtual TpProtocol id() const         = 0;
 };
 
 /**

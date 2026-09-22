@@ -113,10 +113,9 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
     //   Rule 2 (captureGroup=1) — '…' including quotes   (string colour)
     // The lookbehind (?<![A-Za-z0-9_]) prevents matching letters that are
     // part of an identifier (e.g. the 'H' in "MATCH").
-    struct Dec
-    {
-        const char *letters;
-        const char *pfxColor;
+    struct Dec {
+            const char *letters;
+            const char *pfxColor;
     };
 
     static constexpr Dec decs[] = {

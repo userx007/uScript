@@ -76,204 +76,202 @@ enum class I2cSpeed : int {
  *
  * @note Prefer using tout_read_i2c() which accepts this struct directly.
  */
-struct I2cReadOptions
-{
-    uint8_t devAddr   = 0x00; /**< 7-bit I2C device address (un-shifted) */
-    uint16_t writeLen = 0;    /**< Bytes at the front of buffer to write before reading */
+struct I2cReadOptions {
+        uint8_t devAddr   = 0x00; /**< 7-bit I2C device address (un-shifted) */
+        uint16_t writeLen = 0;    /**< Bytes at the front of buffer to write before reading */
 };
 
 // ---------------------------------------------------------------------------
 
-class CH347I2C : public ICommDriver
-{
-public:
-    // -----------------------------------------------------------------------
-    // Constants
-    // -----------------------------------------------------------------------
-    static constexpr uint32_t I2C_READ_DEFAULT_TIMEOUT  = 5000; /**< ms */
-    static constexpr uint32_t I2C_WRITE_DEFAULT_TIMEOUT = 5000; /**< ms */
+class CH347I2C : public ICommDriver {
+    public:
+        // -----------------------------------------------------------------------
+        // Constants
+        // -----------------------------------------------------------------------
+        static constexpr uint32_t I2C_READ_DEFAULT_TIMEOUT  = 5000; /**< ms */
+        static constexpr uint32_t I2C_WRITE_DEFAULT_TIMEOUT = 5000; /**< ms */
 
-    // -----------------------------------------------------------------------
-    // Construction / destruction
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Construction / destruction
+        // -----------------------------------------------------------------------
 
-    CH347I2C()                                          = default;
+        CH347I2C()                                          = default;
 
-    /**
-     * @brief Construct and immediately open a CH347 I2C device.
-     *
-     * @param strDevice        Device path (Linux) or decimal index string (Windows).
-     * @param speed            Initial bus speed
-     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-     *                         describeConnection()), supplied separately from
-     *                         strDevice — e.g. "/dev/ch34xpis0" or a friendlier name.
-     */
-    explicit CH347I2C(const std::string &strDevice,
-                      I2cSpeed speed                      = I2cSpeed::Fast,
-                      const std::string &strIdentityLabel = {})
-        : m_iHandle(CH347_INVALID_HANDLE)
-        , m_strIdentityLabel(strIdentityLabel)
-    {
-        open(strDevice, speed);
-    }
+        /**
+         * @brief Construct and immediately open a CH347 I2C device.
+         *
+         * @param strDevice        Device path (Linux) or decimal index string (Windows).
+         * @param speed            Initial bus speed
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately from
+         *                         strDevice — e.g. "/dev/ch34xpis0" or a friendlier name.
+         */
+        explicit CH347I2C(const std::string &strDevice,
+                          I2cSpeed speed                      = I2cSpeed::Fast,
+                          const std::string &strIdentityLabel = {})
+            : m_iHandle(CH347_INVALID_HANDLE)
+            , m_strIdentityLabel(strIdentityLabel)
+        {
+            open(strDevice, speed);
+        }
 
-    virtual ~CH347I2C()
-    {
-        close();
-    }
+        virtual ~CH347I2C()
+        {
+            close();
+        }
 
-    // -----------------------------------------------------------------------
-    // Lifecycle
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Lifecycle
+        // -----------------------------------------------------------------------
 
-    Status open(const std::string &strDevice, I2cSpeed speed = I2cSpeed::Fast);
-    Status close();
-    bool is_open() const override;
+        Status open(const std::string &strDevice, I2cSpeed speed = I2cSpeed::Fast);
+        Status close();
+        bool is_open() const override;
 
-    /**
-     * @brief Describe this connection for the GUI comm-dump panel.
-     *
-     * xtra_params is ignored here — same as tout_read()/tout_write() above:
-     * this driver's per-transaction device address travels inside the buffer
-     * itself (buffer[0] / I2cReadOptions::devAddr), not through xtra_params,
-     * so describeConnection() can only report the static bus identity.
-     */
-    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-    {
-        return commdump_details(CommFamily::I2C,
-                                m_strIdentityLabel.empty() ? "CH347 I2C" : m_strIdentityLabel);
-    }
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         *
+         * xtra_params is ignored here — same as tout_read()/tout_write() above:
+         * this driver's per-transaction device address travels inside the buffer
+         * itself (buffer[0] / I2cReadOptions::devAddr), not through xtra_params,
+         * so describeConnection() can only report the static bus identity.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return commdump_details(CommFamily::I2C,
+                                    m_strIdentityLabel.empty() ? "CH347 I2C" : m_strIdentityLabel);
+        }
 
-    // -----------------------------------------------------------------------
-    // Configuration helpers (callable after open)
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Configuration helpers (callable after open)
+        // -----------------------------------------------------------------------
 
-    /** Change I2C bus speed (no need to re-open). */
-    Status set_speed(I2cSpeed speed);
+        /** Change I2C bus speed (no need to re-open). */
+        Status set_speed(I2cSpeed speed);
 
-    /**
-     * @brief Enable / disable I2C clock stretching.
-     * @param enable  true = slave may hold SCL low to pause the master
-     */
-    Status set_clock_stretch(bool enable);
+        /**
+         * @brief Enable / disable I2C clock stretching.
+         * @param enable  true = slave may hold SCL low to pause the master
+         */
+        Status set_clock_stretch(bool enable);
 
-    /**
-     * @brief Set signal drive mode.
-     * @param mode  0 = open-drain (standard), 1 = push-pull
-     */
-    Status set_drive_mode(uint8_t mode);
+        /**
+         * @brief Set signal drive mode.
+         * @param mode  0 = open-drain (standard), 1 = push-pull
+         */
+        Status set_drive_mode(uint8_t mode);
 
-    /**
-     * @brief Control whether the master continues after a NACK.
-     * @param mode  0 = stop on NACK, 1 = continue on NACK
-     */
-    Status set_ignore_nack(uint8_t mode);
+        /**
+         * @brief Control whether the master continues after a NACK.
+         * @param mode  0 = stop on NACK, 1 = continue on NACK
+         */
+        Status set_ignore_nack(uint8_t mode);
 
-    /**
-     * @brief Insert a millisecond-level delay between I2C transactions.
-     * @param iDelay  0-500 ms
-     */
-    Status set_inter_transaction_delay_ms(int iDelay);
+        /**
+         * @brief Insert a millisecond-level delay between I2C transactions.
+         * @param iDelay  0-500 ms
+         */
+        Status set_inter_transaction_delay_ms(int iDelay);
 
-    /**
-     * @brief Fine-tune the delay between the 8th and 9th (ACK) clock edge.
-     * @param iDelayUs  0-0x3FF microseconds
-     */
-    Status set_ack_clock_delay_us(int iDelayUs);
+        /**
+         * @brief Fine-tune the delay between the 8th and 9th (ACK) clock edge.
+         * @param iDelayUs  0-0x3FF microseconds
+         */
+        Status set_ack_clock_delay_us(int iDelayUs);
 
-    // -----------------------------------------------------------------------
-    // ICommDriver interface
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // ICommDriver interface
+        // -----------------------------------------------------------------------
 
-    /**
-     * @brief Combined-write-then-read I2C transaction.
-     *
-     * @param u32ReadTimeout  Timeout hint in ms (passed to CH34xSetTimeout
-     *                        if non-zero and different from the current value).
-     * @param buffer          Layout:
-     *                          [0..writeLen-1] bytes to send  (write phase)
-     *                          On return, [0..readLen-1] holds received bytes
-     *                          where readLen = buffer.size() - writeLen.
-     *                          If I2cReadOptions::writeLen == 0 the whole
-     *                          buffer is used as the read destination.
-     * @param options         ReadMode::Exact required.
-     *                        options.token must be a 1-byte span whose single
-     *                        byte is the 7-bit device address (un-shifted).
-     *                        Alternatively use tout_read_i2c() below.
-     * @param xtra_params     Optional driver-specific addressing hint (ignored)
-     *                        the parameter is accepted for interface conformance).
-     * @return ReadResult { status, readBytesReceived, false }
-     *
-     * @note ReadMode::UntilDelimiter / UntilToken → { Status::NotSupported, 0, false }
-     */
-    ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t> buffer,
-                         const ReadOptions &options,
-                         std::string_view xtra_params = {},
-                         std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Combined-write-then-read I2C transaction.
+         *
+         * @param u32ReadTimeout  Timeout hint in ms (passed to CH34xSetTimeout
+         *                        if non-zero and different from the current value).
+         * @param buffer          Layout:
+         *                          [0..writeLen-1] bytes to send  (write phase)
+         *                          On return, [0..readLen-1] holds received bytes
+         *                          where readLen = buffer.size() - writeLen.
+         *                          If I2cReadOptions::writeLen == 0 the whole
+         *                          buffer is used as the read destination.
+         * @param options         ReadMode::Exact required.
+         *                        options.token must be a 1-byte span whose single
+         *                        byte is the 7-bit device address (un-shifted).
+         *                        Alternatively use tout_read_i2c() below.
+         * @param xtra_params     Optional driver-specific addressing hint (ignored)
+         *                        the parameter is accepted for interface conformance).
+         * @return ReadResult { status, readBytesReceived, false }
+         *
+         * @note ReadMode::UntilDelimiter / UntilToken → { Status::NotSupported, 0, false }
+         */
+        ReadResult tout_read(uint32_t u32ReadTimeout,
+                             std::span<uint8_t> buffer,
+                             const ReadOptions &options,
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok     = {}) const override;
 
-    /**
-     * @brief Pure-write I2C transaction.
-     *
-     * @param u32WriteTimeout Timeout hint in ms.
-     * @param buffer          buffer[0] = (devAddr << 1) | 0  (WRITE bit included)
-     *                        buffer[1..] = register address + payload
-     * @param xtra_params     Optional driver-specific addressing hint (ignored)
-     *                        the parameter is accepted for interface conformance).
-     * @return WriteResult { status, bytesWritten }
-     */
-    WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {},
-                           std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Pure-write I2C transaction.
+         *
+         * @param u32WriteTimeout Timeout hint in ms.
+         * @param buffer          buffer[0] = (devAddr << 1) | 0  (WRITE bit included)
+         *                        buffer[1..] = register address + payload
+         * @param xtra_params     Optional driver-specific addressing hint (ignored)
+         *                        the parameter is accepted for interface conformance).
+         * @return WriteResult { status, bytesWritten }
+         */
+        WriteResult tout_write(uint32_t u32WriteTimeout,
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok     = {}) const override;
 
-    // -----------------------------------------------------------------------
-    // Extended helpers (I2C-specific, not part of ICommDriver)
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // Extended helpers (I2C-specific, not part of ICommDriver)
+        // -----------------------------------------------------------------------
 
-    /**
-     * @brief Combined write-then-read with explicit options struct.
-     *
-     * @param buffer     Write bytes followed by (overwritten) read bytes
-     * @param opts       Device address and write/read split
-     * @param retAck     If non-null, receives the number of ACKs seen
-     * @return ReadResult { status, readBytesReceived, false }
-     */
-    ReadResult tout_read_i2c(std::span<uint8_t> buffer,
-                             const I2cReadOptions &opts,
-                             int *retAck = nullptr) const;
+        /**
+         * @brief Combined write-then-read with explicit options struct.
+         *
+         * @param buffer     Write bytes followed by (overwritten) read bytes
+         * @param opts       Device address and write/read split
+         * @param retAck     If non-null, receives the number of ACKs seen
+         * @return ReadResult { status, readBytesReceived, false }
+         */
+        ReadResult tout_read_i2c(std::span<uint8_t> buffer,
+                                 const I2cReadOptions &opts,
+                                 int *retAck = nullptr) const;
 
-    // -----------------------------------------------------------------------
-    // EEPROM helpers
-    // -----------------------------------------------------------------------
+        // -----------------------------------------------------------------------
+        // EEPROM helpers
+        // -----------------------------------------------------------------------
 
-    /**
-     * @brief Read bytes from an I2C EEPROM connected to the CH347.
-     *
-     * @param eepromType  One of the EEPROM_TYPE enum values (ID_24C01 … ID_24C4096)
-     * @param iAddr       Start address within the EEPROM
-     * @param buffer      Destination buffer; reads buffer.size() bytes
-     * @return Status
-     */
-    Status read_eeprom(EEPROM_TYPE eepromType,
-                       int iAddr,
-                       std::span<uint8_t> buffer) const;
+        /**
+         * @brief Read bytes from an I2C EEPROM connected to the CH347.
+         *
+         * @param eepromType  One of the EEPROM_TYPE enum values (ID_24C01 … ID_24C4096)
+         * @param iAddr       Start address within the EEPROM
+         * @param buffer      Destination buffer; reads buffer.size() bytes
+         * @return Status
+         */
+        Status read_eeprom(EEPROM_TYPE eepromType,
+                           int iAddr,
+                           std::span<uint8_t> buffer) const;
 
-    /**
-     * @brief Write bytes to an I2C EEPROM connected to the CH347.
-     *
-     * @param eepromType  One of the EEPROM_TYPE enum values
-     * @param iAddr       Start address within the EEPROM
-     * @param buffer      Source data; writes buffer.size() bytes
-     * @return Status
-     */
-    Status write_eeprom(EEPROM_TYPE eepromType,
-                        int iAddr,
-                        std::span<const uint8_t> buffer) const;
+        /**
+         * @brief Write bytes to an I2C EEPROM connected to the CH347.
+         *
+         * @param eepromType  One of the EEPROM_TYPE enum values
+         * @param iAddr       Start address within the EEPROM
+         * @param buffer      Source data; writes buffer.size() bytes
+         * @return Status
+         */
+        Status write_eeprom(EEPROM_TYPE eepromType,
+                            int iAddr,
+                            std::span<const uint8_t> buffer) const;
 
-private:
-    CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
-    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
+    private:
+        CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
+        std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 };
 
 #endif // U_CH347_I2C_DRIVER_H

@@ -71,70 +71,59 @@ bool VectorEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         if (v.empty()) {
             return true;
         }
-        return setDeviceHw(v);
-    });
+        return setDeviceHw(v); });
     sSettings.Bind(VECTOR_ETH_DEVICE_SERIAL, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setDeviceSerial(v);
-    });
+        return setDeviceSerial(v); });
     sSettings.Bind(VECTOR_ETH_DEVICE_NAME, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setDeviceName(v);
-    });
+        return setDeviceName(v); });
     sSettings.Bind(VECTOR_ETH_DEVICE_HWINDEX, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setDeviceHwIndex(v);
-    });
+        return setDeviceHwIndex(v); });
     sSettings.Bind(VECTOR_ETH_DEVICE_HWCH, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setDeviceHwChannel(v);
-    });
+        return setDeviceHwChannel(v); });
     sSettings.Bind(VECTOR_ETH_DEST_MAC, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setDestMac(v);
-    });
+        return setDestMac(v); });
     sSettings.Bind(VECTOR_ETH_ETHERTYPE, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setEtherType(v);
-    });
+        return setEtherType(v); });
     sSettings.Bind(VECTOR_ETH_FILTER_SRC_MAC, [this](const std::string &v) { return setRxFilterSrcMac(v); });
     sSettings.Bind(VECTOR_ETH_FILTER_TYPE, [this](const std::string &v) { return setRxFilterEtherType(v); });
     sSettings.Bind(VECTOR_ETH_SPEED, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setEthSpeed(v);
-    });
+        return setEthSpeed(v); });
     sSettings.Bind(VECTOR_ETH_DUPLEX, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setEthDuplex(v);
-    });
+        return setEthDuplex(v); });
     sSettings.Bind(VECTOR_ETH_CONNECTOR, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setEthConnector(v);
-    });
+        return setEthConnector(v); });
     sSettings.Bind(VECTOR_ETH_PHY, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setEthPhy(v);
-    });
+        return setEthPhy(v); });
     sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
     sSettings.Bind(READ_BUF_SIZE, [this](const std::string &v) { return setEthReadBufferSize(v); });

@@ -22,17 +22,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED Enc28J60NetPlugin *pluginEntry()
-{
-    return new Enc28J60NetPlugin();
-}
-
-EXPORTED void pluginExit(Enc28J60NetPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED Enc28J60NetPlugin *pluginEntry()
+    {
+        return new Enc28J60NetPlugin();
     }
-}
+
+    EXPORTED void pluginExit(Enc28J60NetPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

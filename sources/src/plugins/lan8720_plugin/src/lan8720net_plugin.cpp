@@ -22,17 +22,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED Lan8720NetPlugin *pluginEntry()
-{
-    return new Lan8720NetPlugin();
-}
-
-EXPORTED void pluginExit(Lan8720NetPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED Lan8720NetPlugin *pluginEntry()
+    {
+        return new Lan8720NetPlugin();
     }
-}
+
+    EXPORTED void pluginExit(Lan8720NetPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

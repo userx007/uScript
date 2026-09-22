@@ -34,24 +34,24 @@
  * @tparam TDriver Type of communication driver
  */
 template <typename TScriptEntries, typename TDriver = void>
-class CommScriptRunner : public ScriptRunner<TScriptEntries>
-{
-public:
-    /**
-     * @brief Construct a communication-enabled script runner
-     * @param shpScriptReader Script reader component
-     * @param shvScriptValidator Script validator component
-     * @param shvScriptInterpreter Communication-enabled script interpreter (Level 2+)
-     */
-    explicit CommScriptRunner(std::shared_ptr<IScriptReader> shpScriptReader,
-                              std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
-                              std::shared_ptr<ICommScriptInterpreter<TScriptEntries, TDriver>> shvScriptInterpreter)
-        : ScriptRunner<TScriptEntries>(shpScriptReader, shvScriptValidator, shvScriptInterpreter)
-        , m_shpScriptInterpreterComm(std::move(shvScriptInterpreter))
-    {}
+class CommScriptRunner : public ScriptRunner<TScriptEntries> {
+    public:
+        /**
+         * @brief Construct a communication-enabled script runner
+         * @param shpScriptReader Script reader component
+         * @param shvScriptValidator Script validator component
+         * @param shvScriptInterpreter Communication-enabled script interpreter (Level 2+)
+         */
+        explicit CommScriptRunner(std::shared_ptr<IScriptReader> shpScriptReader,
+                                  std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
+                                  std::shared_ptr<ICommScriptInterpreter<TScriptEntries, TDriver>> shvScriptInterpreter)
+            : ScriptRunner<TScriptEntries>(shpScriptReader, shvScriptValidator, shvScriptInterpreter)
+            , m_shpScriptInterpreterComm(std::move(shvScriptInterpreter))
+        {
+        }
 
-private:
-    std::shared_ptr<ICommScriptInterpreter<TScriptEntries, TDriver>> m_shpScriptInterpreterComm;
+    private:
+        std::shared_ptr<ICommScriptInterpreter<TScriptEntries, TDriver>> m_shpScriptInterpreterComm;
 };
 
 #endif // SCRIPTRUNNER_COMM_HPP

@@ -24,15 +24,15 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED FT2232Plugin *pluginEntry()
-{
-    return new FT2232Plugin();
-}
+    EXPORTED FT2232Plugin *pluginEntry()
+    {
+        return new FT2232Plugin();
+    }
 
-EXPORTED void pluginExit(FT2232Plugin *p)
-{
-    delete p;
-}
+    EXPORTED void pluginExit(FT2232Plugin *p)
+    {
+        delete p;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

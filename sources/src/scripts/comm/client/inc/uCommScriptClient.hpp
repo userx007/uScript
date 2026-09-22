@@ -35,86 +35,86 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 template <typename TDriver>
-class CommScriptClient
-{
-public:
-    using SendFunc = typename CommScriptInterpreter<TDriver>::SendFunc;
-    using RecvFunc = typename CommScriptInterpreter<TDriver>::RecvFunc;
+class CommScriptClient {
+    public:
+        using SendFunc = typename CommScriptInterpreter<TDriver>::SendFunc;
+        using RecvFunc = typename CommScriptInterpreter<TDriver>::RecvFunc;
 
-    explicit CommScriptClient(
-        const std::string &strScriptPathName,
-        std::shared_ptr<const TDriver> shpDriver,
-        std::string strPluginName,
-        size_t szMaxRecvSize       = PLUGIN_DEFAULT_RECEIVE_SIZE,
-        uint32_t u32DefaultTimeout = 5000,
-        size_t szDelay             = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY,
-        SendFunc pfsend            = SendFunc{},
-        RecvFunc pfrecv            = RecvFunc{},
-        std::stop_token stop_tok   = {})
-        : m_shpCommScriptRunner(std::make_shared<CommScriptRunner<CommCommandsType, TDriver>>(
-              std::make_shared<ScriptReader>(strScriptPathName),
-              std::make_shared<CommScriptValidator>(std::make_shared<CommScriptCommandValidator>()),
-              std::make_shared<CommScriptInterpreter<TDriver>>(shpDriver, std::move(strPluginName), szMaxRecvSize,
-                                                               u32DefaultTimeout, szDelay, strScriptPathName,
-                                                               std::move(pfsend), std::move(pfrecv), stop_tok)))
-        , m_strScriptPathName(strScriptPathName)
-    {}
-
-    bool execute(bool bRealExec)
-    {
-        static const char *pstrCtx = "COMM script";
-        utime::Timer timer(pstrCtx);
-
-        if (!bRealExec) {
-            /* Core dry-run pass: read, validate, and populate the per-path
-             * snapshot cache in CommScriptInterpreter. No device I/O occurs. */
-            return m_shpCommScriptRunner->runScript(pstrCtx, false, false);
+        explicit CommScriptClient(
+            const std::string &strScriptPathName,
+            std::shared_ptr<const TDriver> shpDriver,
+            std::string strPluginName,
+            size_t szMaxRecvSize       = PLUGIN_DEFAULT_RECEIVE_SIZE,
+            uint32_t u32DefaultTimeout = 5000,
+            size_t szDelay             = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY,
+            SendFunc pfsend            = SendFunc{},
+            RecvFunc pfrecv            = RecvFunc{},
+            std::stop_token stop_tok   = {})
+            : m_shpCommScriptRunner(std::make_shared<CommScriptRunner<CommCommandsType, TDriver>>(
+                  std::make_shared<ScriptReader>(strScriptPathName),
+                  std::make_shared<CommScriptValidator>(std::make_shared<CommScriptCommandValidator>()),
+                  std::make_shared<CommScriptInterpreter<TDriver>>(shpDriver, std::move(strPluginName), szMaxRecvSize,
+                                                                   u32DefaultTimeout, szDelay, strScriptPathName,
+                                                                   std::move(pfsend), std::move(pfrecv), stop_tok)))
+            , m_strScriptPathName(strScriptPathName)
+        {
         }
 
-        /* Real-execution pass (called by the plugin on every REPEAT iteration).
-         *
-         * The snapshot cache in CommScriptInterpreter is keyed by script path
-         * and was populated during the core dry-run pass via execute(false).
-         * If it already has an entry for this path, skip straight to execution.
-         * Only fall back to a local dry-run if somehow the cache is cold
-         * (e.g. execute(true) called without a prior execute(false)). */
-        if (!CommScriptInterpreter<TDriver>::isCached(m_strScriptPathName)) {
-            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                      LOG_STRING("Cache miss — preparing snapshot for:");
-                      LOG_STRING(m_strScriptPathName));
-            if (false == m_shpCommScriptRunner->runScript(pstrCtx, false, false)) {
-                return false;
+        bool execute(bool bRealExec)
+        {
+            static const char *pstrCtx = "COMM script";
+            utime::Timer timer(pstrCtx);
+
+            if (!bRealExec) {
+                /* Core dry-run pass: read, validate, and populate the per-path
+                 * snapshot cache in CommScriptInterpreter. No device I/O occurs. */
+                return m_shpCommScriptRunner->runScript(pstrCtx, false, false);
             }
-        }
 
-        // Read the thread-local tid set by ScriptInterpreter before doDispatch().
-        // 0 on the main thread → non-threaded LOAD_COMM/CLEAR_COMM protocol.
-        // >0 in a background thread → threaded LOAD_COMM_T/CLEAR_COMM_T protocol.
-        const int tid = get_gui_comm_tid();
+            /* Real-execution pass (called by the plugin on every REPEAT iteration).
+             *
+             * The snapshot cache in CommScriptInterpreter is keyed by script path
+             * and was populated during the core dry-run pass via execute(false).
+             * If it already has an entry for this path, skip straight to execution.
+             * Only fall back to a local dry-run if somehow the cache is cold
+             * (e.g. execute(true) called without a prior execute(false)). */
+            if (!CommScriptInterpreter<TDriver>::isCached(m_strScriptPathName)) {
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                          LOG_STRING("Cache miss — preparing snapshot for:");
+                          LOG_STRING(m_strScriptPathName));
+                if (false == m_shpCommScriptRunner->runScript(pstrCtx, false, false)) {
+                    return false;
+                }
+            }
 
-        if (tid > 0) {
-            gui_notify_load_comm_t(tid, m_strScriptPathName);
-        } else {
-            gui_notify_load_comm(m_strScriptPathName);
-        }
+            // Read the thread-local tid set by ScriptInterpreter before doDispatch().
+            // 0 on the main thread → non-threaded LOAD_COMM/CLEAR_COMM protocol.
+            // >0 in a background thread → threaded LOAD_COMM_T/CLEAR_COMM_T protocol.
+            const int tid = get_gui_comm_tid();
 
-        bool bResult = m_shpCommScriptRunner->runScript(pstrCtx, true, false);
-        // Only clear on success.  On failure the comm view stays loaded
-        // so the red error bar on the failing line remains visible to the user.
-        if (bResult) {
             if (tid > 0) {
-                gui_notify_clear_comm_t(tid);
+                gui_notify_load_comm_t(tid, m_strScriptPathName);
             } else {
-                gui_notify_clear_comm();
+                gui_notify_load_comm(m_strScriptPathName);
             }
+
+            bool bResult = m_shpCommScriptRunner->runScript(pstrCtx, true, false);
+            // Only clear on success.  On failure the comm view stays loaded
+            // so the red error bar on the failing line remains visible to the user.
+            if (bResult) {
+                if (tid > 0) {
+                    gui_notify_clear_comm_t(tid);
+                } else {
+                    gui_notify_clear_comm();
+                }
+            }
+
+            return bResult;
         }
 
-        return bResult;
-    }
-
-private:
-    std::shared_ptr<CommScriptRunner<CommCommandsType, TDriver>> m_shpCommScriptRunner;
-    std::string m_strScriptPathName;
+    private:
+        std::shared_ptr<CommScriptRunner<CommCommandsType, TDriver>> m_shpCommScriptRunner;
+        std::string m_strScriptPathName;
 };
 
 #endif // U_COMM_SCRIPT_CLIENT_HPP

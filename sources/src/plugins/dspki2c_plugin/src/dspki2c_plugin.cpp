@@ -31,17 +31,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED DSPKi2cPlugin *pluginEntry()
-{
-    return new DSPKi2cPlugin();
-}
-
-EXPORTED void pluginExit(DSPKi2cPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED DSPKi2cPlugin *pluginEntry()
+    {
+        return new DSPKi2cPlugin();
     }
-}
+
+    EXPORTED void pluginExit(DSPKi2cPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +212,6 @@ bool DSPKi2cPlugin::m_DSPKI2C_SCAN(const std::string &args, std::stop_token st) 
             }
 
             bRetVal = true;
-
         } catch (const std::bad_alloc &e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
         } catch (const std::exception &e) {

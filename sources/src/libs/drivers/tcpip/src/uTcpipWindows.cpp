@@ -49,43 +49,42 @@
 
 namespace {
 
-// Process-wide Winsock init/teardown. Constructed the first time this
-// translation unit is touched (i.e. before any TCPIP::open() can run,
-// since static init of function-local statics is thread-safe and
-// happens-before their first use) and torn down at process exit.
-class WinsockGuard
-{
-public:
-    WinsockGuard()
+    // Process-wide Winsock init/teardown. Constructed the first time this
+    // translation unit is touched (i.e. before any TCPIP::open() can run,
+    // since static init of function-local statics is thread-safe and
+    // happens-before their first use) and torn down at process exit.
+    class WinsockGuard {
+        public:
+            WinsockGuard()
+            {
+                WSADATA wsaData;
+                m_bOk = (::WSAStartup(MAKEWORD(2, 2), &wsaData) == 0);
+                if (!m_bOk) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WSAStartup() failed"));
+                }
+            }
+
+            ~WinsockGuard()
+            {
+                if (m_bOk) {
+                    ::WSACleanup();
+                }
+            }
+
+            bool ok() const
+            {
+                return m_bOk;
+            }
+
+        private:
+            bool m_bOk = false;
+    };
+
+    WinsockGuard &winsock()
     {
-        WSADATA wsaData;
-        m_bOk = (::WSAStartup(MAKEWORD(2, 2), &wsaData) == 0);
-        if (!m_bOk) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WSAStartup() failed"));
-        }
+        static WinsockGuard sInstance;
+        return sInstance;
     }
-
-    ~WinsockGuard()
-    {
-        if (m_bOk) {
-            ::WSACleanup();
-        }
-    }
-
-    bool ok() const
-    {
-        return m_bOk;
-    }
-
-private:
-    bool m_bOk = false;
-};
-
-WinsockGuard &winsock()
-{
-    static WinsockGuard sInstance;
-    return sInstance;
-}
 
 } // namespace
 

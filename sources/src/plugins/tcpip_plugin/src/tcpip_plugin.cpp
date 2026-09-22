@@ -22,17 +22,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED TCPIPPlugin *pluginEntry()
-{
-    return new TCPIPPlugin();
-}
-
-EXPORTED void pluginExit(TCPIPPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED TCPIPPlugin *pluginEntry()
+    {
+        return new TCPIPPlugin();
     }
-}
+
+    EXPORTED void pluginExit(TCPIPPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

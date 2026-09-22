@@ -28,17 +28,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED CH341Plugin *pluginEntry()
-{
-    return new CH341Plugin();
-}
-
-EXPORTED void pluginExit(CH341Plugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED CH341Plugin *pluginEntry()
+    {
+        return new CH341Plugin();
     }
-}
+
+    EXPORTED void pluginExit(CH341Plugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

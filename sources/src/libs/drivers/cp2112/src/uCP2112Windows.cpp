@@ -53,83 +53,83 @@ extern "C" {
 
 namespace {
 
-/**
- * @brief Find the device path of the n-th CP2112 on the system
- *
- * Enumerates the HID device class via SetupAPI, verifies VID/PID via
- * HidD_GetAttributes, and returns the device path string for the
- * requested zero-based index.
- */
-static bool find_cp2112_path(uint8_t deviceIndex, std::wstring &pathOut)
-{
-    GUID hidGuid;
-    HidD_GetHidGuid(&hidGuid);
+    /**
+     * @brief Find the device path of the n-th CP2112 on the system
+     *
+     * Enumerates the HID device class via SetupAPI, verifies VID/PID via
+     * HidD_GetAttributes, and returns the device path string for the
+     * requested zero-based index.
+     */
+    static bool find_cp2112_path(uint8_t deviceIndex, std::wstring &pathOut)
+    {
+        GUID hidGuid;
+        HidD_GetHidGuid(&hidGuid);
 
-    HDEVINFO deviceInfoSet = SetupDiGetClassDevs(
-        &hidGuid, nullptr, nullptr, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
-    if (deviceInfoSet == INVALID_HANDLE_VALUE) {
-        return false;
+        HDEVINFO deviceInfoSet = SetupDiGetClassDevs(
+            &hidGuid, nullptr, nullptr, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+        if (deviceInfoSet == INVALID_HANDLE_VALUE) {
+            return false;
+        }
+
+        SP_DEVICE_INTERFACE_DATA ifaceData;
+        ifaceData.cbSize   = sizeof(SP_DEVICE_INTERFACE_DATA);
+
+        uint8_t matchCount = 0;
+        bool found         = false;
+
+        for (DWORD memberIdx = 0;
+             SetupDiEnumDeviceInterfaces(deviceInfoSet, nullptr, &hidGuid, memberIdx, &ifaceData);
+             ++memberIdx) {
+            DWORD requiredSize = 0;
+            SetupDiGetDeviceInterfaceDetail(
+                deviceInfoSet, &ifaceData, nullptr, 0, &requiredSize, nullptr);
+            if (requiredSize == 0) {
+                continue;
+            }
+
+            std::vector<uint8_t> detailBuf(requiredSize, 0);
+            auto *detail   = reinterpret_cast<SP_DEVICE_INTERFACE_DETAIL_DATA *>(detailBuf.data());
+            detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+
+            if (!SetupDiGetDeviceInterfaceDetail(
+                    deviceInfoSet, &ifaceData, detail, requiredSize, nullptr, nullptr)) {
+                continue;
+            }
+
+            // Open with no read/write access — sufficient for HidD_GetAttributes
+            // and avoids failure when the device is already open exclusively.
+            HANDLE hDev = CreateFileW(
+                detail->DevicePath,
+                0, // no R/W needed for attribute query
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                nullptr, OPEN_EXISTING, 0, nullptr);
+
+            if (hDev == INVALID_HANDLE_VALUE) {
+                continue;
+            }
+
+            HIDD_ATTRIBUTES attrs;
+            attrs.Size    = sizeof(HIDD_ATTRIBUTES);
+            bool isCP2112 = HidD_GetAttributes(hDev, &attrs) &&
+                            attrs.VendorID == CP2112Base::CP2112_VID &&
+                            attrs.ProductID == CP2112Base::CP2112_PID;
+            CloseHandle(hDev);
+
+            if (!isCP2112) {
+                continue;
+            }
+
+            if (matchCount == deviceIndex) {
+                pathOut = detail->DevicePath;
+                found   = true;
+                break;
+            }
+            ++matchCount;
+        }
+
+        SetupDiDestroyDeviceInfoList(deviceInfoSet);
+        return found;
     }
-
-    SP_DEVICE_INTERFACE_DATA ifaceData;
-    ifaceData.cbSize   = sizeof(SP_DEVICE_INTERFACE_DATA);
-
-    uint8_t matchCount = 0;
-    bool found         = false;
-
-    for (DWORD memberIdx = 0;
-         SetupDiEnumDeviceInterfaces(deviceInfoSet, nullptr, &hidGuid, memberIdx, &ifaceData);
-         ++memberIdx) {
-        DWORD requiredSize = 0;
-        SetupDiGetDeviceInterfaceDetail(
-            deviceInfoSet, &ifaceData, nullptr, 0, &requiredSize, nullptr);
-        if (requiredSize == 0) {
-            continue;
-        }
-
-        std::vector<uint8_t> detailBuf(requiredSize, 0);
-        auto *detail   = reinterpret_cast<SP_DEVICE_INTERFACE_DETAIL_DATA *>(detailBuf.data());
-        detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
-
-        if (!SetupDiGetDeviceInterfaceDetail(
-                deviceInfoSet, &ifaceData, detail, requiredSize, nullptr, nullptr)) {
-            continue;
-        }
-
-        // Open with no read/write access — sufficient for HidD_GetAttributes
-        // and avoids failure when the device is already open exclusively.
-        HANDLE hDev = CreateFileW(
-            detail->DevicePath,
-            0, // no R/W needed for attribute query
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
-            nullptr, OPEN_EXISTING, 0, nullptr);
-
-        if (hDev == INVALID_HANDLE_VALUE) {
-            continue;
-        }
-
-        HIDD_ATTRIBUTES attrs;
-        attrs.Size    = sizeof(HIDD_ATTRIBUTES);
-        bool isCP2112 = HidD_GetAttributes(hDev, &attrs) &&
-                        attrs.VendorID == CP2112Base::CP2112_VID &&
-                        attrs.ProductID == CP2112Base::CP2112_PID;
-        CloseHandle(hDev);
-
-        if (!isCP2112) {
-            continue;
-        }
-
-        if (matchCount == deviceIndex) {
-            pathOut = detail->DevicePath;
-            found   = true;
-            break;
-        }
-        ++matchCount;
-    }
-
-    SetupDiDestroyDeviceInfoList(deviceInfoSet);
-    return found;
-}
 
 } // anonymous namespace
 
@@ -326,9 +326,7 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t *buf, size_t len,
     // error, which signals ov.hEvent and wakes WaitForSingleObject()
     // immediately. The callback is deregistered as soon as this object goes
     // out of scope, whichever way the wait below actually ends.
-    std::stop_callback onStop(stop_tok, [this, &ov]() {
-        CancelIoEx(m_hDevice, &ov);
-    });
+    std::stop_callback onStop(stop_tok, [this, &ov]() { CancelIoEx(m_hDevice, &ov); });
 
     // 0 == infinite timeout: block until an interrupt-in report arrives (or
     // the stop_callback above cancels it).

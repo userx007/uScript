@@ -19,94 +19,94 @@ class IScriptCommandValidator;
 //                            PUBLIC INTERFACES                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-class ScriptValidator : public IScriptValidator<ScriptEntriesType>
-{
-public:
-    explicit ScriptValidator(std::shared_ptr<IScriptCommandValidator<Token>> shpCommandValidator)
-        : m_shpCommandValidator(std::move(shpCommandValidator))
-    {}
+class ScriptValidator : public IScriptValidator<ScriptEntriesType> {
+    public:
+        explicit ScriptValidator(std::shared_ptr<IScriptCommandValidator<Token>> shpCommandValidator)
+            : m_shpCommandValidator(std::move(shpCommandValidator))
+        {
+        }
 
-    bool validateScript(std::vector<ScriptRawLine> &vRawLines, ScriptEntriesType &sScriptEntries) override;
+        bool validateScript(std::vector<ScriptRawLine> &vRawLines, ScriptEntriesType &sScriptEntries) override;
 
-private:
-    bool m_validateScriptStatements(std::vector<ScriptRawLine> &vRawLines) noexcept;
-    bool m_HandleLoadPlugin(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleConstantMacro(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleArrayMacro(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleVariableMacro(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleVarMacroInit(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleFormatStmt(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleMathStmt(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleBitstreamStmt(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleBytestreamStmt(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleBitstreamValStmt(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleBytestreamValStmt(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleStreamValStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept;
-    bool m_HandleBitstreamValArrayStmt(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleBytestreamValArrayStmt(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleStreamValArrayStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept;
+    private:
+        bool m_validateScriptStatements(std::vector<ScriptRawLine> &vRawLines) noexcept;
+        bool m_HandleLoadPlugin(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleConstantMacro(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleArrayMacro(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleVariableMacro(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleVarMacroInit(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleFormatStmt(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleMathStmt(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleBitstreamStmt(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleBytestreamStmt(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleBitstreamValStmt(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleBytestreamValStmt(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleStreamValStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept;
+        bool m_HandleBitstreamValArrayStmt(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleBytestreamValArrayStmt(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleStreamValArrayStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept;
 
-    // Shared implementation behind both of the above (see uStreamStatementParser.hpp).
-    bool m_HandleStreamStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept;
-    bool m_HandleCommand(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleCondition(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleLabel(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleRepeat(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleEndRepeat(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleBreak(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleContinue(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandlePrint(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleDelay(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleBreakpoint(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleGeneratorStmt(const ScriptRawLine &rawLine) noexcept;
-    bool m_HandleGeneratorStopAll(const ScriptRawLine &rawLine) noexcept;
+        // Shared implementation behind both of the above (see uStreamStatementParser.hpp).
+        bool m_HandleStreamStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept;
+        bool m_HandleCommand(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleCondition(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleLabel(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleRepeat(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleEndRepeat(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleBreak(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleContinue(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandlePrint(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleDelay(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleBreakpoint(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleGeneratorStmt(const ScriptRawLine &rawLine) noexcept;
+        bool m_HandleGeneratorStopAll(const ScriptRawLine &rawLine) noexcept;
 
-    bool m_preprocessScriptStatements(const ScriptRawLine &rawLine, const Token token) noexcept;
-    bool m_validateConditions() noexcept;
-    bool m_validateLoops() noexcept;
-    bool m_validatePlugins() noexcept;
+        bool m_preprocessScriptStatements(const ScriptRawLine &rawLine, const Token token) noexcept;
+        bool m_validateConditions() noexcept;
+        bool m_validateLoops() noexcept;
+        bool m_validatePlugins() noexcept;
 
-    // Scans every compiled command's raw $macro templates for NAME.SIZE
-    // references and fails validation if NAME is not a declared array
-    // macro (mapArrayMacros). Runs after m_validateScriptStatements so
-    // that all ARRAY_MACRO declarations — regardless of their position
-    // in the file — are already known.
-    bool m_validateArraySizeUsage() noexcept;
+        // Scans every compiled command's raw $macro templates for NAME.SIZE
+        // references and fails validation if NAME is not a declared array
+        // macro (mapArrayMacros). Runs after m_validateScriptStatements so
+        // that all ARRAY_MACRO declarations — regardless of their position
+        // in the file — are already known.
+        bool m_validateArraySizeUsage() noexcept;
 
-    // Walks the compiled command list in source (textual) order tracking
-    // which GENERATOR destination names are currently "started", and
-    // fails validation on:
-    //   - "val ?= GENERATOR STOP" when val has no active generator
-    //     immediately before this line (never started, or already
-    //     stopped since its last start);
-    //   - "GENERATOR STOP ALL" when no generator at all is active
-    //     immediately before this line.
-    // A start (or restart) on an already-started name is NOT an error —
-    // repeated starts without an intervening STOP are the expected way
-    // to relaunch a generator (e.g. from inside a REPEAT body with
-    // different params each iteration). "GENERATOR STOP ALL" clears
-    // every name's started state, same as an individual STOP would.
-    //
-    // This is a static, textual-order check — like m_validateArraySizeUsage()
-    // and m_validateLoops()'s label matching, it does not simulate
-    // IF/GOTO control flow, so a STOP reachable only via a conditional
-    // branch is still paired against the nearest preceding textual start.
-    // Runs after m_validateScriptStatements() so the full command list
-    // (and every GENERATOR node in it) already exists.
-    bool m_validateGeneratorPairing() noexcept;
+        // Walks the compiled command list in source (textual) order tracking
+        // which GENERATOR destination names are currently "started", and
+        // fails validation on:
+        //   - "val ?= GENERATOR STOP" when val has no active generator
+        //     immediately before this line (never started, or already
+        //     stopped since its last start);
+        //   - "GENERATOR STOP ALL" when no generator at all is active
+        //     immediately before this line.
+        // A start (or restart) on an already-started name is NOT an error —
+        // repeated starts without an intervening STOP are the expected way
+        // to relaunch a generator (e.g. from inside a REPEAT body with
+        // different params each iteration). "GENERATOR STOP ALL" clears
+        // every name's started state, same as an individual STOP would.
+        //
+        // This is a static, textual-order check — like m_validateArraySizeUsage()
+        // and m_validateLoops()'s label matching, it does not simulate
+        // IF/GOTO control flow, so a STOP reachable only via a conditional
+        // branch is still paired against the nearest preceding textual start.
+        // Runs after m_validateScriptStatements() so the full command list
+        // (and every GENERATOR node in it) already exists.
+        bool m_validateGeneratorPairing() noexcept;
 
-    bool m_ListStatements() noexcept;
+        bool m_ListStatements() noexcept;
 
-    // Parses a comma-separated element list (the part after [=).
-    // Elements may be quoted with " to include commas inside them.
-    // Leading/trailing whitespace of each element is trimmed.
-    // Quoted delimiters are stripped from the stored value.
-    static bool m_parseArrayElements(const std::string &strList,
-                                     std::vector<std::string> &vElements) noexcept;
+        // Parses a comma-separated element list (the part after [=).
+        // Elements may be quoted with " to include commas inside them.
+        // Leading/trailing whitespace of each element is trimmed.
+        // Quoted delimiters are stripped from the stored value.
+        static bool m_parseArrayElements(const std::string &strList,
+                                         std::vector<std::string> &vElements) noexcept;
 
-    std::shared_ptr<IScriptCommandValidator<Token>> m_shpCommandValidator;
-    ScriptEntriesType *m_sScriptEntries = nullptr;
-    int m_iCurrentSourceLine            = 0; // source line of the statement being compiled
+        std::shared_ptr<IScriptCommandValidator<Token>> m_shpCommandValidator;
+        ScriptEntriesType *m_sScriptEntries = nullptr;
+        int m_iCurrentSourceLine            = 0; // source line of the statement being compiled
 };
 
 #endif // U_SCRIPT_VALIDATOR_HPP

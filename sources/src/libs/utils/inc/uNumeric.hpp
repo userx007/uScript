@@ -50,845 +50,844 @@ typedef SSIZE_T ssize_t;
 
 namespace numeric {
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @namespace concepts
- * @brief Type constraints for numeric conversions
- */
-/*--------------------------------------------------------------------------------------------------------*/
-namespace concepts {
-template <typename T>
-concept SignedInteger = std::is_integral_v<T> && std::is_signed_v<T>;
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @namespace concepts
+     * @brief Type constraints for numeric conversions
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    namespace concepts {
+        template <typename T>
+        concept SignedInteger = std::is_integral_v<T> && std::is_signed_v<T>;
 
-template <typename T>
-concept UnsignedInteger = std::is_integral_v<T> && std::is_unsigned_v<T>;
+        template <typename T>
+        concept UnsignedInteger = std::is_integral_v<T> && std::is_unsigned_v<T>;
 
-template <typename T>
-concept FloatingPoint = std::is_floating_point_v<T>;
+        template <typename T>
+        concept FloatingPoint = std::is_floating_point_v<T>;
 
-} // namespace concepts
+    } // namespace concepts
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @namespace internal
- * @brief Contains internal helper functions for numeric utilities.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-namespace internal {
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @namespace internal
+     * @brief Contains internal helper functions for numeric utilities.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    namespace internal {
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Removes leading and trailing whitespace from a string view (zero-copy).
- *
- * This internal utility function trims whitespace characters from both ends of the input string.
- * Returns a string_view for efficiency - no allocations.
- *
- * @param str The input string view to be trimmed.
- * @return A string_view with leading and trailing whitespace removed.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline constexpr std::string_view trim(std::string_view str) noexcept
-{
-    // Find first non-whitespace character
-    auto start = std::find_if_not(str.begin(), str.end(),
-                                  [](unsigned char c) { return std::isspace(c); });
+        /*--------------------------------------------------------------------------------------------------------*/
+        /**
+         * @brief Removes leading and trailing whitespace from a string view (zero-copy).
+         *
+         * This internal utility function trims whitespace characters from both ends of the input string.
+         * Returns a string_view for efficiency - no allocations.
+         *
+         * @param str The input string view to be trimmed.
+         * @return A string_view with leading and trailing whitespace removed.
+         */
+        /*--------------------------------------------------------------------------------------------------------*/
+        [[nodiscard]] inline constexpr std::string_view trim(std::string_view str) noexcept
+        {
+            // Find first non-whitespace character
+            auto start = std::find_if_not(str.begin(), str.end(),
+                                          [](unsigned char c) { return std::isspace(c); });
 
-    if (start == str.end()) {
-        return std::string_view();
-    }
-
-    // Find last non-whitespace character
-    auto end = std::find_if_not(str.rbegin(), str.rend(),
-                                [](unsigned char c) { return std::isspace(c); })
-                   .base();
-
-    return str.substr(std::distance(str.begin(), start),
-                      std::distance(start, end));
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Detects an explicit numeric base prefix and returns the base along with the stripped string.
- *
- * Recognises only *explicit* base prefixes, per the modern common-language convention shared by
- * Python 3, Rust, Java 7+, JavaScript, and Swift (and C++14 for binary literals):
- * - "0x" or "0X" for hexadecimal (base 16)
- * - "0b" or "0B" for binary (base 2)
- * - "0o" or "0O" for octal (base 8)
- * A bare leading zero with no letter following it (e.g. "0", "0755") is decimal, NOT octal.
- * Legacy C-style *implicit* octal (leading zero implies octal) is intentionally not supported:
- * it silently reinterprets what looks like an ordinary decimal literal and is a well-known
- * historical footgun. If no explicit prefix is found, base 10 is assumed and the view is
- * returned unchanged.
- *
- * This function does not handle a leading sign; see detect_sign_and_base() for that.
- *
- * @param input The input string view potentially containing an explicit base prefix.
- * @return A pair consisting of the detected base and the string view with the prefix removed.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline constexpr std::pair<int, std::string_view>
-detect_base_and_strip_prefix(std::string_view input) noexcept
-{
-    int base              = 10;
-    std::string_view view = input;
-
-    if (view.size() > 2 && view[0] == '0') {
-        char second = view[1];
-        if (second == 'x' || second == 'X') {
-            base = 16;
-            view.remove_prefix(2);
-        } else if (second == 'b' || second == 'B') {
-            base = 2;
-            view.remove_prefix(2);
-        } else if (second == 'o' || second == 'O') {
-            base = 8;
-            view.remove_prefix(2);
-        }
-    }
-
-    return {base, view};
-}
-
-} // namespace internal
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Result of detect_sign_and_base(): the decoded sign, numeric base, and remaining digit body.
- *
- * `body` contains only the digits to be handed to std::from_chars — no sign, no base prefix.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-struct PrefixInfo
-{
-    bool bNegative = false;
-    int iBase      = 10;
-    std::string_view body;
-};
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Unified, sign-aware numeric literal prefix detector — the single source of truth for how
- *        this codebase recognises signed/hex/binary/octal integer literals.
- *
- * Grammar (shared by every integer-parsing entry point in this file):
- *   [ '+' | '-' ]  ( "0x" | "0X" ) hex-digits
- *                | ( "0b" | "0B" ) binary-digits
- *                | ( "0o" | "0O" ) octal-digits
- *                | decimal-digits
- *
- * The optional sign is recognised *before* the base prefix, so "-0x10" is a valid negative
- * hex literal (== -16), unlike a naive prefix check anchored to input[0]. No implicit octal;
- * see detect_base_and_strip_prefix() for the rationale. Does not trim whitespace — callers are
- * expected to have already trimmed (see internal::trim()).
- *
- * @param input The (already-trimmed) input string view.
- * @return A PrefixInfo describing the sign, base, and remaining digit body.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline constexpr PrefixInfo detect_sign_and_base(std::string_view input) noexcept
-{
-    std::string_view view = input;
-    bool bNeg             = false;
-
-    if (!view.empty() && (view[0] == '+' || view[0] == '-')) {
-        bNeg = (view[0] == '-');
-        view.remove_prefix(1);
-    }
-
-    auto [base, body] = internal::detect_base_and_strip_prefix(view);
-    return {bNeg, base, body};
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief True if the (already-trimmed) token has an explicit "0x"/"0b"/"0o" base prefix
- *        (optionally preceded by a sign). False for plain decimal tokens, including those
- *        with a bare leading zero.
- *
- * Convenience wrapper around detect_sign_and_base(), useful for callers that need to decide
- * between an integer and a floating-point interpretation of a token before actually parsing it
- * (a floating-point literal never carries a base prefix).
- *
- * @param input The (already-trimmed) input string view.
- * @return True if an explicit base prefix is present.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline constexpr bool has_explicit_base_prefix(std::string_view input) noexcept
-{
-    return detect_sign_and_base(input).iBase != 10;
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a signed integer of type T with detailed error information.
- *
- * This function trims the input string, then uses detect_sign_and_base() to recognise an
- * optional leading sign and an explicit "0x"/"0b"/"0o" base prefix (in that order — so signed
- * prefixed literals like "-0x10" work), and converts the remaining digits via `std::from_chars`,
- * range-checking the result against T.
- *
- * @tparam T A signed integer type (e.g., int8_t, int32_t).
- * @param input The input string to convert.
- * @param output Reference to the variable where the result will be stored.
- * @return True if the conversion was successful, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-template <concepts::SignedInteger T>
-[[nodiscard]] bool string_to_signed(std::string_view input, T &output) noexcept
-{
-    std::string_view trimmed = internal::trim(input);
-    if (trimmed.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Input is empty"));
-        return false;
-    }
-
-    const PrefixInfo lit = detect_sign_and_base(trimmed);
-    if (lit.body.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
-        return false;
-    }
-
-    // Parse the unsigned magnitude first (the sign was already consumed above), then apply the
-    // sign with an explicit range check. This is what allows "-0x10" to work: from_chars is never
-    // asked to deal with a sign, so it can't reject a prefix that follows one.
-    using UT = std::make_unsigned_t<T>;
-    UT magnitude{};
-    auto [ptr, ec] = std::from_chars(lit.body.data(), lit.body.data() + lit.body.size(), magnitude, lit.iBase);
-
-    if (ec == std::errc() && ptr == lit.body.data() + lit.body.size()) {
-        constexpr UT maxPositive  = static_cast<UT>(std::numeric_limits<T>::max());
-        constexpr UT maxMagnitude = maxPositive + UT{1}; // abs(numeric_limits<T>::min())
-
-        if (lit.bNegative) {
-            if (magnitude > maxMagnitude) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
-                return false;
+            if (start == str.end()) {
+                return std::string_view();
             }
-            // Unsigned negate-then-cast is well-defined (two's complement) and correctly handles
-            // the numeric_limits<T>::min() edge case, unlike "-static_cast<T>(magnitude)".
-            output = static_cast<T>(static_cast<UT>(0) - magnitude);
+
+            // Find last non-whitespace character
+            auto end = std::find_if_not(str.rbegin(), str.rend(),
+                                        [](unsigned char c) { return std::isspace(c); })
+                           .base();
+
+            return str.substr(std::distance(str.begin(), start),
+                              std::distance(start, end));
+        }
+
+        /*--------------------------------------------------------------------------------------------------------*/
+        /**
+         * @brief Detects an explicit numeric base prefix and returns the base along with the stripped string.
+         *
+         * Recognises only *explicit* base prefixes, per the modern common-language convention shared by
+         * Python 3, Rust, Java 7+, JavaScript, and Swift (and C++14 for binary literals):
+         * - "0x" or "0X" for hexadecimal (base 16)
+         * - "0b" or "0B" for binary (base 2)
+         * - "0o" or "0O" for octal (base 8)
+         * A bare leading zero with no letter following it (e.g. "0", "0755") is decimal, NOT octal.
+         * Legacy C-style *implicit* octal (leading zero implies octal) is intentionally not supported:
+         * it silently reinterprets what looks like an ordinary decimal literal and is a well-known
+         * historical footgun. If no explicit prefix is found, base 10 is assumed and the view is
+         * returned unchanged.
+         *
+         * This function does not handle a leading sign; see detect_sign_and_base() for that.
+         *
+         * @param input The input string view potentially containing an explicit base prefix.
+         * @return A pair consisting of the detected base and the string view with the prefix removed.
+         */
+        /*--------------------------------------------------------------------------------------------------------*/
+        [[nodiscard]] inline constexpr std::pair<int, std::string_view>
+        detect_base_and_strip_prefix(std::string_view input) noexcept
+        {
+            int base              = 10;
+            std::string_view view = input;
+
+            if (view.size() > 2 && view[0] == '0') {
+                char second = view[1];
+                if (second == 'x' || second == 'X') {
+                    base = 16;
+                    view.remove_prefix(2);
+                } else if (second == 'b' || second == 'B') {
+                    base = 2;
+                    view.remove_prefix(2);
+                } else if (second == 'o' || second == 'O') {
+                    base = 8;
+                    view.remove_prefix(2);
+                }
+            }
+
+            return {base, view};
+        }
+
+    } // namespace internal
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Result of detect_sign_and_base(): the decoded sign, numeric base, and remaining digit body.
+     *
+     * `body` contains only the digits to be handed to std::from_chars — no sign, no base prefix.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    struct PrefixInfo {
+            bool bNegative = false;
+            int iBase      = 10;
+            std::string_view body;
+    };
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Unified, sign-aware numeric literal prefix detector — the single source of truth for how
+     *        this codebase recognises signed/hex/binary/octal integer literals.
+     *
+     * Grammar (shared by every integer-parsing entry point in this file):
+     *   [ '+' | '-' ]  ( "0x" | "0X" ) hex-digits
+     *                | ( "0b" | "0B" ) binary-digits
+     *                | ( "0o" | "0O" ) octal-digits
+     *                | decimal-digits
+     *
+     * The optional sign is recognised *before* the base prefix, so "-0x10" is a valid negative
+     * hex literal (== -16), unlike a naive prefix check anchored to input[0]. No implicit octal;
+     * see detect_base_and_strip_prefix() for the rationale. Does not trim whitespace — callers are
+     * expected to have already trimmed (see internal::trim()).
+     *
+     * @param input The (already-trimmed) input string view.
+     * @return A PrefixInfo describing the sign, base, and remaining digit body.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline constexpr PrefixInfo detect_sign_and_base(std::string_view input) noexcept
+    {
+        std::string_view view = input;
+        bool bNeg             = false;
+
+        if (!view.empty() && (view[0] == '+' || view[0] == '-')) {
+            bNeg = (view[0] == '-');
+            view.remove_prefix(1);
+        }
+
+        auto [base, body] = internal::detect_base_and_strip_prefix(view);
+        return {bNeg, base, body};
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief True if the (already-trimmed) token has an explicit "0x"/"0b"/"0o" base prefix
+     *        (optionally preceded by a sign). False for plain decimal tokens, including those
+     *        with a bare leading zero.
+     *
+     * Convenience wrapper around detect_sign_and_base(), useful for callers that need to decide
+     * between an integer and a floating-point interpretation of a token before actually parsing it
+     * (a floating-point literal never carries a base prefix).
+     *
+     * @param input The (already-trimmed) input string view.
+     * @return True if an explicit base prefix is present.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline constexpr bool has_explicit_base_prefix(std::string_view input) noexcept
+    {
+        return detect_sign_and_base(input).iBase != 10;
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a signed integer of type T with detailed error information.
+     *
+     * This function trims the input string, then uses detect_sign_and_base() to recognise an
+     * optional leading sign and an explicit "0x"/"0b"/"0o" base prefix (in that order — so signed
+     * prefixed literals like "-0x10" work), and converts the remaining digits via `std::from_chars`,
+     * range-checking the result against T.
+     *
+     * @tparam T A signed integer type (e.g., int8_t, int32_t).
+     * @param input The input string to convert.
+     * @param output Reference to the variable where the result will be stored.
+     * @return True if the conversion was successful, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    template <concepts::SignedInteger T>
+    [[nodiscard]] bool string_to_signed(std::string_view input, T &output) noexcept
+    {
+        std::string_view trimmed = internal::trim(input);
+        if (trimmed.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Input is empty"));
+            return false;
+        }
+
+        const PrefixInfo lit = detect_sign_and_base(trimmed);
+        if (lit.body.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
+            return false;
+        }
+
+        // Parse the unsigned magnitude first (the sign was already consumed above), then apply the
+        // sign with an explicit range check. This is what allows "-0x10" to work: from_chars is never
+        // asked to deal with a sign, so it can't reject a prefix that follows one.
+        using UT = std::make_unsigned_t<T>;
+        UT magnitude{};
+        auto [ptr, ec] = std::from_chars(lit.body.data(), lit.body.data() + lit.body.size(), magnitude, lit.iBase);
+
+        if (ec == std::errc() && ptr == lit.body.data() + lit.body.size()) {
+            constexpr UT maxPositive  = static_cast<UT>(std::numeric_limits<T>::max());
+            constexpr UT maxMagnitude = maxPositive + UT{1}; // abs(numeric_limits<T>::min())
+
+            if (lit.bNegative) {
+                if (magnitude > maxMagnitude) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
+                    return false;
+                }
+                // Unsigned negate-then-cast is well-defined (two's complement) and correctly handles
+                // the numeric_limits<T>::min() edge case, unlike "-static_cast<T>(magnitude)".
+                output = static_cast<T>(static_cast<UT>(0) - magnitude);
+            } else {
+                if (magnitude > maxPositive) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
+                    return false;
+                }
+                output = static_cast<T>(magnitude);
+            }
+            return true;
+        }
+
+        if (ec == std::errc::invalid_argument) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
+        } else if (ec == std::errc::result_out_of_range) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
         } else {
-            if (magnitude > maxPositive) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
-                return false;
-            }
-            output = static_cast<T>(magnitude);
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid number:"); LOG_STRING(std::string(input)));
         }
-        return true;
-    }
 
-    if (ec == std::errc::invalid_argument) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
-    } else if (ec == std::errc::result_out_of_range) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
-    } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid number:"); LOG_STRING(std::string(input)));
-    }
-
-    return false;
-}
-
-// Overload for std::string for backward compatibility
-template <concepts::SignedInteger T>
-[[nodiscard]] inline bool string_to_signed(const std::string &input, T &output) noexcept
-{
-    return string_to_signed<T>(std::string_view(input), output);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to an unsigned integer of type T.
- *
- * This function trims the input string, detects the numeric base from any explicit prefix
- * (e.g., "0x"/"0X" for hex, "0b"/"0B" for binary, "0o"/"0O" for octal), and attempts to
- * convert the string to an unsigned integer using `std::from_chars`. A leading '-' is rejected.
- *
- * @tparam T An unsigned integer type (e.g., uint8_t, uint32_t).
- * @param input The input string to convert.
- * @param output Reference to the variable where the result will be stored.
- * @return True if the conversion was successful, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-template <concepts::UnsignedInteger T>
-[[nodiscard]] bool string_to_unsigned(std::string_view input, T &output) noexcept
-{
-    std::string_view trimmed = internal::trim(input);
-    if (trimmed.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Input is empty"));
         return false;
     }
 
-    const PrefixInfo lit = detect_sign_and_base(trimmed);
-    if (lit.bNegative) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
+    // Overload for std::string for backward compatibility
+    template <concepts::SignedInteger T>
+    [[nodiscard]] inline bool string_to_signed(const std::string &input, T &output) noexcept
+    {
+        return string_to_signed<T>(std::string_view(input), output);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to an unsigned integer of type T.
+     *
+     * This function trims the input string, detects the numeric base from any explicit prefix
+     * (e.g., "0x"/"0X" for hex, "0b"/"0B" for binary, "0o"/"0O" for octal), and attempts to
+     * convert the string to an unsigned integer using `std::from_chars`. A leading '-' is rejected.
+     *
+     * @tparam T An unsigned integer type (e.g., uint8_t, uint32_t).
+     * @param input The input string to convert.
+     * @param output Reference to the variable where the result will be stored.
+     * @return True if the conversion was successful, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    template <concepts::UnsignedInteger T>
+    [[nodiscard]] bool string_to_unsigned(std::string_view input, T &output) noexcept
+    {
+        std::string_view trimmed = internal::trim(input);
+        if (trimmed.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Input is empty"));
+            return false;
+        }
+
+        const PrefixInfo lit = detect_sign_and_base(trimmed);
+        if (lit.bNegative) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
+            return false;
+        }
+        if (lit.body.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
+            return false;
+        }
+        const std::string_view view = lit.body;
+        const int base              = lit.iBase;
+
+        auto [ptr, ec]              = std::from_chars(view.data(), view.data() + view.size(), output, base);
+
+        if (ec == std::errc() && ptr == view.data() + view.size()) {
+            return true;
+        }
+
+        if (ec == std::errc::invalid_argument) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
+        } else if (ec == std::errc::result_out_of_range) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
+        } else if (ec == std::errc()) {
+            // from_chars succeeded but left trailing characters unconsumed (e.g. "123abc").
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Trailing characters:"); LOG_STRING(std::string(input)));
+        } else {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid number:"); LOG_STRING(std::string(input)));
+        }
+
         return false;
     }
-    if (lit.body.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
-        return false;
-    }
-    const std::string_view view = lit.body;
-    const int base              = lit.iBase;
 
-    auto [ptr, ec]              = std::from_chars(view.data(), view.data() + view.size(), output, base);
-
-    if (ec == std::errc() && ptr == view.data() + view.size()) {
-        return true;
+    // Overload for std::string for backward compatibility
+    template <concepts::UnsignedInteger T>
+    [[nodiscard]] inline bool string_to_unsigned(const std::string &input, T &output) noexcept
+    {
+        return string_to_unsigned<T>(std::string_view(input), output);
     }
 
-    if (ec == std::errc::invalid_argument) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
-    } else if (ec == std::errc::result_out_of_range) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
-    } else if (ec == std::errc()) {
-        // from_chars succeeded but left trailing characters unconsumed (e.g. "123abc").
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Trailing characters:"); LOG_STRING(std::string(input)));
-    } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid number:"); LOG_STRING(std::string(input)));
-    }
-
-    return false;
-}
-
-// Overload for std::string for backward compatibility
-template <concepts::UnsignedInteger T>
-[[nodiscard]] inline bool string_to_unsigned(const std::string &input, T &output) noexcept
-{
-    return string_to_unsigned<T>(std::string_view(input), output);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a floating-point number of type T.
- *
- * This function trims the input string and attempts to convert it to a floating-point
- * value. It supports types like `float`, `double`, and `long double`.
- *
- * @tparam T A floating-point type (e.g., float, double, long double).
- * @param input The input string to convert.
- * @param output Reference to the variable where the result will be stored.
- * @return True if the conversion was successful, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a floating-point number of type T.
+     *
+     * This function trims the input string and attempts to convert it to a floating-point
+     * value. It supports types like `float`, `double`, and `long double`.
+     *
+     * @tparam T A floating-point type (e.g., float, double, long double).
+     * @param input The input string to convert.
+     * @param output Reference to the variable where the result will be stored.
+     * @return True if the conversion was successful, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
 
 #if (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION)
 
-template <concepts::FloatingPoint T>
-[[nodiscard]] bool string_to_floating(std::string_view input, T &output) noexcept
-{
-    std::string_view trimmed = internal::trim(input);
-    if (trimmed.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Input is empty"));
-        return false;
-    }
+    template <concepts::FloatingPoint T>
+    [[nodiscard]] bool string_to_floating(std::string_view input, T &output) noexcept
+    {
+        std::string_view trimmed = internal::trim(input);
+        if (trimmed.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Input is empty"));
+            return false;
+        }
 
-    // Need to create a string for istringstream
-    std::string str(trimmed);
-    std::istringstream iss(str);
-    iss >> output;
+        // Need to create a string for istringstream
+        std::string str(trimmed);
+        std::istringstream iss(str);
+        iss >> output;
 
-    if (iss.fail() || !iss.eof()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format or extra characters:"); LOG_STRING(str));
-        return false;
-    }
+        if (iss.fail() || !iss.eof()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format or extra characters:"); LOG_STRING(str));
+            return false;
+        }
 
-    return true;
-}
-
-#else
-
-template <concepts::FloatingPoint T>
-[[nodiscard]] bool string_to_floating(std::string_view input, T &output) noexcept
-{
-    std::string_view trimmed = internal::trim(input);
-    if (trimmed.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Input is empty"));
-        return false;
-    }
-
-    auto [ptr, ec] = std::from_chars(trimmed.data(), trimmed.data() + trimmed.size(), output);
-
-    if (ec == std::errc()) {
         return true;
     }
 
-    if (ec == std::errc::invalid_argument) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
-    } else if (ec == std::errc::result_out_of_range) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
-    } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid number:"); LOG_STRING(std::string(input)));
-    }
+#else
 
-    return false;
-}
+    template <concepts::FloatingPoint T>
+    [[nodiscard]] bool string_to_floating(std::string_view input, T &output) noexcept
+    {
+        std::string_view trimmed = internal::trim(input);
+        if (trimmed.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Input is empty"));
+            return false;
+        }
 
-#endif /* (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION) */
+        auto [ptr, ec] = std::from_chars(trimmed.data(), trimmed.data() + trimmed.size(), output);
 
-// Overload for std::string for backward compatibility
-template <concepts::FloatingPoint T>
-[[nodiscard]] inline bool string_to_floating(const std::string &input, T &output) noexcept
-{
-    return string_to_floating<T>(std::string_view(input), output);
-}
+        if (ec == std::errc()) {
+            return true;
+        }
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Alternative API: Converts string to value and returns std::optional
- *
- * @tparam T Numeric type to convert to
- * @param input The input string to convert
- * @return std::optional<T> containing the value if successful, std::nullopt otherwise
- */
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-    requires concepts::SignedInteger<T> || concepts::UnsignedInteger<T> || concepts::FloatingPoint<T>
-[[nodiscard]] std::optional<T> parse(std::string_view input) noexcept
-{
-    T result{};
-    bool success = false;
+        if (ec == std::errc::invalid_argument) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
+        } else if (ec == std::errc::result_out_of_range) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
+        } else {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid number:"); LOG_STRING(std::string(input)));
+        }
 
-    if constexpr (concepts::SignedInteger<T>) {
-        success = string_to_signed<T>(input, result);
-    } else if constexpr (concepts::UnsignedInteger<T>) {
-        success = string_to_unsigned<T>(input, result);
-    } else if constexpr (concepts::FloatingPoint<T>) {
-        success = string_to_floating<T>(input, result);
-    }
-
-    return success ? std::optional<T>(result) : std::nullopt;
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to an int8_t value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2int8(std::string_view s, int8_t &out) noexcept
-{
-    return string_to_signed<int8_t>(s, out);
-}
-
-[[nodiscard]] inline bool str2int8(const std::string &s, int8_t &out) noexcept
-{
-    return string_to_signed<int8_t>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to an int16_t value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2int16(std::string_view s, int16_t &out) noexcept
-{
-    return string_to_signed<int16_t>(s, out);
-}
-
-[[nodiscard]] inline bool str2int16(const std::string &s, int16_t &out) noexcept
-{
-    return string_to_signed<int16_t>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to an int32_t value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2int32(std::string_view s, int32_t &out) noexcept
-{
-    return string_to_signed<int32_t>(s, out);
-}
-
-[[nodiscard]] inline bool str2int32(const std::string &s, int32_t &out) noexcept
-{
-    return string_to_signed<int32_t>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to an int64_t value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2int64(std::string_view s, int64_t &out) noexcept
-{
-    return string_to_signed<int64_t>(s, out);
-}
-
-[[nodiscard]] inline bool str2int64(const std::string &s, int64_t &out) noexcept
-{
-    return string_to_signed<int64_t>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to an ssize_t value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2ssize_t(std::string_view s, ssize_t &out) noexcept
-{
-    return string_to_signed<ssize_t>(s, out);
-}
-
-[[nodiscard]] inline bool str2ssize_t(const std::string &s, ssize_t &out) noexcept
-{
-    return string_to_signed<ssize_t>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a uint8_t value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2uint8(std::string_view s, uint8_t &out) noexcept
-{
-    return string_to_unsigned<uint8_t>(s, out);
-}
-
-[[nodiscard]] inline bool str2uint8(const std::string &s, uint8_t &out) noexcept
-{
-    return string_to_unsigned<uint8_t>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a uint16_t value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2uint16(std::string_view s, uint16_t &out) noexcept
-{
-    return string_to_unsigned<uint16_t>(s, out);
-}
-
-[[nodiscard]] inline bool str2uint16(const std::string &s, uint16_t &out) noexcept
-{
-    return string_to_unsigned<uint16_t>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a uint32_t value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2uint32(std::string_view s, uint32_t &out) noexcept
-{
-    return string_to_unsigned<uint32_t>(s, out);
-}
-
-[[nodiscard]] inline bool str2uint32(const std::string &s, uint32_t &out) noexcept
-{
-    return string_to_unsigned<uint32_t>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a uint64_t value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2uint64(std::string_view s, uint64_t &out) noexcept
-{
-    return string_to_unsigned<uint64_t>(s, out);
-}
-
-[[nodiscard]] inline bool str2uint64(const std::string &s, uint64_t &out) noexcept
-{
-    return string_to_unsigned<uint64_t>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to an int value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2int(std::string_view s, int &out) noexcept
-{
-    return string_to_signed<int>(s, out);
-}
-
-[[nodiscard]] inline bool str2int(const std::string &s, int &out) noexcept
-{
-    return string_to_signed<int>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a uint value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2uint(std::string_view s, unsigned int &out) noexcept
-{
-    return string_to_unsigned<unsigned int>(s, out);
-}
-
-[[nodiscard]] inline bool str2uint(const std::string &s, unsigned int &out) noexcept
-{
-    return string_to_unsigned<unsigned int>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a size_t value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2sizet(std::string_view s, size_t &out) noexcept
-{
-    return string_to_unsigned<size_t>(s, out);
-}
-
-[[nodiscard]] inline bool str2sizet(const std::string &s, size_t &out) noexcept
-{
-    return string_to_unsigned<size_t>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a float value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2float(std::string_view s, float &out) noexcept
-{
-    return string_to_floating<float>(s, out);
-}
-
-[[nodiscard]] inline bool str2float(const std::string &s, float &out) noexcept
-{
-    return string_to_floating<float>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a double value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2double(std::string_view s, double &out) noexcept
-{
-    return string_to_floating<double>(s, out);
-}
-
-[[nodiscard]] inline bool str2double(const std::string &s, double &out) noexcept
-{
-    return string_to_floating<double>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to a long double value.
- * @param s The input string.
- * @param out Reference to the output variable.
- * @return True if conversion succeeds, false otherwise.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline bool str2long_double(std::string_view s, long double &out) noexcept
-{
-    return string_to_floating<long double>(s, out);
-}
-
-[[nodiscard]] inline bool str2long_double(const std::string &s, long double &out) noexcept
-{
-    return string_to_floating<long double>(s, out);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Convert ASCII character to hexadecimal value.
- *
- * @param c ASCII character ('0'-'9', 'a'-'f', 'A'-'F')
- * @return uint16_t value (0-15) or 0xFFFF if invalid
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] constexpr uint16_t ascii2val(char c) noexcept
-{
-    if (c >= '0' && c <= '9') {
-        return static_cast<uint16_t>(c - '0');
-    } else if (c >= 'a' && c <= 'f') {
-        return static_cast<uint16_t>(c - 'a' + 10);
-    } else if (c >= 'A' && c <= 'F') {
-        return static_cast<uint16_t>(c - 'A' + 10);
-    }
-
-    return 0xFFFF;
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Compare two spans for equality up to a given count.
- *
- * More flexible than the original vector-only version, works with any contiguous containers.
- *
- * @tparam T Element type
- * @param a First span to compare
- * @param b Second span to compare
- * @param count Number of elements to compare
- * @return true if equal, false otherwise
- */
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-[[nodiscard]] bool compareSpans(std::span<const T> a, std::span<const T> b, size_t count) noexcept
-{
-    if (a.size() < count || b.size() < count) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Span size less than compare size"));
         return false;
     }
 
-    return std::equal(a.begin(), a.begin() + count, b.begin());
-}
+#endif /* (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION) */
 
-// Backward compatibility: vector version
-template <typename T>
-[[nodiscard]] inline bool compareVectors(const std::vector<T> &a, const std::vector<T> &b, size_t count) noexcept
-{
-    return compareSpans(std::span<const T>(a), std::span<const T>(b), count);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Print binary data as hexadecimal string.
- *
- * @param caption Description text to print before the hex data
- * @param dataSpan Span of bytes to print as hex
- */
-/*--------------------------------------------------------------------------------------------------------*/
-inline void printHexData(std::string_view caption, std::span<const uint8_t> dataSpan)
-{
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
-
-    for (uint8_t byte : dataSpan) {
-        oss << std::setw(2) << static_cast<unsigned int>(byte) << ' ';
+    // Overload for std::string for backward compatibility
+    template <concepts::FloatingPoint T>
+    [[nodiscard]] inline bool string_to_floating(const std::string &input, T &output) noexcept
+    {
+        return string_to_floating<T>(std::string_view(input), output);
     }
 
-    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(std::string(caption)); LOG_STRING(oss.str()));
-}
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Alternative API: Converts string to value and returns std::optional
+     *
+     * @tparam T Numeric type to convert to
+     * @param input The input string to convert
+     * @return std::optional<T> containing the value if successful, std::nullopt otherwise
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    template <typename T>
+        requires concepts::SignedInteger<T> || concepts::UnsignedInteger<T> || concepts::FloatingPoint<T>
+    [[nodiscard]] std::optional<T> parse(std::string_view input) noexcept
+    {
+        T result{};
+        bool success = false;
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Convert C-style array to span.
- *
- * @tparam T Element type
- * @tparam N Array size
- * @param buffer Reference to array
- * @return std::span<T> wrapping the array
- */
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T, size_t N>
-[[nodiscard]] constexpr std::span<T> byte2span(T (&buffer)[N]) noexcept
-{
-    return std::span<T>(buffer, N);
-}
+        if constexpr (concepts::SignedInteger<T>) {
+            success = string_to_signed<T>(input, result);
+        } else if constexpr (concepts::UnsignedInteger<T>) {
+            success = string_to_unsigned<T>(input, result);
+        } else if constexpr (concepts::FloatingPoint<T>) {
+            success = string_to_floating<T>(input, result);
+        }
 
-template <typename T>
-[[nodiscard]] constexpr std::span<T> byte2span(T &value) noexcept
-{
-    return std::span<T>(&value, 1);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Convert byte buffer to uint8_t span.
- *
- * @tparam ByteType Type that must be 1 byte in size
- * @tparam N Array size
- * @param buffer Reference to byte array
- * @return std::span<uint8_t> wrapping the buffer
- */
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename ByteType, size_t N>
-[[nodiscard]] constexpr std::span<uint8_t> buf2span(ByteType (&buffer)[N]) noexcept
-{
-    static_assert(sizeof(ByteType) == 1, "Buffer element type must be 1 byte");
-    return std::span<uint8_t>(reinterpret_cast<uint8_t *>(buffer), N);
-}
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Create a span with bounds checking from buffer pointer and length.
- *
- * @param buffer Pointer to buffer
- * @param bufferSize Total size of the buffer
- * @param length Desired span length
- * @return std::optional<std::span<uint8_t>> — nullopt if length exceeds bufferSize
- */
-/*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline std::optional<std::span<uint8_t>> buflen2span(uint8_t *buffer, size_t bufferSize, size_t length) noexcept
-{
-    if (length > bufferSize) {
-        return std::nullopt;
+        return success ? std::optional<T>(result) : std::nullopt;
     }
-    return std::span<uint8_t>{buffer, length};
-}
 
-[[nodiscard]] inline std::optional<std::span<const uint8_t>> buflen2span(const uint8_t *buffer, size_t bufferSize, size_t length) noexcept
-{
-    if (length > bufferSize) {
-        return std::nullopt;
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to an int8_t value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2int8(std::string_view s, int8_t &out) noexcept
+    {
+        return string_to_signed<int8_t>(s, out);
     }
-    return std::span<const uint8_t>{buffer, length};
-}
 
-// Non-throwing version
-[[nodiscard]] inline std::span<uint8_t> buflen2span_safe(uint8_t *buffer, size_t bufferSize, size_t length) noexcept
-{
-    length = std::min(length, bufferSize);
-    return std::span<uint8_t>{buffer, length};
-}
+    [[nodiscard]] inline bool str2int8(const std::string &s, int8_t &out) noexcept
+    {
+        return string_to_signed<int8_t>(s, out);
+    }
 
-[[nodiscard]] inline std::span<const uint8_t> buflen2span_safe(const uint8_t *buffer, size_t bufferSize, size_t length) noexcept
-{
-    length = std::min(length, bufferSize);
-    return std::span<const uint8_t>{buffer, length};
-}
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to an int16_t value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2int16(std::string_view s, int16_t &out) noexcept
+    {
+        return string_to_signed<int16_t>(s, out);
+    }
 
-template <size_t N>
-[[nodiscard]] constexpr std::span<const uint8_t> cstr2span(const char (&str)[N]) noexcept
-{
-    static_assert(N > 0, "String must not be empty");
-    // N includes '\0', so we subtract 1
-    return std::span<const uint8_t>(
-        reinterpret_cast<const uint8_t *>(str),
-        N - 1);
-}
+    [[nodiscard]] inline bool str2int16(const std::string &s, int16_t &out) noexcept
+    {
+        return string_to_signed<int16_t>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to an int32_t value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2int32(std::string_view s, int32_t &out) noexcept
+    {
+        return string_to_signed<int32_t>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2int32(const std::string &s, int32_t &out) noexcept
+    {
+        return string_to_signed<int32_t>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to an int64_t value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2int64(std::string_view s, int64_t &out) noexcept
+    {
+        return string_to_signed<int64_t>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2int64(const std::string &s, int64_t &out) noexcept
+    {
+        return string_to_signed<int64_t>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to an ssize_t value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2ssize_t(std::string_view s, ssize_t &out) noexcept
+    {
+        return string_to_signed<ssize_t>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2ssize_t(const std::string &s, ssize_t &out) noexcept
+    {
+        return string_to_signed<ssize_t>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a uint8_t value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2uint8(std::string_view s, uint8_t &out) noexcept
+    {
+        return string_to_unsigned<uint8_t>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2uint8(const std::string &s, uint8_t &out) noexcept
+    {
+        return string_to_unsigned<uint8_t>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a uint16_t value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2uint16(std::string_view s, uint16_t &out) noexcept
+    {
+        return string_to_unsigned<uint16_t>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2uint16(const std::string &s, uint16_t &out) noexcept
+    {
+        return string_to_unsigned<uint16_t>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a uint32_t value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2uint32(std::string_view s, uint32_t &out) noexcept
+    {
+        return string_to_unsigned<uint32_t>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2uint32(const std::string &s, uint32_t &out) noexcept
+    {
+        return string_to_unsigned<uint32_t>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a uint64_t value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2uint64(std::string_view s, uint64_t &out) noexcept
+    {
+        return string_to_unsigned<uint64_t>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2uint64(const std::string &s, uint64_t &out) noexcept
+    {
+        return string_to_unsigned<uint64_t>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to an int value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2int(std::string_view s, int &out) noexcept
+    {
+        return string_to_signed<int>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2int(const std::string &s, int &out) noexcept
+    {
+        return string_to_signed<int>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a uint value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2uint(std::string_view s, unsigned int &out) noexcept
+    {
+        return string_to_unsigned<unsigned int>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2uint(const std::string &s, unsigned int &out) noexcept
+    {
+        return string_to_unsigned<unsigned int>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a size_t value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2sizet(std::string_view s, size_t &out) noexcept
+    {
+        return string_to_unsigned<size_t>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2sizet(const std::string &s, size_t &out) noexcept
+    {
+        return string_to_unsigned<size_t>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a float value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2float(std::string_view s, float &out) noexcept
+    {
+        return string_to_floating<float>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2float(const std::string &s, float &out) noexcept
+    {
+        return string_to_floating<float>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a double value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2double(std::string_view s, double &out) noexcept
+    {
+        return string_to_floating<double>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2double(const std::string &s, double &out) noexcept
+    {
+        return string_to_floating<double>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Converts a string to a long double value.
+     * @param s The input string.
+     * @param out Reference to the output variable.
+     * @return True if conversion succeeds, false otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline bool str2long_double(std::string_view s, long double &out) noexcept
+    {
+        return string_to_floating<long double>(s, out);
+    }
+
+    [[nodiscard]] inline bool str2long_double(const std::string &s, long double &out) noexcept
+    {
+        return string_to_floating<long double>(s, out);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Convert ASCII character to hexadecimal value.
+     *
+     * @param c ASCII character ('0'-'9', 'a'-'f', 'A'-'F')
+     * @return uint16_t value (0-15) or 0xFFFF if invalid
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] constexpr uint16_t ascii2val(char c) noexcept
+    {
+        if (c >= '0' && c <= '9') {
+            return static_cast<uint16_t>(c - '0');
+        } else if (c >= 'a' && c <= 'f') {
+            return static_cast<uint16_t>(c - 'a' + 10);
+        } else if (c >= 'A' && c <= 'F') {
+            return static_cast<uint16_t>(c - 'A' + 10);
+        }
+
+        return 0xFFFF;
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Compare two spans for equality up to a given count.
+     *
+     * More flexible than the original vector-only version, works with any contiguous containers.
+     *
+     * @tparam T Element type
+     * @param a First span to compare
+     * @param b Second span to compare
+     * @param count Number of elements to compare
+     * @return true if equal, false otherwise
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    template <typename T>
+    [[nodiscard]] bool compareSpans(std::span<const T> a, std::span<const T> b, size_t count) noexcept
+    {
+        if (a.size() < count || b.size() < count) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Span size less than compare size"));
+            return false;
+        }
+
+        return std::equal(a.begin(), a.begin() + count, b.begin());
+    }
+
+    // Backward compatibility: vector version
+    template <typename T>
+    [[nodiscard]] inline bool compareVectors(const std::vector<T> &a, const std::vector<T> &b, size_t count) noexcept
+    {
+        return compareSpans(std::span<const T>(a), std::span<const T>(b), count);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Print binary data as hexadecimal string.
+     *
+     * @param caption Description text to print before the hex data
+     * @param dataSpan Span of bytes to print as hex
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    inline void printHexData(std::string_view caption, std::span<const uint8_t> dataSpan)
+    {
+        std::ostringstream oss;
+        oss << std::hex << std::setfill('0');
+
+        for (uint8_t byte : dataSpan) {
+            oss << std::setw(2) << static_cast<unsigned int>(byte) << ' ';
+        }
+
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(std::string(caption)); LOG_STRING(oss.str()));
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Convert C-style array to span.
+     *
+     * @tparam T Element type
+     * @tparam N Array size
+     * @param buffer Reference to array
+     * @return std::span<T> wrapping the array
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    template <typename T, size_t N>
+    [[nodiscard]] constexpr std::span<T> byte2span(T (&buffer)[N]) noexcept
+    {
+        return std::span<T>(buffer, N);
+    }
+
+    template <typename T>
+    [[nodiscard]] constexpr std::span<T> byte2span(T &value) noexcept
+    {
+        return std::span<T>(&value, 1);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Convert byte buffer to uint8_t span.
+     *
+     * @tparam ByteType Type that must be 1 byte in size
+     * @tparam N Array size
+     * @param buffer Reference to byte array
+     * @return std::span<uint8_t> wrapping the buffer
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    template <typename ByteType, size_t N>
+    [[nodiscard]] constexpr std::span<uint8_t> buf2span(ByteType (&buffer)[N]) noexcept
+    {
+        static_assert(sizeof(ByteType) == 1, "Buffer element type must be 1 byte");
+        return std::span<uint8_t>(reinterpret_cast<uint8_t *>(buffer), N);
+    }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Create a span with bounds checking from buffer pointer and length.
+     *
+     * @param buffer Pointer to buffer
+     * @param bufferSize Total size of the buffer
+     * @param length Desired span length
+     * @return std::optional<std::span<uint8_t>> — nullopt if length exceeds bufferSize
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+    [[nodiscard]] inline std::optional<std::span<uint8_t>> buflen2span(uint8_t *buffer, size_t bufferSize, size_t length) noexcept
+    {
+        if (length > bufferSize) {
+            return std::nullopt;
+        }
+        return std::span<uint8_t>{buffer, length};
+    }
+
+    [[nodiscard]] inline std::optional<std::span<const uint8_t>> buflen2span(const uint8_t *buffer, size_t bufferSize, size_t length) noexcept
+    {
+        if (length > bufferSize) {
+            return std::nullopt;
+        }
+        return std::span<const uint8_t>{buffer, length};
+    }
+
+    // Non-throwing version
+    [[nodiscard]] inline std::span<uint8_t> buflen2span_safe(uint8_t *buffer, size_t bufferSize, size_t length) noexcept
+    {
+        length = std::min(length, bufferSize);
+        return std::span<uint8_t>{buffer, length};
+    }
+
+    [[nodiscard]] inline std::span<const uint8_t> buflen2span_safe(const uint8_t *buffer, size_t bufferSize, size_t length) noexcept
+    {
+        length = std::min(length, bufferSize);
+        return std::span<const uint8_t>{buffer, length};
+    }
+
+    template <size_t N>
+    [[nodiscard]] constexpr std::span<const uint8_t> cstr2span(const char (&str)[N]) noexcept
+    {
+        static_assert(N > 0, "String must not be empty");
+        // N includes '\0', so we subtract 1
+        return std::span<const uint8_t>(
+            reinterpret_cast<const uint8_t *>(str),
+            N - 1);
+    }
 
 } // namespace numeric
 

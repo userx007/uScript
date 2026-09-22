@@ -31,17 +31,18 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-typedef enum { KV_SCALAR,
-               KV_OBJECT,
-               KV_ARRAY } KvKind;
+typedef enum {
+    KV_SCALAR,
+    KV_OBJECT,
+    KV_ARRAY
+} KvKind;
 
-typedef struct KvNode
-{
-    KvKind kind;
-    char *key;                /* NULL for array elements */
-    char *scalar;             /* KV_SCALAR only, NUL-terminated */
-    struct KvNode **children; /* KV_OBJECT (keyed) / KV_ARRAY (unkeyed) */
-    size_t n_children;
+typedef struct KvNode {
+        KvKind kind;
+        char *key;                /* NULL for array elements */
+        char *scalar;             /* KV_SCALAR only, NUL-terminated */
+        struct KvNode **children; /* KV_OBJECT (keyed) / KV_ARRAY (unkeyed) */
+        size_t n_children;
 } KvNode;
 
 /* Parse `text` into a tree of implicit top-level KV_OBJECT. Returns NULL
@@ -68,10 +69,10 @@ void kv_free(KvNode *node);
  * they don't have to hand-roll snprintf offset bookkeeping. */
 typedef struct
 {
-    char *buf;
-    size_t cap;
-    size_t len; /* excludes NUL */
-    bool overflow;
+        char *buf;
+        size_t cap;
+        size_t len; /* excludes NUL */
+        bool overflow;
 } KvWriter;
 
 void kv_writer_init(KvWriter *w, char *buf, size_t cap);

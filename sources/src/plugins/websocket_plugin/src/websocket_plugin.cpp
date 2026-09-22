@@ -22,17 +22,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED WEBSOCKETPlugin *pluginEntry()
-{
-    return new WEBSOCKETPlugin();
-}
-
-EXPORTED void pluginExit(WEBSOCKETPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED WEBSOCKETPlugin *pluginEntry()
+    {
+        return new WEBSOCKETPlugin();
     }
-}
+
+    EXPORTED void pluginExit(WEBSOCKETPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

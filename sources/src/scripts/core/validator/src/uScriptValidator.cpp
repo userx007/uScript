@@ -270,8 +270,7 @@ bool ScriptValidator::m_validateConditions() noexcept
                     gui_notify_error_main(command.iLineNumber);
                     bRetVal = false;
                 }
-            }
-        },
+            } },
                    command.command);
 
         ++iIndex;
@@ -423,8 +422,7 @@ bool ScriptValidator::m_validateLoops() noexcept
                     gui_notify_error_main(cmd.iLineNumber);
                     bRetVal = false;
                 }
-            }
-        },
+            } },
                    cmd.command);
     }
 
@@ -477,8 +475,7 @@ bool ScriptValidator::m_validatePlugins() noexcept
 
                           if constexpr (std::is_same_v<T, Command>) {
                               usedPlugins.insert(item.strPlugin);
-                          }
-                      },
+                          } },
                                  data.command);
                   });
 
@@ -2110,7 +2107,8 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &rawLine) noexce
             uIntervalUs = ullCount;
         } else if (strUnit == "ms") {
             uIntervalUs = ullCount * 1000ULL;
-        } else /* "sec" */ {
+        } else /* "sec" */
+        {
             uIntervalUs = ullCount * 1000000ULL;
         }
     } catch (...) {
@@ -2216,7 +2214,8 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &rawLine) noexce
         eWaveform = GeneratorWaveform::EXP;
     } else if (strWaveform == "LOG") {
         eWaveform = GeneratorWaveform::LOG;
-    } else /* "RANDOM" */ {
+    } else /* "RANDOM" */
+    {
         eWaveform = GeneratorWaveform::RANDOM;
     }
 
@@ -2417,8 +2416,7 @@ bool ScriptValidator::m_validateGeneratorPairing() noexcept
                 } else {
                     setStarted.clear();
                 }
-            }
-        },
+            } },
                    scriptLine.command);
     }
 
@@ -2437,16 +2435,12 @@ bool ScriptValidator::m_ListStatements() noexcept
 {
     if (false == m_sScriptEntries->vPlugins.empty()) {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_PLUGINS));
-        std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(), [&](const auto &item) {
-            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(item.strPluginVersRule); LOG_STRING(item.strPluginVersRequested));
-        });
+        std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(), [&](const auto &item) { LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(item.strPluginVersRule); LOG_STRING(item.strPluginVersRequested)); });
     }
 
     if (false == m_sScriptEntries->mapMacros.empty()) {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_CMACROS));
-        std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(), [&](const auto &item) {
-            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(item.first); LOG_STRING(":"); LOG_STRING(item.second));
-        });
+        std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(), [&](const auto &item) { LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(item.first); LOG_STRING(":"); LOG_STRING(item.second)); });
     }
 
     if (false == m_sScriptEntries->mapArrayMacros.empty()) {
@@ -2467,8 +2461,7 @@ bool ScriptValidator::m_ListStatements() noexcept
 
     if (false == m_sScriptEntries->vCommands.empty()) {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_COMMANDS));
-        std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine &data) {
-            std::visit([&data](const auto &item) {
+        std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine &data) { std::visit([&data](const auto &item) {
                 using T     = std::decay_t<decltype(item)>;
                 auto lineNr = ustring::fmtLineNr(data.iLineNumber);
 
@@ -2543,10 +2536,8 @@ bool ScriptValidator::m_ListStatements() noexcept
                     }
                 } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR: STOP ALL"));
-                }
-            },
-                       data.command);
-        });
+                } },
+                                                                                                                                       data.command); });
     }
 
     return true;

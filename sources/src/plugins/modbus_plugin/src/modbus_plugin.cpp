@@ -17,17 +17,17 @@
  * \brief The plugin's entry points
  */
 extern "C" {
-EXPORTED ModbusPlugin *pluginEntry()
-{
-    return new ModbusPlugin();
-}
-
-EXPORTED void pluginExit(ModbusPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED ModbusPlugin *pluginEntry()
+    {
+        return new ModbusPlugin();
     }
-}
+
+    EXPORTED void pluginExit(ModbusPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 // -----------------------------------------------------------------------

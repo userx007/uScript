@@ -190,90 +190,83 @@ static constexpr uint32_t GS_CAN_ECHO_ID_RX = 0xFFFFFFFFu;
 #pragma pack(push, 1)
 
 /// USB_DIR_OUT control transfer payload for GsUsbBreq::HOST_FORMAT.
-struct GsHostConfig
-{
-    uint32_t byte_order; ///< little-endian on the wire; 0x0000BEEF tells the
-                         ///< device "host is little-endian" (candleLight-fw
-                         ///< only ever speaks little-endian regardless, but
-                         ///< every real host stack still sends this probe).
+struct GsHostConfig {
+        uint32_t byte_order; ///< little-endian on the wire; 0x0000BEEF tells the
+                             ///< device "host is little-endian" (candleLight-fw
+                             ///< only ever speaks little-endian regardless, but
+                             ///< every real host stack still sends this probe).
 };
 
 /// USB_DIR_IN control transfer response for GsUsbBreq::DEVICE_CONFIG.
-struct GsDeviceConfig
-{
-    uint8_t reserved1;
-    uint8_t reserved2;
-    uint8_t reserved3;
-    uint8_t icount; ///< number of CAN channels minus 1
-    uint32_t sw_version;
-    uint32_t hw_version;
+struct GsDeviceConfig {
+        uint8_t reserved1;
+        uint8_t reserved2;
+        uint8_t reserved3;
+        uint8_t icount; ///< number of CAN channels minus 1
+        uint32_t sw_version;
+        uint32_t hw_version;
 };
 
 /// USB_DIR_OUT control transfer payload for GsUsbBreq::MODE.
-struct GsDeviceMode
-{
-    uint32_t mode;  ///< GsCanMode
-    uint32_t flags; ///< GS_CAN_MODE_* bitmask
+struct GsDeviceMode {
+        uint32_t mode;  ///< GsCanMode
+        uint32_t flags; ///< GS_CAN_MODE_* bitmask
 };
 
 /// USB_DIR_IN control transfer response for GsUsbBreq::GET_STATE
 /// (only if GsDeviceBtConst::feature has GS_CAN_FEATURE_GET_STATE).
-struct GsDeviceState
-{
-    uint32_t state; ///< GsCanState
-    uint32_t rxerr;
-    uint32_t txerr;
+struct GsDeviceState {
+        uint32_t state; ///< GsCanState
+        uint32_t rxerr;
+        uint32_t txerr;
 };
 
 /// USB_DIR_OUT control transfer payload for GsUsbBreq::BITTIMING /
 /// GsUsbBreq::DATA_BITTIMING.
-struct GsDeviceBittiming
-{
-    uint32_t prop_seg;
-    uint32_t phase_seg1;
-    uint32_t phase_seg2;
-    uint32_t sjw;
-    uint32_t brp;
+struct GsDeviceBittiming {
+        uint32_t prop_seg;
+        uint32_t phase_seg1;
+        uint32_t phase_seg2;
+        uint32_t sjw;
+        uint32_t brp;
 };
 
 /// USB_DIR_IN control transfer response for GsUsbBreq::BT_CONST.
-struct GsDeviceBtConst
-{
-    uint32_t feature;  ///< GS_CAN_FEATURE_* bitmask
-    uint32_t fclk_can; ///< CAN clock in Hz — the basis for every bit-timing calculation
-    uint32_t tseg1_min;
-    uint32_t tseg1_max;
-    uint32_t tseg2_min;
-    uint32_t tseg2_max;
-    uint32_t sjw_max;
-    uint32_t brp_min;
-    uint32_t brp_max;
-    uint32_t brp_inc;
+struct GsDeviceBtConst {
+        uint32_t feature;  ///< GS_CAN_FEATURE_* bitmask
+        uint32_t fclk_can; ///< CAN clock in Hz — the basis for every bit-timing calculation
+        uint32_t tseg1_min;
+        uint32_t tseg1_max;
+        uint32_t tseg2_min;
+        uint32_t tseg2_max;
+        uint32_t sjw_max;
+        uint32_t brp_min;
+        uint32_t brp_max;
+        uint32_t brp_inc;
 };
 
 /// USB_DIR_IN control transfer response for GsUsbBreq::BT_CONST_EXT
 /// (only if GsDeviceBtConst::feature has GS_CAN_FEATURE_FD).
-struct GsDeviceBtConstExtended
-{
-    uint32_t feature;
-    uint32_t fclk_can;
-    uint32_t tseg1_min;
-    uint32_t tseg1_max;
-    uint32_t tseg2_min;
-    uint32_t tseg2_max;
-    uint32_t sjw_max;
-    uint32_t brp_min;
-    uint32_t brp_max;
-    uint32_t brp_inc;
-    // Data-phase (CAN-FD) limits:
-    uint32_t dtseg1_min;
-    uint32_t dtseg1_max;
-    uint32_t dtseg2_min;
-    uint32_t dtseg2_max;
-    uint32_t dsjw_max;
-    uint32_t dbrp_min;
-    uint32_t dbrp_max;
-    uint32_t dbrp_inc;
+struct GsDeviceBtConstExtended {
+        uint32_t feature;
+        uint32_t fclk_can;
+        uint32_t tseg1_min;
+        uint32_t tseg1_max;
+        uint32_t tseg2_min;
+        uint32_t tseg2_max;
+        uint32_t sjw_max;
+        uint32_t brp_min;
+        uint32_t brp_max;
+        uint32_t brp_inc;
+        // Data-phase (CAN-FD) limits:
+        uint32_t dtseg1_min;
+        uint32_t dtseg1_max;
+        uint32_t dtseg2_min;
+        uint32_t dtseg2_max;
+        uint32_t dsjw_max;
+        uint32_t dbrp_min;
+        uint32_t dbrp_max;
+        uint32_t dbrp_inc;
 };
 
 #pragma pack(pop)
@@ -286,249 +279,248 @@ struct GsDeviceBtConstExtended
  * @brief Candlelight (gs_usb) driver — see uCandlelight.hpp's header comment
  *        for the protocol this implements.
  */
-class Candlelight : public ICommDriver
-{
-public:
-    static constexpr uint32_t CANDLELIGHT_DEFAULT_TIMEOUT = 1000; ///< ms
+class Candlelight : public ICommDriver {
+    public:
+        static constexpr uint32_t CANDLELIGHT_DEFAULT_TIMEOUT = 1000; ///< ms
 
-    Candlelight()                                         = default;
+        Candlelight()                                         = default;
 
-    /**
-     * @brief Construct and immediately open+probe the device.
-     * @param vendor_id   USB VID (e.g. 0x1D50 or 0x1209 — see header comment)
-     * @param product_id  USB PID (e.g. 0x606F or 0x2323)
-     * @param device_index  which matching device to open, if more than one
-     *                      gs_usb-compatible adapter is plugged in (0 = first)
-     * @param strIdentityLabel  Display text for the GUI comm-dump panel
-     */
-    Candlelight(uint16_t vendor_id, uint16_t product_id, unsigned device_index,
-                const std::string &strIdentityLabel = {});
+        /**
+         * @brief Construct and immediately open+probe the device.
+         * @param vendor_id   USB VID (e.g. 0x1D50 or 0x1209 — see header comment)
+         * @param product_id  USB PID (e.g. 0x606F or 0x2323)
+         * @param device_index  which matching device to open, if more than one
+         *                      gs_usb-compatible adapter is plugged in (0 = first)
+         * @param strIdentityLabel  Display text for the GUI comm-dump panel
+         */
+        Candlelight(uint16_t vendor_id, uint16_t product_id, unsigned device_index,
+                    const std::string &strIdentityLabel = {});
 
-    virtual ~Candlelight();
+        virtual ~Candlelight();
 
-    // ------------------------------------------------------------------
-    // Port management
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Port management
+        // ------------------------------------------------------------------
 
-    /// Opens the USB device and runs the probe() sequence (HOST_FORMAT →
-    /// DEVICE_CONFIG → BT_CONST [→ BT_CONST_EXT if FD-capable]).
-    Status open(uint16_t vendor_id, uint16_t product_id, unsigned device_index);
-    Status close();
-    bool is_open() const override;
+        /// Opens the USB device and runs the probe() sequence (HOST_FORMAT →
+        /// DEVICE_CONFIG → BT_CONST [→ BT_CONST_EXT if FD-capable]).
+        Status open(uint16_t vendor_id, uint16_t product_id, unsigned device_index);
+        Status close();
+        bool is_open() const override;
 
-    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-    {
-        return commdump_details(CommFamily::CAN,
-                                m_strIdentityLabel.empty() ? "Candlelight" : m_strIdentityLabel);
-    }
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return commdump_details(CommFamily::CAN,
+                                    m_strIdentityLabel.empty() ? "Candlelight" : m_strIdentityLabel);
+        }
 
-    /// Populated by probe(); zero-initialised (all-0 feature bits, so every
-    /// is_*_supported() below reads false) until a successful open().
-    const GsDeviceConfig &device_config() const
-    {
-        return m_devConfig;
-    }
+        /// Populated by probe(); zero-initialised (all-0 feature bits, so every
+        /// is_*_supported() below reads false) until a successful open().
+        const GsDeviceConfig &device_config() const
+        {
+            return m_devConfig;
+        }
 
-    const GsDeviceBtConst &bt_const() const
-    {
-        return m_btConst;
-    }
+        const GsDeviceBtConst &bt_const() const
+        {
+            return m_btConst;
+        }
 
-    const GsDeviceBtConstExtended &bt_const_ext() const
-    {
-        return m_btConstExt;
-    }
+        const GsDeviceBtConstExtended &bt_const_ext() const
+        {
+            return m_btConstExt;
+        }
 
-    bool is_fd_supported() const
-    {
-        return (m_btConst.feature & GS_CAN_FEATURE_FD) != 0;
-    }
+        bool is_fd_supported() const
+        {
+            return (m_btConst.feature & GS_CAN_FEATURE_FD) != 0;
+        }
 
-    bool is_get_state_supported() const
-    {
-        return (m_btConst.feature & GS_CAN_FEATURE_GET_STATE) != 0;
-    }
+        bool is_get_state_supported() const
+        {
+            return (m_btConst.feature & GS_CAN_FEATURE_GET_STATE) != 0;
+        }
 
-    bool is_termination_supported() const
-    {
-        return (m_btConst.feature & GS_CAN_FEATURE_TERMINATION) != 0;
-    }
+        bool is_termination_supported() const
+        {
+            return (m_btConst.feature & GS_CAN_FEATURE_TERMINATION) != 0;
+        }
 
-    // ------------------------------------------------------------------
-    // Channel configuration  (must be called before open_channel)
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Channel configuration  (must be called before open_channel)
+        // ------------------------------------------------------------------
 
-    Status set_bittiming(uint32_t prop_seg, uint32_t phase_seg1, uint32_t phase_seg2,
-                         uint32_t sjw, uint32_t brp, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
-    Status set_data_bittiming(uint32_t prop_seg, uint32_t phase_seg1, uint32_t phase_seg2,
-                              uint32_t sjw, uint32_t brp, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        Status set_bittiming(uint32_t prop_seg, uint32_t phase_seg1, uint32_t phase_seg2,
+                             uint32_t sjw, uint32_t brp, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        Status set_data_bittiming(uint32_t prop_seg, uint32_t phase_seg1, uint32_t phase_seg2,
+                                  uint32_t sjw, uint32_t brp, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
-    /**
-     * @brief Convenience wrapper: derive prop_seg/phase_seg1/phase_seg2/brp
-     *        for a target nominal bit rate from this device's queried
-     *        bt_const() (fclk_can + tseg/brp limits) and call
-     *        set_bittiming(). sjw is set to min(phase_seg2, bt_const().sjw_max).
-     * @param bitrate_bps    Target nominal bit rate, e.g. 500000
-     * @param sample_point   Target sample point, 0.0-1.0 (0.875 = 87.5%, the
-     *                       usual CAN default and this function's default)
-     * @return false if no (brp, tseg1, tseg2) combination within this
-     *         device's limits reproduces bitrate_bps exactly
-     */
-    Status set_bitrate(uint32_t bitrate_bps, double sample_point = 0.875,
-                       uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        /**
+         * @brief Convenience wrapper: derive prop_seg/phase_seg1/phase_seg2/brp
+         *        for a target nominal bit rate from this device's queried
+         *        bt_const() (fclk_can + tseg/brp limits) and call
+         *        set_bittiming(). sjw is set to min(phase_seg2, bt_const().sjw_max).
+         * @param bitrate_bps    Target nominal bit rate, e.g. 500000
+         * @param sample_point   Target sample point, 0.0-1.0 (0.875 = 87.5%, the
+         *                       usual CAN default and this function's default)
+         * @return false if no (brp, tseg1, tseg2) combination within this
+         *         device's limits reproduces bitrate_bps exactly
+         */
+        Status set_bitrate(uint32_t bitrate_bps, double sample_point = 0.875,
+                           uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
-    /// Same as set_bitrate(), but for the CAN-FD data phase via bt_const_ext().
-    Status set_fd_data_bitrate(uint32_t bitrate_bps, double sample_point = 0.75,
-                               uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        /// Same as set_bitrate(), but for the CAN-FD data phase via bt_const_ext().
+        Status set_fd_data_bitrate(uint32_t bitrate_bps, double sample_point = 0.75,
+                                   uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
-    // ------------------------------------------------------------------
-    // Channel open / close
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Channel open / close
+        // ------------------------------------------------------------------
 
-    /// @param mode_flags  GS_CAN_MODE_* bitmask (listen-only, loopback,
-    ///                    triple-sample, one-shot, FD, pad-to-max, berr-reporting)
-    Status open_channel(uint32_t mode_flags = GS_CAN_MODE_NORMAL,
-                        uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
-    Status close_channel(uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        /// @param mode_flags  GS_CAN_MODE_* bitmask (listen-only, loopback,
+        ///                    triple-sample, one-shot, FD, pad-to-max, berr-reporting)
+        Status open_channel(uint32_t mode_flags = GS_CAN_MODE_NORMAL,
+                            uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        Status close_channel(uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
-    // ------------------------------------------------------------------
-    // Diagnostic queries
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Diagnostic queries
+        // ------------------------------------------------------------------
 
-    /// Requires is_get_state_supported(); Status::OPERATION_FAILED otherwise.
-    Status get_state(GsDeviceState &state, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        /// Requires is_get_state_supported(); Status::OPERATION_FAILED otherwise.
+        Status get_state(GsDeviceState &state, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
-    // ------------------------------------------------------------------
-    // Frame TX / RX  (typed, preferred API)
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Frame TX / RX  (typed, preferred API)
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Send one frame and wait for its TX-complete echo — see
-     *        uCandlelight.hpp's "echo_id" section for why this needs to
-     *        both write and then read.
-     *
-     * The echo-wait loop tracks an overall deadline derived from
-     * @p timeout_ms and shrinks the per-attempt budget on each retry
-     * (rather than re-arming the full @p timeout_ms every time a foreign
-     * RX frame is absorbed while waiting for the echo) — see the .cpp for
-     * why the naive version could block far longer than @p timeout_ms on
-     * a busy bus. @p stop_tok allows cancelling the wait early.
-     */
-    Status send_frame(const CanFrame &frame, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT,
-                      std::stop_token stop_tok = {});
+        /**
+         * @brief Send one frame and wait for its TX-complete echo — see
+         *        uCandlelight.hpp's "echo_id" section for why this needs to
+         *        both write and then read.
+         *
+         * The echo-wait loop tracks an overall deadline derived from
+         * @p timeout_ms and shrinks the per-attempt budget on each retry
+         * (rather than re-arming the full @p timeout_ms every time a foreign
+         * RX frame is absorbed while waiting for the echo) — see the .cpp for
+         * why the naive version could block far longer than @p timeout_ms on
+         * a busy bus. @p stop_tok allows cancelling the wait early.
+         */
+        Status send_frame(const CanFrame &frame, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT,
+                          std::stop_token stop_tok = {});
 
-    /**
-     * @brief Wait for the next genuinely-received bus frame (echo_id ==
-     *        GS_CAN_ECHO_ID_RX), silently absorbing any TX-complete echoes
-     *        seen along the way.
-     *
-     * Same overall-deadline tracking and @p stop_tok support as
-     * send_frame() above, for the same reason (a busy TX flow on this
-     * channel could otherwise starve the deadline while its echoes are
-     * being absorbed here).
-     */
-    Status receive_frame(CanFrame &frame, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT,
-                         std::stop_token stop_tok = {});
+        /**
+         * @brief Wait for the next genuinely-received bus frame (echo_id ==
+         *        GS_CAN_ECHO_ID_RX), silently absorbing any TX-complete echoes
+         *        seen along the way.
+         *
+         * Same overall-deadline tracking and @p stop_tok support as
+         * send_frame() above, for the same reason (a busy TX flow on this
+         * channel could otherwise starve the deadline while its echoes are
+         * being absorbed here).
+         */
+        Status receive_frame(CanFrame &frame, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT,
+                             std::stop_token stop_tok = {});
 
-    // ------------------------------------------------------------------
-    // ICommDriver generic interface (raw bulk passthrough)
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // ICommDriver generic interface (raw bulk passthrough)
+        // ------------------------------------------------------------------
 
-    /// Raw bulk-IN read of one gs_host_frame packet, whatever its echo_id
-    /// (i.e. this can hand back either a TX-complete echo or an RX frame —
-    /// see receive_frame() for the typed, echo-filtering version).
-    ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t> buffer,
-                         const ReadOptions &options,
-                         std::string_view xtra_params = {},
-                         std::stop_token stop_tok     = {}) const override;
+        /// Raw bulk-IN read of one gs_host_frame packet, whatever its echo_id
+        /// (i.e. this can hand back either a TX-complete echo or an RX frame —
+        /// see receive_frame() for the typed, echo-filtering version).
+        ReadResult tout_read(uint32_t u32ReadTimeout,
+                             std::span<uint8_t> buffer,
+                             const ReadOptions &options,
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok     = {}) const override;
 
-    /// Raw bulk-OUT write of one already-encoded gs_host_frame packet.
-    WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {},
-                           std::stop_token stop_tok     = {}) const override;
+        /// Raw bulk-OUT write of one already-encoded gs_host_frame packet.
+        WriteResult tout_write(uint32_t u32WriteTimeout,
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok     = {}) const override;
 
-    // ------------------------------------------------------------------
-    // Encoding / decoding helpers (static where they don't depend on the
-    // negotiated FD/hw-timestamp tail shape; member where they do)
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Encoding / decoding helpers (static where they don't depend on the
+        // negotiated FD/hw-timestamp tail shape; member where they do)
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Encode a CAN frame to a gs_host_frame packet using this
-     *        session's negotiated tail shape (FD vs classic; hw-timestamp
-     *        is never requested by this driver, so the timestamp field is
-     *        never written — see open_channel()).
-     * @param echo_id  Caller-chosen TX cookie (send_frame() supplies its
-     *                 own internal counter; exposed here for tout_write()
-     *                 callers building a packet by hand)
-     * @param frame    Frame to encode
-     * @param[out] out Output buffer; must be at least max_packet_len() bytes
-     * @return Number of bytes written, or 0 on error (payload too long for
-     *         the negotiated mode, or channel not open)
-     */
-    size_t encode_frame(uint32_t echo_id, const CanFrame &frame, std::span<uint8_t> out) const;
+        /**
+         * @brief Encode a CAN frame to a gs_host_frame packet using this
+         *        session's negotiated tail shape (FD vs classic; hw-timestamp
+         *        is never requested by this driver, so the timestamp field is
+         *        never written — see open_channel()).
+         * @param echo_id  Caller-chosen TX cookie (send_frame() supplies its
+         *                 own internal counter; exposed here for tout_write()
+         *                 callers building a packet by hand)
+         * @param frame    Frame to encode
+         * @param[out] out Output buffer; must be at least max_packet_len() bytes
+         * @return Number of bytes written, or 0 on error (payload too long for
+         *         the negotiated mode, or channel not open)
+         */
+        size_t encode_frame(uint32_t echo_id, const CanFrame &frame, std::span<uint8_t> out) const;
 
-    /**
-     * @brief Decode a gs_host_frame packet (either a TX-complete echo or an
-     *        RX frame — check echo_id) using this session's negotiated tail
-     *        shape.
-     * @param[out] echo_id  GS_CAN_ECHO_ID_RX for a genuine RX frame, or the
-     *                      original TX echo_id for a TX-complete echo
-     * @param[out] frame    Decoded frame
-     * @return true on success
-     */
-    bool decode_frame(const uint8_t *pkt, size_t len, uint32_t &echo_id, CanFrame &frame) const;
+        /**
+         * @brief Decode a gs_host_frame packet (either a TX-complete echo or an
+         *        RX frame — check echo_id) using this session's negotiated tail
+         *        shape.
+         * @param[out] echo_id  GS_CAN_ECHO_ID_RX for a genuine RX frame, or the
+         *                      original TX echo_id for a TX-complete echo
+         * @param[out] frame    Decoded frame
+         * @return true on success
+         */
+        bool decode_frame(const uint8_t *pkt, size_t len, uint32_t &echo_id, CanFrame &frame) const;
 
-    /// Fixed header size common to every gs_host_frame, any tail shape.
-    static constexpr size_t GS_HOST_FRAME_HDR_LEN = 12; // echo_id(4)+can_id(4)+can_dlc(1)+channel(1)+flags(1)+reserved(1)
+        /// Fixed header size common to every gs_host_frame, any tail shape.
+        static constexpr size_t GS_HOST_FRAME_HDR_LEN = 12; // echo_id(4)+can_id(4)+can_dlc(1)+channel(1)+flags(1)+reserved(1)
 
-    /// Largest possible packet this session can produce/consume: header +
-    /// 64-byte CAN-FD payload + 4-byte hw timestamp (never both FD-off and
-    /// timestamp-on differ in a way that exceeds this).
-    size_t max_packet_len() const
-    {
-        return GS_HOST_FRAME_HDR_LEN + 64 + 4;
-    }
+        /// Largest possible packet this session can produce/consume: header +
+        /// 64-byte CAN-FD payload + 4-byte hw timestamp (never both FD-off and
+        /// timestamp-on differ in a way that exceeds this).
+        size_t max_packet_len() const
+        {
+            return GS_HOST_FRAME_HDR_LEN + 64 + 4;
+        }
 
-private:
-    // ------------------------------------------------------------------
-    // Internal helpers
-    // ------------------------------------------------------------------
+    private:
+        // ------------------------------------------------------------------
+        // Internal helpers
+        // ------------------------------------------------------------------
 
-    Status probe();
+        Status probe();
 
-    Status ctrl_out(GsUsbBreq req, uint16_t value, const void *data, uint16_t len, uint32_t timeout_ms);
-    Status ctrl_in(GsUsbBreq req, uint16_t value, void *data, uint16_t len, uint32_t timeout_ms);
+        Status ctrl_out(GsUsbBreq req, uint16_t value, const void *data, uint16_t len, uint32_t timeout_ms);
+        Status ctrl_in(GsUsbBreq req, uint16_t value, void *data, uint16_t len, uint32_t timeout_ms);
 
-    Status bulk_write_frame(uint32_t echo_id, const CanFrame &frame, uint32_t timeout_ms);
-    /// Reads exactly one bulk-IN packet, decodes it, and reports whether it
-    /// was an RX frame or a TX-complete echo — the shared core of both
-    /// send_frame()'s echo-wait loop and receive_frame()'s RX-wait loop.
-    /// Internally retries libusb_bulk_transfer() in bounded slices (libusb's
-    /// synchronous API has no cross-thread cancel), checking stop_tok
-    /// between slices so a single call can itself be interrupted early,
-    /// not just the outer send_frame()/receive_frame() retry loop.
-    Status bulk_read_one(uint32_t &echo_id, CanFrame &frame, uint32_t timeout_ms, std::stop_token stop_tok = {});
+        Status bulk_write_frame(uint32_t echo_id, const CanFrame &frame, uint32_t timeout_ms);
+        /// Reads exactly one bulk-IN packet, decodes it, and reports whether it
+        /// was an RX frame or a TX-complete echo — the shared core of both
+        /// send_frame()'s echo-wait loop and receive_frame()'s RX-wait loop.
+        /// Internally retries libusb_bulk_transfer() in bounded slices (libusb's
+        /// synchronous API has no cross-thread cancel), checking stop_tok
+        /// between slices so a single call can itself be interrupted early,
+        /// not just the outer send_frame()/receive_frame() retry loop.
+        Status bulk_read_one(uint32_t &echo_id, CanFrame &frame, uint32_t timeout_ms, std::stop_token stop_tok = {});
 
-    // ------------------------------------------------------------------
-    // Members
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Members
+        // ------------------------------------------------------------------
 
-    libusb_context *m_usbCtx          = nullptr;
-    libusb_device_handle *m_usbHandle = nullptr;
-    uint8_t m_epIn                    = 0; ///< bulk IN endpoint address (with USB_DIR_IN bit set), discovered from the device's descriptors
-    uint8_t m_epOut                   = 0; ///< bulk OUT endpoint address
-    int m_interfaceNum                = 0;
+        libusb_context *m_usbCtx          = nullptr;
+        libusb_device_handle *m_usbHandle = nullptr;
+        uint8_t m_epIn                    = 0; ///< bulk IN endpoint address (with USB_DIR_IN bit set), discovered from the device's descriptors
+        uint8_t m_epOut                   = 0; ///< bulk OUT endpoint address
+        int m_interfaceNum                = 0;
 
-    GsDeviceConfig m_devConfig{};
-    GsDeviceBtConst m_btConst{};
-    GsDeviceBtConstExtended m_btConstExt{};
+        GsDeviceConfig m_devConfig{};
+        GsDeviceBtConst m_btConst{};
+        GsDeviceBtConstExtended m_btConstExt{};
 
-    bool m_channel_open     = false;
-    bool m_fd_negotiated    = false; ///< set by open_channel() from mode_flags & GS_CAN_MODE_FD
-    uint32_t m_next_echo_id = 0;
-    std::string m_strIdentityLabel;
+        bool m_channel_open     = false;
+        bool m_fd_negotiated    = false; ///< set by open_channel() from mode_flags & GS_CAN_MODE_FD
+        uint32_t m_next_echo_id = 0;
+        std::string m_strIdentityLabel;
 };
 
 #endif // U_CANDLELIGHT_DRIVER_HPP

@@ -21,17 +21,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED CP2112Plugin *pluginEntry()
-{
-    return new CP2112Plugin();
-}
-
-EXPORTED void pluginExit(CP2112Plugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED CP2112Plugin *pluginEntry()
+    {
+        return new CP2112Plugin();
     }
-}
+
+    EXPORTED void pluginExit(CP2112Plugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

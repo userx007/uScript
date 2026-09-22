@@ -155,17 +155,13 @@ MainWindow::MainWindow(QWidget *parent)
     auto *scNextTab  = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Tab), this);
     auto *scPrevTab  = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Tab), this);
     connect(scNewTab, &QShortcut::activated, this, [this] { addTab(); });
-    connect(scCloseTab, &QShortcut::activated, this, [this] {
-        onTabCloseRequested(m_tabWidget->currentIndex());
-    });
+    connect(scCloseTab, &QShortcut::activated, this, [this] { onTabCloseRequested(m_tabWidget->currentIndex()); });
     connect(scNextTab, &QShortcut::activated, this, [this] {
         const int n = m_tabWidget->count();
-        m_tabWidget->setCurrentIndex((m_tabWidget->currentIndex() + 1) % n);
-    });
+        m_tabWidget->setCurrentIndex((m_tabWidget->currentIndex() + 1) % n); });
     connect(scPrevTab, &QShortcut::activated, this, [this] {
         const int n = m_tabWidget->count();
-        m_tabWidget->setCurrentIndex((m_tabWidget->currentIndex() + n - 1) % n);
-    });
+        m_tabWidget->setCurrentIndex((m_tabWidget->currentIndex() + n - 1) % n); });
 
     // ── Restore session ───────────────────────────────────────────────────
     m_fontSize                 = cfg.value("session/fontSize", k_fontDefault).toInt();
@@ -242,8 +238,7 @@ QFrame *MainWindow::buildToolbar()
     connect(interpEdit, &QLineEdit::textEdited, this, [this](const QString &t) {
         // In-memory only for the lifetime of this session — never written to
         // QSettings, so nothing here is cached between runs of the app.
-        m_interpreterPath = t;
-    });
+        m_interpreterPath = t; });
 
     auto *interpBrowse = new QPushButton("…", bar);
     interpBrowse->setObjectName("browseBtn");
@@ -260,8 +255,7 @@ QFrame *MainWindow::buildToolbar()
             // edit box is the single source of truth for the interpreter
             // path, never QSettings.
             m_interpreterPath = f;
-        }
-    });
+        } });
 
     // Active-tab script path
     auto *scriptLabel = new QLabel("SCRIPT", bar);
@@ -279,8 +273,7 @@ QFrame *MainWindow::buildToolbar()
             loadIntoCurrentTab(path);
         } else if (!path.isEmpty()) {
             m_w3->appendStatus(QString("File not found: %1").arg(path));
-        }
-    });
+        } });
 
     auto *browseBtn = new QPushButton("…", bar);
     browseBtn->setObjectName("browseBtn");
@@ -305,8 +298,7 @@ QFrame *MainWindow::buildToolbar()
     connect(m_iniPathEdit, &QLineEdit::textChanged, this, [this](const QString &t) {
         m_iniPath = t;
         QSettings s;
-        s.setValue("session/iniPath", t);
-    });
+        s.setValue("session/iniPath", t); });
 
     auto *iniBrowseBtn = new QPushButton("…", bar);
     iniBrowseBtn->setObjectName("browseBtn");
@@ -322,8 +314,7 @@ QFrame *MainWindow::buildToolbar()
             "INI files (*.ini);;All files (*)");
         if (!f.isEmpty()) {
             m_iniPathEdit->setText(f);
-        }
-    });
+        } });
 
     // Reload every open script/INI file from disk
     m_reloadBtn = new QPushButton("⟳  RELOAD", bar);
@@ -491,8 +482,7 @@ QWidget *MainWindow::buildCentralWidget()
         connect(commSaveBtn, &QPushButton::clicked, this, [this] {
             if (m_w2->save()) {
                 setStatus(QString("Saved: %1").arg(QFileInfo(m_w2->currentFile()).fileName()));
-            }
-        });
+            } });
 
         auto *commClearBtn = new QPushButton("CLEAR", commBar);
         commClearBtn->setObjectName("clearBtn");
@@ -519,8 +509,7 @@ QWidget *MainWindow::buildCentralWidget()
                 }
             }
             m_w2->clear();
-            setStatus("Comm script cleared");
-        });
+            setStatus("Comm script cleared"); });
 
         cbLay->addWidget(commLabel);
         cbLay->addWidget(m_commScriptNameLabel);
@@ -533,11 +522,9 @@ QWidget *MainWindow::buildCentralWidget()
         connect(m_w2, &ScriptViewer::infoChanged,
                 m_commScriptNameLabel, &QLabel::setText);
         connect(m_w2, &ScriptViewer::modificationChanged,
-                this, [this](bool modified) {
-                    m_commScriptNameLabel->setStyleSheet(
-                        modified ? "font-size: 13px; color: #ff5555;"
-                                 : "font-size: 13px; color: #c8d0e0;");
-                });
+                this, [this](bool modified) { m_commScriptNameLabel->setStyleSheet(
+                                                  modified ? "font-size: 13px; color: #ff5555;"
+                                                           : "font-size: 13px; color: #c8d0e0;"); });
         wLay->addWidget(m_w2, 1);
         wLay->addWidget(commBar);
     }
@@ -626,8 +613,7 @@ QWidget *MainWindow::buildCentralWidget()
             this, [this](const QByteArray &bytes) {
                 if (m_process->state() == QProcess::Running) {
                     m_process->write(bytes);
-                }
-            });
+                } });
 
     // Vertical splitter: OUTPUT LOG / COMM DUMP / SHELL TERMINAL
     m_logShellSplit = new QSplitter(Qt::Vertical, this);
@@ -672,11 +658,8 @@ QWidget *MainWindow::buildCentralWidget()
             s.setValue("window/vSplit", vSplit->saveState());
             if (m_terminalMode) {
                 s.setValue("window/logShellSplit", m_logShellSplit->saveState());
-            }
-        });
-        connect(hSplit, &QSplitter::splitterMoved, this, [this] {
-            m_splitterSaveTimer->start(300);
-        });
+            } });
+        connect(hSplit, &QSplitter::splitterMoved, this, [this] { m_splitterSaveTimer->start(300); });
     }
 
     return hSplit;
@@ -719,9 +702,7 @@ ScriptViewer *MainWindow::addTab(const QString &filePath)
     m_tabWidget->setTabToolTip(idx, filePath.isEmpty() ? "(empty)" : filePath);
 
     // Update tab title dot whenever this viewer's modified state changes
-    connect(viewer, &ScriptViewer::modificationChanged, this, [this, viewer](bool) {
-        updateTabModifiedState(viewer);
-    });
+    connect(viewer, &ScriptViewer::modificationChanged, this, [this, viewer](bool) { updateTabModifiedState(viewer); });
 
     // Load comm script when user clicks a PLUGIN.SCRIPT line
     connect(viewer, &ScriptViewer::commScriptRequested,
@@ -1482,8 +1463,7 @@ void MainWindow::dispatchLine(const QString &raw)
                 // execution may have ended while the timer was pending.
                 if (m_running) {
                     w2->setCurrentLine(lineNo);
-                }
-            });
+                } });
         } else {
             m_w2->setCurrentLine(lineNo);
         }

@@ -28,17 +28,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED DSPKSPIPlugin *pluginEntry()
-{
-    return new DSPKSPIPlugin();
-}
-
-EXPORTED void pluginExit(DSPKSPIPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED DSPKSPIPlugin *pluginEntry()
+    {
+        return new DSPKSPIPlugin();
     }
-}
+
+    EXPORTED void pluginExit(DSPKSPIPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

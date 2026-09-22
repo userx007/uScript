@@ -15,17 +15,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED DdsPlugin *pluginEntry()
-{
-    return new DdsPlugin();
-}
-
-EXPORTED void pluginExit(DdsPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED DdsPlugin *pluginEntry()
+    {
+        return new DdsPlugin();
     }
-}
+
+    EXPORTED void pluginExit(DdsPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

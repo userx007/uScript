@@ -101,490 +101,488 @@
 //                     IMPLEMENTATION                            //
 ///////////////////////////////////////////////////////////////////
 
-class EvalExprEvaluator
-{
-public:
-    // -----------------------------------------------------------------------
-    // evaluate()
-    //
-    // Entry point.  Receives the expression string *without* the leading
-    // "EVAL " prefix (the caller strips it).  All $macros must already be
-    // expanded before this call.
-    //
-    // Returns true and sets result on success.
-    // Returns false (and logs) on any parse / type / evaluation error.
-    // -----------------------------------------------------------------------
-    bool evaluate(const std::string &expr, bool &result) const
-    {
-        try {
-            return m_parseCompound(expr, result);
-        } catch (const std::exception &ex) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL exception:"); LOG_STRING(ex.what()));
-            return false;
-        } catch (...) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL unknown exception"));
-            return false;
-        }
-    }
-
-private:
-    // ─────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────────────
-
-    static std::string_view m_trimSV(std::string_view sv)
-    {
-        while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front()))) {
-            sv.remove_prefix(1);
-        }
-        while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.back()))) {
-            sv.remove_suffix(1);
-        }
-        return sv;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Type inference
-    //
-    // Heuristic applied when no |TYPE suffix is present:
-    //   BOOL  — value is TRUE, FALSE, !TRUE, !FALSE (case-insensitive)
-    //   NUM   — all characters are digits (uint64 range)
-    //   VER   — digits separated by dots (at least one dot)
-    //   STR   — fallback
-    // ─────────────────────────────────────────────────────────────────────
-
-    static bool m_isBoolLiteral(std::string_view v)
-    {
-        // Case-insensitive check for the four boolean keywords.
-        auto ci = [](std::string_view s, const char *lit, size_t n) {
-            if (s.size() != n) {
+class EvalExprEvaluator {
+    public:
+        // -----------------------------------------------------------------------
+        // evaluate()
+        //
+        // Entry point.  Receives the expression string *without* the leading
+        // "EVAL " prefix (the caller strips it).  All $macros must already be
+        // expanded before this call.
+        //
+        // Returns true and sets result on success.
+        // Returns false (and logs) on any parse / type / evaluation error.
+        // -----------------------------------------------------------------------
+        bool evaluate(const std::string &expr, bool &result) const
+        {
+            try {
+                return m_parseCompound(expr, result);
+            } catch (const std::exception &ex) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL exception:"); LOG_STRING(ex.what()));
+                return false;
+            } catch (...) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL unknown exception"));
                 return false;
             }
-            for (size_t i = 0; i < n; ++i) {
-                if (std::tolower(static_cast<unsigned char>(s[i])) != lit[i]) {
+        }
+
+    private:
+        // ─────────────────────────────────────────────────────────────────────
+        // Helpers
+        // ─────────────────────────────────────────────────────────────────────
+
+        static std::string_view m_trimSV(std::string_view sv)
+        {
+            while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front()))) {
+                sv.remove_prefix(1);
+            }
+            while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.back()))) {
+                sv.remove_suffix(1);
+            }
+            return sv;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Type inference
+        //
+        // Heuristic applied when no |TYPE suffix is present:
+        //   BOOL  — value is TRUE, FALSE, !TRUE, !FALSE (case-insensitive)
+        //   NUM   — all characters are digits (uint64 range)
+        //   VER   — digits separated by dots (at least one dot)
+        //   STR   — fallback
+        // ─────────────────────────────────────────────────────────────────────
+
+        static bool m_isBoolLiteral(std::string_view v)
+        {
+            // Case-insensitive check for the four boolean keywords.
+            auto ci = [](std::string_view s, const char *lit, size_t n) {
+                if (s.size() != n) {
                     return false;
                 }
+                for (size_t i = 0; i < n; ++i) {
+                    if (std::tolower(static_cast<unsigned char>(s[i])) != lit[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            };
+            return ci(v, "true", 4) || ci(v, "false", 5) || ci(v, "!true", 5) || ci(v, "!false", 6);
+        }
+
+        static bool m_isNumericLiteral(std::string_view v)
+        {
+            return !v.empty() && std::all_of(v.begin(), v.end(), ::isdigit);
+        }
+
+        static bool m_isVersionLiteral(std::string_view v)
+        {
+            // A canonical version string has the form N.N[.N[.N]] where every
+            // component is a non-empty run of digits and there are 1–3 dots
+            // (i.e. 2–4 components).  A plain decimal number like "3.14" or
+            // "3.14159" is deliberately NOT matched so that floats are never
+            // misclassified as versions when no |TYPE hint is present.
+            //
+            // Rules:
+            //  - Must contain at least one dot.
+            //  - Every dot-separated component must be non-empty and all-digit.
+            //  - Maximum 3 dots (4 components), minimum 1 dot (2 components).
+            //  - Each component must be a SHORT integer-looking token (no more
+            //    than 9 digits) — this rejects long decimal fractions like
+            //    "3.14159265" which have a single multi-digit fractional part.
+            if (v.empty()) {
+                return false;
             }
+
+            int dotCount    = 0;
+            int segLen      = 0; // length of current component
+            bool startOfSeg = true;
+
+            for (char c : v) {
+                if (c == '.') {
+                    if (startOfSeg) {
+                        return false; // leading dot or consecutive dots
+                    }
+                    if (segLen > 9) {
+                        return false; // component too long → looks like a float fraction
+                    }
+                    ++dotCount;
+                    if (dotCount > 3) {
+                        return false; // more than 4 components
+                    }
+                    segLen     = 0;
+                    startOfSeg = true;
+                } else if (std::isdigit(static_cast<unsigned char>(c))) {
+                    ++segLen;
+                    startOfSeg = false;
+                } else {
+                    return false; // non-digit, non-dot character
+                }
+            }
+
+            // Must not end with a dot, must have had at least one dot,
+            // and the last component must not be too long.
+            if (startOfSeg) {
+                return false; // trailing dot
+            }
+            if (dotCount < 1) {
+                return false; // no dots at all
+            }
+            if (segLen > 9) {
+                return false; // last component too long
+            }
+
             return true;
-        };
-        return ci(v, "true", 4) || ci(v, "false", 5) || ci(v, "!true", 5) || ci(v, "!false", 6);
-    }
-
-    static bool m_isNumericLiteral(std::string_view v)
-    {
-        return !v.empty() && std::all_of(v.begin(), v.end(), ::isdigit);
-    }
-
-    static bool m_isVersionLiteral(std::string_view v)
-    {
-        // A canonical version string has the form N.N[.N[.N]] where every
-        // component is a non-empty run of digits and there are 1–3 dots
-        // (i.e. 2–4 components).  A plain decimal number like "3.14" or
-        // "3.14159" is deliberately NOT matched so that floats are never
-        // misclassified as versions when no |TYPE hint is present.
-        //
-        // Rules:
-        //  - Must contain at least one dot.
-        //  - Every dot-separated component must be non-empty and all-digit.
-        //  - Maximum 3 dots (4 components), minimum 1 dot (2 components).
-        //  - Each component must be a SHORT integer-looking token (no more
-        //    than 9 digits) — this rejects long decimal fractions like
-        //    "3.14159265" which have a single multi-digit fractional part.
-        if (v.empty()) {
-            return false;
         }
 
-        int dotCount    = 0;
-        int segLen      = 0; // length of current component
-        bool startOfSeg = true;
-
-        for (char c : v) {
-            if (c == '.') {
-                if (startOfSeg) {
-                    return false; // leading dot or consecutive dots
-                }
-                if (segLen > 9) {
-                    return false; // component too long → looks like a float fraction
-                }
-                ++dotCount;
-                if (dotCount > 3) {
-                    return false; // more than 4 components
-                }
-                segLen     = 0;
-                startOfSeg = true;
-            } else if (std::isdigit(static_cast<unsigned char>(c))) {
-                ++segLen;
-                startOfSeg = false;
-            } else {
-                return false; // non-digit, non-dot character
+        static eValidateType m_inferType(std::string_view lhs, std::string_view rhs)
+        {
+            // Both operands must agree for a reliable inference.
+            // Priority: BOOL > NUM > VER > STR
+            if (m_isBoolLiteral(lhs) || m_isBoolLiteral(rhs)) {
+                return eValidateType::BOOLEAN;
             }
-        }
-
-        // Must not end with a dot, must have had at least one dot,
-        // and the last component must not be too long.
-        if (startOfSeg) {
-            return false; // trailing dot
-        }
-        if (dotCount < 1) {
-            return false; // no dots at all
-        }
-        if (segLen > 9) {
-            return false; // last component too long
-        }
-
-        return true;
-    }
-
-    static eValidateType m_inferType(std::string_view lhs, std::string_view rhs)
-    {
-        // Both operands must agree for a reliable inference.
-        // Priority: BOOL > NUM > VER > STR
-        if (m_isBoolLiteral(lhs) || m_isBoolLiteral(rhs)) {
-            return eValidateType::BOOLEAN;
-        }
-        if (m_isNumericLiteral(lhs) && m_isNumericLiteral(rhs)) {
-            return eValidateType::NUMBER;
-        }
-        if (m_isVersionLiteral(lhs) || m_isVersionLiteral(rhs)) {
-            return eValidateType::VERSION;
-        }
-        return eValidateType::STRING;
-    }
-
-    static eValidateType m_typeFromSuffix(const std::string &suffix)
-    {
-        if (suffix == "STR") {
+            if (m_isNumericLiteral(lhs) && m_isNumericLiteral(rhs)) {
+                return eValidateType::NUMBER;
+            }
+            if (m_isVersionLiteral(lhs) || m_isVersionLiteral(rhs)) {
+                return eValidateType::VERSION;
+            }
             return eValidateType::STRING;
         }
-        if (suffix == "NUM") {
-            return eValidateType::NUMBER;
-        }
-        if (suffix == "VER") {
-            return eValidateType::VERSION;
-        }
-        if (suffix == "BOOL") {
-            return eValidateType::BOOLEAN;
-        }
-        throw std::invalid_argument("Unknown type suffix: " + suffix);
-    }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Token extraction
-    //
-    // An atom is one of:
-    //   <lhs-word> <op[|TYPE]> <rhs-word>
-    //   TRUE | FALSE | !TRUE | !FALSE
-    //
-    // Words are delimited by whitespace.  The operator may carry an optional
-    // pipe-separated type suffix: ==|NUM, !=|STR, >=|VER, etc.
-    //
-    // Returns a view of the remainder (everything after the atom, trimmed).
-    // ─────────────────────────────────────────────────────────────────────
-
-    struct Atom
-    {
-        std::string_view lhs;
-        std::string op;
-        std::string_view rhs;
-        eValidateType type     = eValidateType::STRING;
-        bool isBoolLiteralOnly = false;
-    };
-
-    // Split a string_view at the first whitespace boundary.
-    //
-    // A word that begins with '"' is treated as a quoted string: scanning
-    // continues — including any embedded whitespace — up to and including
-    // the matching closing '"', so that operands such as "Hello World" are
-    // returned as a single word instead of being split on the inner space.
-    // A backslash can be used to escape a quote inside the string (\").
-    // An unterminated quoted string simply consumes the rest of sv (the
-    // caller still gets a well-formed, non-empty word to work with).
-    static std::string_view m_nextWord(std::string_view &sv)
-    {
-        // skip leading ws
-        while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front()))) {
-            sv.remove_prefix(1);
-        }
-        if (sv.empty()) {
-            return {};
-        }
-
-        if (sv.front() == '"') {
-            size_t i = 1;
-            while (i < sv.size() && sv[i] != '"') {
-                i += (sv[i] == '\\' && i + 1 < sv.size()) ? 2 : 1;
+        static eValidateType m_typeFromSuffix(const std::string &suffix)
+        {
+            if (suffix == "STR") {
+                return eValidateType::STRING;
             }
-            const size_t len      = (i < sv.size()) ? (i + 1) : sv.size(); // include closing quote
+            if (suffix == "NUM") {
+                return eValidateType::NUMBER;
+            }
+            if (suffix == "VER") {
+                return eValidateType::VERSION;
+            }
+            if (suffix == "BOOL") {
+                return eValidateType::BOOLEAN;
+            }
+            throw std::invalid_argument("Unknown type suffix: " + suffix);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Token extraction
+        //
+        // An atom is one of:
+        //   <lhs-word> <op[|TYPE]> <rhs-word>
+        //   TRUE | FALSE | !TRUE | !FALSE
+        //
+        // Words are delimited by whitespace.  The operator may carry an optional
+        // pipe-separated type suffix: ==|NUM, !=|STR, >=|VER, etc.
+        //
+        // Returns a view of the remainder (everything after the atom, trimmed).
+        // ─────────────────────────────────────────────────────────────────────
+
+        struct Atom {
+                std::string_view lhs;
+                std::string op;
+                std::string_view rhs;
+                eValidateType type     = eValidateType::STRING;
+                bool isBoolLiteralOnly = false;
+        };
+
+        // Split a string_view at the first whitespace boundary.
+        //
+        // A word that begins with '"' is treated as a quoted string: scanning
+        // continues — including any embedded whitespace — up to and including
+        // the matching closing '"', so that operands such as "Hello World" are
+        // returned as a single word instead of being split on the inner space.
+        // A backslash can be used to escape a quote inside the string (\").
+        // An unterminated quoted string simply consumes the rest of sv (the
+        // caller still gets a well-formed, non-empty word to work with).
+        static std::string_view m_nextWord(std::string_view &sv)
+        {
+            // skip leading ws
+            while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front()))) {
+                sv.remove_prefix(1);
+            }
+            if (sv.empty()) {
+                return {};
+            }
+
+            if (sv.front() == '"') {
+                size_t i = 1;
+                while (i < sv.size() && sv[i] != '"') {
+                    i += (sv[i] == '\\' && i + 1 < sv.size()) ? 2 : 1;
+                }
+                const size_t len      = (i < sv.size()) ? (i + 1) : sv.size(); // include closing quote
+                std::string_view word = sv.substr(0, len);
+                sv.remove_prefix(len);
+                return word;
+            }
+
+            // consume non-ws
+            size_t len = 0;
+            while (len < sv.size() && !std::isspace(static_cast<unsigned char>(sv[len]))) {
+                ++len;
+            }
             std::string_view word = sv.substr(0, len);
             sv.remove_prefix(len);
             return word;
         }
 
-        // consume non-ws
-        size_t len = 0;
-        while (len < sv.size() && !std::isspace(static_cast<unsigned char>(sv[len]))) {
-            ++len;
-        }
-        std::string_view word = sv.substr(0, len);
-        sv.remove_prefix(len);
-        return word;
-    }
-
-    // Strip a single pair of enclosing double quotes from a word, if
-    // present. Used to turn a quoted token ("Hello World") into the bare
-    // operand value (Hello World) before it is stored on the Atom / used
-    // for type inference and comparison. Words that are not quoted (or
-    // that are just a lone '"') are returned unchanged.
-    static std::string_view m_stripQuotes(std::string_view v)
-    {
-        if (v.size() >= 2 && v.front() == '"' && v.back() == '"') {
-            return v.substr(1, v.size() - 2);
-        }
-        return v;
-    }
-
-    // Parse a single comparison atom from sv, advancing sv past the atom.
-    // Returns false on parse error.
-    bool m_parseAtom(std::string_view &sv, Atom &atom) const
-    {
-        // word1
-        std::string_view word1 = m_nextWord(sv);
-        if (word1.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL: empty atom"));
-            return false;
+        // Strip a single pair of enclosing double quotes from a word, if
+        // present. Used to turn a quoted token ("Hello World") into the bare
+        // operand value (Hello World) before it is stored on the Atom / used
+        // for type inference and comparison. Words that are not quoted (or
+        // that are just a lone '"') are returned unchanged.
+        static std::string_view m_stripQuotes(std::string_view v)
+        {
+            if (v.size() >= 2 && v.front() == '"' && v.back() == '"') {
+                return v.substr(1, v.size() - 2);
+            }
+            return v;
         }
 
-        atom.lhs                      = m_stripQuotes(word1);
-
-        // Save position so we can test if this is a lone boolean literal
-        std::string_view svAfterWord1 = sv;
-
-        // word2 — could be an operator or we might be at && / || / end
-        std::string_view word2        = m_nextWord(sv);
-
-        // If word2 is a logical connector or empty → word1 is a lone boolean
-        if (word2.empty() || word2 == "&&" || word2 == "||") {
-            sv                     = svAfterWord1;
-            atom.isBoolLiteralOnly = true;
-            if (!m_isBoolLiteral(atom.lhs)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("EVAL: expected operator after"); LOG_STRING(atom.lhs));
+        // Parse a single comparison atom from sv, advancing sv past the atom.
+        // Returns false on parse error.
+        bool m_parseAtom(std::string_view &sv, Atom &atom) const
+        {
+            // word1
+            std::string_view word1 = m_nextWord(sv);
+            if (word1.empty()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL: empty atom"));
                 return false;
             }
+
+            atom.lhs                      = m_stripQuotes(word1);
+
+            // Save position so we can test if this is a lone boolean literal
+            std::string_view svAfterWord1 = sv;
+
+            // word2 — could be an operator or we might be at && / || / end
+            std::string_view word2        = m_nextWord(sv);
+
+            // If word2 is a logical connector or empty → word1 is a lone boolean
+            if (word2.empty() || word2 == "&&" || word2 == "||") {
+                sv                     = svAfterWord1;
+                atom.isBoolLiteralOnly = true;
+                if (!m_isBoolLiteral(atom.lhs)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("EVAL: expected operator after"); LOG_STRING(atom.lhs));
+                    return false;
+                }
+                return true;
+            }
+
+            // word2 is the operator — parse optional |TYPE suffix
+            {
+                std::string opRaw(word2); // materialise only for the operator token
+                std::string typeSuffix;
+                auto pipePos = opRaw.find('|');
+                if (pipePos != std::string::npos) {
+                    typeSuffix = opRaw.substr(pipePos + 1);
+                    opRaw      = opRaw.substr(0, pipePos);
+                }
+
+                // Trim stray whitespace from the operator — defensive against
+                // code paths that may include surrounding spaces in the token.
+                {
+                    const size_t fs = opRaw.find_first_not_of(" \t");
+                    const size_t ls = opRaw.find_last_not_of(" \t");
+                    opRaw           = (fs == std::string::npos) ? "" : opRaw.substr(fs, ls - fs + 1);
+                }
+
+                atom.op                = opRaw;
+
+                // word3 — right-hand side
+                std::string_view word3 = m_nextWord(sv);
+                if (word3.empty()) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("EVAL: missing RHS after operator"); LOG_STRING(atom.op));
+                    return false;
+                }
+                atom.rhs = m_stripQuotes(word3);
+
+                // ── Postfix type hint ─────────────────────────────────────────
+                // After the RHS, an optional type token may follow in one of two
+                // spaced forms:
+                //   … rhs |TYPE          e.g.  hello EQ hello |STR
+                //   … rhs | TYPE         e.g.  hello EQ hello | STR
+                // The inline op|TYPE form (no spaces) is already handled above.
+                // The token must start with '|' and the name must be a known
+                // keyword (STR / NUM / VER / BOOL); otherwise it is NOT consumed.
+                //
+                // Note: a standalone '|' word here is never confused with the
+                // '||' logical-OR token used between atoms — they are distinct
+                // whitespace-delimited words ("|" vs "||"), and if this rhs
+                // happens to be immediately followed by a real "||" connector,
+                // the candidate-keyword check below fails (the character after
+                // the leading '|' is another '|', not STR/NUM/VER/BOOL) and the
+                // saved position is restored, so "||" is parsed normally by the
+                // caller (m_parseOr/m_parseAnd) exactly as before.
+                if (typeSuffix.empty()) {
+                    std::string_view svSaved = sv;
+                    std::string_view word4   = m_nextWord(sv);
+
+                    if (!word4.empty() && word4[0] == '|') {
+                        std::string_view candidate = word4.substr(1); // strip '|'
+
+                        if (candidate.empty()) {
+                            // Bare '|' — type keyword is the next word
+                            std::string_view svSaved2 = sv;
+                            std::string_view word5    = m_nextWord(sv);
+                            if (word5 == "STR" || word5 == "NUM" ||
+                                word5 == "VER" || word5 == "BOOL") {
+                                typeSuffix = std::string(word5);
+                            } else {
+                                sv = svSaved; // not a keyword — push both back
+                            }
+                        } else {
+                            if (candidate == "STR" || candidate == "NUM" ||
+                                candidate == "VER" || candidate == "BOOL") {
+                                typeSuffix = std::string(candidate);
+                            } else {
+                                sv = svSaved; // not a keyword — push word4 back
+                            }
+                        }
+                    } else {
+                        sv = svSaved; // word4 is not a type token — restore
+                    }
+                }
+
+                // Resolve type: explicit suffix wins over inference
+                if (!typeSuffix.empty()) {
+                    atom.type = m_typeFromSuffix(typeSuffix);
+                } else {
+                    atom.type = m_inferType(atom.lhs, atom.rhs);
+                }
+            }
+
             return true;
         }
 
-        // word2 is the operator — parse optional |TYPE suffix
+        // ─────────────────────────────────────────────────────────────────────
+        // Atom evaluation
+        //
+        // Delegates to VectorValidator for the typed comparison, or to
+        // BoolExprEvaluator for lone boolean literals.
+        // ─────────────────────────────────────────────────────────────────────
+
+        bool m_evaluateAtom(const Atom &atom, bool &result) const
         {
-            std::string opRaw(word2); // materialise only for the operator token
-            std::string typeSuffix;
-            auto pipePos = opRaw.find('|');
-            if (pipePos != std::string::npos) {
-                typeSuffix = opRaw.substr(pipePos + 1);
-                opRaw      = opRaw.substr(0, pipePos);
+            if (atom.isBoolLiteralOnly) {
+                return BoolExprEvaluator{}.evaluate(atom.lhs, result);
             }
 
-            // Trim stray whitespace from the operator — defensive against
-            // code paths that may include surrounding spaces in the token.
+            const std::string slhs(atom.lhs);
+            const std::string srhs(atom.rhs);
+            result = VectorValidator{}.validate({slhs}, {srhs}, atom.op, atom.type);
+
+            return true;
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Compound expression parser  (|| / && with standard C precedence)
+        //
+        //   expr  := term  ( '||' term  )*
+        //   term  := atom  ( '&&' atom  )*
+        //
+        // Implements short-circuit evaluation to match C semantics.
+        // ─────────────────────────────────────────────────────────────────────
+
+        bool m_parseCompound(const std::string &exprStr, bool &result) const
+        {
+            std::string_view sv(exprStr);
+
+            // Skip leading "EVAL" keyword if caller did not strip it
             {
-                const size_t fs = opRaw.find_first_not_of(" \t");
-                const size_t ls = opRaw.find_last_not_of(" \t");
-                opRaw           = (fs == std::string::npos) ? "" : opRaw.substr(fs, ls - fs + 1);
+                std::string_view peek  = sv;
+                std::string_view first = m_nextWord(peek);
+                if (first == "EVAL") {
+                    sv = peek; // advance past the keyword
+                }
             }
 
-            atom.op                = opRaw;
-
-            // word3 — right-hand side
-            std::string_view word3 = m_nextWord(sv);
-            if (word3.empty()) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("EVAL: missing RHS after operator"); LOG_STRING(atom.op));
+            if (!m_parseOr(sv, result)) {
                 return false;
             }
-            atom.rhs = m_stripQuotes(word3);
 
-            // ── Postfix type hint ─────────────────────────────────────────
-            // After the RHS, an optional type token may follow in one of two
-            // spaced forms:
-            //   … rhs |TYPE          e.g.  hello EQ hello |STR
-            //   … rhs | TYPE         e.g.  hello EQ hello | STR
-            // The inline op|TYPE form (no spaces) is already handled above.
-            // The token must start with '|' and the name must be a known
-            // keyword (STR / NUM / VER / BOOL); otherwise it is NOT consumed.
-            //
-            // Note: a standalone '|' word here is never confused with the
-            // '||' logical-OR token used between atoms — they are distinct
-            // whitespace-delimited words ("|" vs "||"), and if this rhs
-            // happens to be immediately followed by a real "||" connector,
-            // the candidate-keyword check below fails (the character after
-            // the leading '|' is another '|', not STR/NUM/VER/BOOL) and the
-            // saved position is restored, so "||" is parsed normally by the
-            // caller (m_parseOr/m_parseAnd) exactly as before.
-            if (typeSuffix.empty()) {
-                std::string_view svSaved = sv;
-                std::string_view word4   = m_nextWord(sv);
-
-                if (!word4.empty() && word4[0] == '|') {
-                    std::string_view candidate = word4.substr(1); // strip '|'
-
-                    if (candidate.empty()) {
-                        // Bare '|' — type keyword is the next word
-                        std::string_view svSaved2 = sv;
-                        std::string_view word5    = m_nextWord(sv);
-                        if (word5 == "STR" || word5 == "NUM" ||
-                            word5 == "VER" || word5 == "BOOL") {
-                            typeSuffix = std::string(word5);
-                        } else {
-                            sv = svSaved; // not a keyword — push both back
-                        }
-                    } else {
-                        if (candidate == "STR" || candidate == "NUM" ||
-                            candidate == "VER" || candidate == "BOOL") {
-                            typeSuffix = std::string(candidate);
-                        } else {
-                            sv = svSaved; // not a keyword — push word4 back
-                        }
-                    }
-                } else {
-                    sv = svSaved; // word4 is not a type token — restore
-                }
+            // A well-formed expression must consume the entire string. Any
+            // stray, non-whitespace content left over after the last atom/type
+            // hint (e.g. a bogus trailing word that isn't "&&"/"||") is a
+            // syntax error and must fail rather than silently being ignored —
+            // m_parseOr/m_parseAnd only stop consuming when they hit something
+            // that isn't a logical connector, so leftovers land here.
+            sv = m_trimSV(sv);
+            if (!sv.empty()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("EVAL: unexpected trailing tokens:"); LOG_STRING(std::string(sv)));
+                return false;
             }
 
-            // Resolve type: explicit suffix wins over inference
-            if (!typeSuffix.empty()) {
-                atom.type = m_typeFromSuffix(typeSuffix);
-            } else {
-                atom.type = m_inferType(atom.lhs, atom.rhs);
-            }
+            return true;
         }
 
-        return true;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Atom evaluation
-    //
-    // Delegates to VectorValidator for the typed comparison, or to
-    // BoolExprEvaluator for lone boolean literals.
-    // ─────────────────────────────────────────────────────────────────────
-
-    bool m_evaluateAtom(const Atom &atom, bool &result) const
-    {
-        if (atom.isBoolLiteralOnly) {
-            return BoolExprEvaluator{}.evaluate(atom.lhs, result);
-        }
-
-        const std::string slhs(atom.lhs);
-        const std::string srhs(atom.rhs);
-        result = VectorValidator{}.validate({slhs}, {srhs}, atom.op, atom.type);
-
-        return true;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────
-    // Compound expression parser  (|| / && with standard C precedence)
-    //
-    //   expr  := term  ( '||' term  )*
-    //   term  := atom  ( '&&' atom  )*
-    //
-    // Implements short-circuit evaluation to match C semantics.
-    // ─────────────────────────────────────────────────────────────────────
-
-    bool m_parseCompound(const std::string &exprStr, bool &result) const
-    {
-        std::string_view sv(exprStr);
-
-        // Skip leading "EVAL" keyword if caller did not strip it
+        bool m_parseOr(std::string_view &sv, bool &result) const
         {
-            std::string_view peek  = sv;
-            std::string_view first = m_nextWord(peek);
-            if (first == "EVAL") {
-                sv = peek; // advance past the keyword
+            bool lhs;
+            if (!m_parseAnd(sv, lhs)) {
+                return false;
             }
-        }
 
-        if (!m_parseOr(sv, result)) {
-            return false;
-        }
+            while (true) {
+                std::string_view saved = sv;
+                std::string_view token = m_nextWord(sv);
+                if (token == "||") {
 
-        // A well-formed expression must consume the entire string. Any
-        // stray, non-whitespace content left over after the last atom/type
-        // hint (e.g. a bogus trailing word that isn't "&&"/"||") is a
-        // syntax error and must fail rather than silently being ignored —
-        // m_parseOr/m_parseAnd only stop consuming when they hit something
-        // that isn't a logical connector, so leftovers land here.
-        sv = m_trimSV(sv);
-        if (!sv.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("EVAL: unexpected trailing tokens:"); LOG_STRING(std::string(sv)));
-            return false;
-        }
+                    bool rhs;
+                    if (!m_parseAnd(sv, rhs)) {
+                        return false;
+                    }
 
-        return true;
-    }
-
-    bool m_parseOr(std::string_view &sv, bool &result) const
-    {
-        bool lhs;
-        if (!m_parseAnd(sv, lhs)) {
-            return false;
-        }
-
-        while (true) {
-            std::string_view saved = sv;
-            std::string_view token = m_nextWord(sv);
-            if (token == "||") {
-
-                bool rhs;
-                if (!m_parseAnd(sv, rhs)) {
-                    return false;
+                    lhs = lhs || rhs;
+                } else {
+                    sv = saved;
+                    break;
                 }
-
-                lhs = lhs || rhs;
-            } else {
-                sv = saved;
-                break;
             }
-        }
-        result = lhs;
-        return true;
-    }
-
-    bool m_parseAnd(std::string_view &sv, bool &result) const
-    {
-        Atom atom;
-        if (!m_parseAtom(sv, atom)) {
-            return false;
-        }
-        bool lhs;
-        if (!m_evaluateAtom(atom, lhs)) {
-            return false;
+            result = lhs;
+            return true;
         }
 
-        while (true) {
-            std::string_view saved = sv;
-            std::string_view token = m_nextWord(sv);
-            if (token == "&&") {
-
-                Atom rAtom;
-                if (!m_parseAtom(sv, rAtom)) {
-                    return false;
-                }
-
-                bool rhs;
-                if (!m_evaluateAtom(rAtom, rhs)) {
-                    return false;
-                }
-
-                lhs = lhs && rhs;
-            } else {
-                sv = saved;
-                break;
+        bool m_parseAnd(std::string_view &sv, bool &result) const
+        {
+            Atom atom;
+            if (!m_parseAtom(sv, atom)) {
+                return false;
             }
+            bool lhs;
+            if (!m_evaluateAtom(atom, lhs)) {
+                return false;
+            }
+
+            while (true) {
+                std::string_view saved = sv;
+                std::string_view token = m_nextWord(sv);
+                if (token == "&&") {
+
+                    Atom rAtom;
+                    if (!m_parseAtom(sv, rAtom)) {
+                        return false;
+                    }
+
+                    bool rhs;
+                    if (!m_evaluateAtom(rAtom, rhs)) {
+                        return false;
+                    }
+
+                    lhs = lhs && rhs;
+                } else {
+                    sv = saved;
+                    break;
+                }
+            }
+            result = lhs;
+            return true;
         }
-        result = lhs;
-        return true;
-    }
 };
 
 #endif // U_EXPR_EVALUATOR_HPP

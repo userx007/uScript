@@ -49,339 +49,338 @@
 /**
  * \brief KI2C plugin class definition
  */
-class KI2CPlugin : public PluginInterface
-{
-public:
-    /**
-     * \brief class constructor
-     */
-    KI2CPlugin()
-        : m_strVersion(KI2C_PLUGIN_VERSION)
-        , m_strInstanceName(KI2C_PLUGIN_NAME)
-        , m_bIsInitialized(false)
-        , m_bIsEnabled(false)
-        , m_bIsFaultTolerant(false)
-        , m_bIsPrivileged(false)
-        , m_strResultData("")
-        , m_bRawResult(false)
-        , m_bCyclicCached(true)
-    {
+class KI2CPlugin : public PluginInterface {
+    public:
+        /**
+         * \brief class constructor
+         */
+        KI2CPlugin()
+            : m_strVersion(KI2C_PLUGIN_VERSION)
+            , m_strInstanceName(KI2C_PLUGIN_NAME)
+            , m_bIsInitialized(false)
+            , m_bIsEnabled(false)
+            , m_bIsFaultTolerant(false)
+            , m_bIsPrivileged(false)
+            , m_strResultData("")
+            , m_bRawResult(false)
+            , m_bCyclicCached(true)
+        {
 #define KI2C_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
                                                                        PluginCommandEntry<KI2CPlugin>{&KI2CPlugin::m_KI2C_##a, KI2C_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
-        KI2C_PLUGIN_COMMANDS_CONFIG_TABLE
+            KI2C_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef KI2C_PLUGIN_CMD_RECORD
-    }
-
-    /**
-     * \brief class destructor
-     */
-    ~KI2CPlugin()
-    {
-    }
-
-    /**
-     * \brief get the plugin initialization status
-     */
-    bool isInitialized(void) const
-    {
-        return m_bIsInitialized;
-    }
-
-    /**
-     * \brief get enabling status
-     */
-    bool isEnabled(void) const
-    {
-        return m_bIsEnabled;
-    }
-
-    /**
-     * \brief Import external settings into the plugin
-     */
-    bool setParams(const PluginDataSet *psSetParams)
-    {
-        bool bRetVal = false;
-
-        if (true == generic_setparams<KI2CPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-            if (true == m_LocalSetParams(psSetParams)) {
-                bRetVal = true;
-            }
         }
 
-        return bRetVal;
-    }
+        /**
+         * \brief class destructor
+         */
+        ~KI2CPlugin()
+        {
+        }
 
-    /**
-     * \brief function to retrieve information from plugin
-     */
-    void getParams(PluginDataGet *psGetParams) const
-    {
-        generic_getparams<KI2CPlugin>(this, psGetParams);
-    }
+        /**
+         * \brief get the plugin initialization status
+         */
+        bool isInitialized(void) const
+        {
+            return m_bIsInitialized;
+        }
 
-    /**
-     * \brief dispatch commands
-     */
-    bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st = {}) const
-    {
-        return generic_dispatch<KI2CPlugin>(this, strCmd, strParams, st);
-    }
+        /**
+         * \brief get enabling status
+         */
+        bool isEnabled(void) const
+        {
+            return m_bIsEnabled;
+        }
 
-    /**
-     * \brief get a pointer to the plugin map
-     */
-    const PluginCommandsMap<KI2CPlugin> *getMap(void) const
-    {
-        return &m_mapCmds;
-    }
+        /**
+         * \brief Import external settings into the plugin
+         */
+        bool setParams(const PluginDataSet *psSetParams)
+        {
+            bool bRetVal = false;
 
-    /**
-     * \brief get the plugin version
-     */
-    const std::string &getVersion(void) const
-    {
-        return m_strVersion;
-    }
+            if (true == generic_setparams<KI2CPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+                if (true == m_LocalSetParams(psSetParams)) {
+                    bRetVal = true;
+                }
+            }
 
-    /**
-     * \brief get the result data
-     */
-    const std::string &getData(void) const
-    {
-        return m_strResultData;
-    }
+            return bRetVal;
+        }
 
-    /**
-     * \brief clear the result data (avoid that some data to be returned by other command)
-     */
-    void resetData(void) const
-    {
-        m_strResultData.clear();
-    }
+        /**
+         * \brief function to retrieve information from plugin
+         */
+        void getParams(PluginDataGet *psGetParams) const
+        {
+            generic_getparams<KI2CPlugin>(this, psGetParams);
+        }
 
-    /**
-     * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-     */
-    bool setRawResult(const std::string &strValue) const
-    {
-        return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
-    }
+        /**
+         * \brief dispatch commands
+         */
+        bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st = {}) const
+        {
+            return generic_dispatch<KI2CPlugin>(this, strCmd, strParams, st);
+        }
 
-    /**
-     * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-     */
-    bool setCyclicCached(const std::string &strValue) const
-    {
-        return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
-    }
+        /**
+         * \brief get a pointer to the plugin map
+         */
+        const PluginCommandsMap<KI2CPlugin> *getMap(void) const
+        {
+            return &m_mapCmds;
+        }
 
-    /**
-     * \brief perform the initialization of modules used by the plugin
-     * \note public because it needs to be called explicitly after loading the plugin
-     */
-    bool doInit(void *pvUserData)
-    {
-        m_bIsInitialized = true;
-        return m_bIsInitialized;
-    }
+        /**
+         * \brief get the plugin version
+         */
+        const std::string &getVersion(void) const
+        {
+            return m_strVersion;
+        }
 
-    /**
-     * \brief perform the enabling of the plugin
-     * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
-     *       This mode is used for the command validation
-     */
-    bool doEnable(void)
-    {
-        m_bIsEnabled = true;
-        return true;
-    }
+        /**
+         * \brief get the result data
+         */
+        const std::string &getData(void) const
+        {
+            return m_strResultData;
+        }
 
-    /**
-     * \brief perform the de-initialization of modules used by the plugin
-     * \note public because need to be called explicitly before closing/freeing the shared library
-     */
-    void doCleanup(void)
-    {
-        m_bIsInitialized = false;
-        m_bIsEnabled     = false;
-    }
+        /**
+         * \brief clear the result data (avoid that some data to be returned by other command)
+         */
+        void resetData(void) const
+        {
+            m_strResultData.clear();
+        }
 
-    /**
-     * \brief get fault tolerant flag status
-     */
-    bool isFaultTolerant(void) const
-    {
-        return m_bIsFaultTolerant;
-    }
+        /**
+         * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+         */
+        bool setRawResult(const std::string &strValue) const
+        {
+            return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
+        }
 
-    /**
-     * \brief get the privileged status
-     */
-    bool isPrivileged(void) const
-    {
-        return m_bIsPrivileged;
-    }
+        /**
+         * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+         */
+        bool setCyclicCached(const std::string &strValue) const
+        {
+            return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
+        }
 
-    /**
-     * \brief get KI2C device path
-     */
-    const char *getKI2CDevice(void) const
-    {
-        return m_strKI2CDevice.c_str();
-    }
+        /**
+         * \brief perform the initialization of modules used by the plugin
+         * \note public because it needs to be called explicitly after loading the plugin
+         */
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            return m_bIsInitialized;
+        }
 
-    /**
-     * \brief set KI2C device path
-     */
-    void setI2CDevice(const std::string &strKI2CDevice) const
-    {
-        m_strKI2CDevice.assign(strKI2CDevice);
-    }
+        /**
+         * \brief perform the enabling of the plugin
+         * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
+         *       This mode is used for the command validation
+         */
+        bool doEnable(void)
+        {
+            m_bIsEnabled = true;
+            return true;
+        }
 
-    /**
-     * \brief set KI2C slave address (accepts decimal or 0x-prefixed hex strings)
-     */
-    bool setI2CAddress(const std::string &strAddress) const
-    {
-        return numeric::str2uint8(strAddress, m_u8KI2CAddress);
-    }
+        /**
+         * \brief perform the de-initialization of modules used by the plugin
+         * \note public because need to be called explicitly before closing/freeing the shared library
+         */
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+        }
 
-    /**
-     * \brief set KI2C read timeout
-     */
-    bool setI2CReadTimeout(const std::string &strReadTimeout) const
-    {
-        return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
-    }
+        /**
+         * \brief get fault tolerant flag status
+         */
+        bool isFaultTolerant(void) const
+        {
+            return m_bIsFaultTolerant;
+        }
 
-    /**
-     * \brief set KI2C write timeout
-     */
-    bool setI2CWriteTimeout(const std::string &strWriteTimeout) const
-    {
-        return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
-    }
+        /**
+         * \brief get the privileged status
+         */
+        bool isPrivileged(void) const
+        {
+            return m_bIsPrivileged;
+        }
 
-    /**
-     * \brief set KI2C read buffer size
-     */
-    bool setI2CReadBufferSize(const std::string &strReadBufferSize) const
-    {
-        return numeric::str2uint32(strReadBufferSize, m_u32ReadBufferSize);
-    }
+        /**
+         * \brief get KI2C device path
+         */
+        const char *getKI2CDevice(void) const
+        {
+            return m_strKI2CDevice.c_str();
+        }
 
-private:
-    /**
-     * \brief message sender
-     */
-    bool m_Send(std::span<const uint8_t> data, std::shared_ptr<const ICommDriver> shpDriver) const;
+        /**
+         * \brief set KI2C device path
+         */
+        void setI2CDevice(const std::string &strKI2CDevice) const
+        {
+            m_strKI2CDevice.assign(strKI2CDevice);
+        }
 
-    /**
-     * \brief message receiver
-     */
-    bool m_Receive(std::span<uint8_t> data, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const;
+        /**
+         * \brief set KI2C slave address (accepts decimal or 0x-prefixed hex strings)
+         */
+        bool setI2CAddress(const std::string &strAddress) const
+        {
+            return numeric::str2uint8(strAddress, m_u8KI2CAddress);
+        }
 
-    /**
-     * \brief processing of the plugin specific settings
-     */
-    bool m_LocalSetParams(const PluginDataSet *psSetParams);
+        /**
+         * \brief set KI2C read timeout
+         */
+        bool setI2CReadTimeout(const std::string &strReadTimeout) const
+        {
+            return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
+        }
 
-    /**
-     * \brief map with association between the command string and the execution function
-     */
-    PluginCommandsMap<KI2CPlugin> m_mapCmds;
+        /**
+         * \brief set KI2C write timeout
+         */
+        bool setI2CWriteTimeout(const std::string &strWriteTimeout) const
+        {
+            return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
+        }
 
-    /**
-     * \brief plugin version
-     */
-    std::string m_strVersion;
+        /**
+         * \brief set KI2C read buffer size
+         */
+        bool setI2CReadBufferSize(const std::string &strReadBufferSize) const
+        {
+            return numeric::str2uint32(strReadBufferSize, m_u32ReadBufferSize);
+        }
 
-    /**
-     * \brief runtime instance identity used for the GUI comm-dump panel
-     *        (e.g. "KI2C" or "KI2C:1" -- see
-     *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
-     *        name macro when unset (e.g. standalone construction outside the
-     *        script interpreter).
-     */
-    std::string m_strInstanceName;
-    /**
-     * \brief data returned by plugin
-     */
-    mutable std::string m_strResultData;
+    private:
+        /**
+         * \brief message sender
+         */
+        bool m_Send(std::span<const uint8_t> data, std::shared_ptr<const ICommDriver> shpDriver) const;
 
-    /**
-     * \brief when true, CMD returns the raw received bytes as-is instead of
-     *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
-     *        settable via the ini file's RAW_RESULT key or the CONFIG command's
-     *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
-     */
-    mutable bool m_bRawResult;
+        /**
+         * \brief message receiver
+         */
+        bool m_Receive(std::span<uint8_t> data, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const;
 
-    /**
-     * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
-     *        command exactly once for the whole session; false re-resolves and re-validates
-     *        every due entry on every tick, needed to track a volatile ("?=") macro used as
-     *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
-     *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
-     *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
-     */
-    mutable bool m_bCyclicCached;
+        /**
+         * \brief processing of the plugin specific settings
+         */
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
-    /**
-     * \brief plugin initialization status
-     */
-    bool m_bIsInitialized;
+        /**
+         * \brief map with association between the command string and the execution function
+         */
+        PluginCommandsMap<KI2CPlugin> m_mapCmds;
 
-    /**
-     * \brief plugin enabling status
-     */
-    bool m_bIsEnabled;
+        /**
+         * \brief plugin version
+         */
+        std::string m_strVersion;
 
-    /**
-     * \brief plugin fault tolerant mode
-     */
-    bool m_bIsFaultTolerant;
+        /**
+         * \brief runtime instance identity used for the GUI comm-dump panel
+         *        (e.g. "KI2C" or "KI2C:1" -- see
+         *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
+         *        name macro when unset (e.g. standalone construction outside the
+         *        script interpreter).
+         */
+        std::string m_strInstanceName;
+        /**
+         * \brief data returned by plugin
+         */
+        mutable std::string m_strResultData;
 
-    /**
-     * \brief plugin is privileged
-     */
-    bool m_bIsPrivileged;
+        /**
+         * \brief when true, CMD returns the raw received bytes as-is instead of
+         *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+         *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+         *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+         */
+        mutable bool m_bRawResult;
 
-    /**
-     * \brief the artefacts path got from configuration
-     */
-    std::string m_strArtefactsPath;
+        /**
+         * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+         *        command exactly once for the whole session; false re-resolves and re-validates
+         *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+         *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+         *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+         *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+         */
+        mutable bool m_bCyclicCached;
 
-    /**
-     * \brief the KI2C device node (e.g. /dev/i2c-1)
-     */
-    mutable std::string m_strKI2CDevice;
+        /**
+         * \brief plugin initialization status
+         */
+        bool m_bIsInitialized;
 
-    /**
-     * \brief the 7-bit KI2C slave address (e.g. 0x48)
-     */
-    mutable uint8_t m_u8KI2CAddress;
+        /**
+         * \brief plugin enabling status
+         */
+        bool m_bIsEnabled;
 
-    /**
-     * \brief KI2C read timeout in milliseconds
-     */
-    mutable uint32_t m_u32ReadTimeout;
+        /**
+         * \brief plugin fault tolerant mode
+         */
+        bool m_bIsFaultTolerant;
 
-    /**
-     * \brief KI2C write timeout in milliseconds
-     */
-    mutable uint32_t m_u32WriteTimeout;
+        /**
+         * \brief plugin is privileged
+         */
+        bool m_bIsPrivileged;
 
-    /**
-     * \brief size of the buffer used for KI2C read operations
-     */
-    mutable uint32_t m_u32ReadBufferSize;
+        /**
+         * \brief the artefacts path got from configuration
+         */
+        std::string m_strArtefactsPath;
+
+        /**
+         * \brief the KI2C device node (e.g. /dev/i2c-1)
+         */
+        mutable std::string m_strKI2CDevice;
+
+        /**
+         * \brief the 7-bit KI2C slave address (e.g. 0x48)
+         */
+        mutable uint8_t m_u8KI2CAddress;
+
+        /**
+         * \brief KI2C read timeout in milliseconds
+         */
+        mutable uint32_t m_u32ReadTimeout;
+
+        /**
+         * \brief KI2C write timeout in milliseconds
+         */
+        mutable uint32_t m_u32WriteTimeout;
+
+        /**
+         * \brief size of the buffer used for KI2C read operations
+         */
+        mutable uint32_t m_u32ReadBufferSize;
 
 /**
  * \brief functions associated to the plugin commands
  */
 #define KI2C_PLUGIN_CMD_RECORD(a, ...) bool m_KI2C_##a(const std::string &args, std::stop_token st) const;
-    KI2C_PLUGIN_COMMANDS_CONFIG_TABLE
+        KI2C_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef KI2C_PLUGIN_CMD_RECORD
 };
 

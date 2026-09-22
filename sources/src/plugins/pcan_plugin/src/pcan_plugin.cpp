@@ -29,17 +29,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED PCANPlugin *pluginEntry()
-{
-    return new PCANPlugin();
-}
-
-EXPORTED void pluginExit(PCANPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED PCANPlugin *pluginEntry()
+    {
+        return new PCANPlugin();
     }
-}
+
+    EXPORTED void pluginExit(PCANPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -36,37 +36,37 @@
  *     separately; the caller-supplied overall timeout is used for every
  *     blocking receive instead.
  */
-class IsoTpProtocol final : public ITransportProtocol
-{
-public:
-    explicit IsoTpProtocol(const TpConfig &cfg = {})
-        : m_cfg(cfg)
-    {}
+class IsoTpProtocol final : public ITransportProtocol {
+    public:
+        explicit IsoTpProtocol(const TpConfig &cfg = {})
+            : m_cfg(cfg)
+        {
+        }
 
-    ICommDriver::WriteResult send(
-        const ICommDriver &driver,
-        uint32_t u32WriteTimeout,
-        std::span<const uint8_t> data,
-        std::string_view txId,
-        std::string_view rxId = {}) const override;
+        ICommDriver::WriteResult send(
+            const ICommDriver &driver,
+            uint32_t u32WriteTimeout,
+            std::span<const uint8_t> data,
+            std::string_view txId,
+            std::string_view rxId = {}) const override;
 
-    ICommDriver::ReadResult receive(
-        const ICommDriver &driver,
-        uint32_t u32ReadTimeout,
-        std::span<uint8_t> buffer,
-        std::string_view rxId,
-        std::string_view txId = {}) const override;
+        ICommDriver::ReadResult receive(
+            const ICommDriver &driver,
+            uint32_t u32ReadTimeout,
+            std::span<uint8_t> buffer,
+            std::string_view rxId,
+            std::string_view txId = {}) const override;
 
-    TpProtocol id() const override
-    {
-        return TpProtocol::ISO_TP;
-    }
+        TpProtocol id() const override
+        {
+            return TpProtocol::ISO_TP;
+        }
 
-private:
-    TpConfig m_cfg;
+    private:
+        TpConfig m_cfg;
 
-    /** @brief Blocks for the duration encoded by an ISO-TP STmin byte. */
-    static void sleep_st_min(uint8_t stMin);
+        /** @brief Blocks for the duration encoded by an ISO-TP STmin byte. */
+        static void sleep_st_min(uint8_t stMin);
 };
 
 #endif // CAN_TP_ISO_TP_PROTOCOL_HPP

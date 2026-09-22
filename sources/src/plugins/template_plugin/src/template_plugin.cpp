@@ -12,17 +12,17 @@
  * \brief The plugin's entry points
  */
 extern "C" {
-EXPORTED TemplatePlugin *pluginEntry()
-{
-    return new TemplatePlugin();
-}
-
-EXPORTED void pluginExit(TemplatePlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED TemplatePlugin *pluginEntry()
+    {
+        return new TemplatePlugin();
     }
-}
+
+    EXPORTED void pluginExit(TemplatePlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////

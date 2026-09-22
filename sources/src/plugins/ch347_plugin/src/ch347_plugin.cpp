@@ -24,15 +24,15 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED CH347Plugin *pluginEntry()
-{
-    return new CH347Plugin();
-}
+    EXPORTED CH347Plugin *pluginEntry()
+    {
+        return new CH347Plugin();
+    }
 
-EXPORTED void pluginExit(CH347Plugin *p)
-{
-    delete p;
-}
+    EXPORTED void pluginExit(CH347Plugin *p)
+    {
+        delete p;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

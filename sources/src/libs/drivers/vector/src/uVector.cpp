@@ -643,79 +643,78 @@ std::vector<Vector::ChannelInfo> Vector::matchChannels(const DeviceSelector &sel
 }
 
 namespace {
-// Name <-> XL_HWTYPE_* lookup table, covering every CAN-relevant
-// XL_HWTYPE_* constant declared in Vector's real vxlapi.h (some very old
-// ISA/PCI-era types and a few non-CAN-only types are included too, since
-// hwTypeToString()/hwTypeFromString() are also used by VECTOR.DEVICES'
-// listing, independent of whether the channel actually supports CAN).
-struct HwTypeEntry
-{
-    const char *name;
-    uint32_t value;
-};
+    // Name <-> XL_HWTYPE_* lookup table, covering every CAN-relevant
+    // XL_HWTYPE_* constant declared in Vector's real vxlapi.h (some very old
+    // ISA/PCI-era types and a few non-CAN-only types are included too, since
+    // hwTypeToString()/hwTypeFromString() are also used by VECTOR.DEVICES'
+    // listing, independent of whether the channel actually supports CAN).
+    struct HwTypeEntry {
+            const char *name;
+            uint32_t value;
+    };
 
-constexpr HwTypeEntry k_hwTypeTable[] = {
-    {"NONE", XL_HWTYPE_NONE},
-    {"VIRTUAL", XL_HWTYPE_VIRTUAL},
-    {"CANCARDX", XL_HWTYPE_CANCARDX},
-    {"CANAC2PCI", XL_HWTYPE_CANAC2PCI},
-    {"CANCARDY", XL_HWTYPE_CANCARDY},
-    {"CANCARDXL", XL_HWTYPE_CANCARDXL},
-    {"CANCASEXL", XL_HWTYPE_CANCASEXL},
-    {"CANBOARDXL", XL_HWTYPE_CANBOARDXL},
-    {"CANBOARDXL_PXI", XL_HWTYPE_CANBOARDXL_PXI},
-    {"VN2600", XL_HWTYPE_VN2600},
-    {"VN3300", XL_HWTYPE_VN3300},
-    {"VN3600", XL_HWTYPE_VN3600},
-    {"VN7600", XL_HWTYPE_VN7600},
-    {"CANCARDXLE", XL_HWTYPE_CANCARDXLE},
-    {"VN8900", XL_HWTYPE_VN8900},
-    {"VN8950", XL_HWTYPE_VN8950},
-    {"VN2640", XL_HWTYPE_VN2640},
-    {"VN1610", XL_HWTYPE_VN1610},
-    {"VN1614", XL_HWTYPE_VN1614},
-    {"VN1630", XL_HWTYPE_VN1630},
-    {"VN1615", XL_HWTYPE_VN1615},
-    {"VN1640", XL_HWTYPE_VN1640},
-    {"VN8970", XL_HWTYPE_VN8970},
-    {"VN1611", XL_HWTYPE_VN1611},
-    {"VN5240", XL_HWTYPE_VN5240},
-    {"VN5610", XL_HWTYPE_VN5610},
-    {"VN5620", XL_HWTYPE_VN5620},
-    {"VN7570", XL_HWTYPE_VN7570},
-    {"VN5650", XL_HWTYPE_VN5650},
-    {"VN5611", XL_HWTYPE_VN5611},
-    {"VN5612", XL_HWTYPE_VN5612},
-    {"VX1121", XL_HWTYPE_VX1121},
-    {"VX1131", XL_HWTYPE_VX1131},
-    {"VT6204", XL_HWTYPE_VT6204},
-    {"VN5614", XL_HWTYPE_VN5614},
-    {"VN1630_LOG", XL_HWTYPE_VN1630_LOG},
-    {"VN7610", XL_HWTYPE_VN7610},
-    {"VN7572", XL_HWTYPE_VN7572},
-    {"VN8972", XL_HWTYPE_VN8972},
-    {"VN1641", XL_HWTYPE_VN1641},
-    {"VN0601", XL_HWTYPE_VN0601},
-    {"VT6104B", XL_HWTYPE_VT6104B},
-    {"VN5640", XL_HWTYPE_VN5640},
-    {"VT6204B", XL_HWTYPE_VT6204B},
-    {"VX0312", XL_HWTYPE_VX0312},
-    {"VH6501", XL_HWTYPE_VH6501},
-    {"VN8800", XL_HWTYPE_VN8800},
-    {"VN5610A", XL_HWTYPE_VN5610A},
-    {"VN7640", XL_HWTYPE_VN7640},
-    {"VX1135", XL_HWTYPE_VX1135},
-    {"VN4610", XL_HWTYPE_VN4610},
-    {"VT6306", XL_HWTYPE_VT6306},
-    {"VT6104A", XL_HWTYPE_VT6104A},
-    {"VN5430", XL_HWTYPE_VN5430},
-    {"VN1530", XL_HWTYPE_VN1530},
-    {"VN1531", XL_HWTYPE_VN1531},
-    {"VX1161A", XL_HWTYPE_VX1161A},
-    {"VX1161B", XL_HWTYPE_VX1161B},
-    {"VN1670", XL_HWTYPE_VN1670},
-    {"VN5620A", XL_HWTYPE_VN5620A},
-};
+    constexpr HwTypeEntry k_hwTypeTable[] = {
+        {"NONE", XL_HWTYPE_NONE},
+        {"VIRTUAL", XL_HWTYPE_VIRTUAL},
+        {"CANCARDX", XL_HWTYPE_CANCARDX},
+        {"CANAC2PCI", XL_HWTYPE_CANAC2PCI},
+        {"CANCARDY", XL_HWTYPE_CANCARDY},
+        {"CANCARDXL", XL_HWTYPE_CANCARDXL},
+        {"CANCASEXL", XL_HWTYPE_CANCASEXL},
+        {"CANBOARDXL", XL_HWTYPE_CANBOARDXL},
+        {"CANBOARDXL_PXI", XL_HWTYPE_CANBOARDXL_PXI},
+        {"VN2600", XL_HWTYPE_VN2600},
+        {"VN3300", XL_HWTYPE_VN3300},
+        {"VN3600", XL_HWTYPE_VN3600},
+        {"VN7600", XL_HWTYPE_VN7600},
+        {"CANCARDXLE", XL_HWTYPE_CANCARDXLE},
+        {"VN8900", XL_HWTYPE_VN8900},
+        {"VN8950", XL_HWTYPE_VN8950},
+        {"VN2640", XL_HWTYPE_VN2640},
+        {"VN1610", XL_HWTYPE_VN1610},
+        {"VN1614", XL_HWTYPE_VN1614},
+        {"VN1630", XL_HWTYPE_VN1630},
+        {"VN1615", XL_HWTYPE_VN1615},
+        {"VN1640", XL_HWTYPE_VN1640},
+        {"VN8970", XL_HWTYPE_VN8970},
+        {"VN1611", XL_HWTYPE_VN1611},
+        {"VN5240", XL_HWTYPE_VN5240},
+        {"VN5610", XL_HWTYPE_VN5610},
+        {"VN5620", XL_HWTYPE_VN5620},
+        {"VN7570", XL_HWTYPE_VN7570},
+        {"VN5650", XL_HWTYPE_VN5650},
+        {"VN5611", XL_HWTYPE_VN5611},
+        {"VN5612", XL_HWTYPE_VN5612},
+        {"VX1121", XL_HWTYPE_VX1121},
+        {"VX1131", XL_HWTYPE_VX1131},
+        {"VT6204", XL_HWTYPE_VT6204},
+        {"VN5614", XL_HWTYPE_VN5614},
+        {"VN1630_LOG", XL_HWTYPE_VN1630_LOG},
+        {"VN7610", XL_HWTYPE_VN7610},
+        {"VN7572", XL_HWTYPE_VN7572},
+        {"VN8972", XL_HWTYPE_VN8972},
+        {"VN1641", XL_HWTYPE_VN1641},
+        {"VN0601", XL_HWTYPE_VN0601},
+        {"VT6104B", XL_HWTYPE_VT6104B},
+        {"VN5640", XL_HWTYPE_VN5640},
+        {"VT6204B", XL_HWTYPE_VT6204B},
+        {"VX0312", XL_HWTYPE_VX0312},
+        {"VH6501", XL_HWTYPE_VH6501},
+        {"VN8800", XL_HWTYPE_VN8800},
+        {"VN5610A", XL_HWTYPE_VN5610A},
+        {"VN7640", XL_HWTYPE_VN7640},
+        {"VX1135", XL_HWTYPE_VX1135},
+        {"VN4610", XL_HWTYPE_VN4610},
+        {"VT6306", XL_HWTYPE_VT6306},
+        {"VT6104A", XL_HWTYPE_VT6104A},
+        {"VN5430", XL_HWTYPE_VN5430},
+        {"VN1530", XL_HWTYPE_VN1530},
+        {"VN1531", XL_HWTYPE_VN1531},
+        {"VX1161A", XL_HWTYPE_VX1161A},
+        {"VX1161B", XL_HWTYPE_VX1161B},
+        {"VN1670", XL_HWTYPE_VN1670},
+        {"VN5620A", XL_HWTYPE_VN5620A},
+    };
 } // namespace
 
 std::string Vector::hwTypeToString(uint32_t u32HwType)
@@ -791,9 +790,7 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &out,
     // class comment for why forceWake() is safe on both platforms and why
     // every return point below re-checks stop_tok.stop_requested() rather
     // than trusting a signalled wait alone.
-    std::stop_callback onStop(stop_tok, [this]() {
-        m_notifyWaiter.forceWake();
-    });
+    std::stop_callback onStop(stop_tok, [this]() { m_notifyWaiter.forceWake(); });
 
     for (;;) {
         if (stop_tok.stop_requested()) {
@@ -832,7 +829,6 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &out,
                 return Status::READ_ERROR;
             }
             // fall through to the shared wait-and-retry below
-
         } else {
             // ---- Classic CAN path: xlReceive()/XLevent ---------------------
             XLevent evt;
@@ -934,7 +930,6 @@ ICommDriver::Status Vector::sendFrame(uint32_t u32Id,
         // application payload.
         dumpFrame(CommDir::Tx, u32Id, bExtended, data);
         (void)szFrameLen;
-
     } else {
         // ---- Classic CAN path: xlCanTransmit()/XLevent ----------------------
         XLevent evt;

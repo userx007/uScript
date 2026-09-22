@@ -75,139 +75,137 @@ class StatusLed;
  *   Enter in path   → loads into the active tab
  *   RUN             → runs the script shown in the active tab
  */
-class MainWindow : public QMainWindow
-{
-    Q_OBJECT
-public:
-    explicit MainWindow(QWidget *parent = nullptr);
-    ~MainWindow() override;
+class MainWindow : public QMainWindow {
+        Q_OBJECT
+    public:
+        explicit MainWindow(QWidget *parent = nullptr);
+        ~MainWindow() override;
 
-protected:
-    void closeEvent(QCloseEvent *ev) override;
-    void dragEnterEvent(QDragEnterEvent *ev) override;
-    bool eventFilter(QObject *obj, QEvent *ev) override;
-    void dropEvent(QDropEvent *ev) override;
+    protected:
+        void closeEvent(QCloseEvent *ev) override;
+        void dragEnterEvent(QDragEnterEvent *ev) override;
+        bool eventFilter(QObject *obj, QEvent *ev) override;
+        void dropEvent(QDropEvent *ev) override;
 
-private slots:
-    void onBrowse();
-    void onStartStop();
-    void onTabCloseRequested(int index);
-    void onCurrentTabChanged(int index);
-    void onCommScriptRequested(const QString &scriptName);
-    void onIncludeFileRequested(const QString &resolvedPath); // INCLUDE "file" clicked in editor
+    private slots:
+        void onBrowse();
+        void onStartStop();
+        void onTabCloseRequested(int index);
+        void onCurrentTabChanged(int index);
+        void onCommScriptRequested(const QString &scriptName);
+        void onIncludeFileRequested(const QString &resolvedPath); // INCLUDE "file" clicked in editor
 
-    void onProcessOutput();
-    void onProcessError();
-    void onProcessFinished(int exitCode, QProcess::ExitStatus status);
-    void onProcessStarted();
+        void onProcessOutput();
+        void onProcessError();
+        void onProcessFinished(int exitCode, QProcess::ExitStatus status);
+        void onProcessStarted();
 
-private:
-    // ── GUI construction ───────────────────────────────────────────────────
-    QFrame *buildToolbar();
-    QWidget *buildCentralWidget();
-    QFrame *buildStatusBar();
+    private:
+        // ── GUI construction ───────────────────────────────────────────────────
+        QFrame *buildToolbar();
+        QWidget *buildCentralWidget();
+        QFrame *buildStatusBar();
 
-    // ── Tab helpers ────────────────────────────────────────────────────────
-    ScriptViewer *addTab(const QString &filePath = {}); // empty path = blank tab
-    ScriptViewer *currentViewer() const;
-    ScriptViewer *runningViewer() const;
-    void loadIntoTab(int index, const QString &filePath);
-    void loadIntoCurrentTab(const QString &filePath);
-    void syncPathEdit(int tabIndex);
-    void saveCurrentTab();
-    void saveAllTabs();
-    void updateTabModifiedState(ScriptViewer *viewer);
+        // ── Tab helpers ────────────────────────────────────────────────────────
+        ScriptViewer *addTab(const QString &filePath = {}); // empty path = blank tab
+        ScriptViewer *currentViewer() const;
+        ScriptViewer *runningViewer() const;
+        void loadIntoTab(int index, const QString &filePath);
+        void loadIntoCurrentTab(const QString &filePath);
+        void syncPathEdit(int tabIndex);
+        void saveCurrentTab();
+        void saveAllTabs();
+        void updateTabModifiedState(ScriptViewer *viewer);
 
-    // ── Protocol dispatch ──────────────────────────────────────────────────
-    void dispatchLine(const QString &raw);
-    void dispatchCommDump(const QString &base64Payload);                       // GUI:COMM_DUMP:<base64>
-    void processTerminalModeBytes(const QByteArray &newBytes);                 // filters GUI: lines out of m_terminalMode traffic, see onProcessOutput()
-    bool autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo);          // returns true if comm script was (re)loaded
-    QString resolveCommScriptPath(const QString &rawPath) const;               // resolve interpreter-relative path to absolute
-    QString threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) const; // canonical path of comm script on a '&' line, or empty
-    bool isThreadedCommFile(const QString &filePath) const;                    // true when filePath is in m_threadedCommScripts
+        // ── Protocol dispatch ──────────────────────────────────────────────────
+        void dispatchLine(const QString &raw);
+        void dispatchCommDump(const QString &base64Payload);                       // GUI:COMM_DUMP:<base64>
+        void processTerminalModeBytes(const QByteArray &newBytes);                 // filters GUI: lines out of m_terminalMode traffic, see onProcessOutput()
+        bool autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo);          // returns true if comm script was (re)loaded
+        QString resolveCommScriptPath(const QString &rawPath) const;               // resolve interpreter-relative path to absolute
+        QString threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) const; // canonical path of comm script on a '&' line, or empty
+        bool isThreadedCommFile(const QString &filePath) const;                    // true when filePath is in m_threadedCommScripts
 
-    // ── Per-thread comm-script tabs (GUI:LOAD_COMM_T / EXEC_COMM_T / CLEAR_COMM_T) ──
-    // Each parallel '&' comm script gets its own closable tab (tid > 0) in
-    // m_commTabs, alongside the permanent "MAIN" tab (m_w2, tid implicitly 0)
-    // used for sequential (non-threaded) comm-script execution.
-    void loadCommTabForThread(int tid, const QString &rawPath);
-    void markCommTabFinished(int tid);
-    void updateCommTabLabel(int tid, bool live);
-    void onCommTabCloseRequested(int index);
-    void closeAllCommThreadTabs(); // closes every tab except "MAIN"; used by the
-                                   // panel's CLOSE ALL button and by RESET
+        // ── Per-thread comm-script tabs (GUI:LOAD_COMM_T / EXEC_COMM_T / CLEAR_COMM_T) ──
+        // Each parallel '&' comm script gets its own closable tab (tid > 0) in
+        // m_commTabs, alongside the permanent "MAIN" tab (m_w2, tid implicitly 0)
+        // used for sequential (non-threaded) comm-script execution.
+        void loadCommTabForThread(int tid, const QString &rawPath);
+        void markCommTabFinished(int tid);
+        void updateCommTabLabel(int tid, bool live);
+        void onCommTabCloseRequested(int index);
+        void closeAllCommThreadTabs(); // closes every tab except "MAIN"; used by the
+                                       // panel's CLOSE ALL button and by RESET
 
-    // ── State helpers ──────────────────────────────────────────────────────
-    void setRunning(bool on);
-    void onResetErrorBars(); // clear all error markers without clearing content
-    void onReloadAll();      // re-read every open script/INI (tabs + comm window) from disk
-    void setStatus(const QString &msg);
+        // ── State helpers ──────────────────────────────────────────────────────
+        void setRunning(bool on);
+        void onResetErrorBars(); // clear all error markers without clearing content
+        void onReloadAll();      // re-read every open script/INI (tabs + comm window) from disk
+        void setStatus(const QString &msg);
 
-    // ── Process lifetime ───────────────────────────────────────────────────
-    // Gracefully stops the interpreter.  If the shell terminal is active,
-    // sends "#q\n" twice (to exit any nested shell) and waits briefly for
-    // a clean exit before falling back to SIGTERM / SIGKILL.
-    void terminateProcess();
+        // ── Process lifetime ───────────────────────────────────────────────────
+        // Gracefully stops the interpreter.  If the shell terminal is active,
+        // sends "#q\n" twice (to exit any nested shell) and waits briefly for
+        // a clean exit before falling back to SIGTERM / SIGKILL.
+        void terminateProcess();
 
-    // ── Font scaling (Ctrl++ / Ctrl+- / Ctrl+0) ───────────────────────────
-    void adjustFontSize(int delta);
-    void applyFontSize();
+        // ── Font scaling (Ctrl++ / Ctrl+- / Ctrl+0) ───────────────────────────
+        void adjustFontSize(int delta);
+        void applyFontSize();
 
-    // ── UI elements ────────────────────────────────────────────────────────
-    QLineEdit *m_scriptPathEdit;
-    QLineEdit *m_iniPathEdit; // toolbar ini-config field
-    QLineEdit *m_interpEdit;  // toolbar interpreter-path field
-    QPushButton *m_startStopBtn;
-    QPushButton *m_reloadBtn = nullptr; // reloads every open script/INI file from disk
-    QPushButton *m_resetBtn  = nullptr; // clears error bars without clearing content
-    StatusLed *m_led;
-    QLabel *m_ledLabel;
+        // ── UI elements ────────────────────────────────────────────────────────
+        QLineEdit *m_scriptPathEdit;
+        QLineEdit *m_iniPathEdit; // toolbar ini-config field
+        QLineEdit *m_interpEdit;  // toolbar interpreter-path field
+        QPushButton *m_startStopBtn;
+        QPushButton *m_reloadBtn = nullptr; // reloads every open script/INI file from disk
+        QPushButton *m_resetBtn  = nullptr; // clears error bars without clearing content
+        StatusLed *m_led;
+        QLabel *m_ledLabel;
 
-    QTabWidget *m_tabWidget;          // holds N × ScriptViewer, one per open main-script tab
-    ScriptViewer *m_w2;               // comm script (MAIN tab, tid 0 / sequential)
-    QTabWidget *m_commTabs = nullptr; // wraps m_w2's "MAIN" tab + one closable tab per thread
+        QTabWidget *m_tabWidget;          // holds N × ScriptViewer, one per open main-script tab
+        ScriptViewer *m_w2;               // comm script (MAIN tab, tid 0 / sequential)
+        QTabWidget *m_commTabs = nullptr; // wraps m_w2's "MAIN" tab + one closable tab per thread
 
-    struct CommThreadTab
-    {
-        ScriptViewer *viewer = nullptr;
-        QString baseLabel; // "<filename> #<tid>", without the "● " live prefix
-    };
+        struct CommThreadTab {
+                ScriptViewer *viewer = nullptr;
+                QString baseLabel; // "<filename> #<tid>", without the "● " live prefix
+        };
 
-    QHash<int, CommThreadTab> m_commThreadTabs; // tid (>0) -> its dedicated comm-script tab
-    LogViewer *m_w3;                            // log output
-    CommDumpView *m_wCommDump     = nullptr;    // plugin Rx/Tx traffic dump (always visible)
-    ShellTerminal *m_w4           = nullptr;    // shell terminal (always present, active on SHELL_RUN)
-    QSplitter *m_logShellSplit    = nullptr;    // vertical splitter: m_w3 / m_wCommDump / m_w4
-    QLabel *m_commScriptNameLabel = nullptr;    // filename shown next to "COMM SCRIPT" title
-    QTimer *m_splitterSaveTimer   = nullptr;    // debounce QSettings writes on splitter drag
+        QHash<int, CommThreadTab> m_commThreadTabs; // tid (>0) -> its dedicated comm-script tab
+        LogViewer *m_w3;                            // log output
+        CommDumpView *m_wCommDump     = nullptr;    // plugin Rx/Tx traffic dump (always visible)
+        ShellTerminal *m_w4           = nullptr;    // shell terminal (always present, active on SHELL_RUN)
+        QSplitter *m_logShellSplit    = nullptr;    // vertical splitter: m_w3 / m_wCommDump / m_w4
+        QLabel *m_commScriptNameLabel = nullptr;    // filename shown next to "COMM SCRIPT" title
+        QTimer *m_splitterSaveTimer   = nullptr;    // debounce QSettings writes on splitter drag
 
-    QLabel *m_statusText;
-    QLabel *m_statusRight;
+        QLabel *m_statusText;
+        QLabel *m_statusRight;
 
-    // ── Process ────────────────────────────────────────────────────────────
-    QProcess *m_process;
-    bool m_running   = false;
-    int m_runningTab = -1; // tab index that is currently executing
-    QString m_interpreterPath;
-    QString m_iniPath; // -c argument for the interpreter
+        // ── Process ────────────────────────────────────────────────────────────
+        QProcess *m_process;
+        bool m_running   = false;
+        int m_runningTab = -1; // tab index that is currently executing
+        QString m_interpreterPath;
+        QString m_iniPath; // -c argument for the interpreter
 
-    QByteArray m_lineBuf;
-    QByteArray m_errBuf;                 // stderr accumulation buffer (mirrors m_lineBuf)
-    bool m_terminalMode         = false; // true while GUI:SHELL_RUN is active
-    bool m_pendingCommHighlight = false; // loadScript() called this batch; defer EXEC_COMM setCurrentLine()
-    bool m_stoppingByUser       = false; // set in terminateProcess(), cleared in onProcessFinished
-    QString m_stopFlagPath;              // per-run graceful-stop flag file; child polls for its existence
-                                         // (see uexec::isStopRequested()); written by terminateProcess()
-                                         // before falling back to a hard kill(), removed in onProcessFinished().
-    int m_pendingDrainCounter = 0;       // readyRead ticks since last gui_notify_flush_pending() drain
-    QSet<QString> m_threadedCommScripts; // canonical paths of comm scripts running in a '&' thread;
-                                         // EXEC_COMM/LOAD_COMM/ERROR_COMM are suppressed while the
-                                         // loaded comm file is in this set
+        QByteArray m_lineBuf;
+        QByteArray m_errBuf;                 // stderr accumulation buffer (mirrors m_lineBuf)
+        bool m_terminalMode         = false; // true while GUI:SHELL_RUN is active
+        bool m_pendingCommHighlight = false; // loadScript() called this batch; defer EXEC_COMM setCurrentLine()
+        bool m_stoppingByUser       = false; // set in terminateProcess(), cleared in onProcessFinished
+        QString m_stopFlagPath;              // per-run graceful-stop flag file; child polls for its existence
+                                             // (see uexec::isStopRequested()); written by terminateProcess()
+                                             // before falling back to a hard kill(), removed in onProcessFinished().
+        int m_pendingDrainCounter = 0;       // readyRead ticks since last gui_notify_flush_pending() drain
+        QSet<QString> m_threadedCommScripts; // canonical paths of comm scripts running in a '&' thread;
+                                             // EXEC_COMM/LOAD_COMM/ERROR_COMM are suppressed while the
+                                             // loaded comm file is in this set
 
-    // ── Font size ──────────────────────────────────────────────────────────
-    static constexpr int k_fontDefault = 12;
-    static constexpr int k_fontMin     = 7;
-    static constexpr int k_fontMax     = 32;
-    int m_fontSize                     = k_fontDefault;
+        // ── Font size ──────────────────────────────────────────────────────────
+        static constexpr int k_fontDefault = 12;
+        static constexpr int k_fontMin     = 7;
+        static constexpr int k_fontMax     = 32;
+        int m_fontSize                     = k_fontDefault;
 };

@@ -22,17 +22,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED W5500NetPlugin *pluginEntry()
-{
-    return new W5500NetPlugin();
-}
-
-EXPORTED void pluginExit(W5500NetPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED W5500NetPlugin *pluginEntry()
+    {
+        return new W5500NetPlugin();
     }
-}
+
+    EXPORTED void pluginExit(W5500NetPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -54,116 +54,116 @@
 #include <unistd.h>
 
 namespace {
-constexpr int DEFAULT_PORT         = 5000;
-constexpr const char *DEFAULT_BIND = "::";
-constexpr size_t RECV_CHUNK_SIZE   = 4096;
-constexpr int LISTEN_BACKLOG       = 8;
-// A TCP chunk can be up to RECV_CHUNK_SIZE bytes — unlike a CAN frame's
-// 8 bytes, printing every byte would flood the terminal. Cap the
-// console dump and note how much was left out, same idea as
-// CommDumpModel's preview truncation in the GUI.
-constexpr size_t DUMP_MAX_BYTES    = 64;
+    constexpr int DEFAULT_PORT         = 5000;
+    constexpr const char *DEFAULT_BIND = "::";
+    constexpr size_t RECV_CHUNK_SIZE   = 4096;
+    constexpr int LISTEN_BACKLOG       = 8;
+    // A TCP chunk can be up to RECV_CHUNK_SIZE bytes — unlike a CAN frame's
+    // 8 bytes, printing every byte would flood the terminal. Cap the
+    // console dump and note how much was left out, same idea as
+    // CommDumpModel's preview truncation in the GUI.
+    constexpr size_t DUMP_MAX_BYTES    = 64;
 
-volatile sig_atomic_t g_stop       = 0;
+    volatile sig_atomic_t g_stop       = 0;
 
-void on_signal(int /*sig*/)
-{
-    g_stop = 1;
-}
-
-// Format a sockaddr as "host:port" for logging. Best-effort — falls back
-// to "?" fields if getnameinfo() fails.
-std::string peer_to_string(const struct sockaddr_storage &addr, socklen_t addrLen)
-{
-    char szHost[NI_MAXHOST] = "?";
-    char szPort[NI_MAXSERV] = "?";
-
-    ::getnameinfo(reinterpret_cast<const struct sockaddr *>(&addr), addrLen,
-                  szHost, sizeof(szHost), szPort, sizeof(szPort),
-                  NI_NUMERICHOST | NI_NUMERICSERV);
-
-    return std::string(szHost) + ":" + szPort;
-}
-
-/** Print one TCP chunk in a candump-like table row: DIR, PEER (host:port),
- *  LEN, and a hex dump of the data — the TCP analogue of
- *  kvcan_loopback.c's print_frame(), with the peer address in place of
- *  CAN's ID/DLC. Called for both the as-received RX chunk and the TX
- *  chunk as it's echoed back, same as kvcan's print_frame(prefix, &frame)
- *  being called on both sides of the loopback.
- */
-void print_chunk(const char *prefix, const std::string &peer, const uint8_t *data, size_t len)
-{
-    std::printf("%-4s  %-24s  %-6zu ", prefix, peer.c_str(), len);
-
-    const size_t shown = std::min(len, DUMP_MAX_BYTES);
-    for (size_t i = 0; i < shown; ++i) {
-        std::printf("%02X ", data[i]);
+    void on_signal(int /*sig*/)
+    {
+        g_stop = 1;
     }
-    if (len > shown) {
-        std::printf("... (+%zu more bytes)", len - shown);
-    }
-    std::printf("\n");
-    std::fflush(stdout);
-}
 
-// Send the whole buffer, looping over short writes. Returns false on
-// error or if the peer went away mid-send.
-bool send_all(int fd, const uint8_t *data, size_t len)
-{
-    size_t sent = 0;
-    while (sent < len) {
-        const ssize_t n = ::send(fd, data + sent, len - sent, MSG_NOSIGNAL);
-        if (n < 0) {
-            if (errno == EINTR) {
-                continue;
+    // Format a sockaddr as "host:port" for logging. Best-effort — falls back
+    // to "?" fields if getnameinfo() fails.
+    std::string peer_to_string(const struct sockaddr_storage &addr, socklen_t addrLen)
+    {
+        char szHost[NI_MAXHOST] = "?";
+        char szPort[NI_MAXSERV] = "?";
+
+        ::getnameinfo(reinterpret_cast<const struct sockaddr *>(&addr), addrLen,
+                      szHost, sizeof(szHost), szPort, sizeof(szPort),
+                      NI_NUMERICHOST | NI_NUMERICSERV);
+
+        return std::string(szHost) + ":" + szPort;
+    }
+
+    /** Print one TCP chunk in a candump-like table row: DIR, PEER (host:port),
+     *  LEN, and a hex dump of the data — the TCP analogue of
+     *  kvcan_loopback.c's print_frame(), with the peer address in place of
+     *  CAN's ID/DLC. Called for both the as-received RX chunk and the TX
+     *  chunk as it's echoed back, same as kvcan's print_frame(prefix, &frame)
+     *  being called on both sides of the loopback.
+     */
+    void print_chunk(const char *prefix, const std::string &peer, const uint8_t *data, size_t len)
+    {
+        std::printf("%-4s  %-24s  %-6zu ", prefix, peer.c_str(), len);
+
+        const size_t shown = std::min(len, DUMP_MAX_BYTES);
+        for (size_t i = 0; i < shown; ++i) {
+            std::printf("%02X ", data[i]);
+        }
+        if (len > shown) {
+            std::printf("... (+%zu more bytes)", len - shown);
+        }
+        std::printf("\n");
+        std::fflush(stdout);
+    }
+
+    // Send the whole buffer, looping over short writes. Returns false on
+    // error or if the peer went away mid-send.
+    bool send_all(int fd, const uint8_t *data, size_t len)
+    {
+        size_t sent = 0;
+        while (sent < len) {
+            const ssize_t n = ::send(fd, data + sent, len - sent, MSG_NOSIGNAL);
+            if (n < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                std::fprintf(stderr, "send() failed, errno=%d (%s)\n", errno, std::strerror(errno));
+                return false;
             }
-            std::fprintf(stderr, "send() failed, errno=%d (%s)\n", errno, std::strerror(errno));
-            return false;
+            sent += static_cast<size_t>(n);
         }
-        sent += static_cast<size_t>(n);
+        return true;
     }
-    return true;
-}
 
-// Serve one client connection: echo bytes until it disconnects or an
-// error occurs. Returns when the connection ends.
-void serve_client(int clientFd, const std::string &strPeer)
-{
-    uint8_t buffer[RECV_CHUNK_SIZE];
-    size_t totalBytes = 0;
+    // Serve one client connection: echo bytes until it disconnects or an
+    // error occurs. Returns when the connection ends.
+    void serve_client(int clientFd, const std::string &strPeer)
+    {
+        uint8_t buffer[RECV_CHUNK_SIZE];
+        size_t totalBytes = 0;
 
-    while (!g_stop) {
-        const ssize_t n = ::recv(clientFd, buffer, sizeof(buffer), 0);
-        if (n < 0) {
-            if (errno == EINTR) {
-                continue;
+        while (!g_stop) {
+            const ssize_t n = ::recv(clientFd, buffer, sizeof(buffer), 0);
+            if (n < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                std::fprintf(stderr, "[%s] recv() failed, errno=%d (%s)\n",
+                             strPeer.c_str(), errno, std::strerror(errno));
+                break;
             }
-            std::fprintf(stderr, "[%s] recv() failed, errno=%d (%s)\n",
-                         strPeer.c_str(), errno, std::strerror(errno));
-            break;
+            if (n == 0) {
+                // Orderly shutdown by the peer.
+                std::printf("[%s] client closed the connection (echoed %zu bytes total)\n",
+                            strPeer.c_str(), totalBytes);
+                break;
+            }
+
+            const size_t szReceived = static_cast<size_t>(n);
+            totalBytes += szReceived;
+
+            print_chunk("RX", strPeer, buffer, szReceived);
+
+            if (!send_all(clientFd, buffer, szReceived)) {
+                std::fprintf(stderr, "[%s] failed to echo bytes back, dropping connection\n",
+                             strPeer.c_str());
+                break;
+            }
+
+            print_chunk("TX", strPeer, buffer, szReceived);
         }
-        if (n == 0) {
-            // Orderly shutdown by the peer.
-            std::printf("[%s] client closed the connection (echoed %zu bytes total)\n",
-                        strPeer.c_str(), totalBytes);
-            break;
-        }
-
-        const size_t szReceived = static_cast<size_t>(n);
-        totalBytes += szReceived;
-
-        print_chunk("RX", strPeer, buffer, szReceived);
-
-        if (!send_all(clientFd, buffer, szReceived)) {
-            std::fprintf(stderr, "[%s] failed to echo bytes back, dropping connection\n",
-                         strPeer.c_str());
-            break;
-        }
-
-        print_chunk("TX", strPeer, buffer, szReceived);
     }
-}
 } // namespace
 
 int main(int argc, char **argv)

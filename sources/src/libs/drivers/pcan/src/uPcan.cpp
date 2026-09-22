@@ -309,9 +309,7 @@ ICommDriver::Status PCAN::recvFrame(uint32_t u32TimeoutMs,
     // hEvent is our own manually-created notification event (not tied to an
     // OS I/O completion), so a stop_callback can wake WaitForSingleObject()
     // directly with SetEvent() — no need for a bounded-slice poll loop here.
-    std::stop_callback onStop(stop_tok, [&hEvent]() {
-        SetEvent(hEvent);
-    });
+    std::stop_callback onStop(stop_tok, [&hEvent]() { SetEvent(hEvent); });
 
     // 0 == infinite timeout: WaitForSingleObject's native infinite sentinel
     // is the INFINITE macro.

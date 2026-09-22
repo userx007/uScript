@@ -55,60 +55,60 @@
 #include <unistd.h>
 
 namespace {
-constexpr int DEFAULT_PORT         = 5000;
-constexpr const char *DEFAULT_BIND = "::";
-// Matches UDP_MAX_DGRAM_LEN in uUdp.hpp — the IPv4 theoretical payload
-// ceiling (65535 - 8-byte UDP header - 20-byte IP header) — so no
-// legally-sized datagram is ever truncated on receipt.
-constexpr size_t RECV_BUFFER_SIZE  = 65507;
-// A datagram can be up to RECV_BUFFER_SIZE bytes — unlike a CAN frame's
-// 8 bytes, printing every byte would flood the terminal. Cap the
-// console dump and note how much was left out, same idea as
-// CommDumpModel's preview truncation in the GUI.
-constexpr size_t DUMP_MAX_BYTES    = 64;
+    constexpr int DEFAULT_PORT         = 5000;
+    constexpr const char *DEFAULT_BIND = "::";
+    // Matches UDP_MAX_DGRAM_LEN in uUdp.hpp — the IPv4 theoretical payload
+    // ceiling (65535 - 8-byte UDP header - 20-byte IP header) — so no
+    // legally-sized datagram is ever truncated on receipt.
+    constexpr size_t RECV_BUFFER_SIZE  = 65507;
+    // A datagram can be up to RECV_BUFFER_SIZE bytes — unlike a CAN frame's
+    // 8 bytes, printing every byte would flood the terminal. Cap the
+    // console dump and note how much was left out, same idea as
+    // CommDumpModel's preview truncation in the GUI.
+    constexpr size_t DUMP_MAX_BYTES    = 64;
 
-volatile sig_atomic_t g_stop       = 0;
+    volatile sig_atomic_t g_stop       = 0;
 
-void on_signal(int /*sig*/)
-{
-    g_stop = 1;
-}
-
-// Format a sockaddr as "host:port" for logging. Best-effort — falls back
-// to "?" fields if getnameinfo() fails.
-std::string peer_to_string(const struct sockaddr_storage &addr, socklen_t addrLen)
-{
-    char szHost[NI_MAXHOST] = "?";
-    char szPort[NI_MAXSERV] = "?";
-
-    ::getnameinfo(reinterpret_cast<const struct sockaddr *>(&addr), addrLen,
-                  szHost, sizeof(szHost), szPort, sizeof(szPort),
-                  NI_NUMERICHOST | NI_NUMERICSERV);
-
-    return std::string(szHost) + ":" + szPort;
-}
-
-/** Print one UDP datagram in a candump-like table row: DIR, PEER
- *  (host:port), LEN, and a hex dump of the data — the UDP analogue of
- *  kvcan_loopback.c's print_frame(), with the peer address in place of
- *  CAN's ID/DLC. Called for both the as-received RX datagram and the TX
- *  datagram as it's echoed back, same as kvcan's print_frame(prefix,
- *  &frame) being called on both sides of the loopback.
- */
-void print_datagram(const char *prefix, const std::string &peer, const uint8_t *data, size_t len)
-{
-    std::printf("%-4s  %-24s  %-6zu ", prefix, peer.c_str(), len);
-
-    const size_t shown = std::min(len, DUMP_MAX_BYTES);
-    for (size_t i = 0; i < shown; ++i) {
-        std::printf("%02X ", data[i]);
+    void on_signal(int /*sig*/)
+    {
+        g_stop = 1;
     }
-    if (len > shown) {
-        std::printf("... (+%zu more bytes)", len - shown);
+
+    // Format a sockaddr as "host:port" for logging. Best-effort — falls back
+    // to "?" fields if getnameinfo() fails.
+    std::string peer_to_string(const struct sockaddr_storage &addr, socklen_t addrLen)
+    {
+        char szHost[NI_MAXHOST] = "?";
+        char szPort[NI_MAXSERV] = "?";
+
+        ::getnameinfo(reinterpret_cast<const struct sockaddr *>(&addr), addrLen,
+                      szHost, sizeof(szHost), szPort, sizeof(szPort),
+                      NI_NUMERICHOST | NI_NUMERICSERV);
+
+        return std::string(szHost) + ":" + szPort;
     }
-    std::printf("\n");
-    std::fflush(stdout);
-}
+
+    /** Print one UDP datagram in a candump-like table row: DIR, PEER
+     *  (host:port), LEN, and a hex dump of the data — the UDP analogue of
+     *  kvcan_loopback.c's print_frame(), with the peer address in place of
+     *  CAN's ID/DLC. Called for both the as-received RX datagram and the TX
+     *  datagram as it's echoed back, same as kvcan's print_frame(prefix,
+     *  &frame) being called on both sides of the loopback.
+     */
+    void print_datagram(const char *prefix, const std::string &peer, const uint8_t *data, size_t len)
+    {
+        std::printf("%-4s  %-24s  %-6zu ", prefix, peer.c_str(), len);
+
+        const size_t shown = std::min(len, DUMP_MAX_BYTES);
+        for (size_t i = 0; i < shown; ++i) {
+            std::printf("%02X ", data[i]);
+        }
+        if (len > shown) {
+            std::printf("... (+%zu more bytes)", len - shown);
+        }
+        std::printf("\n");
+        std::fflush(stdout);
+    }
 } // namespace
 
 int main(int argc, char **argv)

@@ -5,10 +5,10 @@
 #include <stddef.h>
 
 namespace {
-constexpr size_t kFrameLen      = 8;
-constexpr size_t kFirstFrameLen = 6;     // Frame 0: byte0=seq/idx, byte1=len, 6 data bytes
-constexpr size_t kContFrameLen  = 7;     // Frame N: byte0=seq/idx, 7 data bytes
-constexpr uint8_t kPaddingByte  = 0xFFu; // NMEA 2000 convention for unused trailing bytes
+    constexpr size_t kFrameLen      = 8;
+    constexpr size_t kFirstFrameLen = 6;     // Frame 0: byte0=seq/idx, byte1=len, 6 data bytes
+    constexpr size_t kContFrameLen  = 7;     // Frame N: byte0=seq/idx, 7 data bytes
+    constexpr uint8_t kPaddingByte  = 0xFFu; // NMEA 2000 convention for unused trailing bytes
 } // namespace
 
 // ============================================================================

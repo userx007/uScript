@@ -23,17 +23,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED RawEthPlugin *pluginEntry()
-{
-    return new RawEthPlugin();
-}
-
-EXPORTED void pluginExit(RawEthPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED RawEthPlugin *pluginEntry()
+    {
+        return new RawEthPlugin();
     }
-}
+
+    EXPORTED void pluginExit(RawEthPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -41,16 +41,16 @@ EXPORTED void pluginExit(RawEthPlugin *ptrPlugin)
 /////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-/**
- * \brief Format a MacAddr as "AA:BB:CC:DD:EE:FF" for the INFO command.
- */
-std::string macToString(const RawEth::MacAddr &mac)
-{
-    char szBuf[18];
-    std::snprintf(szBuf, sizeof(szBuf), "%02X:%02X:%02X:%02X:%02X:%02X",
-                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    return std::string(szBuf);
-}
+    /**
+     * \brief Format a MacAddr as "AA:BB:CC:DD:EE:FF" for the INFO command.
+     */
+    std::string macToString(const RawEth::MacAddr &mac)
+    {
+        char szBuf[18];
+        std::snprintf(szBuf, sizeof(szBuf), "%02X:%02X:%02X:%02X:%02X:%02X",
+                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        return std::string(szBuf);
+    }
 } // namespace
 
 ///////////////////////////////////////////////////////////////////

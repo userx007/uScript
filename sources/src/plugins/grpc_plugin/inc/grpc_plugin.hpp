@@ -80,321 +80,320 @@
  * instance — opened by `m_OpenDriver()` the first time it's needed, and
  * kept alive for as long as the plugin is loaded (closed by doCleanup()).
  */
-class GrpcPlugin : public PluginInterface
-{
-public:
-    GrpcPlugin()
-        : m_strVersion(GRPC_PLUGIN_VERSION)
-        , m_strInstanceName(GRPC_PLUGIN_NAME)
-        , m_bIsInitialized(false)
-        , m_bIsEnabled(false)
-        , m_bIsFaultTolerant(false)
-        , m_bIsPrivileged(false)
-        , m_strResultData()
-        , m_bRawResult(false)
-        , m_bCyclicCached(true)
-        , m_strHost()
-        , m_u16Port(50051)
-        , m_bUseTls(false)
-        , m_u32CallTimeout(5000)
-        , m_u32ConnectTimeout(5000)
-        , m_u32ReadTimeout(5000)
-        , m_u32ReadBufferSize(65536)
-    {
+class GrpcPlugin : public PluginInterface {
+    public:
+        GrpcPlugin()
+            : m_strVersion(GRPC_PLUGIN_VERSION)
+            , m_strInstanceName(GRPC_PLUGIN_NAME)
+            , m_bIsInitialized(false)
+            , m_bIsEnabled(false)
+            , m_bIsFaultTolerant(false)
+            , m_bIsPrivileged(false)
+            , m_strResultData()
+            , m_bRawResult(false)
+            , m_bCyclicCached(true)
+            , m_strHost()
+            , m_u16Port(50051)
+            , m_bUseTls(false)
+            , m_u32CallTimeout(5000)
+            , m_u32ConnectTimeout(5000)
+            , m_u32ReadTimeout(5000)
+            , m_u32ReadBufferSize(65536)
+        {
 #define GRPC_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
                                                                   PluginCommandEntry<GrpcPlugin>{&GrpcPlugin::m_GRPC_##a, false}));
-        GRPC_PLUGIN_COMMANDS_CONFIG_TABLE
+            GRPC_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef GRPC_PLUGIN_CMD_RECORD
-    }
-
-    ~GrpcPlugin() = default;
-
-    bool isInitialized(void) const
-    {
-        return m_bIsInitialized;
-    }
-
-    bool isEnabled(void) const
-    {
-        return m_bIsEnabled;
-    }
-
-    bool setParams(const PluginDataSet *psSetParams)
-    {
-        bool bRetVal = false;
-        if (generic_setparams<GrpcPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-            if (m_LocalSetParams(psSetParams)) {
-                bRetVal = true;
-            }
         }
-        return bRetVal;
-    }
 
-    void getParams(PluginDataGet *psGetParams) const
-    {
-        generic_getparams<GrpcPlugin>(this, psGetParams);
-    }
+        ~GrpcPlugin() = default;
 
-    const PluginCommandsMap<GrpcPlugin> *getMap(void) const
-    {
-        return &m_mapCmds;
-    }
+        bool isInitialized(void) const
+        {
+            return m_bIsInitialized;
+        }
 
-    const std::string &getVersion(void) const
-    {
-        return m_strVersion;
-    }
+        bool isEnabled(void) const
+        {
+            return m_bIsEnabled;
+        }
 
-    const std::string &getData(void) const
-    {
-        return m_strResultData;
-    }
+        bool setParams(const PluginDataSet *psSetParams)
+        {
+            bool bRetVal = false;
+            if (generic_setparams<GrpcPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+                if (m_LocalSetParams(psSetParams)) {
+                    bRetVal = true;
+                }
+            }
+            return bRetVal;
+        }
 
-    void resetData(void) const
-    {
-        m_strResultData.clear();
-    }
+        void getParams(PluginDataGet *psGetParams) const
+        {
+            generic_getparams<GrpcPlugin>(this, psGetParams);
+        }
 
-    bool doInit(void *pvUserData)
-    {
-        (void)pvUserData;
-        m_bIsInitialized = true;
-        return true;
-    }
+        const PluginCommandsMap<GrpcPlugin> *getMap(void) const
+        {
+            return &m_mapCmds;
+        }
 
-    bool doEnable(void)
-    {
-        m_bIsEnabled = true;
-        return true;
-    }
+        const std::string &getVersion(void) const
+        {
+            return m_strVersion;
+        }
 
-    bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
-    {
-        return generic_dispatch<GrpcPlugin>(this, strCmd, strParams, st);
-    }
+        const std::string &getData(void) const
+        {
+            return m_strResultData;
+        }
 
-    void doCleanup(void)
-    {
-        m_bIsInitialized = false;
-        m_bIsEnabled     = false;
-        m_strResultData.clear();
-        m_pDriver.reset();
-    }
+        void resetData(void) const
+        {
+            m_strResultData.clear();
+        }
 
-    bool isFaultTolerant(void) const
-    {
-        return m_bIsFaultTolerant;
-    }
+        bool doInit(void *pvUserData)
+        {
+            (void)pvUserData;
+            m_bIsInitialized = true;
+            return true;
+        }
 
-    bool isPrivileged(void) const
-    {
-        return m_bIsPrivileged;
-    }
+        bool doEnable(void)
+        {
+            m_bIsEnabled = true;
+            return true;
+        }
 
-    /**
-     * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-     */
-    bool setRawResult(const std::string &strValue) const
-    {
-        return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
-    }
+        bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
+        {
+            return generic_dispatch<GrpcPlugin>(this, strCmd, strParams, st);
+        }
 
-    /**
-     * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-     */
-    bool setCyclicCached(const std::string &strValue) const
-    {
-        return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
-    }
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+            m_strResultData.clear();
+            m_pDriver.reset();
+        }
 
-    bool setPort(const std::string &portStr) const
-    {
-        return numeric::str2uint16(portStr, m_u16Port);
-    }
+        bool isFaultTolerant(void) const
+        {
+            return m_bIsFaultTolerant;
+        }
 
-    bool setCallTimeout(const std::string &timeoutStr) const
-    {
-        return numeric::str2uint32(timeoutStr, m_u32CallTimeout);
-    }
+        bool isPrivileged(void) const
+        {
+            return m_bIsPrivileged;
+        }
 
-    bool setConnectTimeout(const std::string &timeoutStr) const
-    {
-        return numeric::str2uint32(timeoutStr, m_u32ConnectTimeout);
-    }
+        /**
+         * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+         */
+        bool setRawResult(const std::string &strValue) const
+        {
+            return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
+        }
 
-    bool setReadTimeout(const std::string &timeoutStr) const
-    {
-        return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
-    }
+        /**
+         * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+         */
+        bool setCyclicCached(const std::string &strValue) const
+        {
+            return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
+        }
 
-    bool setReadBufferSize(const std::string &bufSizeStr) const
-    {
-        return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize);
-    }
+        bool setPort(const std::string &portStr) const
+        {
+            return numeric::str2uint16(portStr, m_u16Port);
+        }
 
-    // Getters/Setters
-    const std::string &getHost(void) const
-    {
-        return m_strHost;
-    }
+        bool setCallTimeout(const std::string &timeoutStr) const
+        {
+            return numeric::str2uint32(timeoutStr, m_u32CallTimeout);
+        }
 
-    void setHost(const std::string &host) const
-    {
-        m_strHost = host;
-    }
+        bool setConnectTimeout(const std::string &timeoutStr) const
+        {
+            return numeric::str2uint32(timeoutStr, m_u32ConnectTimeout);
+        }
 
-    uint16_t getPort(void) const
-    {
-        return m_u16Port;
-    }
+        bool setReadTimeout(const std::string &timeoutStr) const
+        {
+            return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
+        }
 
-    bool isTlsEnabled(void) const
-    {
-        return m_bUseTls;
-    }
+        bool setReadBufferSize(const std::string &bufSizeStr) const
+        {
+            return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize);
+        }
 
-    bool setTlsEnabled(const std::string &strValue) const
-    {
-        BoolExprEvaluator e;
-        return e.evaluate(strValue, m_bUseTls);
-    }
+        // Getters/Setters
+        const std::string &getHost(void) const
+        {
+            return m_strHost;
+        }
 
-    const std::string &getTlsCaPath(void) const
-    {
-        return m_strTlsCaPath;
-    }
+        void setHost(const std::string &host) const
+        {
+            m_strHost = host;
+        }
 
-    void setTlsCaPath(const std::string &path) const
-    {
-        m_strTlsCaPath = path;
-    }
+        uint16_t getPort(void) const
+        {
+            return m_u16Port;
+        }
 
-    const std::string &getTlsCertPath(void) const
-    {
-        return m_strTlsCertPath;
-    }
+        bool isTlsEnabled(void) const
+        {
+            return m_bUseTls;
+        }
 
-    void setTlsCertPath(const std::string &path) const
-    {
-        m_strTlsCertPath = path;
-    }
+        bool setTlsEnabled(const std::string &strValue) const
+        {
+            BoolExprEvaluator e;
+            return e.evaluate(strValue, m_bUseTls);
+        }
 
-    const std::string &getTlsKeyPath(void) const
-    {
-        return m_strTlsKeyPath;
-    }
+        const std::string &getTlsCaPath(void) const
+        {
+            return m_strTlsCaPath;
+        }
 
-    void setTlsKeyPath(const std::string &path) const
-    {
-        m_strTlsKeyPath = path;
-    }
+        void setTlsCaPath(const std::string &path) const
+        {
+            m_strTlsCaPath = path;
+        }
 
-    const std::string &getDescriptorSetPath(void) const
-    {
-        return m_strDescriptorSetPath;
-    }
+        const std::string &getTlsCertPath(void) const
+        {
+            return m_strTlsCertPath;
+        }
 
-    void setDescriptorSetPath(const std::string &path) const
-    {
-        m_strDescriptorSetPath = path;
-    }
+        void setTlsCertPath(const std::string &path) const
+        {
+            m_strTlsCertPath = path;
+        }
 
-    const std::string &getAuthToken(void) const
-    {
-        return m_strAuthToken;
-    }
+        const std::string &getTlsKeyPath(void) const
+        {
+            return m_strTlsKeyPath;
+        }
 
-    void setAuthToken(const std::string &val) const
-    {
-        m_strAuthToken = val;
-    }
+        void setTlsKeyPath(const std::string &path) const
+        {
+            m_strTlsKeyPath = path;
+        }
 
-    uint32_t getCallTimeout(void) const
-    {
-        return m_u32CallTimeout;
-    }
+        const std::string &getDescriptorSetPath(void) const
+        {
+            return m_strDescriptorSetPath;
+        }
 
-    uint32_t getConnectTimeout(void) const
-    {
-        return m_u32ConnectTimeout;
-    }
+        void setDescriptorSetPath(const std::string &path) const
+        {
+            m_strDescriptorSetPath = path;
+        }
 
-    uint32_t getReadTimeout(void) const
-    {
-        return m_u32ReadTimeout;
-    }
+        const std::string &getAuthToken(void) const
+        {
+            return m_strAuthToken;
+        }
 
-    uint32_t getReadBufferSize(void) const
-    {
-        return m_u32ReadBufferSize;
-    }
+        void setAuthToken(const std::string &val) const
+        {
+            m_strAuthToken = val;
+        }
 
-private:
-    // Factory used by m_GRPC_CMD() (passed as ucmdexec::generic_cmd's
-    // openFn): builds a GrpcDriver::Config from the stored settings and
-    // returns the one persistent GrpcDriver for this plugin instance,
-    // constructing (and open()-ing) it on first use. Reused as-is on every
-    // later call as long as it's still open; see class doc comment's
-    // "Session lifetime".
-    std::shared_ptr<GrpcDriver> m_OpenDriver(void) const;
+        uint32_t getCallTimeout(void) const
+        {
+            return m_u32CallTimeout;
+        }
 
-    bool m_LocalSetParams(const PluginDataSet *psSetParams);
+        uint32_t getConnectTimeout(void) const
+        {
+            return m_u32ConnectTimeout;
+        }
 
-    // Members
-    PluginCommandsMap<GrpcPlugin> m_mapCmds;
-    std::string m_strInstanceName;
-    std::string m_strVersion;
-    mutable std::string m_strResultData;
+        uint32_t getReadTimeout(void) const
+        {
+            return m_u32ReadTimeout;
+        }
 
-    /**
-     * \brief when true, CMD returns the raw received bytes as-is instead of
-     *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
-     *        settable via the ini file's RAW_RESULT key or the CONFIG command's
-     *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
-     */
-    mutable bool m_bRawResult;
+        uint32_t getReadBufferSize(void) const
+        {
+            return m_u32ReadBufferSize;
+        }
 
-    /**
-     * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
-     *        command exactly once for the whole session; false re-resolves and re-validates
-     *        every due entry on every tick, needed to track a volatile ("?=") macro used as
-     *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
-     *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
-     *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
-     */
-    mutable bool m_bCyclicCached;
-    bool m_bIsInitialized;
-    bool m_bIsEnabled;
-    bool m_bIsFaultTolerant;
-    bool m_bIsPrivileged;
+    private:
+        // Factory used by m_GRPC_CMD() (passed as ucmdexec::generic_cmd's
+        // openFn): builds a GrpcDriver::Config from the stored settings and
+        // returns the one persistent GrpcDriver for this plugin instance,
+        // constructing (and open()-ing) it on first use. Reused as-is on every
+        // later call as long as it's still open; see class doc comment's
+        // "Session lifetime".
+        std::shared_ptr<GrpcDriver> m_OpenDriver(void) const;
 
-    std::string m_strArtefactsPath;
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
-    mutable std::string m_strHost;
-    mutable uint16_t m_u16Port;
-    mutable bool m_bUseTls;
+        // Members
+        PluginCommandsMap<GrpcPlugin> m_mapCmds;
+        std::string m_strInstanceName;
+        std::string m_strVersion;
+        mutable std::string m_strResultData;
 
-    mutable std::string m_strTlsCaPath;
-    mutable std::string m_strTlsCertPath;
-    mutable std::string m_strTlsKeyPath;
+        /**
+         * \brief when true, CMD returns the raw received bytes as-is instead of
+         *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+         *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+         *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+         */
+        mutable bool m_bRawResult;
 
-    mutable std::string m_strDescriptorSetPath;
-    mutable std::string m_strAuthToken;
+        /**
+         * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+         *        command exactly once for the whole session; false re-resolves and re-validates
+         *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+         *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+         *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+         *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+         */
+        mutable bool m_bCyclicCached;
+        bool m_bIsInitialized;
+        bool m_bIsEnabled;
+        bool m_bIsFaultTolerant;
+        bool m_bIsPrivileged;
 
-    mutable uint32_t m_u32CallTimeout;
-    mutable uint32_t m_u32ConnectTimeout;
-    mutable uint32_t m_u32ReadTimeout;
-    mutable uint32_t m_u32ReadBufferSize;
+        std::string m_strArtefactsPath;
 
-    // The persistent driver — see class doc comment's "Session lifetime"
-    // and m_OpenDriver().
-    mutable std::shared_ptr<GrpcDriver> m_pDriver;
+        mutable std::string m_strHost;
+        mutable uint16_t m_u16Port;
+        mutable bool m_bUseTls;
+
+        mutable std::string m_strTlsCaPath;
+        mutable std::string m_strTlsCertPath;
+        mutable std::string m_strTlsKeyPath;
+
+        mutable std::string m_strDescriptorSetPath;
+        mutable std::string m_strAuthToken;
+
+        mutable uint32_t m_u32CallTimeout;
+        mutable uint32_t m_u32ConnectTimeout;
+        mutable uint32_t m_u32ReadTimeout;
+        mutable uint32_t m_u32ReadBufferSize;
+
+        // The persistent driver — see class doc comment's "Session lifetime"
+        // and m_OpenDriver().
+        mutable std::shared_ptr<GrpcDriver> m_pDriver;
 
 /**
  * \brief functions associated to the plugin commands
  */
 #define GRPC_PLUGIN_CMD_RECORD(a) bool m_GRPC_##a(const std::string &args, std::stop_token st) const;
-    GRPC_PLUGIN_COMMANDS_CONFIG_TABLE
+        GRPC_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef GRPC_PLUGIN_CMD_RECORD
 };
 

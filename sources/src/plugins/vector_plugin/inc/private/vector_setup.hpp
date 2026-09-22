@@ -102,32 +102,27 @@ bool VectorPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         if (v.empty()) {
             return true;
         }
-        return setDeviceHw(v);
-    });
+        return setDeviceHw(v); });
     sSettings.Bind(VECTOR_DEVICE_SERIAL, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setDeviceSerial(v);
-    });
+        return setDeviceSerial(v); });
     sSettings.Bind(VECTOR_DEVICE_NAME, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setDeviceName(v);
-    });
+        return setDeviceName(v); });
     sSettings.Bind(VECTOR_DEVICE_HWINDEX, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setDeviceHwIndex(v);
-    });
+        return setDeviceHwIndex(v); });
     sSettings.Bind(VECTOR_DEVICE_HWCHANNEL, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setDeviceHwChannel(v);
-    });
+        return setDeviceHwChannel(v); });
     sSettings.Bind(VECTOR_BITRATE, [this](const std::string &v) { return setVectorBitrate(v); });
     sSettings.Bind(VECTOR_EXTENDED, [this](const std::string &v) { return setVectorExtended(v); });
     sSettings.Bind(VECTOR_FD, [this](const std::string &v) { return setVectorFd(v); });
@@ -135,39 +130,33 @@ bool VectorPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         if (v.empty()) {
             return true;
         }
-        return setVectorFdDataBitrate(v);
-    });
+        return setVectorFdDataBitrate(v); });
     sSettings.Bind(VECTOR_FD_ISO, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setVectorFdIso(v);
-    });
+        return setVectorFdIso(v); });
     sSettings.Bind(VECTOR_FD_BRS, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setVectorFdBrs(v);
-    });
+        return setVectorFdBrs(v); });
     sSettings.Bind(VECTOR_FD_PADDING_BYTE, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setVectorFdPaddingByte(v);
-    });
+        return setVectorFdPaddingByte(v); });
     sSettings.Bind(VECTOR_TX_ID, [this](const std::string &v) { return setCanTxId(v); });
     sSettings.Bind(VECTOR_RX_ID, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setCanRxId(v);
-    });
+        return setCanRxId(v); });
     sSettings.Bind(VECTOR_TP_PROTOCOL, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setCanTpProtocol(v);
-    });
+        return setCanTpProtocol(v); });
     sSettings.Bind(TP_BLOCK_SIZE, m_sTpConfig.blockSize);
     sSettings.Bind(TP_ST_MIN, m_sTpConfig.stMin);
     sSettings.Bind(TP_PAD_FRAMES, m_sTpConfig.padFrames);
@@ -198,8 +187,7 @@ bool VectorPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to parse CAN_FILTERS:"); LOG_STRING(v));
             return false;
         }
-        return true;
-    });
+        return true; });
     sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
     sSettings.Bind(READ_BUF_SIZE, [this](const std::string &v) { return setCanReadBufferSize(v); });

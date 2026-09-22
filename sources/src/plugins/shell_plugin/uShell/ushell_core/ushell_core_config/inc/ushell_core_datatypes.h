@@ -61,82 +61,82 @@ typedef enum {
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
 typedef struct
 {
-    char *pDataBuffer;       // Buffer pointer
-    size_t szDataBufferSize; // Buffer szCapacity
-    size_t szDataHeadPos;    // Next write position
-    size_t szOldestEntryPos; // Oldest entry position
-    size_t szEntryCount;     // Number of entries
-    size_t szCurrentIndex;   // Navigation position
+        char *pDataBuffer;       // Buffer pointer
+        size_t szDataBufferSize; // Buffer szCapacity
+        size_t szDataHeadPos;    // Next write position
+        size_t szOldestEntryPos; // Oldest entry position
+        size_t szEntryCount;     // Number of entries
+        size_t szCurrentIndex;   // Navigation position
 #if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
-    char *pstrFilePath;
-    bool bAutoSave;
+        char *pstrFilePath;
+        bool bAutoSave;
 #endif
 } history_s;
 
 typedef struct
 {
-    const history_s *pHistory;
-    size_t szIndex;
+        const history_s *pHistory;
+        size_t szIndex;
 } historyIter_s;
 #endif /* (1 == uSHELL_IMPLEMENTS_HISTORY) */
 
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
 typedef struct
 {
-    int iNrCrtElems;
-    int iSearchPos;
-    int iSavedSearchPos;
-    int iSearchIndex;
-    char cPrevKey;
-    char cCrtKey;
-    bool bFirstFilter;
-    bool bFoundExactMatch;
-    bool bEnabled;
+        int iNrCrtElems;
+        int iSearchPos;
+        int iSavedSearchPos;
+        int iSearchIndex;
+        char cPrevKey;
+        char cCrtKey;
+        bool bFirstFilter;
+        bool bFoundExactMatch;
+        bool bEnabled;
 } autocomplete_s;
 #endif /*(1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)*/
 
 /* parsing storage structure */
 typedef struct
 {
-    const char *pstrFctName;
+        const char *pstrFctName;
 #if defined(uSHELL_IMPLEMENTS_NUMBERS_64BIT) /* 64 bit -> 'l' ([l]ong) */
-    num64_t vl[uSHELL_MAX_PARAMS_NUM64];
-    unsigned int iNrNums64;
+        num64_t vl[uSHELL_MAX_PARAMS_NUM64];
+        unsigned int iNrNums64;
 #endif                                       /* defined(uSHELL_IMPLEMENTS_NUMBERS_64BIT)*/
 #if defined(uSHELL_IMPLEMENTS_NUMBERS_32BIT) /* 32 bit -> 'i' ([i]nteger) */
-    num32_t vi[uSHELL_MAX_PARAMS_NUM32];
-    unsigned int iNrNums32;
+        num32_t vi[uSHELL_MAX_PARAMS_NUM32];
+        unsigned int iNrNums32;
 #endif                                       /*defined(uSHELL_IMPLEMENTS_NUMBERS_32BIT)*/
 #if defined(uSHELL_IMPLEMENTS_NUMBERS_16BIT) /* 16 bit -> 'w' ([w]ord) */
-    num16_t vw[uSHELL_MAX_PARAMS_NUM16];
-    unsigned int iNrNums16;
+        num16_t vw[uSHELL_MAX_PARAMS_NUM16];
+        unsigned int iNrNums16;
 #endif                                      /*defined(uSHELL_IMPLEMENTS_NUMBERS_16BIT) */
 #if defined(uSHELL_IMPLEMENTS_NUMBERS_8BIT) /* 8 bit -> 'b' ([b]yte) */
-    num8_t vb[uSHELL_MAX_PARAMS_NUM8];
-    unsigned int iNrNums8;
+        num8_t vb[uSHELL_MAX_PARAMS_NUM8];
+        unsigned int iNrNums8;
 #endif                                 /*defined(uSHELL_IMPLEMENTS_NUMBERS_8BIT) */
 #ifdef uSHELL_IMPLEMENTS_NUMBERS_FLOAT /* float /double -> 'f' ([f]loat) */
-    numfp_t vf[uSHELL_MAX_PARAMS_FLOAT];
-    unsigned int iNrNumsFloat;
+        numfp_t vf[uSHELL_MAX_PARAMS_FLOAT];
+        unsigned int iNrNumsFloat;
 #endif                                 /* uSHELL_IMPLEMENTS_NUMBERS_FLOAT */
 #if defined(uSHELL_IMPLEMENTS_STRINGS) /* char* -> 's' ([s]tring) */
-    str_t *vs[uSHELL_MAX_PARAMS_STRING];
-    unsigned int iNrStrings;
+        str_t *vs[uSHELL_MAX_PARAMS_STRING];
+        unsigned int iNrStrings;
 #endif                                 /* defined(uSHELL_IMPLEMENTS_STRINGS) */
 #if defined(uSHELL_IMPLEMENTS_BOOLEAN) /* bool -> 'o' (b[o]ol) */
-    bool vo[uSHELL_MAX_PARAMS_BOOLEAN];
-    unsigned int iNrBools;
+        bool vo[uSHELL_MAX_PARAMS_BOOLEAN];
+        unsigned int iNrBools;
 #endif /*defined(uSHELL_IMPLEMENTS_BOOLEAN)*/
-    int iFctIndex;
-    int iTypIndex;
-    int iErrorInfo;
-    dataType_e eDataType;
+        int iFctIndex;
+        int iTypIndex;
+        int iErrorInfo;
+        dataType_e eDataType;
 } command_s;
 
 typedef struct
 {
-    const char *const pstrFctName;
-    const char *const pstrFuncParamDef;
+        const char *const pstrFctName;
+        const char *const pstrFuncParamDef;
 } fctDef_s;
 
 /** \brief command execution function pointer */
@@ -148,35 +148,35 @@ typedef void (*PFSHORTCUT)(const char *pstrArgs);
 /** \brief structure with the shortcut mapping */
 typedef struct
 {
-    char cSymbol;
-    PFSHORTCUT pfShortcut;
+        char cSymbol;
+        PFSHORTCUT pfShortcut;
 } shortcut_s;
 
 /** \brief main structure */
 typedef struct
 {
-    const fctDef_s *const psFuncDefArray;
-    shortcut_s *psShortcutsArray;
+        const fctDef_s *const psFuncDefArray;
+        shortcut_s *psShortcutsArray;
 #if (1 == uSHELL_IMPLEMENTS_COMMAND_HELP)
-    const char *const *ppstrInfoArray;
+        const char *const *ppstrInfoArray;
 #if (1 == uSHELL_IMPLEMENTS_USER_SHORTCUTS)
-    const char *const *ppstrShortcutsInfoArray;
+        const char *const *ppstrShortcutsInfoArray;
 #endif /*(1 == uSHELL_IMPLEMENTS_USER_SHORTCUTS)*/
 #endif /*(1 == uSHELL_IMPLEMENTS_COMMAND_HELP)*/
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-    int *piAutocompleteIndexArray;
+        int *piAutocompleteIndexArray;
 #endif /* (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE) */
 #if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
-    const char *pstrPromptName;
+        const char *pstrPromptName;
 #endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)*/
 #if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
-    bool bKeepRuning;
+        bool bKeepRuning;
 #endif /*(1 == uSHELL_IMPLEMENTS_SHELL_EXIT)*/
-    const int iNrFunctions;
-    const int iNrShortcuts;
-    PFEXEC pfExec;
-    char vstrPrompt[uSHELL_PROMPT_MAX_LEN];
-    int iPromptLength;
+        const int iNrFunctions;
+        const int iNrShortcuts;
+        PFEXEC pfExec;
+        char vstrPrompt[uSHELL_PROMPT_MAX_LEN];
+        int iPromptLength;
 } uShellInst_s;
 
 // Define EXPORTED for any platform
@@ -207,11 +207,11 @@ extern "C" {
 #endif
 
 #if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)
-EXPORTED uShellPluginInterface *uShellPluginEntry(void *pvUserData);
+    EXPORTED uShellPluginInterface *uShellPluginEntry(void *pvUserData);
 #else
 EXPORTED uShellPluginInterface *uShellPluginEntry(void);
 #endif /*(1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)*/
-EXPORTED void uShellPluginExit(uShellPluginInterface *ptrPlugin);
+    EXPORTED void uShellPluginExit(uShellPluginInterface *ptrPlugin);
 
 #ifdef __cplusplus
 }

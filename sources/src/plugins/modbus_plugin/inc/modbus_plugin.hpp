@@ -96,222 +96,221 @@
  * this is purely a "keep the socket open across calls" optimisation rather
  * than something any command's correctness depends on.
  */
-class ModbusPlugin : public PluginInterface
-{
-public:
-    ModbusPlugin()
-        : m_strVersion(MODBUS_PLUGIN_VERSION)
-        , m_strInstanceName(MODBUS_PLUGIN_NAME)
-        , m_bIsInitialized(false)
-        , m_bIsEnabled(false)
-        , m_bIsFaultTolerant(false)
-        , m_bIsPrivileged(false)
-        , m_strResultData()
-        , m_bRawResult(false)
-        , m_bCyclicCached(true)
-        , m_strHost("localhost")
-        , m_u16Port(502)
-        , m_u32ReadTimeout(3000)
-        , m_u32ReadBufferSize(4096)
-    {
+class ModbusPlugin : public PluginInterface {
+    public:
+        ModbusPlugin()
+            : m_strVersion(MODBUS_PLUGIN_VERSION)
+            , m_strInstanceName(MODBUS_PLUGIN_NAME)
+            , m_bIsInitialized(false)
+            , m_bIsEnabled(false)
+            , m_bIsFaultTolerant(false)
+            , m_bIsPrivileged(false)
+            , m_strResultData()
+            , m_bRawResult(false)
+            , m_bCyclicCached(true)
+            , m_strHost("localhost")
+            , m_u16Port(502)
+            , m_u32ReadTimeout(3000)
+            , m_u32ReadBufferSize(4096)
+        {
 #define MODBUS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
                                                                     PluginCommandEntry<ModbusPlugin>{&ModbusPlugin::m_MODBUS_##a, false}));
-        MODBUS_PLUGIN_COMMANDS_CONFIG_TABLE
+            MODBUS_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef MODBUS_PLUGIN_CMD_RECORD
-    }
+        }
 
-    ~ModbusPlugin() = default;
+        ~ModbusPlugin() = default;
 
-    bool isInitialized(void) const
-    {
-        return m_bIsInitialized;
-    }
+        bool isInitialized(void) const
+        {
+            return m_bIsInitialized;
+        }
 
-    bool isEnabled(void) const
-    {
-        return m_bIsEnabled;
-    }
+        bool isEnabled(void) const
+        {
+            return m_bIsEnabled;
+        }
 
-    bool setParams(const PluginDataSet *psSetParams)
-    {
-        bool bRetVal = false;
-        if (generic_setparams<ModbusPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-            if (m_LocalSetParams(psSetParams)) {
-                bRetVal = true;
+        bool setParams(const PluginDataSet *psSetParams)
+        {
+            bool bRetVal = false;
+            if (generic_setparams<ModbusPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+                if (m_LocalSetParams(psSetParams)) {
+                    bRetVal = true;
+                }
             }
+            return bRetVal;
         }
-        return bRetVal;
-    }
 
-    void getParams(PluginDataGet *psGetParams) const
-    {
-        generic_getparams<ModbusPlugin>(this, psGetParams);
-    }
-
-    const PluginCommandsMap<ModbusPlugin> *getMap(void) const
-    {
-        return &m_mapCmds;
-    }
-
-    const std::string &getVersion(void) const
-    {
-        return m_strVersion;
-    }
-
-    const std::string &getData(void) const
-    {
-        return m_strResultData;
-    }
-
-    void resetData(void) const
-    {
-        m_strResultData.clear();
-    }
-
-    bool doInit(void *pvUserData)
-    {
-        (void)pvUserData;
-        m_bIsInitialized = true;
-        return true;
-    }
-
-    bool doEnable(void)
-    {
-        m_bIsEnabled = true;
-        return true;
-    }
-
-    bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
-    {
-        return generic_dispatch<ModbusPlugin>(this, strCmd, strParams, st);
-    }
-
-    void doCleanup(void)
-    {
-        m_bIsInitialized = false;
-        m_bIsEnabled     = false;
-        m_strResultData.clear();
-        m_pDriver.reset();
-    }
-
-    bool isFaultTolerant(void) const
-    {
-        return m_bIsFaultTolerant;
-    }
-
-    bool isPrivileged(void) const
-    {
-        return m_bIsPrivileged;
-    }
-
-    /**
-     * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-     */
-    bool setRawResult(const std::string &strValue) const
-    {
-        return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
-    }
-
-    /**
-     * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-     */
-    bool setCyclicCached(const std::string &strValue) const
-    {
-        return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
-    }
-
-    bool setPort(const std::string &portStr) const
-    {
-        return numeric::str2uint16(portStr, m_u16Port);
-    }
-
-    /**
-     * \brief CONFIG-command setter for the target host (see m_strHost)
-     */
-    bool setHost(const std::string &strValue) const
-    {
-        m_strHost = strValue;
-        return true;
-    }
-
-    bool setReadTimeout(const std::string &timeoutStr) const
-    {
-        return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
-    }
-
-    bool setReadBufferSize(const std::string &bufSizeStr) const
-    {
-        uint32_t sz = 0;
-        if (!numeric::str2uint32(bufSizeStr, sz)) {
-            return false;
+        void getParams(PluginDataGet *psGetParams) const
+        {
+            generic_getparams<ModbusPlugin>(this, psGetParams);
         }
-        if (sz == 0) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read buffer size:"); LOG_UINT32(sz));
-            return false;
+
+        const PluginCommandsMap<ModbusPlugin> *getMap(void) const
+        {
+            return &m_mapCmds;
         }
-        m_u32ReadBufferSize = sz;
-        return true;
-    }
 
-private:
-    // Factory used by both m_MODBUS_CMD() and m_MODBUS_SCRIPT() (passed as
-    // ucmdexec::generic_cmd/generic_script's openFn): builds a
-    // ModbusDriver::Config from the stored settings and returns the one
-    // persistent ModbusDriver for this plugin instance, constructing (and
-    // open()-ing) it on first use. Reused as-is on every later call as
-    // long as it's still open; see class doc comment's "Session lifetime".
-    std::shared_ptr<ModbusDriver> m_OpenDriver(void) const;
+        const std::string &getVersion(void) const
+        {
+            return m_strVersion;
+        }
 
-    bool m_LocalSetParams(const PluginDataSet *psSetParams);
+        const std::string &getData(void) const
+        {
+            return m_strResultData;
+        }
 
-    // Members
-    PluginCommandsMap<ModbusPlugin> m_mapCmds;
-    std::string m_strVersion;
+        void resetData(void) const
+        {
+            m_strResultData.clear();
+        }
 
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "MODBUS"
-    // or "MODBUS:1" -- see PluginDataSet::strInstanceName). Falls back to
-    // MODBUS_PLUGIN_NAME when unset.
-    std::string m_strInstanceName;
-    mutable std::string m_strResultData;
+        bool doInit(void *pvUserData)
+        {
+            (void)pvUserData;
+            m_bIsInitialized = true;
+            return true;
+        }
 
-    /**
-     * \brief when true, CMD returns the raw received bytes as-is instead of
-     *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
-     *        settable via the ini file's RAW_RESULT key or the CONFIG command's
-     *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
-     */
-    mutable bool m_bRawResult;
+        bool doEnable(void)
+        {
+            m_bIsEnabled = true;
+            return true;
+        }
 
-    /**
-     * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
-     *        command exactly once for the whole session; false re-resolves and re-validates
-     *        every due entry on every tick, needed to track a volatile ("?=") macro used as
-     *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
-     *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
-     *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
-     */
-    mutable bool m_bCyclicCached;
-    bool m_bIsInitialized;
-    bool m_bIsEnabled;
-    bool m_bIsFaultTolerant;
-    bool m_bIsPrivileged;
+        bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
+        {
+            return generic_dispatch<ModbusPlugin>(this, strCmd, strParams, st);
+        }
 
-    std::string m_strArtefactsPath;
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+            m_strResultData.clear();
+            m_pDriver.reset();
+        }
 
-    mutable std::string m_strHost;
-    mutable uint16_t m_u16Port;
-    mutable uint32_t m_u32ReadTimeout;
-    mutable uint32_t m_u32ReadBufferSize;
+        bool isFaultTolerant(void) const
+        {
+            return m_bIsFaultTolerant;
+        }
 
-    // The persistent driver — see class doc comment's "Session lifetime"
-    // and m_OpenDriver().
-    mutable std::shared_ptr<ModbusDriver> m_pDriver;
+        bool isPrivileged(void) const
+        {
+            return m_bIsPrivileged;
+        }
+
+        /**
+         * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+         */
+        bool setRawResult(const std::string &strValue) const
+        {
+            return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
+        }
+
+        /**
+         * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+         */
+        bool setCyclicCached(const std::string &strValue) const
+        {
+            return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
+        }
+
+        bool setPort(const std::string &portStr) const
+        {
+            return numeric::str2uint16(portStr, m_u16Port);
+        }
+
+        /**
+         * \brief CONFIG-command setter for the target host (see m_strHost)
+         */
+        bool setHost(const std::string &strValue) const
+        {
+            m_strHost = strValue;
+            return true;
+        }
+
+        bool setReadTimeout(const std::string &timeoutStr) const
+        {
+            return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
+        }
+
+        bool setReadBufferSize(const std::string &bufSizeStr) const
+        {
+            uint32_t sz = 0;
+            if (!numeric::str2uint32(bufSizeStr, sz)) {
+                return false;
+            }
+            if (sz == 0) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read buffer size:"); LOG_UINT32(sz));
+                return false;
+            }
+            m_u32ReadBufferSize = sz;
+            return true;
+        }
+
+    private:
+        // Factory used by both m_MODBUS_CMD() and m_MODBUS_SCRIPT() (passed as
+        // ucmdexec::generic_cmd/generic_script's openFn): builds a
+        // ModbusDriver::Config from the stored settings and returns the one
+        // persistent ModbusDriver for this plugin instance, constructing (and
+        // open()-ing) it on first use. Reused as-is on every later call as
+        // long as it's still open; see class doc comment's "Session lifetime".
+        std::shared_ptr<ModbusDriver> m_OpenDriver(void) const;
+
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
+
+        // Members
+        PluginCommandsMap<ModbusPlugin> m_mapCmds;
+        std::string m_strVersion;
+
+        // Runtime instance identity for the GUI comm-dump panel (e.g. "MODBUS"
+        // or "MODBUS:1" -- see PluginDataSet::strInstanceName). Falls back to
+        // MODBUS_PLUGIN_NAME when unset.
+        std::string m_strInstanceName;
+        mutable std::string m_strResultData;
+
+        /**
+         * \brief when true, CMD returns the raw received bytes as-is instead of
+         *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+         *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+         *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+         */
+        mutable bool m_bRawResult;
+
+        /**
+         * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+         *        command exactly once for the whole session; false re-resolves and re-validates
+         *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+         *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+         *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+         *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+         */
+        mutable bool m_bCyclicCached;
+        bool m_bIsInitialized;
+        bool m_bIsEnabled;
+        bool m_bIsFaultTolerant;
+        bool m_bIsPrivileged;
+
+        std::string m_strArtefactsPath;
+
+        mutable std::string m_strHost;
+        mutable uint16_t m_u16Port;
+        mutable uint32_t m_u32ReadTimeout;
+        mutable uint32_t m_u32ReadBufferSize;
+
+        // The persistent driver — see class doc comment's "Session lifetime"
+        // and m_OpenDriver().
+        mutable std::shared_ptr<ModbusDriver> m_pDriver;
 
 /**
  * \brief functions associated to the plugin commands
  */
 #define MODBUS_PLUGIN_CMD_RECORD(a) bool m_MODBUS_##a(const std::string &args, std::stop_token st) const;
-    MODBUS_PLUGIN_COMMANDS_CONFIG_TABLE
+        MODBUS_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef MODBUS_PLUGIN_CMD_RECORD
 };
 

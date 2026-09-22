@@ -405,32 +405,29 @@
 
 // Represents a PCAN message
 //
-typedef struct tagTPCANMsg
-{
-    DWORD ID;                 // 11/29-bit message identifier
-    TPCANMessageType MSGTYPE; // Type of the message
-    BYTE LEN;                 // Data Length Code of the message (0..8)
-    BYTE DATA[8];             // Data of the message (DATA[0]..DATA[7])
+typedef struct tagTPCANMsg {
+        DWORD ID;                 // 11/29-bit message identifier
+        TPCANMessageType MSGTYPE; // Type of the message
+        BYTE LEN;                 // Data Length Code of the message (0..8)
+        BYTE DATA[8];             // Data of the message (DATA[0]..DATA[7])
 } TPCANMsg;
 
 // Represents a timestamp of a received PCAN message
 // Total Microseconds = micros + (1000ULL * millis) + (0x100000000ULL * 1000ULL * millis_overflow)
 //
-typedef struct tagTPCANTimestamp
-{
-    DWORD millis;         // Base-value: milliseconds: 0.. 2^32-1
-    WORD millis_overflow; // Roll-arounds of millis
-    WORD micros;          // Microseconds: 0..999
+typedef struct tagTPCANTimestamp {
+        DWORD millis;         // Base-value: milliseconds: 0.. 2^32-1
+        WORD millis_overflow; // Roll-arounds of millis
+        WORD micros;          // Microseconds: 0..999
 } TPCANTimestamp;
 
 // Represents a PCAN message from a FD capable hardware
 //
-typedef struct tagTPCANMsgFD
-{
-    DWORD ID;                 // 11/29-bit message identifier
-    TPCANMessageType MSGTYPE; // Type of the message
-    BYTE DLC;                 // Data Length Code of the message (0..15)
-    BYTE DATA[64];            // Data of the message (DATA[0]..DATA[63])
+typedef struct tagTPCANMsgFD {
+        DWORD ID;                 // 11/29-bit message identifier
+        TPCANMessageType MSGTYPE; // Type of the message
+        BYTE DLC;                 // Data Length Code of the message (0..15)
+        BYTE DATA[64];            // Data of the message (DATA[0]..DATA[63])
 } TPCANMsgFD;
 
 // Represents a PCAN message from a XL capable hardware
@@ -438,31 +435,29 @@ typedef struct tagTPCANMsgFD
 // CAN-CC/CAN-FD: only the fields PID, MSGTYPE, DLC,and DATA are used.
 // Additonal CAN-XL related fields are ignored
 //
-typedef struct tagTPCANMsgXL
-{
-    DWORD PID;                  // CAN-XL: Priority ID (physical layer) (0..0x7FF)
-                                // CAN-CC/CAN-FD: 11/29-bit message identifier
-    BYTE VCID;                  // Virtual CAN network ID
-    TPCANMessageTypeXL MSGTYPE; // Type of the message
-    WORD DLC;                   // Data Length Code of the message (0..2047)
-    BYTE SDT;                   // Service Data unit(SDU) protocol Type
-    DWORD AF;                   // Acceptance Field, SDU - specific high - layer ID
-    BYTE RRS;                   // Remote Request Substitution flag (0..1)
-    BYTE SEC;                   // Simple Extended Content flag (0..1)
-    BYTE DATA[2048];            // Data of the message (DATA[0]..DATA[2047])
+typedef struct tagTPCANMsgXL {
+        DWORD PID;                  // CAN-XL: Priority ID (physical layer) (0..0x7FF)
+                                    // CAN-CC/CAN-FD: 11/29-bit message identifier
+        BYTE VCID;                  // Virtual CAN network ID
+        TPCANMessageTypeXL MSGTYPE; // Type of the message
+        WORD DLC;                   // Data Length Code of the message (0..2047)
+        BYTE SDT;                   // Service Data unit(SDU) protocol Type
+        DWORD AF;                   // Acceptance Field, SDU - specific high - layer ID
+        BYTE RRS;                   // Remote Request Substitution flag (0..1)
+        BYTE SEC;                   // Simple Extended Content flag (0..1)
+        BYTE DATA[2048];            // Data of the message (DATA[0]..DATA[2047])
 } TPCANMsgXL;
 
 // Describes an available PCAN channel
 //
-typedef struct tagTPCANChannelInformation
-{
-    TPCANHandle channel_handle;                 // PCAN channel handle
-    TPCANDevice device_type;                    // Kind of PCAN device
-    BYTE controller_number;                     // CAN-Controller number
-    DWORD device_features;                      // Device capabilities flag (see FEATURE_*)
-    char device_name[MAX_LENGTH_HARDWARE_NAME]; // Device name
-    DWORD device_id;                            // Device number
-    DWORD channel_condition;                    // Availability status of a PCAN-Channel
+typedef struct tagTPCANChannelInformation {
+        TPCANHandle channel_handle;                 // PCAN channel handle
+        TPCANDevice device_type;                    // Kind of PCAN device
+        BYTE controller_number;                     // CAN-Controller number
+        DWORD device_features;                      // Device capabilities flag (see FEATURE_*)
+        char device_name[MAX_LENGTH_HARDWARE_NAME]; // Device name
+        DWORD device_id;                            // Device number
+        DWORD channel_condition;                    // Availability status of a PCAN-Channel
 } TPCANChannelInformation;
 
 #ifdef __cplusplus
@@ -472,245 +467,245 @@ extern "C" {
 #define _DEF_ARG
 #endif
 
-////////////////////////////////////////////////////////////
-// PCAN-Basic API function declarations
-////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////
+    // PCAN-Basic API function declarations
+    ////////////////////////////////////////////////////////////
 
-/// <summary>
-/// Initializes a PCAN Channel
-/// </summary>
-/// <param name="Channel">"The handle of a PCAN Channel"</param>
-/// <param name="Btr0Btr1">"The speed for the communication (BTR0BTR1 code)"</param>
-/// <param name="deprecated1">"Deprecated. Parameter is ignored"</param>
-/// <param name="deprecated2">"Deprecated. Parameter is ignored"</param>
-/// <param name="deprecated3">"Deprecated. Parameter is ignored"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_Initialize(
-    TPCANHandle Channel,
-    TPCANBaudrate Btr0Btr1,
-    BYTE deprecated1 _DEF_ARG,
-    DWORD deprecated2 _DEF_ARG,
-    WORD deprecated3 _DEF_ARG);
+    /// <summary>
+    /// Initializes a PCAN Channel
+    /// </summary>
+    /// <param name="Channel">"The handle of a PCAN Channel"</param>
+    /// <param name="Btr0Btr1">"The speed for the communication (BTR0BTR1 code)"</param>
+    /// <param name="deprecated1">"Deprecated. Parameter is ignored"</param>
+    /// <param name="deprecated2">"Deprecated. Parameter is ignored"</param>
+    /// <param name="deprecated3">"Deprecated. Parameter is ignored"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_Initialize(
+        TPCANHandle Channel,
+        TPCANBaudrate Btr0Btr1,
+        BYTE deprecated1 _DEF_ARG,
+        DWORD deprecated2 _DEF_ARG,
+        WORD deprecated3 _DEF_ARG);
 
-/// <summary>
-/// Initializes a FD capable PCAN Channel
-/// </summary>
-/// <param name="Channel">"The handle of a FD capable PCAN Channel"</param>
-/// <param name="BitrateFD">"The speed for the communication (FD bit rate string)"</param>
-/// <remarks>See PCAN_BR_* values
-/// * Parameter and values must be separated by '='
-/// * Couples of Parameter/value must be separated by ','
-/// * Following Parameter must be filled out: f_clock, data_brp, data_sjw, data_tseg1, data_tseg2,
-///   nom_brp, nom_sjw, nom_tseg1, nom_tseg2.
-/// * Following Parameters are optional (not used yet): data_ssp_offset, nom_sam
-///</remarks>
-/// <example>f_clock=80000000,nom_brp=10,nom_tseg1=5,nom_tseg2=2,nom_sjw=1,data_brp=4,data_tseg1=7,data_tseg2=2,data_sjw=1</example>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_InitializeFD(
-    TPCANHandle Channel,
-    TPCANBitrateFD BitrateFD);
+    /// <summary>
+    /// Initializes a FD capable PCAN Channel
+    /// </summary>
+    /// <param name="Channel">"The handle of a FD capable PCAN Channel"</param>
+    /// <param name="BitrateFD">"The speed for the communication (FD bit rate string)"</param>
+    /// <remarks>See PCAN_BR_* values
+    /// * Parameter and values must be separated by '='
+    /// * Couples of Parameter/value must be separated by ','
+    /// * Following Parameter must be filled out: f_clock, data_brp, data_sjw, data_tseg1, data_tseg2,
+    ///   nom_brp, nom_sjw, nom_tseg1, nom_tseg2.
+    /// * Following Parameters are optional (not used yet): data_ssp_offset, nom_sam
+    ///</remarks>
+    /// <example>f_clock=80000000,nom_brp=10,nom_tseg1=5,nom_tseg2=2,nom_sjw=1,data_brp=4,data_tseg1=7,data_tseg2=2,data_sjw=1</example>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_InitializeFD(
+        TPCANHandle Channel,
+        TPCANBitrateFD BitrateFD);
 
-/// <summary>
-/// Initializes a XL capable PCAN Channel
-/// </summary>
-/// <param name="Channel">The handle of a XL capable PCAN Channel"</param>
-/// <param name="BitrateXL">"The speed for the communication (XL bit rate string)"</param>
-/// <remarks>See PCAN_BR_* values
-/// * Parameter and values must be separated by '='
-/// * Couples of Parameter/value must be separated by ','
-/// * Following Parameter must be filled out: f_clock, brp, nom_brp, nom_sjw, nom_tseg1, nom_tseg2.
-///   If xl_transceiver_mode_switch is active, also the parameters xl_sjw, xl_tseg1, and xl_tseg2, must be present.
-///   If error_signaling is active, also the parameters fd_sjw, fd_tseg1, and fd_tseg2, must be present.
-/// * Following Parameters are optional: fd_ssp_offset, xl_ssp_offset, xl_transceiver_mode_switch, error_signaling,
-///   xl_pwm_offset, xl_pwm_short, and xl_pwm_long
-///</remarks>
-/// <example>f_clock=160000000,brp=1,nom_tseg1=255,nom_tseg2=64,nom_sjw=64,fd_tseg1=63,fd_tseg2=16,fd_sjw=16,fd_ssp_offset=0,xl_tseg1=10,
-/// xl_tseg2=9,xl_sjw=9,xl_ssp_offset=10,xl_error_signaling=1,xl_transceiver_mode_switch=0</example>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_InitializeXL(
-    TPCANHandle Channel,
-    TPCANBitrateXL BitrateXL);
+    /// <summary>
+    /// Initializes a XL capable PCAN Channel
+    /// </summary>
+    /// <param name="Channel">The handle of a XL capable PCAN Channel"</param>
+    /// <param name="BitrateXL">"The speed for the communication (XL bit rate string)"</param>
+    /// <remarks>See PCAN_BR_* values
+    /// * Parameter and values must be separated by '='
+    /// * Couples of Parameter/value must be separated by ','
+    /// * Following Parameter must be filled out: f_clock, brp, nom_brp, nom_sjw, nom_tseg1, nom_tseg2.
+    ///   If xl_transceiver_mode_switch is active, also the parameters xl_sjw, xl_tseg1, and xl_tseg2, must be present.
+    ///   If error_signaling is active, also the parameters fd_sjw, fd_tseg1, and fd_tseg2, must be present.
+    /// * Following Parameters are optional: fd_ssp_offset, xl_ssp_offset, xl_transceiver_mode_switch, error_signaling,
+    ///   xl_pwm_offset, xl_pwm_short, and xl_pwm_long
+    ///</remarks>
+    /// <example>f_clock=160000000,brp=1,nom_tseg1=255,nom_tseg2=64,nom_sjw=64,fd_tseg1=63,fd_tseg2=16,fd_sjw=16,fd_ssp_offset=0,xl_tseg1=10,
+    /// xl_tseg2=9,xl_sjw=9,xl_ssp_offset=10,xl_error_signaling=1,xl_transceiver_mode_switch=0</example>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_InitializeXL(
+        TPCANHandle Channel,
+        TPCANBitrateXL BitrateXL);
 
-/// <summary>
-/// Uninitializes one or all PCAN Channels initialized by CAN_Initialize
-/// </summary>
-/// <remarks>Giving the TPCANHandle value "PCAN_NONEBUS",
-/// uninitialize all initialized channels</remarks>
-/// <param name="Channel">"The handle of a PCAN Channel"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_Uninitialize(
-    TPCANHandle Channel);
+    /// <summary>
+    /// Uninitializes one or all PCAN Channels initialized by CAN_Initialize
+    /// </summary>
+    /// <remarks>Giving the TPCANHandle value "PCAN_NONEBUS",
+    /// uninitialize all initialized channels</remarks>
+    /// <param name="Channel">"The handle of a PCAN Channel"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_Uninitialize(
+        TPCANHandle Channel);
 
-/// <summary>
-/// Resets the receive and transmit queues of the PCAN Channel
-/// </summary>
-/// <remarks>
-/// A reset of the CAN controller is not performed.
-/// </remarks>
-/// <param name="Channel">"The handle of a PCAN Channel"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_Reset(
-    TPCANHandle Channel);
+    /// <summary>
+    /// Resets the receive and transmit queues of the PCAN Channel
+    /// </summary>
+    /// <remarks>
+    /// A reset of the CAN controller is not performed.
+    /// </remarks>
+    /// <param name="Channel">"The handle of a PCAN Channel"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_Reset(
+        TPCANHandle Channel);
 
-/// <summary>
-/// Gets the current status of a PCAN Channel
-/// </summary>
-/// <param name="Channel">"The handle of a PCAN Channel"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_GetStatus(
-    TPCANHandle Channel);
+    /// <summary>
+    /// Gets the current status of a PCAN Channel
+    /// </summary>
+    /// <param name="Channel">"The handle of a PCAN Channel"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_GetStatus(
+        TPCANHandle Channel);
 
-/// <summary>
-/// Reads a CAN message from the receive queue of a PCAN Channel
-/// </summary>
-/// <param name="Channel">"The handle of a PCAN Channel"</param>
-/// <param name="MessageBuffer">"A TPCANMsg structure buffer to store the CAN message"</param>
-/// <param name="TimestampBuffer">"A TPCANTimestamp structure buffer to get
-/// the reception time of the message. If this value is not desired, this parameter
-/// should be passed as NULL"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_Read(
-    TPCANHandle Channel,
-    TPCANMsg *MessageBuffer,
-    TPCANTimestamp *TimestampBuffer);
+    /// <summary>
+    /// Reads a CAN message from the receive queue of a PCAN Channel
+    /// </summary>
+    /// <param name="Channel">"The handle of a PCAN Channel"</param>
+    /// <param name="MessageBuffer">"A TPCANMsg structure buffer to store the CAN message"</param>
+    /// <param name="TimestampBuffer">"A TPCANTimestamp structure buffer to get
+    /// the reception time of the message. If this value is not desired, this parameter
+    /// should be passed as NULL"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_Read(
+        TPCANHandle Channel,
+        TPCANMsg *MessageBuffer,
+        TPCANTimestamp *TimestampBuffer);
 
-/// <summary>
-/// Reads a CAN message from the receive queue of a FD capable PCAN Channel
-/// </summary>
-/// <param name="Channel">"The handle of a FD capable PCAN Channel"</param>
-/// <param name="MessageBuffer">"A TPCANMsgFD structure buffer to store the CAN message"</param>
-/// <param name="TimestampBuffer">"A TPCANTimestampFD buffer to get
-/// the reception time of the message. If this value is not desired, this parameter
-/// should be passed as NULL"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_ReadFD(
-    TPCANHandle Channel,
-    TPCANMsgFD *MessageBuffer,
-    TPCANTimestampFD *TimestampBuffer);
+    /// <summary>
+    /// Reads a CAN message from the receive queue of a FD capable PCAN Channel
+    /// </summary>
+    /// <param name="Channel">"The handle of a FD capable PCAN Channel"</param>
+    /// <param name="MessageBuffer">"A TPCANMsgFD structure buffer to store the CAN message"</param>
+    /// <param name="TimestampBuffer">"A TPCANTimestampFD buffer to get
+    /// the reception time of the message. If this value is not desired, this parameter
+    /// should be passed as NULL"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_ReadFD(
+        TPCANHandle Channel,
+        TPCANMsgFD *MessageBuffer,
+        TPCANTimestampFD *TimestampBuffer);
 
-/// <summary>
-/// Reads a CAN message from the receive queue of a XL capable PCAN Channel
-/// </summary>
-/// <param name="Channel">"The handle of a XL capable PCAN Channel"</param>
-/// <param name="MessageBuffer">"A TPCANMsgXL structure buffer to store the CAN message"</param>
-/// <param name="TimestampBuffer">"A TPCANTimestampXL buffer to get
-/// the reception time of the message. If this value is not desired, this parameter
-/// should be passed as NULL"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_ReadXL(
-    TPCANHandle Channel,
-    TPCANMsgXL *MessageBuffer,
-    TPCANTimestampXL *TimestampBuffer);
+    /// <summary>
+    /// Reads a CAN message from the receive queue of a XL capable PCAN Channel
+    /// </summary>
+    /// <param name="Channel">"The handle of a XL capable PCAN Channel"</param>
+    /// <param name="MessageBuffer">"A TPCANMsgXL structure buffer to store the CAN message"</param>
+    /// <param name="TimestampBuffer">"A TPCANTimestampXL buffer to get
+    /// the reception time of the message. If this value is not desired, this parameter
+    /// should be passed as NULL"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_ReadXL(
+        TPCANHandle Channel,
+        TPCANMsgXL *MessageBuffer,
+        TPCANTimestampXL *TimestampBuffer);
 
-/// <summary>
-/// Transmits a CAN message
-/// </summary>
-/// <param name="Channel">"The handle of a PCAN Channel"</param>
-/// <param name="MessageBuffer">"A TPCANMsg buffer with the message to be sent"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_Write(
-    TPCANHandle Channel,
-    TPCANMsg *MessageBuffer);
+    /// <summary>
+    /// Transmits a CAN message
+    /// </summary>
+    /// <param name="Channel">"The handle of a PCAN Channel"</param>
+    /// <param name="MessageBuffer">"A TPCANMsg buffer with the message to be sent"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_Write(
+        TPCANHandle Channel,
+        TPCANMsg *MessageBuffer);
 
-/// <summary>
-/// Transmits a CAN message over a FD capable PCAN Channel
-/// </summary>
-/// <param name="Channel">"The handle of a FD capable PCAN Channel"</param>
-/// <param name="MessageBuffer">"A TPCANMsgFD buffer with the message to be sent"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_WriteFD(
-    TPCANHandle Channel,
-    TPCANMsgFD *MessageBuffer);
+    /// <summary>
+    /// Transmits a CAN message over a FD capable PCAN Channel
+    /// </summary>
+    /// <param name="Channel">"The handle of a FD capable PCAN Channel"</param>
+    /// <param name="MessageBuffer">"A TPCANMsgFD buffer with the message to be sent"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_WriteFD(
+        TPCANHandle Channel,
+        TPCANMsgFD *MessageBuffer);
 
-/// <summary>
-/// Transmits a CAN message over a XL capable PCAN Channel
-/// </summary>
-/// <param name="Channel">"The handle of a XL capable PCAN Channel"</param>
-/// <param name="MessageBuffer">"A TPCANMsgXL buffer with the message to be sent"</param>
-/// <returns></returns>
-TPCANStatus __stdcall CAN_WriteXL(
-    TPCANHandle Channel,
-    TPCANMsgXL *MessageBuffer);
+    /// <summary>
+    /// Transmits a CAN message over a XL capable PCAN Channel
+    /// </summary>
+    /// <param name="Channel">"The handle of a XL capable PCAN Channel"</param>
+    /// <param name="MessageBuffer">"A TPCANMsgXL buffer with the message to be sent"</param>
+    /// <returns></returns>
+    TPCANStatus __stdcall CAN_WriteXL(
+        TPCANHandle Channel,
+        TPCANMsgXL *MessageBuffer);
 
-/// <summary>
-/// Configures the reception filter.
-/// </summary>
-/// <remarks>The message filter will be expanded with every call to
-/// this function. If it is desired to reset the filter, please use
-/// the CAN_SetValue function</remarks>
-/// <param name="Channel">"The handle of a PCAN Channel"</param>
-/// <param name="FromID">"The lowest CAN ID to be received"</param>
-/// <param name="ToID">"The highest CAN ID to be received"</param>
-/// <param name="Mode">"Message type, Standard (11-bit identifier) or
-/// Extended (29-bit identifier)"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_FilterMessages(
-    TPCANHandle Channel,
-    DWORD FromID,
-    DWORD ToID,
-    TPCANMode Mode);
+    /// <summary>
+    /// Configures the reception filter.
+    /// </summary>
+    /// <remarks>The message filter will be expanded with every call to
+    /// this function. If it is desired to reset the filter, please use
+    /// the CAN_SetValue function</remarks>
+    /// <param name="Channel">"The handle of a PCAN Channel"</param>
+    /// <param name="FromID">"The lowest CAN ID to be received"</param>
+    /// <param name="ToID">"The highest CAN ID to be received"</param>
+    /// <param name="Mode">"Message type, Standard (11-bit identifier) or
+    /// Extended (29-bit identifier)"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_FilterMessages(
+        TPCANHandle Channel,
+        DWORD FromID,
+        DWORD ToID,
+        TPCANMode Mode);
 
-/// <summary>
-/// Retrieves a PCAN Channel value
-/// </summary>
-/// <remarks>Parameters can be present or not according with the kind
-/// of Hardware (PCAN Channel) being used. If a parameter is not available,
-/// a PCAN_ERROR_ILLPARAMTYPE error will be returned</remarks>
-/// <param name="Channel">"The handle of a PCAN Channel"</param>
-/// <param name="Parameter">"The TPCANParameter parameter to get"</param>
-/// <param name="Buffer">"Buffer for the parameter value"</param>
-/// <param name="BufferLength">"Size in bytes of the buffer"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_GetValue(
-    TPCANHandle Channel,
-    TPCANParameter Parameter,
-    void *Buffer,
-    DWORD BufferLength);
+    /// <summary>
+    /// Retrieves a PCAN Channel value
+    /// </summary>
+    /// <remarks>Parameters can be present or not according with the kind
+    /// of Hardware (PCAN Channel) being used. If a parameter is not available,
+    /// a PCAN_ERROR_ILLPARAMTYPE error will be returned</remarks>
+    /// <param name="Channel">"The handle of a PCAN Channel"</param>
+    /// <param name="Parameter">"The TPCANParameter parameter to get"</param>
+    /// <param name="Buffer">"Buffer for the parameter value"</param>
+    /// <param name="BufferLength">"Size in bytes of the buffer"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_GetValue(
+        TPCANHandle Channel,
+        TPCANParameter Parameter,
+        void *Buffer,
+        DWORD BufferLength);
 
-/// <summary>
-/// Configures or sets a PCAN Channel value
-/// </summary>
-/// <remarks>Parameters can be present or not according with the kind
-/// of Hardware (PCAN Channel) being used. If a parameter is not available,
-/// a PCAN_ERROR_ILLPARAMTYPE error will be returned</remarks>
-/// <param name="Channel">"The handle of a PCAN Channel"</param>
-/// <param name="Parameter">"The TPCANParameter parameter to set"</param>
-/// <param name="Buffer">"Buffer with the value to be set"</param>
-/// <param name="BufferLength">"Size in bytes of the buffer"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_SetValue(
-    TPCANHandle Channel,
-    TPCANParameter Parameter,
-    void *Buffer,
-    DWORD BufferLength);
+    /// <summary>
+    /// Configures or sets a PCAN Channel value
+    /// </summary>
+    /// <remarks>Parameters can be present or not according with the kind
+    /// of Hardware (PCAN Channel) being used. If a parameter is not available,
+    /// a PCAN_ERROR_ILLPARAMTYPE error will be returned</remarks>
+    /// <param name="Channel">"The handle of a PCAN Channel"</param>
+    /// <param name="Parameter">"The TPCANParameter parameter to set"</param>
+    /// <param name="Buffer">"Buffer with the value to be set"</param>
+    /// <param name="BufferLength">"Size in bytes of the buffer"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_SetValue(
+        TPCANHandle Channel,
+        TPCANParameter Parameter,
+        void *Buffer,
+        DWORD BufferLength);
 
-/// <summary>
-/// Returns a descriptive text of a given TPCANStatus error
-/// code, in any desired language
-/// </summary>
-/// <remarks>The current languages available for translation are:
-/// Neutral (0x00), German (0x07), English (0x09), Spanish (0x0A),
-/// Italian (0x10) and French (0x0C)</remarks>
-/// <param name="Error">"A TPCANStatus error code"</param>
-/// <param name="Language">"Indicates a 'Primary language ID'"</param>
-/// <param name="Buffer">"Buffer for a null terminated char array"</param>
-/// <returns>"A TPCANStatus error code"</returns>
-TPCANStatus __stdcall CAN_GetErrorText(
-    TPCANStatus Error,
-    WORD Language,
-    LPSTR Buffer);
+    /// <summary>
+    /// Returns a descriptive text of a given TPCANStatus error
+    /// code, in any desired language
+    /// </summary>
+    /// <remarks>The current languages available for translation are:
+    /// Neutral (0x00), German (0x07), English (0x09), Spanish (0x0A),
+    /// Italian (0x10) and French (0x0C)</remarks>
+    /// <param name="Error">"A TPCANStatus error code"</param>
+    /// <param name="Language">"Indicates a 'Primary language ID'"</param>
+    /// <param name="Buffer">"Buffer for a null terminated char array"</param>
+    /// <returns>"A TPCANStatus error code"</returns>
+    TPCANStatus __stdcall CAN_GetErrorText(
+        TPCANStatus Error,
+        WORD Language,
+        LPSTR Buffer);
 
-/// <summary>
-/// Finds a PCAN-Basic channel that matches with the given parameters
-/// </summary>
-/// <param name="Parameters">A comma separated string contained pairs of
-/// parameter-name/value to be matched within a PCAN-Basic channel</param>
-/// <param name="FoundChannel">Buffer for returning the PCAN-Basic channel,
-/// when found</param>
-/// <returns>A TPCANStatus error code</returns>
-TPCANStatus __stdcall CAN_LookUpChannel(
-    LPSTR Parameters,
-    TPCANHandle *FoundChannel);
+    /// <summary>
+    /// Finds a PCAN-Basic channel that matches with the given parameters
+    /// </summary>
+    /// <param name="Parameters">A comma separated string contained pairs of
+    /// parameter-name/value to be matched within a PCAN-Basic channel</param>
+    /// <param name="FoundChannel">Buffer for returning the PCAN-Basic channel,
+    /// when found</param>
+    /// <returns>A TPCANStatus error code</returns>
+    TPCANStatus __stdcall CAN_LookUpChannel(
+        LPSTR Parameters,
+        TPCANHandle *FoundChannel);
 
 #ifdef __cplusplus
 }

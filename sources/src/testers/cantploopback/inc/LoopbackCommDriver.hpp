@@ -36,51 +36,50 @@
  * shared by the sender thread, the receiver thread, and (for CANopen SDO)
  * the server thread all at once.
  */
-class LoopbackCommDriver final : public ICommDriver
-{
-public:
-    /** @param verbose  If true, prints every frame (id, direction, hex bytes) as it crosses the bus. */
-    explicit LoopbackCommDriver(bool verbose = false)
-        : m_verbose(verbose)
-    {}
+class LoopbackCommDriver final : public ICommDriver {
+    public:
+        /** @param verbose  If true, prints every frame (id, direction, hex bytes) as it crosses the bus. */
+        explicit LoopbackCommDriver(bool verbose = false)
+            : m_verbose(verbose)
+        {
+        }
 
-    WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> data,
-                           std::string_view xtra_params,
-                           std::stop_token stop_tok = {}) const override;
+        WriteResult tout_write(uint32_t u32WriteTimeout,
+                               std::span<const uint8_t> data,
+                               std::string_view xtra_params,
+                               std::stop_token stop_tok = {}) const override;
 
-    ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t> buffer,
-                         const ReadOptions &opts,
-                         std::string_view xtra_params,
-                         std::stop_token stop_tok = {}) const override;
+        ReadResult tout_read(uint32_t u32ReadTimeout,
+                             std::span<uint8_t> buffer,
+                             const ReadOptions &opts,
+                             std::string_view xtra_params,
+                             std::stop_token stop_tok = {}) const override;
 
-    /** Drops every queued-but-unread frame on every id. Call between test cases. */
-    void reset() const;
+        /** Drops every queued-but-unread frame on every id. Call between test cases. */
+        void reset() const;
 
-    CommDetails describeConnection(std::string_view xtra_params = {}) const
-    {
-        CommDetails det = {
-            .family = CommFamily::CAN,
+        CommDetails describeConnection(std::string_view xtra_params = {}) const
+        {
+            CommDetails det = {
+                .family = CommFamily::CAN,
+            };
+            return det;
+        }
+
+        bool is_open() const
+        {
+            return true;
+        }
+
+    private:
+        struct Frame {
+                std::vector<uint8_t> bytes;
         };
-        return det;
-    }
 
-    bool is_open() const
-    {
-        return true;
-    }
-
-private:
-    struct Frame
-    {
-        std::vector<uint8_t> bytes;
-    };
-
-    bool m_verbose;
-    mutable std::mutex m_mutex;
-    mutable std::condition_variable m_cv;
-    mutable std::unordered_map<std::string, std::deque<Frame>> m_queues;
+        bool m_verbose;
+        mutable std::mutex m_mutex;
+        mutable std::condition_variable m_cv;
+        mutable std::unordered_map<std::string, std::deque<Frame>> m_queues;
 };
 
 #endif // CAN_TP_LOOPBACK_COMM_DRIVER_HPP

@@ -62,7 +62,6 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args, std::stop_token st)
                 std::vector<uint8_t> response(expected.size());
                 bRetVal = generic_uart_send_receive(request, response, expected, true, st);
             }
-
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mode:"); LOG_STRING(args));
             bShowHelp = true;

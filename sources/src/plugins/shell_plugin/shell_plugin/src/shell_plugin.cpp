@@ -14,17 +14,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED ShellPlugin *pluginEntry()
-{
-    return new ShellPlugin();
-}
-
-EXPORTED void pluginExit(ShellPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED ShellPlugin *pluginEntry()
+    {
+        return new ShellPlugin();
     }
-}
+
+    EXPORTED void pluginExit(ShellPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////

@@ -23,15 +23,15 @@ struct PluginDataSet;
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 extern "C" {
-EXPORTED ProfibusPlugin *pluginEntry()
-{
-    return new ProfibusPlugin();
-}
+    EXPORTED ProfibusPlugin *pluginEntry()
+    {
+        return new ProfibusPlugin();
+    }
 
-EXPORTED void pluginExit(ProfibusPlugin *ptrPlugin)
-{
-    delete ptrPlugin;
-}
+    EXPORTED void pluginExit(ProfibusPlugin *ptrPlugin)
+    {
+        delete ptrPlugin;
+    }
 }
 
 bool ProfibusPlugin::doInit(void *pvUserData)

@@ -37,106 +37,104 @@
  *   tout_read  → blocking read  from RX FIFO, up to u32ReadTimeout  ms
  *                ReadMode::Exact / UntilDelimiter / UntilToken all supported
  */
-class FT245Sync : public FT245Base, public ICommDriver
-{
-public:
-    using Status = ICommDriver::Status;
+class FT245Sync : public FT245Base, public ICommDriver {
+    public:
+        using Status = ICommDriver::Status;
 
-    // ── Device configuration ──────────────────────────────────────────────
-    struct SyncConfig
-    {
-        Variant variant   = Variant::FT245BM; ///< FT245BM or FT245R
-        FifoMode fifoMode = FifoMode::Async;  ///< Async (both) or Sync (BM only)
-    };
+        // ── Device configuration ──────────────────────────────────────────────
+        struct SyncConfig {
+                Variant variant   = Variant::FT245BM; ///< FT245BM or FT245R
+                FifoMode fifoMode = FifoMode::Async;  ///< Async (both) or Sync (BM only)
+        };
 
-    FT245Sync() = default;
+        FT245Sync() = default;
 
-    /**
-     * @brief Construct and immediately open the device
-     * @param config           FIFO configuration
-     * @param u8DeviceIndex    Zero-based index when multiple chips are connected
-     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-     *                         describeConnection()), supplied separately.
-     */
-    explicit FT245Sync(const SyncConfig &config, uint8_t u8DeviceIndex = 0u,
-                       const std::string &strIdentityLabel = {})
-        : m_strIdentityLabel(strIdentityLabel)
-    {
-        this->open(config, u8DeviceIndex);
-    }
+        /**
+         * @brief Construct and immediately open the device
+         * @param config           FIFO configuration
+         * @param u8DeviceIndex    Zero-based index when multiple chips are connected
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately.
+         */
+        explicit FT245Sync(const SyncConfig &config, uint8_t u8DeviceIndex = 0u,
+                           const std::string &strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
+        {
+            this->open(config, u8DeviceIndex);
+        }
 
-    ~FT245Sync() override
-    {
-        close();
-    }
+        ~FT245Sync() override
+        {
+            close();
+        }
 
-    /**
-     * @brief Open the FT245 and configure the FIFO mode
-     *
-     * @param config        FIFO variant and mode
-     * @param u8DeviceIndex Physical device index (0 = first chip found)
-     */
-    Status open(const SyncConfig &config, uint8_t u8DeviceIndex = 0u);
+        /**
+         * @brief Open the FT245 and configure the FIFO mode
+         *
+         * @param config        FIFO variant and mode
+         * @param u8DeviceIndex Physical device index (0 = first chip found)
+         */
+        Status open(const SyncConfig &config, uint8_t u8DeviceIndex = 0u);
 
-    /** @copydoc FT245Base::close — purges FIFO before closing */
-    Status close() override;
+        /** @copydoc FT245Base::close — purges FIFO before closing */
+        Status close() override;
 
-    bool is_open() const override
-    {
-        return FT245Base::is_open();
-    }
+        bool is_open() const override
+        {
+            return FT245Base::is_open();
+        }
 
-    /**
-     * @brief Blocking write into TX FIFO (implements ICommDriver)
-     *
-     * Writes all bytes in buffer into the device TX FIFO within
-     * u32WriteTimeout milliseconds.
-     *
-     * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
-     */
-    WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {},
-                           std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Blocking write into TX FIFO (implements ICommDriver)
+         *
+         * Writes all bytes in buffer into the device TX FIFO within
+         * u32WriteTimeout milliseconds.
+         *
+         * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
+         */
+        WriteResult tout_write(uint32_t u32WriteTimeout,
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok     = {}) const override;
 
-    /**
-     * @brief Blocking read from RX FIFO (implements ICommDriver)
-     *
-     * Supports ReadMode::Exact, UntilDelimiter, and UntilToken.
-     *
-     * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
-     */
-    ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t> buffer,
-                         const ReadOptions &options,
-                         std::string_view xtra_params = {},
-                         std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Blocking read from RX FIFO (implements ICommDriver)
+         *
+         * Supports ReadMode::Exact, UntilDelimiter, and UntilToken.
+         *
+         * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
+         */
+        ReadResult tout_read(uint32_t u32ReadTimeout,
+                             std::span<uint8_t> buffer,
+                             const ReadOptions &options,
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok     = {}) const override;
 
-    /**
-     * @brief Purge RX and TX FIFOs without closing the device
-     *
-     * Discards all pending bytes in both directions.  Safe to call
-     * at any time while the device is open.
-     */
-    Status flush() const
-    {
-        return fifo_purge();
-    }
+        /**
+         * @brief Purge RX and TX FIFOs without closing the device
+         *
+         * Discards all pending bytes in both directions.  Safe to call
+         * at any time while the device is open.
+         */
+        Status flush() const
+        {
+            return fifo_purge();
+        }
 
-    /**
-     * @brief Describe this connection for the GUI comm-dump panel.
-     * Bulk USB FIFO stream, no addressable channels — xtra_params ignored.
-     * Classified SERIAL: a plain byte stream with no protocol framing,
-     * same category as UART for GUI display purposes.
-     */
-    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-    {
-        return commdump_details(CommFamily::SERIAL,
-                                m_strIdentityLabel.empty() ? "FT245 FIFO" : m_strIdentityLabel);
-    }
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * Bulk USB FIFO stream, no addressable channels — xtra_params ignored.
+         * Classified SERIAL: a plain byte stream with no protocol framing,
+         * same category as UART for GUI display purposes.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return commdump_details(CommFamily::SERIAL,
+                                    m_strIdentityLabel.empty() ? "FT245 FIFO" : m_strIdentityLabel);
+        }
 
-private:
-    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
+    private:
+        std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 };
 
 #endif // U_FT245_SYNC_DRIVER_H

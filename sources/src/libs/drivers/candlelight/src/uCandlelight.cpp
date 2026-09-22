@@ -37,66 +37,66 @@
 
 namespace {
 
-// USB control-transfer bmRequestType bytes for gs_usb's vendor/interface
-// requests — see the "Protocol sequence" section of uCandlelight.hpp.
-constexpr uint8_t USB_DIR_OUT_VENDOR_IFACE = 0x41; // OUT | VENDOR | RECIPIENT_INTERFACE
-constexpr uint8_t USB_DIR_IN_VENDOR_IFACE  = 0xC1; // IN  | VENDOR | RECIPIENT_INTERFACE
+    // USB control-transfer bmRequestType bytes for gs_usb's vendor/interface
+    // requests — see the "Protocol sequence" section of uCandlelight.hpp.
+    constexpr uint8_t USB_DIR_OUT_VENDOR_IFACE = 0x41; // OUT | VENDOR | RECIPIENT_INTERFACE
+    constexpr uint8_t USB_DIR_IN_VENDOR_IFACE  = 0xC1; // IN  | VENDOR | RECIPIENT_INTERFACE
 
-ICommDriver::Status libusb_err_to_status(int rc)
-{
-    switch (rc) {
-    case LIBUSB_SUCCESS:
-        return ICommDriver::Status::SUCCESS;
-    case LIBUSB_ERROR_TIMEOUT:
-        return ICommDriver::Status::READ_TIMEOUT;
-    case LIBUSB_ERROR_NO_DEVICE:
-    case LIBUSB_ERROR_ACCESS:
-    case LIBUSB_ERROR_NOT_FOUND:
-        return ICommDriver::Status::PORT_ACCESS;
-    case LIBUSB_ERROR_PIPE:
-        return ICommDriver::Status::NACK;
-    case LIBUSB_ERROR_OVERFLOW:
-        return ICommDriver::Status::BUFFER_OVERFLOW;
-    case LIBUSB_ERROR_NO_MEM:
-        return ICommDriver::Status::OUT_OF_MEMORY;
-    case LIBUSB_ERROR_INVALID_PARAM:
-        return ICommDriver::Status::INVALID_PARAM;
-    default:
-        return ICommDriver::Status::OPERATION_FAILED;
+    ICommDriver::Status libusb_err_to_status(int rc)
+    {
+        switch (rc) {
+        case LIBUSB_SUCCESS:
+            return ICommDriver::Status::SUCCESS;
+        case LIBUSB_ERROR_TIMEOUT:
+            return ICommDriver::Status::READ_TIMEOUT;
+        case LIBUSB_ERROR_NO_DEVICE:
+        case LIBUSB_ERROR_ACCESS:
+        case LIBUSB_ERROR_NOT_FOUND:
+            return ICommDriver::Status::PORT_ACCESS;
+        case LIBUSB_ERROR_PIPE:
+            return ICommDriver::Status::NACK;
+        case LIBUSB_ERROR_OVERFLOW:
+            return ICommDriver::Status::BUFFER_OVERFLOW;
+        case LIBUSB_ERROR_NO_MEM:
+            return ICommDriver::Status::OUT_OF_MEMORY;
+        case LIBUSB_ERROR_INVALID_PARAM:
+            return ICommDriver::Status::INVALID_PARAM;
+        default:
+            return ICommDriver::Status::OPERATION_FAILED;
+        }
     }
-}
 
-// Little-endian field helpers (gs_usb wire values are always little-endian,
-// regardless of host byte order — see GsHostConfig's doc comment).
-inline void put_u32le(uint8_t *p, uint32_t v)
-{
-    p[0] = static_cast<uint8_t>(v & 0xFF);
-    p[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
-    p[2] = static_cast<uint8_t>((v >> 16) & 0xFF);
-    p[3] = static_cast<uint8_t>((v >> 24) & 0xFF);
-}
-
-inline uint32_t get_u32le(const uint8_t *p)
-{
-    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) | (static_cast<uint32_t>(p[3]) << 24);
-}
-
-/// Byte-serialise the little-endian control-transfer structs by hand rather
-/// than relying on host struct layout matching the wire (portable across
-/// compilers/ABIs even though every field here happens to be uint32_t).
-void serialize_u32_struct(const uint32_t *fields, size_t count, uint8_t *out)
-{
-    for (size_t i = 0; i < count; ++i) {
-        put_u32le(out + i * 4, fields[i]);
+    // Little-endian field helpers (gs_usb wire values are always little-endian,
+    // regardless of host byte order — see GsHostConfig's doc comment).
+    inline void put_u32le(uint8_t *p, uint32_t v)
+    {
+        p[0] = static_cast<uint8_t>(v & 0xFF);
+        p[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
+        p[2] = static_cast<uint8_t>((v >> 16) & 0xFF);
+        p[3] = static_cast<uint8_t>((v >> 24) & 0xFF);
     }
-}
 
-void deserialize_u32_struct(const uint8_t *in, uint32_t *fields, size_t count)
-{
-    for (size_t i = 0; i < count; ++i) {
-        fields[i] = get_u32le(in + i * 4);
+    inline uint32_t get_u32le(const uint8_t *p)
+    {
+        return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) | (static_cast<uint32_t>(p[3]) << 24);
     }
-}
+
+    /// Byte-serialise the little-endian control-transfer structs by hand rather
+    /// than relying on host struct layout matching the wire (portable across
+    /// compilers/ABIs even though every field here happens to be uint32_t).
+    void serialize_u32_struct(const uint32_t *fields, size_t count, uint8_t *out)
+    {
+        for (size_t i = 0; i < count; ++i) {
+            put_u32le(out + i * 4, fields[i]);
+        }
+    }
+
+    void deserialize_u32_struct(const uint8_t *in, uint32_t *fields, size_t count)
+    {
+        for (size_t i = 0; i < count; ++i) {
+            fields[i] = get_u32le(in + i * 4);
+        }
+    }
 
 } // namespace
 
@@ -440,78 +440,78 @@ ICommDriver::Status Candlelight::set_data_bittiming(uint32_t prop_seg, uint32_t 
 
 namespace {
 
-/**
- * @brief Search (brp, tseg1=prop_seg+phase_seg1, tseg2=phase_seg2) within
- *        [min,max] limits for the combination that reproduces bitrate_bps
- *        exactly from fclk_can and lands closest to the requested sample
- *        point. tseg1 is split prop_seg/phase_seg1 50/50 (both segments
- *        serve the same purpose in gs_usb's bit-timing model — the split
- *        is a host-side convention, not something the CAN clock cares
- *        about). Returns false if no exact-bitrate combination exists
- *        within the device's limits.
- */
-bool calc_bittiming(uint32_t fclk_can, uint32_t bitrate_bps, double sample_point,
-                    uint32_t tseg1_min, uint32_t tseg1_max,
-                    uint32_t tseg2_min, uint32_t tseg2_max,
-                    uint32_t sjw_max, uint32_t brp_min, uint32_t brp_max, uint32_t brp_inc,
-                    uint32_t &out_prop_seg, uint32_t &out_phase_seg1, uint32_t &out_phase_seg2,
-                    uint32_t &out_sjw, uint32_t &out_brp)
-{
-    if (bitrate_bps == 0 || fclk_can == 0) {
-        return false;
-    }
-
-    bool found       = false;
-    double bestErr   = 1e18;
-    uint32_t bestBrp = 0, bestTseg1 = 0, bestTseg2 = 0;
-
-    for (uint32_t brp = brp_min; brp <= brp_max; brp += (brp_inc ? brp_inc : 1)) {
-        // Total time quanta per bit for this brp: tq_total = fclk / (brp * bitrate)
-        // (1 sync quantum + tseg1 + tseg2 = tq_total; sync is fixed at 1 tq).
-        const uint64_t denom = static_cast<uint64_t>(brp) * bitrate_bps;
-        if (denom == 0) {
-            continue;
-        }
-        if (fclk_can % denom != 0) {
-            continue; // must divide exactly - no bit-rate error tolerated
-        }
-        const uint64_t tqTotal = fclk_can / denom;
-        if (tqTotal < 3) {
-            continue; // need at least sync(1)+tseg1(1)+tseg2(1)
+    /**
+     * @brief Search (brp, tseg1=prop_seg+phase_seg1, tseg2=phase_seg2) within
+     *        [min,max] limits for the combination that reproduces bitrate_bps
+     *        exactly from fclk_can and lands closest to the requested sample
+     *        point. tseg1 is split prop_seg/phase_seg1 50/50 (both segments
+     *        serve the same purpose in gs_usb's bit-timing model — the split
+     *        is a host-side convention, not something the CAN clock cares
+     *        about). Returns false if no exact-bitrate combination exists
+     *        within the device's limits.
+     */
+    bool calc_bittiming(uint32_t fclk_can, uint32_t bitrate_bps, double sample_point,
+                        uint32_t tseg1_min, uint32_t tseg1_max,
+                        uint32_t tseg2_min, uint32_t tseg2_max,
+                        uint32_t sjw_max, uint32_t brp_min, uint32_t brp_max, uint32_t brp_inc,
+                        uint32_t &out_prop_seg, uint32_t &out_phase_seg1, uint32_t &out_phase_seg2,
+                        uint32_t &out_sjw, uint32_t &out_brp)
+    {
+        if (bitrate_bps == 0 || fclk_can == 0) {
+            return false;
         }
 
-        const uint32_t segTotal = static_cast<uint32_t>(tqTotal - 1); // tseg1+tseg2
+        bool found       = false;
+        double bestErr   = 1e18;
+        uint32_t bestBrp = 0, bestTseg1 = 0, bestTseg2 = 0;
 
-        // Try every tseg2 in range, derive tseg1 = segTotal - tseg2.
-        for (uint32_t tseg2 = tseg2_min; tseg2 <= tseg2_max && tseg2 < segTotal; ++tseg2) {
-            const uint32_t tseg1 = segTotal - tseg2;
-            if (tseg1 < tseg1_min || tseg1 > tseg1_max) {
+        for (uint32_t brp = brp_min; brp <= brp_max; brp += (brp_inc ? brp_inc : 1)) {
+            // Total time quanta per bit for this brp: tq_total = fclk / (brp * bitrate)
+            // (1 sync quantum + tseg1 + tseg2 = tq_total; sync is fixed at 1 tq).
+            const uint64_t denom = static_cast<uint64_t>(brp) * bitrate_bps;
+            if (denom == 0) {
                 continue;
             }
+            if (fclk_can % denom != 0) {
+                continue; // must divide exactly - no bit-rate error tolerated
+            }
+            const uint64_t tqTotal = fclk_can / denom;
+            if (tqTotal < 3) {
+                continue; // need at least sync(1)+tseg1(1)+tseg2(1)
+            }
 
-            const double samplePoint = static_cast<double>(1 + tseg1) / static_cast<double>(tqTotal);
-            const double err         = std::abs(samplePoint - sample_point);
-            if (err < bestErr) {
-                bestErr   = err;
-                bestBrp   = brp;
-                bestTseg1 = tseg1;
-                bestTseg2 = tseg2;
-                found     = true;
+            const uint32_t segTotal = static_cast<uint32_t>(tqTotal - 1); // tseg1+tseg2
+
+            // Try every tseg2 in range, derive tseg1 = segTotal - tseg2.
+            for (uint32_t tseg2 = tseg2_min; tseg2 <= tseg2_max && tseg2 < segTotal; ++tseg2) {
+                const uint32_t tseg1 = segTotal - tseg2;
+                if (tseg1 < tseg1_min || tseg1 > tseg1_max) {
+                    continue;
+                }
+
+                const double samplePoint = static_cast<double>(1 + tseg1) / static_cast<double>(tqTotal);
+                const double err         = std::abs(samplePoint - sample_point);
+                if (err < bestErr) {
+                    bestErr   = err;
+                    bestBrp   = brp;
+                    bestTseg1 = tseg1;
+                    bestTseg2 = tseg2;
+                    found     = true;
+                }
             }
         }
-    }
 
-    if (!found) {
-        return false;
-    }
+        if (!found) {
+            return false;
+        }
 
-    out_prop_seg   = bestTseg1 / 2;
-    out_phase_seg1 = bestTseg1 - out_prop_seg;
-    out_phase_seg2 = bestTseg2;
-    out_sjw        = std::min(sjw_max, out_phase_seg2);
-    out_brp        = bestBrp;
-    return true;
-}
+        out_prop_seg   = bestTseg1 / 2;
+        out_phase_seg1 = bestTseg1 - out_prop_seg;
+        out_phase_seg2 = bestTseg2;
+        out_sjw        = std::min(sjw_max, out_phase_seg2);
+        out_brp        = bestBrp;
+        return true;
+    }
 
 } // namespace
 

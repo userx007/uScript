@@ -17,17 +17,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED VectorPlugin *pluginEntry()
-{
-    return new VectorPlugin();
-}
-
-EXPORTED void pluginExit(VectorPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED VectorPlugin *pluginEntry()
+    {
+        return new VectorPlugin();
     }
-}
+
+    EXPORTED void pluginExit(VectorPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -558,7 +558,6 @@ std::shared_ptr<Vector> VectorPlugin::m_OpenAndConfigure(void) const
                                  "run VECTOR.DEVICES to see what's currently connected"));
             return nullptr;
         }
-
     } else {
 
         shpDriver = std::make_shared<Vector>(

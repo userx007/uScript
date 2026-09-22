@@ -37,17 +37,17 @@
  * \brief The plugin's entry points
  */
 extern "C" {
-EXPORTED KVCANPlugin *pluginEntry()
-{
-    return new KVCANPlugin();
-}
-
-EXPORTED void pluginExit(KVCANPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED KVCANPlugin *pluginEntry()
+    {
+        return new KVCANPlugin();
     }
-}
+
+    EXPORTED void pluginExit(KVCANPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -413,71 +413,71 @@ bool KVCANPlugin::m_KVCAN_CYCLIC(const std::string &args, std::stop_token st) co
 // DRIVER DECORATOR
 
 namespace {
-/**
- * \brief Thin ICommDriver decorator that reports every physical tout_write()/
- *        tout_read() call to the GUI comm-dump panel before returning.
- *
- * \note  Why this exists: ITransportProtocol::send()/receive() (see cantp)
- *        turn one logical message into however many physical CAN frames the
- *        segmented protocol needs (SF/FF/CF/FC, ...), calling driver.tout_write()/
- *        tout_read() once per frame. Wrapping the real driver with this
- *        decorator before handing it to send()/receive() means every one of
- *        those physical frames — PCI byte, padding and all — gets its own
- *        accurate comm-dump row, instead of a single row showing the
- *        pre-segmentation logical payload (which is what the generic
- *        CommScriptCommandInterpreter would otherwise produce — see
- *        uCommScriptCommandInterpreter.hpp's pfsend/pfrecv override).
- *
- * \note  Not used on the TpProtocol::NONE path: there, one call already maps
- *        to exactly one physical frame, so KVCANPlugin::m_Send()/m_Receive()
- *        dump directly instead of paying for a decorator.
- */
-class DumpingDriver : public ICommDriver
-{
-public:
-    DumpingDriver(std::shared_ptr<const ICommDriver> shpInner, std::string strPluginName)
-        : m_shpInner(std::move(shpInner))
-        , m_strPluginName(std::move(strPluginName))
-    {}
+    /**
+     * \brief Thin ICommDriver decorator that reports every physical tout_write()/
+     *        tout_read() call to the GUI comm-dump panel before returning.
+     *
+     * \note  Why this exists: ITransportProtocol::send()/receive() (see cantp)
+     *        turn one logical message into however many physical CAN frames the
+     *        segmented protocol needs (SF/FF/CF/FC, ...), calling driver.tout_write()/
+     *        tout_read() once per frame. Wrapping the real driver with this
+     *        decorator before handing it to send()/receive() means every one of
+     *        those physical frames — PCI byte, padding and all — gets its own
+     *        accurate comm-dump row, instead of a single row showing the
+     *        pre-segmentation logical payload (which is what the generic
+     *        CommScriptCommandInterpreter would otherwise produce — see
+     *        uCommScriptCommandInterpreter.hpp's pfsend/pfrecv override).
+     *
+     * \note  Not used on the TpProtocol::NONE path: there, one call already maps
+     *        to exactly one physical frame, so KVCANPlugin::m_Send()/m_Receive()
+     *        dump directly instead of paying for a decorator.
+     */
+    class DumpingDriver : public ICommDriver {
+        public:
+            DumpingDriver(std::shared_ptr<const ICommDriver> shpInner, std::string strPluginName)
+                : m_shpInner(std::move(shpInner))
+                , m_strPluginName(std::move(strPluginName))
+            {
+            }
 
-    bool is_open() const override
-    {
-        return m_shpInner->is_open();
-    }
+            bool is_open() const override
+            {
+                return m_shpInner->is_open();
+            }
 
-    CommDetails describeConnection(std::string_view xtra_params = {}) const override
-    {
-        return m_shpInner->describeConnection(xtra_params);
-    }
+            CommDetails describeConnection(std::string_view xtra_params = {}) const override
+            {
+                return m_shpInner->describeConnection(xtra_params);
+            }
 
-    ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                         const ReadOptions &options, std::string_view xtra_params = {},
-                         std::stop_token stop_tok = {}) const override
-    {
-        auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
-        if (result.status == Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
-            gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
-                                 CommDir::Rx, buffer.data(), static_cast<uint32_t>(result.bytes_read));
-        }
-        return result;
-    }
+            ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
+                                 const ReadOptions &options, std::string_view xtra_params = {},
+                                 std::stop_token stop_tok = {}) const override
+            {
+                auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
+                if (result.status == Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
+                    gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
+                                         CommDir::Rx, buffer.data(), static_cast<uint32_t>(result.bytes_read));
+                }
+                return result;
+            }
 
-    WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {},
-                           std::stop_token stop_tok     = {}) const override
-    {
-        auto result = m_shpInner->tout_write(u32WriteTimeout, buffer, xtra_params, stop_tok);
-        if (result.status == Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
-            gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
-                                 CommDir::Tx, buffer.data(), static_cast<uint32_t>(result.bytes_written));
-        }
-        return result;
-    }
+            WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
+                                   std::string_view xtra_params = {},
+                                   std::stop_token stop_tok     = {}) const override
+            {
+                auto result = m_shpInner->tout_write(u32WriteTimeout, buffer, xtra_params, stop_tok);
+                if (result.status == Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
+                    gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
+                                         CommDir::Tx, buffer.data(), static_cast<uint32_t>(result.bytes_written));
+                }
+                return result;
+            }
 
-private:
-    std::shared_ptr<const ICommDriver> m_shpInner;
-    std::string m_strPluginName;
-};
+        private:
+            std::shared_ptr<const ICommDriver> m_shpInner;
+            std::string m_strPluginName;
+    };
 
 } // anonymous namespace
 

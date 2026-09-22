@@ -25,69 +25,68 @@
  *
  * All pins are 3.3 V logic; NOT 5 V tolerant.
  */
-class CP2112Gpio : public CP2112Base, public IGpioDriver
-{
-public:
-    // Both CP2112Base and IGpioDriver introduce a 'Status' name.
-    // Explicitly pull in the one canonical definition to remove ambiguity.
-    using Status = ICommDriver::Status;
+class CP2112Gpio : public CP2112Base, public IGpioDriver {
+    public:
+        // Both CP2112Base and IGpioDriver introduce a 'Status' name.
+        // Explicitly pull in the one canonical definition to remove ambiguity.
+        using Status = ICommDriver::Status;
 
-    CP2112Gpio() = default;
+        CP2112Gpio() = default;
 
-    /**
-     * @brief Construct and immediately open the device
-     * @param u8DeviceIndex Zero-based index when multiple CP2112s are connected
-     */
-    explicit CP2112Gpio(uint8_t u8DeviceIndex)
-    {
-        this->open(u8DeviceIndex);
-    }
+        /**
+         * @brief Construct and immediately open the device
+         * @param u8DeviceIndex Zero-based index when multiple CP2112s are connected
+         */
+        explicit CP2112Gpio(uint8_t u8DeviceIndex)
+        {
+            this->open(u8DeviceIndex);
+        }
 
-    ~CP2112Gpio() override
-    {
-        close();
-    }
+        ~CP2112Gpio() override
+        {
+            close();
+        }
 
-    /**
-     * @brief Open the CP2112 HID device for GPIO use
-     * @param u8DeviceIndex Which CP2112 to open (0-based)
-     */
-    Status open(uint8_t u8DeviceIndex = 0u);
+        /**
+         * @brief Open the CP2112 HID device for GPIO use
+         * @param u8DeviceIndex Which CP2112 to open (0-based)
+         */
+        Status open(uint8_t u8DeviceIndex = 0u);
 
-    bool is_open() const override
-    {
-        return CP2112Base::is_open();
-    }
+        bool is_open() const override
+        {
+            return CP2112Base::is_open();
+        }
 
-    /**
-     * @brief Configure pin directions and drive modes
-     *
-     * Must be called once after open() before any gpio_read() / gpio_write().
-     *
-     * @param config  directionMask, pushPullMask, specialFuncMask, clockDivider
-     *                See IGpioDriver::GpioConfig for full field documentation.
-     */
-    Status gpio_configure(const GpioConfig &config) const override;
+        /**
+         * @brief Configure pin directions and drive modes
+         *
+         * Must be called once after open() before any gpio_read() / gpio_write().
+         *
+         * @param config  directionMask, pushPullMask, specialFuncMask, clockDivider
+         *                See IGpioDriver::GpioConfig for full field documentation.
+         */
+        Status gpio_configure(const GpioConfig &config) const override;
 
-    /**
-     * @brief Drive logic levels on output pins
-     *
-     * @param valueMask  Desired levels — 1 = high, 0 = low
-     * @param applyMask  Which pins to update — 1 = apply, 0 = leave unchanged
-     *
-     * Example — pulse PIN_4 low without touching other pins:
-     * @code
-     *   gpio.gpio_write(0,       PIN_4);   // drive low
-     *   gpio.gpio_write(PIN_4,   PIN_4);   // drive high
-     * @endcode
-     */
-    Status gpio_write(uint8_t valueMask, uint8_t applyMask) const override;
+        /**
+         * @brief Drive logic levels on output pins
+         *
+         * @param valueMask  Desired levels — 1 = high, 0 = low
+         * @param applyMask  Which pins to update — 1 = apply, 0 = leave unchanged
+         *
+         * Example — pulse PIN_4 low without touching other pins:
+         * @code
+         *   gpio.gpio_write(0,       PIN_4);   // drive low
+         *   gpio.gpio_write(PIN_4,   PIN_4);   // drive high
+         * @endcode
+         */
+        Status gpio_write(uint8_t valueMask, uint8_t applyMask) const override;
 
-    /**
-     * @brief Read current logic levels of all 8 pins
-     * @param valueMask  Output bitmask — bit = 1 → high, 0 → low
-     */
-    Status gpio_read(uint8_t &valueMask) const override;
+        /**
+         * @brief Read current logic levels of all 8 pins
+         * @param valueMask  Output bitmask — bit = 1 → high, 0 → low
+         */
+        Status gpio_read(uint8_t &valueMask) const override;
 };
 
 #endif // U_CP2112_GPIO_DRIVER_H

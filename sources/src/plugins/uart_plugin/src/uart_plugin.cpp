@@ -23,17 +23,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED UARTPlugin *pluginEntry()
-{
-    return new UARTPlugin();
-}
-
-EXPORTED void pluginExit(UARTPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED UARTPlugin *pluginEntry()
+    {
+        return new UARTPlugin();
     }
-}
+
+    EXPORTED void pluginExit(UARTPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

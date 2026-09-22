@@ -6,14 +6,14 @@
 #include <utility>
 
 namespace {
-void print_frame(const char *dir, const std::string &id, std::span<const uint8_t> bytes)
-{
-    std::fprintf(stderr, "  [bus] %s id=%-12s len=%2zu  ", dir, id.c_str(), bytes.size());
-    for (uint8_t b : bytes) {
-        std::fprintf(stderr, "%02X ", b);
+    void print_frame(const char *dir, const std::string &id, std::span<const uint8_t> bytes)
+    {
+        std::fprintf(stderr, "  [bus] %s id=%-12s len=%2zu  ", dir, id.c_str(), bytes.size());
+        for (uint8_t b : bytes) {
+            std::fprintf(stderr, "%02X ", b);
+        }
+        std::fprintf(stderr, "\n");
     }
-    std::fprintf(stderr, "\n");
-}
 } // namespace
 
 ICommDriver::WriteResult LoopbackCommDriver::tout_write(
@@ -63,8 +63,7 @@ ICommDriver::ReadResult LoopbackCommDriver::tout_read(
             return true; // wake up; checked again below
         }
         auto it = m_queues.find(id);
-        return it != m_queues.end() && !it->second.empty();
-    });
+        return it != m_queues.end() && !it->second.empty(); });
 
     if (stop_tok.stop_requested()) {
         result.status = Status::READ_TIMEOUT;

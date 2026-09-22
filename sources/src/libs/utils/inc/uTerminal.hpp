@@ -9,56 +9,55 @@
 #include <unistd.h>
 #endif
 
-class TerminalRAII
-{
-public:
-    TerminalRAII()
-    {
+class TerminalRAII {
+    public:
+        TerminalRAII()
+        {
 #if defined(_WIN32) || defined(_WIN64)
-        hStdin = GetStdHandle(STD_INPUT_HANDLE);
-        GetConsoleMode(hStdin, &originalMode);
-        DWORD newMode = originalMode;
-        newMode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
-        SetConsoleMode(hStdin, newMode);
+            hStdin = GetStdHandle(STD_INPUT_HANDLE);
+            GetConsoleMode(hStdin, &originalMode);
+            DWORD newMode = originalMode;
+            newMode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+            SetConsoleMode(hStdin, newMode);
 #else
-        tcgetattr(STDIN_FILENO, &originalTerm);
-        struct termios rawTerm = originalTerm;
-        rawTerm.c_lflag &= ~(ICANON | ECHO);
-        tcsetattr(STDIN_FILENO, TCSANOW, &rawTerm);
+            tcgetattr(STDIN_FILENO, &originalTerm);
+            struct termios rawTerm = originalTerm;
+            rawTerm.c_lflag &= ~(ICANON | ECHO);
+            tcsetattr(STDIN_FILENO, TCSANOW, &rawTerm);
 #endif
-    }
+        }
 
-    ~TerminalRAII()
-    {
+        ~TerminalRAII()
+        {
 #if defined(_WIN32) || defined(_WIN64)
-        SetConsoleMode(hStdin, originalMode);
+            SetConsoleMode(hStdin, originalMode);
 #else
-        tcsetattr(STDIN_FILENO, TCSANOW, &originalTerm);
+            tcsetattr(STDIN_FILENO, TCSANOW, &originalTerm);
 #endif
-    }
+        }
 
-    // Delete copy and move operations for RAII safety
-    TerminalRAII(const TerminalRAII &)            = delete;
-    TerminalRAII &operator=(const TerminalRAII &) = delete;
-    TerminalRAII(TerminalRAII &&)                 = delete;
-    TerminalRAII &operator=(TerminalRAII &&)      = delete;
+        // Delete copy and move operations for RAII safety
+        TerminalRAII(const TerminalRAII &)            = delete;
+        TerminalRAII &operator=(const TerminalRAII &) = delete;
+        TerminalRAII(TerminalRAII &&)                 = delete;
+        TerminalRAII &operator=(TerminalRAII &&)      = delete;
 
-    // Optional: Instant character read without waiting for Enter
-    int readChar() const
-    {
+        // Optional: Instant character read without waiting for Enter
+        int readChar() const
+        {
 #if defined(_WIN32) || defined(_WIN64)
-        return _getch();
+            return _getch();
 #else
-        return getchar();
+            return getchar();
 #endif
-    }
+        }
 
-private:
+    private:
 #if defined(_WIN32) || defined(_WIN64)
-    HANDLE hStdin;
-    DWORD originalMode;
+        HANDLE hStdin;
+        DWORD originalMode;
 #else
-    struct termios originalTerm;
+        struct termios originalTerm;
 #endif
 };
 

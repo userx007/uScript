@@ -49,13 +49,15 @@ static constexpr const char *kPluginNameForDump          = "PROFIBUS";
 // with its "| expected" to avoid this.
 // -----------------------------------------------------------------------
 namespace {
-enum class PendingKind : uint8_t { None,
-                                   Sda,
-                                   Srd,
-                                   Status };
+    enum class PendingKind : uint8_t {
+        None,
+        Sda,
+        Srd,
+        Status
+    };
 
-thread_local PendingKind tl_pendingKind = PendingKind::None;
-thread_local uint8_t tl_pendingFromSa   = 0;
+    thread_local PendingKind tl_pendingKind = PendingKind::None;
+    thread_local uint8_t tl_pendingFromSa   = 0;
 } // namespace
 
 ProfibusDriver::ProfibusDriver(Config config)

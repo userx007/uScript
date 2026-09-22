@@ -27,34 +27,33 @@ class QWidget;
 //  ScriptViewer.  Line numbers are therefore never part of the document text,
 //  so mouse selection never picks them up.
 // ─────────────────────────────────────────────────────────────────────────────
-class LogEdit : public QPlainTextEdit
-{
-    Q_OBJECT
-public:
-    explicit LogEdit(QWidget *parent = nullptr);
+class LogEdit : public QPlainTextEdit {
+        Q_OBJECT
+    public:
+        explicit LogEdit(QWidget *parent = nullptr);
 
-    // Recalculate gutter width and repaint (call after font changes).
-    void refreshGutter();
+        // Recalculate gutter width and repaint (call after font changes).
+        void refreshGutter();
 
-    // Gutter geometry/paint – called by LogLineNumberArea
-    int lineNumberAreaWidth() const;
-    void lineNumberAreaPaintEvent(QPaintEvent *ev);
+        // Gutter geometry/paint – called by LogLineNumberArea
+        int lineNumberAreaWidth() const;
+        void lineNumberAreaPaintEvent(QPaintEvent *ev);
 
-protected:
-    void resizeEvent(QResizeEvent *ev) override;
-    void mouseDoubleClickEvent(QMouseEvent *ev) override;
-    void mousePressEvent(QMouseEvent *ev) override;
+    protected:
+        void resizeEvent(QResizeEvent *ev) override;
+        void mouseDoubleClickEvent(QMouseEvent *ev) override;
+        void mousePressEvent(QMouseEvent *ev) override;
 
-private slots:
-    void updateLineNumberAreaWidth(int newBlockCount);
-    void updateLineNumberArea(const QRect &rect, int dy);
+    private slots:
+        void updateLineNumberAreaWidth(int newBlockCount);
+        void updateLineNumberArea(const QRect &rect, int dy);
 
-private:
-    void applyWordHighlights(const QString &word);
-    void clearWordHighlights();
+    private:
+        void applyWordHighlights(const QString &word);
+        void clearWordHighlights();
 
-    LogLineNumberArea *m_lineNumberArea;
-    QString m_highlightedWord; // currently highlighted word (empty = none)
+        LogLineNumberArea *m_lineNumberArea;
+        QString m_highlightedWord; // currently highlighted word (empty = none)
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,73 +66,72 @@ private:
 //    ERROR  → red
 //    bare   → light-grey (LOG_EMPTY lines from the interpreter)
 // ─────────────────────────────────────────────────────────────────────────────
-class LogViewer : public QFrame
-{
-    Q_OBJECT
-public:
-    explicit LogViewer(QWidget *parent = nullptr);
+class LogViewer : public QFrame {
+        Q_OBJECT
+    public:
+        explicit LogViewer(QWidget *parent = nullptr);
 
-    // Append a raw GUI:LOG:<message> payload (the "GUI:LOG:" prefix stripped).
-    void appendLine(const QString &line);
+        // Append a raw GUI:LOG:<message> payload (the "GUI:LOG:" prefix stripped).
+        void appendLine(const QString &line);
 
-    // Append a plain status message (rendered in dim italic, not from interpreter).
-    void appendStatus(const QString &msg);
+        // Append a plain status message (rendered in dim italic, not from interpreter).
+        void appendStatus(const QString &msg);
 
-    void clear();
-    void saveLog();
-    void setScriptPath(const QString &scriptPath); // called on tab switch / load
-    // Set the font used in the log text area (called by MainWindow for Ctrl+/-).
-    void setLogFont(const QFont &font);
+        void clear();
+        void saveLog();
+        void setScriptPath(const QString &scriptPath); // called on tab switch / load
+        // Set the font used in the log text area (called by MainWindow for Ctrl+/-).
+        void setLogFont(const QFont &font);
 
-    // Batches a run of appendLine()/appendStatus() calls: while a batch is
-    // open, the per-call line-count label refresh and auto-scroll are
-    // skipped and applied once, in endBatch(), instead of once per line.
-    // A single QProcess::readyRead chunk can carry many lines at once —
-    // without batching, each one paid for its own QScrollBar::setValue()
-    // (with the associated geometry/repaint work) and label text update.
-    // Nestable; only the outermost begin/end pair takes effect. Safe to
-    // call endBatch() with nothing appended in between (no-op).
-    void beginBatch();
-    void endBatch();
+        // Batches a run of appendLine()/appendStatus() calls: while a batch is
+        // open, the per-call line-count label refresh and auto-scroll are
+        // skipped and applied once, in endBatch(), instead of once per line.
+        // A single QProcess::readyRead chunk can carry many lines at once —
+        // without batching, each one paid for its own QScrollBar::setValue()
+        // (with the associated geometry/repaint work) and label text update.
+        // Nestable; only the outermost begin/end pair takes effect. Safe to
+        // call endBatch() with nothing appended in between (no-op).
+        void beginBatch();
+        void endBatch();
 
-    // Returns the numeric enum value of the selected log level (0=WERBOSE …
-    // 7=FIXED), or -1 when DEFAULT is selected (meaning: don't pass -l at all).
-    int logLevelArg() const;
+        // Returns the numeric enum value of the selected log level (0=WERBOSE …
+        // 7=FIXED), or -1 when DEFAULT is selected (meaning: don't pass -l at all).
+        int logLevelArg() const;
 
-public slots:
+    public slots:
 
-    void setAutoScroll(bool on)
-    {
-        m_autoScroll = on;
-    }
+        void setAutoScroll(bool on)
+        {
+            m_autoScroll = on;
+        }
 
-    // Disable the log-level combo while the interpreter is running so the
-    // selection cannot be changed mid-run (it only takes effect at launch).
-    void setRunning(bool running)
-    {
-        m_logLevelCb->setEnabled(!running);
-    }
+        // Disable the log-level combo while the interpreter is running so the
+        // selection cannot be changed mid-run (it only takes effect at launch).
+        void setRunning(bool running)
+        {
+            m_logLevelCb->setEnabled(!running);
+        }
 
-private:
-    void appendFormattedLine(const QString &html);
-    void markDirty(); // enable save button + clear "saved" label on first new content
+    private:
+        void appendFormattedLine(const QString &html);
+        void markDirty(); // enable save button + clear "saved" label on first new content
 
-    QLabel *m_titleLabel;
-    QLabel *m_countLabel;
-    QLabel *m_savedLabel; // shows "Saved: <path>" after a save
-    LogEdit *m_logEdit;
-    QPushButton *m_clearBtn;
-    QPushButton *m_saveBtn;
-    bool m_savedClean = true;
-    QString m_scriptDir; // directory of the currently active script
-    QCheckBox *m_autoScrollCb;
-    QComboBox *m_logLevelCb;
-    bool m_autoScroll            = true;
+        QLabel *m_titleLabel;
+        QLabel *m_countLabel;
+        QLabel *m_savedLabel; // shows "Saved: <path>" after a save
+        LogEdit *m_logEdit;
+        QPushButton *m_clearBtn;
+        QPushButton *m_saveBtn;
+        bool m_savedClean = true;
+        QString m_scriptDir; // directory of the currently active script
+        QCheckBox *m_autoScrollCb;
+        QComboBox *m_logLevelCb;
+        bool m_autoScroll            = true;
 
-    // ── batching (see beginBatch()/endBatch()) ──────────────────────────
-    int m_batchDepth             = 0;
-    bool m_batchNeedsLabelUpdate = false;
-    bool m_batchNeedsScroll      = false;
+        // ── batching (see beginBatch()/endBatch()) ──────────────────────────
+        int m_batchDepth             = 0;
+        bool m_batchNeedsLabelUpdate = false;
+        bool m_batchNeedsScroll      = false;
 
-    void refreshCountAndScroll(); // the per-line work batching defers
+        void refreshCountAndScroll(); // the per-line work batching defers
 };

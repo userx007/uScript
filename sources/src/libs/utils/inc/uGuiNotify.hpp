@@ -115,13 +115,13 @@ inline bool g_gui_mode = false; /**< true  → GUI front-end mode (structured st
 
 namespace gui_tls_detail {
 
-inline pthread_key_t g_tid_key;
-inline pthread_once_t g_tid_once = PTHREAD_ONCE_INIT;
+    inline pthread_key_t g_tid_key;
+    inline pthread_once_t g_tid_once = PTHREAD_ONCE_INIT;
 
-inline void make_tid_key() noexcept
-{
-    pthread_key_create(&g_tid_key, nullptr);
-}
+    inline void make_tid_key() noexcept
+    {
+        pthread_key_create(&g_tid_key, nullptr);
+    }
 
 } // namespace gui_tls_detail
 

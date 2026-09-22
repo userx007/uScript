@@ -102,15 +102,13 @@ bool PCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         if (v.empty()) {
             return true;
         }
-        return setCanRxId(v);
-    });
+        return setCanRxId(v); });
     // Empty/omitted means TpProtocol::NONE (today's naive-fragmentation behaviour).
     sSettings.Bind(PCAN_TP_PROTOCOL, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
-        return setCanTpProtocol(v);
-    });
+        return setCanTpProtocol(v); });
     // TpConfig tuning parameters -- all optional, each keeps TpConfig's own
     // in-struct default until explicitly overridden; same keys as KVCAN.
     sSettings.Bind(TP_BLOCK_SIZE, m_sTpConfig.blockSize);
@@ -144,8 +142,7 @@ bool PCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to parse CAN_FILTERS:"); LOG_STRING(v));
             return false;
         }
-        return true;
-    });
+        return true; });
     sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
     // Route through the setter so the [1-64] range check is applied consistently

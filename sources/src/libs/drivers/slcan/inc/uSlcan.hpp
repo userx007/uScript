@@ -148,351 +148,350 @@ enum class SlcanEnhance : uint8_t {
  * @note Channel configuration (bitrate, mode, open/close) must be done before
  *       sending frames.  The channel must be open before send_frame() is called.
  */
-class SLCAN : public ICommDriver
-{
-public:
-    // ------------------------------------------------------------------
-    // Constants
-    // ------------------------------------------------------------------
+class SLCAN : public ICommDriver {
+    public:
+        // ------------------------------------------------------------------
+        // Constants
+        // ------------------------------------------------------------------
 
-    static constexpr uint8_t SLCAN_CR               = '\r'; ///< Command terminator
-    static constexpr uint8_t SLCAN_ACK              = '\r'; ///< Success response
-    static constexpr uint8_t SLCAN_NAK              = 0x07; ///< Failure (BEL)
-    static constexpr uint32_t SLCAN_DEFAULT_TIMEOUT = 1000; ///< ms
+        static constexpr uint8_t SLCAN_CR               = '\r'; ///< Command terminator
+        static constexpr uint8_t SLCAN_ACK              = '\r'; ///< Success response
+        static constexpr uint8_t SLCAN_NAK              = 0x07; ///< Failure (BEL)
+        static constexpr uint32_t SLCAN_DEFAULT_TIMEOUT = 1000; ///< ms
 
-    /// Maximum ASCII frame string length: cmd(1) + id(8) + dlc(1) + data(128) + CR(1)
-    static constexpr size_t SLCAN_MAX_FRAME_LEN     = 140;
-    /// Maximum binary receive line length (same budget)
-    static constexpr size_t SLCAN_RX_BUF_LEN        = 160;
+        /// Maximum ASCII frame string length: cmd(1) + id(8) + dlc(1) + data(128) + CR(1)
+        static constexpr size_t SLCAN_MAX_FRAME_LEN     = 140;
+        /// Maximum binary receive line length (same budget)
+        static constexpr size_t SLCAN_RX_BUF_LEN        = 160;
 
-    // ------------------------------------------------------------------
-    // Construction / destruction
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Construction / destruction
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Construct without opening a port.
-     */
-    SLCAN()                                         = default;
+        /**
+         * @brief Construct without opening a port.
+         */
+        SLCAN()                                         = default;
 
-    /**
-     * @brief Construct and immediately open the serial port.
-     * @param device           OS device path (e.g. "/dev/ttyACM0", "COM3")
-     * @param speed            UART baud rate in bit/s (typically 115200 or higher)
-     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-     *                         describeConnection()), supplied separately from
-     *                         device — e.g. "SLCAN-0". Forwarded to the internal
-     *                         UART instance as well, so its own describeConnection()
-     *                         (composed into ours) reflects it too.
-     */
-    explicit SLCAN(const std::string &device, uint32_t speed,
-                   const std::string &strIdentityLabel = {});
+        /**
+         * @brief Construct and immediately open the serial port.
+         * @param device           OS device path (e.g. "/dev/ttyACM0", "COM3")
+         * @param speed            UART baud rate in bit/s (typically 115200 or higher)
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately from
+         *                         device — e.g. "SLCAN-0". Forwarded to the internal
+         *                         UART instance as well, so its own describeConnection()
+         *                         (composed into ours) reflects it too.
+         */
+        explicit SLCAN(const std::string &device, uint32_t speed,
+                       const std::string &strIdentityLabel = {});
 
-    virtual ~SLCAN();
+        virtual ~SLCAN();
 
-    // ------------------------------------------------------------------
-    // Port management
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Port management
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Open the serial port to the SLCAN adapter.
-     * @param device  OS device path
-     * @param speed   UART baud rate
-     * @return SUCCESS or error code
-     */
-    Status open(const std::string &device, uint32_t speed);
+        /**
+         * @brief Open the serial port to the SLCAN adapter.
+         * @param device  OS device path
+         * @param speed   UART baud rate
+         * @return SUCCESS or error code
+         */
+        Status open(const std::string &device, uint32_t speed);
 
-    /**
-     * @brief Close the serial port.
-     */
-    Status close();
+        /**
+         * @brief Close the serial port.
+         */
+        Status close();
 
-    /**
-     * @brief Returns true if the serial port is open.
-     */
-    bool is_open() const override;
+        /**
+         * @brief Returns true if the serial port is open.
+         */
+        bool is_open() const override;
 
-    /**
-     * @brief Describe this connection for the GUI comm-dump panel.
-     *
-     * xtra_params is accepted but ignored here — the raw ICommDriver path's
-     * xtra_params format is intentionally underspecified (see class docs;
-     * use the typed send_frame()/receive_frame() API for real per-frame IDs).
-     */
-    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-    {
-        return commdump_details(CommFamily::CAN,
-                                m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel);
-    }
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         *
+         * xtra_params is accepted but ignored here — the raw ICommDriver path's
+         * xtra_params format is intentionally underspecified (see class docs;
+         * use the typed send_frame()/receive_frame() API for real per-frame IDs).
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return commdump_details(CommFamily::CAN,
+                                    m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel);
+        }
 
-    // ------------------------------------------------------------------
-    // Channel configuration  (must be called before open_channel)
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Channel configuration  (must be called before open_channel)
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Set nominal CAN bit rate using preset (S command).
-     * @param rate  Preset bit rate
-     * @param timeout_ms  Command timeout in ms
-     */
-    Status set_bitrate(CanBitrate rate, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Set nominal CAN bit rate using preset (S command).
+         * @param rate  Preset bit rate
+         * @param timeout_ms  Command timeout in ms
+         */
+        Status set_bitrate(CanBitrate rate, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
-    /**
-     * @brief Set nominal CAN bit rate using explicit timing registers
-     *        (lowercase "s" command: "s<prescaler>,<seg1>,<seg2>,<sjw>",
-     *        decimal, comma-separated — e.g. "s4,69,10,7" for 500 kbit/s at
-     *        an 87.5% sample point on a 160 MHz CAN clock. NOT the same
-     *        letter/format as the uppercase "S" preset command above — see
-     *        set_bitrate()). All four values are required; there is no
-     *        adapter-side default for any of them.
-     * @param prescaler  CAN clock prescaler (BRP)
-     * @param seg1       Bit time segment 1 (time quanta before the sample point)
-     * @param seg2       Bit time segment 2 (time quanta after the sample point)
-     * @param sjw        Synchronization Jump Width; recommended sjw = min(seg1, seg2)
-     */
-    Status set_bitrate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
+        /**
+         * @brief Set nominal CAN bit rate using explicit timing registers
+         *        (lowercase "s" command: "s<prescaler>,<seg1>,<seg2>,<sjw>",
+         *        decimal, comma-separated — e.g. "s4,69,10,7" for 500 kbit/s at
+         *        an 87.5% sample point on a 160 MHz CAN clock. NOT the same
+         *        letter/format as the uppercase "S" preset command above — see
+         *        set_bitrate()). All four values are required; there is no
+         *        adapter-side default for any of them.
+         * @param prescaler  CAN clock prescaler (BRP)
+         * @param seg1       Bit time segment 1 (time quanta before the sample point)
+         * @param seg2       Bit time segment 2 (time quanta after the sample point)
+         * @param sjw        Synchronization Jump Width; recommended sjw = min(seg1, seg2)
+         */
+        Status set_bitrate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
+                                  uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+
+        /**
+         * @brief Set CAN-FD data segment bit rate using preset (Y command).
+         * @param rate  Preset data bit rate
+         */
+        Status set_fd_data_rate(CanFdDataRate rate, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+
+        /**
+         * @brief Set CAN-FD data segment bit rate using explicit timing
+         *        registers (lowercase "y" command, same
+         *        "<prescaler>,<seg1>,<seg2>,<sjw>" format as set_bitrate_custom()
+         *        — see that function's doc comment).
+         * @param prescaler  CAN clock prescaler (BRP) for the data phase
+         * @param seg1       Data-phase bit time segment 1
+         * @param seg2       Data-phase bit time segment 2
+         * @param sjw        Data-phase Synchronization Jump Width
+         */
+        Status set_fd_data_rate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
+                                       uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+
+        /**
+         * @brief Set bus mode (M command).  Channel must be closed.
+         */
+        Status set_mode(CanMode mode, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+
+        /**
+         * @brief Enable/disable auto-retransmission (A command).  Channel must be closed.
+         */
+        Status set_auto_retx(CanAutoRetx retx, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+
+        /**
+         * @brief Set SLCAN enhance mode (H command).  Channel must be closed.
+         * @warning This "H" command is specific to this driver's original
+         *          target adapter (WeActStudio USB2CANFDV1) — it is not part of
+         *          the general SLCAN protocol and several other SLCAN-speaking
+         *          firmwares (e.g. the CANable/candleLight-fw lineage, including
+         *          Elmue's CANable 2.5 firmware — see uSlcan.cpp's file comment)
+         *          have no equivalent command at all. Calling this against an
+         *          adapter that doesn't support it will fail (typically a BEL
+         *          nack). Do not call unless the target adapter is confirmed to
+         *          support it.
+         */
+        Status set_enhance_mode(SlcanEnhance mode, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+
+        /**
+         * @brief Set standard ID filter (F command, comma-separated hex —
+         *        see uSlcan.cpp's set_std_filter() comment).  Channel must be
+         *        closed.
+         * @param id    11-bit filter ID  (0–0x7FF)
+         * @param mask  11-bit filter mask (0 = accept all)
+         */
+        Status set_std_filter(uint16_t id, uint16_t mask,
                               uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
-    /**
-     * @brief Set CAN-FD data segment bit rate using preset (Y command).
-     * @param rate  Preset data bit rate
-     */
-    Status set_fd_data_rate(CanFdDataRate rate, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Set extended ID filter (F command, same wire format as
+         *        set_std_filter() — the adapter tells std/ext apart by the id's
+         *        magnitude, not by a different command).  Channel must be closed.
+         * @param id    29-bit filter ID  (0–0x1FFFFFFF)
+         * @param mask  29-bit filter mask (0 = accept all)
+         */
+        Status set_ext_filter(uint32_t id, uint32_t mask,
+                              uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
-    /**
-     * @brief Set CAN-FD data segment bit rate using explicit timing
-     *        registers (lowercase "y" command, same
-     *        "<prescaler>,<seg1>,<seg2>,<sjw>" format as set_bitrate_custom()
-     *        — see that function's doc comment).
-     * @param prescaler  CAN clock prescaler (BRP) for the data phase
-     * @param seg1       Data-phase bit time segment 1
-     * @param seg2       Data-phase bit time segment 2
-     * @param sjw        Data-phase Synchronization Jump Width
-     */
-    Status set_fd_data_rate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
-                                   uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Clear every configured filter (both standard and extended),
+         *        reverting to accept-all (f command, no arguments). Channel
+         *        must be closed. Not strictly required before setting a fresh
+         *        filter set with set_std_filter()/set_ext_filter() — closing
+         *        the channel already resets the adapter's filters as a side
+         *        effect (see close_channel()'s doc comment) — but sending it
+         *        explicitly whenever no filter is configured removes any
+         *        dependence on that side effect.
+         */
+        Status clear_filters(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
-    /**
-     * @brief Set bus mode (M command).  Channel must be closed.
-     */
-    Status set_mode(CanMode mode, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        // ------------------------------------------------------------------
+        // Channel open / close
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Enable/disable auto-retransmission (A command).  Channel must be closed.
-     */
-    Status set_auto_retx(CanAutoRetx retx, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Open the CAN channel (O command).
+         */
+        Status open_channel(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
-    /**
-     * @brief Set SLCAN enhance mode (H command).  Channel must be closed.
-     * @warning This "H" command is specific to this driver's original
-     *          target adapter (WeActStudio USB2CANFDV1) — it is not part of
-     *          the general SLCAN protocol and several other SLCAN-speaking
-     *          firmwares (e.g. the CANable/candleLight-fw lineage, including
-     *          Elmue's CANable 2.5 firmware — see uSlcan.cpp's file comment)
-     *          have no equivalent command at all. Calling this against an
-     *          adapter that doesn't support it will fail (typically a BEL
-     *          nack). Do not call unless the target adapter is confirmed to
-     *          support it.
-     */
-    Status set_enhance_mode(SlcanEnhance mode, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Close the CAN channel (C command).
+         * @note Unlike every other command here, C is not acknowledged with
+         *       CR/BEL — this is a documented SLCAN protocol convention, not a
+         *       bug — so this never waits for (or can report) a failure ack;
+         *       see the .cpp implementation's comment for the compatibility
+         *       reasoning. Also resets the adapter's bit rate, mode and filter
+         *       configuration back to defaults as a side effect.
+         */
+        Status close_channel(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
-    /**
-     * @brief Set standard ID filter (F command, comma-separated hex —
-     *        see uSlcan.cpp's set_std_filter() comment).  Channel must be
-     *        closed.
-     * @param id    11-bit filter ID  (0–0x7FF)
-     * @param mask  11-bit filter mask (0 = accept all)
-     */
-    Status set_std_filter(uint16_t id, uint16_t mask,
-                          uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        // ------------------------------------------------------------------
+        // Diagnostic queries
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Set extended ID filter (F command, same wire format as
-     *        set_std_filter() — the adapter tells std/ext apart by the id's
-     *        magnitude, not by a different command).  Channel must be closed.
-     * @param id    29-bit filter ID  (0–0x1FFFFFFF)
-     * @param mask  29-bit filter mask (0 = accept all)
-     */
-    Status set_ext_filter(uint32_t id, uint32_t mask,
-                          uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Read adapter firmware version (V command).
+         * @param[out] version  Version string returned by the adapter
+         */
+        Status get_version(std::string &version, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
-    /**
-     * @brief Clear every configured filter (both standard and extended),
-     *        reverting to accept-all (f command, no arguments). Channel
-     *        must be closed. Not strictly required before setting a fresh
-     *        filter set with set_std_filter()/set_ext_filter() — closing
-     *        the channel already resets the adapter's filters as a side
-     *        effect (see close_channel()'s doc comment) — but sending it
-     *        explicitly whenever no filter is configured removes any
-     *        dependence on that side effect.
-     */
-    Status clear_filters(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Read failure state (E command).
+         * @param[out] error_str  Error description returned by the adapter
+         * @warning This "E" command as a synchronous query is specific to this
+         *          driver's original target adapter. Several other SLCAN
+         *          firmwares (e.g. Elmue's CANable 2.5 firmware — see
+         *          uSlcan.cpp's file comment) have no on-demand error query at
+         *          all: they only ever *push* "E..." as an unsolicited event
+         *          when an error occurs, and only once error reporting has been
+         *          separately enabled — there is nothing to request/reply to on
+         *          those adapters, so calling this against one will fail
+         *          (typically a BEL nack, or a timeout waiting for a reply that
+         *          will never come). Not currently called anywhere in
+         *          slcan_plugin/ for exactly this reason.
+         */
+        Status get_error_state(std::string &error_str, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
-    // ------------------------------------------------------------------
-    // Channel open / close
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Frame TX / RX  (typed, preferred API)
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Open the CAN channel (O command).
-     */
-    Status open_channel(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Transmit a CAN or CAN-FD frame.
+         *
+         * Encodes the frame to SLCAN ASCII and writes it to the UART.  Waits for
+         * the adapter's CR/BEL acknowledgement.
+         *
+         * @param frame       Frame to transmit
+         * @param brs         BRS flag (CAN-FD only; ignored for CAN 2.0)
+         * @param timeout_ms  TX timeout in ms
+         * @param stop_tok    Allows cancelling the wait for the ACK/NAK early
+         * @return SUCCESS, WRITE_ERROR, or WRITE_TIMEOUT
+         */
+        Status send_frame(const CanFrame &frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
+                          std::stop_token stop_tok = {});
 
-    /**
-     * @brief Close the CAN channel (C command).
-     * @note Unlike every other command here, C is not acknowledged with
-     *       CR/BEL — this is a documented SLCAN protocol convention, not a
-     *       bug — so this never waits for (or can report) a failure ack;
-     *       see the .cpp implementation's comment for the compatibility
-     *       reasoning. Also resets the adapter's bit rate, mode and filter
-     *       configuration back to defaults as a side effect.
-     */
-    Status close_channel(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Receive one CAN or CAN-FD frame from the adapter.
+         *
+         * Reads an ASCII SLCAN line (terminated by CR) and decodes it.
+         *
+         * @param[out] frame      Decoded frame
+         * @param      timeout_ms RX timeout in ms
+         * @param      stop_tok   Allows cancelling the wait early
+         * @return SUCCESS, READ_TIMEOUT, or READ_ERROR
+         */
+        Status receive_frame(CanFrame &frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
+                             std::stop_token stop_tok = {});
 
-    // ------------------------------------------------------------------
-    // Diagnostic queries
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // ICommDriver generic interface (binary / raw)
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Read adapter firmware version (V command).
-     * @param[out] version  Version string returned by the adapter
-     */
-    Status get_version(std::string &version, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Generic read — receives one SLCAN frame and stores the raw
+         *        ASCII line (including the trailing CR) into @p buffer.
+         *
+         *  options.mode is ignored; the method always reads until CR.
+         */
+        ReadResult tout_read(uint32_t u32ReadTimeout,
+                             std::span<uint8_t> buffer,
+                             const ReadOptions &options,
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok     = {}) const override;
 
-    /**
-     * @brief Read failure state (E command).
-     * @param[out] error_str  Error description returned by the adapter
-     * @warning This "E" command as a synchronous query is specific to this
-     *          driver's original target adapter. Several other SLCAN
-     *          firmwares (e.g. Elmue's CANable 2.5 firmware — see
-     *          uSlcan.cpp's file comment) have no on-demand error query at
-     *          all: they only ever *push* "E..." as an unsolicited event
-     *          when an error occurs, and only once error reporting has been
-     *          separately enabled — there is nothing to request/reply to on
-     *          those adapters, so calling this against one will fail
-     *          (typically a BEL nack, or a timeout waiting for a reply that
-     *          will never come). Not currently called anywhere in
-     *          slcan_plugin/ for exactly this reason.
-     */
-    Status get_error_state(std::string &error_str, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        /**
+         * @brief Generic write — sends @p buffer verbatim over the UART
+         *        (must already be a valid SLCAN command / frame string).
+         */
+        WriteResult tout_write(uint32_t u32WriteTimeout,
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok     = {}) const override;
 
-    // ------------------------------------------------------------------
-    // Frame TX / RX  (typed, preferred API)
-    // ------------------------------------------------------------------
+        // ------------------------------------------------------------------
+        // Encoding / decoding helpers (static, testable)
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Transmit a CAN or CAN-FD frame.
-     *
-     * Encodes the frame to SLCAN ASCII and writes it to the UART.  Waits for
-     * the adapter's CR/BEL acknowledgement.
-     *
-     * @param frame       Frame to transmit
-     * @param brs         BRS flag (CAN-FD only; ignored for CAN 2.0)
-     * @param timeout_ms  TX timeout in ms
-     * @param stop_tok    Allows cancelling the wait for the ACK/NAK early
-     * @return SUCCESS, WRITE_ERROR, or WRITE_TIMEOUT
-     */
-    Status send_frame(const CanFrame &frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
-                      std::stop_token stop_tok = {});
+        /**
+         * @brief Encode a CAN frame to an SLCAN ASCII command string.
+         * @param frame   Frame to encode
+         * @param[out] out  Output buffer; must be at least SLCAN_MAX_FRAME_LEN bytes
+         * @return Number of bytes written (including trailing CR), or 0 on error
+         */
+        static size_t encode_frame(const CanFrame &frame, std::span<uint8_t> out);
 
-    /**
-     * @brief Receive one CAN or CAN-FD frame from the adapter.
-     *
-     * Reads an ASCII SLCAN line (terminated by CR) and decodes it.
-     *
-     * @param[out] frame      Decoded frame
-     * @param      timeout_ms RX timeout in ms
-     * @param      stop_tok   Allows cancelling the wait early
-     * @return SUCCESS, READ_TIMEOUT, or READ_ERROR
-     */
-    Status receive_frame(CanFrame &frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
-                         std::stop_token stop_tok = {});
+        /**
+         * @brief Decode an SLCAN ASCII receive line into a CanFrame.
+         * @param line   ASCII bytes (may include trailing CR; null-terminator optional)
+         * @param len    Number of bytes in @p line
+         * @param[out] frame  Decoded frame
+         * @return true on success
+         */
+        static bool decode_rx_frame(const uint8_t *line, size_t len, CanFrame &frame);
 
-    // ------------------------------------------------------------------
-    // ICommDriver generic interface (binary / raw)
-    // ------------------------------------------------------------------
+    private:
+        // ------------------------------------------------------------------
+        // Internal helpers
+        // ------------------------------------------------------------------
 
-    /**
-     * @brief Generic read — receives one SLCAN frame and stores the raw
-     *        ASCII line (including the trailing CR) into @p buffer.
-     *
-     *  options.mode is ignored; the method always reads until CR.
-     */
-    ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t> buffer,
-                         const ReadOptions &options,
-                         std::string_view xtra_params = {},
-                         std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Send a simple ASCII command and await CR/BEL acknowledgement.
+         * @param cmd         Command string (without CR; CR is appended internally)
+         * @param timeout_ms  Timeout in ms
+         */
+        Status send_command(std::string_view cmd, uint32_t timeout_ms);
 
-    /**
-     * @brief Generic write — sends @p buffer verbatim over the UART
-     *        (must already be a valid SLCAN command / frame string).
-     */
-    WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {},
-                           std::stop_token stop_tok     = {}) const override;
+        /**
+         * @brief Send a command and read back the text response terminated by CR.
+         * @param cmd         Command string (without CR)
+         * @param[out] resp   Response text (excluding CR)
+         */
+        Status send_command_get_response(std::string_view cmd, std::string &resp,
+                                         uint32_t timeout_ms);
 
-    // ------------------------------------------------------------------
-    // Encoding / decoding helpers (static, testable)
-    // ------------------------------------------------------------------
-
-    /**
-     * @brief Encode a CAN frame to an SLCAN ASCII command string.
-     * @param frame   Frame to encode
-     * @param[out] out  Output buffer; must be at least SLCAN_MAX_FRAME_LEN bytes
-     * @return Number of bytes written (including trailing CR), or 0 on error
-     */
-    static size_t encode_frame(const CanFrame &frame, std::span<uint8_t> out);
-
-    /**
-     * @brief Decode an SLCAN ASCII receive line into a CanFrame.
-     * @param line   ASCII bytes (may include trailing CR; null-terminator optional)
-     * @param len    Number of bytes in @p line
-     * @param[out] frame  Decoded frame
-     * @return true on success
-     */
-    static bool decode_rx_frame(const uint8_t *line, size_t len, CanFrame &frame);
-
-private:
-    // ------------------------------------------------------------------
-    // Internal helpers
-    // ------------------------------------------------------------------
-
-    /**
-     * @brief Send a simple ASCII command and await CR/BEL acknowledgement.
-     * @param cmd         Command string (without CR; CR is appended internally)
-     * @param timeout_ms  Timeout in ms
-     */
-    Status send_command(std::string_view cmd, uint32_t timeout_ms);
-
-    /**
-     * @brief Send a command and read back the text response terminated by CR.
-     * @param cmd         Command string (without CR)
-     * @param[out] resp   Response text (excluding CR)
-     */
-    Status send_command_get_response(std::string_view cmd, std::string &resp,
-                                     uint32_t timeout_ms);
-
-    /**
-     * @brief Write raw bytes to the UART.
-     */
-    Status uart_write(const uint8_t *data, size_t len, uint32_t timeout_ms,
-                      std::stop_token stop_tok = {}) const;
-
-    /**
-     * @brief Read bytes from UART until CR (0x0D) or timeout.
-     * @param[out] buf     Destination buffer (including CR)
-     * @param[out] out_len Number of bytes written into buf
-     */
-    Status uart_read_line(uint8_t *buf, size_t buf_size,
-                          size_t &out_len, uint32_t timeout_ms,
+        /**
+         * @brief Write raw bytes to the UART.
+         */
+        Status uart_write(const uint8_t *data, size_t len, uint32_t timeout_ms,
                           std::stop_token stop_tok = {}) const;
 
-    // ------------------------------------------------------------------
-    // Members
-    // ------------------------------------------------------------------
+        /**
+         * @brief Read bytes from UART until CR (0x0D) or timeout.
+         * @param[out] buf     Destination buffer (including CR)
+         * @param[out] out_len Number of bytes written into buf
+         */
+        Status uart_read_line(uint8_t *buf, size_t buf_size,
+                              size_t &out_len, uint32_t timeout_ms,
+                              std::stop_token stop_tok = {}) const;
 
-    std::shared_ptr<UART> m_uart;   ///< Underlying UART driver
-    bool m_channel_open = false;    ///< Tracks open_channel state
-    std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
+        // ------------------------------------------------------------------
+        // Members
+        // ------------------------------------------------------------------
+
+        std::shared_ptr<UART> m_uart;   ///< Underlying UART driver
+        bool m_channel_open = false;    ///< Tracks open_channel state
+        std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 };
 
 #endif // U_SLCAN_DRIVER_HPP

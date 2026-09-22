@@ -30,75 +30,74 @@
 
 namespace {
 
-// See uTcpipWindows.cpp's WinsockGuard — independent, self-contained
-// init/teardown for this translation unit. WSAStartup()/WSACleanup()
-// are reference-counted per-process by ws2_32.dll, so having uUdp and
-// uTcpip each own a guard is safe even when both are linked into the
-// same binary.
-class WinsockGuard
-{
-public:
-    WinsockGuard()
+    // See uTcpipWindows.cpp's WinsockGuard — independent, self-contained
+    // init/teardown for this translation unit. WSAStartup()/WSACleanup()
+    // are reference-counted per-process by ws2_32.dll, so having uUdp and
+    // uTcpip each own a guard is safe even when both are linked into the
+    // same binary.
+    class WinsockGuard {
+        public:
+            WinsockGuard()
+            {
+                WSADATA wsaData;
+                m_bOk = (::WSAStartup(MAKEWORD(2, 2), &wsaData) == 0);
+                if (!m_bOk) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WSAStartup() failed"));
+                }
+            }
+
+            ~WinsockGuard()
+            {
+                if (m_bOk) {
+                    ::WSACleanup();
+                }
+            }
+
+            bool ok() const
+            {
+                return m_bOk;
+            }
+
+        private:
+            bool m_bOk = false;
+    };
+
+    WinsockGuard &winsock()
     {
-        WSADATA wsaData;
-        m_bOk = (::WSAStartup(MAKEWORD(2, 2), &wsaData) == 0);
-        if (!m_bOk) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WSAStartup() failed"));
-        }
+        static WinsockGuard sInstance;
+        return sInstance;
     }
 
-    ~WinsockGuard()
+    /**
+     * @brief Split "host:port" or "[ipv6]:port" into separate host and port
+     * strings. Identical to uUdpPosix.cpp's helper of the same name.
+     */
+    bool split_host_port(std::string_view strInput, std::string &strHost, std::string &strPort)
     {
-        if (m_bOk) {
-            ::WSACleanup();
-        }
-    }
-
-    bool ok() const
-    {
-        return m_bOk;
-    }
-
-private:
-    bool m_bOk = false;
-};
-
-WinsockGuard &winsock()
-{
-    static WinsockGuard sInstance;
-    return sInstance;
-}
-
-/**
- * @brief Split "host:port" or "[ipv6]:port" into separate host and port
- * strings. Identical to uUdpPosix.cpp's helper of the same name.
- */
-bool split_host_port(std::string_view strInput, std::string &strHost, std::string &strPort)
-{
-    if (strInput.empty()) {
-        return false;
-    }
-
-    if (strInput.front() == '[') {
-        const size_t szCloseBracket = strInput.find(']');
-        if (szCloseBracket == std::string_view::npos ||
-            szCloseBracket + 1 >= strInput.size() ||
-            strInput[szCloseBracket + 1] != ':') {
+        if (strInput.empty()) {
             return false;
         }
-        strHost = std::string(strInput.substr(1, szCloseBracket - 1));
-        strPort = std::string(strInput.substr(szCloseBracket + 2));
-        return !strHost.empty() && !strPort.empty();
-    }
 
-    const size_t szColon = strInput.rfind(':');
-    if (szColon == std::string_view::npos || szColon == 0 || szColon + 1 >= strInput.size()) {
-        return false;
+        if (strInput.front() == '[') {
+            const size_t szCloseBracket = strInput.find(']');
+            if (szCloseBracket == std::string_view::npos ||
+                szCloseBracket + 1 >= strInput.size() ||
+                strInput[szCloseBracket + 1] != ':') {
+                return false;
+            }
+            strHost = std::string(strInput.substr(1, szCloseBracket - 1));
+            strPort = std::string(strInput.substr(szCloseBracket + 2));
+            return !strHost.empty() && !strPort.empty();
+        }
+
+        const size_t szColon = strInput.rfind(':');
+        if (szColon == std::string_view::npos || szColon == 0 || szColon + 1 >= strInput.size()) {
+            return false;
+        }
+        strHost = std::string(strInput.substr(0, szColon));
+        strPort = std::string(strInput.substr(szColon + 1));
+        return true;
     }
-    strHost = std::string(strInput.substr(0, szColon));
-    strPort = std::string(strInput.substr(szColon + 1));
-    return true;
-}
 } // namespace
 
 bool UDP::resolve_numeric_host_port(std::string_view xtra_params,

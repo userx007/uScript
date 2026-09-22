@@ -118,7 +118,6 @@ void example_06_monitor_basic()
 
         monitor.stopMonitoring();
         std::cout << "Monitoring stopped.\n";
-
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << "\n";
     }
@@ -151,7 +150,6 @@ void example_07_wait_with_result()
         }
 
         monitor.stopMonitoring();
-
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << "\n";
     }
@@ -202,7 +200,6 @@ void example_08_continuous_monitoring()
         std::cout << "\nStatistics:\n";
         std::cout << "  Insertions: " << insertion_count << "\n";
         std::cout << "  Removals:   " << removal_count << "\n";
-
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << "\n";
     }
@@ -245,7 +242,6 @@ void example_09_error_handling()
         // Stopping again is safe (idempotent)
         monitor.stopMonitoring();
         std::cout << "✓ Stop is idempotent - safe to call multiple times\n";
-
     } catch (const std::exception &e) {
         std::cerr << "Unexpected error: " << e.what() << "\n";
     }
@@ -270,8 +266,7 @@ void example_10_thread_safety()
                 if (result) {
                     std::cout << "[Thread 1] Insertion: " << result.port_name << "\n";
                 }
-            }
-        });
+            } });
 
         // Thread 2: Watch for removals
         std::thread remove_watcher([&]() {
@@ -280,8 +275,7 @@ void example_10_thread_safety()
                 if (result) {
                     std::cout << "[Thread 2] Removal: " << result.port_name << "\n";
                 }
-            }
-        });
+            } });
 
         // Thread 3: Periodically list ports
         std::thread lister([&]() {
@@ -289,8 +283,7 @@ void example_10_thread_safety()
                 std::this_thread::sleep_for(5s);
                 auto ports = monitor.listPorts();
                 std::cout << "[Thread 3] Current ports: " << ports.size() << "\n";
-            }
-        });
+            } });
 
         std::cout << "Running for 20 seconds with 3 threads...\n";
         std::this_thread::sleep_for(20s);
@@ -303,7 +296,6 @@ void example_10_thread_safety()
 
         monitor.stopMonitoring();
         std::cout << "All threads stopped safely.\n";
-
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << "\n";
     }
@@ -377,7 +369,6 @@ void example_12_wait_for_specific_device()
         }
 
         monitor.stopMonitoring();
-
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << "\n";
     }
@@ -417,7 +408,6 @@ void example_13_auto_reconnect()
         }
 
         monitor.stopMonitoring();
-
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << "\n";
     }

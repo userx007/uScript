@@ -34,17 +34,17 @@
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 extern "C" {
-EXPORTED FT4232Plugin *pluginEntry()
-{
-    return new FT4232Plugin();
-}
-
-EXPORTED void pluginExit(FT4232Plugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED FT4232Plugin *pluginEntry()
+    {
+        return new FT4232Plugin();
     }
-}
+
+    EXPORTED void pluginExit(FT4232Plugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

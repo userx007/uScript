@@ -4,32 +4,32 @@
 #include <cstring>
 
 namespace {
-// ---- Client Command Specifiers (byte0 bits 7-5), sent BY US as client ----
-constexpr uint8_t kCcsDlSegment         = 0; // Download segment
-constexpr uint8_t kCcsDlInitiate        = 1; // Initiate download (expedited or normal)
-constexpr uint8_t kCcsUlInitiate        = 2; // Initiate upload
-constexpr uint8_t kCcsUlSegment         = 3; // Upload segment request
-constexpr uint8_t kCcsBlockUl           = 5; // Block upload sub-commands
-constexpr uint8_t kCcsBlockDl           = 6; // Block download sub-commands
+    // ---- Client Command Specifiers (byte0 bits 7-5), sent BY US as client ----
+    constexpr uint8_t kCcsDlSegment         = 0; // Download segment
+    constexpr uint8_t kCcsDlInitiate        = 1; // Initiate download (expedited or normal)
+    constexpr uint8_t kCcsUlInitiate        = 2; // Initiate upload
+    constexpr uint8_t kCcsUlSegment         = 3; // Upload segment request
+    constexpr uint8_t kCcsBlockUl           = 5; // Block upload sub-commands
+    constexpr uint8_t kCcsBlockDl           = 6; // Block download sub-commands
 
-// ---- Server Command Specifiers (byte0 bits 7-5), sent BY THE PEER ----
-constexpr uint8_t kScsUlSegment         = 0; // Upload segment response (carries data)
-constexpr uint8_t kScsDlSegment         = 1; // Download segment response (ack)
-constexpr uint8_t kScsUlInitiate        = 2; // Initiate upload response
-constexpr uint8_t kScsDlInitiate        = 3; // Initiate download response (ack)
-constexpr uint8_t kScsBlock             = 5; // Block download sub-commands (ack/end)
-constexpr uint8_t kScsBlockUl           = 6; // Block upload sub-commands (initiate/end)
+    // ---- Server Command Specifiers (byte0 bits 7-5), sent BY THE PEER ----
+    constexpr uint8_t kScsUlSegment         = 0; // Upload segment response (carries data)
+    constexpr uint8_t kScsDlSegment         = 1; // Download segment response (ack)
+    constexpr uint8_t kScsUlInitiate        = 2; // Initiate upload response
+    constexpr uint8_t kScsDlInitiate        = 3; // Initiate download response (ack)
+    constexpr uint8_t kScsBlock             = 5; // Block download sub-commands (ack/end)
+    constexpr uint8_t kScsBlockUl           = 6; // Block upload sub-commands (initiate/end)
 
-constexpr uint8_t kSdoAbort             = 0x80;
+    constexpr uint8_t kSdoAbort             = 0x80;
 
-// Abort codes (CiA 301 Table 23, partial set used here).
-constexpr uint32_t kAbortLengthMismatch = 0x06070010u; // data length does not match
-constexpr uint32_t kAbortGeneralError   = 0x08000000u;
+    // Abort codes (CiA 301 Table 23, partial set used here).
+    constexpr uint32_t kAbortLengthMismatch = 0x06070010u; // data length does not match
+    constexpr uint32_t kAbortGeneralError   = 0x08000000u;
 
-inline uint8_t cmdByte0(uint8_t specifier3, uint8_t rest5)
-{
-    return static_cast<uint8_t>((specifier3 << 5) | (rest5 & 0x1F));
-}
+    inline uint8_t cmdByte0(uint8_t specifier3, uint8_t rest5)
+    {
+        return static_cast<uint8_t>((specifier3 << 5) | (rest5 & 0x1F));
+    }
 } // namespace
 
 void CanOpenSdoProtocol::packIndex(Frame &f) const

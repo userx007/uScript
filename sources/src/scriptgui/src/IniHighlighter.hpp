@@ -33,60 +33,59 @@ class QTextDocument;
  *  # ; comment              #6272a4   slate       italic
  *  ──────────────────────────────────────────────────────────────────────
  */
-class IniHighlighter : public QSyntaxHighlighter
-{
-    Q_OBJECT
-public:
-    explicit IniHighlighter(QTextDocument *parent = nullptr);
+class IniHighlighter : public QSyntaxHighlighter {
+        Q_OBJECT
+    public:
+        explicit IniHighlighter(QTextDocument *parent = nullptr);
 
-protected:
-    void highlightBlock(const QString &text) override;
+    protected:
+        void highlightBlock(const QString &text) override;
 
-private:
-    static QTextCharFormat fmt(const QString &hex,
-                               bool bold   = false,
-                               bool italic = false);
+    private:
+        static QTextCharFormat fmt(const QString &hex,
+                                   bool bold   = false,
+                                   bool italic = false);
 
-    // Section header:  [name]
-    QRegularExpression m_reSection;
-    QTextCharFormat m_fmtBracket;
-    QTextCharFormat m_fmtSectionName;
+        // Section header:  [name]
+        QRegularExpression m_reSection;
+        QTextCharFormat m_fmtBracket;
+        QTextCharFormat m_fmtSectionName;
 
-    // Key = value
-    QRegularExpression m_reKey;
-    QTextCharFormat m_fmtKey;
-    QTextCharFormat m_fmtEquals;
+        // Key = value
+        QRegularExpression m_reKey;
+        QTextCharFormat m_fmtKey;
+        QTextCharFormat m_fmtEquals;
 
-    // ${…} interpolation (inside values)
-    QRegularExpression m_reInterp;
-    QTextCharFormat m_fmtInterp; // plain ${VAR} — all purple
+        // ${…} interpolation (inside values)
+        QRegularExpression m_reInterp;
+        QTextCharFormat m_fmtInterp; // plain ${VAR} — all purple
 
-    // ${section:key} cross-section reference — sub-span formatting
-    QRegularExpression m_reInterpXRef;
-    QTextCharFormat m_fmtInterpPunct; // ${ : }  — purple
-    QTextCharFormat m_fmtInterpSect;  // section  — amber bold
-    QTextCharFormat m_fmtInterpKey;   // key      — cyan
+        // ${section:key} cross-section reference — sub-span formatting
+        QRegularExpression m_reInterpXRef;
+        QTextCharFormat m_fmtInterpPunct; // ${ : }  — purple
+        QTextCharFormat m_fmtInterpSect;  // section  — amber bold
+        QTextCharFormat m_fmtInterpKey;   // key      — cyan
 
-    // Standalone ${SECTION} include directive (whole trimmed line is ${…})
-    QRegularExpression m_reInclude;
-    QTextCharFormat m_fmtInclude;
+        // Standalone ${SECTION} include directive (whole trimmed line is ${…})
+        QRegularExpression m_reInclude;
+        QTextCharFormat m_fmtInclude;
 
-    // Quoted string values
-    QRegularExpression m_reQuoted;
-    QTextCharFormat m_fmtQuoted;
+        // Quoted string values
+        QRegularExpression m_reQuoted;
+        QTextCharFormat m_fmtQuoted;
 
-    // Boolean literals  TRUE / FALSE
-    QRegularExpression m_reBool;
-    QTextCharFormat m_fmtTrue;  // green bold
-    QTextCharFormat m_fmtFalse; // red  bold
+        // Boolean literals  TRUE / FALSE
+        QRegularExpression m_reBool;
+        QTextCharFormat m_fmtTrue;  // green bold
+        QTextCharFormat m_fmtFalse; // red  bold
 
-    // Numeric literals
-    QRegularExpression m_reHexNum; // 0x…
-    QRegularExpression m_reDecNum; // integer / float
-    QTextCharFormat m_fmtHexNum;   // pink
-    QTextCharFormat m_fmtDecNum;   // peach/orange
+        // Numeric literals
+        QRegularExpression m_reHexNum; // 0x…
+        QRegularExpression m_reDecNum; // integer / float
+        QTextCharFormat m_fmtHexNum;   // pink
+        QTextCharFormat m_fmtDecNum;   // peach/orange
 
-    // Comments  # …  and  ; …
-    QRegularExpression m_reComment;
-    QTextCharFormat m_fmtComment;
+        // Comments  # …  and  ; …
+        QRegularExpression m_reComment;
+        QTextCharFormat m_fmtComment;
 };

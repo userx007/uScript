@@ -17,17 +17,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED BuspiratePlugin *pluginEntry()
-{
-    return new BuspiratePlugin();
-}
-
-EXPORTED void pluginExit(BuspiratePlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED BuspiratePlugin *pluginEntry()
+    {
+        return new BuspiratePlugin();
     }
-}
+
+    EXPORTED void pluginExit(BuspiratePlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -22,17 +22,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED UDPPlugin *pluginEntry()
-{
-    return new UDPPlugin();
-}
-
-EXPORTED void pluginExit(UDPPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED UDPPlugin *pluginEntry()
+    {
+        return new UDPPlugin();
     }
-}
+
+    EXPORTED void pluginExit(UDPPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

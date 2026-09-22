@@ -37,51 +37,51 @@
  *   BAM: [0x20][TotalSize lo][TotalSize hi][TotalPackets][0xFF][PGN 3 bytes]
  *   TP.DT: [SequenceNumber 1..255][up to 7 data bytes]
  */
-class J1939TpProtocol final : public ITransportProtocol
-{
-public:
-    explicit J1939TpProtocol(const TpConfig &cfg = {})
-        : m_cfg(cfg)
-    {}
+class J1939TpProtocol final : public ITransportProtocol {
+    public:
+        explicit J1939TpProtocol(const TpConfig &cfg = {})
+            : m_cfg(cfg)
+        {
+        }
 
-    ICommDriver::WriteResult send(
-        const ICommDriver &driver,
-        uint32_t u32WriteTimeout,
-        std::span<const uint8_t> data,
-        std::string_view txId,
-        std::string_view rxId = {}) const override;
+        ICommDriver::WriteResult send(
+            const ICommDriver &driver,
+            uint32_t u32WriteTimeout,
+            std::span<const uint8_t> data,
+            std::string_view txId,
+            std::string_view rxId = {}) const override;
 
-    ICommDriver::ReadResult receive(
-        const ICommDriver &driver,
-        uint32_t u32ReadTimeout,
-        std::span<uint8_t> buffer,
-        std::string_view rxId,
-        std::string_view txId = {}) const override;
+        ICommDriver::ReadResult receive(
+            const ICommDriver &driver,
+            uint32_t u32ReadTimeout,
+            std::span<uint8_t> buffer,
+            std::string_view rxId,
+            std::string_view txId = {}) const override;
 
-    TpProtocol id() const override
-    {
-        return TpProtocol::J1939_TP;
-    }
+        TpProtocol id() const override
+        {
+            return TpProtocol::J1939_TP;
+        }
 
-private:
-    TpConfig m_cfg;
+    private:
+        TpConfig m_cfg;
 
-    ICommDriver::WriteResult send_bam(
-        const ICommDriver &driver, uint32_t timeout,
-        std::span<const uint8_t> data, std::string_view txId) const;
+        ICommDriver::WriteResult send_bam(
+            const ICommDriver &driver, uint32_t timeout,
+            std::span<const uint8_t> data, std::string_view txId) const;
 
-    ICommDriver::WriteResult send_rts_cts(
-        const ICommDriver &driver, uint32_t timeout,
-        std::span<const uint8_t> data, std::string_view txId, std::string_view rxId) const;
+        ICommDriver::WriteResult send_rts_cts(
+            const ICommDriver &driver, uint32_t timeout,
+            std::span<const uint8_t> data, std::string_view txId, std::string_view rxId) const;
 
-    ICommDriver::ReadResult receive_bam(
-        const ICommDriver &driver, uint32_t timeout,
-        std::span<uint8_t> buffer, std::string_view rxId, const uint8_t firstFrame[8]) const;
+        ICommDriver::ReadResult receive_bam(
+            const ICommDriver &driver, uint32_t timeout,
+            std::span<uint8_t> buffer, std::string_view rxId, const uint8_t firstFrame[8]) const;
 
-    ICommDriver::ReadResult receive_rts_cts(
-        const ICommDriver &driver, uint32_t timeout,
-        std::span<uint8_t> buffer, std::string_view rxId, std::string_view txId,
-        const uint8_t firstFrame[8]) const;
+        ICommDriver::ReadResult receive_rts_cts(
+            const ICommDriver &driver, uint32_t timeout,
+            std::span<uint8_t> buffer, std::string_view rxId, std::string_view txId,
+            const uint8_t firstFrame[8]) const;
 };
 
 #endif // CAN_TP_J1939_TP_PROTOCOL_HPP

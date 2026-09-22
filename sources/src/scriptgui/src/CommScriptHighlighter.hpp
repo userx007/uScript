@@ -83,9 +83,8 @@ class QTextDocument;
  *  # comment / --- !-- delimiters   #6272a4   slate            base
  *  ──────────────────────────────────────────────────────────────────────
  */
-class CommScriptHighlighter : public ScriptHighlighterBase
-{
-    Q_OBJECT
-public:
-    explicit CommScriptHighlighter(QTextDocument *parent = nullptr);
+class CommScriptHighlighter : public ScriptHighlighterBase {
+        Q_OBJECT
+    public:
+        explicit CommScriptHighlighter(QTextDocument *parent = nullptr);
 };

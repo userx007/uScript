@@ -22,14 +22,14 @@
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 namespace {
-/** Ethernet frames carry EtherType/length fields in network (big-endian) byte
- *  order; every XL-API host this driver targets (x86-64 Windows and Linux)
- *  is little-endian, so this swap is unconditional - there is no htons()
- *  dependency to pull in winsock2.h for. */
-constexpr uint16_t hostToNetU16(uint16_t v)
-{
-    return static_cast<uint16_t>((v << 8) | (v >> 8));
-}
+    /** Ethernet frames carry EtherType/length fields in network (big-endian) byte
+     *  order; every XL-API host this driver targets (x86-64 Windows and Linux)
+     *  is little-endian, so this swap is unconditional - there is no htons()
+     *  dependency to pull in winsock2.h for. */
+    constexpr uint16_t hostToNetU16(uint16_t v)
+    {
+        return static_cast<uint16_t>((v << 8) | (v >> 8));
+    }
 } // namespace
 
 // ============================================================================
@@ -606,9 +606,7 @@ bool VectorEth::is_open() const
 
 ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame &out, std::stop_token stop_tok) const
 {
-    std::stop_callback onStop(stop_tok, [this]() {
-        m_notifyWaiter.forceWake();
-    });
+    std::stop_callback onStop(stop_tok, [this]() { m_notifyWaiter.forceWake(); });
 
     for (;;) {
         if (stop_tok.stop_requested()) {

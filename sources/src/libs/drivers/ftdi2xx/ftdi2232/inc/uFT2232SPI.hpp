@@ -42,128 +42,131 @@
  *   tout_read   → CS assert + read-only   + CS deassert
  *   spi_transfer→ CS assert + full-duplex + CS deassert  (extra method)
  */
-class FT2232SPI : public FT2232Base, public ICommDriver
-{
-public:
-    using Status = ICommDriver::Status;
+class FT2232SPI : public FT2232Base, public ICommDriver {
+    public:
+        using Status = ICommDriver::Status;
 
-    enum class SpiMode : uint8_t { Mode0 = 0,
-                                   Mode1 = 1,
-                                   Mode2 = 2,
-                                   Mode3 = 3 };
-    enum class BitOrder : uint8_t { MsbFirst = 0,
-                                    LsbFirst = 1 };
-    enum class CsPolarity : uint8_t { ActiveLow  = 0,
-                                      ActiveHigh = 1 };
+        enum class SpiMode : uint8_t {
+            Mode0 = 0,
+            Mode1 = 1,
+            Mode2 = 2,
+            Mode3 = 3
+        };
+        enum class BitOrder : uint8_t {
+            MsbFirst = 0,
+            LsbFirst = 1
+        };
+        enum class CsPolarity : uint8_t {
+            ActiveLow  = 0,
+            ActiveHigh = 1
+        };
 
-    struct SpiConfig
-    {
-        uint32_t clockHz      = 1000000u;
-        SpiMode mode          = SpiMode::Mode0;
-        BitOrder bitOrder     = BitOrder::MsbFirst;
-        uint8_t csPin         = 0x08u; ///< ADBUS3 by default
-        CsPolarity csPolarity = CsPolarity::ActiveLow;
-        Variant variant       = Variant::FT2232H;
-        Channel channel       = Channel::A;
-    };
+        struct SpiConfig {
+                uint32_t clockHz      = 1000000u;
+                SpiMode mode          = SpiMode::Mode0;
+                BitOrder bitOrder     = BitOrder::MsbFirst;
+                uint8_t csPin         = 0x08u; ///< ADBUS3 by default
+                CsPolarity csPolarity = CsPolarity::ActiveLow;
+                Variant variant       = Variant::FT2232H;
+                Channel channel       = Channel::A;
+        };
 
-    struct TransferResult
-    {
-        Status status       = Status::RETVAL_NOT_SET;
-        size_t bytes_xfered = 0;
-    };
+        struct TransferResult {
+                Status status       = Status::RETVAL_NOT_SET;
+                size_t bytes_xfered = 0;
+        };
 
-    FT2232SPI() = default;
+        FT2232SPI() = default;
 
-    /**
-     * @param config           SPI bus configuration.
-     * @param u8DeviceIndex    Zero-based device index.
-     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
-     *                         describeConnection()), supplied separately —
-     *                         e.g. "FT2232 #0" or the adapter's serial number.
-     */
-    explicit FT2232SPI(const SpiConfig &config, uint8_t u8DeviceIndex = 0u,
-                       const std::string &strIdentityLabel = {})
-    {
-        m_strIdentityLabel = strIdentityLabel;
-        this->open(config, u8DeviceIndex);
-    }
+        /**
+         * @param config           SPI bus configuration.
+         * @param u8DeviceIndex    Zero-based device index.
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately —
+         *                         e.g. "FT2232 #0" or the adapter's serial number.
+         */
+        explicit FT2232SPI(const SpiConfig &config, uint8_t u8DeviceIndex = 0u,
+                           const std::string &strIdentityLabel = {})
+        {
+            m_strIdentityLabel = strIdentityLabel;
+            this->open(config, u8DeviceIndex);
+        }
 
-    ~FT2232SPI() override
-    {
-        close();
-    }
+        ~FT2232SPI() override
+        {
+            close();
+        }
 
-    Status open(const SpiConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const SpiConfig &config, uint8_t u8DeviceIndex = 0u);
 
-    /** @copydoc FT2232Base::close — deasserts CS before closing */
-    Status close() override;
+        /** @copydoc FT2232Base::close — deasserts CS before closing */
+        Status close() override;
 
-    bool is_open() const override
-    {
-        return FT2232Base::is_open();
-    }
+        bool is_open() const override
+        {
+            return FT2232Base::is_open();
+        }
 
-    /**
-     * @brief Describe this connection for the GUI comm-dump panel.
-     * xtra_params is accepted (interface conformance) but ignored — CS pin
-     * and clock are fixed for the lifetime of this driver by SpiConfig.
-     */
-    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
-    {
-        char label[k_labelSize];
-        std::snprintf(label, sizeof(label), "%s (%s) CS=0x%02X",
-                      m_strIdentityLabel.empty() ? "FT2232" : m_strIdentityLabel.c_str(),
-                      m_variant == Variant::FT2232H ? "FT2232H" : "FT2232D",
-                      m_config.csPin);
-        return commdump_details(CommFamily::SPI, label);
-    }
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * xtra_params is accepted (interface conformance) but ignored — CS pin
+         * and clock are fixed for the lifetime of this driver by SpiConfig.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s (%s) CS=0x%02X",
+                          m_strIdentityLabel.empty() ? "FT2232" : m_strIdentityLabel.c_str(),
+                          m_variant == Variant::FT2232H ? "FT2232H" : "FT2232D",
+                          m_config.csPin);
+            return commdump_details(CommFamily::SPI, label);
+        }
 
-    WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {},
-                           std::stop_token stop_tok     = {}) const override;
+        WriteResult tout_write(uint32_t u32WriteTimeout,
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok     = {}) const override;
 
-    ReadResult tout_read(uint32_t u32ReadTimeout,
-                         std::span<uint8_t> buffer,
-                         const ReadOptions &options,
-                         std::string_view xtra_params = {},
-                         std::stop_token stop_tok     = {}) const override;
+        ReadResult tout_read(uint32_t u32ReadTimeout,
+                             std::span<uint8_t> buffer,
+                             const ReadOptions &options,
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok     = {}) const override;
 
-    /**
-     * @brief Full-duplex SPI: simultaneous TX and RX
-     * @param txBuf / rxBuf must be the same size
-     * @param u32TimeoutMs  0 = FT2232_READ_DEFAULT_TIMEOUT
-     */
-    TransferResult spi_transfer(std::span<const uint8_t> txBuf,
-                                std::span<uint8_t> rxBuf,
-                                uint32_t u32TimeoutMs    = 0u,
-                                std::stop_token stop_tok = {}) const;
+        /**
+         * @brief Full-duplex SPI: simultaneous TX and RX
+         * @param txBuf / rxBuf must be the same size
+         * @param u32TimeoutMs  0 = FT2232_READ_DEFAULT_TIMEOUT
+         */
+        TransferResult spi_transfer(std::span<const uint8_t> txBuf,
+                                    std::span<uint8_t> rxBuf,
+                                    uint32_t u32TimeoutMs    = 0u,
+                                    std::stop_token stop_tok = {}) const;
 
-private:
-    SpiConfig m_config;
-    uint8_t m_cmdWrite = 0x11u;
-    uint8_t m_cmdRead  = 0x20u;
-    uint8_t m_cmdXfer  = 0x31u;
-    uint8_t m_pinValue = 0x00u;
-    uint8_t m_pinDir   = 0x0Bu;
+    private:
+        SpiConfig m_config;
+        uint8_t m_cmdWrite = 0x11u;
+        uint8_t m_cmdRead  = 0x20u;
+        uint8_t m_cmdXfer  = 0x31u;
+        uint8_t m_pinValue = 0x00u;
+        uint8_t m_pinDir   = 0x0Bu;
 
-    Status configure_mpsse_spi(const SpiConfig &config);
-    Status cs_assert() const;
-    Status cs_deassert() const;
-    Status apply_pin_state(bool csActive) const;
+        Status configure_mpsse_spi(const SpiConfig &config);
+        Status cs_assert() const;
+        Status cs_deassert() const;
+        Status apply_pin_state(bool csActive) const;
 
-    Status spi_write_raw(std::span<const uint8_t> data,
-                         size_t &bytesWritten) const;
+        Status spi_write_raw(std::span<const uint8_t> data,
+                             size_t &bytesWritten) const;
 
-    Status spi_read_raw(std::span<uint8_t> data,
-                        size_t &bytesRead, uint32_t timeoutMs,
-                        std::stop_token stop_tok = {}) const;
+        Status spi_read_raw(std::span<uint8_t> data,
+                            size_t &bytesRead, uint32_t timeoutMs,
+                            std::stop_token stop_tok = {}) const;
 
-    Status spi_xfer_raw(std::span<const uint8_t> txBuf,
-                        std::span<uint8_t> rxBuf,
-                        size_t &bytesXferd, uint32_t timeoutMs,
-                        std::stop_token stop_tok = {}) const;
+        Status spi_xfer_raw(std::span<const uint8_t> txBuf,
+                            std::span<uint8_t> rxBuf,
+                            size_t &bytesXferd, uint32_t timeoutMs,
+                            std::stop_token stop_tok = {}) const;
 };
 
 #endif // U_FT2232_SPI_DRIVER_H

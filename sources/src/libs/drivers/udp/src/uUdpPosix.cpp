@@ -38,40 +38,40 @@
 // ============================================================================
 
 namespace {
-/**
- * @brief Split "host:port" or "[ipv6]:port" into separate host and port
- * strings. Does not validate either half — resolve_numeric_host_port()
- * does that via getaddrinfo(AI_NUMERICHOST | AI_NUMERICSERV).
- */
-bool split_host_port(std::string_view strInput, std::string &strHost, std::string &strPort)
-{
-    if (strInput.empty()) {
-        return false;
-    }
-
-    if (strInput.front() == '[') {
-        // Bracketed IPv6 literal: "[addr]:port"
-        const size_t szCloseBracket = strInput.find(']');
-        if (szCloseBracket == std::string_view::npos ||
-            szCloseBracket + 1 >= strInput.size() ||
-            strInput[szCloseBracket + 1] != ':') {
+    /**
+     * @brief Split "host:port" or "[ipv6]:port" into separate host and port
+     * strings. Does not validate either half — resolve_numeric_host_port()
+     * does that via getaddrinfo(AI_NUMERICHOST | AI_NUMERICSERV).
+     */
+    bool split_host_port(std::string_view strInput, std::string &strHost, std::string &strPort)
+    {
+        if (strInput.empty()) {
             return false;
         }
-        strHost = std::string(strInput.substr(1, szCloseBracket - 1));
-        strPort = std::string(strInput.substr(szCloseBracket + 2));
-        return !strHost.empty() && !strPort.empty();
-    }
 
-    // "host:port" — split on the last ':' (host itself, being numeric
-    // IPv4 only in the unbracketed form, cannot contain one).
-    const size_t szColon = strInput.rfind(':');
-    if (szColon == std::string_view::npos || szColon == 0 || szColon + 1 >= strInput.size()) {
-        return false;
+        if (strInput.front() == '[') {
+            // Bracketed IPv6 literal: "[addr]:port"
+            const size_t szCloseBracket = strInput.find(']');
+            if (szCloseBracket == std::string_view::npos ||
+                szCloseBracket + 1 >= strInput.size() ||
+                strInput[szCloseBracket + 1] != ':') {
+                return false;
+            }
+            strHost = std::string(strInput.substr(1, szCloseBracket - 1));
+            strPort = std::string(strInput.substr(szCloseBracket + 2));
+            return !strHost.empty() && !strPort.empty();
+        }
+
+        // "host:port" — split on the last ':' (host itself, being numeric
+        // IPv4 only in the unbracketed form, cannot contain one).
+        const size_t szColon = strInput.rfind(':');
+        if (szColon == std::string_view::npos || szColon == 0 || szColon + 1 >= strInput.size()) {
+            return false;
+        }
+        strHost = std::string(strInput.substr(0, szColon));
+        strPort = std::string(strInput.substr(szColon + 1));
+        return true;
     }
-    strHost = std::string(strInput.substr(0, szColon));
-    strPort = std::string(strInput.substr(szColon + 1));
-    return true;
-}
 } // namespace
 
 bool UDP::resolve_numeric_host_port(std::string_view xtra_params,

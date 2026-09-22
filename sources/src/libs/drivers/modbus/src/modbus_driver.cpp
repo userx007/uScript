@@ -48,15 +48,17 @@ static constexpr const char *kPluginNameForDump = "MODBUS";
 // falling back to a "standalone receive" mode.
 // -----------------------------------------------------------------------
 namespace {
-enum class PendingKind { None,
-                         ReadBits,
-                         ReadRegs,
-                         WriteAck };
+    enum class PendingKind {
+        None,
+        ReadBits,
+        ReadRegs,
+        WriteAck
+    };
 
-thread_local PendingKind tl_pendingKind     = PendingKind::None;
-thread_local uint16_t tl_pendingTxnId       = 0;
-thread_local uint8_t tl_pendingFunctionCode = 0;
-thread_local uint16_t tl_pendingQuantity    = 0; // ReadBits only — see ModbusProtocol::decodeReadBitsResponse()
+    thread_local PendingKind tl_pendingKind     = PendingKind::None;
+    thread_local uint16_t tl_pendingTxnId       = 0;
+    thread_local uint8_t tl_pendingFunctionCode = 0;
+    thread_local uint16_t tl_pendingQuantity    = 0; // ReadBits only — see ModbusProtocol::decodeReadBitsResponse()
 } // namespace
 
 ModbusDriver::ModbusDriver(Config config)

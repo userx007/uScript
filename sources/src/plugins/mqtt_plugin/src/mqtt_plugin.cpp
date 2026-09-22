@@ -18,17 +18,17 @@
  * \brief The plugin's entry points
  */
 extern "C" {
-EXPORTED MqttPlugin *pluginEntry()
-{
-    return new MqttPlugin();
-}
-
-EXPORTED void pluginExit(MqttPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED MqttPlugin *pluginEntry()
+    {
+        return new MqttPlugin();
     }
-}
+
+    EXPORTED void pluginExit(MqttPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 // -----------------------------------------------------------------------

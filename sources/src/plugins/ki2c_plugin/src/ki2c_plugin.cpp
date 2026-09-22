@@ -28,17 +28,17 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
-EXPORTED KI2CPlugin *pluginEntry()
-{
-    return new KI2CPlugin();
-}
-
-EXPORTED void pluginExit(KI2CPlugin *ptrPlugin)
-{
-    if (nullptr != ptrPlugin) {
-        delete ptrPlugin;
+    EXPORTED KI2CPlugin *pluginEntry()
+    {
+        return new KI2CPlugin();
     }
-}
+
+    EXPORTED void pluginExit(KI2CPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin) {
+            delete ptrPlugin;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////

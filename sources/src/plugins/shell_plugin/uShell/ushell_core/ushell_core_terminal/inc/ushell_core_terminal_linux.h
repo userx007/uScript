@@ -13,72 +13,70 @@
 #include <termios.h>
 #include <unistd.h>
 
-class TerminalRAII
-{
-private:
-    static struct termios original_config; // Defined inside the class
-    bool initialized;
+class TerminalRAII {
+    private:
+        static struct termios original_config; // Defined inside the class
+        bool initialized;
 
-    class ErrorLogger
-    {
+        class ErrorLogger {
+            public:
+                static const char *getErrorMessage()
+                {
+                    return strerror(errno);
+                }
+        };
+
     public:
-        static const char *getErrorMessage()
+        TerminalRAII()
+            : initialized(false)
         {
-            return strerror(errno);
-        }
-    };
-
-public:
-    TerminalRAII()
-        : initialized(false)
-    {
-        if (!isatty(STDIN_FILENO)) {
-            uSHELL_PRINTF("Not a valid terminal.\n");
-            return;
-        }
-
-        struct termios config;
-        if (tcgetattr(STDIN_FILENO, &original_config) == 0 &&
-            tcgetattr(STDIN_FILENO, &config) == 0) {
-
-            config.c_lflag &= ~(ICANON | ECHO);
-            config.c_cc[VMIN]  = 1;
-            config.c_cc[VTIME] = 0;
-
-            if (tcsetattr(STDIN_FILENO, TCSANOW, &config) == -1) {
-                uSHELL_PRINTF("Failed to configure terminal: %s\n", ErrorLogger::getErrorMessage());
+            if (!isatty(STDIN_FILENO)) {
+                uSHELL_PRINTF("Not a valid terminal.\n");
                 return;
             }
 
-            atexit([]() { restoreTerminal(); }); // Ensure cleanup on exit
-            initialized = true;
+            struct termios config;
+            if (tcgetattr(STDIN_FILENO, &original_config) == 0 &&
+                tcgetattr(STDIN_FILENO, &config) == 0) {
+
+                config.c_lflag &= ~(ICANON | ECHO);
+                config.c_cc[VMIN]  = 1;
+                config.c_cc[VTIME] = 0;
+
+                if (tcsetattr(STDIN_FILENO, TCSANOW, &config) == -1) {
+                    uSHELL_PRINTF("Failed to configure terminal: %s\n", ErrorLogger::getErrorMessage());
+                    return;
+                }
+
+                atexit([]() { restoreTerminal(); }); // Ensure cleanup on exit
+                initialized = true;
+            }
+
+            setvbuf(stdin, nullptr, _IONBF, 0);
+            // clear();
         }
 
-        setvbuf(stdin, nullptr, _IONBF, 0);
-        // clear();
-    }
-
-    ~TerminalRAII()
-    {
-        if (initialized) {
-            restoreTerminal();
+        ~TerminalRAII()
+        {
+            if (initialized) {
+                restoreTerminal();
+            }
         }
-    }
 
-private:
-    static void restoreTerminal()
-    {
-        if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_config) == -1) {
-            uSHELL_PRINTF("Failed to restore terminal settings: %s\n", strerror(errno));
+    private:
+        static void restoreTerminal()
+        {
+            if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_config) == -1) {
+                uSHELL_PRINTF("Failed to restore terminal settings: %s\n", strerror(errno));
+            }
         }
-    }
 
-public:
-    void clear()
-    {
-        uSHELL_PRINTF("\033[H\033[J");
-        fflush(stdout);
-    }
+    public:
+        void clear()
+        {
+            uSHELL_PRINTF("\033[H\033[J");
+            fflush(stdout);
+        }
 };
 
 // Define 'original_config' inside the header to prevent linker errors

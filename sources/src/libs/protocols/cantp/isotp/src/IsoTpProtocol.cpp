@@ -7,32 +7,32 @@
 #include <thread>
 
 namespace {
-constexpr size_t kFrameLen       = 8; // classic CAN frame length used for every SF/FF/CF/FC
-constexpr size_t kSfMaxLen       = 7; // 1 PCI byte + up to 7 data bytes
-constexpr size_t kFfFirstLen     = 6; // FF: 2 PCI bytes + 6 data bytes
-constexpr size_t kCfMaxLen       = 7; // 1 PCI byte + up to 7 data bytes
+    constexpr size_t kFrameLen       = 8; // classic CAN frame length used for every SF/FF/CF/FC
+    constexpr size_t kSfMaxLen       = 7; // 1 PCI byte + up to 7 data bytes
+    constexpr size_t kFfFirstLen     = 6; // FF: 2 PCI bytes + 6 data bytes
+    constexpr size_t kCfMaxLen       = 7; // 1 PCI byte + up to 7 data bytes
 
-constexpr uint8_t kPciSF         = 0x0;
-constexpr uint8_t kPciFF         = 0x1;
-constexpr uint8_t kPciCF         = 0x2;
-constexpr uint8_t kPciFC         = 0x3;
+    constexpr uint8_t kPciSF         = 0x0;
+    constexpr uint8_t kPciFF         = 0x1;
+    constexpr uint8_t kPciCF         = 0x2;
+    constexpr uint8_t kPciFC         = 0x3;
 
-constexpr uint8_t kFsClearToSend = 0x0;
-constexpr uint8_t kFsWait        = 0x1;
-constexpr uint8_t kFsOverflow    = 0x2;
+    constexpr uint8_t kFsClearToSend = 0x0;
+    constexpr uint8_t kFsWait        = 0x1;
+    constexpr uint8_t kFsOverflow    = 0x2;
 
-inline uint8_t pci_type(uint8_t b0)
-{
-    return static_cast<uint8_t>((b0 & 0xF0) >> 4);
-}
-
-inline void fill_padding(std::array<uint8_t, kFrameLen> &frame, size_t usedLen,
-                         bool pad, uint8_t padByte)
-{
-    if (pad && usedLen < kFrameLen) {
-        std::fill(frame.begin() + static_cast<long>(usedLen), frame.end(), padByte);
+    inline uint8_t pci_type(uint8_t b0)
+    {
+        return static_cast<uint8_t>((b0 & 0xF0) >> 4);
     }
-}
+
+    inline void fill_padding(std::array<uint8_t, kFrameLen> &frame, size_t usedLen,
+                             bool pad, uint8_t padByte)
+    {
+        if (pad && usedLen < kFrameLen) {
+            std::fill(frame.begin() + static_cast<long>(usedLen), frame.end(), padByte);
+        }
+    }
 } // namespace
 
 void IsoTpProtocol::sleep_st_min(uint8_t stMin)
