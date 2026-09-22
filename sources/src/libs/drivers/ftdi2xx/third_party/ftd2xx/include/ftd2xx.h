@@ -360,6 +360,7 @@ enum {
  */
 #define FT_DRIVER_TYPE_D2XX            0
 #define FT_DRIVER_TYPE_VCP             1
+
 /** @} */
 
 /** @{

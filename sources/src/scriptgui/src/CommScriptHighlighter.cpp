@@ -21,6 +21,7 @@ static constexpr auto C_STRING     = "#f1fa8c"; // yellow — "..." (plain strin
 static constexpr auto C_PRINT      = "#a5b4fc"; // periwinkle — @ print directive
                                                 // (same family as core script's PRINT
                                                 //  native function - both are log statements)
+
 // C_SEPARATOR is declared in ScriptHighlighterBase.hpp (shared by | here and
 // by ~ / and REPEAT's comma in ScriptHighlighter); C_XTRA_PARAM is defined
 // in ScriptHighlighterBase.cpp

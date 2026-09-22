@@ -33,7 +33,7 @@
 #define uSHELL_KEY_LEFT_BRACKET          (0x5B) /* [ */
 #define uSHELL_KEY_TILDE                 (0x7E) /* ~ */
 #define uSHELL_KEY_DELETE                (0x7F)
-    /* home, end, insert, delete */
+/* home, end, insert, delete */
 #define uSHELL_KEY_ESCAPESEQ_HOME        (0x48) /* 0x1B5B48     \033 [ H */
 #define uSHELL_KEY_ESCAPESEQ1_HOME       (0x31) /* 0x1B5B317E   \033 [ 1 ~ */
 #define uSHELL_KEY_ESCAPESEQ1_INSERT     (0x32) /* 0x1B5B327E   \033 [ 2 ~ */
@@ -41,7 +41,7 @@
 #define uSHELL_KEY_ESCAPESEQ1_END        (0x34) /* 0x1B5B347E   \033 [ 4 ~ */
 #define uSHELL_KEY_ESCAPESEQ1_PAGEUP     (0x35) /* 0x1B5B357E   \033 [ 5 ~ */
 #define uSHELL_KEY_ESCAPESEQ1_PAGEDOWN   (0x36) /* 0x1B5B367E   \033 [ 6 ~ */
-    /* arrows */
+/* arrows */
 #define uSHELL_KEY_ESCAPESEQ_ARROW_UP    (0x41) /* 0x1B5B41     \033 [ A */
 #define uSHELL_KEY_ESCAPESEQ_ARROW_DOWN  (0x42) /* 0x1B5B42     \033 [ B */
 #define uSHELL_KEY_ESCAPESEQ_ARROW_RIGHT (0x43) /* 0x1B5B43     \033 [ C */

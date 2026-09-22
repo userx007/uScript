@@ -20,7 +20,7 @@ REPEAT wait_ping UNTIL EVAL $received != "" | STR
 DELAY 100 ms
 END_REPEAT wait_ping
 
-IF EVAL $received == "hello" | STR GOTO pass
+IF EVAL $received == "hello2you" | STR GOTO pass
 PRINT SELF-TEST FAILED: expected 'hello', got '$received'
 GOTO done
 

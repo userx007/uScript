@@ -55,8 +55,8 @@
  */
 
 #include "ICommDriver.hpp"
-#include "uCandlelight.hpp"
 #include "uCanFrame.hpp"
+#include "uCandlelight.hpp"
 #include "uGuiNotify.hpp"
 #include "uNumeric.hpp"
 

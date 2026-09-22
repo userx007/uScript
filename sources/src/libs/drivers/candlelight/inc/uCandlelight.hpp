@@ -84,6 +84,7 @@
 
 #include "ICommDriver.hpp"
 #include "ICommDumpProtocol.hpp"
+#include "uCanFrame.hpp"
 
 #include <array>
 #include <cstdint>

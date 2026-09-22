@@ -16,7 +16,6 @@
 #include <sstream>
 #include <utility>
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
@@ -158,10 +157,10 @@ bool DdsTypedDriver::open()
     const DdsEntity domainRc = dds_create_domain(static_cast<dds_domainid_t>(m_config.domainId), xml.c_str());
     if (domainRc < 0 && -domainRc != DDS_RETCODE_PRECONDITION_NOT_MET) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Custom transport config for domain rejected (");
-                    LOG_STRING(dds_strretcode(-domainRc));
-                    LOG_STRING(") — continuing with whatever config this process already has for this domain id, if any"));
+                  LOG_STRING(dds_strretcode(-domainRc));
+                  LOG_STRING(") — continuing with whatever config this process already has for this domain id, if any"));
     }
-    m_domain = (domainRc >= 0) ? domainRc : kInvalidEntity;
+    m_domain        = (domainRc >= 0) ? domainRc : kInvalidEntity;
 
     dds_qos_t *pqos = dds_create_qos();
     if (!m_config.participantName.empty()) {

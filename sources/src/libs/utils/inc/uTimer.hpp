@@ -246,7 +246,7 @@ private:
     void logElapsed() const
     {
         double seconds = elapsed_seconds();
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+        LOG_PRINT(LOG_INFO, LOG_HDR;
                   LOG_STRING(getContextPrefix());
                   LOG_STRING("execution time:");
                   LOG_STRING(formatTime(seconds)));

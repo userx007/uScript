@@ -3,8 +3,9 @@
  * @brief Candlelight (gs_usb) driver implementation over libusb-1.0.
  *
  */
-#include "uCanFrame.hpp"
 #include "uCandlelight.hpp"
+
+#include "uCanFrame.hpp"
 #include "uLogger.hpp"
 
 #include <algorithm>
@@ -638,7 +639,7 @@ size_t Candlelight::encode_frame(uint32_t echo_id, const CanFrame &frame, std::s
     put_u32le(p + 0, echo_id);
     put_u32le(p + 4, can_id);
     p[8]                  = frame.is_canfd ? ucanframe::len_to_dlc(frame.len) : dataLen; // can_dlc: DLC code for FD, byte count for classic
-    p[9]                  = 0;                                                       // channel — single-channel adapters only (see class doc comment)
+    p[9]                  = 0;                                                           // channel — single-channel adapters only (see class doc comment)
     p[10]                 = flags;
     p[11]                 = 0; // reserved
 
@@ -979,5 +980,3 @@ Candlelight::WriteResult Candlelight::tout_write(uint32_t u32WriteTimeout,
     result.bytes_written = (rc == LIBUSB_SUCCESS) ? static_cast<size_t>(transferred) : 0;
     return result;
 }
-
-

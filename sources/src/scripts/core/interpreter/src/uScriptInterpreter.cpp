@@ -331,7 +331,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType &sScriptEntries, bool 
         m_stopAllGenerators();
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Script execution"); LOG_STRING(bRetVal ? "ok" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Script execution"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
@@ -2173,9 +2173,10 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                                     }
                                 }
 
-                                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
-                                          LOG_STRING("Launching thread for:");
-                                          LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
+                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data());
+                                          LOG_STRING("--- Exec:");
+                                          LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams);
+                                          LOG_STRING("&"));
 
                                 // Shared done-flag: set by thread on exit; read by harvest/join.
                                 auto doneFlag = std::make_shared<std::atomic<bool>>(false);
@@ -2242,7 +2243,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                                                     // variable when something was actually received.
                                                     if (!strValue.empty()) {
                                                         m_setRuntimeVarMacro(strVarMacroName, strValue);
-                                                        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
+                                                        LOG_PRINT(LOG_DEBUG, LOG_HDR;
                                                                   LOG_STRING("VAR["); LOG_STRING(strVarMacroName);
                                                                   LOG_STRING("]->["); LOG_STRING(strValue); LOG_STRING("]"));
                                                     }
@@ -2282,8 +2283,8 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
 
                             } else {
                                 // ---- Sequential dispatch (bThreaded=false) ----
-                                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
-                                          LOG_STRING("Exec:");
+                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data());
+                                          LOG_STRING("--- Exec:");
                                           LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                                 {
                                     utime::Timer timer(std::string(lineNr.data()) + " Command");
@@ -2297,11 +2298,9 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                                         if constexpr (std::is_same_v<T, MacroCommand>) {
                                             const std::string strValue = plugin.shptrPluginEntryPoint->getData();
                                             m_setRuntimeVarMacro(command.strVarMacroName, strValue);
-                                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
                                                       LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName);
-                                                      LOG_STRING("]->[")
-                                                          LOG_STRING(strValue);
-                                                      LOG_STRING("]"));
+                                                      LOG_STRING("]->["); LOG_STRING(strValue); LOG_STRING("]"));
                                             plugin.shptrPluginEntryPoint->resetData();
                                         }
                                     }
@@ -2311,7 +2310,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                             utime::delay_ms(m_szDelay); /* delay between the commands execution */
 
                         } else { // only for validation purposes
-                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                                       LOG_STRING("Validate:");
                                       LOG_STRING(command.strPlugin + "." + command.strCommand);
                                       LOG_STRING(command.strParams));
@@ -2636,7 +2635,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 const std::string strUnit = (command.eUnit == DelayUnit::US) ? "us" : (command.eUnit == DelayUnit::MS) ? "ms"
                                                                                                                        : "sec";
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING("DELAY:");
                           LOG_STRING(std::to_string(command.szValue));
                           LOG_STRING(strUnit));
@@ -2727,7 +2726,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                 }
 
                 m_setRuntimeVarMacro(command.strName, strExpanded);
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING("VAR_INIT ["); LOG_STRING(command.strName);
                           LOG_STRING("]->[");
                           LOG_STRING(strExpanded); LOG_STRING("]"));
@@ -2826,7 +2825,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
 
                 // store result
                 m_setRuntimeVarMacro(command.strName, strResult);
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING("FORMAT [");
                           LOG_STRING(command.strName);
                           LOG_STRING("]->[");
@@ -2941,7 +2940,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
 
                 // store result
                 m_setRuntimeVarMacro(command.strName, strResult);
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING("MATH [");
                           LOG_STRING(command.strName);
                           LOG_STRING("]->[");
@@ -2976,7 +2975,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                 }
 
                 m_setRuntimeVarMacro(command.strName, strResultHex);
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING(command.bByteMode ? "BYTESTREAM [" : " BITSTREAM [");
                           LOG_STRING(command.strName);
                           LOG_STRING("]->[");
@@ -3011,7 +3010,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                 }
 
                 m_setRuntimeVarMacro(command.strName, strResultDecimal);
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING(command.bByteMode ? "BYTESTREAMVAL [" : " BITSTREAMVAL [");
                           LOG_STRING(command.strName);
                           LOG_STRING("]->[");
@@ -3193,10 +3192,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                         // sign where direction actually matters).
                         const int iDir        = (dEnd >= dBegin) ? 1 : -1;
                         const double dStepMag = std::fabs(range.dStep);
-                        const double dStep    = (eWaveform == GeneratorWaveform::SAWTOOTH)
-                                                    ? (dStepMag * iDir)
-                                                    : dStepMag;
-
+                        const double dStep    = (eWaveform == GeneratorWaveform::SAWTOOTH) ? (dStepMag * iDir) : dStepMag;
                         t                     = std::jthread(
                             [this, strName, uIntervalUs, eWaveform, eHexFormat, dBegin, dEnd, dStep, dK, iDir, doneFlag](std::stop_token st) mutable {
                                 GeneratorSampleState state;
@@ -3204,9 +3200,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                                 // `current`, seeded at dBegin; EXP/LOG instead track a normalised
                                 // [0,1) phase carrier in `current`, seeded at 0.0 — see
                                 // nextGeneratorSample()'s per-waveform doc comments above.
-                                state.current   = (eWaveform == GeneratorWaveform::EXP || eWaveform == GeneratorWaveform::LOG)
-                                                      ? 0.0
-                                                      : dBegin;
+                                state.current   = (eWaveform == GeneratorWaveform::EXP || eWaveform == GeneratorWaveform::LOG) ? 0.0 : dBegin;
                                 state.direction = iDir; // TRIANGLE's initial ping-pong direction: towards dEnd
 
                                 std::mutex cvMutex;
@@ -3237,16 +3231,16 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
         } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 m_stopAllGenerators();
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("GENERATOR STOP ALL"));
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("GENERATOR STOP ALL"));
             }
         }
     },
                data.command);
 
     if (bRealExec && m_eSkipReason == SkipReason::NONE && bIsPluginCommand) {
-        LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("Command execution");
-                  LOG_STRING(bRetVal ? "ok" : "failed"));
+        if (!bRetVal) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("Command execution failed"));
+        }
     }
 
     // Notify the GUI front-end when real execution fails on this line so it

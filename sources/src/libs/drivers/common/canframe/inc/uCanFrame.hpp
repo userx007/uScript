@@ -72,6 +72,6 @@ inline uint8_t len_to_dlc(uint8_t len)
     return 15;
 }
 
-}
+} // namespace ucanframe
 
 #endif // UCANFRAME_HPP

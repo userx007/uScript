@@ -45,8 +45,9 @@
  * included, don't implement — errors are push-only events there). Neither
  * is called anywhere in slcan_plugin/.
  */
-#include "uCanFrame.hpp"
 #include "uSlcan.hpp"
+
+#include "uCanFrame.hpp"
 #include "uLogger.hpp"
 #include "uUart.hpp"
 
@@ -70,8 +71,6 @@
 
 #define LT_HDR  "SLCAN_DRV   |"
 #define LOG_HDR LOG_STRING(LT_HDR)
-
-
 
 // ============================================================================
 // Hex helpers

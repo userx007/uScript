@@ -33,6 +33,7 @@
 
 #include "ICommDriver.hpp"
 #include "ICommDumpProtocol.hpp"
+#include "uCanFrame.hpp"
 #include "uUart.hpp"
 
 #include <array>

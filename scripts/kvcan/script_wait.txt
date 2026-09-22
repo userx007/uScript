@@ -59,7 +59,7 @@ i ?= REPEAT endloop 100
 END_REPEAT endloop
 !--
 
----
+
 array0 [= 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99
 array1 [= 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xEE, 0xDD, 0xCC
 
@@ -67,21 +67,20 @@ i ?=  REPEAT  endloop2 9
     val0 ?= MATH $array0.$i | HEX_16_BE
     val1 ?= MATH $array1.$i | HEX_16_BE
     val3 ?= MATH $i | HEX_16_BE
-    KVCAN.CMD > H"$val0$val1$val3" #| H"$val0$val1"
+    KVCAN.CMD > H'$val0$val1$val3' #| H"$val0$val1"
     TX_START ?= 0x100
     TX_END ?= MATH $TX_START + $array0.SIZE
 
     TXID ?= REPEAT endloop3 $TX_START, $TX_END
         KVCAN.CONFIG $CFG_COMMON x=$TXID
-        KVCAN.CMD > H"$val0$val1$val3" #| H"$val0$val1"
+        KVCAN.CMD > H'$val0$val1$val3' #| H"$val0$val1"
     END_REPEAT endloop3
-    #DELAY 100 ms
+    DELAY 100 ms
 END_REPEAT  endloop2
 
 
 REPEAT  endloop4 9
-    KVCAN.CMD > H"FFEEDDCCBBAA9988" 
+    KVCAN.CMD > H'FFEEDDCCBBAA9988' | H'FFEEDDCCBBAA9988'
 END_REPEAT  endloop4
 
-KVCAN.SCRIPT skcan.txt
-!--
+KVCAN.SCRIPT skcan.txt 100
