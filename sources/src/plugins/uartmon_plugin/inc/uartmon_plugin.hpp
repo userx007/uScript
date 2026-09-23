@@ -64,10 +64,12 @@ class UartmonPlugin : public PluginInterface {
             , m_strResultData("")
             , m_u32PollingInterval(PLUGIN_DEFAULT_UARTMON_POLLING_INTERVAL)
         {
+            // clang-format off
 #define UARTMON_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                          PluginCommandEntry<UartmonPlugin>{&UartmonPlugin::m_Uartmon_##a, UARTMON_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<UartmonPlugin>{&UartmonPlugin::m_Uartmon_##a, UARTMON_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             UARTMON_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef UARTMON_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~UartmonPlugin()

@@ -65,10 +65,12 @@ class Enc28J60NetPlugin : public PluginInterface {
             , m_u32WriteTimeout(Enc28J60Net::ENC28J60NET_TIMEOUT_MS)
             , m_u32ReadBufferSize(1460U)
         {
+            // clang-format off
 #define ENC28J60NET_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                              PluginCommandEntry<Enc28J60NetPlugin>{&Enc28J60NetPlugin::m_ENC28J60NET_##a, ENC28J60NET_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<Enc28J60NetPlugin>{&Enc28J60NetPlugin::m_ENC28J60NET_##a, ENC28J60NET_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             ENC28J60NET_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef ENC28J60NET_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~Enc28J60NetPlugin() = default;

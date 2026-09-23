@@ -65,10 +65,12 @@ class Lan8720NetPlugin : public PluginInterface {
             , m_u32WriteTimeout(Lan8720Net::LAN8720NET_TIMEOUT_MS)
             , m_u32ReadBufferSize(1460U)
         {
+            // clang-format off
 #define LAN8720NET_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                             PluginCommandEntry<Lan8720NetPlugin>{&Lan8720NetPlugin::m_LAN8720NET_##a, LAN8720NET_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<Lan8720NetPlugin>{&Lan8720NetPlugin::m_LAN8720NET_##a, LAN8720NET_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             LAN8720NET_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef LAN8720NET_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~Lan8720NetPlugin() = default;

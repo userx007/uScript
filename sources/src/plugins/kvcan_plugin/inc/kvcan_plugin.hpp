@@ -89,10 +89,12 @@ class KVCANPlugin : public PluginInterface {
             , m_u32WriteTimeout(1000U)
             , m_u32ReadBufferSize(8U)
         {
+            // clang-format off
 #define KVCAN_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                        PluginCommandEntry<KVCANPlugin>{&KVCANPlugin::m_KVCAN_##a, KVCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<KVCANPlugin>{&KVCANPlugin::m_KVCAN_##a, KVCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             KVCAN_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef KVCAN_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

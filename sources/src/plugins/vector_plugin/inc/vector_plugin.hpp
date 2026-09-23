@@ -128,10 +128,12 @@ class VectorPlugin : public PluginInterface {
             , m_u32WriteTimeout(1000U)
             , m_u32ReadBufferSize(8U)
         {
+            // clang-format off
 #define VECTOR_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                         PluginCommandEntry<VectorPlugin>{&VectorPlugin::m_VECTOR_##a, VECTOR_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<VectorPlugin>{&VectorPlugin::m_VECTOR_##a, VECTOR_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             VECTOR_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef VECTOR_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~VectorPlugin() = default;

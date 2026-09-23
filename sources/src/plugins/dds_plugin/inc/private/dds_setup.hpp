@@ -61,34 +61,35 @@ bool DdsPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     m_strInstanceName = psSetParams->strInstanceName.empty() ? DDS_PLUGIN_NAME : psSetParams->strInstanceName;
 
     if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(K_ARTEFACTS, m_strArtefactsPath);
-    sSettings.Bind(K_DOMAIN, [this](const std::string &v) { return setDomainId(v); });
-    sSettings.Bind(K_PARTICIPANT_ID, [this](const std::string &v) { return setParticipantId(v); });
-    sSettings.Bind(K_USE_IPV6, [this](const std::string &v) { return setUseIpv6(v); });
-    sSettings.Bind(K_IFACE, m_strIface);
-    sSettings.Bind(K_MCAST_IFACE, m_strMcastIface);
-    sSettings.Bind(K_SPDP_MCAST_GROUP, m_strSpdpMcastGroup);
-    sSettings.Bind(K_NAME, m_strParticipantName);
-    sSettings.Bind(K_TTL, [this](const std::string &v) { return setTtl(v); });
-    sSettings.Bind(K_SPDP_PERIOD, [this](const std::string &v) { return setSpdpPeriodMs(v); });
-    sSettings.Bind(K_LEASE, [this](const std::string &v) { return setLeaseDurationSec(v); });
-    sSettings.Bind(K_RELIABLE, [this](const std::string &v) { return setReliable(v); });
-    sSettings.Bind(K_HB_PERIOD, [this](const std::string &v) { return setHeartbeatPeriodMs(v); });
-    sSettings.Bind(K_HISTORY_DEPTH, [this](const std::string &v) { return setHistoryDepth(v); });
-    sSettings.Bind(K_FRAG_THRESHOLD, [this](const std::string &v) { return setFragmentThresholdBytes(v); });
-    sSettings.Bind(K_READ_TIMEOUT, [this](const std::string &v) { return setReadTimeout(v); });
-    sSettings.Bind(K_READ_BUFSIZE, [this](const std::string &v) { return setReadBufferSize(v); });
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    // clang-format off
+    sSettings.Bind(K_DOMAIN,                        [this](const std::string &v) { return setDomainId(v); });
+    sSettings.Bind(K_PARTICIPANT_ID,                [this](const std::string &v) { return setParticipantId(v); });
+    sSettings.Bind(K_USE_IPV6,                      [this](const std::string &v) { return setUseIpv6(v); });
+    sSettings.Bind(K_TTL,                           [this](const std::string &v) { return setTtl(v); });
+    sSettings.Bind(K_SPDP_PERIOD,                   [this](const std::string &v) { return setSpdpPeriodMs(v); });
+    sSettings.Bind(K_LEASE,                         [this](const std::string &v) { return setLeaseDurationSec(v); });
+    sSettings.Bind(K_RELIABLE,                      [this](const std::string &v) { return setReliable(v); });
+    sSettings.Bind(K_HB_PERIOD,                     [this](const std::string &v) { return setHeartbeatPeriodMs(v); });
+    sSettings.Bind(K_HISTORY_DEPTH,                 [this](const std::string &v) { return setHistoryDepth(v); });
+    sSettings.Bind(K_FRAG_THRESHOLD,                [this](const std::string &v) { return setFragmentThresholdBytes(v); });
+    sSettings.Bind(K_READ_TIMEOUT,                  [this](const std::string &v) { return setReadTimeout(v); });
+    sSettings.Bind(K_READ_BUFSIZE,                  [this](const std::string &v) { return setReadBufferSize(v); });
+    sSettings.Bind(K_IFACE,                         m_strIface);
+    sSettings.Bind(K_MCAST_IFACE,                   m_strMcastIface);
+    sSettings.Bind(K_SPDP_MCAST_GROUP,              m_strSpdpMcastGroup);
+    sSettings.Bind(K_NAME,                          m_strParticipantName);
+    sSettings.Bind(K_ARTEFACTS,                     m_strArtefactsPath);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
-    sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
-
-    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Config updated. Domain:"); LOG_UINT32(m_u32DomainId));
-    return true;
+    return sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
 } /* m_LocalSetParams() */
 
@@ -108,26 +109,28 @@ bool DdsPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_dds_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "d", .boolSetter = &T::setDomainId},
-        {.key = "pid", .boolSetter = &T::setParticipantId},
-        {.key = "v6", .boolSetter = &T::setUseIpv6},
-        {.key = "i", .voidSetter = &T::setIface},
-        {.key = "mi", .voidSetter = &T::setMcastIface},
-        {.key = "mg", .voidSetter = &T::setSpdpMcastGroup},
-        {.key = "n", .voidSetter = &T::setParticipantName},
-        {.key = "t", .boolSetter = &T::setTtl},
-        {.key = "sp", .boolSetter = &T::setSpdpPeriodMs},
-        {.key = "l", .boolSetter = &T::setLeaseDurationSec},
-        {.key = "r", .boolSetter = &T::setReliable},
-        {.key = "hb", .boolSetter = &T::setHeartbeatPeriodMs},
-        {.key = "hd", .boolSetter = &T::setHistoryDepth},
-        {.key = "fr", .boolSetter = &T::setFragmentThresholdBytes},
-        {.key = "rt", .boolSetter = &T::setReadTimeout},
-        {.key = "rb", .boolSetter = &T::setReadBufferSize},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = "d",        .boolSetter = &T::setDomainId},
+        {.key = "pid",      .boolSetter = &T::setParticipantId},
+        {.key = "v6",       .boolSetter = &T::setUseIpv6},
+        {.key = "i",        .voidSetter = &T::setIface},
+        {.key = "mi",       .voidSetter = &T::setMcastIface},
+        {.key = "mg",       .voidSetter = &T::setSpdpMcastGroup},
+        {.key = "n",        .voidSetter = &T::setParticipantName},
+        {.key = "t",        .boolSetter = &T::setTtl},
+        {.key = "sp",       .boolSetter = &T::setSpdpPeriodMs},
+        {.key = "l",        .boolSetter = &T::setLeaseDurationSec},
+        {.key = "r",        .boolSetter = &T::setReliable},
+        {.key = "hb",       .boolSetter = &T::setHeartbeatPeriodMs},
+        {.key = "hd",       .boolSetter = &T::setHistoryDepth},
+        {.key = "fr",       .boolSetter = &T::setFragmentThresholdBytes},
+        {.key = "rt",       .boolSetter = &T::setReadTimeout},
+        {.key = "rb",       .boolSetter = &T::setReadBufferSize},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

@@ -115,11 +115,13 @@ class FT4232Plugin : public PluginInterface {
             , m_bIsPrivileged(false)
         {
 // Top-level command map
+// clang-format off
 #define FT_PLUGIN_CMD_RECORD(a, ...) \
     m_mapCmds.insert({#a,            \
-                      PluginCommandEntry<FT4232Plugin>{&FT4232Plugin::m_FT4232_##a, FT4232_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
+            PluginCommandEntry<FT4232Plugin>{&FT4232Plugin::m_FT4232_##a, FT4232_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
             FT4232_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef FT_PLUGIN_CMD_RECORD
+// clang-format on
 
 // SPI subcommand map
 #define SPI_CMD_RECORD(a) \

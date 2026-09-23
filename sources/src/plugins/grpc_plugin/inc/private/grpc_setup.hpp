@@ -45,29 +45,31 @@
 bool GrpcPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
     if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(K_ARTEFACTS, m_strArtefactsPath);
-    sSettings.Bind(K_HOST, m_strHost);
-    sSettings.Bind(K_PORT, [this](const std::string &v) { return setPort(v); });
-    sSettings.Bind(K_TLS_ENABLED, [this](const std::string &v) { return setTlsEnabled(v); });
-    sSettings.Bind(K_TLS_CA, m_strTlsCaPath);
-    sSettings.Bind(K_TLS_CLIENT_CERT, m_strTlsCertPath);
-    sSettings.Bind(K_TLS_CLIENT_KEY, m_strTlsKeyPath);
-    sSettings.Bind(K_DESCRIPTOR_SET, m_strDescriptorSetPath);
-    sSettings.Bind(K_AUTH_TOKEN, m_strAuthToken);
-    sSettings.Bind(K_CALL_TIMEOUT, [this](const std::string &v) { return setCallTimeout(v); });
-    sSettings.Bind(K_CONNECT_TIMEOUT, [this](const std::string &v) { return setConnectTimeout(v); });
-    sSettings.Bind(K_READ_TIMEOUT, [this](const std::string &v) { return setReadTimeout(v); });
-    sSettings.Bind(K_READ_BUFSIZE, [this](const std::string &v) { return setReadBufferSize(v); });
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    // clang-format off
+    sSettings.Bind(K_PORT,                          [this](const std::string &v) { return setPort(v); });
+    sSettings.Bind(K_TLS_ENABLED,                   [this](const std::string &v) { return setTlsEnabled(v); });
+    sSettings.Bind(K_CALL_TIMEOUT,                  [this](const std::string &v) { return setCallTimeout(v); });
+    sSettings.Bind(K_CONNECT_TIMEOUT,               [this](const std::string &v) { return setConnectTimeout(v); });
+    sSettings.Bind(K_READ_TIMEOUT,                  [this](const std::string &v) { return setReadTimeout(v); });
+    sSettings.Bind(K_READ_BUFSIZE,                  [this](const std::string &v) { return setReadBufferSize(v); });
+    sSettings.Bind(K_ARTEFACTS,                     m_strArtefactsPath);
+    sSettings.Bind(K_HOST,                          m_strHost);
+    sSettings.Bind(K_TLS_CA,                        m_strTlsCaPath);
+    sSettings.Bind(K_TLS_CLIENT_CERT,               m_strTlsCertPath);
+    sSettings.Bind(K_TLS_CLIENT_KEY,                m_strTlsKeyPath);
+    sSettings.Bind(K_DESCRIPTOR_SET,                m_strDescriptorSetPath);
+    sSettings.Bind(K_AUTH_TOKEN,                    m_strAuthToken);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
-
-    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost));
 
     return true;
 }
@@ -84,22 +86,24 @@ bool GrpcPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_grpc_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "h", .voidSetter = &T::setHost},
-        {.key = "p", .boolSetter = &T::setPort},
-        {.key = "t", .boolSetter = &T::setTlsEnabled},
-        {.key = "ca", .voidSetter = &T::setTlsCaPath},
-        {.key = "crt", .voidSetter = &T::setTlsCertPath},
-        {.key = "key", .voidSetter = &T::setTlsKeyPath},
-        {.key = "d", .voidSetter = &T::setDescriptorSetPath},
-        {.key = "auth", .voidSetter = &T::setAuthToken},
-        {.key = "ctout", .boolSetter = &T::setCallTimeout},
-        {.key = "xtout", .boolSetter = &T::setConnectTimeout},
-        {.key = "rtout", .boolSetter = &T::setReadTimeout},
-        {.key = "rbuf", .boolSetter = &T::setReadBufferSize},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = "h",        .voidSetter = &T::setHost},
+        {.key = "p",        .boolSetter = &T::setPort},
+        {.key = "t",        .boolSetter = &T::setTlsEnabled},
+        {.key = "ca",       .voidSetter = &T::setTlsCaPath},
+        {.key = "crt",      .voidSetter = &T::setTlsCertPath},
+        {.key = "key",      .voidSetter = &T::setTlsKeyPath},
+        {.key = "d",        .voidSetter = &T::setDescriptorSetPath},
+        {.key = "auth",     .voidSetter = &T::setAuthToken},
+        {.key = "ctout",    .boolSetter = &T::setCallTimeout},
+        {.key = "xtout",    .boolSetter = &T::setConnectTimeout},
+        {.key = "rtout",    .boolSetter = &T::setReadTimeout},
+        {.key = "rbuf",     .boolSetter = &T::setReadBufferSize},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

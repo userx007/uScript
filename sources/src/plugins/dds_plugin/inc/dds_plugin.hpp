@@ -109,10 +109,12 @@ class DdsPlugin : public PluginInterface {
             , m_u32ReadTimeout(5000)
             , m_u32ReadBufferSize(4096)
         {
+            // clang-format off
 #define DDS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
-                                                                 PluginCommandEntry<DdsPlugin>{&DdsPlugin::m_DDS_##a, false}));
-            DDS_PLUGIN_COMMANDS_CONFIG_TABLE
+        PluginCommandEntry<DdsPlugin>{&DdsPlugin::m_DDS_##a, false}));
+        DDS_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef DDS_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~DdsPlugin() = default;

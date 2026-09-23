@@ -118,11 +118,13 @@ class CH347Plugin : public PluginInterface {
             , m_bIsPrivileged(false)
         {
 // Top-level command map
+// clang-format off
 #define CH347_PLUGIN_CMD_RECORD(a, ...) \
     m_mapCmds.insert({#a,               \
-                      PluginCommandEntry<CH347Plugin>{&CH347Plugin::m_CH347_##a, CH347_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
+            PluginCommandEntry<CH347Plugin>{&CH347Plugin::m_CH347_##a, CH347_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
             CH347_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef CH347_PLUGIN_CMD_RECORD
+// clang-format on
 
 // SPI
 #define SPI_CMD_RECORD(a) \

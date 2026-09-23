@@ -77,63 +77,28 @@
 /*--------------------------------------------------------------------------------------------------------*/
 bool PCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "PCAN:1"); falls back
-    // to the fixed plugin name if the interpreter didn't supply one. Done before the
-    // "nothing loaded from ini" early-return below so it's always captured.
     m_strInstanceName = psSetParams->strInstanceName.empty() ? PCAN_PLUGIN_NAME : psSetParams->strInstanceName;
 
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(PCAN_CHANNEL, m_strPcanChannel);
-    sSettings.Bind(PCAN_BITRATE, [this](const std::string &v) { return setPcanBitrate(v); });
-    sSettings.Bind(PCAN_EXTENDED, [this](const std::string &v) { return setPcanExtended(v); });
-    sSettings.Bind(PCAN_FD, [this](const std::string &v) { return setPcanFd(v); });
-    // Route through setCanTxId() so the EFF-flag fixup and data-bit clamping
-    // are applied whether the ID comes from the INI file or the CONFIG command.
-    sSettings.Bind(PCAN_TX_ID, [this](const std::string &v) { return setCanTxId(v); });
-    // Optional: only meaningful once CAN_TP_PROTOCOL selects a segmented
-    // transport; empty means "mirror CAN_TX_ID" (today's behaviour).
+
+    // clang-format off
     sSettings.Bind(PCAN_RX_ID, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setCanRxId(v); });
-    // Empty/omitted means TpProtocol::NONE (today's naive-fragmentation behaviour).
+
     sSettings.Bind(PCAN_TP_PROTOCOL, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setCanTpProtocol(v); });
-    // TpConfig tuning parameters -- all optional, each keeps TpConfig's own
-    // in-struct default until explicitly overridden; same keys as KVCAN.
-    sSettings.Bind(TP_BLOCK_SIZE, m_sTpConfig.blockSize);
-    sSettings.Bind(TP_ST_MIN, m_sTpConfig.stMin);
-    sSettings.Bind(TP_PAD_FRAMES, m_sTpConfig.padFrames);
-    sSettings.Bind(TP_PADDING_BYTE, m_sTpConfig.paddingByte);
-    sSettings.Bind(TP_TIMEOUT_NBS, m_sTpConfig.timeoutNBs_ms);
-    sSettings.Bind(TP_TIMEOUT_NCR, m_sTpConfig.timeoutNCr_ms);
-    sSettings.Bind(TP_MAX_MSG_LEN, m_sTpConfig.maxMessageLen);
-    sSettings.Bind(J1939_USE_BAM, m_sTpConfig.j1939UseBam);
-    sSettings.Bind(J1939_MAX_PACKETS, m_sTpConfig.j1939MaxPackets);
-    sSettings.Bind(TP_TIMEOUT_T1, m_sTpConfig.timeoutT1_ms);
-    sSettings.Bind(TP_TIMEOUT_T2, m_sTpConfig.timeoutT2_ms);
-    sSettings.Bind(TP_TIMEOUT_T3, m_sTpConfig.timeoutT3_ms);
-    sSettings.Bind(TP_TIMEOUT_TH, m_sTpConfig.timeoutTh_ms);
-    sSettings.Bind(J1939_MAX_MSG_LEN, m_sTpConfig.j1939MaxMessageLen);
-    sSettings.Bind(CANOPEN_INDEX, m_sTpConfig.canOpenIndex);
-    sSettings.Bind(CANOPEN_SUBINDEX, m_sTpConfig.canOpenSubIndex);
-    sSettings.Bind(CANOPEN_USE_BLOCK, m_sTpConfig.canOpenUseBlock);
-    sSettings.Bind(CANOPEN_BLOCK_SIZE, m_sTpConfig.canOpenBlockSize);
-    sSettings.Bind(TP_TIMEOUT_SDO, m_sTpConfig.timeoutSdo_ms);
-    sSettings.Bind(CANOPEN_MAX_MSG_LEN, m_sTpConfig.canOpenMaxMessageLen);
-    sSettings.Bind(TP_TIMEOUT_FP_INTERFRAME, m_sTpConfig.timeoutFpInterFrame_ms);
-    sSettings.Bind(FP_MAX_MSG_LEN, m_sTpConfig.fastPacketMaxMessageLen);
-    // Empty string means "no filters configured" -- not an error, so treat as a no-op.
+
     sSettings.Bind(PCAN_FILTERS, [this](const std::string &v) {
         if (v.empty()) {
             return true;
@@ -143,13 +108,41 @@ bool PCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
             return false;
         }
         return true; });
-    sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
-    sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
-    // Route through the setter so the [1-64] range check is applied consistently
-    // regardless of whether the value came from INI or CONFIG.
-    sSettings.Bind(READ_BUF_SIZE, [this](const std::string &v) { return setCanReadBufferSize(v); });
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    sSettings.Bind(PCAN_BITRATE,                    [this](const std::string &v) { return setPcanBitrate(v); });
+    sSettings.Bind(PCAN_EXTENDED,                   [this](const std::string &v) { return setPcanExtended(v); });
+    sSettings.Bind(PCAN_FD,                         [this](const std::string &v) { return setPcanFd(v); });
+    sSettings.Bind(PCAN_TX_ID,                      [this](const std::string &v) { return setCanTxId(v); });
+    sSettings.Bind(READ_BUF_SIZE,                   [this](const std::string &v) { return setCanReadBufferSize(v); });
+    sSettings.Bind(ARTEFACTS_PATH,                  m_strArtefactsPath);
+    sSettings.Bind(PCAN_CHANNEL,                    m_strPcanChannel);
+    sSettings.Bind(TP_BLOCK_SIZE,                   m_sTpConfig.blockSize);
+    sSettings.Bind(TP_ST_MIN,                       m_sTpConfig.stMin);
+    sSettings.Bind(TP_PAD_FRAMES,                   m_sTpConfig.padFrames);
+    sSettings.Bind(TP_PADDING_BYTE,                 m_sTpConfig.paddingByte);
+    sSettings.Bind(TP_TIMEOUT_NBS,                  m_sTpConfig.timeoutNBs_ms);
+    sSettings.Bind(TP_TIMEOUT_NCR,                  m_sTpConfig.timeoutNCr_ms);
+    sSettings.Bind(TP_MAX_MSG_LEN,                  m_sTpConfig.maxMessageLen);
+    sSettings.Bind(J1939_USE_BAM,                   m_sTpConfig.j1939UseBam);
+    sSettings.Bind(J1939_MAX_PACKETS,               m_sTpConfig.j1939MaxPackets);
+    sSettings.Bind(TP_TIMEOUT_T1,                   m_sTpConfig.timeoutT1_ms);
+    sSettings.Bind(TP_TIMEOUT_T2,                   m_sTpConfig.timeoutT2_ms);
+    sSettings.Bind(TP_TIMEOUT_T3,                   m_sTpConfig.timeoutT3_ms);
+    sSettings.Bind(TP_TIMEOUT_TH,                   m_sTpConfig.timeoutTh_ms);
+    sSettings.Bind(J1939_MAX_MSG_LEN,               m_sTpConfig.j1939MaxMessageLen);
+    sSettings.Bind(CANOPEN_INDEX,                   m_sTpConfig.canOpenIndex);
+    sSettings.Bind(CANOPEN_SUBINDEX,                m_sTpConfig.canOpenSubIndex);
+    sSettings.Bind(CANOPEN_USE_BLOCK,               m_sTpConfig.canOpenUseBlock);
+    sSettings.Bind(CANOPEN_BLOCK_SIZE,              m_sTpConfig.canOpenBlockSize);
+    sSettings.Bind(TP_TIMEOUT_SDO,                  m_sTpConfig.timeoutSdo_ms);
+    sSettings.Bind(CANOPEN_MAX_MSG_LEN,             m_sTpConfig.canOpenMaxMessageLen);
+    sSettings.Bind(TP_TIMEOUT_FP_INTERFRAME,        m_sTpConfig.timeoutFpInterFrame_ms);
+    sSettings.Bind(FP_MAX_MSG_LEN,                  m_sTpConfig.fastPacketMaxMessageLen);
+    sSettings.Bind(READ_TIMEOUT,                    m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,                   m_u32WriteTimeout);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
     return sSettings.Apply(psSetParams->mapSettings,
                            [](const std::string &strKey, const std::string &strRawValue) {
@@ -175,43 +168,44 @@ bool PCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_can_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "i", .voidSetter = &T::setPcanChannel},
-        {.key = "b", .boolSetter = &T::setPcanBitrate},
-        {.key = "x", .boolSetter = &T::setCanTxId},
-        {.key = "y", .boolSetter = &T::setCanRxId},
-        {.key = "r", .boolSetter = &T::setCanReadTimeout},
-        {.key = "w", .boolSetter = &T::setCanWriteTimeout},
-        {.key = "s", .boolSetter = &T::setCanReadBufferSize},
-        {.key = "e", .boolSetter = &T::setPcanExtended},
-        {.key = "f", .boolSetter = &T::setPcanFd},
-        {.key = "t", .boolSetter = &T::setCanTpProtocol},
-        // TpConfig tuning parameters
-        {.key = "bs", .boolSetter = &T::setTpBlockSize},
-        {.key = "stmin", .boolSetter = &T::setTpStMin},
-        {.key = "pad", .boolSetter = &T::setTpPadFrames},
-        {.key = "padb", .boolSetter = &T::setTpPaddingByte},
-        {.key = "nbs", .boolSetter = &T::setTpTimeoutNBs},
-        {.key = "ncr", .boolSetter = &T::setTpTimeoutNCr},
-        {.key = "maxlen", .boolSetter = &T::setTpMaxMessageLen},
-        {.key = "bam", .boolSetter = &T::setJ1939UseBam},
-        {.key = "maxpkt", .boolSetter = &T::setJ1939MaxPackets},
-        {.key = "t1", .boolSetter = &T::setTpTimeoutT1},
-        {.key = "t2", .boolSetter = &T::setTpTimeoutT2},
-        {.key = "t3", .boolSetter = &T::setTpTimeoutT3},
-        {.key = "th", .boolSetter = &T::setTpTimeoutTh},
-        {.key = "jmaxlen", .boolSetter = &T::setJ1939MaxMessageLen},
-        {.key = "coidx", .boolSetter = &T::setCanOpenIndex},
-        {.key = "cosub", .boolSetter = &T::setCanOpenSubIndex},
-        {.key = "coblk", .boolSetter = &T::setCanOpenUseBlock},
-        {.key = "coblksz", .boolSetter = &T::setCanOpenBlockSize},
-        {.key = "sdotout", .boolSetter = &T::setTpTimeoutSdo},
+        {.key = "i",        .voidSetter = &T::setPcanChannel},
+        {.key = "b",        .boolSetter = &T::setPcanBitrate},
+        {.key = "x",        .boolSetter = &T::setCanTxId},
+        {.key = "y",        .boolSetter = &T::setCanRxId},
+        {.key = "r",        .boolSetter = &T::setCanReadTimeout},
+        {.key = "w",        .boolSetter = &T::setCanWriteTimeout},
+        {.key = "s",        .boolSetter = &T::setCanReadBufferSize},
+        {.key = "e",        .boolSetter = &T::setPcanExtended},
+        {.key = "f",        .boolSetter = &T::setPcanFd},
+        {.key = "t",        .boolSetter = &T::setCanTpProtocol},
+        {.key = "bs",       .boolSetter = &T::setTpBlockSize},
+        {.key = "stmin",    .boolSetter = &T::setTpStMin},
+        {.key = "pad",      .boolSetter = &T::setTpPadFrames},
+        {.key = "padb",     .boolSetter = &T::setTpPaddingByte},
+        {.key = "nbs",      .boolSetter = &T::setTpTimeoutNBs},
+        {.key = "ncr",      .boolSetter = &T::setTpTimeoutNCr},
+        {.key = "maxlen",   .boolSetter = &T::setTpMaxMessageLen},
+        {.key = "bam",      .boolSetter = &T::setJ1939UseBam},
+        {.key = "maxpkt",   .boolSetter = &T::setJ1939MaxPackets},
+        {.key = "t1",       .boolSetter = &T::setTpTimeoutT1},
+        {.key = "t2",       .boolSetter = &T::setTpTimeoutT2},
+        {.key = "t3",       .boolSetter = &T::setTpTimeoutT3},
+        {.key = "th",       .boolSetter = &T::setTpTimeoutTh},
+        {.key = "jmaxlen",  .boolSetter = &T::setJ1939MaxMessageLen},
+        {.key = "coidx",    .boolSetter = &T::setCanOpenIndex},
+        {.key = "cosub",    .boolSetter = &T::setCanOpenSubIndex},
+        {.key = "coblk",    .boolSetter = &T::setCanOpenUseBlock},
+        {.key = "coblksz",  .boolSetter = &T::setCanOpenBlockSize},
+        {.key = "sdotout",  .boolSetter = &T::setTpTimeoutSdo},
         {.key = "comaxlen", .boolSetter = &T::setCanOpenMaxMessageLen},
-        {.key = "fpinter", .boolSetter = &T::setTpTimeoutFpInterFrame},
+        {.key = "fpinter",  .boolSetter = &T::setTpTimeoutFpInterFrame},
         {.key = "fpmaxlen", .boolSetter = &T::setFpMaxMessageLen},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

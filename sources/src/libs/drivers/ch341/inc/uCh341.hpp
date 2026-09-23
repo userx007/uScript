@@ -34,7 +34,7 @@ class CH341 : public ICommDriver {
         static constexpr uint32_t CH341_READ_DEFAULT_TIMEOUT  = 5000; /**< Default CH341 read timeout in milliseconds. */
         static constexpr uint32_t CH341_WRITE_DEFAULT_TIMEOUT = 5000; /**< Default CH341 write timeout in milliseconds. */
 
-        CH341() = default;
+        CH341()                                               = default;
 
         /**
          * @param strDevice        tty path passed straight to open(), e.g. "/dev/ttyCH341USB0".

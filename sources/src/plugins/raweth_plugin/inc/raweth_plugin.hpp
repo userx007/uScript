@@ -88,10 +88,12 @@ class RawEthPlugin : public PluginInterface {
             , m_u32WriteTimeout(RawEth::RAWETH_WRITE_DEFAULT_TIMEOUT)
             , m_u32ReadBufferSize(RawEth::RAWETH_MAX_BUFLENGTH)
         {
+            // clang-format off
 #define RAWETH_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                         PluginCommandEntry<RawEthPlugin>{&RawEthPlugin::m_RAWETH_##a, RAWETH_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<RawEthPlugin>{&RawEthPlugin::m_RAWETH_##a, RAWETH_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             RAWETH_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef RAWETH_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

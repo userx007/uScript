@@ -47,25 +47,25 @@
 /*--------------------------------------------------------------------------------------------------------*/
 bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "KI2C:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one. Done before the "nothing loaded from ini"
-    // early-return below so it's always captured.
     m_strInstanceName = psSetParams->strInstanceName.empty() ? KI2C_PLUGIN_NAME : psSetParams->strInstanceName;
 
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(KI2C_DEVICE, m_strKI2CDevice);
-    sSettings.Bind(KI2C_ADDRESS, m_u8KI2CAddress);
-    sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
-    sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE, m_u32ReadBufferSize);
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    // clang-format off
+    sSettings.Bind(ARTEFACTS_PATH,                  m_strArtefactsPath);
+    sSettings.Bind(KI2C_DEVICE,                     m_strKI2CDevice);
+    sSettings.Bind(KI2C_ADDRESS,                    m_u8KI2CAddress);
+    sSettings.Bind(READ_TIMEOUT,                    m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,                   m_u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE,                   m_u32ReadBufferSize);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
     return sSettings.Apply(psSetParams->mapSettings,
                            [](const std::string &strKey, const std::string &strRawValue) {
@@ -87,15 +87,17 @@ bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_i2c_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "d", .voidSetter = &T::setI2CDevice},
-        {.key = "a", .boolSetter = &T::setI2CAddress},
-        {.key = "r", .boolSetter = &T::setI2CReadTimeout},
-        {.key = "w", .boolSetter = &T::setI2CWriteTimeout},
-        {.key = "s", .boolSetter = &T::setI2CReadBufferSize},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = "d",        .voidSetter = &T::setI2CDevice},
+        {.key = "a",        .boolSetter = &T::setI2CAddress},
+        {.key = "r",        .boolSetter = &T::setI2CReadTimeout},
+        {.key = "w",        .boolSetter = &T::setI2CWriteTimeout},
+        {.key = "s",        .boolSetter = &T::setI2CReadBufferSize},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

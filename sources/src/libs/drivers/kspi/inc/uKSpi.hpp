@@ -15,12 +15,15 @@
 /**
  * @brief KSPI bus configuration passed to open().
  */
+// clang-format off
 struct SpiConfig {
     uint8_t mode          = 0;       /**< KSPI mode: 0–3 (CPOL/CPHA).                          */
     uint8_t bits_per_word = 8;       /**< Bits per word, typically 8.                          */
     uint32_t speed_hz     = 1000000; /**< Bus clock frequency in Hz (default: 1 MHz).          */
     bool lsb_first        = false;   /**< Transmit LSB first when true (MSB first otherwise).  */
 };
+
+// clang-format on
 
 /**
  * @brief Linux KSPI driver implementing the ICommDriver interface.

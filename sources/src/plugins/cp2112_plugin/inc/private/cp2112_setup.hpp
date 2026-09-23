@@ -44,33 +44,27 @@
  * and a runtime CONFIG command are always interpreted identically
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool CP2112Plugin::m_LocalSetParams(const PluginDataSet *ps)
+bool CP2112Plugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "CP2112:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one.
-    m_strInstanceName = ps->strInstanceName.empty() ? CP2112_PLUGIN_NAME : ps->strInstanceName;
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? CP2112_PLUGIN_NAME : psSetParams->strInstanceName;
 
-    if (!ps || ps->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No settings in config"));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
-    sSettings.Bind(DEVICE_INDEX, m_sIniValues.u8DeviceIndex);
-    sSettings.Bind(I2C_CLOCK, m_sIniValues.u32I2cClockHz);
-    sSettings.Bind(I2C_ADDRESS, m_sIniValues.u8I2cAddress);
-    sSettings.Bind(READ_TIMEOUT, m_sIniValues.u32ReadTimeout);
-    sSettings.Bind(SCRIPT_DELAY, m_sIniValues.u32ScriptDelay);
 
-    // accumulate mode: matches the original getX() lambdas ("ok &= ...")
-    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
+    // clang-format off
+    sSettings.Bind(ARTEFACTS_PATH,  m_sIniValues.strArtefactsPath);
+    sSettings.Bind(DEVICE_INDEX,    m_sIniValues.u8DeviceIndex);
+    sSettings.Bind(I2C_CLOCK,       m_sIniValues.u32I2cClockHz);
+    sSettings.Bind(I2C_ADDRESS,     m_sIniValues.u8I2cAddress);
+    sSettings.Bind(READ_TIMEOUT,    m_sIniValues.u32ReadTimeout);
+    sSettings.Bind(SCRIPT_DELAY,    m_sIniValues.u32ScriptDelay);
+    // clang-format on
 
-    if (!bOk) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
-    }
-
-    return bOk;
+    return sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -86,13 +80,15 @@ bool CP2112Plugin::m_LocalSetParams(const PluginDataSet *ps)
 template <typename T>
 bool generic_cp2112_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "x", .boolSetter = &T::setDeviceIndex},
-        {.key = "c", .boolSetter = &T::setI2cClockHz},
-        {.key = "a", .boolSetter = &T::setI2cAddress},
-        {.key = "r", .boolSetter = &T::setReadTimeout},
-        {.key = "sd", .boolSetter = &T::setScriptDelay},
+        {.key = "x",    .boolSetter = &T::setDeviceIndex},
+        {.key = "c",    .boolSetter = &T::setI2cClockHz},
+        {.key = "a",    .boolSetter = &T::setI2cAddress},
+        {.key = "r",    .boolSetter = &T::setReadTimeout},
+        {.key = "sd",   .boolSetter = &T::setScriptDelay},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

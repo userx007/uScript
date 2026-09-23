@@ -103,10 +103,12 @@ class ProfibusPlugin : public PluginInterface {
             , m_bDefaultHighPriority(false)
             , m_u32ReadBufferSize(256)
         {
+            // clang-format off
 #define PROFIBUS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
-                                                                      PluginCommandEntry<ProfibusPlugin>{&ProfibusPlugin::m_PROFIBUS_##a, false}));
+            PluginCommandEntry<ProfibusPlugin>{&ProfibusPlugin::m_PROFIBUS_##a, false}));
             PROFIBUS_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef PROFIBUS_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~ProfibusPlugin() = default;

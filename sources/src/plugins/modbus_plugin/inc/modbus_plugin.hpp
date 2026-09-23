@@ -113,10 +113,12 @@ class ModbusPlugin : public PluginInterface {
             , m_u32ReadTimeout(3000)
             , m_u32ReadBufferSize(4096)
         {
+            // clang-format off
 #define MODBUS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
-                                                                    PluginCommandEntry<ModbusPlugin>{&ModbusPlugin::m_MODBUS_##a, false}));
+            PluginCommandEntry<ModbusPlugin>{&ModbusPlugin::m_MODBUS_##a, false}));
             MODBUS_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef MODBUS_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~ModbusPlugin() = default;

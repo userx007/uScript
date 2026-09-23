@@ -115,10 +115,12 @@ class VectorEthPlugin : public PluginInterface {
             , m_u32WriteTimeout(1000U)
             , m_u32ReadBufferSize(1500U)
         {
+            // clang-format off
 #define VECTOR_ETH_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                             PluginCommandEntry<VectorEthPlugin>{&VectorEthPlugin::m_VECTOR_ETH_##a, VECTOR_ETH_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<VectorEthPlugin>{&VectorEthPlugin::m_VECTOR_ETH_##a, VECTOR_ETH_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             VECTOR_ETH_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef VECTOR_ETH_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~VectorEthPlugin() = default;

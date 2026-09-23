@@ -95,10 +95,12 @@ class SYSTECPlugin : public PluginInterface {
             , m_u32WriteTimeout(1000U)
             , m_u32ReadBufferSize(8U)
         {
+            // clang-format off
 #define SYSTEC_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                         PluginCommandEntry<SYSTECPlugin>{&SYSTECPlugin::m_SYSTEC_##a, SYSTEC_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<SYSTECPlugin>{&SYSTECPlugin::m_SYSTEC_##a, SYSTEC_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             SYSTEC_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef SYSTEC_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

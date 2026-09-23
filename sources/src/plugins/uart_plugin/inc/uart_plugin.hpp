@@ -62,10 +62,12 @@ class UARTPlugin : public PluginInterface {
             , m_bRawResult(false)
             , m_bCyclicCached(true)
         {
+            // clang-format off
 #define UART_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                       PluginCommandEntry<UARTPlugin>{&UARTPlugin::m_UART_##a, UART_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<UARTPlugin>{&UARTPlugin::m_UART_##a, UART_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             UART_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef UART_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

@@ -66,10 +66,12 @@ class CH341Plugin : public PluginInterface {
             , m_bRawResult(false)
             , m_bCyclicCached(true)
         {
+            // clang-format off
 #define CH341_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                        PluginCommandEntry<CH341Plugin>{&CH341Plugin::m_CH341_##a, CH341_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
-            CH341_PLUGIN_COMMANDS_CONFIG_TABLE
+        PluginCommandEntry<CH341Plugin>{&CH341Plugin::m_CH341_##a, CH341_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+        CH341_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef CH341_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

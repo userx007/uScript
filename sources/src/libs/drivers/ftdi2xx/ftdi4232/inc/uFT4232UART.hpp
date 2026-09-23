@@ -48,7 +48,7 @@
  */
 class FT4232UART : public ICommDriver {
     public:
-        using Status = ICommDriver::Status;
+        using Status                                                = ICommDriver::Status;
 
         // ── Timeouts ─────────────────────────────────────────────────────────
         static constexpr uint32_t FT4232_UART_READ_DEFAULT_TIMEOUT  = 1000u; ///< ms

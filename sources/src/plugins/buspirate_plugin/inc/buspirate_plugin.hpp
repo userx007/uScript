@@ -71,76 +71,78 @@ class BuspiratePlugin : public PluginInterface {
             , m_strResultData("")
         {
 
-            // PLUGIN COMMANDS
+            // clang-format off
+// PLUGIN COMMANDS
 #define BUSPIRATE_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(std::string(#a), \
-                                                                            PluginCommandEntry<BuspiratePlugin>{&BuspiratePlugin::m_Buspirate_##a, BUSPIRATE_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
-            BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD
+        PluginCommandEntry<BuspiratePlugin>{&BuspiratePlugin::m_Buspirate_##a, BUSPIRATE_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+        BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD
 #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
 #define BUSPIRATE_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(std::string(#a), \
-                                                                            PluginCommandEntry<BuspiratePlugin>{&BuspiratePlugin::m_Buspirate_##a, BUSPIRATE_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
-            BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
+        PluginCommandEntry<BuspiratePlugin>{&BuspiratePlugin::m_Buspirate_##a, BUSPIRATE_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+        BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
 #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
-            // MODES
+// MODES
 #define MODE_CMD_RECORD(a, b, c, d)                  \
     {                                                \
         mode_s sTmp = {b, c, std::string(#d)};       \
         m_mapModes.insert(std::make_pair(#a, sTmp)); \
     }
-            MODE_COMMANDS_CONFIG_TABLE
+    MODE_COMMANDS_CONFIG_TABLE
 #undef MODE_CMD_RECORD
 
-            // SPI CONFIGURATION
+// SPI CONFIGURATION
 #define SPI_CMD_RECORD(a) m_mapCmds_SPI.insert(std::make_pair(std::string(#a), &BuspiratePlugin::m_handle_spi_##a));
-            SPI_COMMANDS_CONFIG_TABLE
+        SPI_COMMANDS_CONFIG_TABLE
 #undef SPI_CMD_RECORD
 
 #define SPI_SPEED_RECORD(a, b) m_mapSpeed_SPI.insert(std::make_pair(a, b));
-            SPI_SPEED_CONFIG_TABLE
+        SPI_SPEED_CONFIG_TABLE
 #undef SPI_SPEED_RECORD
 
-            // I2C CONFIGURATION
+// I2C CONFIGURATION
 #define I2C_CMD_RECORD(a) m_mapCmds_I2C.insert(std::make_pair(std::string(#a), &BuspiratePlugin::m_handle_i2c_##a));
-            I2C_COMMANDS_CONFIG_TABLE
+        I2C_COMMANDS_CONFIG_TABLE
 #undef I2C_CMD_RECORD
 
 #define I2C_SPEED_RECORD(a, b) m_mapSpeed_I2C.insert(std::make_pair(a, b));
-            I2C_SPEED_CONFIG_TABLE
+        I2C_SPEED_CONFIG_TABLE
 #undef I2C_SPEED_RECORD
 
-            // UART CONFIGURATION
+// UART CONFIGURATION
 #define UART_CMD_RECORD(a) m_mapCmds_UART.insert(std::make_pair(std::string(#a), &BuspiratePlugin::m_handle_uart_##a));
-            UART_COMMANDS_CONFIG_TABLE
+        UART_COMMANDS_CONFIG_TABLE
 #undef UART_CMD_RECORD
 
 #define UART_SPEED_RECORD(a, b) m_mapSpeed_UART.insert(std::make_pair(a, b));
-            UART_SPEED_CONFIG_TABLE
+        UART_SPEED_CONFIG_TABLE
 #undef UART_SPEED_RECORD
 
-            // RAWWIRE CONFIGURATION
+// RAWWIRE CONFIGURATION
 #define RAWWIRE_CMD_RECORD(a) m_mapCmds_RAWWIRE.insert(std::make_pair(std::string(#a), &BuspiratePlugin::m_handle_rawwire_##a));
-            RAWWIRE_COMMANDS_CONFIG_TABLE
+        RAWWIRE_COMMANDS_CONFIG_TABLE
 #undef RAWWIRE_CMD_RECORD
 
 #define RAWWIRE_SPEED_RECORD(a, b) m_mapSpeed_RAWWIRE.insert(std::make_pair(a, b));
-            RAWWIRE_SPEED_CONFIG_TABLE
+        RAWWIRE_SPEED_CONFIG_TABLE
 #undef RAWWIRE_SPEED_RECORD
 
-            // ONEWIRE CONFIGURATION
+// ONEWIRE CONFIGURATION
 #define ONEWIRE_CMD_RECORD(a) m_mapCmds_ONEWIRE.insert(std::make_pair(std::string(#a), &BuspiratePlugin::m_handle_onewire_##a));
-            ONEWIRE_COMMANDS_CONFIG_TABLE
+        ONEWIRE_COMMANDS_CONFIG_TABLE
 #undef ONEWIRE_CMD_RECORD
 
-            // SPEED MAP OF MAPS
+// SPEED MAP OF MAPS
 #define BUSPIRATE_PLUGIN_CMD_RECORD(a) m_mapSpeedsMaps.insert(std::make_pair(std::string(#a), &m_mapSpeed_##a));
-            BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
+        BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
 #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
-            // COMMAND MAP OF MAPS
+// COMMAND MAP OF MAPS
 #define BUSPIRATE_PLUGIN_CMD_RECORD(a) m_mapCommandsMaps.insert(std::make_pair(std::string(#a), &m_mapCmds_##a));
-            BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
+        BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
 #undef BUSPIRATE_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**
@@ -461,12 +463,12 @@ class BuspiratePlugin : public PluginInterface {
         ModuleSpeedMap m_mapSpeed_ONEWIRE;
 
         // PLUGIN COMMANDS DECLARATION
-
-/**
- * \brief functions associated to the plugin commands
- */
+        /**
+         * \brief functions associated to the plugin commands
+         */
+        // clang-format off
 #define BUSPIRATE_PLUGIN_CMD_RECORD(a, ...) bool m_Buspirate_##a(const std::string &args, std::stop_token st) const;
-        BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD
+    BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD
 #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
 #define BUSPIRATE_PLUGIN_CMD_RECORD(a)                                                    \
@@ -474,38 +476,34 @@ class BuspiratePlugin : public PluginInterface {
     {                                                                                     \
         return generic_module_dispatch<BuspiratePlugin>(this, std::string(#a), args, st); \
     }
-        BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
+    BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
 #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
-        // SPI MODULE COMMANDS DECLARATION
-
+// SPI MODULE COMMANDS DECLARATION
 #define SPI_CMD_RECORD(a) bool m_handle_spi_##a(const std::string &args, std::stop_token st) const;
-        SPI_COMMANDS_CONFIG_TABLE
+    SPI_COMMANDS_CONFIG_TABLE
 #undef SPI_CMD_RECORD
 
-        // I2C MODULE COMMANDS DECLARATION
-
+// I2C MODULE COMMANDS DECLARATION
 #define I2C_CMD_RECORD(a) bool m_handle_i2c_##a(const std::string &args, std::stop_token st) const;
-        I2C_COMMANDS_CONFIG_TABLE
+    I2C_COMMANDS_CONFIG_TABLE
 #undef I2C_CMD_RECORD
 
-        // UART MODULE COMMANDS DECLARATION
-
+// UART MODULE COMMANDS DECLARATION
 #define UART_CMD_RECORD(a) bool m_handle_uart_##a(const std::string &args, std::stop_token st) const;
-        UART_COMMANDS_CONFIG_TABLE
+    UART_COMMANDS_CONFIG_TABLE
 #undef UART_CMD_RECORD
 
-        // RAWWIRE MODULE COMMANDS DECLARATION
-
+// RAWWIRE MODULE COMMANDS DECLARATION
 #define RAWWIRE_CMD_RECORD(a) bool m_handle_rawwire_##a(const std::string &args, std::stop_token st) const;
-        RAWWIRE_COMMANDS_CONFIG_TABLE
+    RAWWIRE_COMMANDS_CONFIG_TABLE
 #undef RAWWIRE_CMD_RECORD
 
-        // ONEWIRE MODULE COMMANDS DECLARATION
-
+// ONEWIRE MODULE COMMANDS DECLARATION
 #define ONEWIRE_CMD_RECORD(a) bool m_handle_onewire_##a(const std::string &args, std::stop_token st) const;
-        ONEWIRE_COMMANDS_CONFIG_TABLE
+    ONEWIRE_COMMANDS_CONFIG_TABLE
 #undef ONEWIRE_CMD_RECORD
+        // clang-format on
 
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
         bool m_handle_mode(const std::string &args, std::stop_token st = {}) const;

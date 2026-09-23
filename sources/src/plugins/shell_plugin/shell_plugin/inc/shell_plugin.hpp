@@ -68,11 +68,13 @@ class ShellPlugin : public PluginInterface {
             , m_pvUserData(nullptr)
             , m_strResultData("")
         {
+            // clang-format off
 #define SHELL_PLUGIN_CMD_RECORD(a, ...) \
     m_mapCmds.insert(std::make_pair(#a, \
-                                    PluginCommandEntry<ShellPlugin>{&ShellPlugin::m_Shell_##a, SHELL_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<ShellPlugin>{&ShellPlugin::m_Shell_##a, SHELL_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             SHELL_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef SHELL_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

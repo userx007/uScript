@@ -101,10 +101,12 @@ class MqttPlugin : public PluginInterface {
             , m_bWillRetain(false)
             , m_bCleanSession(true)
         {
+            // clang-format off
 #define MQTT_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
-                                                                  PluginCommandEntry<MqttPlugin>{&MqttPlugin::m_MQTT_##a, false}));
+            PluginCommandEntry<MqttPlugin>{&MqttPlugin::m_MQTT_##a, false}));
             MQTT_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef MQTT_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~MqttPlugin() = default;

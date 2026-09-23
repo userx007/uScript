@@ -100,10 +100,12 @@ class CP2112Plugin : public PluginInterface {
             , m_bIsFaultTolerant(false)
             , m_bIsPrivileged(false)
         {
-// Top-level command map
+            // Top-level command map
+
+            // clang-format off
 #define CP2112_PLUGIN_CMD_RECORD(a, ...) \
     m_mapCmds.insert({#a,                \
-                      PluginCommandEntry<CP2112Plugin>{&CP2112Plugin::m_CP2112_##a, CP2112_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
+            PluginCommandEntry<CP2112Plugin>{&CP2112Plugin::m_CP2112_##a, CP2112_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
             CP2112_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef CP2112_PLUGIN_CMD_RECORD
 
@@ -122,6 +124,7 @@ class CP2112Plugin : public PluginInterface {
     m_mapCmds_GPIO.insert({#a, &CP2112Plugin::m_handle_gpio_##a});
             GPIO_COMMANDS_CONFIG_TABLE
 #undef GPIO_CMD_RECORD
+            // clang-format on
 
             // Meta maps
             m_mapSpeedsMaps.insert({"I2C", &m_mapSpeed_I2C});

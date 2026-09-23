@@ -117,11 +117,13 @@ class FT245Plugin : public PluginInterface {
             , m_bIsPrivileged(false)
         {
 // Top-level command map
+// clang-format off
 #define FT245_PLUGIN_CMD_RECORD(a, ...) \
     m_mapCmds.insert({#a,               \
-                      PluginCommandEntry<FT245Plugin>{&FT245Plugin::m_FT245_##a, FT245_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
+            PluginCommandEntry<FT245Plugin>{&FT245Plugin::m_FT245_##a, FT245_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
             FT245_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef FT245_PLUGIN_CMD_RECORD
+// clang-format on
 
 // FIFO
 #define FIFO_CMD_RECORD(a) \

@@ -45,34 +45,28 @@
  * and a runtime CONFIG command are always interpreted identically
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool HydrabusPlugin::m_LocalSetParams(const PluginDataSet *ps)
+bool HydrabusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "HYDRABUS:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one.
-    m_strInstanceName = ps->strInstanceName.empty() ? HYDRABUS_PLUGIN_NAME : ps->strInstanceName;
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? HYDRABUS_PLUGIN_NAME : psSetParams->strInstanceName;
 
-    if (!ps || ps->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No settings in config"));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
-    sSettings.Bind(UART_PORT, m_sIniValues.strUartPort);
-    sSettings.Bind(BAUDRATE, m_sIniValues.u32UartBaudrate);
-    sSettings.Bind(READ_TIMEOUT, m_sIniValues.u32ReadTimeout);
-    sSettings.Bind(WRITE_TIMEOUT, m_sIniValues.u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE, m_sIniValues.u32ReadBufferSize);
-    sSettings.Bind(SCRIPT_DELAY, m_sIniValues.u32ScriptDelay);
 
-    // accumulate mode: matches the original getX() lambdas ("ok &= ...")
-    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
+    // clang-format off
+    sSettings.Bind(ARTEFACTS_PATH,  m_sIniValues.strArtefactsPath);
+    sSettings.Bind(UART_PORT,       m_sIniValues.strUartPort);
+    sSettings.Bind(BAUDRATE,        m_sIniValues.u32UartBaudrate);
+    sSettings.Bind(READ_TIMEOUT,    m_sIniValues.u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,   m_sIniValues.u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE,   m_sIniValues.u32ReadBufferSize);
+    sSettings.Bind(SCRIPT_DELAY,    m_sIniValues.u32ScriptDelay);
+    // clang-format on
 
-    if (!bOk) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
-    }
-
-    return bOk;
+    return sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -88,14 +82,16 @@ bool HydrabusPlugin::m_LocalSetParams(const PluginDataSet *ps)
 template <typename T>
 bool generic_hydrabus_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "p", .voidSetter = &T::setUartPort},
-        {.key = "b", .boolSetter = &T::setUartBaudrate},
-        {.key = "r", .boolSetter = &T::setReadTimeout},
-        {.key = "w", .boolSetter = &T::setWriteTimeout},
-        {.key = "s", .boolSetter = &T::setReadBufferSize},
-        {.key = "sd", .boolSetter = &T::setScriptDelay},
+        {.key = "p",    .voidSetter = &T::setUartPort},
+        {.key = "b",    .boolSetter = &T::setUartBaudrate},
+        {.key = "r",    .boolSetter = &T::setReadTimeout},
+        {.key = "w",    .boolSetter = &T::setWriteTimeout},
+        {.key = "s",    .boolSetter = &T::setReadBufferSize},
+        {.key = "sd",   .boolSetter = &T::setScriptDelay},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

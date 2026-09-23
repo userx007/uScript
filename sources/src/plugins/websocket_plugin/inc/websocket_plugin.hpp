@@ -87,10 +87,12 @@ class WEBSOCKETPlugin : public PluginInterface {
             , m_u32WriteTimeout(WebSocket::WS_WRITE_DEFAULT_TIMEOUT)
             , m_u32ReadBufferSize(WebSocket::WS_MAX_BUFLENGTH)
         {
+            // clang-format off
 #define WEBSOCKET_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                            PluginCommandEntry<WEBSOCKETPlugin>{&WEBSOCKETPlugin::m_WEBSOCKET_##a, WEBSOCKET_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<WEBSOCKETPlugin>{&WEBSOCKETPlugin::m_WEBSOCKET_##a, WEBSOCKET_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             WEBSOCKET_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef WEBSOCKET_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

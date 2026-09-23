@@ -71,10 +71,12 @@ class W5500NetPlugin : public PluginInterface {
             , m_u32WriteTimeout(W5500Net::W5500NET_TIMEOUT_MS)
             , m_u32ReadBufferSize(1024U)
         {
+            // clang-format off
 #define W5500NET_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                           PluginCommandEntry<W5500NetPlugin>{&W5500NetPlugin::m_W5500NET_##a, W5500NET_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<W5500NetPlugin>{&W5500NetPlugin::m_W5500NET_##a, W5500NET_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             W5500NET_PLUGIN_COMMANDS_CONFIG_TABLE
-#undef W5500NET_PLUGIN_CMD_RECORD // <--- Added this line
+#undef W5500NET_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~W5500NetPlugin() = default;

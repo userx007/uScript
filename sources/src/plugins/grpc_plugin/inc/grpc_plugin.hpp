@@ -100,10 +100,12 @@ class GrpcPlugin : public PluginInterface {
             , m_u32ReadTimeout(5000)
             , m_u32ReadBufferSize(65536)
         {
+            // clang-format off
 #define GRPC_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
-                                                                  PluginCommandEntry<GrpcPlugin>{&GrpcPlugin::m_GRPC_##a, false}));
+            PluginCommandEntry<GrpcPlugin>{&GrpcPlugin::m_GRPC_##a, false}));
             GRPC_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef GRPC_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         ~GrpcPlugin() = default;

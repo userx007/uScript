@@ -58,52 +58,56 @@ bool VectorEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
     m_strInstanceName = psSetParams->strInstanceName.empty() ? VECTOR_ETH_PLUGIN_NAME : psSetParams->strInstanceName;
 
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(VECTOR_ETH_APP_NAME, m_strAppName);
-    sSettings.Bind(VECTOR_ETH_APP_CHANNEL, [this](const std::string &v) { return setAppChannel(v); });
+
+    // clang-format off
     sSettings.Bind(VECTOR_ETH_DEVICE_HW, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDeviceHw(v); });
+
     sSettings.Bind(VECTOR_ETH_DEVICE_SERIAL, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDeviceSerial(v); });
+
     sSettings.Bind(VECTOR_ETH_DEVICE_NAME, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDeviceName(v); });
+
     sSettings.Bind(VECTOR_ETH_DEVICE_HWINDEX, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDeviceHwIndex(v); });
+
     sSettings.Bind(VECTOR_ETH_DEVICE_HWCH, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDeviceHwChannel(v); });
+
     sSettings.Bind(VECTOR_ETH_DEST_MAC, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDestMac(v); });
+
     sSettings.Bind(VECTOR_ETH_ETHERTYPE, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setEtherType(v); });
-    sSettings.Bind(VECTOR_ETH_FILTER_SRC_MAC, [this](const std::string &v) { return setRxFilterSrcMac(v); });
-    sSettings.Bind(VECTOR_ETH_FILTER_TYPE, [this](const std::string &v) { return setRxFilterEtherType(v); });
+
     sSettings.Bind(VECTOR_ETH_SPEED, [this](const std::string &v) {
         if (v.empty()) {
             return true;
@@ -114,21 +118,30 @@ bool VectorEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
             return true;
         }
         return setEthDuplex(v); });
+
     sSettings.Bind(VECTOR_ETH_CONNECTOR, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setEthConnector(v); });
+
     sSettings.Bind(VECTOR_ETH_PHY, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setEthPhy(v); });
-    sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
-    sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE, [this](const std::string &v) { return setEthReadBufferSize(v); });
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    sSettings.Bind(VECTOR_ETH_APP_CHANNEL,          [this](const std::string &v) { return setAppChannel(v); });
+    sSettings.Bind(VECTOR_ETH_FILTER_SRC_MAC,       [this](const std::string &v) { return setRxFilterSrcMac(v); });
+    sSettings.Bind(VECTOR_ETH_FILTER_TYPE,          [this](const std::string &v) { return setRxFilterEtherType(v); });
+    sSettings.Bind(READ_BUF_SIZE,                   [this](const std::string &v) { return setEthReadBufferSize(v); });
+    sSettings.Bind(READ_TIMEOUT,                    m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,                   m_u32WriteTimeout);
+    sSettings.Bind(ARTEFACTS_PATH,                  m_strArtefactsPath);
+    sSettings.Bind(VECTOR_ETH_APP_NAME,             m_strAppName);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
     return sSettings.Apply(psSetParams->mapSettings,
                            [](const std::string &strKey, const std::string &strRawValue) {
@@ -152,26 +165,28 @@ bool VectorEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_eth_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "a", .voidSetter = &T::setAppName},
-        {.key = "i", .boolSetter = &T::setAppChannel},
-        {.key = "hw", .boolSetter = &T::setDeviceHw},
-        {.key = "serial", .boolSetter = &T::setDeviceSerial},
-        {.key = "name", .boolSetter = &T::setDeviceName},
-        {.key = "hwidx", .boolSetter = &T::setDeviceHwIndex},
-        {.key = "hwch", .boolSetter = &T::setDeviceHwChannel},
-        {.key = "dst", .boolSetter = &T::setDestMac},
-        {.key = "type", .boolSetter = &T::setEtherType},
-        {.key = "speed", .boolSetter = &T::setEthSpeed},
-        {.key = "duplex", .boolSetter = &T::setEthDuplex},
-        {.key = "connector", .boolSetter = &T::setEthConnector},
-        {.key = "phy", .boolSetter = &T::setEthPhy},
-        {.key = "r", .boolSetter = &T::setEthReadTimeout},
-        {.key = "w", .boolSetter = &T::setEthWriteTimeout},
-        {.key = "s", .boolSetter = &T::setEthReadBufferSize},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = "a",        .voidSetter = &T::setAppName},
+        {.key = "i",        .boolSetter = &T::setAppChannel},
+        {.key = "hw",       .boolSetter = &T::setDeviceHw},
+        {.key = "serial",   .boolSetter = &T::setDeviceSerial},
+        {.key = "name",     .boolSetter = &T::setDeviceName},
+        {.key = "hwidx",    .boolSetter = &T::setDeviceHwIndex},
+        {.key = "hwch",     .boolSetter = &T::setDeviceHwChannel},
+        {.key = "dst",      .boolSetter = &T::setDestMac},
+        {.key = "type",     .boolSetter = &T::setEtherType},
+        {.key = "speed",    .boolSetter = &T::setEthSpeed},
+        {.key = "duplex",   .boolSetter = &T::setEthDuplex},
+        {.key = "connector",.boolSetter = &T::setEthConnector},
+        {.key = "phy",      .boolSetter = &T::setEthPhy},
+        {.key = "r",        .boolSetter = &T::setEthReadTimeout},
+        {.key = "w",        .boolSetter = &T::setEthWriteTimeout},
+        {.key = "s",        .boolSetter = &T::setEthReadBufferSize},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

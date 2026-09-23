@@ -94,10 +94,12 @@ class UDPPlugin : public PluginInterface {
             , m_u32WriteTimeout(UDP::UDP_WRITE_DEFAULT_TIMEOUT)
             , m_u32ReadBufferSize(static_cast<uint32_t>(UDP::UDP_SAFE_PAYLOAD))
         {
+            // clang-format off
 #define UDP_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                      PluginCommandEntry<UDPPlugin>{&UDPPlugin::m_UDP_##a, UDP_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<UDPPlugin>{&UDPPlugin::m_UDP_##a, UDP_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             UDP_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef UDP_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

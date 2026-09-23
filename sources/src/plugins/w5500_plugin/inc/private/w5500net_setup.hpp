@@ -43,25 +43,25 @@
 /*--------------------------------------------------------------------------------------------------------*/
 bool W5500NetPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "W5500NET:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one. Done before the "nothing loaded from ini"
-    // early-return below so it's always captured.
     m_strInstanceName = psSetParams->strInstanceName.empty() ? W5500NET_PLUGIN_NAME : psSetParams->strInstanceName;
 
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(SERVER_IP, [this](const std::string &v) { setServerIp(v); return true; });
-    sSettings.Bind(SERVER_PORT, [this](const std::string &v) { return setServerPort(v); });
-    sSettings.Bind(READ_TIMEOUT, [this](const std::string &v) { return setReadTimeout(v); });
-    sSettings.Bind(WRITE_TIMEOUT, [this](const std::string &v) { return setWriteTimeout(v); });
-    sSettings.Bind(READ_BUFFER_SIZE, [this](const std::string &v) { return setReadBufferSize(v); });
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    // clang-format off
+    sSettings.Bind(SERVER_IP,                       [this](const std::string &v) { setServerIp(v); return true; });
+    sSettings.Bind(SERVER_PORT,                     [this](const std::string &v) { return setServerPort(v); });
+    sSettings.Bind(READ_TIMEOUT,                    [this](const std::string &v) { return setReadTimeout(v); });
+    sSettings.Bind(WRITE_TIMEOUT,                   [this](const std::string &v) { return setWriteTimeout(v); });
+    sSettings.Bind(READ_BUFFER_SIZE,                [this](const std::string &v) { return setReadBufferSize(v); });
+    sSettings.Bind(ARTEFACTS_PATH,                  m_strArtefactsPath);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
     return sSettings.Apply(psSetParams->mapSettings,
                            [](const std::string &strKey, const std::string &strRawValue) {
@@ -82,15 +82,17 @@ bool W5500NetPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_w5500net_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "i", .voidSetter = &T::setServerIp},
-        {.key = "p", .boolSetter = &T::setServerPort},
-        {.key = "r", .boolSetter = &T::setReadTimeout},
-        {.key = "w", .boolSetter = &T::setWriteTimeout},
-        {.key = "s", .boolSetter = &T::setReadBufferSize},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = "i",        .voidSetter = &T::setServerIp},
+        {.key = "p",        .boolSetter = &T::setServerPort},
+        {.key = "r",        .boolSetter = &T::setReadTimeout},
+        {.key = "w",        .boolSetter = &T::setWriteTimeout},
+        {.key = "s",        .boolSetter = &T::setReadBufferSize},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

@@ -89,96 +89,80 @@ bool VectorPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
     m_strInstanceName = psSetParams->strInstanceName.empty() ? VECTOR_PLUGIN_NAME : psSetParams->strInstanceName;
 
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(VECTOR_APP_NAME, m_strAppName);
-    sSettings.Bind(VECTOR_APP_CHANNEL, [this](const std::string &v) { return setAppChannel(v); });
+
+    // clang-format off
     sSettings.Bind(VECTOR_DEVICE_HW, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDeviceHw(v); });
+
     sSettings.Bind(VECTOR_DEVICE_SERIAL, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDeviceSerial(v); });
+
     sSettings.Bind(VECTOR_DEVICE_NAME, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDeviceName(v); });
+
     sSettings.Bind(VECTOR_DEVICE_HWINDEX, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDeviceHwIndex(v); });
+
     sSettings.Bind(VECTOR_DEVICE_HWCHANNEL, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setDeviceHwChannel(v); });
-    sSettings.Bind(VECTOR_BITRATE, [this](const std::string &v) { return setVectorBitrate(v); });
-    sSettings.Bind(VECTOR_EXTENDED, [this](const std::string &v) { return setVectorExtended(v); });
-    sSettings.Bind(VECTOR_FD, [this](const std::string &v) { return setVectorFd(v); });
+
     sSettings.Bind(VECTOR_FD_DATA_BITRATE, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setVectorFdDataBitrate(v); });
+
     sSettings.Bind(VECTOR_FD_ISO, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setVectorFdIso(v); });
+
     sSettings.Bind(VECTOR_FD_BRS, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setVectorFdBrs(v); });
+
     sSettings.Bind(VECTOR_FD_PADDING_BYTE, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setVectorFdPaddingByte(v); });
-    sSettings.Bind(VECTOR_TX_ID, [this](const std::string &v) { return setCanTxId(v); });
+
     sSettings.Bind(VECTOR_RX_ID, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setCanRxId(v); });
+
     sSettings.Bind(VECTOR_TP_PROTOCOL, [this](const std::string &v) {
         if (v.empty()) {
             return true;
         }
         return setCanTpProtocol(v); });
-    sSettings.Bind(TP_BLOCK_SIZE, m_sTpConfig.blockSize);
-    sSettings.Bind(TP_ST_MIN, m_sTpConfig.stMin);
-    sSettings.Bind(TP_PAD_FRAMES, m_sTpConfig.padFrames);
-    sSettings.Bind(TP_PADDING_BYTE, m_sTpConfig.paddingByte);
-    sSettings.Bind(TP_TIMEOUT_NBS, m_sTpConfig.timeoutNBs_ms);
-    sSettings.Bind(TP_TIMEOUT_NCR, m_sTpConfig.timeoutNCr_ms);
-    sSettings.Bind(TP_MAX_MSG_LEN, m_sTpConfig.maxMessageLen);
-    sSettings.Bind(J1939_USE_BAM, m_sTpConfig.j1939UseBam);
-    sSettings.Bind(J1939_MAX_PACKETS, m_sTpConfig.j1939MaxPackets);
-    sSettings.Bind(TP_TIMEOUT_T1, m_sTpConfig.timeoutT1_ms);
-    sSettings.Bind(TP_TIMEOUT_T2, m_sTpConfig.timeoutT2_ms);
-    sSettings.Bind(TP_TIMEOUT_T3, m_sTpConfig.timeoutT3_ms);
-    sSettings.Bind(TP_TIMEOUT_TH, m_sTpConfig.timeoutTh_ms);
-    sSettings.Bind(J1939_MAX_MSG_LEN, m_sTpConfig.j1939MaxMessageLen);
-    sSettings.Bind(CANOPEN_INDEX, m_sTpConfig.canOpenIndex);
-    sSettings.Bind(CANOPEN_SUBINDEX, m_sTpConfig.canOpenSubIndex);
-    sSettings.Bind(CANOPEN_USE_BLOCK, m_sTpConfig.canOpenUseBlock);
-    sSettings.Bind(CANOPEN_BLOCK_SIZE, m_sTpConfig.canOpenBlockSize);
-    sSettings.Bind(TP_TIMEOUT_SDO, m_sTpConfig.timeoutSdo_ms);
-    sSettings.Bind(CANOPEN_MAX_MSG_LEN, m_sTpConfig.canOpenMaxMessageLen);
-    sSettings.Bind(TP_TIMEOUT_FP_INTERFRAME, m_sTpConfig.timeoutFpInterFrame_ms);
-    sSettings.Bind(FP_MAX_MSG_LEN, m_sTpConfig.fastPacketMaxMessageLen);
+
     sSettings.Bind(VECTOR_FILTERS, [this](const std::string &v) {
         if (v.empty()) {
             return true;
@@ -188,11 +172,42 @@ bool VectorPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
             return false;
         }
         return true; });
-    sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
-    sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE, [this](const std::string &v) { return setCanReadBufferSize(v); });
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    sSettings.Bind(VECTOR_TX_ID,                    [this](const std::string &v) { return setCanTxId(v); });
+    sSettings.Bind(VECTOR_APP_CHANNEL,              [this](const std::string &v) { return setAppChannel(v); });
+    sSettings.Bind(VECTOR_BITRATE,                  [this](const std::string &v) { return setVectorBitrate(v); });
+    sSettings.Bind(VECTOR_EXTENDED,                 [this](const std::string &v) { return setVectorExtended(v); });
+    sSettings.Bind(VECTOR_FD,                       [this](const std::string &v) { return setVectorFd(v); });
+    sSettings.Bind(READ_BUF_SIZE,                   [this](const std::string &v) { return setCanReadBufferSize(v); });
+    sSettings.Bind(ARTEFACTS_PATH,                  m_strArtefactsPath);
+    sSettings.Bind(VECTOR_APP_NAME,                 m_strAppName);
+    sSettings.Bind(TP_BLOCK_SIZE,                   m_sTpConfig.blockSize);
+    sSettings.Bind(TP_ST_MIN,                       m_sTpConfig.stMin);
+    sSettings.Bind(TP_PAD_FRAMES,                   m_sTpConfig.padFrames);
+    sSettings.Bind(TP_PADDING_BYTE,                 m_sTpConfig.paddingByte);
+    sSettings.Bind(TP_TIMEOUT_NBS,                  m_sTpConfig.timeoutNBs_ms);
+    sSettings.Bind(TP_TIMEOUT_NCR,                  m_sTpConfig.timeoutNCr_ms);
+    sSettings.Bind(TP_MAX_MSG_LEN,                  m_sTpConfig.maxMessageLen);
+    sSettings.Bind(J1939_USE_BAM,                   m_sTpConfig.j1939UseBam);
+    sSettings.Bind(J1939_MAX_PACKETS,               m_sTpConfig.j1939MaxPackets);
+    sSettings.Bind(TP_TIMEOUT_T1,                   m_sTpConfig.timeoutT1_ms);
+    sSettings.Bind(TP_TIMEOUT_T2,                   m_sTpConfig.timeoutT2_ms);
+    sSettings.Bind(TP_TIMEOUT_T3,                   m_sTpConfig.timeoutT3_ms);
+    sSettings.Bind(TP_TIMEOUT_TH,                   m_sTpConfig.timeoutTh_ms);
+    sSettings.Bind(J1939_MAX_MSG_LEN,               m_sTpConfig.j1939MaxMessageLen);
+    sSettings.Bind(CANOPEN_INDEX,                   m_sTpConfig.canOpenIndex);
+    sSettings.Bind(CANOPEN_SUBINDEX,                m_sTpConfig.canOpenSubIndex);
+    sSettings.Bind(CANOPEN_USE_BLOCK,               m_sTpConfig.canOpenUseBlock);
+    sSettings.Bind(CANOPEN_BLOCK_SIZE,              m_sTpConfig.canOpenBlockSize);
+    sSettings.Bind(TP_TIMEOUT_SDO,                  m_sTpConfig.timeoutSdo_ms);
+    sSettings.Bind(CANOPEN_MAX_MSG_LEN,             m_sTpConfig.canOpenMaxMessageLen);
+    sSettings.Bind(TP_TIMEOUT_FP_INTERFRAME,        m_sTpConfig.timeoutFpInterFrame_ms);
+    sSettings.Bind(FP_MAX_MSG_LEN,                  m_sTpConfig.fastPacketMaxMessageLen);
+    sSettings.Bind(READ_TIMEOUT,                    m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,                   m_u32WriteTimeout);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
     return sSettings.Apply(psSetParams->mapSettings,
                            [](const std::string &strKey, const std::string &strRawValue) {
@@ -220,53 +235,54 @@ bool VectorPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_can_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "a", .voidSetter = &T::setAppName},
-        {.key = "i", .boolSetter = &T::setAppChannel},
-        {.key = "hw", .boolSetter = &T::setDeviceHw},
-        {.key = "serial", .boolSetter = &T::setDeviceSerial},
-        {.key = "name", .boolSetter = &T::setDeviceName},
-        {.key = "hwidx", .boolSetter = &T::setDeviceHwIndex},
-        {.key = "hwch", .boolSetter = &T::setDeviceHwChannel},
-        {.key = "b", .boolSetter = &T::setVectorBitrate},
-        {.key = "x", .boolSetter = &T::setCanTxId},
-        {.key = "y", .boolSetter = &T::setCanRxId},
-        {.key = "r", .boolSetter = &T::setCanReadTimeout},
-        {.key = "w", .boolSetter = &T::setCanWriteTimeout},
-        {.key = "s", .boolSetter = &T::setCanReadBufferSize},
-        {.key = "e", .boolSetter = &T::setVectorExtended},
-        {.key = "f", .boolSetter = &T::setVectorFd},
-        {.key = "d", .boolSetter = &T::setVectorFdDataBitrate},
-        {.key = "iso", .boolSetter = &T::setVectorFdIso},
-        {.key = "brs", .boolSetter = &T::setVectorFdBrs},
-        {.key = "padb", .boolSetter = &T::setVectorFdPaddingByte},
-        {.key = "t", .boolSetter = &T::setCanTpProtocol},
-        // TpConfig tuning parameters
-        {.key = "bs", .boolSetter = &T::setTpBlockSize},
-        {.key = "stmin", .boolSetter = &T::setTpStMin},
-        {.key = "pad", .boolSetter = &T::setTpPadFrames},
-        {.key = "padb", .boolSetter = &T::setTpPaddingByte},
-        {.key = "nbs", .boolSetter = &T::setTpTimeoutNBs},
-        {.key = "ncr", .boolSetter = &T::setTpTimeoutNCr},
-        {.key = "maxlen", .boolSetter = &T::setTpMaxMessageLen},
-        {.key = "bam", .boolSetter = &T::setJ1939UseBam},
-        {.key = "maxpkt", .boolSetter = &T::setJ1939MaxPackets},
-        {.key = "t1", .boolSetter = &T::setTpTimeoutT1},
-        {.key = "t2", .boolSetter = &T::setTpTimeoutT2},
-        {.key = "t3", .boolSetter = &T::setTpTimeoutT3},
-        {.key = "th", .boolSetter = &T::setTpTimeoutTh},
-        {.key = "jmaxlen", .boolSetter = &T::setJ1939MaxMessageLen},
-        {.key = "coidx", .boolSetter = &T::setCanOpenIndex},
-        {.key = "cosub", .boolSetter = &T::setCanOpenSubIndex},
-        {.key = "coblk", .boolSetter = &T::setCanOpenUseBlock},
-        {.key = "coblksz", .boolSetter = &T::setCanOpenBlockSize},
-        {.key = "sdotout", .boolSetter = &T::setTpTimeoutSdo},
+        {.key = "a",        .voidSetter = &T::setAppName},
+        {.key = "i",        .boolSetter = &T::setAppChannel},
+        {.key = "hw",       .boolSetter = &T::setDeviceHw},
+        {.key = "serial",   .boolSetter = &T::setDeviceSerial},
+        {.key = "name",     .boolSetter = &T::setDeviceName},
+        {.key = "hwidx",    .boolSetter = &T::setDeviceHwIndex},
+        {.key = "hwch",     .boolSetter = &T::setDeviceHwChannel},
+        {.key = "b",        .boolSetter = &T::setVectorBitrate},
+        {.key = "x",        .boolSetter = &T::setCanTxId},
+        {.key = "y",        .boolSetter = &T::setCanRxId},
+        {.key = "r",        .boolSetter = &T::setCanReadTimeout},
+        {.key = "w",        .boolSetter = &T::setCanWriteTimeout},
+        {.key = "s",        .boolSetter = &T::setCanReadBufferSize},
+        {.key = "e",        .boolSetter = &T::setVectorExtended},
+        {.key = "f",        .boolSetter = &T::setVectorFd},
+        {.key = "d",        .boolSetter = &T::setVectorFdDataBitrate},
+        {.key = "iso",      .boolSetter = &T::setVectorFdIso},
+        {.key = "brs",      .boolSetter = &T::setVectorFdBrs},
+        {.key = "padb",     .boolSetter = &T::setVectorFdPaddingByte},
+        {.key = "t",        .boolSetter = &T::setCanTpProtocol},
+        {.key = "bs",       .boolSetter = &T::setTpBlockSize},
+        {.key = "stmin",    .boolSetter = &T::setTpStMin},
+        {.key = "pad",      .boolSetter = &T::setTpPadFrames},
+        {.key = "padb",     .boolSetter = &T::setTpPaddingByte},
+        {.key = "nbs",      .boolSetter = &T::setTpTimeoutNBs},
+        {.key = "ncr",      .boolSetter = &T::setTpTimeoutNCr},
+        {.key = "maxlen",   .boolSetter = &T::setTpMaxMessageLen},
+        {.key = "bam",      .boolSetter = &T::setJ1939UseBam},
+        {.key = "maxpkt",   .boolSetter = &T::setJ1939MaxPackets},
+        {.key = "t1",       .boolSetter = &T::setTpTimeoutT1},
+        {.key = "t2",       .boolSetter = &T::setTpTimeoutT2},
+        {.key = "t3",       .boolSetter = &T::setTpTimeoutT3},
+        {.key = "th",       .boolSetter = &T::setTpTimeoutTh},
+        {.key = "jmaxlen",  .boolSetter = &T::setJ1939MaxMessageLen},
+        {.key = "coidx",    .boolSetter = &T::setCanOpenIndex},
+        {.key = "cosub",    .boolSetter = &T::setCanOpenSubIndex},
+        {.key = "coblk",    .boolSetter = &T::setCanOpenUseBlock},
+        {.key = "coblksz",  .boolSetter = &T::setCanOpenBlockSize},
+        {.key = "sdotout",  .boolSetter = &T::setTpTimeoutSdo},
         {.key = "comaxlen", .boolSetter = &T::setCanOpenMaxMessageLen},
-        {.key = "fpinter", .boolSetter = &T::setTpTimeoutFpInterFrame},
+        {.key = "fpinter",  .boolSetter = &T::setTpTimeoutFpInterFrame},
         {.key = "fpmaxlen", .boolSetter = &T::setFpMaxMessageLen},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

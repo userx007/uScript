@@ -138,10 +138,12 @@ class PCANPlugin : public PluginInterface {
             , m_u32WriteTimeout(1000U)
             , m_u32ReadBufferSize(8U)
         {
+            // clang-format off
 #define PCAN_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                       PluginCommandEntry<PCANPlugin>{&PCANPlugin::m_PCAN_##a, PCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<PCANPlugin>{&PCANPlugin::m_PCAN_##a, PCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             PCAN_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef PCAN_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

@@ -49,27 +49,26 @@
 
 bool ModbusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "MODBUS:1"); falls back
-    // to the fixed plugin name if the interpreter didn't supply one.
     m_strInstanceName = psSetParams->strInstanceName.empty() ? MODBUS_PLUGIN_NAME : psSetParams->strInstanceName;
 
     if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(K_ARTEFACTS, m_strArtefactsPath);
-    sSettings.Bind(K_HOST, m_strHost);
-    sSettings.Bind(K_PORT, [this](const std::string &v) { return setPort(v); });
-    sSettings.Bind(K_READ_TIMEOUT, [this](const std::string &v) { return setReadTimeout(v); });
-    sSettings.Bind(K_READ_BUFSIZE, [this](const std::string &v) { return setReadBufferSize(v); });
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    // clang-format off
+    sSettings.Bind(K_PORT,                          [this](const std::string &v) { return setPort(v); });
+    sSettings.Bind(K_READ_TIMEOUT,                  [this](const std::string &v) { return setReadTimeout(v); });
+    sSettings.Bind(K_READ_BUFSIZE,                  [this](const std::string &v) { return setReadBufferSize(v); });
+    sSettings.Bind(K_ARTEFACTS,                     m_strArtefactsPath);
+    sSettings.Bind(K_HOST,                          m_strHost);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
-    sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
-
-    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost));
-    return true;
+    return sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -85,14 +84,16 @@ bool ModbusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_modbus_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = SK_HOST, .boolSetter = &T::setHost},
-        {.key = SK_PORT, .boolSetter = &T::setPort},
-        {.key = SK_RTOUT, .boolSetter = &T::setReadTimeout},
-        {.key = SK_RBUF, .boolSetter = &T::setReadBufferSize},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = SK_HOST,    .boolSetter = &T::setHost},
+        {.key = SK_PORT,    .boolSetter = &T::setPort},
+        {.key = SK_RTOUT,   .boolSetter = &T::setReadTimeout},
+        {.key = SK_RBUF,    .boolSetter = &T::setReadBufferSize},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

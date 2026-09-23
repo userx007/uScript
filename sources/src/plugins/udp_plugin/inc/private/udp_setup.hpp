@@ -48,29 +48,26 @@
 /*--------------------------------------------------------------------------------------------------------*/
 bool UDPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "UDP:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one. Done before the "nothing loaded from ini"
-    // early-return below so it's always captured.
     m_strInstanceName = psSetParams->strInstanceName.empty() ? UDP_PLUGIN_NAME : psSetParams->strInstanceName;
 
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(UDP_HOST, [this](const std::string &v) { setUdpHost(v); return true; });
-    sSettings.Bind(UDP_PORT, [this](const std::string &v) { return setUdpPort(v); });
-    sSettings.Bind(UDP_CONNECT_TIMEOUT, [this](const std::string &v) { return setConnectTimeout(v); });
-    sSettings.Bind(UDP_READ_TIMEOUT, [this](const std::string &v) { return setReadTimeout(v); });
-    sSettings.Bind(UDP_WRITE_TIMEOUT, [this](const std::string &v) { return setWriteTimeout(v); });
-    // Route through the setter so the [1-UDP_MAX_DGRAM_LEN] range check is
-    // applied consistently regardless of whether the value came from the ini
-    // file or from the CONFIG command.
-    sSettings.Bind(UDP_READ_BUFFER_SIZE, [this](const std::string &v) { return setUdpReadBufferSize(v); });
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    // clang-format off
+    sSettings.Bind(UDP_HOST,                        [this](const std::string &v) { setUdpHost(v); return true; });
+    sSettings.Bind(UDP_PORT,                        [this](const std::string &v) { return setUdpPort(v); });
+    sSettings.Bind(UDP_CONNECT_TIMEOUT,             [this](const std::string &v) { return setConnectTimeout(v); });
+    sSettings.Bind(UDP_READ_TIMEOUT,                [this](const std::string &v) { return setReadTimeout(v); });
+    sSettings.Bind(UDP_WRITE_TIMEOUT,               [this](const std::string &v) { return setWriteTimeout(v); });
+    sSettings.Bind(UDP_READ_BUFFER_SIZE,            [this](const std::string &v) { return setUdpReadBufferSize(v); });
+    sSettings.Bind(ARTEFACTS_PATH,                  m_strArtefactsPath);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
     return sSettings.Apply(psSetParams->mapSettings,
                            [](const std::string &strKey, const std::string &strRawValue) {
@@ -98,16 +95,18 @@ bool UDPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_udp_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "h", .voidSetter = &T::setUdpHost},
-        {.key = "p", .boolSetter = &T::setUdpPort},
-        {.key = "c", .boolSetter = &T::setConnectTimeout},
-        {.key = "r", .boolSetter = &T::setReadTimeout},
-        {.key = "w", .boolSetter = &T::setWriteTimeout},
-        {.key = "s", .boolSetter = &T::setUdpReadBufferSize},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = "h",        .voidSetter = &T::setUdpHost},
+        {.key = "p",        .boolSetter = &T::setUdpPort},
+        {.key = "c",        .boolSetter = &T::setConnectTimeout},
+        {.key = "r",        .boolSetter = &T::setReadTimeout},
+        {.key = "w",        .boolSetter = &T::setWriteTimeout},
+        {.key = "s",        .boolSetter = &T::setUdpReadBufferSize},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }

@@ -65,10 +65,12 @@ class KI2CPlugin : public PluginInterface {
             , m_bRawResult(false)
             , m_bCyclicCached(true)
         {
+            // clang-format off
 #define KI2C_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                       PluginCommandEntry<KI2CPlugin>{&KI2CPlugin::m_KI2C_##a, KI2C_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<KI2CPlugin>{&KI2CPlugin::m_KI2C_##a, KI2C_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             KI2C_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef KI2C_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

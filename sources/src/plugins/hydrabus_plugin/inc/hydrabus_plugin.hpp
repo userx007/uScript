@@ -115,17 +115,19 @@ class HydrabusPlugin : public PluginInterface {
             , m_eMode(Mode::None)
         {
 // Top-level commands
+// clang-format off
 #define HB_PLUGIN_CMD_RECORD(a, ...) \
     m_mapCmds.insert({#a,            \
-                      PluginCommandEntry<HydrabusPlugin>{&HydrabusPlugin::m_Hydrabus_##a, HYDRABUS_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
+            PluginCommandEntry<HydrabusPlugin>{&HydrabusPlugin::m_Hydrabus_##a, HYDRABUS_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
             HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_STD
 #undef HB_PLUGIN_CMD_RECORD
 
 #define HB_PLUGIN_CMD_RECORD(a, ...) \
     m_mapCmds.insert({#a,            \
-                      PluginCommandEntry<HydrabusPlugin>{&HydrabusPlugin::m_Hydrabus_##a, HYDRABUS_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
+            PluginCommandEntry<HydrabusPlugin>{&HydrabusPlugin::m_Hydrabus_##a, HYDRABUS_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
             HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
 #undef HB_PLUGIN_CMD_RECORD
+// clang-format on
 
 // Mode table
 #define MODE_CMD_RECORD(a, b, c, d)      \

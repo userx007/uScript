@@ -88,10 +88,12 @@ class DSPKi2cPlugin : public PluginInterface {
             , m_bRawResult(false)
             , m_bCyclicCached(true)
         {
+            // clang-format off
 #define DSPKI2C_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                          PluginCommandEntry<DSPKi2cPlugin>{&DSPKi2cPlugin::m_DSPKI2C_##a, DSPKI2C_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
-            DSPKI2C_PLUGIN_COMMANDS_CONFIG_TABLE
+        PluginCommandEntry<DSPKi2cPlugin>{&DSPKi2cPlugin::m_DSPKI2C_##a, DSPKI2C_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+        DSPKI2C_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef DSPKI2C_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

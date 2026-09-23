@@ -83,10 +83,12 @@ class TCPIPPlugin : public PluginInterface {
             , m_u32WriteTimeout(TCPIP::TCPIP_WRITE_DEFAULT_TIMEOUT)
             , m_u32ReadBufferSize(TCPIP::TCPIP_MAX_BUFLENGTH)
         {
+            // clang-format off
 #define TCPIP_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                        PluginCommandEntry<TCPIPPlugin>{&TCPIPPlugin::m_TCPIP_##a, TCPIP_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<TCPIPPlugin>{&TCPIPPlugin::m_TCPIP_##a, TCPIP_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             TCPIP_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef TCPIP_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

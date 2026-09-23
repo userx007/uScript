@@ -49,27 +49,27 @@
 /*--------------------------------------------------------------------------------------------------------*/
 bool DSPKSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "DSPKSPI:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one. Done before the "nothing loaded from ini"
-    // early-return below so it's always captured.
     m_strInstanceName = psSetParams->strInstanceName.empty() ? DSPKSPI_PLUGIN_NAME : psSetParams->strInstanceName;
 
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(SPI_VID, [this](const std::string &v) { return setSpiVid(v); });
-    sSettings.Bind(SPI_PID, [this](const std::string &v) { return setSpiPid(v); });
-    sSettings.Bind(SPI_MODE, [this](const std::string &v) { return setSpiMode(v); });
-    sSettings.Bind(SPI_CLOCK_DIV, [this](const std::string &v) { return setSpiClockDiv(v); });
-    sSettings.Bind(READ_TIMEOUT, m_u32ReadTimeout);
-    sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE, m_u32ReadBufferSize);
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    // clang-format off
+    sSettings.Bind(ARTEFACTS_PATH,                  m_strArtefactsPath);
+    sSettings.Bind(SPI_VID,                         [this](const std::string &v) { return setSpiVid(v); });
+    sSettings.Bind(SPI_PID,                         [this](const std::string &v) { return setSpiPid(v); });
+    sSettings.Bind(SPI_MODE,                        [this](const std::string &v) { return setSpiMode(v); });
+    sSettings.Bind(SPI_CLOCK_DIV,                   [this](const std::string &v) { return setSpiClockDiv(v); });
+    sSettings.Bind(READ_TIMEOUT,                    m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,                   m_u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE,                   m_u32ReadBufferSize);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
     return sSettings.Apply(psSetParams->mapSettings,
                            [](const std::string &strKey, const std::string &strRawValue) {
@@ -91,31 +91,21 @@ bool DSPKSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_spi_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "vid", .boolSetter = &T::setSpiVid},
-        {.key = "pid", .boolSetter = &T::setSpiPid},
-        {.key = "m", .boolSetter = &T::setSpiMode},
-        {.key = "d", .boolSetter = &T::setSpiClockDiv},
-        {.key = "r", .boolSetter = &T::setSpiReadTimeout},
-        {.key = "w", .boolSetter = &T::setSpiWriteTimeout},
-        {.key = "s", .boolSetter = &T::setSpiReadBufferSize},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = "vid",      .boolSetter = &T::setSpiVid},
+        {.key = "pid",      .boolSetter = &T::setSpiPid},
+        {.key = "m",        .boolSetter = &T::setSpiMode},
+        {.key = "d",        .boolSetter = &T::setSpiClockDiv},
+        {.key = "r",        .boolSetter = &T::setSpiReadTimeout},
+        {.key = "w",        .boolSetter = &T::setSpiWriteTimeout},
+        {.key = "s",        .boolSetter = &T::setSpiReadBufferSize},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
-    if (args.empty()) {
-        LOG_PRINT(LOG_DEBUG, LOG_STRING("DSPKSPI SETUP |"); LOG_STRING("Missing args"));
-        return false;
-    }
-
-    // Short-circuit to true (without applying anything) while the plugin isn't yet enabled -
-    // this is the argument-validation-only dry run, before any real Digispark device is
-    // expected to be attached.
-    if (false == pOwner->isEnabled()) {
-        return true;
-    }
-
-    return parseAndCallSetupHandlers(pOwner, args, table, "DSPKSPI SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 #endif // DSPKSPI_SETUP_HPP

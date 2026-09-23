@@ -107,11 +107,13 @@ class FT2232Plugin : public PluginInterface {
             , m_bIsPrivileged(false)
         {
 // Top-level command map
+// clang-format off
 #define FT2_PLUGIN_CMD_RECORD(a, ...) \
     m_mapCmds.insert({#a,             \
-                      PluginCommandEntry<FT2232Plugin>{&FT2232Plugin::m_FT2232_##a, FT2232_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
+            PluginCommandEntry<FT2232Plugin>{&FT2232Plugin::m_FT2232_##a, FT2232_GET_BLOCKING(a, ##__VA_ARGS__, false)}});
             FT2232_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef FT2_PLUGIN_CMD_RECORD
+// clang-format on
 
 // SPI
 #define SPI_CMD_RECORD(a) \

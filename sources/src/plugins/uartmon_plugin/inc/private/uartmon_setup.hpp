@@ -41,8 +41,8 @@
 /*--------------------------------------------------------------------------------------------------------*/
 bool UartmonPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 

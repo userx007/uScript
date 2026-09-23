@@ -79,10 +79,12 @@ class DSPKSPIPlugin : public PluginInterface {
             , m_u32WriteTimeout(SPIBridge::SPI_WRITE_DEFAULT_TIMEOUT)
             , m_u32ReadBufferSize(SPIBridge::SPI_MAX_READ_PAYLOAD)
         {
+            // clang-format off
 #define DSPKSPI_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                          PluginCommandEntry<DSPKSPIPlugin>{&DSPKSPIPlugin::m_DSPKSPI_##a, DSPKSPI_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<DSPKSPIPlugin>{&DSPKSPIPlugin::m_DSPKSPI_##a, DSPKSPI_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             DSPKSPI_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef DSPKSPI_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

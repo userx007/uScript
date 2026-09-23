@@ -136,10 +136,12 @@ class SLCANPlugin : public PluginInterface {
             , m_u32WriteTimeout(1000U)
             , m_u32ReadBufferSize(8U)
         {
+            // clang-format off
 #define SLCAN_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert(std::make_pair(#a, \
-                                                                        PluginCommandEntry<SLCANPlugin>{&SLCANPlugin::m_SLCAN_##a, SLCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
+            PluginCommandEntry<SLCANPlugin>{&SLCANPlugin::m_SLCAN_##a, SLCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)}));
             SLCAN_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef SLCAN_PLUGIN_CMD_RECORD
+            // clang-format on
         }
 
         /**

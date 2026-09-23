@@ -50,30 +50,27 @@
 /*--------------------------------------------------------------------------------------------------------*/
 bool RawEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "RAWETH:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one. Done before the "nothing loaded from ini"
-    // early-return below so it's always captured.
     m_strInstanceName = psSetParams->strInstanceName.empty() ? RAWETH_PLUGIN_NAME : psSetParams->strInstanceName;
 
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+    if (psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing found in the ini file"));
         return true;
     }
 
     PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(RAWETH_IFACE, [this](const std::string &v) { return setIface(v); });
-    sSettings.Bind(RAWETH_DEST_MAC, [this](const std::string &v) { return setDestMac(v); });
-    sSettings.Bind(RAWETH_ETHERTYPE, [this](const std::string &v) { return setEtherType(v); });
-    sSettings.Bind(RAWETH_PROMISCUOUS, [this](const std::string &v) { return setPromiscuous(v); });
-    sSettings.Bind(RAWETH_READ_TIMEOUT, [this](const std::string &v) { return setReadTimeout(v); });
-    sSettings.Bind(RAWETH_WRITE_TIMEOUT, [this](const std::string &v) { return setWriteTimeout(v); });
-    // Route through the setter so the [1-RAWETH_MAX_BUFLENGTH] range check is
-    // applied consistently regardless of whether the value came from the ini
-    // file or from the CONFIG command.
-    sSettings.Bind(RAWETH_READ_BUFFER_SIZE, [this](const std::string &v) { return setRawEthReadBufferSize(v); });
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+
+    // clang-format off
+    sSettings.Bind(RAWETH_IFACE,                    [this](const std::string &v) { return setIface(v); });
+    sSettings.Bind(RAWETH_DEST_MAC,                 [this](const std::string &v) { return setDestMac(v); });
+    sSettings.Bind(RAWETH_ETHERTYPE,                [this](const std::string &v) { return setEtherType(v); });
+    sSettings.Bind(RAWETH_PROMISCUOUS,              [this](const std::string &v) { return setPromiscuous(v); });
+    sSettings.Bind(RAWETH_READ_TIMEOUT,             [this](const std::string &v) { return setReadTimeout(v); });
+    sSettings.Bind(RAWETH_WRITE_TIMEOUT,            [this](const std::string &v) { return setWriteTimeout(v); });
+    sSettings.Bind(RAWETH_READ_BUFFER_SIZE,         [this](const std::string &v) { return setRawEthReadBufferSize(v); });
+    sSettings.Bind(ARTEFACTS_PATH,                  m_strArtefactsPath);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+    // clang-format on
 
     return sSettings.Apply(psSetParams->mapSettings,
                            [](const std::string &strKey, const std::string &strRawValue) {
@@ -95,17 +92,19 @@ bool RawEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 template <typename T>
 bool generic_raweth_set_params(const T *pOwner, const std::string &args)
 {
+    // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
-        {.key = "i", .boolSetter = &T::setIface},
-        {.key = "d", .boolSetter = &T::setDestMac},
-        {.key = "t", .boolSetter = &T::setEtherType},
-        {.key = "x", .boolSetter = &T::setPromiscuous},
-        {.key = "r", .boolSetter = &T::setReadTimeout},
-        {.key = "w", .boolSetter = &T::setWriteTimeout},
-        {.key = "s", .boolSetter = &T::setRawEthReadBufferSize},
-        {.key = "raw", .boolSetter = &T::setRawResult},
-        {.key = "cached", .boolSetter = &T::setCyclicCached},
+        {.key = "i",        .boolSetter = &T::setIface},
+        {.key = "d",        .boolSetter = &T::setDestMac},
+        {.key = "t",        .boolSetter = &T::setEtherType},
+        {.key = "x",        .boolSetter = &T::setPromiscuous},
+        {.key = "r",        .boolSetter = &T::setReadTimeout},
+        {.key = "w",        .boolSetter = &T::setWriteTimeout},
+        {.key = "s",        .boolSetter = &T::setRawEthReadBufferSize},
+        {.key = "raw",      .boolSetter = &T::setRawResult},
+        {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
+    // clang-format on
 
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }
