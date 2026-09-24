@@ -1,2 +1,3 @@
 cmake_minimum_required(VERSION 3.25)
-add_subdirectory(customer1)
+add_subdirectory(Simple)
+add_subdirectory(Alarms)

@@ -1,0 +1,365 @@
+// This package contains:
+//
+// 1. Common data types - used by a number of other domain/modules within various data Model build sets.
+//
+// 2. Stereotypes used by packages, classes  & attributes throughout the domains/modules within various data Model build sets.
+//
+// 3. Common classes that may be used by a number of other domain/modules within various data Model build sets.
+//
+//
+module P_LDM_Common
+{
+   // A double-precision floating-point data type
+   typedef double T_Double;
+
+   // Defines the 'readiness' state of something in terms of Red, Amber or Green.
+   enum T_RAGType
+   {
+      L_RAGType_RED,
+      L_RAGType_AMBER,
+      L_RAGType_GREEN
+   };
+
+   // A 32 Bit signed Integer
+   typedef long T_Int32;
+
+   // defines a type for a 2D position.
+   struct T_Position2DType
+   {
+      T_Int32 A_xPosition;
+      T_Int32 A_yPosition;
+   };
+
+   enum T_Axis3DType
+   {
+      L_Axis3DType_X_AXIS,
+      L_Axis3DType_Y_AXIS,
+      L_Axis3DType_Z_AXIS
+   };
+
+   // Force measured in Newtons
+   typedef T_Double T_ForceInNewtonsType;
+
+   // A single character
+   typedef char T_Char;
+
+   // Capacity in Ampere Hours e.g Battery Capacity
+   typedef T_Double T_CapacityInAmpereHoursType;
+
+   // A boolean
+   typedef boolean T_Boolean;
+
+   // A 64 Bit signed Integer
+   typedef long long T_Int64;
+
+   // defines a type for a 2D size.
+   struct T_Size2DType
+   {
+      T_Int32 A_xSize;
+      T_Int32 A_ySize;
+   };
+
+   // An angle is formed by two lines diverging from a common point (the vertex).The angle measures the amount of turn between the two lines. Angles are  measured in Radians.
+   //
+   //
+   //
+   //
+   typedef T_Double T_AngleInRadiansType;
+
+   //  A 16 Bit signed Integer
+   typedef short T_Int16;
+
+   // A string of less than 500 characters in length.
+   //
+   typedef sequence <T_Char, 500> T_LongString;
+
+   // A string of less than 100 characters in length.
+   //
+   typedef sequence <T_Char, 100> T_MediumString;
+
+   // A string of less than 20 characters in length.
+   typedef sequence <T_Char, 20> T_ShortString;
+
+   // A unique Identifier of a resource.
+   struct T_IdentifierType
+   {
+      T_Int32 A_resourceId;
+      T_Int32 A_instanceId;
+   };
+
+   // This defines a time duration consisting of of two attributes:
+   //
+   //  a duration in whole seconds.
+   //  a fraction of a second in nanoseconds.
+   //
+   //
+   //
+   struct T_DurationType
+   {
+      T_Int32 A_seconds;
+      T_Int32 A_nanoseconds;
+   };
+
+   // An interval that is applied to a topic issued as a heartbeat.
+   typedef T_DurationType T_HeartbeatType;
+
+   // It is recommended that time zone is ZULU by default
+   //
+   //
+   // This defines the time that has elapsed since the 1970-01-01 00:00:00 UTC Epoch. It consists of two attributes:
+   //
+   // the number of seconds from the 1970-01-01 00:00:00 UTC Epoch
+   // plus the number of completed nanoseconds from the start of the interval identified in the seconds attribute.
+   struct T_DateTimeType
+   {
+      T_Int64 A_second;
+      T_Int32 A_nanoseconds;
+   };
+
+   // Torque is equal to the product of the force vector and the radius vector from the axis of rotation to the point of application of the force.
+   //
+   // Torque is a measure of a force's tendency to produce torsion or rotation about an axis. Torque measured in newton meters.
+   typedef T_Double T_TorqueInNewtonMetresType;
+
+   // Linear acceleration is defined as the rate of change of velocity and is a vector quantity which denotes the acceleration of an object and along the axis that the object is moving.
+   //
+   // Linear acceleration in measured in meters/second/second.
+   typedef T_Double T_LinearAccelerationInMetresPerSecPerSecType;
+
+   // This defines the linear acceleration along each of three axes:
+   //
+   // x axis
+   // y axis
+   // z axis
+   //
+   // The linear acceleration is measured in  meters/second/second.
+   // .
+   //
+   //
+   struct T_LinearAcceleration3DType
+   {
+      T_LinearAccelerationInMetresPerSecPerSecType A_xAcceleration;
+      T_LinearAccelerationInMetresPerSecPerSecType A_yAcceleration;
+      T_LinearAccelerationInMetresPerSecPerSecType A_zAcceleration;
+   };
+
+   // The attitude of an object defines the orientation of that object with respect to an inertial frame of reference. The frame of reference for a vehicle is defined by the pitch, roll and yaw axes of the vehicle.
+   struct T_AttitudeType
+   {
+      T_AngleInRadiansType A_pitch;
+      T_AngleInRadiansType A_roll;
+      T_AngleInRadiansType A_yaw;
+   };
+
+   // Linear distance measured in meters.
+   typedef T_Double T_DistanceInMetresType;
+
+   // Speed is a scalar quantity and is the rate at which an object covers distance. The average speed is the distance divided by time.
+   // For example, linear displacement / time = speed. Speed is measured in  meters/second.
+   //
+   typedef T_Double T_SpeedInMetresPerSecType;
+
+   // This is a spherical coordinate system  for three-dimensional space where the position of a point is specified by three numbers:
+   //
+   // the radial distance (radius) of that point from a fixed origin
+   // the elevation angle measured from a fixed reference plane
+   // the azimuth angle measured from a fixed reference direction on that plane.
+   struct T_PointPolar3DType
+   {
+      T_AngleInRadiansType A_angle;
+      T_AngleInRadiansType A_elevation;
+      T_DistanceInMetresType A_radius;
+   };
+
+   // This a s a three-dimensional coordinate in which each point on a plane is determined by:
+   // a range (distance)
+   // an angle in azimuth from a reference point
+   // an angle in elevation from a reference point
+   //
+   struct T_CoordinatePolar3DType
+   {
+      T_AngleInRadiansType A_angle;
+      T_AngleInRadiansType A_elevation;
+      T_DistanceInMetresType A_range;
+   };
+
+   // This a s a two-dimensional coordinate in which each point on a plane is determined by
+   //
+   // a range (distance) from a reference point
+   // plus an angle from a reference direction.
+   struct T_CoordinatePolar2DType
+   {
+      T_AngleInRadiansType A_angle;
+      T_DistanceInMetresType A_range;
+   };
+
+   // Angular acceleration is defined as the rate of change of angular velocity and is a vector quantity which denotes the rotating acceleration of an object and the axis about which the object is revolving.
+   //
+   // Angular acceleration is measured in radians/second/second.
+   typedef T_Double T_AngularAccelerationInRadiansPerSecPerSecType;
+
+   // This defines the angular acceleration about each of three axes:
+   //
+   // pitch
+   // roll
+   // yaw
+   //
+   // The angular acceleration is measured in radians/second/second.
+   //
+   struct T_AngularAcceleration3DType
+   {
+      T_AngularAccelerationInRadiansPerSecPerSecType A_pitch;
+      T_AngularAccelerationInRadiansPerSecPerSecType A_roll;
+      T_AngularAccelerationInRadiansPerSecPerSecType A_yaw;
+   };
+
+   // Angular velocity is defined as the rate of change of angular displacement and is a vector quantity which denotes the rotating speed of an object and the axis about which the object is revolving.
+   //
+   // Angular Velocity is measured in radians/second
+   typedef T_Double T_AngularVelocityinRadiansPerSecType;
+
+   // This defines the angular velocity about each of three axes:
+   //
+   // pitch
+   // roll
+   // yaw
+   //
+   // The angular velocity is measured in radians/second
+   //
+   struct T_AngularVelocity3DType
+   {
+      T_AngularVelocityinRadiansPerSecType A_pitch;
+      T_AngularVelocityinRadiansPerSecType A_roll;
+      T_AngularVelocityinRadiansPerSecType A_yaw;
+   };
+
+   // This defines a three dimensional linear velocity consisting of:
+   //
+   // speed in the forward direction of the object
+   // heading is the forward direction of the object relative to a defined reference
+   // vertical rate (speed in the vertical direction)
+   struct T_LinearVelocity3DType
+   {
+      T_AngleInRadiansType A_heading;
+      T_SpeedInMetresPerSecType A_speed;
+      T_SpeedInMetresPerSecType A_vrate;
+   };
+
+   // Latitude  -  a geographic coordinate that specifies the north-south position of a point on the Earth's surface.
+   //
+   // Latitude is specified as an angle which ranges from 0� at the Equator to 90� (North or South) at the poles.
+   typedef T_AngleInRadiansType T_LatitudeType;
+
+   // Altitude is a distance measurement, usually in the vertical or "up" direction, between a reference datum and a point or object.
+   typedef T_DistanceInMetresType T_AltitudeType;
+
+   // This is the offset of an object mounted on the vehicle measured as a angular offset in pitch roll & yaw axes from the center of rotation of the vehicle.
+   //
+   struct T_RotationalOffsetType
+   {
+      T_AngleInRadiansType A_pitchOffset;
+      T_AngleInRadiansType A_rollOffset;
+      T_AngleInRadiansType A_yawOffset;
+   };
+
+   // Longitude - a geographic coordinate that specifies the east-west position of a point on the Earth's surface.
+   //
+   // Longitude is  measured as the angle east or west from the Prime Meridian, ranging from 0� at the Prime Meridian to +180� eastward and -180� westward.
+   //
+   // The Prime Meridian is a  line running from the North Pole to the South Pole.passing through the Royal Observatory, Greenwich, England, thereby establishing the position of zero degrees longitude.
+   typedef T_AngleInRadiansType T_LongitudeType;
+
+   // This specifies the latitude & longitude of an object specified as geographic coordinates.
+   struct T_Coordinate2DType
+   {
+      T_LatitudeType A_latitude;
+      T_LongitudeType A_longitude;
+   };
+
+   // This is the linear speed of the vehicle in each of the three linear axes of the vehicle.
+   struct T_LinearSpeed3DType
+   {
+      T_SpeedInMetresPerSecType A_xSpeed;
+      T_SpeedInMetresPerSecType A_ySpeed;
+      T_SpeedInMetresPerSecType A_zSpeed;
+   };
+
+   // This is the offset of an object mounted on the vehicle measured as a linear offset in the x,y & z directions from the center of rotation of the vehicle.
+   //
+   // The center of rotation of the vehicle is the point that does not move. The rest of the vehicle rotates around this one fixed point.
+   struct T_LinearOffsetType
+   {
+      T_DistanceInMetresType A_xOffset;
+      T_DistanceInMetresType A_yOffset;
+      T_DistanceInMetresType A_zOffset;
+   };
+
+   // Bearing is defined as the direction relative to a reference direction of North (either true north, magnetic north, or grid north) in which your destination or other point of interest lies.
+   // Bearing is the angle measured in clockwise direction starting from the reference direction.
+   //
+   typedef T_AngleInRadiansType T_BearingType;
+
+   // Volume is the amount of space occupied by an object measured in three dimensions, expressed in cubic meters.
+   typedef T_Double T_VolumeInCubicMetresType;
+
+   // Electrical Voltage measured in Volts.
+   typedef T_Double T_VoltageInVoltsType;
+
+   // Temperature is an objective measurement of how hot or cold an object is. Temperature is measured on a thermodynamic or absolute temperature scale, the zero point of which is defined to coincide with coldest physically-possible temperature (called absolute zero). Temperature measured in degrees Kelvin.
+   typedef T_Double T_TemperatureInDegreesKelvinType;
+
+   // This defines the linear velocity of an object using two attributes:
+   //
+   // Heading - the object heading
+   // Speed - the object speed in the forward direction
+   //
+   struct T_LinearVelocity2DType
+   {
+      T_AngleInRadiansType A_heading;
+      T_SpeedInMetresPerSecType A_speed;
+   };
+
+   // Pressure is the force exerted on a given area (e.g atmospheric pressure). Pressure is measured in Pascal where one Pascal is equal to one newton per square meter.
+   //
+   typedef T_Double T_PressureInPascalType;
+
+   // Power is the quantity of energy produced or output in a given amount of time. Power is measured in Watts.
+   typedef T_Double T_PowerInWattsType;
+
+   // A percentage is a portion of a whole expressed as a number between 0 and 100 rather than as a fraction.
+   //
+   typedef T_Double T_PercentageType;
+
+   // The unit of electric charge, equal to the quantity of electricity conveyed in one second by a current of one ampere. This is measured in Coulombs.
+   typedef T_Double T_ChargeInCoulombsType;
+
+   // The rate per second of a vibration constituting a wave, either in a material (e.g sound wave), or in an electromagnetic field (e.g radio waves or light). The unit of measurement is Hertz.
+   typedef T_Double T_FrequencyInHertzType;
+
+   // The flow rate of a fluid measured in cubic meters/second
+   typedef T_Double T_FlowRateInCubicMetresPerSecType;
+
+   // This specifies the position of an object as a pair of geographic coordinates plus a distance measurement. It has three attributes:
+   //
+   // latitude
+   // longitude
+   // altitude
+   struct T_Coordinate3DType
+   {
+      T_AltitudeType A_altitude;
+      T_LatitudeType A_latitude;
+      T_LongitudeType A_longitude;
+   };
+
+   // Electrical current measured in Amperes.
+   typedef T_Double T_CurrentInAmpsType;
+
+   // This describes the available standard command responses when a command has been received but the resulting action was not that which was anticipated.
+   enum T_CommandResponseType
+   {
+      L_CommandResponseType_Command_Failed,
+      L_CommandResponseType_Command_Not_Available,
+      L_CommandResponseType_Command_Not_Recognised,
+      L_CommandResponseType_Resource_Control_Failure
+   };
+};

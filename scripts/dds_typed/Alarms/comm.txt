@@ -1,0 +1,31 @@
+> PUBLISH Alarms__Crew_Role_In_Mission_State A_sourceID={A_resourceId=2;A_instanceId=3};A_timeOfDataGeneration={A_second=4;A_nanoseconds=5};A_crewRoleName=sample6;A_relevantAlarmType_sourceID=[{A_resourceId=7;A_instanceId=8},{A_resourceId=9;A_instanceId=10}];A_missionState_sourceID=[{A_resourceId=11;A_instanceId=12},{A_resourceId=13;A_instanceId=14}]
+
+> PUBLISH Alarms__Alarm_Category_Specification A_sourceID={A_resourceId=15;A_instanceId=16};A_timeOfDataGeneration={A_second=17;A_nanoseconds=18};A_alarmCategoryName=L_AlarmCategoryType_Warning;A_alarmCategoryAbbreviation=sample19;A_isAutoAcknowledged=false;A_automaticAcknowledgeTimeout={A_seconds=21;A_nanoseconds=22};A_hideOnAcknowledge=true;A_isRepeated=false;A_repeatTimeout={A_seconds=25;A_nanoseconds=26};A_categorisedConditionSpecification_sourceID=[{A_resourceId=27;A_instanceId=28},{A_resourceId=29;A_instanceId=30}];A_notifyingToneSpecification_sourceID={A_resourceId=31;A_instanceId=32};A_alarmCategory_sourceID={A_resourceId=33;A_instanceId=34}
+
+> PUBLISH Alarms__Mission_State__setMissionState A_recipientID={A_resourceId=35;A_instanceId=36};A_sourceID={A_resourceId=37;A_instanceId=38};A_referenceNum=39;A_timeOfDataGeneration={A_second=40;A_nanoseconds=41};A_missionState=L_MissionStateType_Driving;A_missionStateName=sample42
+
+> PUBLISH Alarms__Mission_State A_sourceID={A_resourceId=43;A_instanceId=44};A_timeOfDataGeneration={A_second=45;A_nanoseconds=46};A_missionState=L_MissionStateType_Driving;A_missionStateName=sample47;A_crewRoleInMissionState_sourceID=[{A_resourceId=48;A_instanceId=49},{A_resourceId=50;A_instanceId=51}];A_ownPlatform_sourceID={A_resourceId=52;A_instanceId=53}
+
+> PUBLISH Alarms__Actual_Alarm__acknowledgeAlarm A_recipientID={A_resourceId=54;A_instanceId=55};A_sourceID={A_resourceId=56;A_instanceId=57};A_referenceNum=58;A_timeOfDataGeneration={A_second=59;A_nanoseconds=60};A_subsystemName=sample61;A_componentName=sample62;A_measure=sample63;A_nature=sample64
+
+> PUBLISH Alarms__Actual_Alarm A_sourceID={A_resourceId=65;A_instanceId=66};A_timeOfDataGeneration={A_second=67;A_nanoseconds=68};A_componentName=sample69;A_nature=sample70;A_subsystemName=sample71;A_measure=sample72;A_dateTimeRaised={A_second=73;A_nanoseconds=74};A_alarmState=L_Actual_Alarm_StateType_Unacknowledged;A_raisingCondition_sourceID={A_resourceId=75;A_instanceId=76};A_alarmCategory_sourceID={A_resourceId=77;A_instanceId=78}
+
+> PUBLISH Alarms__Alarm_Condition_Specification__raiseAlarmCondition A_recipientID={A_resourceId=79;A_instanceId=80};A_sourceID={A_resourceId=81;A_instanceId=82};A_referenceNum=83;A_timeOfDataGeneration={A_second=84;A_nanoseconds=85};A_componentName=sample86;A_subsystemName=sample87;A_measure=sample88;A_nature=sample89
+
+> PUBLISH Alarms__Alarm_Condition_Specification__isOfInterestToCrewRole A_recipientID={A_resourceId=90;A_instanceId=91};A_sourceID={A_resourceId=92;A_instanceId=93};A_referenceNum=94;A_timeOfDataGeneration={A_second=95;A_nanoseconds=96};A_crewRole=sample97
+
+> PUBLISH Alarms__Alarm_Condition_Specification A_sourceID={A_resourceId=98;A_instanceId=99};A_timeOfDataGeneration={A_second=100;A_nanoseconds=101};A_subsystemName=sample102;A_componentName=sample103;A_measure=sample104;A_nature=sample105;A_alarmConditionCategory=sample106;A_alarmConditionName=sample107;A_hasMultipleInstances=false;A_overrideState=L_Alarm_Condition_Specification_StateType_condition_overridden;A_actualAlarmCondition_sourceID=[{A_resourceId=109;A_instanceId=110},{A_resourceId=111;A_instanceId=112}];A_alarmCategory_sourceID={A_resourceId=113;A_instanceId=114};A_interestedRole_sourceID=[{A_resourceId=115;A_instanceId=116},{A_resourceId=117;A_instanceId=118}]
+
+> PUBLISH Alarms__Tone_Specification A_sourceID={A_resourceId=119;A_instanceId=120};A_timeOfDataGeneration={A_second=121;A_nanoseconds=122};A_toneFrequency=123.5;A_toneModulationType=sample124;A_toneRepetitionFrequency=125.5;A_toneMaxVolume=126.5;A_alarmCategorySpecification_sourceID={A_resourceId=127;A_instanceId=128}
+
+> PUBLISH Alarms__Own_Platform A_sourceID={A_resourceId=129;A_instanceId=130};A_timeOfDataGeneration={A_second=131;A_nanoseconds=132};A_activeAlarmsExist=true;A_possibleMissionState_sourceID=[{A_resourceId=134;A_instanceId=135},{A_resourceId=136;A_instanceId=137}]
+
+> PUBLISH Alarms__Actual_Alarm_Condition__unoverrideAlarmCondition A_recipientID={A_resourceId=138;A_instanceId=139};A_sourceID={A_resourceId=140;A_instanceId=141};A_referenceNum=142;A_timeOfDataGeneration={A_second=143;A_nanoseconds=144};A_componentName=sample145;A_subsystemName=sample146;A_measure=sample147;A_nature=sample148
+
+> PUBLISH Alarms__Actual_Alarm_Condition__overrideAlarmCondition A_recipientID={A_resourceId=149;A_instanceId=150};A_sourceID={A_resourceId=151;A_instanceId=152};A_referenceNum=153;A_timeOfDataGeneration={A_second=154;A_nanoseconds=155};A_componentName=sample156;A_subsystemName=sample157;A_measure=sample158;A_nature=sample159
+
+> PUBLISH Alarms__Actual_Alarm_Condition__clearAlarmCondition A_recipientID={A_resourceId=160;A_instanceId=161};A_sourceID={A_resourceId=162;A_instanceId=163};A_referenceNum=164;A_timeOfDataGeneration={A_second=165;A_nanoseconds=166};A_componentName=sample167;A_subsystemName=sample168;A_measure=sample169;A_nature=sample170
+
+> PUBLISH Alarms__Actual_Alarm_Condition A_sourceID={A_resourceId=171;A_instanceId=172};A_timeOfDataGeneration={A_second=173;A_nanoseconds=174};A_alarmSourceID={A_resourceId=175;A_instanceId=176};A_dateTimeRaised={A_second=177;A_nanoseconds=178};A_isOverridden=true;A_specification_sourceID={A_resourceId=180;A_instanceId=181};A_raisedActualAlarm_sourceID={A_resourceId=182;A_instanceId=183}
+
+> PUBLISH Alarms__Alarm_Category A_sourceID={A_resourceId=184;A_instanceId=185};A_timeOfDataGeneration={A_second=186;A_nanoseconds=187};A_activeAlarmCount=188;A_unacknowledgedAlarmCount=189;A_categorisedActualAlarm_sourceID=[{A_resourceId=190;A_instanceId=191},{A_resourceId=192;A_instanceId=193}];A_alarmCategorySpecification_sourceID={A_resourceId=194;A_instanceId=195}

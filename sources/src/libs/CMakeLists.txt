@@ -3,6 +3,7 @@ add_subdirectory(drivers)
 add_subdirectory(plugin_ops)
 add_subdirectory(utils)
 add_subdirectory(protocols)
+add_subdirectory(parsers)
 
 # Relay both vendor-DLL variables up one more level (to src/'s scope) —
 # drivers/'s own PARENT_SCOPE exports only reach here. See the top-level

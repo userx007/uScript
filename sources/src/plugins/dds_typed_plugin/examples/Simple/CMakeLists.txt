@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(customer1_types C)
+project(SimpleTypes C)
 
 # Reference example only — not part of any real customer's build, and not
 # linked or depended on by dds_typed_plugin or uDdsTypedDriver (which
@@ -9,10 +9,10 @@ project(customer1_types C)
 # for the one hand-written file involved.
 find_package(CycloneDDS REQUIRED)
 
-idlc_generate(TARGET customer1_types_idl FILES idl/customer1.idl)
+idlc_generate(TARGET simple_types_idl FILES idl/simple.idl)
 
 add_library(${PROJECT_NAME} SHARED
-    src/customer1_adapter.c
+    src/simple_adapter.c
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -21,6 +21,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     uICommDriver
-    customer1_types_idl
+    simple_types_idl
     CycloneDDS::ddsc
 )

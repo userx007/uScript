@@ -257,7 +257,8 @@ install(
 # --- 6. User plugins ----
 
 set(UPLUGIN_TARGETS
-    customer1_types
+    SimpleTypes
+    AlarmsTypes
 )
 
 install(TARGETS ${UPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_UPLUGIN_DIR})

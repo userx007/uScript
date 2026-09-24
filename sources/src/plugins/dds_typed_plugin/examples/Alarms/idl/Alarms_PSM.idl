@@ -1,0 +1,253 @@
+#include "LDM_Common.idl"
+
+// Provide alarms, visual and audible, to the platform crew for monitored parameters that are deemed to be outside of acceptable limits.
+module P_Alarms_PSM
+{
+   enum T_Actual_Alarm_StateType
+   {
+      L_Actual_Alarm_StateType_Unacknowledged,
+      L_Actual_Alarm_StateType_Acknowledged,
+      L_Actual_Alarm_StateType_Resolved,
+      L_Actual_Alarm_StateType_Destroyed,
+      L_Actual_Alarm_StateType_Cleared
+   };
+
+   enum T_Alarm_Condition_Specification_StateType
+   {
+      L_Alarm_Condition_Specification_StateType_condition_overridden,
+      L_Alarm_Condition_Specification_StateType_condition_not_overridden
+   };
+
+   // The categories of Alarms e.g. Warning, Caution, Advisory.
+   enum T_AlarmCategoryType
+   {
+      L_AlarmCategoryType_Warning,
+      L_AlarmCategoryType_Caution,
+      L_AlarmCategoryType_Advisory
+   };
+
+   // The types of mission state e.g Driving, Reconnaissance, Engagement
+   enum T_MissionStateType
+   {
+      L_MissionStateType_Driving,
+      L_MissionStateType_Engagement,
+      L_MissionStateType_Reconnaissance
+   };
+
+   // Represents the crew role in a particular Mission state. e.g : Commander/Gunner/Driver/ Maintainer
+   struct C_Crew_Role_In_Mission_State
+   {
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_ShortString A_crewRoleName;
+      sequence <P_LDM_Common::T_IdentifierType> A_relevantAlarmType_sourceID;
+      sequence <P_LDM_Common::T_IdentifierType> A_missionState_sourceID;
+   };
+   #pragma keylist C_Crew_Role_In_Mission_State A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Provides the data to for an Alarm based on category and mitigating effects of crew role, mission state and hierarchy.
+   struct C_Alarm_Category_Specification
+   {
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      T_AlarmCategoryType A_alarmCategoryName;
+      P_LDM_Common::T_ShortString A_alarmCategoryAbbreviation;
+      P_LDM_Common::T_Boolean A_isAutoAcknowledged;
+      P_LDM_Common::T_DurationType A_automaticAcknowledgeTimeout;
+      P_LDM_Common::T_Boolean A_hideOnAcknowledge;
+      P_LDM_Common::T_Boolean A_isRepeated;
+      P_LDM_Common::T_DurationType A_repeatTimeout;
+      sequence <P_LDM_Common::T_IdentifierType> A_categorisedConditionSpecification_sourceID;
+      P_LDM_Common::T_IdentifierType A_notifyingToneSpecification_sourceID;
+      P_LDM_Common::T_IdentifierType A_alarmCategory_sourceID;
+   };
+   #pragma keylist C_Alarm_Category_Specification A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Sets the mission state of the Platform.
+   struct C_Mission_State_setMissionState
+   {
+      P_LDM_Common::T_IdentifierType A_recipientID;
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_Int32 A_referenceNum;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      T_MissionStateType A_missionState;
+      P_LDM_Common::T_ShortString A_missionStateName;
+   };
+   #pragma keylist C_Mission_State_setMissionState A_recipientID.A_resourceId A_recipientID.A_instanceId A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Defines the possible mission states of the platform (e.g. driving, engagement, reconnaissance)
+   struct C_Mission_State
+   {
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      T_MissionStateType A_missionState;
+      P_LDM_Common::T_ShortString A_missionStateName;
+      sequence <P_LDM_Common::T_IdentifierType> A_crewRoleInMissionState_sourceID;
+      P_LDM_Common::T_IdentifierType A_ownPlatform_sourceID;
+   };
+   #pragma keylist C_Mission_State A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   struct C_Actual_Alarm_acknowledgeAlarm
+   {
+      P_LDM_Common::T_IdentifierType A_recipientID;
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_Int32 A_referenceNum;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_ShortString A_subsystemName;
+      P_LDM_Common::T_ShortString A_componentName;
+      P_LDM_Common::T_ShortString A_measure;
+      P_LDM_Common::T_ShortString A_nature;
+   };
+   #pragma keylist C_Actual_Alarm_acknowledgeAlarm A_recipientID.A_resourceId A_recipientID.A_instanceId A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Represents an Alarm raised as a result of an Alarm condition.
+   struct C_Actual_Alarm
+   {
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_ShortString A_componentName;
+      P_LDM_Common::T_ShortString A_nature;
+      P_LDM_Common::T_ShortString A_subsystemName;
+      P_LDM_Common::T_ShortString A_measure;
+      P_LDM_Common::T_DateTimeType A_dateTimeRaised;
+      T_Actual_Alarm_StateType A_alarmState;
+      P_LDM_Common::T_IdentifierType A_raisingCondition_sourceID;
+      P_LDM_Common::T_IdentifierType A_alarmCategory_sourceID;
+   };
+   #pragma keylist C_Actual_Alarm A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Causes an Alarm condition to be raised.
+   struct C_Alarm_Condition_Specification_raiseAlarmCondition
+   {
+      P_LDM_Common::T_IdentifierType A_recipientID;
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_Int32 A_referenceNum;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_ShortString A_componentName;
+      P_LDM_Common::T_ShortString A_subsystemName;
+      P_LDM_Common::T_ShortString A_measure;
+      P_LDM_Common::T_ShortString A_nature;
+   };
+   #pragma keylist C_Alarm_Condition_Specification_raiseAlarmCondition A_recipientID.A_resourceId A_recipientID.A_instanceId A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Identifies Alarm conditions that are of interest to a particular crew role.
+   struct C_Alarm_Condition_Specification_isOfInterestToCrewRole
+   {
+      P_LDM_Common::T_IdentifierType A_recipientID;
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_Int32 A_referenceNum;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_ShortString A_crewRole;
+   };
+   #pragma keylist C_Alarm_Condition_Specification_isOfInterestToCrewRole A_recipientID.A_resourceId A_recipientID.A_instanceId A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Represents the specification of a possible Alarm condition.
+   //
+   //
+   struct C_Alarm_Condition_Specification
+   {
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_ShortString A_subsystemName;
+      P_LDM_Common::T_ShortString A_componentName;
+      P_LDM_Common::T_ShortString A_measure;
+      P_LDM_Common::T_ShortString A_nature;
+      P_LDM_Common::T_ShortString A_alarmConditionCategory;
+      P_LDM_Common::T_MediumString A_alarmConditionName;
+      P_LDM_Common::T_Boolean A_hasMultipleInstances;
+      T_Alarm_Condition_Specification_StateType A_overrideState;
+      sequence <P_LDM_Common::T_IdentifierType> A_actualAlarmCondition_sourceID;
+      P_LDM_Common::T_IdentifierType A_alarmCategory_sourceID;
+      sequence <P_LDM_Common::T_IdentifierType> A_interestedRole_sourceID;
+   };
+   #pragma keylist C_Alarm_Condition_Specification A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Represents the description of the audio tone to be applied to a specific Alarm category.
+   struct C_Tone_Specification
+   {
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_FrequencyInHertzType A_toneFrequency;
+      P_LDM_Common::T_ShortString A_toneModulationType;
+      P_LDM_Common::T_FrequencyInHertzType A_toneRepetitionFrequency;
+      P_LDM_Common::T_PowerInWattsType A_toneMaxVolume;
+      P_LDM_Common::T_IdentifierType A_alarmCategorySpecification_sourceID;
+   };
+   #pragma keylist C_Tone_Specification A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Represents the platform for which Alarms are raised.
+   struct C_Own_Platform
+   {
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_Boolean A_activeAlarmsExist;
+      sequence <P_LDM_Common::T_IdentifierType> A_possibleMissionState_sourceID;
+   };
+   #pragma keylist C_Own_Platform A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Causes the Alarm condition to be changed from being overridden to not overridden.
+   struct C_Actual_Alarm_Condition_unoverrideAlarmCondition
+   {
+      P_LDM_Common::T_IdentifierType A_recipientID;
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_Int32 A_referenceNum;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_ShortString A_componentName;
+      P_LDM_Common::T_ShortString A_subsystemName;
+      P_LDM_Common::T_ShortString A_measure;
+      P_LDM_Common::T_ShortString A_nature;
+   };
+   #pragma keylist C_Actual_Alarm_Condition_unoverrideAlarmCondition A_recipientID.A_resourceId A_recipientID.A_instanceId A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Causes the Alarm condition to be overridden.
+   struct C_Actual_Alarm_Condition_overrideAlarmCondition
+   {
+      P_LDM_Common::T_IdentifierType A_recipientID;
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_Int32 A_referenceNum;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_ShortString A_componentName;
+      P_LDM_Common::T_ShortString A_subsystemName;
+      P_LDM_Common::T_ShortString A_measure;
+      P_LDM_Common::T_ShortString A_nature;
+   };
+   #pragma keylist C_Actual_Alarm_Condition_overrideAlarmCondition A_recipientID.A_resourceId A_recipientID.A_instanceId A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // The identity of an instance of the Alarm Condition.
+   struct C_Actual_Alarm_Condition_clearAlarmCondition
+   {
+      P_LDM_Common::T_IdentifierType A_recipientID;
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_Int32 A_referenceNum;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_ShortString A_componentName;
+      P_LDM_Common::T_ShortString A_subsystemName;
+      P_LDM_Common::T_ShortString A_measure;
+      P_LDM_Common::T_ShortString A_nature;
+   };
+   #pragma keylist C_Actual_Alarm_Condition_clearAlarmCondition A_recipientID.A_resourceId A_recipientID.A_instanceId A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   // Represents the condition that has caused an Alarm to be raised.
+   struct C_Actual_Alarm_Condition
+   {
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_IdentifierType A_alarmSourceID;
+      P_LDM_Common::T_DateTimeType A_dateTimeRaised;
+      P_LDM_Common::T_Boolean A_isOverridden;
+      P_LDM_Common::T_IdentifierType A_specification_sourceID;
+      P_LDM_Common::T_IdentifierType A_raisedActualAlarm_sourceID;
+   };
+   #pragma keylist C_Actual_Alarm_Condition A_sourceID.A_resourceId A_sourceID.A_instanceId
+
+   struct C_Alarm_Category
+   {
+      P_LDM_Common::T_IdentifierType A_sourceID;
+      P_LDM_Common::T_DateTimeType A_timeOfDataGeneration;
+      P_LDM_Common::T_Int16 A_activeAlarmCount;
+      P_LDM_Common::T_Int16 A_unacknowledgedAlarmCount;
+      sequence <P_LDM_Common::T_IdentifierType> A_categorisedActualAlarm_sourceID;
+      P_LDM_Common::T_IdentifierType A_alarmCategorySpecification_sourceID;
+   };
+   #pragma keylist C_Alarm_Category A_sourceID.A_resourceId A_sourceID.A_instanceId
+};
