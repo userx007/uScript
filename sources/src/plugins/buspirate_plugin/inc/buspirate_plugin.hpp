@@ -326,7 +326,7 @@ class BuspiratePlugin : public PluginInterface {
         /** \brief CONFIG-command setter for u32ReadBufferSize (flag 's') */
         bool setReadBufferSize(const std::string &strVal) const
         {
-            return numeric::str2uint32(strVal, m_sIniValues.u32ReadBufferSize);
+            return numeric::str2uint32(strVal, m_sIniValues.u32ReadBufferSize, /*bFailOnZero=*/true);
         }
 
         /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */

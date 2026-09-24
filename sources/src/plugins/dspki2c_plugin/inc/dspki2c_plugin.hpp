@@ -301,7 +301,7 @@ class DSPKi2cPlugin : public PluginInterface {
          */
         bool setReadBufferSize(const std::string &strSize) const
         {
-            return numeric::str2uint32(strSize, m_u32ReadBufferSize);
+            return numeric::str2uint32(strSize, m_u32ReadBufferSize, /*bFailOnZero=*/true);
         }
 
         /**

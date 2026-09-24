@@ -230,7 +230,7 @@ class GrpcPlugin : public PluginInterface {
 
         bool setReadBufferSize(const std::string &bufSizeStr) const
         {
-            return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize);
+            return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize, /*bFailOnZero=*/true);
         }
 
         // Getters/Setters

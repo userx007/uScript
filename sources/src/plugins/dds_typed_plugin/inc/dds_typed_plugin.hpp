@@ -379,12 +379,7 @@ class DdsTypedPlugin : public PluginInterface {
 
         bool setReadBufferSize(const std::string &v) const
         {
-            uint32_t sz = 0;
-            if (!numeric::str2uint32(v, sz) || sz == 0) {
-                return false;
-            }
-            m_u32ReadBufferSize = sz;
-            return true;
+            return numeric::str2uint32(v, m_u32ReadBufferSize, /*bFailOnZero=*/true);
         }
 
     private:

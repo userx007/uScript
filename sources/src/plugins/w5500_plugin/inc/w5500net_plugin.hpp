@@ -167,10 +167,10 @@ class W5500NetPlugin : public PluginInterface {
         {
             static constexpr uint32_t MAX_BUF = 1024U; // Reasonable default for network buffer
             uint32_t u32Size                  = 0U;
-            if (false == numeric::str2uint32(strReadBufferSize, u32Size)) {
+            if (!numeric::str2uint32(strReadBufferSize, u32Size, /*bFailOnZero=*/true)) {
                 return false;
             }
-            if (u32Size == 0U || u32Size > MAX_BUF) {
+            if (u32Size > MAX_BUF) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ReadBufSize out of range [1-"); LOG_UINT32(MAX_BUF); LOG_STRING("]:"); LOG_UINT32(u32Size));
                 return false;
             }

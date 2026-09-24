@@ -241,7 +241,10 @@ class ProfibusPlugin : public PluginInterface {
             return m_u32ReadBufferSize;
         }
 
-        bool setReadBufferSize(const std::string &bufSizeStr) const;
+        bool setReadBufferSize(const std::string &bufSizeStr) const
+        {
+            return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize, /*bFailOnZero=*/true);
+        }        
 
     private:
         // Factory used by both m_PROFIBUS_CMD() and m_PROFIBUS_SCRIPT() (passed

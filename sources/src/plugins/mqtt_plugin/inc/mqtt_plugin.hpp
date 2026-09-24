@@ -415,16 +415,7 @@ class MqttPlugin : public PluginInterface {
 
         bool setReadBufferSize(const std::string &bufSizeStr) const
         {
-            uint32_t sz = 0;
-            if (!numeric::str2uint32(bufSizeStr, sz)) {
-                return false;
-            }
-            if (sz == 0) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read buffer size:"); LOG_UINT32(sz));
-                return false;
-            }
-            m_u32ReadBufferSize = sz;
-            return true;
+            return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize, /*bFailOnZero=*/true);
         }
 
     private:
