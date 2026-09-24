@@ -80,23 +80,34 @@ namespace ustring {
     }
 
     /**
-     * @brief Trims leading and trailing whitespace in place
+     * @brief Trims leading and trailing whitespace in place preserving eventually the last one
      */
-    inline void trimInPlace(std::string &input)
+    inline void trimInPlace(std::string& input, bool keepOneTrailingSpace = false)
     {
-        // Trim leading
-        input.erase(input.begin(), std::find_if_not(input.begin(), input.end(), is_space));
-        // Trim trailing
-        input.erase(std::find_if_not(input.rbegin(), input.rend(), is_space).base(), input.end());
+        auto first = std::find_if_not(input.begin(), input.end(), is_space);
+
+        if (first == input.end()) {
+            input.clear();
+            return;
+        }
+
+        auto last = std::find_if_not(input.rbegin(), input.rend(), is_space).base();
+        const bool hadTrailingWhitespace = last != input.end();
+
+        input.erase(last, input.end());  // trim trailing
+        input.erase(input.begin(), first); // trim leading
+
+        if (keepOneTrailingSpace && hadTrailingWhitespace)
+            input.push_back(' ');
     }
 
     /**
      * @brief Trims leading and trailing whitespace from each string in a vector
      */
-    inline void trimInPlace(std::vector<std::string> &vstr)
+    inline void trimInPlace(std::vector<std::string> &vstr, bool keepOneTrailingSpace = false)
     {
         for (auto &str : vstr) {
-            trimInPlace(str);
+            trimInPlace(str, keepOneTrailingSpace);
         }
     }
 

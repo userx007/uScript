@@ -234,7 +234,7 @@ class ScriptReader : public IScriptReader {
                 ustring::trimInPlace(strContent);
                 while (!strContent.empty() && strContent.back() == '\\') {
                     strContent.pop_back();
-                    ustring::trimInPlace(strContent);
+                    ustring::trimInPlace(strContent, /*keepOneTrailingSpace=*/ true);
 
                     std::string strNextLine;
                     if (!std::getline(file, strNextLine)) {
