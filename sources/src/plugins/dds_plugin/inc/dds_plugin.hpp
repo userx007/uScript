@@ -73,6 +73,19 @@ struct PluginDataSet;
  * is what makes `DDS.CMD > SUBSCRIBE topic` followed later by
  * `DDS.CMD <` meaningful — see dds_driver.hpp's receive() doc comment.
  *
+ * `SUBSCRIBE` accepts several topics at once, space- and/or comma-
+ * separated (e.g. `SUBSCRIBE a,b c`), each getting its own Cyclone reader
+ * running in parallel — up to `MAX_SUBSCRIPTIONS`(ini)/`ms=`(CONFIG),
+ * default 64, `0` = unbounded (Cyclone DDS itself has no fixed cap on
+ * readers per participant; this only guards a runaway topic list). A
+ * plain `DDS.CMD <` then behaves according to how many topics are
+ * currently SUBSCRIBEd: exactly one — raw payload, unchanged from every
+ * prior release; several — multiplexed, blocking on whichever gets a
+ * sample first and returning `<topic>: <payload>`. `DDS.CMD < ~ <topic>`
+ * reads one specific already-SUBSCRIBEd topic deterministically (raw
+ * payload) regardless of how many others are also SUBSCRIBEd — see
+ * `DdsDriver::receive()`'s doc comment for the full grammar.
+ *
  * Scope limitations are documented once, in dds_driver.hpp's class doc
  * comment (unkeyed topics, single generic sample type) — repeated in
  * DDS_INFO's text below for anyone querying the plugin directly rather
@@ -108,6 +121,7 @@ class DdsPlugin : public PluginInterface {
             , m_u32FragmentThresholdBytes(1300)
             , m_u32ReadTimeout(5000)
             , m_u32ReadBufferSize(4096)
+            , m_u32MaxSubscriptions(64)
         {
             // clang-format off
 #define DDS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
@@ -376,7 +390,25 @@ class DdsPlugin : public PluginInterface {
 
         bool setReadBufferSize(const std::string &v) const
         {
-            return numeric::str2uint32(v, m_u32ReadBufferSize, /*bFailOnZero=*/true);
+            uint32_t sz = 0;
+            if (!numeric::str2uint32(v, sz) || sz == 0) {
+                return false;
+            }
+            m_u32ReadBufferSize = sz;
+            return true;
+        }
+
+        // Safety cap on concurrently SUBSCRIBEd topics — see
+        // DdsDriver::Config::maxSubscriptions's doc comment. 0 disables the
+        // cap (unbounded, limited only by process resources).
+        uint32_t getMaxSubscriptions(void) const
+        {
+            return m_u32MaxSubscriptions;
+        }
+
+        bool setMaxSubscriptions(const std::string &v) const
+        {
+            return numeric::str2uint32(v, m_u32MaxSubscriptions);
         }
 
     private:
@@ -420,6 +452,7 @@ class DdsPlugin : public PluginInterface {
 
         mutable uint32_t m_u32ReadTimeout;
         mutable uint32_t m_u32ReadBufferSize;
+        mutable uint32_t m_u32MaxSubscriptions;
 
         // The persistent driver — see class doc comment's "Session lifetime".
         mutable std::shared_ptr<DdsDriver> m_pDriver;

@@ -54,6 +54,7 @@ std::shared_ptr<DdsDriver> DdsPlugin::m_OpenDriver(void) const
     cfg.historyDepth           = m_u32HistoryDepth;
     cfg.fragmentThresholdBytes = m_u32FragmentThresholdBytes;
     cfg.strInstanceName        = m_strInstanceName;
+    cfg.maxSubscriptions       = m_u32MaxSubscriptions;
 
     auto driver                = std::make_shared<DdsDriver>(cfg);
     if (!driver->open()) {
@@ -104,23 +105,30 @@ bool DdsPlugin::m_DDS_INFO(const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [d=domain] [pid=participant_id] [v6=0|1] [i=iface] [mi=mcast_iface]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [mg=spdp_mcast_group] [n=name] [t=ttl] [sp=spdp_period_ms] [l=lease_sec]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [r=0|1 reliable] [hb=heartbeat_period_ms] [hd=history_depth]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [fr=fragment_threshold_bytes] [rt=read_tout] [rb=read_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [fr=fragment_threshold_bytes] [rt=read_tout] [rb=read_bufsize] [ms=max_subs]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DDS.CONFIG d=12 i=192.168.1.50 n=uScriptProbe r=1"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS.CONFIG v6=1 i=fe80::1 mi=eth0 mg=ff03::1:7401   // IPv6, see note below"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : one DDS operation, on the plugin's single persistent Cyclone DDS participant"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         (created on first use)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : > PUBLISH <topic> <payload...>   |   > SUBSCRIBE <topic>   |"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         > UNSUBSCRIBE <topic>   |   > LIST   |   <"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : > PUBLISH <topic> <payload...>   |"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         > SUBSCRIBE <topic>[,<topic>...] [<topic>...]   |   > UNSUBSCRIBE <topic>   |"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         > LIST   |   <   |   < ~ <topic>"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DDS.CMD > PUBLISH C_Actual_Video_Stream_requestVideoStream 12"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS.CMD > SUBSCRIBE C_Actual_Video_Sink"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS.CMD <                    // one blocking receive; requires an active SUBSCRIBE"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS.CMD > SUBSCRIBE C_Actual_Video_Sink,C_Actual_Alarms C_Fleet_Status"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS.CMD <                    // 1 topic SUBSCRIBEd: raw payload;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("                                      // 2+ topics SUBSCRIBEd: blocks on whichever"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("                                      // gets a sample first, returns \"<topic>: <payload>\""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS.CMD < ~ C_Actual_Alarms  // reads that one topic specifically, raw payload,"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("                                      // however many are SUBSCRIBEd"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         reading ?= DDS.CMD < &       // background thread; $reading tracks the latest sample"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS.CMD > LIST followed by DDS.CMD <   // dumps discovered participants/endpoints"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : PUBLISH's payload may contain spaces (everything after <topic> is joined with"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         single spaces and CDR-encoded as one opaque string sample); PUBLISH succeeds even"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         with no matched subscriber yet (best-effort, matching is asynchronous discovery)."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS.CMD < always needs a SUBSCRIBE earlier in the same '>'/'<' chain (or thread)."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         Each SUBSCRIBEd topic gets its own parallel Cyclone reader, up to ms= concurrently"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         (default 64, 0=unbounded) — a safety cap only, Cyclone DDS itself has no fixed max."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : run several DDS.CMD-style lines from a file over the same participant"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
@@ -152,6 +160,7 @@ bool DdsPlugin::m_DDS_INFO(const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FRAGMENT_THRESHOLD_BYTES = 1300  # Cyclone General/FragmentSize; 0 leaves Cyclone's own default"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT        = 5000       # read timeout in ms"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUFFER_SIZE    = 4096       # size in bytes of the local read buffer"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("MAX_SUBSCRIPTIONS   = 64         # safety cap on concurrently SUBSCRIBEd topics, 0=unbounded"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("RAW_RESULT          = false      # CMD returns raw bytes instead of a hexlified string when true"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC_CACHED       = true       # true=validate/parse each CYCLIC entry once per session"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));

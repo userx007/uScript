@@ -47,7 +47,11 @@ is opened lazily by whichever `DDS.CMD` call needs it first, and stays open
 for as long as the plugin is loaded — there's no separate "connect" step.
 This is what makes `DDS.CMD <` meaningful: it waits on whatever
 `DDS.CMD > SUBSCRIBE <topic>` call happened earlier on that same
-participant, including from a background thread.
+participant, including from a background thread. `SUBSCRIBE` accepts
+several topics at once — see [CMD > SUBSCRIBE](#cmd--subscribe) — each
+getting its own parallel Cyclone reader; with more than one topic
+SUBSCRIBEd, a bare `DDS.CMD <` multiplexes across all of them — see
+[CMD < (receive)](#cmd--receive).
 
 Unlike TCPIP/UART's `~`-addressed sessions or MQTT's broker connection,
 **DDS has no central server** — a DDS.CMD PUBLISH goes straight, unicast,
@@ -156,14 +160,25 @@ DDS.CMD > PUBLISH actuators/valve3/cmd OPEN     # reliable — HEARTBEAT/ACKNACK
 
 ### CMD > SUBSCRIBE
 
-**Purpose:** create a local reader for one topic and start delivering
-matching samples into that topic's receive queue, ready for `DDS.CMD <`.
-May be called more than once, for different topics, on the same
-participant.
+**Purpose:** create a local reader for one or more topics and start
+delivering matching samples into their receive queue(s), ready for
+`DDS.CMD <`.
 
 ```
-DDS.CMD > SUBSCRIBE <topic>
+DDS.CMD > SUBSCRIBE <topic>[,<topic>...] [<topic>[,<topic>...] ...]
 ```
+
+One `SUBSCRIBE` may name several topics at once — space-separated,
+comma-separated, or a mix (`SUBSCRIBE a,b c` names three topics: `a`, `b`
+and `c`) — or call it more than once, for different topics, on the same
+participant; either way each named topic gets its own Cyclone reader
+running in parallel, up to a configurable safety cap
+(`MAX_SUBSCRIPTIONS` ini key / `ms=` CONFIG token, default 64, `0` =
+unbounded — Cyclone DDS itself has no fixed limit on readers per
+participant; this cap only exists to catch a runaway/typo'd topic list).
+Re-naming an already SUBSCRIBEd topic is harmless (no-op). See
+[CMD < (receive)](#cmd--receive) below for how having more than one topic
+SUBSCRIBEd changes what a plain `<` returns.
 
 **Scenario:** a monitoring script that wants both a specific reading topic
 and a separate alarm topic:
@@ -172,6 +187,19 @@ and a separate alarm topic:
 DDS.CONFIG d=0
 DDS.CMD > SUBSCRIBE sensors/temp
 DDS.CMD > SUBSCRIBE alerts/critical
+```
+
+**Scenario — several topics in one call, read in parallel:**
+
+```
+DDS.CONFIG d=0
+DDS.CMD > SUBSCRIBE sensors/temp,alerts/critical fleet/status
+# three parallel readers now live; a bare "<" multiplexes across all three
+# (see CMD < below), or read one specifically with "< ~ <topic>"
+sample ?= DDS.CMD <
+LOG.PRINT $sample   # e.g. "alerts/critical: overheat"
+temp ?= DDS.CMD < ~ sensors/temp
+LOG.PRINT $temp     # e.g. "21.5" — no topic prefix, explicit topic
 ```
 
 ---
@@ -231,14 +259,34 @@ LOG.PRINT $snapshot
 
 ### CMD < (receive)
 
-**Purpose:** wait for one incoming sample on an active subscription and
-store its payload into a variable macro. Requires an active `SUBSCRIBE` on
-this participant first (on the same thread/`>`/`<` chain — see
+**Purpose:** wait for one incoming sample and store its payload into a
+variable macro. Which topic(s) it can come from depends on `~ xtra_params`
+and how many topics are currently SUBSCRIBEd:
+
+- `DDS.CMD < ~ <topic>` — always reads that one specific topic, which
+  must already be SUBSCRIBEd. Returns the raw payload — no topic prefix,
+  since the caller already named it.
+- `DDS.CMD <` with exactly one topic currently SUBSCRIBEd — reads that
+  topic. Raw payload, unprefixed. This is unchanged from every prior
+  release: a script written for a single `SUBSCRIBE` keeps working
+  exactly as before.
+- `DDS.CMD <` with two or more topics currently SUBSCRIBEd — multiplexes
+  across all of them in parallel: blocks until *any* one has a sample,
+  then returns `<topic>: <payload>` so the caller can tell which topic it
+  came from. Ordering across topics when several arrive close together
+  isn't a strict global-arrival FIFO (each topic's own queue is FIFO;
+  across topics it's decided by a periodic rescan, topic-name order) —
+  use `< ~ <topic>` instead if strict per-topic ordering matters and you
+  don't need the multiplexed view.
+
+Requires at least one active `SUBSCRIBE` on this participant first (on
+the same thread/`>`/`<` chain for the bare form — see
 [Gotchas](#6-gotchas)).
 
 ```
 temp ?= DDS.CMD <          # one sample, blocks up to CONFIG's rt: read timeout
 temp ?= DDS.CMD < &        # background thread; $temp always holds the latest sample
+temp ?= DDS.CMD < ~ sensors/temp   # that topic specifically, however many are SUBSCRIBEd
 ```
 
 **Scenario 1 — one-shot, blocking:** wait for exactly the next reading and
@@ -566,6 +614,7 @@ other.
 | `fr=` | `FRAGMENT_THRESHOLD_BYTES` | Samples larger than this are `DATA_FRAG`'d; `0` disables |
 | `rt=` | `READ_TIMEOUT` | Read timeout (ms) used by `DDS.CMD <` |
 | `rb=` | `READ_BUFFER_SIZE` | Max size (bytes) of one `DDS.CMD <` result |
+| `ms=` | `MAX_SUBSCRIPTIONS` | Safety cap on concurrently `SUBSCRIBE`d topics (default 64, `0`=unbounded); Cyclone DDS itself has no fixed limit |
 
 ---
 
@@ -606,3 +655,23 @@ other.
   set on `DDS:1` (domain, reliability, name, ...) has no effect on `DDS:2`
   — there is no shared state between instances beyond both being loaded
   from the same `.so` file, exactly like MQTT's `MQTT:N` instances.
+- **A bare `<` changes shape depending on how many topics are
+  `SUBSCRIBE`d.** With exactly one, it's the raw payload (unchanged from
+  every prior release). With two or more, it's `<topic>: <payload>` — a
+  script that parses `<`'s result directly (rather than via `?=` capture
+  used as a whole value) needs to account for that prefix once it moves
+  from a single `SUBSCRIBE` to several in parallel. Use `< ~ <topic>`
+  instead when a script wants one specific topic's raw payload no matter
+  how many others are also `SUBSCRIBE`d.
+- **The multiplexed `<` form's cross-topic ordering is not a strict
+  global-arrival FIFO.** Each topic's own queue is FIFO; when several
+  topics have a sample waiting at the same moment, which one `<` returns
+  first is decided by a periodic rescan in topic-name order, not by which
+  one physically arrived first on the wire. Read each topic individually
+  via `< ~ <topic>` if a script depends on strict ordering across topics.
+- **`SUBSCRIBE` past `MAX_SUBSCRIPTIONS` (`ms=`, default 64) fails for
+  the topics beyond the cap**, logged as an error — the ones already
+  under the cap still succeed. Cyclone DDS itself imposes no fixed
+  maximum; this cap only guards against a runaway or typo'd topic list.
+  Raise `ms=` (or set it to `0` to disable it) if a script genuinely
+  needs more concurrent readers.

@@ -42,6 +42,7 @@
 #define K_FRAG_THRESHOLD   "FRAGMENT_THRESHOLD_BYTES"
 #define K_READ_TIMEOUT     "READ_TIMEOUT"
 #define K_READ_BUFSIZE     "READ_BUFFER_SIZE"
+#define K_MAX_SUBS         "MAX_SUBSCRIPTIONS"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  CONFIGURATION INTERFACES                                   //
@@ -80,6 +81,7 @@ bool DdsPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_FRAG_THRESHOLD,                [this](const std::string &v) { return setFragmentThresholdBytes(v); });
     sSettings.Bind(K_READ_TIMEOUT,                  [this](const std::string &v) { return setReadTimeout(v); });
     sSettings.Bind(K_READ_BUFSIZE,                  [this](const std::string &v) { return setReadBufferSize(v); });
+    sSettings.Bind(K_MAX_SUBS,                      [this](const std::string &v) { return setMaxSubscriptions(v); });
     sSettings.Bind(K_IFACE,                         m_strIface);
     sSettings.Bind(K_MCAST_IFACE,                   m_strMcastIface);
     sSettings.Bind(K_SPDP_MCAST_GROUP,              m_strSpdpMcastGroup);
@@ -102,7 +104,8 @@ bool DdsPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
  *                    (d=domain  pid=participant_id  v6=use_ipv6  i=iface  mi=mcast_iface
  *                     mg=spdp_mcast_group  n=participant_name  t=ttl  sp=spdp_period_ms
  *                     l=lease_duration_sec  r=reliable  hb=heartbeat_period_ms
- *                     hd=history_depth  fr=fragment_threshold_bytes  rt=read_tout  rb=recv_bufsize)
+ *                     hd=history_depth  fr=fragment_threshold_bytes  rt=read_tout  rb=recv_bufsize
+ *                     ms=max_subscriptions)
  * \return true if processing succeeded, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
@@ -127,6 +130,7 @@ bool generic_dds_set_params(const T *pOwner, const std::string &args)
         {.key = "fr",       .boolSetter = &T::setFragmentThresholdBytes},
         {.key = "rt",       .boolSetter = &T::setReadTimeout},
         {.key = "rb",       .boolSetter = &T::setReadBufferSize},
+        {.key = "ms",       .boolSetter = &T::setMaxSubscriptions},
         {.key = "raw",      .boolSetter = &T::setRawResult},
         {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };
