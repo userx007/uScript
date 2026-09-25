@@ -81,6 +81,7 @@ std::shared_ptr<DdsTypedDriver> DdsTypedPlugin::m_OpenDriver(void) const
     cfg.fragmentThresholdBytes = m_u32FragmentThresholdBytes;
     cfg.strInstanceName        = m_strInstanceName;
     cfg.preloadPluginPaths     = splitPreloadPaths(m_strPreloadPlugins);
+    cfg.maxSubscriptions       = m_u32MaxSubscriptions;
 
     auto driver                = std::make_shared<DdsTypedDriver>(cfg);
     if (!driver->open()) {
@@ -131,19 +132,28 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &args, std::stop_token s
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [d=domain] [pid=participant_id] [v6=0|1] [i=iface] [mi=mcast_iface]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [mg=spdp_mcast_group] [n=name] [t=ttl] [sp=spdp_period_ms] [l=lease_sec]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [r=0|1 reliable] [hd=history_depth] [fr=fragment_threshold_bytes]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [pp=path1.so;path2.so] [rt=read_tout] [rb=read_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [pp=path1.so;path2.so] [rt=read_tout] [rb=read_bufsize] [ms=max_subs]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DDS_TYPED.CONFIG d=12 pp=./libcustomer1_types.so"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : one DDS_TYPED operation, on the plugin's single persistent Cyclone DDS participant"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : > LOAD <path.so>   |   > PUBLISH <topic> <payload...>   |"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         > SUBSCRIBE <topic>   |   > UNSUBSCRIBE <topic>   |   > LIST   |   <"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         > SUBSCRIBE <topic>[,<topic>...] [<topic>...]   |   > UNSUBSCRIBE <topic>   |"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         > LIST   |   <   |   < ~ <topic>"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DDS_TYPED.CMD > LOAD ./libcustomer1_types.so"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS_TYPED.CMD > PUBLISH vehicle/state id=1,label=truck-07,speed=27.5"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS_TYPED.CMD > SUBSCRIBE vehicle/state"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS_TYPED.CMD <                    // one blocking receive; requires an active SUBSCRIBE"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS_TYPED.CMD > SUBSCRIBE vehicle/state,vehicle/alarms fleet/status"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS_TYPED.CMD <                    // 1 topic SUBSCRIBEd: raw payload;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("                                            // 2+ topics SUBSCRIBEd: blocks on"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("                                            // whichever gets a sample first,"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("                                            // returns \"<topic>: <payload>\""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS_TYPED.CMD < ~ vehicle/alarms   // reads that one topic specifically,"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("                                            // raw payload, however many are SUBSCRIBEd"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : PUBLISH's <payload...> text is passed verbatim to that topic's loaded"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         type's decode() — its grammar is defined by that customer .so, not this"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         plugin. PUBLISH/SUBSCRIBE on a topic with no loaded type fails; LOAD it first."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         Each SUBSCRIBEd topic gets its own parallel Cyclone reader, up to ms="));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         concurrently (default 64, 0=unbounded) — a safety cap only, Cyclone DDS"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         itself has no fixed max. < with no ~topic and no prior SUBSCRIBE fails."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : run several DDS_TYPED.CMD-style lines from a file over the same participant"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
@@ -173,6 +183,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &args, std::stop_token s
     LOG_PRINT(LOG_EMPTY, LOG_STRING("                                 # loaded automatically the first time the driver opens"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT        = 5000"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUFFER_SIZE    = 4096"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("MAX_SUBSCRIPTIONS   = 64          # safety cap on concurrently SUBSCRIBEd topics, 0=unbounded"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("RAW_RESULT          = false"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC_CACHED       = true"));
 

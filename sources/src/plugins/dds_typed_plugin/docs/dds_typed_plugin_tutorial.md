@@ -225,13 +225,24 @@ DDS_TYPED.CMD > PUBLISH unknown/topic whatever
 
 ### CMD > SUBSCRIBE
 
-**Purpose:** create a local reader for one topic — same shape as `DDS.CMD
-> SUBSCRIBE`, feeding a queue of `encode()`d text, one entry per received
-sample, ready for `DDS_TYPED.CMD <`.
+**Purpose:** create a local reader for one or more topics — same shape as
+`DDS.CMD > SUBSCRIBE`, feeding a queue of `encode()`d text, one entry per
+received sample, ready for `DDS_TYPED.CMD <`.
 
 ```
-DDS_TYPED.CMD > SUBSCRIBE <topic>
+DDS_TYPED.CMD > SUBSCRIBE <topic>[,<topic>...] [<topic>[,<topic>...] ...]
 ```
+
+One `SUBSCRIBE` may name several topics at once — space-separated,
+comma-separated, or a mix (`SUBSCRIBE a,b c` names three topics: `a`, `b`
+and `c`). Each named topic gets its own Cyclone reader running in
+parallel, up to a configurable safety cap (`MAX_SUBSCRIPTIONS` ini key /
+`ms=` CONFIG token, default 64, `0` = unbounded — Cyclone DDS itself has
+no fixed limit on how many readers a participant may have; this cap only
+exists to catch a runaway/typo'd topic list). Re-naming an already
+SUBSCRIBEd topic is harmless (no-op). See [CMD < (receive)](#cmd--receive)
+below for how having more than one topic SUBSCRIBEd changes what a plain
+`<` returns.
 
 **Scenario:** subscribe before the publisher side runs (see section 5 for
 the full two-instance version of this):
@@ -239,6 +250,19 @@ the full two-instance version of this):
 ```
 DDS_TYPED.CONFIG d=90 pp=./libcustomer1_types.so
 DDS_TYPED.CMD > SUBSCRIBE vehicle/state
+```
+
+**Scenario — several topics in parallel:**
+
+```
+DDS_TYPED.CONFIG d=90 pp=./libcustomer1_types.so
+DDS_TYPED.CMD > SUBSCRIBE vehicle/state,vehicle/alarms fleet/status
+# three parallel readers now live; a bare "<" multiplexes across all three
+# (see CMD < below), or read one specifically with "< ~ <topic>"
+sample ?= DDS_TYPED.CMD <
+LOG.PRINT $sample   # e.g. "vehicle/alarms: code=3,severity=WARN"
+alarm ?= DDS_TYPED.CMD < ~ vehicle/alarms
+LOG.PRINT $alarm    # e.g. "code=3,severity=WARN" — no topic prefix, explicit topic
 ```
 
 ---
@@ -294,22 +318,47 @@ LOG.PRINT $summary
 
 ### CMD < (receive)
 
-**Purpose:** block for one sample on the most recently `SUBSCRIBE`d topic
-on this thread, same "active topic" hand-off rule as `DDS.CMD <` — see
-that tutorial's section for the full explanation, identical here. What
-comes back is whatever that topic's loaded type's `encode()` produced —
-for `customer1`, the same `key=value,...` grammar `PUBLISH` accepts.
+**Purpose:** block for one sample. Which topic(s) it can come from depends
+on `~ xtra_params` and how many topics are currently SUBSCRIBEd:
+
+- `DDS_TYPED.CMD < ~ <topic>` — always reads that one specific topic,
+  which must already be SUBSCRIBEd. Returns the raw `encode()`d text
+  (for `customer1`, the same `key=value,...` grammar `PUBLISH` accepts) —
+  no topic prefix, since the caller already named it.
+- `DDS_TYPED.CMD <` with exactly one topic currently SUBSCRIBEd — reads
+  that topic. Raw text, unprefixed. This is unchanged from every prior
+  release: a script written for a single SUBSCRIBE keeps working exactly
+  as before.
+- `DDS_TYPED.CMD <` with two or more topics currently SUBSCRIBEd —
+  multiplexes across all of them in parallel: blocks until *any* one has
+  a sample, then returns `<topic>: <text>` so the caller can tell which
+  topic it came from. Ordering across topics when several arrive close
+  together isn't a strict global-arrival FIFO (each topic's own queue is
+  FIFO; across topics it's decided by a periodic rescan, topic-name
+  order) — use `< ~ <topic>` instead if strict per-topic ordering matters
+  and you don't need the multiplexed view.
 
 ```
 DDS_TYPED.CMD <
+DDS_TYPED.CMD < ~ <topic>
 ```
 
-**Scenario:**
+**Scenario — single topic (unchanged):**
 
 ```
 DDS_TYPED.CMD > SUBSCRIBE vehicle/state
 state ?= DDS_TYPED.CMD <
 LOG.PRINT got: $state   # e.g. "id=42,label=truck-07,speed=27.500000"
+```
+
+**Scenario — several topics in parallel:**
+
+```
+DDS_TYPED.CMD > SUBSCRIBE vehicle/state,vehicle/alarms
+next ?= DDS_TYPED.CMD <
+LOG.PRINT got: $next   # e.g. "vehicle/alarms: code=3,severity=WARN" — whichever arrived first
+state ?= DDS_TYPED.CMD < ~ vehicle/state
+LOG.PRINT state only: $state   # e.g. "id=42,label=truck-07,speed=27.500000" — no prefix
 ```
 
 ---
@@ -482,6 +531,7 @@ it was simply never added), plus `pp=`:
 | `pp=` | `PRELOAD_PLUGINS` | Semicolon-separated customer type-plugin `.so` paths, loaded automatically the first time the driver opens |
 | `rt=` | `READ_TIMEOUT` | Read timeout (ms) used by `DDS_TYPED.CMD <` |
 | `rb=` | `READ_BUFFER_SIZE` | Max size (bytes) of one `DDS_TYPED.CMD <` result |
+| `ms=` | `MAX_SUBSCRIPTIONS` | Safety cap on concurrently `SUBSCRIBE`d topics (default 64, `0`=unbounded); Cyclone DDS itself has no fixed limit |
 
 ---
 
@@ -520,6 +570,26 @@ it was simply never added), plus `pp=`:
   version than `DdsTypedDriver` was, `LOAD` logs the mismatch and fails
   rather than loading something that could misinterpret memory layouts —
   rebuild the customer `.so` against the current header if this happens.
+- **A bare `<` changes shape depending on how many topics are
+  `SUBSCRIBE`d.** With exactly one, it's raw text (unchanged from every
+  prior release). With two or more, it's `<topic>: <text>` — a script
+  that parses `<`'s result directly (rather than via `?=` capture used
+  as a whole value) needs to account for that prefix once it moves from a
+  single `SUBSCRIBE` to several in parallel. Use `< ~ <topic>` instead
+  when a script wants one specific topic's raw text no matter how many
+  others are also `SUBSCRIBE`d.
+- **The multiplexed `<` form's cross-topic ordering is not a strict
+  global-arrival FIFO.** Each topic's own queue is FIFO; when several
+  topics have a sample waiting at the same moment, which one `<` returns
+  first is decided by a periodic rescan in topic-name order, not by which
+  one physically arrived first on the wire. Read each topic individually
+  via `< ~ <topic>` if a script depends on strict ordering across topics.
+- **`SUBSCRIBE` past `MAX_SUBSCRIPTIONS` (`ms=`, default 64) fails for
+  the topics beyond the cap**, logged as an error — the ones already
+  under the cap still succeed. Cyclone DDS itself imposes no fixed
+  maximum; this cap only guards against a runaway or typo'd topic list.
+  Raise `ms=` (or set it to `0` to disable it) if a script genuinely
+  needs more concurrent readers.
 - Every other DDS-level gotcha (discovery latency needing a `DELAY`, no
   ack pipe, `DDS_TYPED.CMD <` needing a prior `SUBSCRIBE` on the same
   thread, co-located instances needing distinct `PARTICIPANT_ID`s, no

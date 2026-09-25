@@ -89,6 +89,51 @@ namespace {
     }
 } // namespace
 
+/// Shared body of the "block on one specific reader's queue" wait — used by
+/// receive()'s explicit-topic and single-subscription forms (previously
+/// duplicated inline in both). Same stop_tok contract as the rest of this
+/// file: a native predicate wait for the infinite (u32ReadTimeout == 0)
+/// case, a 200ms-slice retry loop otherwise. Pops and returns the front
+/// sample on success; returns std::nullopt on timeout/cancellation,
+/// touching nothing. A private static member (not a free function) purely
+/// because LocalReader is a private nested type.
+std::optional<std::string> DdsTypedDriver::m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
+                                                        std::stop_token stop_tok)
+{
+    std::unique_lock<std::mutex> qlock(reader.queueMutex);
+    bool got;
+    if (u32ReadTimeout == 0) {
+        got = reader.queueCv.wait(qlock, stop_tok, [&] { return !reader.queue.empty(); });
+    } else {
+        constexpr auto kSliceMs = std::chrono::milliseconds(200);
+        const auto tDeadline    = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+        got                     = false;
+        while (true) {
+            if (stop_tok.stop_requested()) {
+                got = false;
+                break;
+            }
+            const auto tNow = std::chrono::steady_clock::now();
+            if (tNow >= tDeadline) {
+                got = false;
+                break;
+            }
+            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow);
+            const auto sliceMs   = std::min(kSliceMs, remaining);
+            got                  = reader.queueCv.wait_for(qlock, sliceMs, [&] { return !reader.queue.empty(); });
+            if (got) {
+                break;
+            }
+        }
+    }
+    if (!got) {
+        return std::nullopt;
+    }
+    std::string text = std::move(reader.queue.front());
+    reader.queue.pop_front();
+    return text;
+}
+
 // ---------------------------------------------------------------------------
 DdsTypedDriver::DdsTypedDriver(Config config)
     : m_config(std::move(config))
@@ -392,6 +437,14 @@ void DdsTypedDriver::m_OnReaderDataAvailable(DdsEntity reader, void *arg)
             }
         }
         localReader->queueCv.notify_all();
+        if (localReader->owner) {
+            // Wakes m_MultiplexedReceive()'s slice-loop promptly instead of
+            // making it wait out its next poll slice — see that function's
+            // doc comment and m_anyDataGeneration's. No lock needed to bump
+            // a std::atomic or notify_all() a condition_variable.
+            localReader->owner->m_anyDataGeneration.fetch_add(1, std::memory_order_relaxed);
+            localReader->owner->m_anyDataCv.notify_all();
+        }
         if (n < static_cast<dds_return_t>(kBuiltinReadBatch)) {
             break;
         }
@@ -410,6 +463,13 @@ std::shared_ptr<DdsTypedDriver::LocalReader> DdsTypedDriver::m_EnsureLocalReader
         return it->second;
     }
 
+    if (m_config.maxSubscriptions > 0 && m_localReaders.size() >= m_config.maxSubscriptions) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SUBSCRIBE would exceed the configured cap of");
+                  LOG_UINT32(m_config.maxSubscriptions);
+                  LOG_STRING("concurrent topics ('ms=' CONFIG / MAX_SUBSCRIPTIONS ini key) — UNSUBSCRIBE something first or raise the cap"));
+        return nullptr;
+    }
+
     auto typeIt = m_typesByTopic.find(topic);
     if (typeIt == m_typesByTopic.end()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No loaded type plugin subscribes topic '"); LOG_STRING(topic.c_str());
@@ -420,6 +480,13 @@ std::shared_ptr<DdsTypedDriver::LocalReader> DdsTypedDriver::m_EnsureLocalReader
 
     auto localReader          = std::make_shared<LocalReader>();
     localReader->typeEntry    = entry;
+    // const_cast is safe/intentional here, same rationale as every other
+    // mutable member this (const) method already writes through — owner is
+    // stored as a plain pointer (not `mutable`) because it lives inside
+    // LocalReader, not directly on DdsTypedDriver, but it's used exactly
+    // like one: only ever to reach m_anyDataCv/m_anyDataGeneration, which
+    // are themselves mutable.
+    localReader->owner        = const_cast<DdsTypedDriver *>(this);
 
     const DdsEntity topicEnt  = dds_create_topic(m_participant, entry->descriptor, topic.c_str(), nullptr, nullptr);
     if (topicEnt < 0) {
@@ -739,14 +806,42 @@ ICommDriver::WriteResult DdsTypedDriver::send(uint32_t, std::span<const uint8_t>
             ok = m_Publish(topic, text);
         }
     } else if (cmdKeyword == "SUBSCRIBE") {
-        if (tokens.size() != 2) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SUBSCRIBE requires exactly: <topic>"));
+        if (tokens.size() < 2) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SUBSCRIBE requires: <topic>[,<topic>...] [<topic>[,<topic>...] ...]"));
         } else {
-            {
-                std::lock_guard<std::mutex> lock(m_activeTopicMutex);
-                m_strActiveTopic = tokens[1];
+            // Each whitespace token may itself be a comma-separated list, so
+            // "SUBSCRIBE a,b c" and "SUBSCRIBE a b c" (and any mix) all name
+            // the same three topics — see class doc comment. Every named
+            // topic gets its own parallel Cyclone reader (m_EnsureLocalReader
+            // is a no-op for one already SUBSCRIBEd, so re-listing an
+            // existing topic is harmless).
+            std::vector<std::string> topics;
+            for (size_t i = 1; i < tokens.size(); ++i) {
+                for (auto &t : ustring::tokenize(tokens[i], ',')) {
+                    if (!t.empty()) {
+                        topics.push_back(std::move(t));
+                    }
+                }
             }
-            ok = m_Subscribe(tokens[1]);
+            if (topics.empty()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SUBSCRIBE requires at least one non-empty topic name"));
+            } else {
+                // Best-effort across the list — one bad/typo'd topic (e.g. no
+                // loaded type owns it yet) shouldn't stop the rest from being
+                // SUBSCRIBEd, same "continue past individual failures, log
+                // each one" convention as PRELOAD_PLUGINS in open() above.
+                // ok reflects whether *every* requested topic succeeded.
+                ok = true;
+                for (const auto &topic : topics) {
+                    if (!m_Subscribe(topic)) {
+                        ok = false;
+                    }
+                }
+            }
+            // The `\x01LIST` sentinel only ever applies until the next
+            // SUBSCRIBE/UNSUBSCRIBE — see receive()'s doc comment.
+            std::lock_guard<std::mutex> lock(m_activeTopicMutex);
+            m_strActiveTopic.clear();
         }
     } else if (cmdKeyword == "UNSUBSCRIBE") {
         if (tokens.size() != 2) {
@@ -754,9 +849,7 @@ ICommDriver::WriteResult DdsTypedDriver::send(uint32_t, std::span<const uint8_t>
         } else {
             ok = m_Unsubscribe(tokens[1]);
             std::lock_guard<std::mutex> lock(m_activeTopicMutex);
-            if (m_strActiveTopic == tokens[1]) {
-                m_strActiveTopic.clear();
-            }
+            m_strActiveTopic.clear();
         }
     } else if (cmdKeyword == "LIST") {
         ok = true;
@@ -778,7 +871,6 @@ ICommDriver::ReadResult DdsTypedDriver::receive(uint32_t u32ReadTimeout, std::sp
                                                 const ICommDriver::ReadOptions &, std::string_view xtra_params,
                                                 std::stop_token stop_tok) const
 {
-    (void)xtra_params;
     ReadResult result;
 
     if (!is_open()) {
@@ -786,77 +878,187 @@ ICommDriver::ReadResult DdsTypedDriver::receive(uint32_t u32ReadTimeout, std::sp
         return result;
     }
 
-    std::string strActiveTopic;
     {
         std::lock_guard<std::mutex> lock(m_activeTopicMutex);
-        strActiveTopic = m_strActiveTopic;
+        if (m_strActiveTopic == "\x01LIST") {
+            const std::string text = m_BuildListText();
+            const size_t len       = std::min(dataSpan.size(), text.size());
+            std::memcpy(dataSpan.data(), text.data(), len);
+            result.status     = ICommDriver::Status::SUCCESS;
+            result.bytes_read = len;
+            return result;
+        }
     }
 
-    if (strActiveTopic == "\x01LIST") {
-        const std::string text = m_BuildListText();
-        const size_t len       = std::min(dataSpan.size(), text.size());
-        std::memcpy(dataSpan.data(), text.data(), len);
+    // `DDS_TYPED.CMD < ~ <topic>` — explicit topic, always raw text, must
+    // already be SUBSCRIBEd (a receive never silently creates a new reader —
+    // only LOAD/SUBSCRIBE create DDS entities, see class doc comment).
+    std::string strTopic(xtra_params);
+    if (!strTopic.empty()) {
+        std::shared_ptr<LocalReader> reader;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            auto it = m_localReaders.find(strTopic);
+            if (it != m_localReaders.end()) {
+                reader = it->second;
+            }
+        }
+        if (!reader) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("DDS_TYPED.CMD < ~ '"); LOG_STRING(strTopic.c_str());
+                      LOG_STRING("' — not currently SUBSCRIBEd, SUBSCRIBE it first"));
+            result.status = ICommDriver::Status::INVALID_PARAM;
+            return result;
+        }
+
+        auto text = m_WaitPopOne(*reader, u32ReadTimeout, stop_tok);
+        if (!text) {
+            result.status = ICommDriver::Status::READ_TIMEOUT;
+            return result;
+        }
+
+        const size_t len = std::min(dataSpan.size(), text->size());
+        std::memcpy(dataSpan.data(), text->data(), len);
         result.status     = ICommDriver::Status::SUCCESS;
         result.bytes_read = len;
+
+        if (gui_mode_active()) {
+            gui_notify_comm_dump(m_config.strInstanceName, describeConnection(strTopic), CommDir::Rx,
+                                 reinterpret_cast<const uint8_t *>(text->data()), static_cast<uint32_t>(text->size()));
+        }
         return result;
     }
 
-    if (strActiveTopic.empty()) {
+    // Bare `DDS_TYPED.CMD <` — no explicit topic. Snapshot which topics are
+    // currently SUBSCRIBEd right now (a concurrent SUBSCRIBE/UNSUBSCRIBE
+    // from another thread mid-wait just means this particular call didn't
+    // see it — the next call will).
+    std::vector<std::pair<std::string, std::shared_ptr<LocalReader>>> readers;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        readers.reserve(m_localReaders.size());
+        for (const auto &[topic, r] : m_localReaders) {
+            readers.emplace_back(topic, r);
+        }
+    }
+
+    if (readers.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("DDS_TYPED.CMD < with no prior SUBSCRIBE on this participant"));
         result.status = ICommDriver::Status::INVALID_PARAM;
         return result;
     }
 
-    auto reader = m_EnsureLocalReader(strActiveTopic);
-    if (!reader) {
-        result.status = ICommDriver::Status::INVALID_PARAM;
-        return result;
+    if (readers.size() > 1) {
+        // 2+ topics SUBSCRIBEd in parallel — multiplex across all of them.
+        return m_MultiplexedReceive(u32ReadTimeout, dataSpan, stop_tok);
     }
-    std::unique_lock<std::mutex> qlock(reader->queueMutex);
-    // Same stop_tok contract as DdsDriver::receive() — see that function's
-    // doc comment for the full rationale.
-    bool got;
-    if (u32ReadTimeout == 0) {
-        got = reader->queueCv.wait(qlock, stop_tok, [&] { return !reader->queue.empty(); });
-    } else {
-        constexpr auto kSliceMs = std::chrono::milliseconds(200);
-        const auto tDeadline    = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
-        got                     = false;
-        while (true) {
-            if (stop_tok.stop_requested()) {
-                got = false;
-                break;
-            }
-            const auto tNow = std::chrono::steady_clock::now();
-            if (tNow >= tDeadline) {
-                got = false;
-                break;
-            }
-            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow);
-            const auto sliceMs   = std::min(kSliceMs, remaining);
-            got                  = reader->queueCv.wait_for(qlock, sliceMs, [&] { return !reader->queue.empty(); });
-            if (got) {
-                break;
-            }
-        }
-    }
-    if (!got) {
+
+    // Exactly one topic SUBSCRIBEd: identical to every prior release —
+    // single reader, raw (unprefixed) text.
+    const auto &[strTopic1, reader] = readers.front();
+    auto text                       = m_WaitPopOne(*reader, u32ReadTimeout, stop_tok);
+    if (!text) {
         result.status = ICommDriver::Status::READ_TIMEOUT;
         return result;
     }
 
-    const std::string text = std::move(reader->queue.front());
-    reader->queue.pop_front();
-    qlock.unlock();
-
-    const size_t len = std::min(dataSpan.size(), text.size());
-    std::memcpy(dataSpan.data(), text.data(), len);
+    const size_t len = std::min(dataSpan.size(), text->size());
+    std::memcpy(dataSpan.data(), text->data(), len);
     result.status     = ICommDriver::Status::SUCCESS;
     result.bytes_read = len;
 
     if (gui_mode_active()) {
-        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(strActiveTopic), CommDir::Rx,
-                             reinterpret_cast<const uint8_t *>(text.data()), static_cast<uint32_t>(text.size()));
+        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(strTopic1), CommDir::Rx,
+                             reinterpret_cast<const uint8_t *>(text->data()), static_cast<uint32_t>(text->size()));
     }
     return result;
+}
+
+// ---------------------------------------------------------------------------
+// Multiplexed receive — bare "DDS_TYPED.CMD <" with 2+ topics SUBSCRIBEd
+// ---------------------------------------------------------------------------
+/// Blocks until any currently-SUBSCRIBEd topic's reader has a queued sample,
+/// then returns `<topic>: <text>` for whichever one it picks.
+///
+/// Ordering caveat: this is *not* a strict global-arrival-order FIFO across
+/// topics — each topic's own queue is FIFO, but when two topics both have
+/// data at the moment this wakes, the earlier one in topic-name order (the
+/// scan below walks m_localReaders, a std::map) is drained first, not
+/// necessarily whichever sample physically arrived first on the wire. For
+/// the ~200ms slice this can differ within, that's an acceptable trade-off
+/// for a scripting/test tool; a caller that needs strict cross-topic
+/// ordering should read each topic individually via `< ~ <topic>` instead.
+ICommDriver::ReadResult DdsTypedDriver::m_MultiplexedReceive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
+                                                              std::stop_token stop_tok) const
+{
+    ReadResult result;
+    constexpr auto kSliceMs = std::chrono::milliseconds(200);
+    const bool bInfinite    = (u32ReadTimeout == 0);
+    const auto tDeadline    = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+
+    while (true) {
+        if (stop_tok.stop_requested()) {
+            result.status = ICommDriver::Status::READ_TIMEOUT;
+            return result;
+        }
+        if (!bInfinite && std::chrono::steady_clock::now() >= tDeadline) {
+            result.status = ICommDriver::Status::READ_TIMEOUT;
+            return result;
+        }
+
+        // Re-snapshot every slice — a SUBSCRIBE/UNSUBSCRIBE that happens
+        // while this call is blocked takes effect on the very next slice.
+        std::vector<std::pair<std::string, std::shared_ptr<LocalReader>>> readers;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            readers.reserve(m_localReaders.size());
+            for (const auto &[topic, r] : m_localReaders) {
+                readers.emplace_back(topic, r);
+            }
+        }
+
+        for (const auto &[topic, reader] : readers) {
+            std::string text;
+            {
+                std::lock_guard<std::mutex> qlock(reader->queueMutex);
+                if (reader->queue.empty()) {
+                    continue;
+                }
+                text = std::move(reader->queue.front());
+                reader->queue.pop_front();
+            }
+
+            const std::string line = topic + ": " + text;
+            const size_t len       = std::min(dataSpan.size(), line.size());
+            std::memcpy(dataSpan.data(), line.data(), len);
+            result.status     = ICommDriver::Status::SUCCESS;
+            result.bytes_read = len;
+
+            if (gui_mode_active()) {
+                gui_notify_comm_dump(m_config.strInstanceName, describeConnection(topic), CommDir::Rx,
+                                     reinterpret_cast<const uint8_t *>(text.data()), static_cast<uint32_t>(text.size()));
+            }
+            return result;
+        }
+
+        // Nothing ready on any topic yet — wait for the next arrival (on any
+        // reader) or the end of this slice, whichever comes first, then loop
+        // to rescan. m_anyDataMutex only ever guards this wait; the actual
+        // per-topic data lives under each reader's own queueMutex above.
+        // The predicate compares m_anyDataGeneration against the value
+        // captured just before waiting, so a genuine notify_all() (bumped
+        // generation) returns immediately instead of spinning out the whole
+        // slice — see m_anyDataGeneration's doc comment.
+        const uint64_t genBefore = m_anyDataGeneration.load(std::memory_order_relaxed);
+        auto pred                = [this, genBefore] {
+            return m_anyDataGeneration.load(std::memory_order_relaxed) != genBefore;
+        };
+        std::unique_lock<std::mutex> anyLock(m_anyDataMutex);
+        if (bInfinite) {
+            m_anyDataCv.wait_for(anyLock, stop_tok, kSliceMs, pred);
+        } else {
+            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                tDeadline - std::chrono::steady_clock::now());
+            m_anyDataCv.wait_for(anyLock, stop_tok, std::clamp(remaining, std::chrono::milliseconds(0), kSliceMs), pred);
+        }
+    }
 }

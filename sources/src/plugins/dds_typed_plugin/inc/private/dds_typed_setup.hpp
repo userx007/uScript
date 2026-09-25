@@ -42,6 +42,7 @@
 #define K_PRELOAD_PLUGINS  "PRELOAD_PLUGINS"
 #define K_READ_TIMEOUT     "READ_TIMEOUT"
 #define K_READ_BUFSIZE     "READ_BUFFER_SIZE"
+#define K_MAX_SUBS         "MAX_SUBSCRIPTIONS"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  CONFIGURATION INTERFACES                                   //
@@ -76,6 +77,7 @@ bool DdsTypedPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_FRAG_THRESHOLD,                [this](const std::string &v) { return setFragmentThresholdBytes(v); });
     sSettings.Bind(K_READ_TIMEOUT,                  [this](const std::string &v) { return setReadTimeout(v); });
     sSettings.Bind(K_READ_BUFSIZE,                  [this](const std::string &v) { return setReadBufferSize(v); });
+    sSettings.Bind(K_MAX_SUBS,                      [this](const std::string &v) { return setMaxSubscriptions(v); });
     sSettings.Bind(K_PRELOAD_PLUGINS,               m_strPreloadPlugins);
     sSettings.Bind(K_ARTEFACTS,                     m_strArtefactsPath);
     sSettings.Bind(K_IFACE,                         m_strIface);
@@ -125,6 +127,7 @@ bool generic_dds_typed_set_params(const T *pOwner, const std::string &args)
         {.key = "pp",       .voidSetter = &T::setPreloadPlugins},
         {.key = "rt",       .boolSetter = &T::setReadTimeout},
         {.key = "rb",       .boolSetter = &T::setReadBufferSize},
+        {.key = "ms",       .boolSetter = &T::setMaxSubscriptions},
         {.key = "raw",      .boolSetter = &T::setRawResult},
         {.key = "cached",   .boolSetter = &T::setCyclicCached},
     };

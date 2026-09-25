@@ -64,7 +64,22 @@ struct PluginDataSet;
  *
  *   DDS_TYPED.CMD > LOAD <path-to-customer.so>
  *   DDS_TYPED.CMD > PUBLISH <topic> <payload...>   // payload -> that topic's loaded type's decode()
- *   DDS_TYPED.CMD > SUBSCRIBE <topic>   |   > UNSUBSCRIBE <topic>   |   > LIST   |   <
+ *   DDS_TYPED.CMD > SUBSCRIBE <topic>[,<topic>...] [<topic>...]   |   > UNSUBSCRIBE <topic>   |   > LIST   |   <
+ *
+ * SUBSCRIBE accepts several topics at once, space- and/or comma-separated
+ * (e.g. `SUBSCRIBE a,b c`), each getting its own Cyclone reader running in
+ * parallel — up to MAX_SUBSCRIPTIONS (ini)/`ms=` (CONFIG), default 64, 0 =
+ * unbounded; Cyclone DDS itself imposes no fixed cap, this exists only to
+ * catch a runaway topic list. A plain `DDS_TYPED.CMD <` then behaves
+ * according to how many topics are currently SUBSCRIBEd: with exactly one,
+ * it returns that topic's raw payload exactly as every prior release did;
+ * with several, it multiplexes — blocking until *any* of them has a
+ * sample and returning `<topic>: <payload>` so the caller can tell them
+ * apart. `DDS_TYPED.CMD < ~ <topic>` reads one specific already-SUBSCRIBEd
+ * topic deterministically (raw payload, no prefix) regardless of how many
+ * others are also SUBSCRIBEd — see `DdsTypedDriver::receive()`'s doc
+ * comment for the full three-way grammar and the multiplexed form's
+ * cross-topic ordering caveat.
  *
  * `PRELOAD_PLUGINS` (ini key, see dds_typed_setup.hpp) loads one or more
  * customer `.so`s automatically when the driver first opens, so a script
@@ -108,6 +123,7 @@ class DdsTypedPlugin : public PluginInterface {
             , m_strPreloadPlugins()
             , m_u32ReadTimeout(5000)
             , m_u32ReadBufferSize(4096)
+            , m_u32MaxSubscriptions(64)
         {
             // clang-format off
 #define DDS_TYPED_PLUGIN_CMD_RECORD(a) m_mapCmds.insert(std::make_pair(#a, \
@@ -379,7 +395,25 @@ class DdsTypedPlugin : public PluginInterface {
 
         bool setReadBufferSize(const std::string &v) const
         {
-            return numeric::str2uint32(v, m_u32ReadBufferSize, /*bFailOnZero=*/true);
+            uint32_t sz = 0;
+            if (!numeric::str2uint32(v, sz) || sz == 0) {
+                return false;
+            }
+            m_u32ReadBufferSize = sz;
+            return true;
+        }
+
+        // Safety cap on concurrently SUBSCRIBEd topics — see
+        // DdsTypedDriver::Config::maxSubscriptions's doc comment. 0 disables
+        // the cap (unbounded, limited only by process resources).
+        uint32_t getMaxSubscriptions(void) const
+        {
+            return m_u32MaxSubscriptions;
+        }
+
+        bool setMaxSubscriptions(const std::string &v) const
+        {
+            return numeric::str2uint32(v, m_u32MaxSubscriptions);
         }
 
     private:
@@ -421,6 +455,7 @@ class DdsTypedPlugin : public PluginInterface {
 
         mutable uint32_t m_u32ReadTimeout;
         mutable uint32_t m_u32ReadBufferSize;
+        mutable uint32_t m_u32MaxSubscriptions;
 
         mutable std::shared_ptr<DdsTypedDriver> m_pDriver;
 
