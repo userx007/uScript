@@ -599,15 +599,75 @@ def _gen_seq_grow(dst_expr: str, idx_var: str, indent: str) -> List[str]:
         f"{indent}}}",
     ]
 
+def resolve_named_sequence(registry: TypeRegistry, type_str: str, module: str) -> Optional[tuple]:
+    """
+    parse_field() only sets Field.is_sequence/is_array from *inline* IDL
+    syntax (`sequence<T> name;` / `T name[N];`). A field can just as well be
+    declared with a plain `TypedefName name;` where TypedefName is itself
+    `typedef sequence<Elem[, N]> TypedefName;` (e.g. Video_PSM.idl's
+    `T_DataLineSizeType A_dataLineSizes;`, with
+    `typedef sequence<T_Int16, 5000> T_DataLineSizeType;`) — such a field
+    has is_sequence == is_array == False even though idlc generates the
+    exact same `_buffer`/`_length`/`_maximum`/`_release` struct for it as
+    for an inline sequence.
+
+    This walks the typedef chain the same way get_type_kind() does and, if
+    the field's type resolves to `sequence<Elem[, N]>` with Elem a non-char
+    element, returns (elem_type_str, elem_module) so callers can handle it
+    exactly like an inline sequence field. Returns None for anything else,
+    including a sequence *of* char (T_ShortString and friends) — those are
+    handled as a single 'char_seq'-kind scalar field instead (see
+    get_type_kind's docstring), not as a bracketed array of elements.
+    """
+    current, cur_module, seen = type_str, module, set()
+    while True:
+        if (current, cur_module) in seen:
+            return None
+        seen.add((current, cur_module))
+        if "::" in current:
+            cur_module = current.rsplit("::", 1)[0]
+            canonical = current.replace("::", "_")
+        else:
+            canonical = f"{cur_module}_{current}"
+        if canonical in registry.enums or canonical in registry.structs:
+            return None
+        if canonical in registry.typedefs:
+            td = registry.typedefs[canonical]
+            current, cur_module = td.raw_type, td.module
+            continue
+        if current in PRIMITIVES:
+            return None
+        if re.match(r"^string(?:\s*<\s*\w+\s*>)?$", current):
+            return None
+        m = re.match(r"^sequence\s*<\s*([\w:]+)\s*(?:,\s*\w+\s*)?>$", current)
+        if m:
+            elem_type = m.group(1)
+            if registry.get_base_primitive_type(elem_type, cur_module) == "char":
+                return None
+            return (elem_type, cur_module)
+        return None
+
 def gen_decode_field(registry: TypeRegistry, f: Field, dst_expr: str, src_node_expr: str, indent: str, module: str) -> str:
     lines = []
     
     # Resolve element type for sequences/arrays
     elem_type_str = f.element_type or f.raw_type
     elem_kind = registry.get_type_kind(elem_type_str, module)
-    
+    is_seq_or_array = f.is_sequence or f.is_array
+
+    if not is_seq_or_array:
+        # See resolve_named_sequence()'s docstring: a field typed via a
+        # named sequence typedef needs the same bracketed-array codegen as
+        # an inline `sequence<T> field;`, just sourced from the resolved
+        # typedef instead of the parser's inline-syntax flags.
+        resolved = resolve_named_sequence(registry, f.raw_type, module)
+        if resolved:
+            elem_type_str, module = resolved
+            elem_kind = registry.get_type_kind(elem_type_str, module)
+            is_seq_or_array = True
+
     # Handle Sequence/Array
-    if f.is_sequence or f.is_array:
+    if is_seq_or_array:
         if elem_kind == "struct":
             # Support for sequence of structs
             elem_c_type = registry.get_c_type(elem_type_str, module)
@@ -658,7 +718,11 @@ def gen_decode_field(registry: TypeRegistry, f: Field, dst_expr: str, src_node_e
                 # A genuine IDL `string` element (char*) inside a sequence/array.
                 lines.append(f"{indent}        {{ const char* tmp = kv_as_str({elem_node}); if (tmp) {elem_dst} = strdup(tmp); }}")
             elif elem_kind == "primitive":
-                _, accessor, _ = PRIMITIVES[elem_type_str]
+                # elem_type_str may itself be a typedef (e.g. P_LDM_Common::T_Int16,
+                # not the literal PRIMITIVES key "short") — resolve to the base
+                # primitive keyword first, same as the scalar-field path does.
+                base_prim = registry.get_base_primitive_type(elem_type_str, module)
+                _, accessor, _ = PRIMITIVES[base_prim]
                 if accessor == "i64":
                     lines.append(f"{indent}        {{ long long tmp; if (kv_as_i64({elem_node}, &tmp)) {elem_dst} = ({registry.get_c_type(elem_type_str, module)})tmp; }}")
                 elif accessor == "double":
@@ -717,8 +781,18 @@ def gen_encode_field(registry: TypeRegistry, f: Field, src_expr: str, indent: st
     
     elem_type_str = f.element_type or f.raw_type
     elem_kind = registry.get_type_kind(elem_type_str, module)
+    is_seq_or_array = f.is_sequence or f.is_array
 
-    if f.is_sequence or f.is_array:
+    if not is_seq_or_array:
+        # See resolve_named_sequence()'s docstring (same situation as in
+        # gen_decode_field): a field typed via a named sequence typedef.
+        resolved = resolve_named_sequence(registry, f.raw_type, module)
+        if resolved:
+            elem_type_str, module = resolved
+            elem_kind = registry.get_type_kind(elem_type_str, module)
+            is_seq_or_array = True
+
+    if is_seq_or_array:
         if elem_kind == "struct":
             elem_c_type = registry.get_c_type(elem_type_str, module)
             count_expr = f.array_len if f.is_array else f"{src_expr}._length"
@@ -756,7 +830,10 @@ def gen_encode_field(registry: TypeRegistry, f: Field, src_expr: str, indent: st
                 # A genuine IDL `string` element (char*) inside a sequence/array.
                 lines.append(f'{indent}    kv_write(w, "%s", {e} ? {e} : "");')
             elif elem_kind == "primitive":
-                _, _, fmt = PRIMITIVES[elem_type_str]
+                # See the matching comment in gen_decode_field: elem_type_str
+                # may be a typedef, not a literal PRIMITIVES key.
+                base_prim = registry.get_base_primitive_type(elem_type_str, module)
+                _, _, fmt = PRIMITIVES[base_prim]
                 cast = "(double)" if fmt == "%f" else ""
                 lines.append(f'{indent}    kv_write(w, "{fmt}", {cast}{e});')
             elif elem_kind == "enum":
@@ -873,11 +950,6 @@ def generate(registry: TypeRegistry, module: str, topic_names: Optional[Dict[str
     out.append(f"""/*
  * GENERATED by gen_typed_adapter.py — a dds_typed_plugin type adapter for
  * module `{module}`.
- *
- * Review before building:
- *   - grep for "TODO" below.
- *   - topic_name defaults are placeholders where the .idl had no
- *     `// @topic <name>` annotation above the struct — set the real ones.
  */
 #include "DdsTypePluginAbi.h"
 #include "{module}.h"
