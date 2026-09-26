@@ -55,12 +55,12 @@ class FT4232I2C : public FT4232Base, public ICommDriver {
          */
         explicit FT4232I2C(uint8_t u8I2CAddress,
                            uint32_t u32ClockHz                 = 100000u,
-                           Channel channel                     = Channel::A,
+                           Channel eChannel                     = Channel::A,
                            uint8_t u8DeviceIndex               = 0u,
                            const std::string &strIdentityLabel = {})
         {
             m_strIdentityLabel = strIdentityLabel;
-            this->open(u8I2CAddress, u32ClockHz, channel, u8DeviceIndex);
+            this->open(u8I2CAddress, u32ClockHz, eChannel, u8DeviceIndex);
         }
 
         ~FT4232I2C() override
@@ -78,7 +78,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver {
          */
         Status open(uint8_t u8I2CAddress,
                     uint32_t u32ClockHz   = 100000u,
-                    Channel channel       = Channel::A,
+                    Channel eChannel       = Channel::A,
                     uint8_t u8DeviceIndex = 0u);
 
         /** @copydoc FT4232Base::close — also sends I²C STOP before closing */
@@ -113,7 +113,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -150,11 +150,11 @@ class FT4232I2C : public FT4232Base, public ICommDriver {
         Status configure_mpsse_i2c(uint32_t u32ClockHz) const;
 
         /** Append a SET_BITS_LOW command to a command buffer */
-        static void push_pin_state(std::vector<uint8_t> &buf,
-                                   bool scl, bool drive_sda_low);
+        static void push_pin_state(std::vector<uint8_t> &vBuf,
+                                   bool bScl, bool bDrive_sda_low);
 
         /** Append GET_BITS_LOW + SEND_IMMEDIATE to a command buffer */
-        static void push_read_sda(std::vector<uint8_t> &buf);
+        static void push_read_sda(std::vector<uint8_t> &vBuf);
 
         /**
          * @brief Build and send I²C START condition
@@ -184,7 +184,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver {
          * @param byte    Byte to transmit (MSB first)
          * @param ack     Set to true if slave acknowledged (SDA low during ACK clock)
          */
-        Status i2c_write_byte(uint8_t byte, bool &ack) const;
+        Status i2c_write_byte(uint8_t u8Byte, bool &bAck) const;
 
         /**
          * @brief Read one byte from the slave and send ACK or NAK
@@ -192,7 +192,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver {
          * @param byte      Received byte (MSB first)
          * @param sendAck   true → drive ACK (SDA low), false → drive NAK (release SDA)
          */
-        Status i2c_read_byte(uint8_t &byte, bool sendAck, std::stop_token stop_tok = {}) const;
+        Status i2c_read_byte(uint8_t &u8Byte, bool bSendAck, std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Full I²C write transaction
@@ -204,7 +204,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver {
          * @param bytesWritten Accumulates bytes successfully written
          */
         Status i2c_write(std::span<const uint8_t> data,
-                         uint32_t timeoutMs,
+                         uint32_t u32TimeoutMs,
                          size_t &bytesWritten) const;
 
         /**
@@ -218,7 +218,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver {
          */
         Status i2c_read(std::span<uint8_t> data,
                         size_t &bytesRead,
-                        uint32_t timeoutMs,
+                        uint32_t u32TimeoutMs,
                         std::stop_token stop_tok = {}) const;
 };
 

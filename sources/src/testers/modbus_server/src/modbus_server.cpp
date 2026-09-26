@@ -53,13 +53,13 @@ namespace {
     bool g_verbose                              = false;
     std::atomic<bool> g_running{true};
 
-    void hexdump(const char *label, const std::vector<uint8_t> &data)
+    void hexdump(const char *pstrLabel, const std::vector<uint8_t> &vData)
     {
         if (!g_verbose) {
             return;
         }
-        std::printf("  %s (%zu bytes):", label, data.size());
-        for (auto b : data) {
+        std::printf("  %s (%zu bytes):", pstrLabel, vData.size());
+        for (auto b : vData) {
             std::printf(" %02X", b);
         }
         std::printf("\n");
@@ -68,11 +68,11 @@ namespace {
     // ---- Full-read/write helpers (a single recv()/send() can return less
     // than requested even on a blocking socket) ----
 
-    bool readFull(int fd, uint8_t *buf, size_t len)
+    bool readFull(int iFd, uint8_t *pu8Buf, size_t len)
     {
         size_t got = 0;
         while (got < len) {
-            ssize_t n = ::recv(fd, buf + got, len - got, 0);
+            ssize_t n = ::recv(iFd, pu8Buf + got, len - got, 0);
             if (n <= 0) {
                 return false; // peer closed or error
             }
@@ -81,11 +81,11 @@ namespace {
         return true;
     }
 
-    bool writeFull(int fd, const uint8_t *buf, size_t len)
+    bool writeFull(int iFd, const uint8_t *pu8Buf, size_t len)
     {
         size_t sent = 0;
         while (sent < len) {
-            ssize_t n = ::send(fd, buf + sent, len - sent, 0);
+            ssize_t n = ::send(iFd, pu8Buf + sent, len - sent, 0);
             if (n <= 0) {
                 return false;
             }
@@ -94,34 +94,34 @@ namespace {
         return true;
     }
 
-    uint16_t be16(const uint8_t *p)
+    uint16_t be16(const uint8_t *pu8P)
     {
-        return static_cast<uint16_t>((p[0] << 8) | p[1]);
+        return static_cast<uint16_t>((pu8P[0] << 8) | pu8P[1]);
     }
 
-    void putBe16(std::vector<uint8_t> &out, uint16_t v)
+    void putBe16(std::vector<uint8_t> &vOut, uint16_t u16V)
     {
-        out.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
-        out.push_back(static_cast<uint8_t>(v & 0xFF));
+        vOut.push_back(static_cast<uint8_t>((u16V >> 8) & 0xFF));
+        vOut.push_back(static_cast<uint8_t>(u16V & 0xFF));
     }
 
     // Builds a complete response ADU (MBAP header + PDU) given the
     // request's transaction id and unit id, echoed back as required.
-    std::vector<uint8_t> buildResponseAdu(uint16_t txnId, uint8_t unitId, const std::vector<uint8_t> &pdu)
+    std::vector<uint8_t> buildResponseAdu(uint16_t u16TxnId, uint8_t u8UnitId, const std::vector<uint8_t> &vPdu)
     {
         std::vector<uint8_t> adu;
-        const uint16_t followingLength = static_cast<uint16_t>(1 + pdu.size());
-        putBe16(adu, txnId);
+        const uint16_t followingLength = static_cast<uint16_t>(1 + vPdu.size());
+        putBe16(adu, u16TxnId);
         putBe16(adu, 0x0000); // Protocol Identifier — always 0 for Modbus
         putBe16(adu, followingLength);
-        adu.push_back(unitId);
-        adu.insert(adu.end(), pdu.begin(), pdu.end());
+        adu.push_back(u8UnitId);
+        adu.insert(adu.end(), vPdu.begin(), vPdu.end());
         return adu;
     }
 
-    std::vector<uint8_t> buildExceptionPdu(uint8_t functionCode, uint8_t exceptionCode)
+    std::vector<uint8_t> buildExceptionPdu(uint8_t u8FunctionCode, uint8_t u8ExceptionCode)
     {
-        return {static_cast<uint8_t>(functionCode | kExceptionFlag), exceptionCode};
+        return {static_cast<uint8_t>(u8FunctionCode | kExceptionFlag), u8ExceptionCode};
     }
 
     /**
@@ -130,21 +130,21 @@ namespace {
      * the caller doesn't need to special-case that, it's just bytes to
      * wrap in an MBAP header and send back).
      */
-    std::vector<uint8_t> handlePdu(ModbusDataStore &store, const std::vector<uint8_t> &pdu)
+    std::vector<uint8_t> handlePdu(ModbusDataStore &store, const std::vector<uint8_t> &vPdu)
     {
-        if (pdu.empty()) {
+        if (vPdu.empty()) {
             return buildExceptionPdu(0, kExceptionIllegalFunction);
         }
-        const uint8_t fc = pdu[0];
+        const uint8_t fc = vPdu[0];
 
         switch (fc) {
         case kReadCoils:
         case kReadDiscreteInputs: {
-            if (pdu.size() != 5) {
+            if (vPdu.size() != 5) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr = be16(&pdu[1]);
-            const uint16_t qty  = be16(&pdu[3]);
+            const uint16_t addr = be16(&vPdu[1]);
+            const uint16_t qty  = be16(&vPdu[3]);
             if (qty == 0 || qty > 2000) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
@@ -169,11 +169,11 @@ namespace {
 
         case kReadHoldingRegisters:
         case kReadInputRegisters: {
-            if (pdu.size() != 5) {
+            if (vPdu.size() != 5) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr = be16(&pdu[1]);
-            const uint16_t qty  = be16(&pdu[3]);
+            const uint16_t addr = be16(&vPdu[1]);
+            const uint16_t qty  = be16(&vPdu[3]);
             if (qty == 0 || qty > 125) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
@@ -193,11 +193,11 @@ namespace {
         }
 
         case kWriteSingleCoil: {
-            if (pdu.size() != 5) {
+            if (vPdu.size() != 5) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr = be16(&pdu[1]);
-            const uint16_t wire = be16(&pdu[3]);
+            const uint16_t addr = be16(&vPdu[1]);
+            const uint16_t wire = be16(&vPdu[3]);
             if (wire != 0xFF00 && wire != 0x0000) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
@@ -207,37 +207,37 @@ namespace {
                 return buildExceptionPdu(fc, exc);
             }
 
-            return std::vector<uint8_t>(pdu); // echo the request verbatim, per spec
+            return std::vector<uint8_t>(vPdu); // echo the request verbatim, per spec
         }
 
         case kWriteSingleRegister: {
-            if (pdu.size() != 5) {
+            if (vPdu.size() != 5) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr  = be16(&pdu[1]);
-            const uint16_t value = be16(&pdu[3]);
+            const uint16_t addr  = be16(&vPdu[1]);
+            const uint16_t value = be16(&vPdu[3]);
 
             const uint8_t exc    = store.writeSingleRegister(addr, value);
             if (exc != ModbusDataStore::kExceptionNone) {
                 return buildExceptionPdu(fc, exc);
             }
 
-            return std::vector<uint8_t>(pdu); // echo the request verbatim, per spec
+            return std::vector<uint8_t>(vPdu); // echo the request verbatim, per spec
         }
 
         case kWriteMultipleCoils: {
-            if (pdu.size() < 6) {
+            if (vPdu.size() < 6) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr     = be16(&pdu[1]);
-            const uint16_t qty      = be16(&pdu[3]);
-            const uint8_t byteCount = pdu[5];
-            if (qty == 0 || qty > 1968 || byteCount != (qty + 7) / 8 || pdu.size() != static_cast<size_t>(6 + byteCount)) {
+            const uint16_t addr     = be16(&vPdu[1]);
+            const uint16_t qty      = be16(&vPdu[3]);
+            const uint8_t byteCount = vPdu[5];
+            if (qty == 0 || qty > 1968 || byteCount != (qty + 7) / 8 || vPdu.size() != static_cast<size_t>(6 + byteCount)) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
             std::vector<bool> values(qty);
             for (uint16_t i = 0; i < qty; ++i) {
-                values[i] = (pdu[6 + i / 8] & (1u << (i % 8))) != 0;
+                values[i] = (vPdu[6 + i / 8] & (1u << (i % 8))) != 0;
             }
             const uint8_t exc = store.writeMultipleCoils(addr, values);
             if (exc != ModbusDataStore::kExceptionNone) {
@@ -251,18 +251,18 @@ namespace {
         }
 
         case kWriteMultipleRegisters: {
-            if (pdu.size() < 6) {
+            if (vPdu.size() < 6) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr     = be16(&pdu[1]);
-            const uint16_t qty      = be16(&pdu[3]);
-            const uint8_t byteCount = pdu[5];
-            if (qty == 0 || qty > 123 || byteCount != qty * 2 || pdu.size() != static_cast<size_t>(6 + byteCount)) {
+            const uint16_t addr     = be16(&vPdu[1]);
+            const uint16_t qty      = be16(&vPdu[3]);
+            const uint8_t byteCount = vPdu[5];
+            if (qty == 0 || qty > 123 || byteCount != qty * 2 || vPdu.size() != static_cast<size_t>(6 + byteCount)) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
             std::vector<uint16_t> values(qty);
             for (uint16_t i = 0; i < qty; ++i) {
-                values[i] = be16(&pdu[6 + i * 2]);
+                values[i] = be16(&vPdu[6 + i * 2]);
             }
             const uint8_t exc = store.writeMultipleRegisters(addr, values);
             if (exc != ModbusDataStore::kExceptionNone) {
@@ -280,13 +280,13 @@ namespace {
         }
     }
 
-    void handleClient(int clientFd, std::string peerLabel, ModbusDataStore *store)
+    void handleClient(int iClientFd, std::string strPeerLabel, ModbusDataStore *pStore)
     {
-        std::printf("[+] client connected: %s\n", peerLabel.c_str());
+        std::printf("[+] client connected: %s\n", strPeerLabel.c_str());
 
         while (g_running) {
             uint8_t prefix[kMbapPrefixSize];
-            if (!readFull(clientFd, prefix, kMbapPrefixSize)) {
+            if (!readFull(iClientFd, prefix, kMbapPrefixSize)) {
                 break;
             }
 
@@ -295,12 +295,12 @@ namespace {
             const uint16_t followingLength = be16(&prefix[4]);
 
             if (protocolId != 0x0000 || followingLength == 0 || followingLength > 253) {
-                std::printf("[!] %s: malformed MBAP header, closing\n", peerLabel.c_str());
+                std::printf("[!] %s: malformed MBAP header, closing\n", strPeerLabel.c_str());
                 break;
             }
 
             std::vector<uint8_t> rest(followingLength);
-            if (!readFull(clientFd, rest.data(), rest.size())) {
+            if (!readFull(iClientFd, rest.data(), rest.size())) {
                 break;
             }
 
@@ -310,21 +310,21 @@ namespace {
             std::vector<uint8_t> reqAdu(prefix, prefix + kMbapPrefixSize);
             reqAdu.insert(reqAdu.end(), rest.begin(), rest.end());
             if (g_verbose) {
-                std::printf("[>] %s txn=%u unit=%u fc=0x%02X\n", peerLabel.c_str(), txnId, unitId, pdu.empty() ? 0 : pdu[0]);
+                std::printf("[>] %s txn=%u unit=%u fc=0x%02X\n", strPeerLabel.c_str(), txnId, unitId, pdu.empty() ? 0 : pdu[0]);
             }
             hexdump("REQ", reqAdu);
 
-            std::vector<uint8_t> respPdu = handlePdu(*store, pdu);
+            std::vector<uint8_t> respPdu = handlePdu(*pStore, pdu);
             std::vector<uint8_t> respAdu = buildResponseAdu(txnId, unitId, respPdu);
             hexdump("RESP", respAdu);
 
-            if (!writeFull(clientFd, respAdu.data(), respAdu.size())) {
+            if (!writeFull(iClientFd, respAdu.data(), respAdu.size())) {
                 break;
             }
         }
 
-        std::printf("[-] client disconnected: %s\n", peerLabel.c_str());
-        ::close(clientFd);
+        std::printf("[-] client disconnected: %s\n", strPeerLabel.c_str());
+        ::close(iClientFd);
     }
 
     void onSignal(int)
@@ -333,21 +333,21 @@ namespace {
     }
 } // namespace
 
-int main(int argc, char **argv)
+int main(int iArgc, char **ppstrArgv)
 {
     std::setvbuf(stdout, nullptr, _IOLBF, 0); // line-buffered even when redirected to a file/pipe
 
     uint16_t port = 5020; // non-privileged default; pass --port 502 (as root) for the standard port
-    for (int i = 1; i < argc; ++i) {
-        const std::string arg = argv[i];
+    for (int i = 1; i < iArgc; ++i) {
+        const std::string arg = ppstrArgv[i];
         if (arg == "-v" || arg == "--verbose") {
             g_verbose = true;
         } else if (arg == "-p" || arg == "--port") {
-            if (i + 1 < argc) {
-                port = static_cast<uint16_t>(std::atoi(argv[++i]));
+            if (i + 1 < iArgc) {
+                port = static_cast<uint16_t>(std::atoi(ppstrArgv[++i]));
             }
         } else if (arg == "-h" || arg == "--help") {
-            std::printf("Usage: %s [-p|--port <port>] [-v|--verbose]\n", argv[0]);
+            std::printf("Usage: %s [-p|--port <port>] [-v|--verbose]\n", ppstrArgv[0]);
             std::printf("  Default port: 5020 (use --port 502 as root for the standard Modbus port)\n");
             return 0;
         }

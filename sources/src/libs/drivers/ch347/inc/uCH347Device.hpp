@@ -77,8 +77,8 @@ class CH347Device {
          */
         explicit CH347Device(const std::string &strDevice,
                              const mSpiCfgS &spiCfg = {},
-                             I2cSpeed i2cSpeed      = I2cSpeed::Fast,
-                             uint8_t jtagRate       = 2)
+                             I2cSpeed eI2cSpeed      = I2cSpeed::Fast,
+                             uint8_t u8JtagRate       = 2)
         {
             m_iFd = CH347OpenDevice(strDevice.c_str());
             if (m_iFd == CH347_INVALID_HANDLE) {
@@ -91,9 +91,9 @@ class CH347Device {
             m_jtag = std::make_unique<CH347JTAG>();
 
             m_spi->open(strDevice, spiCfg);
-            m_i2c->open(strDevice, i2cSpeed);
+            m_i2c->open(strDevice, eI2cSpeed);
             m_gpio->open(strDevice);
-            m_jtag->open(strDevice, jtagRate);
+            m_jtag->open(strDevice, u8JtagRate);
         }
 
         ~CH347Device()
@@ -167,21 +167,21 @@ class CH347Device {
         }
 
         /** Set USB-level read/write timeouts (affects all sub-drivers). */
-        bool set_timeout(uint32_t writeMs, uint32_t readMs)
+        bool set_timeout(uint32_t u32WriteMs, uint32_t u32ReadMs)
         {
-            return CH34xSetTimeout(m_iFd, writeMs, readMs);
+            return CH34xSetTimeout(m_iFd, u32WriteMs, u32ReadMs);
         }
 
         /** Query firmware / bcd-device version byte. */
-        bool get_firmware_version(uint8_t &version)
+        bool get_firmware_version(uint8_t &u8Version)
         {
-            return CH34x_GetChipVersion(m_iFd, &version);
+            return CH34x_GetChipVersion(m_iFd, &u8Version);
         }
 
         /** Query USB device VID/PID as packed (VID<<16 | PID). */
-        bool get_device_id(uint32_t &id)
+        bool get_device_id(uint32_t &u32Id)
         {
-            return CH34X_GetDeviceID(m_iFd, &id);
+            return CH34X_GetDeviceID(m_iFd, &u32Id);
         }
 
     private:

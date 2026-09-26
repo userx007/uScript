@@ -29,9 +29,9 @@ extern "C" {
         return new CH347Plugin();
     }
 
-    EXPORTED void pluginExit(CH347Plugin *p)
+    EXPORTED void pluginExit(CH347Plugin *pP)
     {
-        delete p;
+        delete pP;
     }
 }
 
@@ -125,32 +125,32 @@ void CH347Plugin::doCleanup()
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH347Plugin::m_CH347_CONFIG(const std::string &args, std::stop_token st) const
+bool CH347Plugin::m_CH347_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    return generic_ch347_set_params(this, args);
+    return generic_ch347_set_params(this, strArgs);
 }
 
 ///////////////////////////////////////////////////////////////////
 //                   MODULE MAP ACCESSORS                        //
 ///////////////////////////////////////////////////////////////////
 
-ModuleCommandsMap<CH347Plugin> *CH347Plugin::getModuleCmdsMap(const std::string &m) const
+ModuleCommandsMap<CH347Plugin> *CH347Plugin::getModuleCmdsMap(const std::string &strM) const
 {
-    auto it = m_mapCommandsMaps.find(m);
+    auto it = m_mapCommandsMaps.find(strM);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
-ModuleSpeedMap *CH347Plugin::getModuleSpeedsMap(const std::string &m) const
+ModuleSpeedMap *CH347Plugin::getModuleSpeedsMap(const std::string &strM) const
 {
-    auto it = m_mapSpeedsMaps.find(m);
+    auto it = m_mapSpeedsMaps.find(strM);
     return (it != m_mapSpeedsMaps.end()) ? it->second : nullptr;
 }
 
-bool CH347Plugin::setModuleSpeed(const std::string &module, size_t hz) const
+bool CH347Plugin::setModuleSpeed(const std::string &strModule, size_t hz) const
 {
-    if (module == "SPI") {
+    if (strModule == "SPI") {
         m_sSpiCfg.cfg.iClock = spiHzToClockIndex(static_cast<uint32_t>(hz));
         m_sSpiCfg.cfgDirty   = true;
         if (m_pSPI && m_pSPI->is_open()) {
@@ -158,7 +158,7 @@ bool CH347Plugin::setModuleSpeed(const std::string &module, size_t hz) const
         }
         return true;
     }
-    if (module == "I2C") {
+    if (strModule == "I2C") {
         I2cSpeed spd = I2cSpeed::Fast;
         // Map Hz to the nearest preset
         if (hz <= 20000) {
@@ -184,7 +184,7 @@ bool CH347Plugin::setModuleSpeed(const std::string &module, size_t hz) const
         return true;
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR;
-              LOG_STRING("setModuleSpeed: unsupported module:"); LOG_STRING(module));
+              LOG_STRING("setModuleSpeed: unsupported strModule:"); LOG_STRING(strModule));
     return false;
 }
 
@@ -192,9 +192,9 @@ bool CH347Plugin::setModuleSpeed(const std::string &module, size_t hz) const
 //               TOP-LEVEL COMMAND HANDLERS                      //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_CH347_INFO(const std::string &args, std::stop_token st) const
+bool CH347Plugin::m_CH347_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
@@ -427,22 +427,22 @@ bool CH347Plugin::m_CH347_INFO(const std::string &args, std::stop_token st) cons
     return true;
 }
 
-bool CH347Plugin::m_CH347_SPI(const std::string &args, std::stop_token st) const
+bool CH347Plugin::m_CH347_SPI(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<CH347Plugin>(this, "SPI", args, st);
+    return generic_module_dispatch<CH347Plugin>(this, "SPI", strArgs, st);
 }
 
-bool CH347Plugin::m_CH347_I2C(const std::string &args, std::stop_token st) const
+bool CH347Plugin::m_CH347_I2C(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<CH347Plugin>(this, "I2C", args, st);
+    return generic_module_dispatch<CH347Plugin>(this, "I2C", strArgs, st);
 }
 
-bool CH347Plugin::m_CH347_GPIO(const std::string &args, std::stop_token st) const
+bool CH347Plugin::m_CH347_GPIO(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<CH347Plugin>(this, "GPIO", args, st);
+    return generic_module_dispatch<CH347Plugin>(this, "GPIO", strArgs, st);
 }
 
-bool CH347Plugin::m_CH347_JTAG(const std::string &args, std::stop_token st) const
+bool CH347Plugin::m_CH347_JTAG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<CH347Plugin>(this, "JTAG", args, st);
+    return generic_module_dispatch<CH347Plugin>(this, "JTAG", strArgs, st);
 }

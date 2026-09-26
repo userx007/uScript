@@ -98,27 +98,27 @@ FT232HI2C::Status FT232HI2C::configure_mpsse_i2c(uint32_t u32ClockHz) const
 // Pin-state helpers
 // ============================================================================
 
-void FT232HI2C::push_pin_state(std::vector<uint8_t> &buf,
-                               bool scl, bool drive_sda_low)
+void FT232HI2C::push_pin_state(std::vector<uint8_t> &vBuf,
+                               bool bScl, bool bDrive_sda_low)
 {
     uint8_t val = 0x00u;
     uint8_t dir = DIR_SCL_ONLY; // SCL output; SDA released (input) unless driving
-    if (scl) {
+    if (bScl) {
         val |= I2C_SCL;
     }
-    if (drive_sda_low) {
+    if (bDrive_sda_low) {
         val &= static_cast<uint8_t>(~I2C_SDA_O); // SDA = low
         dir |= I2C_SDA_O;                        // SDA = output (actively driven)
     }
-    buf.push_back(MPSSE_SET_BITS_LOW);
-    buf.push_back(val);
-    buf.push_back(dir);
+    vBuf.push_back(MPSSE_SET_BITS_LOW);
+    vBuf.push_back(val);
+    vBuf.push_back(dir);
 }
 
-void FT232HI2C::push_read_sda(std::vector<uint8_t> &buf)
+void FT232HI2C::push_read_sda(std::vector<uint8_t> &vBuf)
 {
-    buf.push_back(MPSSE_GET_BITS_LOW);
-    buf.push_back(MPSSE_SEND_IMMEDIATE);
+    vBuf.push_back(MPSSE_GET_BITS_LOW);
+    vBuf.push_back(MPSSE_SEND_IMMEDIATE);
 }
 
 // ============================================================================
@@ -158,12 +158,12 @@ FT232HI2C::Status FT232HI2C::i2c_stop() const
 // Byte-level I/O
 // ============================================================================
 
-FT232HI2C::Status FT232HI2C::i2c_write_byte(uint8_t byte, bool &ack) const
+FT232HI2C::Status FT232HI2C::i2c_write_byte(uint8_t u8Byte, bool &bAck) const
 {
     std::vector<uint8_t> buf;
 
     for (int bit = 7; bit >= 0; --bit) {
-        bool b = (byte >> bit) & 0x01u;
+        bool b = (u8Byte >> bit) & 0x01u;
         push_pin_state(buf, false, !b); // set SDA, SCL=L
         push_pin_state(buf, true, !b);  // SCL=H (clock high)
         push_pin_state(buf, false, !b); // SCL=L
@@ -188,13 +188,13 @@ FT232HI2C::Status FT232HI2C::i2c_write_byte(uint8_t byte, bool &ack) const
     }
 
     // ACK = slave drives SDA low; read bit is ADBUS2
-    ack = ((raw & I2C_SDA_I) == 0);
+    bAck = ((raw & I2C_SDA_I) == 0);
     return Status::SUCCESS;
 }
 
-FT232HI2C::Status FT232HI2C::i2c_read_byte(uint8_t &byte, bool sendAck, std::stop_token stop_tok) const
+FT232HI2C::Status FT232HI2C::i2c_read_byte(uint8_t &u8Byte, bool bSendAck, std::stop_token stop_tok) const
 {
-    byte = 0;
+    u8Byte = 0;
     std::vector<uint8_t> buf;
 
     for (int bit = 7; bit >= 0; --bit) {
@@ -205,9 +205,9 @@ FT232HI2C::Status FT232HI2C::i2c_read_byte(uint8_t &byte, bool sendAck, std::sto
     }
 
     // Send ACK or NAK
-    push_pin_state(buf, false, sendAck); // SCL=L, SDA=L(ACK) or H(NAK)
-    push_pin_state(buf, true, sendAck);  // SCL=H
-    push_pin_state(buf, false, sendAck); // SCL=L
+    push_pin_state(buf, false, bSendAck); // SCL=L, SDA=L(ACK) or H(NAK)
+    push_pin_state(buf, true, bSendAck);  // SCL=H
+    push_pin_state(buf, false, bSendAck); // SCL=L
 
     auto s = mpsse_write(buf.data(), buf.size());
     if (s != Status::SUCCESS) {
@@ -223,9 +223,9 @@ FT232HI2C::Status FT232HI2C::i2c_read_byte(uint8_t &byte, bool sendAck, std::sto
     }
 
     for (int i = 0; i < 8; ++i) {
-        byte = static_cast<uint8_t>(byte << 1u);
+        u8Byte = static_cast<uint8_t>(u8Byte << 1u);
         if (samples[i] & I2C_SDA_I) {
-            byte |= 0x01u;
+            u8Byte |= 0x01u;
         }
     }
     return Status::SUCCESS;
@@ -236,10 +236,10 @@ FT232HI2C::Status FT232HI2C::i2c_read_byte(uint8_t &byte, bool sendAck, std::sto
 // ============================================================================
 
 FT232HI2C::Status FT232HI2C::i2c_write(std::span<const uint8_t> data,
-                                       uint32_t timeoutMs,
+                                       uint32_t u32TimeoutMs,
                                        size_t &bytesWritten) const
 {
-    (void)timeoutMs;
+    (void)u32TimeoutMs;
 
     if (data.empty()) {
         return Status::INVALID_PARAM;
@@ -273,10 +273,10 @@ FT232HI2C::Status FT232HI2C::i2c_write(std::span<const uint8_t> data,
 
 FT232HI2C::Status FT232HI2C::i2c_read(std::span<uint8_t> data,
                                       size_t &bytesRead,
-                                      uint32_t timeoutMs,
+                                      uint32_t u32TimeoutMs,
                                       std::stop_token stop_tok) const
 {
-    (void)timeoutMs;
+    (void)u32TimeoutMs;
     if (stop_tok.stop_requested()) {
         return Status::READ_TIMEOUT;
     }

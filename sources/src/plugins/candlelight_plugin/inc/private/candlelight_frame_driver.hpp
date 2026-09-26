@@ -350,7 +350,7 @@ class CandlelightFrameDriver : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32Timeout,
                              std::span<uint8_t> dataSpan,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override
         {
@@ -363,7 +363,7 @@ class CandlelightFrameDriver : public ICommDriver {
                 return raw_tout_read(u32Timeout, dataSpan, xtra_params, stop_tok);
             }
 
-            (void)options; // segmented protocols always reassemble a full message
+            (void)sOptions; // segmented protocols always reassemble a full message
 
             char szRxId[16];
             std::snprintf(szRxId, sizeof(szRxId), "0x%X", resolveRxId(xtra_params));
@@ -384,10 +384,10 @@ class CandlelightFrameDriver : public ICommDriver {
             return m_candle.set_bitrate(u32BitrateBps, dSamplePoint, u32Timeout);
         }
 
-        ICommDriver::Status set_bittiming(uint32_t propSeg, uint32_t phaseSeg1, uint32_t phaseSeg2,
-                                          uint32_t sjw, uint32_t brp, uint32_t u32Timeout)
+        ICommDriver::Status set_bittiming(uint32_t u32PropSeg, uint32_t u32PhaseSeg1, uint32_t u32PhaseSeg2,
+                                          uint32_t u32Sjw, uint32_t u32Brp, uint32_t u32Timeout)
         {
-            return m_candle.set_bittiming(propSeg, phaseSeg1, phaseSeg2, sjw, brp, u32Timeout);
+            return m_candle.set_bittiming(u32PropSeg, u32PhaseSeg1, u32PhaseSeg2, u32Sjw, u32Brp, u32Timeout);
         }
 
         ICommDriver::Status set_fd_data_bitrate(uint32_t u32BitrateBps, double dSamplePoint, uint32_t u32Timeout)
@@ -395,10 +395,10 @@ class CandlelightFrameDriver : public ICommDriver {
             return m_candle.set_fd_data_bitrate(u32BitrateBps, dSamplePoint, u32Timeout);
         }
 
-        ICommDriver::Status set_fd_data_bittiming(uint32_t propSeg, uint32_t phaseSeg1, uint32_t phaseSeg2,
-                                                  uint32_t sjw, uint32_t brp, uint32_t u32Timeout)
+        ICommDriver::Status set_fd_data_bittiming(uint32_t u32PropSeg, uint32_t u32PhaseSeg1, uint32_t u32PhaseSeg2,
+                                                  uint32_t u32Sjw, uint32_t u32Brp, uint32_t u32Timeout)
         {
-            return m_candle.set_data_bittiming(propSeg, phaseSeg1, phaseSeg2, sjw, brp, u32Timeout);
+            return m_candle.set_data_bittiming(u32PropSeg, u32PhaseSeg1, u32PhaseSeg2, u32Sjw, u32Brp, u32Timeout);
         }
 
         /// @param u32ModeFlags  GS_CAN_MODE_* bitmask (see uCandlelight.hpp) —
@@ -415,9 +415,9 @@ class CandlelightFrameDriver : public ICommDriver {
          *        effect — see this file's class comment. An empty vector (the
          *        default) accepts every frame.
          */
-        void set_filters(std::vector<FilterEntry> filters)
+        void set_filters(std::vector<FilterEntry> vFilters)
         {
-            m_filters = std::move(filters);
+            m_filters = std::move(vFilters);
         }
 
         bool is_fd_supported() const
@@ -444,9 +444,9 @@ class CandlelightFrameDriver : public ICommDriver {
         }
 
         /** \brief Tuning parameters (block size, STmin, timeouts, ...) for set_tp_protocol(). */
-        void set_tp_config(const TpConfig &cfg)
+        void set_tp_config(const TpConfig &sCfg)
         {
-            m_sTpConfig = cfg;
+            m_sTpConfig = sCfg;
         }
 
         /**
@@ -488,17 +488,17 @@ class CandlelightFrameDriver : public ICommDriver {
          *        convention SocketCAN's CAN_RAW_FILTER uses, just evaluated
          *        entirely in software (see this file's class comment).
          */
-        bool matchesFilters(const CanFrame &frame) const
+        bool matchesFilters(const CanFrame &sFrame) const
         {
             if (m_filters.empty()) {
                 return true;
             }
             for (const auto &f : m_filters) {
-                if (f.is_extended != frame.is_extended) {
+                if (f.is_extended != sFrame.is_extended) {
                     continue;
                 }
-                const uint32_t mask = f.mask & (frame.is_extended ? CAN_EFF_MASK : CAN_SFF_MASK);
-                if ((frame.id & mask) == (f.id & mask)) {
+                const uint32_t mask = f.mask & (sFrame.is_extended ? CAN_EFF_MASK : CAN_SFF_MASK);
+                if ((sFrame.id & mask) == (f.id & mask)) {
                     return true;
                 }
             }
@@ -594,7 +594,7 @@ class CandlelightFrameDriver : public ICommDriver {
          *        every physical frame this driver puts on or takes off the wire
          *        gets its own accurate row. A no-op when gui_mode_active() is false.
          */
-        void dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
+        void dumpFrame(CommDir eDir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
         {
             if (!gui_mode_active()) {
                 return;
@@ -604,7 +604,7 @@ class CandlelightFrameDriver : public ICommDriver {
                           m_strIdentityLabel.empty() ? "CANDLELIGHT" : m_strIdentityLabel.c_str(),
                           u32Id, bExtended ? " (ext)" : "");
             gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::CAN, label),
-                                 dir, data.data(), static_cast<uint32_t>(data.size()));
+                                 eDir, data.data(), static_cast<uint32_t>(data.size()));
         }
 
     private:

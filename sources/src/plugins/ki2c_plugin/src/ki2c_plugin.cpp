@@ -33,10 +33,10 @@ extern "C" {
         return new KI2CPlugin();
     }
 
-    EXPORTED void pluginExit(KI2CPlugin *ptrPlugin)
+    EXPORTED void pluginExit(KI2CPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -60,10 +60,10 @@ extern "C" {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KI2CPlugin::m_KI2C_INFO(const std::string &args, std::stop_token st) const
+bool KI2CPlugin::m_KI2C_INFO(const std::string &strArgs, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -134,9 +134,9 @@ bool KI2CPlugin::m_KI2C_INFO(const std::string &args, std::stop_token st) const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KI2CPlugin::m_KI2C_CONFIG(const std::string &args, std::stop_token st) const
+bool KI2CPlugin::m_KI2C_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_i2c_set_params<KI2CPlugin>(this, args);
+    return generic_i2c_set_params<KI2CPlugin>(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -155,12 +155,12 @@ bool KI2CPlugin::m_KI2C_CONFIG(const std::string &args, std::stop_token st) cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KI2CPlugin::m_KI2C_CMD(const std::string &args, std::stop_token st) const
+bool KI2CPlugin::m_KI2C_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<KI2C> {
             // Open the KI2C device (RAII — closed automatically by destructor)
             auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress, m_strKI2CDevice);
@@ -184,12 +184,12 @@ bool KI2CPlugin::m_KI2C_CMD(const std::string &args, std::stop_token st) const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KI2CPlugin::m_KI2C_SCRIPT(const std::string &args, std::stop_token st) const
+bool KI2CPlugin::m_KI2C_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<KI2C> {
             // Open the KI2C device (RAII — closed automatically by destructor)
             auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress, m_strKI2CDevice);
@@ -220,10 +220,10 @@ bool KI2CPlugin::m_KI2C_SCRIPT(const std::string &args, std::stop_token st) cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KI2CPlugin::m_KI2C_CYCLIC(const std::string &args, std::stop_token st) const
+bool KI2CPlugin::m_KI2C_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<KI2C> {
             // Open the KI2C device (RAII — closed automatically by destructor)
             auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress, m_strKI2CDevice);
@@ -261,12 +261,12 @@ bool KI2CPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KI2CPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+bool KI2CPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType eReadType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;
 
-    switch (readType) {
+    switch (eReadType) {
     case CommCommandReadType::LINE:
         options.mode      = ICommDriver::ReadMode::UntilDelimiter;
         options.delimiter = '\n';

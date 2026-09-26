@@ -159,7 +159,7 @@ class CommDumpModel : public QAbstractItemModel {
                 int rowsAppended = 0;
         };
 
-        explicit CommDumpModel(QObject *parent = nullptr);
+        explicit CommDumpModel(QObject *pParent = nullptr);
 
         // Appends one record. timestampUs is the producer's own timestamp
         // (microseconds since the Unix epoch, captured when the event actually
@@ -167,7 +167,7 @@ class CommDumpModel : public QAbstractItemModel {
         // that this column shares a common time base with the Log panel.
         // Equivalent to addRecords() with a single-element list — kept as a
         // convenience for callers that only ever add one record at a time.
-        void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
+        void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool bIsTx,
                        const QByteArray &data);
 
         // Appends every record in `pending` inside a single beginInsertRows()/
@@ -202,7 +202,7 @@ class CommDumpModel : public QAbstractItemModel {
         // back down to ~90% of it in one batch (hysteresis) — so the expensive
         // shift happens roughly once every (10% of max) records instead of on
         // every single insert. 0 = unlimited (the previous, default behaviour).
-        void setMaxRecords(int max);
+        void setMaxRecords(int iMax);
 
         int maxRecords() const
         {
@@ -241,7 +241,7 @@ class CommDumpModel : public QAbstractItemModel {
         //  "since I turned this on." Model-change signals for the aggregate
         //  side are only emitted while collapsedMode() is true, since those
         //  are the only rows a view is allowed to assume currently exist.
-        void setCollapsedMode(bool on);
+        void setCollapsedMode(bool bOn);
 
         bool collapsedMode() const
         {
@@ -257,7 +257,7 @@ class CommDumpModel : public QAbstractItemModel {
             return m_records.size();
         }
 
-        const Record *rawRecordAt(int row) const;
+        const Record *rawRecordAt(int iRow) const;
 
         // Number of distinct (plugin, details) keys ever observed — monotonic,
         // not reduced by the aggregate's own defensive cap (see
@@ -273,7 +273,7 @@ class CommDumpModel : public QAbstractItemModel {
         // Whether column ColAscii is populated. When false, data() returns an
         // empty value for that column instead of computing the ASCII text, so
         // toggling it off actually avoids the per-row work, not just hides it.
-        void setShowAscii(bool on);
+        void setShowAscii(bool bOn);
 
         bool showAscii() const
         {
@@ -283,7 +283,7 @@ class CommDumpModel : public QAbstractItemModel {
         // Switches how column ColTimestamp is rendered (see TimeFormat above).
         // Pure display toggle: does not touch stored data, so it's cheap and
         // fully reversible, including after a trace has been reloaded from disk.
-        void setTimeFormat(TimeFormat fmt);
+        void setTimeFormat(TimeFormat eFmt);
 
         TimeFormat timeFormat() const
         {
@@ -295,7 +295,7 @@ class CommDumpModel : public QAbstractItemModel {
         // "Data:16" / "Data:32"). Like the other display toggles, this only
         // affects rendering (and clears fullDumpCache so it regenerates), not
         // stored data. Any other value is ignored (kept at the current setting).
-        void setDumpBytesPerLine(int n);
+        void setDumpBytesPerLine(int iN);
 
         int dumpBytesPerLine() const
         {
@@ -307,7 +307,7 @@ class CommDumpModel : public QAbstractItemModel {
         // of the tree's base font" into a concrete point size is the view's job
         // (see CommDumpView::updateFullDumpFontSize()); the model must never be
         // asked to reinterpret its own stored size as a proportion again.
-        void setFullDumpFontSize(double pointSize);
+        void setFullDumpFontSize(double dPointSize);
 
         double fullDumpFontSize() const
         {
@@ -324,12 +324,12 @@ class CommDumpModel : public QAbstractItemModel {
         void loadJsonArray(const QJsonArray &arr);
 
         // QAbstractItemModel
-        QModelIndex index(int row, int column, const QModelIndex &parent = {}) const override;
+        QModelIndex index(int iRow, int iColumn, const QModelIndex &parent = {}) const override;
         QModelIndex parent(const QModelIndex &child) const override;
         int rowCount(const QModelIndex &parent = {}) const override;
         int columnCount(const QModelIndex &parent = {}) const override;
-        QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-        QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+        QVariant data(const QModelIndex &index, int iRole = Qt::DisplayRole) const override;
+        QVariant headerData(int iSection, Qt::Orientation orientation, int iRole = Qt::DisplayRole) const override;
 
         // Row-level access used by the view's item delegate.
         bool isChildRow(const QModelIndex &index) const;
@@ -341,13 +341,13 @@ class CommDumpModel : public QAbstractItemModel {
         // view. Used by CommDumpView's copy-to-clipboard feature, which always
         // copies the full dump rather than the collapsed preview. Returns an
         // empty string for an out-of-range row or a record with no payload.
-        QString fullDumpForRow(int row) const;
+        QString fullDumpForRow(int iRow) const;
 
         static QString formatTimestampUs(qint64 us);        // "HH:mm:ss.mmmuuu" (microsecond resolution)
         static QString formatDurationSecUs(qint64 deltaUs); // "S.uuuuuu" duration, e.g. "0.785645" / "99999.445678"
 
     private:
-        QJsonObject recordToJson(const Record &r) const;
+        QJsonObject recordToJson(const Record &sR) const;
 
         // If m_records.size() exceeds m_maxRecords (hard cap), removes the
         // oldest records in one beginRemoveRows()/endRemoveRows() batch, down
@@ -374,7 +374,7 @@ class CommDumpModel : public QAbstractItemModel {
         // or newly appended), so addRecords() can report it back via
         // IngestResult.
         int updateAggregateForRecord(qint64 timestampUs, const QString &plugin, const QString &details,
-                                     bool isTx, const QByteArray &data);
+                                     bool bIsTx, const QByteArray &data);
 
         // Same hysteresis batch-eviction pattern as evictIfNeeded(), applied to
         // m_aggregateRows/m_aggregateKeyToRow instead of m_records — a purely
@@ -392,16 +392,16 @@ class CommDumpModel : public QAbstractItemModel {
         void rebuildAggregateFromRecords();
 
         // See definition — used by ColTimestamp's raw-mode TimeDeltaPrevious.
-        qint64 timestampAtActiveRow(int row) const;
+        qint64 timestampAtActiveRow(int iRow) const;
         // See definition — used by ColTimestamp's TimeSinceCaptureStart, both modes.
         qint64 captureStartTimestampUs() const;
 
-        static QString hexOnlyPreview(const QByteArray &data, int maxBytes);
-        static QString asciiOnlyPreview(const QByteArray &data, int maxBytes);
+        static QString hexOnlyPreview(const QByteArray &data, int iMaxBytes);
+        static QString asciiOnlyPreview(const QByteArray &data, int iMaxBytes);
         // includeAscii: if true, appends the ASCII column "|...|"; if false, returns hex only
         // fontSize: the point size to use for the font of the full dump text
         // bytesPerLine: 8, 16, or 32 — see setDumpBytesPerLine()
-        static QString hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize, int bytesPerLine);
+        static QString hexAsciiFull(const QByteArray &data, bool bIncludeAscii, double dFontSize, int iBytesPerLine);
 
         // Stable per-plugin colour for ColPlugin's ForegroundRole, picked
         // deterministically from a fixed palette by hashing the plugin name —

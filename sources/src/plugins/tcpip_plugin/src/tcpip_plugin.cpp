@@ -27,10 +27,10 @@ extern "C" {
         return new TCPIPPlugin();
     }
 
-    EXPORTED void pluginExit(TCPIPPlugin *ptrPlugin)
+    EXPORTED void pluginExit(TCPIPPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -89,12 +89,12 @@ std::shared_ptr<TCPIP> TCPIPPlugin::m_OpenDriver(void) const
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::m_TCPIP_INFO(const std::string &args, std::stop_token st) const
+bool TCPIPPlugin::m_TCPIP_INFO(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -161,13 +161,13 @@ bool TCPIPPlugin::m_TCPIP_INFO(const std::string &args, std::stop_token st) cons
  *        w=write_tout  s=recv_bufsize
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::m_TCPIP_CONFIG(const std::string &args, std::stop_token st) const
+bool TCPIPPlugin::m_TCPIP_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
-    return generic_tcp_set_params(this, args);
+    return generic_tcp_set_params(this, strArgs);
 
 } /* m_TCPIP_CONFIG() */
 
@@ -188,14 +188,14 @@ bool TCPIPPlugin::m_TCPIP_CONFIG(const std::string &args, std::stop_token st) co
  *       TCPIP.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::m_TCPIP_CMD(const std::string &args, std::stop_token st) const
+bool TCPIPPlugin::m_TCPIP_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<TCPIP> {
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
@@ -214,14 +214,14 @@ bool TCPIPPlugin::m_TCPIP_CMD(const std::string &args, std::stop_token st) const
  *       TCPIP.SCRIPT scriptname [|delay]
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string &args, std::stop_token st) const
+bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<TCPIP> {
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
@@ -250,12 +250,12 @@ bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string &args, std::stop_token st) co
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::m_TCPIP_CYCLIC(const std::string &args, std::stop_token st) const
+bool TCPIPPlugin::m_TCPIP_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<TCPIP> {
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();

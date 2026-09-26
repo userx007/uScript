@@ -51,7 +51,7 @@ namespace ufile {
         public:
             using ChunkHandler = std::function<bool(std::span<const uint8_t>, std::shared_ptr<const TDriver>)>;
 
-            static bool read(const std::string &filename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
+            static bool read(const std::string &strFilename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
             {
                 if (!handler) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Callback not provided!"));
@@ -64,20 +64,20 @@ namespace ufile {
                 }
 
 #if defined(_WIN32)
-                return readWindows(filename, chunkSize, handler, shpDriver);
+                return readWindows(strFilename, chunkSize, handler, shpDriver);
 #elif defined(__unix__) || defined(__APPLE__)
-                return readPosix(filename, chunkSize, handler, shpDriver);
+                return readPosix(strFilename, chunkSize, handler, shpDriver);
 #else
-                return readFallback(filename, chunkSize, handler, shpDriver);
+                return readFallback(strFilename, chunkSize, handler, shpDriver);
 #endif
             } /* read() */
 
         private:
 #if defined(_WIN32)
 
-            static bool readWindows(const std::string &filename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
+            static bool readWindows(const std::string &strFilename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
             {
-                HANDLE hFile = CreateFileA(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                HANDLE hFile = CreateFileA(strFilename.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 
                 if (hFile == INVALID_HANDLE_VALUE) {
@@ -124,9 +124,9 @@ namespace ufile {
 
 #if defined(__unix__) || defined(__APPLE__)
 
-            static bool readPosix(const std::string &filename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
+            static bool readPosix(const std::string &strFilename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
             {
-                int fd = open(filename.c_str(), O_RDONLY);
+                int fd = open(strFilename.c_str(), O_RDONLY);
 
                 if (fd == -1) {
                     return false;
@@ -166,9 +166,9 @@ namespace ufile {
 
 #endif // defined(__unix__) || defined(__APPLE__)
 
-            static bool readFallback(const std::string &filename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
+            static bool readFallback(const std::string &strFilename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
             {
-                std::ifstream file(filename, std::ios::binary);
+                std::ifstream file(strFilename, std::ios::binary);
 
                 if (!file) {
                     return false;

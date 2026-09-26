@@ -44,10 +44,10 @@ extern "C" {
         return new SYSTECPlugin();
     }
 
-    EXPORTED void pluginExit(SYSTECPlugin *ptrPlugin)
+    EXPORTED void pluginExit(SYSTECPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -95,10 +95,10 @@ namespace {
             }
 
             ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                                 const ReadOptions &options, std::string_view xtra_params = {},
+                                 const ReadOptions &sOptions, std::string_view xtra_params = {},
                                  std::stop_token stop_tok = {}) const override
             {
-                auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
+                auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, sOptions, xtra_params, stop_tok);
                 if (result.status == Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
                     gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
                                          CommDir::Rx, buffer.data(), static_cast<uint32_t>(result.bytes_read));
@@ -144,10 +144,10 @@ namespace {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SYSTECPlugin::m_SYSTEC_INFO(const std::string &args, std::stop_token st) const
+bool SYSTECPlugin::m_SYSTEC_INFO(const std::string &strArgs, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -297,9 +297,9 @@ bool SYSTECPlugin::m_SYSTEC_INFO(const std::string &args, std::stop_token st) co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SYSTECPlugin::m_SYSTEC_CONFIG(const std::string &args, std::stop_token st) const
+bool SYSTECPlugin::m_SYSTEC_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_can_set_params<SYSTECPlugin>(this, args);
+    return generic_can_set_params<SYSTECPlugin>(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -321,7 +321,7 @@ bool SYSTECPlugin::m_SYSTEC_CONFIG(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SYSTECPlugin::m_SYSTEC_FILTER(const std::string &args, std::stop_token st) const
+bool SYSTECPlugin::m_SYSTEC_FILTER(const std::string &strArgs, std::stop_token st) const
 {
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
     if (!m_bIsEnabled) {
@@ -330,9 +330,9 @@ bool SYSTECPlugin::m_SYSTEC_FILTER(const std::string &args, std::stop_token st) 
 
     std::vector<SYSTECCAN::CanFilter> vFilters;
 
-    if (!args.empty()) {
-        if (false == m_ParseFilters(args, vFilters)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(args));
+    if (!strArgs.empty()) {
+        if (false == m_ParseFilters(strArgs, vFilters)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(strArgs));
             return false;
         }
     }
@@ -375,11 +375,11 @@ bool SYSTECPlugin::m_SYSTEC_FILTER(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SYSTECPlugin::m_SYSTEC_HWCTRL(const std::string &args, std::stop_token st) const
+bool SYSTECPlugin::m_SYSTEC_HWCTRL(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    const std::string strArg = ustring::trim(args);
+    const std::string strArg = ustring::trim(strArgs);
 
     if (strArg.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("HWCTRL: missing <key>[=<value>] argument"));
@@ -393,14 +393,14 @@ bool SYSTECPlugin::m_SYSTEC_HWCTRL(const std::string &args, std::stop_token st) 
     const std::string strValue         = bHasValue ? ustring::trim(strArg.substr(posEq + 1)) : std::string();
 
     if (strKey.empty() || (bHasValue && strValue.empty())) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("HWCTRL: malformed argument:"); LOG_STRING(args));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("HWCTRL: malformed argument:"); LOG_STRING(strArgs));
         return false;
     }
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
     // (key recognition above still ran, matching the CMD/FILTER validation-only convention)
     // NOTE: intentionally NOT `static` — strKey is a fresh local computed
-    // from this call's args every time; a `static const` here would only
+    // from this call's strArgs every time; a `static const` here would only
     // ever evaluate against whichever key happened to be passed on the
     // very first call to this function and then serve that stale cached
     // true/false for every subsequent call regardless of the actual key.
@@ -569,10 +569,10 @@ bool SYSTECPlugin::m_SYSTEC_HWCTRL(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SYSTECPlugin::m_SYSTEC_CMD(const std::string &args, std::stop_token st) const
+bool SYSTECPlugin::m_SYSTEC_CMD(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<SYSTECCAN> {
             // Open the SYSTECCAN socket (RAII — closed automatically by destructor)
             auto shpDriver = std::make_shared<SYSTECCAN>(m_strCanIface, m_strCanIface);
@@ -623,10 +623,10 @@ bool SYSTECPlugin::m_SYSTEC_CMD(const std::string &args, std::stop_token st) con
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SYSTECPlugin::m_SYSTEC_SCRIPT(const std::string &args, std::stop_token st) const
+bool SYSTECPlugin::m_SYSTEC_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<SYSTECCAN> {
             // Open the SYSTECCAN socket (RAII — closed automatically by destructor)
             auto shpDriver = std::make_shared<SYSTECCAN>(m_strCanIface, m_strCanIface);
@@ -684,10 +684,10 @@ bool SYSTECPlugin::m_SYSTEC_SCRIPT(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SYSTECPlugin::m_SYSTEC_CYCLIC(const std::string &args, std::stop_token st) const
+bool SYSTECPlugin::m_SYSTEC_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<SYSTECCAN> {
             // Open the SYSTECCAN socket (RAII — closed automatically by destructor)
             auto shpDriver = std::make_shared<SYSTECCAN>(m_strCanIface, m_strCanIface);

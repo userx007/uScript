@@ -35,7 +35,7 @@ namespace HydraHAL {
     // Construction
     // ---------------------------------------------------------------------------
 
-    RawWire::RawWire(std::shared_ptr<Hydrabus> hydrabus)
+    RawWire::RawWire(std::shared_ptr<Hydrabus> shpHydrabus)
         : Protocol(std::move(hydrabus), "RAW1", "Raw-Wire", 0x05)
     {
         _configure_port();
@@ -195,17 +195,17 @@ namespace HydraHAL {
         return _clk;
     }
 
-    bool RawWire::set_clk(int level)
+    bool RawWire::set_clk(int iLevel)
     {
-        level       = level & 1;
-        uint8_t cmd = static_cast<uint8_t>(0b00001010 | level);
+        iLevel       = iLevel & 1;
+        uint8_t cmd = static_cast<uint8_t>(0b00001010 | iLevel);
         _write_byte(cmd);
 
         if (!_ack("set_clk")) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting CLK pin"));
             return false;
         }
-        _clk = level;
+        _clk = iLevel;
         return true;
     }
 
@@ -216,17 +216,17 @@ namespace HydraHAL {
         return static_cast<int>(_read_byte());
     }
 
-    bool RawWire::set_sda(int level)
+    bool RawWire::set_sda(int iLevel)
     {
-        level       = level & 1;
-        uint8_t cmd = static_cast<uint8_t>(0b00001100 | level);
+        iLevel       = iLevel & 1;
+        uint8_t cmd = static_cast<uint8_t>(0b00001100 | iLevel);
         _write_byte(cmd);
 
         if (!_ack("set_sda")) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting SDA pin"));
             return false;
         }
-        _sda = level;
+        _sda = iLevel;
         return true;
     }
 
@@ -234,7 +234,7 @@ namespace HydraHAL {
     // Configuration
     // ---------------------------------------------------------------------------
 
-    bool RawWire::set_speed(uint32_t hz)
+    bool RawWire::set_speed(uint32_t u32Speed)
     {
         static const std::unordered_map<uint32_t, uint8_t> kSpeedMap = {
             {5'000, 0b00},

@@ -33,10 +33,10 @@ extern "C" {
         return new CH341Plugin();
     }
 
-    EXPORTED void pluginExit(CH341Plugin *ptrPlugin)
+    EXPORTED void pluginExit(CH341Plugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -60,10 +60,10 @@ extern "C" {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH341Plugin::m_CH341_INFO(const std::string &args, std::stop_token st) const
+bool CH341Plugin::m_CH341_INFO(const std::string &strArgs, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -137,9 +137,9 @@ bool CH341Plugin::m_CH341_INFO(const std::string &args, std::stop_token st) cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH341Plugin::m_CH341_CONFIG(const std::string &args, std::stop_token st) const
+bool CH341Plugin::m_CH341_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_ch341_set_params<CH341Plugin>(this, args);
+    return generic_ch341_set_params<CH341Plugin>(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -157,12 +157,12 @@ bool CH341Plugin::m_CH341_CONFIG(const std::string &args, std::stop_token st) co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH341Plugin::m_CH341_CMD(const std::string &args, std::stop_token st) const
+bool CH341Plugin::m_CH341_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<CH341> {
             // open the CH341 port (RAII implementation, the close is done by destructor)
             auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate, m_strCh341Port);
@@ -185,12 +185,12 @@ bool CH341Plugin::m_CH341_CMD(const std::string &args, std::stop_token st) const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH341Plugin::m_CH341_SCRIPT(const std::string &args, std::stop_token st) const
+bool CH341Plugin::m_CH341_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<CH341> {
             // open the CH341 port (RAII implementation, the close is done by destructor)
             auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate, m_strCh341Port);
@@ -220,10 +220,10 @@ bool CH341Plugin::m_CH341_SCRIPT(const std::string &args, std::stop_token st) co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH341Plugin::m_CH341_CYCLIC(const std::string &args, std::stop_token st) const
+bool CH341Plugin::m_CH341_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<CH341> {
             auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate, m_strCh341Port);
             return shpDriver->is_open() ? shpDriver : nullptr;
@@ -261,12 +261,12 @@ bool CH341Plugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CH341Plugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+bool CH341Plugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType eReadType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;
 
-    switch (readType) {
+    switch (eReadType) {
     case CommCommandReadType::LINE:
         options.mode      = ICommDriver::ReadMode::UntilDelimiter;
         options.delimiter = '\n'; // CHAR_SEPARATOR_NEWLINE

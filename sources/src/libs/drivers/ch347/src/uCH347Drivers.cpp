@@ -82,28 +82,28 @@ using ReadMode    = ICommDriver::ReadMode;
 // the ~40 thin call sites below gets a meaningful failure trace "for free"
 // without repeating an if/LOG_PRINT block at each site individually.
 // ---------------------------------------------------------------------------
-static inline Status accessStatus(bool ok, const char *pOp)
+static inline Status accessStatus(bool bOk, const char *pstrOp)
 {
-    if (!ok) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pOp); LOG_STRING("failed"));
+    if (!bOk) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrOp); LOG_STRING("failed"));
     }
-    return ok ? Status::SUCCESS : Status::PORT_ACCESS;
+    return bOk ? Status::SUCCESS : Status::PORT_ACCESS;
 }
 
-static inline Status readStatus(bool ok, const char *pOp)
+static inline Status readStatus(bool bOk, const char *pstrOp)
 {
-    if (!ok) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pOp); LOG_STRING("failed"));
+    if (!bOk) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrOp); LOG_STRING("failed"));
     }
-    return ok ? Status::SUCCESS : Status::READ_ERROR;
+    return bOk ? Status::SUCCESS : Status::READ_ERROR;
 }
 
-static inline Status writeStatus(bool ok, const char *pOp)
+static inline Status writeStatus(bool bOk, const char *pstrOp)
 {
-    if (!ok) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pOp); LOG_STRING("failed"));
+    if (!bOk) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrOp); LOG_STRING("failed"));
     }
-    return ok ? Status::SUCCESS : Status::WRITE_ERROR;
+    return bOk ? Status::SUCCESS : Status::WRITE_ERROR;
 }
 
 // ============================================================================
@@ -144,27 +144,27 @@ bool CH347SPI::is_open() const
     return m_iHandle != CH347_INVALID_HANDLE;
 }
 
-Status CH347SPI::set_frequency(uint32_t iHz)
+Status CH347SPI::set_frequency(uint32_t u32Hz)
 {
-    return accessStatus(CH347SPI_SetFrequency(m_iHandle, iHz), "CH347SPI_SetFrequency");
+    return accessStatus(CH347SPI_SetFrequency(m_iHandle, u32Hz), "CH347SPI_SetFrequency");
 }
 
-Status CH347SPI::set_data_bits(uint8_t iDataBits)
+Status CH347SPI::set_data_bits(uint8_t u8DataBits)
 {
-    return accessStatus(CH347SPI_SetDataBits(m_iHandle, iDataBits), "CH347SPI_SetDataBits");
+    return accessStatus(CH347SPI_SetDataBits(m_iHandle, u8DataBits), "CH347SPI_SetDataBits");
 }
 
-Status CH347SPI::set_auto_cs(bool disable)
+Status CH347SPI::set_auto_cs(bool bDisable)
 {
     // On Windows CH347SPI_SetAutoCS is a documented no-op shim; see
     // ch347_compat.h for details.  Callers that need this on Windows must
     // set mSpiCfgS::iIsAutoDeativeCS and call open() / CH347SPI_Init() again.
-    return accessStatus(CH347SPI_SetAutoCS(m_iHandle, disable), "CH347SPI_SetAutoCS");
+    return accessStatus(CH347SPI_SetAutoCS(m_iHandle, bDisable), "CH347SPI_SetAutoCS");
 }
 
-Status CH347SPI::change_cs(uint8_t iStatus)
+Status CH347SPI::change_cs(uint8_t u8Status)
 {
-    return accessStatus(CH347SPI_ChangeCS(m_iHandle, iStatus), "CH347SPI_ChangeCS");
+    return accessStatus(CH347SPI_ChangeCS(m_iHandle, u8Status), "CH347SPI_ChangeCS");
 }
 
 Status CH347SPI::get_config(mSpiCfgS &cfg) const
@@ -172,27 +172,27 @@ Status CH347SPI::get_config(mSpiCfgS &cfg) const
     return accessStatus(CH347SPI_GetCfg(m_iHandle, &cfg), "CH347SPI_GetCfg");
 }
 
-std::pair<bool, uint8_t> CH347SPI::resolve_cs(const SpiXferOptions &opts) const
+std::pair<bool, uint8_t> CH347SPI::resolve_cs(const SpiXferOptions &sOpts) const
 {
-    return {opts.ignoreCS, static_cast<uint8_t>(opts.chipSelect)};
+    return {sOpts.ignoreCS, static_cast<uint8_t>(sOpts.chipSelect)};
 }
 
 ReadResult CH347SPI::tout_read(uint32_t /*u32ReadTimeout*/,
                                std::span<uint8_t> buffer,
-                               const ReadOptions &options,
+                               const ReadOptions &sOptions,
                                std::string_view xtra_params,
                                std::stop_token /*stop_tok*/) const
 {
     /* SPI WriteRead is only meaningful for exact-length transfers */
-    if (options.mode != ReadMode::Exact) {
+    if (sOptions.mode != ReadMode::Exact) {
         return {Status::INVALID_PARAM, 0, false};
     }
 
-    /* If the caller embedded a CS selector in options.token, use it;
+    /* If the caller embedded a CS selector in sOptions.token, use it;
      * otherwise fall back to the instance default. */
     SpiXferOptions opts = m_xferOpts;
-    if (!options.token.empty()) {
-        opts.chipSelect = static_cast<SpiCS>(static_cast<uint8_t>(options.token[0]));
+    if (!sOptions.token.empty()) {
+        opts.chipSelect = static_cast<SpiCS>(static_cast<uint8_t>(sOptions.token[0]));
     }
 
     return tout_xfer(buffer, opts);
@@ -207,9 +207,9 @@ WriteResult CH347SPI::tout_write(uint32_t /*u32WriteTimeout*/,
 }
 
 ReadResult CH347SPI::tout_xfer(std::span<uint8_t> buffer,
-                               const SpiXferOptions &opts) const
+                               const SpiXferOptions &sOpts) const
 {
-    auto [ignoreCS, cs] = resolve_cs(opts);
+    auto [ignoreCS, cs] = resolve_cs(sOpts);
     /* CH347SPI_WriteRead clocks MOSI out and fills the same buffer with MISO */
     bool ok             = CH347SPI_WriteRead(m_iHandle,
                                              ignoreCS,
@@ -220,16 +220,16 @@ ReadResult CH347SPI::tout_xfer(std::span<uint8_t> buffer,
 }
 
 WriteResult CH347SPI::tout_write_ex(std::span<const uint8_t> buffer,
-                                    const SpiXferOptions &opts) const
+                                    const SpiXferOptions &sOpts) const
 {
     /* CH347SPI_Write needs a non-const void*; copy into a local buffer */
     std::vector<uint8_t> tmp(buffer.begin(), buffer.end());
-    auto [ignoreCS, cs] = resolve_cs(opts);
+    auto [ignoreCS, cs] = resolve_cs(sOpts);
     bool ok             = CH347SPI_Write(m_iHandle,
                                          ignoreCS,
                                          cs,
                                          static_cast<int>(tmp.size()),
-                                         opts.writeStep,
+                                         sOpts.writeStep,
                                          tmp.data());
     return {writeStatus(ok, "CH347SPI_Write"), ok ? buffer.size() : 0u};
 }
@@ -238,14 +238,14 @@ WriteResult CH347SPI::tout_write_ex(std::span<const uint8_t> buffer,
 // CH347I2C
 // ============================================================================
 
-Status CH347I2C::open(const std::string &strDevice, I2cSpeed speed)
+Status CH347I2C::open(const std::string &strDevice, I2cSpeed eSpeed)
 {
     m_iHandle = CH347OpenDevice(strDevice.c_str());
     if (m_iHandle == CH347_INVALID_HANDLE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CH347OpenDevice failed for"); LOG_STRING(strDevice.c_str()));
         return Status::PORT_ACCESS;
     }
-    Status result = accessStatus(CH347I2C_Set(m_iHandle, static_cast<int>(speed)), "CH347I2C_Set");
+    Status result = accessStatus(CH347I2C_Set(m_iHandle, static_cast<int>(eSpeed)), "CH347I2C_Set");
     if (result == Status::SUCCESS) {
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("CH347I2C ["); LOG_STRING(strDevice.c_str());
@@ -270,25 +270,25 @@ bool CH347I2C::is_open() const
     return m_iHandle != CH347_INVALID_HANDLE;
 }
 
-Status CH347I2C::set_speed(I2cSpeed speed)
+Status CH347I2C::set_speed(I2cSpeed eSpeed)
 {
-    return accessStatus(CH347I2C_Set(m_iHandle, static_cast<int>(speed)), "CH347I2C_Set");
+    return accessStatus(CH347I2C_Set(m_iHandle, static_cast<int>(eSpeed)), "CH347I2C_Set");
 }
 
-Status CH347I2C::set_clock_stretch(bool enable)
+Status CH347I2C::set_clock_stretch(bool bEnable)
 {
-    return accessStatus(CH347I2C_SetStretch(m_iHandle, enable), "CH347I2C_SetStretch");
+    return accessStatus(CH347I2C_SetStretch(m_iHandle, bEnable), "CH347I2C_SetStretch");
 }
 
-Status CH347I2C::set_drive_mode(uint8_t mode)
+Status CH347I2C::set_drive_mode(uint8_t u8Mode)
 {
     // Routed to CH347I2C_SetDriverMode on Windows via the compat shim.
-    return accessStatus(CH347I2C_SetDriveMode(m_iHandle, mode), "CH347I2C_SetDriveMode");
+    return accessStatus(CH347I2C_SetDriveMode(m_iHandle, u8Mode), "CH347I2C_SetDriveMode");
 }
 
-Status CH347I2C::set_ignore_nack(uint8_t mode)
+Status CH347I2C::set_ignore_nack(uint8_t u8Mode)
 {
-    return accessStatus(CH347I2C_SetIgnoreNack(m_iHandle, mode), "CH347I2C_SetIgnoreNack");
+    return accessStatus(CH347I2C_SetIgnoreNack(m_iHandle, u8Mode), "CH347I2C_SetIgnoreNack");
 }
 
 Status CH347I2C::set_inter_transaction_delay_ms(int iDelay)
@@ -303,17 +303,17 @@ Status CH347I2C::set_ack_clock_delay_us(int iDelayUs)
 
 ReadResult CH347I2C::tout_read(uint32_t /*u32ReadTimeout*/,
                                std::span<uint8_t> buffer,
-                               const ReadOptions &options,
+                               const ReadOptions &sOptions,
                                std::string_view xtra_params,
                                std::stop_token /*stop_tok*/) const
 {
-    if (options.mode != ReadMode::Exact) {
+    if (sOptions.mode != ReadMode::Exact) {
         return {Status::INVALID_PARAM, 0, false};
     }
 
     I2cReadOptions i2cOpts;
-    if (!options.token.empty()) {
-        i2cOpts.devAddr = options.token[0];
+    if (!sOptions.token.empty()) {
+        i2cOpts.devAddr = sOptions.token[0];
     }
 
     return tout_read_i2c(buffer, i2cOpts);
@@ -334,10 +334,10 @@ WriteResult CH347I2C::tout_write(uint32_t /*u32WriteTimeout*/,
 }
 
 ReadResult CH347I2C::tout_read_i2c(std::span<uint8_t> buffer,
-                                   const I2cReadOptions &opts,
-                                   int *retAck) const
+                                   const I2cReadOptions &sOpts,
+                                   int *pRetAck) const
 {
-    const int writeLen = static_cast<int>(opts.writeLen);
+    const int writeLen = static_cast<int>(sOpts.writeLen);
     const int readLen  = static_cast<int>(buffer.size()) - writeLen;
 
     if (readLen < 0) {
@@ -348,12 +348,12 @@ ReadResult CH347I2C::tout_read_i2c(std::span<uint8_t> buffer,
     std::vector<uint8_t> readBuf(static_cast<size_t>(readLen));
 
     bool ok;
-    if (retAck) {
+    if (pRetAck) {
         // Routed to CH347StreamI2C_RetACK on Windows via the compat shim.
         ok = CH347StreamI2C_RetAck(m_iHandle,
                                    writeLen, writeBuf.empty() ? nullptr : writeBuf.data(),
                                    readLen, readBuf.empty() ? nullptr : readBuf.data(),
-                                   retAck);
+                                   pRetAck);
     } else {
         ok = CH347StreamI2C(m_iHandle,
                             writeLen, writeBuf.empty() ? nullptr : writeBuf.data(),
@@ -364,7 +364,7 @@ ReadResult CH347I2C::tout_read_i2c(std::span<uint8_t> buffer,
         std::memcpy(buffer.data(), readBuf.data(), static_cast<size_t>(readLen));
     }
 
-    return {readStatus(ok, retAck ? "CH347StreamI2C_RetAck" : "CH347StreamI2C"), ok ? static_cast<size_t>(readLen) : 0u, false};
+    return {readStatus(ok, pRetAck ? "CH347StreamI2C_RetAck" : "CH347StreamI2C"), ok ? static_cast<size_t>(readLen) : 0u, false};
 }
 
 Status CH347I2C::read_eeprom(EEPROM_TYPE eepromType,
@@ -426,11 +426,11 @@ bool CH347GPIO::is_open() const
 
 ReadResult CH347GPIO::tout_read(uint32_t /*u32ReadTimeout*/,
                                 std::span<uint8_t> buffer,
-                                const ReadOptions &options,
+                                const ReadOptions &sOptions,
                                 std::string_view xtra_params,
                                 std::stop_token /*stop_tok*/) const
 {
-    if (options.mode != ReadMode::Exact) {
+    if (sOptions.mode != ReadMode::Exact) {
         return {Status::INVALID_PARAM, 0, false};
     }
 
@@ -464,49 +464,49 @@ WriteResult CH347GPIO::tout_write(uint32_t /*u32WriteTimeout*/,
     return {writeStatus(ok, "CH347GPIO_Set"), ok ? GPIO_BUFFER_SIZE : 0u};
 }
 
-Status CH347GPIO::pin_write(uint8_t pin, bool level) const
+Status CH347GPIO::pin_write(uint8_t u8Pin, bool bLevel) const
 {
-    uint8_t levelMask = level ? pin : 0x00;
-    return writeStatus(CH347GPIO_Set(m_iHandle, pin, pin, levelMask), "CH347GPIO_Set");
+    uint8_t levelMask = bLevel ? u8Pin : 0x00;
+    return writeStatus(CH347GPIO_Set(m_iHandle, u8Pin, u8Pin, levelMask), "CH347GPIO_Set");
 }
 
-Status CH347GPIO::pin_read(uint8_t pinMask, uint8_t &level) const
+Status CH347GPIO::pin_read(uint8_t u8PinMask, uint8_t &u8Level) const
 {
     uint8_t iDir = 0, iData = 0;
     bool ok = CH347GPIO_Get(m_iHandle, &iDir, &iData);
     if (ok) {
-        level = iData & pinMask;
+        u8Level = iData & u8PinMask;
     }
     return readStatus(ok, "CH347GPIO_Get");
 }
 
-Status CH347GPIO::pin_set_direction(uint8_t pinMask, bool isOutput) const
+Status CH347GPIO::pin_set_direction(uint8_t u8PinMask, bool bIsOutput) const
 {
-    uint8_t dir = isOutput ? pinMask : 0x00;
-    return accessStatus(CH347GPIO_Set(m_iHandle, pinMask, dir, 0x00), "CH347GPIO_Set");
+    uint8_t dir = bIsOutput ? u8PinMask : 0x00;
+    return accessStatus(CH347GPIO_Set(m_iHandle, u8PinMask, dir, 0x00), "CH347GPIO_Set");
 }
 
-Status CH347GPIO::pins_write(uint8_t pinMask, uint8_t levelMask) const
+Status CH347GPIO::pins_write(uint8_t u8PinMask, uint8_t u8LevelMask) const
 {
-    return writeStatus(CH347GPIO_Set(m_iHandle, pinMask, pinMask, levelMask), "CH347GPIO_Set");
+    return writeStatus(CH347GPIO_Set(m_iHandle, u8PinMask, u8PinMask, u8LevelMask), "CH347GPIO_Set");
 }
 
-Status CH347GPIO::irq_set(uint8_t pinIndex, GpioIrqEdge edge, void *handler) const
+Status CH347GPIO::irq_set(uint8_t u8PinIndex, GpioIrqEdge eEdge, void *pvHandler) const
 {
     // On Windows this is routed to CH347SetIntRoutine() via the compat shim;
-    // handler must carry the Windows CALLBACK calling convention.
+    // pvHandler must carry the Windows CALLBACK calling convention.
     return accessStatus(CH347GPIO_IRQ_Set(m_iHandle,
-                                          pinIndex,
-                                          edge != GpioIrqEdge::None,
-                                          static_cast<uint8_t>(edge),
-                                          handler),
+                                          u8PinIndex,
+                                          eEdge != GpioIrqEdge::None,
+                                          static_cast<uint8_t>(eEdge),
+                                          pvHandler),
                         "CH347GPIO_IRQ_Set");
 }
 
-Status CH347GPIO::irq_disable(uint8_t pinIndex) const
+Status CH347GPIO::irq_disable(uint8_t u8PinIndex) const
 {
     return accessStatus(CH347GPIO_IRQ_Set(m_iHandle,
-                                          pinIndex,
+                                          u8PinIndex,
                                           false,
                                           IRQ_TYPE_NONE,
                                           nullptr),
@@ -517,14 +517,14 @@ Status CH347GPIO::irq_disable(uint8_t pinIndex) const
 // CH347JTAG
 // ============================================================================
 
-Status CH347JTAG::open(const std::string &strDevice, uint8_t iClockRate)
+Status CH347JTAG::open(const std::string &strDevice, uint8_t u8ClockRate)
 {
     m_iHandle = CH347OpenDevice(strDevice.c_str());
     if (m_iHandle == CH347_INVALID_HANDLE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CH347OpenDevice failed for"); LOG_STRING(strDevice.c_str()));
         return Status::PORT_ACCESS;
     }
-    Status result = accessStatus(CH347Jtag_INIT(m_iHandle, iClockRate), "CH347Jtag_INIT");
+    Status result = accessStatus(CH347Jtag_INIT(m_iHandle, u8ClockRate), "CH347Jtag_INIT");
     if (result == Status::SUCCESS) {
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("CH347JTAG ["); LOG_STRING(strDevice.c_str());
@@ -549,23 +549,23 @@ bool CH347JTAG::is_open() const
     return m_iHandle != CH347_INVALID_HANDLE;
 }
 
-Status CH347JTAG::get_clock_rate(uint8_t &iClockRate) const
+Status CH347JTAG::get_clock_rate(uint8_t &u8ClockRate) const
 {
-    return accessStatus(CH347Jtag_GetCfg(m_iHandle, &iClockRate), "CH347Jtag_GetCfg");
+    return accessStatus(CH347Jtag_GetCfg(m_iHandle, &u8ClockRate), "CH347Jtag_GetCfg");
 }
 
 ReadResult CH347JTAG::tout_read(uint32_t /*u32ReadTimeout*/,
                                 std::span<uint8_t> buffer,
-                                const ReadOptions &options,
+                                const ReadOptions &sOptions,
                                 std::string_view xtra_params,
                                 std::stop_token /*stop_tok*/) const
 {
-    if (options.mode != ReadMode::Exact) {
+    if (sOptions.mode != ReadMode::Exact) {
         return {Status::INVALID_PARAM, 0, false};
     }
 
     JtagRegister reg = JtagRegister::DR;
-    if (!options.token.empty() && (options.token[0] & JTAG_TOKEN_IR_FLAG)) {
+    if (!sOptions.token.empty() && (sOptions.token[0] & JTAG_TOKEN_IR_FLAG)) {
         reg = JtagRegister::IR;
     }
 
@@ -591,97 +591,97 @@ Status CH347JTAG::tap_reset() const
     return accessStatus(CH347Jtag_Reset(m_iHandle) == 0, "CH347Jtag_Reset");
 }
 
-Status CH347JTAG::tap_reset_trst(bool highLevel) const
+Status CH347JTAG::tap_reset_trst(bool bHighLevel) const
 {
     // On Windows this is a no-op shim; see ch347_compat.h and header docs.
-    return accessStatus(CH347Jtag_ResetTrst(m_iHandle, highLevel), "CH347Jtag_ResetTrst");
+    return accessStatus(CH347Jtag_ResetTrst(m_iHandle, bHighLevel), "CH347Jtag_ResetTrst");
 }
 
-Status CH347JTAG::tap_set_state(uint8_t tapState) const
+Status CH347JTAG::tap_set_state(uint8_t u8TapState) const
 {
     // Routed to CH347Jtag_SwitchTapStateEx on Windows via the compat shim.
-    return accessStatus(CH347Jtag_SwitchTapState(m_iHandle, tapState), "CH347Jtag_SwitchTapState");
+    return accessStatus(CH347Jtag_SwitchTapState(m_iHandle, u8TapState), "CH347Jtag_SwitchTapState");
 }
 
 Status CH347JTAG::tap_tms_change(std::span<const uint8_t> tmsBytes,
-                                 uint32_t step, uint32_t skip) const
+                                 uint32_t u32Step, uint32_t u32Skip) const
 {
     /* CH347Jtag_TmsChange takes a non-const pointer */
     std::vector<uint8_t> tmp(tmsBytes.begin(), tmsBytes.end());
     return accessStatus(CH347Jtag_TmsChange(m_iHandle,
-                                            tmp.data(), step, skip),
+                                            tmp.data(), u32Step, u32Skip),
                         "CH347Jtag_TmsChange");
 }
 
-Status CH347JTAG::write_register(JtagRegister reg,
+Status CH347JTAG::write_register(JtagRegister eReg,
                                  std::span<const uint8_t> buffer) const
 {
     std::vector<uint8_t> tmp(buffer.begin(), buffer.end());
-    bool ok = (reg == JtagRegister::DR)
+    bool ok = (eReg == JtagRegister::DR)
                   ? CH347Jtag_ByteWriteDR(m_iHandle, static_cast<int>(tmp.size()), tmp.data())
                   : CH347Jtag_ByteWriteIR(m_iHandle, static_cast<int>(tmp.size()), tmp.data());
-    return writeStatus(ok, (reg == JtagRegister::DR) ? "CH347Jtag_ByteWriteDR" : "CH347Jtag_ByteWriteIR");
+    return writeStatus(ok, (eReg == JtagRegister::DR) ? "CH347Jtag_ByteWriteDR" : "CH347Jtag_ByteWriteIR");
 }
 
-Status CH347JTAG::read_register(JtagRegister reg,
+Status CH347JTAG::read_register(JtagRegister eReg,
                                 std::span<uint8_t> buffer) const
 {
     uint32_t readLen = static_cast<uint32_t>(buffer.size());
-    bool ok          = (reg == JtagRegister::DR)
+    bool ok          = (eReg == JtagRegister::DR)
                            ? CH347Jtag_ByteReadDR(m_iHandle, &readLen, buffer.data())
                            : CH347Jtag_ByteReadIR(m_iHandle, &readLen, buffer.data());
-    return readStatus(ok, (reg == JtagRegister::DR) ? "CH347Jtag_ByteReadDR" : "CH347Jtag_ByteReadIR");
+    return readStatus(ok, (eReg == JtagRegister::DR) ? "CH347Jtag_ByteReadDR" : "CH347Jtag_ByteReadIR");
 }
 
-ReadResult CH347JTAG::write_read(JtagRegister reg,
+ReadResult CH347JTAG::write_read(JtagRegister eReg,
                                  std::span<const uint8_t> writeBuf,
                                  std::span<uint8_t> readBuf) const
 {
     std::vector<uint8_t> wTmp(writeBuf.begin(), writeBuf.end());
     uint32_t readLen = static_cast<uint32_t>(readBuf.size());
     bool ok          = CH347Jtag_WriteRead(m_iHandle,
-                                           reg == JtagRegister::DR,
+                                           eReg == JtagRegister::DR,
                                            static_cast<int>(wTmp.size()), wTmp.data(),
                                            &readLen, readBuf.data());
     return {readStatus(ok, "CH347Jtag_WriteRead"), ok ? static_cast<size_t>(readLen) : 0u, false};
 }
 
-ReadResult CH347JTAG::write_read_fast(JtagRegister reg,
+ReadResult CH347JTAG::write_read_fast(JtagRegister eReg,
                                       std::span<const uint8_t> writeBuf,
                                       std::span<uint8_t> readBuf) const
 {
     std::vector<uint8_t> wTmp(writeBuf.begin(), writeBuf.end());
     uint32_t readLen = static_cast<uint32_t>(readBuf.size());
     bool ok          = CH347Jtag_WriteRead_Fast(m_iHandle,
-                                                reg == JtagRegister::DR,
+                                                eReg == JtagRegister::DR,
                                                 static_cast<int>(wTmp.size()), wTmp.data(),
                                                 &readLen, readBuf.data());
     return {readStatus(ok, "CH347Jtag_WriteRead_Fast"), ok ? static_cast<size_t>(readLen) : 0u, false};
 }
 
 Status CH347JTAG::io_scan(std::span<uint8_t> dataBuffer,
-                          uint32_t dataBitsNb,
-                          bool isRead,
-                          bool isLastPacket) const
+                          uint32_t u32DataBitsNb,
+                          bool bIsRead,
+                          bool bIsLastPacket) const
 {
-    // On Windows isLastPacket is ignored by the CH347Jtag_IoScanT shim;
+    // On Windows bIsLastPacket is ignored by the CH347Jtag_IoScanT shim;
     // see ch347_compat.h and header docs for details.
     bool ok = CH347Jtag_IoScanT(m_iHandle,
-                                dataBuffer.data(), dataBitsNb,
-                                isRead, isLastPacket);
+                                dataBuffer.data(), u32DataBitsNb,
+                                bIsRead, bIsLastPacket);
     return readStatus(ok, "CH347Jtag_IoScanT");
 }
 
 /*static*/
 uint32_t CH347JTAG::build_tms_clock(std::span<uint8_t> pkt,
-                                    uint32_t tms,
-                                    uint32_t bi)
+                                    uint32_t u32Tms,
+                                    uint32_t u32Bi)
 {
-    return CH347Jtag_ClockTms(pkt.data(), tms, bi);
+    return CH347Jtag_ClockTms(pkt.data(), u32Tms, u32Bi);
 }
 
 /*static*/
-uint32_t CH347JTAG::build_idle_clock(std::span<uint8_t> pkt, uint32_t bi)
+uint32_t CH347JTAG::build_idle_clock(std::span<uint8_t> pkt, uint32_t u32Bi)
 {
-    return CH347Jtag_IdleClock(pkt.data(), bi);
+    return CH347Jtag_IdleClock(pkt.data(), u32Bi);
 }

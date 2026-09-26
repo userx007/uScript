@@ -73,11 +73,11 @@ class FT232HUART : public ICommDriver {
          * @param strIdentityLabel Display text for the GUI comm-dump panel (see
          *                         describeConnection()), supplied separately.
          */
-        explicit FT232HUART(const UartConfig &config, uint8_t u8DeviceIndex = 0u,
+        explicit FT232HUART(const UartConfig &sConfig, uint8_t u8DeviceIndex = 0u,
                             const std::string &strIdentityLabel = {})
             : m_strIdentityLabel(strIdentityLabel)
         {
-            this->open(config, u8DeviceIndex);
+            this->open(sConfig, u8DeviceIndex);
         }
 
         ~FT232HUART() override
@@ -95,7 +95,7 @@ class FT232HUART : public ICommDriver {
          * @param config        UART parameters
          * @param u8DeviceIndex Physical device index (0 = first FT232H found)
          */
-        Status open(const UartConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const UartConfig &sConfig, uint8_t u8DeviceIndex = 0u);
 
         /**
          * @brief Close the device handle (safe to call more than once)
@@ -117,12 +117,12 @@ class FT232HUART : public ICommDriver {
         /**
          * @brief Reconfigure an already-open device without closing it
          */
-        Status configure(const UartConfig &config);
+        Status configure(const UartConfig &sConfig);
 
         /**
          * @brief Change baud rate on an already-open device
          */
-        Status set_baud(uint32_t baudRate);
+        Status set_baud(uint32_t u32BaudRate);
 
         /**
          * @brief Blocking write  (implements ICommDriver)
@@ -142,7 +142,7 @@ class FT232HUART : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -158,7 +158,7 @@ class FT232HUART : public ICommDriver {
 
         // Platform helpers (uFT232HUARTCommon.cpp + platform .cpp files)
         Status open_device(uint8_t u8DeviceIndex);
-        Status apply_config(const UartConfig &config) const;
+        Status apply_config(const UartConfig &sConfig) const;
 };
 
 #endif // U_FT232H_UART_DRIVER_H

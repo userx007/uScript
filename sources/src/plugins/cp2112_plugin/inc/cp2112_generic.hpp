@@ -94,13 +94,13 @@ template <typename T>
 bool generic_module_dispatch(const T *pOwner,
                              const std::string &strModule,
                              const std::string &strCmd,
-                             const std::string &args,
+                             const std::string &strArgs,
                              std::stop_token st = {})
 {
     ModuleCommandsMap<T> *pMap = pOwner->getModuleCmdsMap(strModule);
     auto it                    = pMap->find(strCmd);
     if (it != pMap->end()) {
-        return (pOwner->*it->second)(args, st);
+        return (pOwner->*it->second)(strArgs, st);
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": command not supported:"); LOG_STRING(strCmd));
     return false;
@@ -112,14 +112,14 @@ bool generic_module_dispatch(const T *pOwner,
 template <typename T>
 bool generic_module_dispatch(const T *pOwner,
                              const std::string &strModule,
-                             const std::string &args,
+                             const std::string &strArgs,
                              std::stop_token st = {})
 {
     std::vector<std::string> parts;
-    ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::splitAtFirst(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     if (parts.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd args]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd strArgs]"));
         return false;
     }
 
@@ -138,7 +138,7 @@ bool generic_module_dispatch(const T *pOwner,
     }
 
     if (parts.size() < 2) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd args]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd strArgs]"));
         return false;
     }
 
@@ -151,12 +151,12 @@ bool generic_module_dispatch(const T *pOwner,
 template <typename T>
 bool generic_module_set_speed(const T *pOwner,
                               const std::string &strModule,
-                              const std::string &args)
+                              const std::string &strArgs)
 {
     const ModuleSpeedMap *pSpeedMap = pOwner->getModuleSpeedsMap(strModule);
     if (!pSpeedMap) {
         size_t hz = 0;
-        if (!numeric::str2sizet(args, hz)) {
+        if (!numeric::str2sizet(strArgs, hz)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule);
                       LOG_STRING(": pass a raw Hz value (e.g. 400000)"));
             return false;
@@ -164,7 +164,7 @@ bool generic_module_set_speed(const T *pOwner,
         return pOwner->setModuleSpeed(strModule, hz);
     }
 
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING(strModule); LOG_STRING(": available speeds:"));
         for (const auto &s : *pSpeedMap) {
             std::string line = s.first + " -> " + std::to_string(s.second) + " Hz";
@@ -174,18 +174,18 @@ bool generic_module_set_speed(const T *pOwner,
         return true;
     }
 
-    auto it = pSpeedMap->find(args);
+    auto it = pSpeedMap->find(strArgs);
     if (it != pSpeedMap->end()) {
         return pOwner->setModuleSpeed(strModule, it->second);
     }
 
     size_t hz = 0;
-    if (numeric::str2sizet(args, hz)) {
+    if (numeric::str2sizet(strArgs, hz)) {
         return pOwner->setModuleSpeed(strModule, hz);
     }
 
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule);
-              LOG_STRING(": unknown speed:"); LOG_STRING(args));
+              LOG_STRING(": unknown speed:"); LOG_STRING(strArgs));
     return false;
 }
 
@@ -197,15 +197,15 @@ template <typename T>
 using WriteCbk = bool (T::*)(std::span<const uint8_t>) const;
 
 template <typename T>
-bool generic_write_data(const T *pOwner, const std::string &args, WriteCbk<T> cbk)
+bool generic_write_data(const T *pOwner, const std::string &strArgs, WriteCbk<T> cbk)
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABBCC..  (hex bytes, up to 4096)"));
         return true;
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data)) {
+    if (!hexutils::stringUnhexlify(strArgs, data)) {
         return false;
     }
 
@@ -233,9 +233,9 @@ template <typename T>
 using WrRdCbk = bool (T::*)(std::span<const uint8_t>, size_t, std::stop_token) const;
 
 template <typename T>
-bool generic_write_read_data(const T *pOwner, const std::string &args, WrRdCbk<T> cbk, std::stop_token st = {})
+bool generic_write_read_data(const T *pOwner, const std::string &strArgs, WrRdCbk<T> cbk, std::stop_token st = {})
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: [hexdata][:rdlen]  e.g. DEADBEEF:4 | :4 | DEADBEEF"));
         return true;
     }
@@ -243,13 +243,13 @@ bool generic_write_read_data(const T *pOwner, const std::string &args, WrRdCbk<T
     std::vector<uint8_t> request;
     size_t readLen = 0;
 
-    if (args[0] == ':') {
-        if (!numeric::str2sizet(args.substr(1), readLen)) {
+    if (strArgs[0] == ':') {
+        if (!numeric::str2sizet(strArgs.substr(1), readLen)) {
             return false;
         }
     } else {
         std::vector<std::string> parts;
-        ustring::tokenize(args, CHAR_SEPARATOR_COLON, parts);
+        ustring::tokenize(strArgs, CHAR_SEPARATOR_COLON, parts);
 
         if (parts.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid arguments"));
@@ -283,12 +283,12 @@ bool generic_write_read_data(const T *pOwner, const std::string &args, WrRdCbk<T
 ============================================================ */
 template <typename T>
 bool generic_write_read_file(const T *pOwner,
-                             const std::string &args,
+                             const std::string &strArgs,
                              WrRdCbk<T> cbk,
-                             const std::string &artefactsPath,
+                             const std::string &strArtefactsPath,
                              std::stop_token st = {})
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: filename[:wrchunk][:rdchunk]"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Default chunk sizes: 512 bytes (= CP2112 MAX_I2C_READ_LEN)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  rdchunk must not exceed 512"));
@@ -296,14 +296,14 @@ bool generic_write_read_file(const T *pOwner,
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_COLON, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_COLON, parts);
     if (parts.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid arguments"));
         return false;
     }
 
     std::string path;
-    ufile::buildFilePath(artefactsPath, parts[0], path);
+    ufile::buildFilePath(strArtefactsPath, parts[0], path);
 
     if (!ufile::fileExistsAndNotEmpty(path)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File not found or empty:"); LOG_STRING(path));
@@ -391,9 +391,9 @@ bool generic_write_read_file(const T *pOwner,
 template <typename TDriver>
 bool generic_execute_script(
     TDriver *pDriver,
-    const std::string &pluginName,
-    const std::string &scriptName,
-    const std::string &artefactsPath,
+    const std::string &strPluginName,
+    const std::string &strScriptName,
+    const std::string &strArtefactsPath,
     size_t szMaxRecvSize,
     uint32_t u32ReadTimeout,
     uint32_t u32ScriptDelay,
@@ -408,7 +408,7 @@ bool generic_execute_script(
     }
 
     std::string strPath;
-    ufile::buildFilePath(artefactsPath, scriptName, strPath);
+    ufile::buildFilePath(strArtefactsPath, strScriptName, strPath);
 
     if (!ufile::fileExistsAndNotEmpty(strPath)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strPath));
@@ -422,7 +422,7 @@ bool generic_execute_script(
     try {
         CommScriptClient<TDriver> client(strPath,
                                          spDriver,
-                                         pluginName,
+                                         strPluginName,
                                          szMaxRecvSize,
                                          u32ReadTimeout,
                                          u32ScriptDelay,

@@ -36,16 +36,16 @@ class CodeEditor : public QPlainTextEdit {
     public:
         static constexpr int TAB_WIDTH = 4;
 
-        explicit CodeEditor(QWidget *parent = nullptr);
+        explicit CodeEditor(QWidget *pParent = nullptr);
 
-        void highlightLine(int lineNo); // 1-based; 0 = clear
+        void highlightLine(int iLineNo); // 1-based; 0 = clear
         void clearHighlight();
-        void setHighlighting(bool on);
-        void setCommHighlighting(bool on);
-        void setIniHighlighting(bool on); // switch to INI highlighter (clears others)
+        void setHighlighting(bool bOn);
+        void setCommHighlighting(bool bOn);
+        void setIniHighlighting(bool bOn); // switch to INI highlighter (clears others)
 
         // Error markers (validation phase) — red bar(s), independent of exec bar
-        void setErrorLine(int lineNo); // 1-based; accumulates (call once per error line)
+        void setErrorLine(int iLineNo); // 1-based; accumulates (call once per error line)
         void clearErrorLines();        // clear all error markers
 
         bool hasErrorLines() const
@@ -54,8 +54,8 @@ class CodeEditor : public QPlainTextEdit {
         }
 
         // Thread-active markers — bright-green rectangle outline while a & thread runs
-        void addThreadLine(int lineNo);    // 1-based; draw rectangle until removed
-        void removeThreadLine(int lineNo); // remove rectangle when thread joins
+        void addThreadLine(int iLineNo);    // 1-based; draw rectangle until removed
+        void removeThreadLine(int iLineNo); // remove rectangle when thread joins
         void clearThreadLines();           // clear all (called on script finish)
 
         bool hasScriptHighlighter() const
@@ -78,7 +78,7 @@ class CodeEditor : public QPlainTextEdit {
 
         // Gutter (called by LineNumberArea)
         int lineNumberAreaWidth() const;
-        void lineNumberAreaPaintEvent(QPaintEvent *ev);
+        void lineNumberAreaPaintEvent(QPaintEvent *pEv);
 
         // Call after a font change to recalculate gutter width and repaint.
         void refreshGutter();
@@ -98,15 +98,15 @@ class CodeEditor : public QPlainTextEdit {
         void includeFileClicked(const QString &rawPath);
 
     protected:
-        void resizeEvent(QResizeEvent *ev) override;
-        void keyPressEvent(QKeyEvent *ev) override;
-        void mousePressEvent(QMouseEvent *ev) override;
-        void mouseDoubleClickEvent(QMouseEvent *ev) override;
-        bool eventFilter(QObject *obj, QEvent *ev) override;
+        void resizeEvent(QResizeEvent *pEv) override;
+        void keyPressEvent(QKeyEvent *pEv) override;
+        void mousePressEvent(QMouseEvent *pEv) override;
+        void mouseDoubleClickEvent(QMouseEvent *pEv) override;
+        bool eventFilter(QObject *pObj, QEvent *pEv) override;
 
     private slots:
-        void updateLineNumberAreaWidth(int newBlockCount);
-        void updateLineNumberArea(const QRect &rect, int dy);
+        void updateLineNumberAreaWidth(int iNewBlockCount);
+        void updateLineNumberArea(const QRect &rect, int iDy);
         void checkCurrentLineForCommScript(); // fires on every cursor move
 
     private:
@@ -138,7 +138,7 @@ class CodeEditor : public QPlainTextEdit {
 class ScriptViewer : public QFrame {
         Q_OBJECT
     public:
-        explicit ScriptViewer(QWidget *parent = nullptr);
+        explicit ScriptViewer(QWidget *pParent = nullptr);
 
         // ── Loading ──────────────────────────────────────────────────────────
         void loadScript(const QString &filePath);
@@ -146,15 +146,15 @@ class ScriptViewer : public QFrame {
         void clear();
 
         // ── Execution marker ─────────────────────────────────────────────────
-        void setCurrentLine(int lineNo);
-        QString lineText(int lineNo) const; // 1-based; empty string if out of range
+        void setCurrentLine(int iLineNo);
+        QString lineText(int iLineNo) const; // 1-based; empty string if out of range
         int lineCount() const;              // total number of lines in the document
 
         // ── Editor configuration ──────────────────────────────────────────────
         void setEditorFont(const QFont &font);
-        void enableHighlighting(bool on);     // use ScriptHighlighter
-        void enableCommHighlighting(bool on); // use CommScriptHighlighter
-        void setReadOnly(bool ro);
+        void enableHighlighting(bool bOn);     // use ScriptHighlighter
+        void enableCommHighlighting(bool bOn); // use CommScriptHighlighter
+        void setReadOnly(bool bRo);
 
         // ── Persistence ───────────────────────────────────────────────────────
         bool save();   // save to currentFile(); returns false on error
@@ -176,17 +176,17 @@ class ScriptViewer : public QFrame {
         void clearHighlight();
 
         // Error markers (validation phase) — red bar(s), independent of exec bar
-        void setErrorLine(int lineNo); // 1-based; accumulates
+        void setErrorLine(int iLineNo); // 1-based; accumulates
         void clearErrorLines();        // clear all error markers
         bool hasErrorLines() const;    // true if any error markers are set
 
         // Thread markers — outline rectangle shown while a '&' thread is running
-        void addThreadLine(int lineNo);    // start showing rectangle on lineNo
-        void removeThreadLine(int lineNo); // remove it (thread joined)
+        void addThreadLine(int iLineNo);    // start showing rectangle on lineNo
+        void removeThreadLine(int iLineNo); // remove it (thread joined)
         void clearThreadLines();           // remove all (script reset / new load)
 
     signals:
-        void modificationChanged(bool modified);             // forwarded from QTextDocument
+        void modificationChanged(bool bModified);             // forwarded from QTextDocument
         void commScriptRequested(const QString &scriptName); // user clicked a .SCRIPT line
 
         // Emitted when the cursor lands on an INCLUDE "path" line.
@@ -199,7 +199,7 @@ class ScriptViewer : public QFrame {
         void infoChanged(const QString &info); // filename + current line text for external display
 
     private slots:
-        void onModificationChanged(bool modified);
+        void onModificationChanged(bool bModified);
         void onCommScriptLineClicked(const QString &scriptName);
 
         // Resolves rawPath relative to m_currentFile's directory and re-emits

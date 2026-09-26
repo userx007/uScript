@@ -26,10 +26,10 @@ extern "C" {
         return new GrpcPlugin();
     }
 
-    EXPORTED void pluginExit(GrpcPlugin *ptrPlugin)
+    EXPORTED void pluginExit(GrpcPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -96,9 +96,9 @@ std::shared_ptr<GrpcDriver> GrpcPlugin::m_OpenDriver(void) const
 // -----------------------------------------------------------------------
 // GRPC.INFO — see class doc comment (grpc_plugin.hpp)
 // -----------------------------------------------------------------------
-bool GrpcPlugin::m_GRPC_INFO(const std::string &args, std::stop_token st) const
+bool GrpcPlugin::m_GRPC_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    (void)args;
+    (void)strArgs;
     (void)st;
     resetData();
     std::ostringstream oss;
@@ -189,25 +189,25 @@ bool GrpcPlugin::m_GRPC_INFO(const std::string &args, std::stop_token st) const
 // -----------------------------------------------------------------------
 // GRPC.CONFIG — see class doc comment (grpc_plugin.hpp)
 // -----------------------------------------------------------------------
-bool GrpcPlugin::m_GRPC_CONFIG(const std::string &args, std::stop_token st) const
+bool GrpcPlugin::m_GRPC_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
-    return generic_grpc_set_params<GrpcPlugin>(this, args);
+    return generic_grpc_set_params<GrpcPlugin>(this, strArgs);
 }
 
 // -----------------------------------------------------------------------
 // GRPC.CMD — see class doc comment (grpc_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool GrpcPlugin::m_GRPC_CMD(const std::string &args, std::stop_token st) const
+bool GrpcPlugin::m_GRPC_CMD(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<GrpcDriver> { return m_OpenDriver(); },
         GRPC_PLUGIN_NAME,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
@@ -227,12 +227,12 @@ bool GrpcPlugin::m_GRPC_CMD(const std::string &args, std::stop_token st) const
 // GRPC.SCRIPT — see class doc comment (grpc_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool GrpcPlugin::m_GRPC_SCRIPT(const std::string &args, std::stop_token st) const
+bool GrpcPlugin::m_GRPC_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<GrpcDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
@@ -261,12 +261,12 @@ bool GrpcPlugin::m_GRPC_SCRIPT(const std::string &args, std::stop_token st) cons
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool GrpcPlugin::m_GRPC_CYCLIC(const std::string &args, std::stop_token st) const
+bool GrpcPlugin::m_GRPC_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<GrpcDriver> { return m_OpenDriver(); },
         GRPC_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const GrpcDriver> drv, std::string_view x, std::stop_token tok) {

@@ -52,10 +52,10 @@ bool HydrabusPlugin::m_handle_smartcard_help(const std::string &, std::stop_toke
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_cfg(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_smartcard_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
     auto *p = m_smartcard();
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         if (p) {
             LOG_PRINT(LOG_EMPTY,
                       LOG_STRING("pullup=");
@@ -69,7 +69,7 @@ bool HydrabusPlugin::m_handle_smartcard_cfg(const std::string &args, std::stop_t
     }
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
@@ -89,9 +89,9 @@ bool HydrabusPlugin::m_handle_smartcard_cfg(const std::string &args, std::stop_t
     return true;
 }
 
-bool HydrabusPlugin::m_handle_smartcard_rst(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_smartcard_rst(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: rst [0|1]"));
         return true;
     }
@@ -101,16 +101,16 @@ bool HydrabusPlugin::m_handle_smartcard_rst(const std::string &args, std::stop_t
     }
 
     uint8_t v = 0;
-    if (!numeric::str2uint8(args, v)) {
+    if (!numeric::str2uint8(strArgs, v)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 0 or 1"));
         return false;
     }
     return p->set_rst(v);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_baud(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_smartcard_baud(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: baud N"));
         return true;
     }
@@ -120,15 +120,15 @@ bool HydrabusPlugin::m_handle_smartcard_baud(const std::string &args, std::stop_
     }
 
     uint32_t baud = 0;
-    if (!numeric::str2uint32(args, baud)) {
+    if (!numeric::str2uint32(strArgs, baud)) {
         return false;
     }
     return p->set_baud(baud);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_prescaler(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_smartcard_prescaler(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: prescaler N  (0-255)"));
         return true;
     }
@@ -138,15 +138,15 @@ bool HydrabusPlugin::m_handle_smartcard_prescaler(const std::string &args, std::
     }
 
     uint8_t v = 0;
-    if (!numeric::str2uint8(args, v)) {
+    if (!numeric::str2uint8(strArgs, v)) {
         return false;
     }
     return p->set_prescaler(v);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_guardtime(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_smartcard_guardtime(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: guardtime N  (0-255)"));
         return true;
     }
@@ -156,15 +156,15 @@ bool HydrabusPlugin::m_handle_smartcard_guardtime(const std::string &args, std::
     }
 
     uint8_t v = 0;
-    if (!numeric::str2uint8(args, v)) {
+    if (!numeric::str2uint8(strArgs, v)) {
         return false;
     }
     return p->set_guardtime(v);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_write(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_smartcard_write(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB.."));
         return true;
     }
@@ -174,15 +174,15 @@ bool HydrabusPlugin::m_handle_smartcard_write(const std::string &args, std::stop
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data) || data.empty()) {
+    if (!hexutils::stringUnhexlify(strArgs, data) || data.empty()) {
         return false;
     }
     return p->write(data, st);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_read(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_smartcard_read(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
         return true;
     }
@@ -192,7 +192,7 @@ bool HydrabusPlugin::m_handle_smartcard_read(const std::string &args, std::stop_
     }
 
     size_t n = 0;
-    if (!numeric::str2sizet(args, n) || n == 0) {
+    if (!numeric::str2sizet(strArgs, n) || n == 0) {
         return false;
     }
 
@@ -201,9 +201,9 @@ bool HydrabusPlugin::m_handle_smartcard_read(const std::string &args, std::stop_
     return true;
 }
 
-bool HydrabusPlugin::m_handle_smartcard_atr(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_smartcard_atr(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Retrieve card ATR"));
         return true;
     }
@@ -218,7 +218,7 @@ bool HydrabusPlugin::m_handle_smartcard_atr(const std::string &args, std::stop_t
     return true;
 }
 
-bool HydrabusPlugin::m_handle_smartcard_aux(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_smartcard_aux(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    return m_handle_aux_common(args, m_smartcard());
+    return m_handle_aux_common(strArgs, m_smartcard());
 }

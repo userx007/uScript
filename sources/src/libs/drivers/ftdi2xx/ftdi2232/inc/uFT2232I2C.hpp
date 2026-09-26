@@ -59,13 +59,13 @@ class FT2232I2C : public FT2232Base, public ICommDriver {
          */
         explicit FT2232I2C(uint8_t u8I2CAddress,
                            uint32_t u32ClockHz                 = 100000u,
-                           Variant variant                     = Variant::FT2232H,
-                           Channel channel                     = Channel::A,
+                           Variant eVariant                     = Variant::FT2232H,
+                           Channel eChannel                     = Channel::A,
                            uint8_t u8DeviceIndex               = 0u,
                            const std::string &strIdentityLabel = {})
         {
             m_strIdentityLabel = strIdentityLabel;
-            this->open(u8I2CAddress, u32ClockHz, variant, channel, u8DeviceIndex);
+            this->open(u8I2CAddress, u32ClockHz, eVariant, eChannel, u8DeviceIndex);
         }
 
         ~FT2232I2C() override
@@ -84,8 +84,8 @@ class FT2232I2C : public FT2232Base, public ICommDriver {
          */
         Status open(uint8_t u8I2CAddress,
                     uint32_t u32ClockHz   = 100000u,
-                    Variant variant       = Variant::FT2232H,
-                    Channel channel       = Channel::A,
+                    Variant eVariant       = Variant::FT2232H,
+                    Channel eChannel       = Channel::A,
                     uint8_t u8DeviceIndex = 0u);
 
         /** @copydoc FT2232Base::close — sends I²C STOP before closing */
@@ -114,7 +114,7 @@ class FT2232I2C : public FT2232Base, public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -142,21 +142,21 @@ class FT2232I2C : public FT2232Base, public ICommDriver {
 
         Status configure_mpsse_i2c(uint32_t u32ClockHz) const;
 
-        static void push_pin_state(std::vector<uint8_t> &buf, bool scl, bool drive_sda_low);
-        static void push_read_sda(std::vector<uint8_t> &buf);
+        static void push_pin_state(std::vector<uint8_t> &vBuf, bool bScl, bool bDrive_sda_low);
+        static void push_read_sda(std::vector<uint8_t> &vBuf);
 
         Status i2c_start() const;
         Status i2c_repeated_start() const;
         Status i2c_stop() const;
 
-        Status i2c_write_byte(uint8_t byte, bool &ack) const;
-        Status i2c_read_byte(uint8_t &byte, bool sendAck, std::stop_token stop_tok = {}) const;
+        Status i2c_write_byte(uint8_t u8Byte, bool &bAck) const;
+        Status i2c_read_byte(uint8_t &u8Byte, bool bSendAck, std::stop_token stop_tok = {}) const;
 
         Status i2c_write(std::span<const uint8_t> data,
-                         uint32_t timeoutMs, size_t &bytesWritten) const;
+                         uint32_t u32TimeoutMs, size_t &bytesWritten) const;
 
         Status i2c_read(std::span<uint8_t> data,
-                        size_t &bytesRead, uint32_t timeoutMs,
+                        size_t &bytesRead, uint32_t u32TimeoutMs,
                         std::stop_token stop_tok = {}) const;
 };
 

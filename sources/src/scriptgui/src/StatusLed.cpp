@@ -13,25 +13,25 @@
 
 class QPaintEvent;
 
-StatusLed::StatusLed(QWidget *parent)
+StatusLed::StatusLed(QWidget *pParent)
     : QWidget(parent)
 {
     setFixedSize(14, 14);
 }
 
-void StatusLed::setState(State s)
+void StatusLed::setState(State eS)
 {
-    if (m_state == s) {
+    if (m_state == eS) {
         return;
     }
-    m_state = s;
+    m_state = eS;
 
     if (m_timerId) {
         killTimer(m_timerId);
         m_timerId = 0;
     }
 
-    if (s == State::Running) {
+    if (eS == State::Running) {
         m_pulse   = 0.f;
         m_pulseUp = true;
         m_timerId = startTimer(40); // 25 fps is plenty for a pulse
@@ -40,9 +40,9 @@ void StatusLed::setState(State s)
     update();
 }
 
-void StatusLed::timerEvent(QTimerEvent *ev)
+void StatusLed::timerEvent(QTimerEvent *pEv)
 {
-    if (ev->timerId() != m_timerId) {
+    if (pEv->timerId() != m_timerId) {
         return;
     }
     constexpr float step = 0.06f;

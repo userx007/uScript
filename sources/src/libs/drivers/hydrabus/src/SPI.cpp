@@ -31,7 +31,7 @@ namespace HydraHAL {
     // Construction
     // ---------------------------------------------------------------------------
 
-    SPI::SPI(std::shared_ptr<Hydrabus> hydrabus)
+    SPI::SPI(std::shared_ptr<Hydrabus> shpHydrabus)
         : Protocol(std::move(hydrabus), "SPI1", "SPI", 0x01)
     {
         _configure_port();
@@ -46,14 +46,14 @@ namespace HydraHAL {
         return _cs_val;
     }
 
-    bool SPI::set_cs(int level)
+    bool SPI::set_cs(int iLevel)
     {
-        // CMD 0b0000001x  (x = level)
-        uint8_t cmd = static_cast<uint8_t>(0b00000010 | (level & 0x01));
+        // CMD 0b0000001x  (x = iLevel)
+        uint8_t cmd = static_cast<uint8_t>(0b00000010 | (iLevel & 0x01));
         _write_byte(cmd);
 
         if (_ack("set_cs")) {
-            _cs_val = level & 0x01;
+            _cs_val = iLevel & 0x01;
             return true;
         }
         return false;
@@ -94,13 +94,13 @@ namespace HydraHAL {
     std::optional<std::vector<uint8_t>> SPI::write_read(
         std::span<const uint8_t> data,
         size_t read_len,
-        bool manual_cs,
+        bool bManual_cs,
         std::stop_token stop_tok)
     {
         // CMD 0b00000100 | drive_cs_bit
         //   drive_cs_bit = 0 → firmware drives CS
         //   drive_cs_bit = 1 → caller drives CS
-        uint8_t cmd = static_cast<uint8_t>(0b00000100 | (manual_cs ? 1 : 0));
+        uint8_t cmd = static_cast<uint8_t>(0b00000100 | (bManual_cs ? 1 : 0));
         _write_byte(cmd, stop_tok);
         _write_u16_be(static_cast<uint16_t>(data.size()), stop_tok);
         _write_u16_be(static_cast<uint16_t>(read_len), stop_tok);
@@ -138,18 +138,18 @@ namespace HydraHAL {
     // High-level write / read
     // ---------------------------------------------------------------------------
 
-    bool SPI::write(std::span<const uint8_t> data, bool manual_cs, std::stop_token stop_tok)
+    bool SPI::write(std::span<const uint8_t> data, bool bManual_cs, std::stop_token stop_tok)
     {
-        auto result = write_read(data, 0, manual_cs, stop_tok);
+        auto result = write_read(data, 0, bManual_cs, stop_tok);
         return result.has_value();
     }
 
-    std::vector<uint8_t> SPI::read(size_t read_len, bool manual_cs, std::stop_token stop_tok)
+    std::vector<uint8_t> SPI::read(size_t read_len, bool bManual_cs, std::stop_token stop_tok)
     {
         std::vector<uint8_t> result;
         result.reserve(read_len);
 
-        if (!manual_cs) {
+        if (!bManual_cs) {
             set_cs(0);
         }
 
@@ -166,7 +166,7 @@ namespace HydraHAL {
             }
         }
 
-        if (!manual_cs) {
+        if (!bManual_cs) {
             set_cs(1);
         }
         return result;
@@ -176,11 +176,11 @@ namespace HydraHAL {
     // Configuration
     // ---------------------------------------------------------------------------
 
-    bool SPI::set_speed(Speed speed)
+    bool SPI::set_speed(Speed eSpeed)
     {
-        auto s = static_cast<uint8_t>(speed);
+        auto s = static_cast<uint8_t>(eSpeed);
         if (s > 0b111) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: invalid speed value"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: invalid eSpeed value"));
             return false;
         }
         uint8_t cmd = static_cast<uint8_t>(0b01100000 | s);
@@ -202,9 +202,9 @@ namespace HydraHAL {
         return (_config & 0b100) ? 1 : 0;
     }
 
-    bool SPI::set_polarity(int value)
+    bool SPI::set_polarity(int iValue)
     {
-        if (value == 0) {
+        if (iValue == 0) {
             _config = static_cast<uint8_t>(_config & ~(1 << 2));
         } else {
             _config = static_cast<uint8_t>(_config | (1 << 2));
@@ -219,9 +219,9 @@ namespace HydraHAL {
         return (_config & 0b010) ? 1 : 0;
     }
 
-    bool SPI::set_phase(int value)
+    bool SPI::set_phase(int iValue)
     {
-        if (value == 0) {
+        if (iValue == 0) {
             _config = static_cast<uint8_t>(_config & ~(1 << 1));
         } else {
             _config = static_cast<uint8_t>(_config | (1 << 1));
@@ -236,11 +236,11 @@ namespace HydraHAL {
         return (_config & 0b001) ? 1 : 0;
     }
 
-    bool SPI::set_device(int value)
+    bool SPI::set_device(int iValue)
     {
         // Reset to default config, then apply the device bit
         _config = DEFAULT_CONFIG;
-        if (value == 0) {
+        if (iValue == 0) {
             _config = static_cast<uint8_t>(_config & ~(1 << 0));
         } else {
             _config = static_cast<uint8_t>(_config | (1 << 0));

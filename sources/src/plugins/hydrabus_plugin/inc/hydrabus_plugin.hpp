@@ -236,15 +236,15 @@ class HydrabusPlugin : public PluginInterface {
             return m_bIsEnabled;
         }
 
-        bool setParams(const PluginDataSet *ps)
+        bool setParams(const PluginDataSet *psPs)
         {
-            bool ok = generic_setparams<HydrabusPlugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
-            return ok && m_LocalSetParams(ps);
+            bool ok = generic_setparams<HydrabusPlugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
+            return ok && m_LocalSetParams(psPs);
         }
 
-        void getParams(PluginDataGet *pg) const
+        void getParams(PluginDataGet *psPg) const
         {
-            generic_getparams<HydrabusPlugin>(this, pg);
+            generic_getparams<HydrabusPlugin>(this, psPg);
         }
 
         const PluginCommandsMap<HydrabusPlugin> *getMap() const
@@ -275,10 +275,10 @@ class HydrabusPlugin : public PluginInterface {
             return true;
         }
 
-        bool doDispatch(const std::string &cmd, const std::string &params,
+        bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
-            return generic_dispatch<HydrabusPlugin>(this, cmd, params, st);
+            return generic_dispatch<HydrabusPlugin>(this, strCmd, strParams, st);
         }
 
         void doCleanup();
@@ -300,14 +300,14 @@ class HydrabusPlugin : public PluginInterface {
 
         // Module-map accessors (used by generic helpers)
 
-        ModuleCommandsMap<HydrabusPlugin> *getModuleCmdsMap(const std::string &m) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
+        ModuleCommandsMap<HydrabusPlugin> *getModuleCmdsMap(const std::string &strM) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
 
         /**
          * @brief Called by generic_module_set_speed to apply a speed index.
          *        Each protocol interprets the index according to its own enum.
          */
-        bool setModuleSpeed(const std::string &module, size_t index) const;
+        bool setModuleSpeed(const std::string &strModule, size_t index) const;
 
         // INI accessor (friend for generic_execute_script)
 
@@ -342,9 +342,9 @@ class HydrabusPlugin : public PluginInterface {
         }
 
         /** \brief CONFIG-command setter for u32WriteTimeout (flag 'w') */
-        bool setWriteTimeout(const std::string &strVal) const
+        bool setWriteTimeout(const std::string &strWriteTimeout) const
         {
-            return numeric::str2uint32(strVal, m_sIniValues.u32WriteTimeout);
+            return numeric::str2uint32(strWriteTimeout, m_sIniValues.u32WriteTimeout);
         }
 
         /** \brief CONFIG-command setter for u32ReadBufferSize (flag 's') */
@@ -395,7 +395,7 @@ class HydrabusPlugin : public PluginInterface {
          *        Destroys any existing protocol instance, resets BBIO, and
          *        creates the requested HydraHAL object.
          */
-        bool m_enter_mode(const std::string &modeName);
+        bool m_enter_mode(const std::string &strModeName);
 
         /**
          * @brief Tear down active protocol, reset to BBIO.
@@ -422,22 +422,22 @@ class HydrabusPlugin : public PluginInterface {
 
         // AUX helper (shared across all modes)
 
-        bool m_handle_aux_common(const std::string &args, HydraHAL::Protocol *proto, std::stop_token st = {}) const;
+        bool m_handle_aux_common(const std::string &strArgs, HydraHAL::Protocol *pProto, std::stop_token st = {}) const;
 
         // Top-level command handlers (INFO, MODE)
 
-        bool m_Buspirate_INFO(const std::string &args) const; // kept name pattern for macro
-        bool m_Buspirate_MODE(const std::string &args) const;
+        bool m_Buspirate_INFO(const std::string &strArgs) const; // kept name pattern for macro
+        bool m_Buspirate_MODE(const std::string &strArgs) const;
 
         // Protocols dispatch through the generic macro-generated inline
 
 #define HB_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_Hydrabus_##a(const std::string &args, std::stop_token st) const;
+    bool m_Hydrabus_##a(const std::string &strArgs, std::stop_token st) const;
         HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_STD
 #undef HB_PLUGIN_CMD_RECORD
 
 #define HB_PLUGIN_CMD_RECORD(a)                                             \
-    bool m_Hydrabus_##a(const std::string &args, std::stop_token st) const  \
+    bool m_Hydrabus_##a(const std::string &strArgs, std::stop_token st) const  \
     {                                                                       \
         return generic_module_dispatch<HydrabusPlugin>(this, #a, args, st); \
     }
@@ -549,7 +549,7 @@ class HydrabusPlugin : public PluginInterface {
         ModuleSpeedMap m_mapSpeed_MMC;
         ModuleSpeedMap m_mapSpeed_SDIO;
 
-        bool m_LocalSetParams(const PluginDataSet *ps);
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
 };
 
 #endif // HYDRABUS_PLUGIN_HPP

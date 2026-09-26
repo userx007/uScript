@@ -232,7 +232,7 @@ class PCAN : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -306,9 +306,9 @@ class PCAN : public ICommDriver {
         }
 
         /** Tuning parameters (block size, STmin, timeouts, ...) for setTpProtocol(). */
-        void setTpConfig(const TpConfig &cfg)
+        void setTpConfig(const TpConfig &sCfg)
         {
-            m_sTpConfig = cfg;
+            m_sTpConfig = sCfg;
         }
 
         /**
@@ -351,7 +351,7 @@ class PCAN : public ICommDriver {
         // ------------------------------------------------------------------ //
 
         /** Parse a decimal or "0x"-prefixed hex string to uint32_t. Returns false on error. */
-        static bool parseUint32(std::string_view sv, uint32_t &out);
+        static bool parseUint32(std::string_view sv, uint32_t &u32Out);
 
         /** Resolve the TX CAN ID: xtra_params overrides the default when non-empty. */
         uint32_t resolveTxId(std::string_view xtra_params) const;
@@ -371,7 +371,7 @@ class PCAN : public ICommDriver {
          * exact same call site, with no special-casing needed here for
          * which one is active. A no-op when gui_mode_active() is false.
          */
-        void dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
+        void dumpFrame(CommDir eDir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
 
         /**
          * Resolve the rx id used by a transport protocol to identify frames
@@ -440,7 +440,7 @@ class PCAN : public ICommDriver {
 
         /** Accumulate bytes until delimiter byte found; null-terminates. */
         Status readUntilDelimiter(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
-                                  uint8_t cDelimiter, size_t &szBytesRead,
+                                  uint8_t u8CDelimiter, size_t &szBytesRead,
                                   uint32_t u32RxFilterId,
                                   std::stop_token stop_tok = {}) const;
 
@@ -451,7 +451,7 @@ class PCAN : public ICommDriver {
                               std::stop_token stop_tok = {}) const;
 
         /** Build KMP failure-function table. */
-        static void buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &viLps);
+        static void buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &vViLps);
 
         // ------------------------------------------------------------------ //
         //  Transport-protocol dispatch internals                              //
@@ -477,7 +477,7 @@ class PCAN : public ICommDriver {
          */
         ReadResult readDispatch_locked(uint32_t u32ReadTimeout,
                                        std::span<uint8_t> buffer,
-                                       const ReadOptions &options,
+                                       const ReadOptions &sOptions,
                                        std::string_view xtra_params,
                                        std::stop_token stop_tok = {}) const;
 

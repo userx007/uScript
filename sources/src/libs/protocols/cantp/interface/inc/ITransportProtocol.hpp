@@ -107,7 +107,7 @@ class ITransportProtocol {
  * "J1939" / "J1939TP", "CANOPEN" / "CANOPENSDO", "NMEA2000" / "NMEA2000FP" / "FASTPACKET".
  * @return true on success; @p out is left untouched on failure.
  */
-inline bool tp_protocol_from_string(std::string_view sv, TpProtocol &out)
+inline bool tp_protocol_from_string(std::string_view sv, TpProtocol &eOut)
 {
     std::string s(sv);
     std::transform(s.begin(), s.end(), s.begin(),
@@ -116,23 +116,23 @@ inline bool tp_protocol_from_string(std::string_view sv, TpProtocol &out)
     s.erase(std::remove(s.begin(), s.end(), '_'), s.end());
 
     if (s.empty() || s == "NONE") {
-        out = TpProtocol::NONE;
+        eOut = TpProtocol::NONE;
         return true;
     }
     if (s == "ISOTP") {
-        out = TpProtocol::ISO_TP;
+        eOut = TpProtocol::ISO_TP;
         return true;
     }
     if (s == "J1939" || s == "J1939TP") {
-        out = TpProtocol::J1939_TP;
+        eOut = TpProtocol::J1939_TP;
         return true;
     }
     if (s == "CANOPEN" || s == "CANOPENSDO") {
-        out = TpProtocol::CANOPEN_SDO;
+        eOut = TpProtocol::CANOPEN_SDO;
         return true;
     }
     if (s == "NMEA2000" || s == "NMEA2000FP" || s == "FASTPACKET") {
-        out = TpProtocol::NMEA2000_FAST_PACKET;
+        eOut = TpProtocol::NMEA2000_FAST_PACKET;
         return true;
     }
     return false;
@@ -141,9 +141,9 @@ inline bool tp_protocol_from_string(std::string_view sv, TpProtocol &out)
 /**
  * @brief Render a TpProtocol back to its canonical string form (for logs / describeConnection()).
  */
-inline std::string_view tp_protocol_to_string(TpProtocol proto)
+inline std::string_view tp_protocol_to_string(TpProtocol eProto)
 {
-    switch (proto) {
+    switch (eProto) {
     case TpProtocol::NONE:
         return "NONE";
     case TpProtocol::ISO_TP:

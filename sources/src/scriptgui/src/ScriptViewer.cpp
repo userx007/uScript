@@ -50,7 +50,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 class LineNumberArea : public QWidget {
     public:
-        explicit LineNumberArea(CodeEditor *editor)
+        explicit LineNumberArea(CodeEditor *pEditor)
             : QWidget(editor)
             , m_editor(editor)
         {
@@ -62,9 +62,9 @@ class LineNumberArea : public QWidget {
         }
 
     protected:
-        void paintEvent(QPaintEvent *ev) override
+        void paintEvent(QPaintEvent *pEv) override
         {
-            m_editor->lineNumberAreaPaintEvent(ev);
+            m_editor->lineNumberAreaPaintEvent(pEv);
         }
 
     private:
@@ -74,7 +74,7 @@ class LineNumberArea : public QWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 //  CodeEditor
 // ─────────────────────────────────────────────────────────────────────────────
-CodeEditor::CodeEditor(QWidget *parent)
+CodeEditor::CodeEditor(QWidget *pParent)
     : QPlainTextEdit(parent)
 {
     setObjectName("scriptView");
@@ -134,10 +134,10 @@ void CodeEditor::refreshGutter()
     m_lineNumberArea->update();
 }
 
-void CodeEditor::updateLineNumberArea(const QRect &rect, int dy)
+void CodeEditor::updateLineNumberArea(const QRect &rect, int iDy)
 {
-    if (dy) {
-        m_lineNumberArea->scroll(0, dy);
+    if (iDy) {
+        m_lineNumberArea->scroll(0, iDy);
     } else {
         m_lineNumberArea->update(0, rect.y(), m_lineNumberArea->width(), rect.height());
     }
@@ -146,26 +146,26 @@ void CodeEditor::updateLineNumberArea(const QRect &rect, int dy)
     }
 }
 
-void CodeEditor::resizeEvent(QResizeEvent *ev)
+void CodeEditor::resizeEvent(QResizeEvent *pEv)
 {
-    QPlainTextEdit::resizeEvent(ev);
+    QPlainTextEdit::resizeEvent(pEv);
     const QRect cr = contentsRect();
     m_lineNumberArea->setGeometry(cr.left(), cr.top(), lineNumberAreaWidth(), cr.height());
 }
 
-bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
+bool CodeEditor::eventFilter(QObject *pObj, QEvent *pEv)
 {
     // Intercept paint events on the viewport child widget so we can draw the
     // execution band on top of the text.  CodeEditor::paintEvent() would paint
     // on the frame widget, NOT on the viewport where the text lives — the
     // viewport is a separate child that repaints independently and would
     // overwrite anything drawn on the frame.
-    if (obj == viewport() && ev->type() == QEvent::Paint) {
+    if (pObj == viewport() && pEv->type() == QEvent::Paint) {
         // Let QPlainTextEdit paint the text first via the normal event path.
-        QPlainTextEdit::paintEvent(static_cast<QPaintEvent *>(ev));
+        QPlainTextEdit::paintEvent(static_cast<QPaintEvent *>(pEv));
 
         if (m_highlightedLine > 0 || !m_errorLines.isEmpty() || !m_threadLines.isEmpty()) {
-            auto *pev = static_cast<QPaintEvent *>(ev);
+            auto *pev = static_cast<QPaintEvent *>(pEv);
             QPainter p(viewport());
             if (m_highlightedLine > 0) {
                 QTextBlock block = document()->findBlockByNumber(m_highlightedLine - 1);
@@ -218,10 +218,10 @@ bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
         }
         return true; // event handled — do not call the default viewport handler again
     }
-    return QPlainTextEdit::eventFilter(obj, ev);
+    return QPlainTextEdit::eventFilter(pObj, pEv);
 }
 
-void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
+void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *pEv)
 {
     // Colours and field width kept in sync with LogViewer's inline line-number style:
     //   field    → fixed 5-char wide, right-aligned
@@ -241,7 +241,7 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
     // font-size changes.  Without this the painter defaults to LineNumberArea's
     // inherited font, which doesn't pick up stylesheet overrides from the parent.
     painter.setFont(font());
-    painter.fillRect(ev->rect(), C_BG);
+    painter.fillRect(pEv->rect(), C_BG);
 
     QTextBlock block   = firstVisibleBlock();
     int blockNum       = block.blockNumber();
@@ -252,8 +252,8 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
     // Reserve the rightmost ~10 px for the "│" separator character.
     const int numRight = gutterW - 12;
 
-    while (block.isValid() && top <= ev->rect().bottom()) {
-        if (block.isVisible() && bottom >= ev->rect().top()) {
+    while (block.isValid() && top <= pEv->rect().bottom()) {
+        if (block.isVisible() && bottom >= pEv->rect().top()) {
             const int lineNo     = blockNum + 1;
             const bool isCurrent = (lineNo == m_highlightedLine);
             const bool isError   = m_errorLines.contains(lineNo);
@@ -321,24 +321,24 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
 //  showing the latest (i.e. currently-correct) marker position — the
 //  visually-imperceptible intermediate positions in between were never
 //  something a human could track anyway.
-void CodeEditor::highlightLine(int lineNo)
+void CodeEditor::highlightLine(int iLineNo)
 {
     // Skip entirely if nothing actually changed — cheap insurance against
     // duplicate consecutive calls for the same line (e.g. a REPEAT body
     // whose first executed line is the same one it last exited on).
-    if (lineNo == m_highlightedLine) {
+    if (iLineNo == m_highlightedLine) {
         return;
     }
 
-    m_highlightedLine = lineNo;
+    m_highlightedLine = iLineNo;
 
-    if (lineNo <= 0) {
+    if (iLineNo <= 0) {
         viewport()->update();
         m_lineNumberArea->update();
         return;
     }
 
-    QTextBlock block = document()->findBlockByLineNumber(lineNo - 1);
+    QTextBlock block = document()->findBlockByLineNumber(iLineNo - 1);
     if (!block.isValid()) {
         viewport()->update();
         m_lineNumberArea->update();
@@ -375,12 +375,12 @@ void CodeEditor::clearHighlight()
 }
 
 // ── Validation-error highlights (red) ────────────────────────────────────────
-void CodeEditor::setErrorLine(int lineNo)
+void CodeEditor::setErrorLine(int iLineNo)
 {
-    if (lineNo <= 0) {
+    if (iLineNo <= 0) {
         return;
     }
-    m_errorLines.insert(lineNo);
+    m_errorLines.insert(iLineNo);
     viewport()->update();
     m_lineNumberArea->update();
 }
@@ -396,19 +396,19 @@ void CodeEditor::clearErrorLines()
 }
 
 // ── Thread-active markers (bright-green rectangle outline) ─────────────────
-void CodeEditor::addThreadLine(int lineNo)
+void CodeEditor::addThreadLine(int iLineNo)
 {
-    if (lineNo <= 0) {
+    if (iLineNo <= 0) {
         return;
     }
-    m_threadLines.insert(lineNo);
+    m_threadLines.insert(iLineNo);
     viewport()->update();
     m_lineNumberArea->update();
 }
 
-void CodeEditor::removeThreadLine(int lineNo)
+void CodeEditor::removeThreadLine(int iLineNo)
 {
-    if (!m_threadLines.remove(lineNo)) {
+    if (!m_threadLines.remove(iLineNo)) {
         return;
     }
     viewport()->update();
@@ -426,24 +426,24 @@ void CodeEditor::clearThreadLines()
 }
 
 // ── Word-occurrence highlight (Ctrl+double-click) ───────────────────────────
-void CodeEditor::mousePressEvent(QMouseEvent *ev)
+void CodeEditor::mousePressEvent(QMouseEvent *pEv)
 {
     // Any ordinary press (including the first press of a double-click,
     // which Qt reports as press→release→press→doubleClick→release) clears
     // a stale highlight from a previous word; mouseDoubleClickEvent() below
     // re-populates it if this press turns out to be a Ctrl+double-click.
     clearWordHighlights();
-    QPlainTextEdit::mousePressEvent(ev);
+    QPlainTextEdit::mousePressEvent(pEv);
 }
 
-void CodeEditor::mouseDoubleClickEvent(QMouseEvent *ev)
+void CodeEditor::mouseDoubleClickEvent(QMouseEvent *pEv)
 {
     // Let Qt perform its normal double-click word selection first — this is
     // the same word-boundary logic used for ordinary double-click, so the
     // highlighted set always matches what the user sees selected.
-    QPlainTextEdit::mouseDoubleClickEvent(ev);
+    QPlainTextEdit::mouseDoubleClickEvent(pEv);
 
-    if (ev->modifiers() & Qt::ControlModifier) {
+    if (pEv->modifiers() & Qt::ControlModifier) {
         highlightOccurrences(textCursor().selectedText());
     }
 }

@@ -107,12 +107,12 @@ class CH347I2C : public ICommDriver {
          *                         strDevice — e.g. "/dev/ch34xpis0" or a friendlier name.
          */
         explicit CH347I2C(const std::string &strDevice,
-                          I2cSpeed speed                      = I2cSpeed::Fast,
+                          I2cSpeed eSpeed                      = I2cSpeed::Fast,
                           const std::string &strIdentityLabel = {})
             : m_iHandle(CH347_INVALID_HANDLE)
             , m_strIdentityLabel(strIdentityLabel)
         {
-            open(strDevice, speed);
+            open(strDevice, eSpeed);
         }
 
         virtual ~CH347I2C()
@@ -124,7 +124,7 @@ class CH347I2C : public ICommDriver {
         // Lifecycle
         // -----------------------------------------------------------------------
 
-        Status open(const std::string &strDevice, I2cSpeed speed = I2cSpeed::Fast);
+        Status open(const std::string &strDevice, I2cSpeed eSpeed = I2cSpeed::Fast);
         Status close();
         bool is_open() const override;
 
@@ -147,25 +147,25 @@ class CH347I2C : public ICommDriver {
         // -----------------------------------------------------------------------
 
         /** Change I2C bus speed (no need to re-open). */
-        Status set_speed(I2cSpeed speed);
+        Status set_speed(I2cSpeed eSpeed);
 
         /**
          * @brief Enable / disable I2C clock stretching.
          * @param enable  true = slave may hold SCL low to pause the master
          */
-        Status set_clock_stretch(bool enable);
+        Status set_clock_stretch(bool bEnable);
 
         /**
          * @brief Set signal drive mode.
          * @param mode  0 = open-drain (standard), 1 = push-pull
          */
-        Status set_drive_mode(uint8_t mode);
+        Status set_drive_mode(uint8_t u8Mode);
 
         /**
          * @brief Control whether the master continues after a NACK.
          * @param mode  0 = stop on NACK, 1 = continue on NACK
          */
-        Status set_ignore_nack(uint8_t mode);
+        Status set_ignore_nack(uint8_t u8Mode);
 
         /**
          * @brief Insert a millisecond-level delay between I2C transactions.
@@ -206,7 +206,7 @@ class CH347I2C : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -238,8 +238,8 @@ class CH347I2C : public ICommDriver {
          * @return ReadResult { status, readBytesReceived, false }
          */
         ReadResult tout_read_i2c(std::span<uint8_t> buffer,
-                                 const I2cReadOptions &opts,
-                                 int *retAck = nullptr) const;
+                                 const I2cReadOptions &sOpts,
+                                 int *pRetAck = nullptr) const;
 
         // -----------------------------------------------------------------------
         // EEPROM helpers

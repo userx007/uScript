@@ -28,7 +28,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 UART::Status UART::open(const std::string &strDevice, uint32_t u32Speed,
-                        Parity parity, uint8_t u8DataBits, uint8_t u8StopBits)
+                        Parity eParity, uint8_t u8DataBits, uint8_t u8StopBits)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     if (strDevice.empty() || u32Speed == 0) {
@@ -70,7 +70,7 @@ UART::Status UART::open(const std::string &strDevice, uint32_t u32Speed,
         return Status::PORT_ACCESS;
     }
 
-    UART::Status result = setup(u32Speed, parity, u8DataBits, u8StopBits);
+    UART::Status result = setup(u32Speed, eParity, u8DataBits, u8StopBits);
     if (result != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to configure ["); LOG_STRING(strDevice.c_str());
@@ -81,7 +81,7 @@ UART::Status UART::open(const std::string &strDevice, uint32_t u32Speed,
         return Status::PORT_ACCESS;
     }
 
-    m_eParity    = parity;
+    m_eParity    = eParity;
     m_u8DataBits = u8DataBits;
     m_u8StopBits = u8StopBits;
 
@@ -252,7 +252,7 @@ UART::Status UART::timeout_write(uint32_t u32WriteTimeout, std::span<const uint8
     return Status::SUCCESS;
 }
 
-UART::Status UART::setup(uint32_t u32Speed, Parity parity, uint8_t u8DataBits, uint8_t u8StopBits) const
+UART::Status UART::setup(uint32_t u32Speed, Parity eParity, uint8_t u8DataBits, uint8_t u8StopBits) const
 {
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
     DCB dcb;
@@ -266,7 +266,7 @@ UART::Status UART::setup(uint32_t u32Speed, Parity parity, uint8_t u8DataBits, u
 
     dcb.BaudRate = u32Speed;
     dcb.ByteSize = u8DataBits;
-    switch (parity) {
+    switch (eParity) {
     case Parity::Even:
         dcb.Parity = EVENPARITY;
         break;
@@ -278,11 +278,11 @@ UART::Status UART::setup(uint32_t u32Speed, Parity parity, uint8_t u8DataBits, u
         dcb.Parity = NOPARITY;
         break;
     }
-    // fParity enables the UART hardware's own parity check; deliberately not
+    // fParity enables the UART hardware's own eParity check; deliberately not
     // paired with fErrorChar/fAbortOnError — see the Parity enum's doc
-    // comment (uUart.hpp) for why a parity error is not turned into a
+    // comment (uUart.hpp) for why a eParity error is not turned into a
     // dropped/substituted byte or a read failure by this driver.
-    dcb.fParity       = (parity != Parity::None) ? TRUE : FALSE;
+    dcb.fParity       = (eParity != Parity::None) ? TRUE : FALSE;
     dcb.StopBits      = (u8StopBits >= 2) ? TWOSTOPBITS : ONESTOPBIT;
     dcb.fBinary       = TRUE;
     dcb.fInX          = FALSE;

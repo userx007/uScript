@@ -146,15 +146,15 @@ class CP2112Plugin : public PluginInterface {
             return m_bIsEnabled;
         }
 
-        bool setParams(const PluginDataSet *ps)
+        bool setParams(const PluginDataSet *psPs)
         {
-            bool ok = generic_setparams<CP2112Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
-            return ok && m_LocalSetParams(ps);
+            bool ok = generic_setparams<CP2112Plugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
+            return ok && m_LocalSetParams(psPs);
         }
 
-        void getParams(PluginDataGet *pg) const
+        void getParams(PluginDataGet *psPg) const
         {
-            generic_getparams<CP2112Plugin>(this, pg);
+            generic_getparams<CP2112Plugin>(this, psPg);
         }
 
         const PluginCommandsMap<CP2112Plugin> *getMap() const
@@ -185,10 +185,10 @@ class CP2112Plugin : public PluginInterface {
             return true;
         }
 
-        bool doDispatch(const std::string &cmd, const std::string &params,
+        bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
-            return generic_dispatch<CP2112Plugin>(this, cmd, params, st);
+            return generic_dispatch<CP2112Plugin>(this, strCmd, strParams, st);
         }
 
         void doCleanup();
@@ -208,12 +208,12 @@ class CP2112Plugin : public PluginInterface {
             m_bIsFaultTolerant = true;
         }
 
-        ModuleCommandsMap<CP2112Plugin> *getModuleCmdsMap(const std::string &m) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
+        ModuleCommandsMap<CP2112Plugin> *getModuleCmdsMap(const std::string &strM) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
 
         // Re-open I2C at a new clock frequency while keeping the same address
 
-        bool setModuleSpeed(const std::string &module, size_t hz) const;
+        bool setModuleSpeed(const std::string &strModule, size_t hz) const;
 
         // INI accessor
 
@@ -287,7 +287,7 @@ class CP2112Plugin : public PluginInterface {
         // Top-level command handlers
 
 #define CP2112_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_CP2112_##a(const std::string &args, std::stop_token st) const;
+    bool m_CP2112_##a(const std::string &strArgs, std::stop_token st) const;
         CP2112_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef CP2112_PLUGIN_CMD_RECORD
 
@@ -303,9 +303,9 @@ class CP2112Plugin : public PluginInterface {
 
         // Parse helpers
 
-        static bool parseGpioKv(const std::string &key,
-                                const std::string &val,
-                                GpioPendingCfg &cfg);
+        static bool parseGpioKv(const std::string &strKey,
+                                const std::string &strVal,
+                                GpioPendingCfg &sCfg);
 
         // Member data
 
@@ -338,7 +338,7 @@ class CP2112Plugin : public PluginInterface {
 
         ModuleSpeedMap m_mapSpeed_I2C;
 
-        bool m_LocalSetParams(const PluginDataSet *ps);
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
 };
 
 #endif // CP2112_PLUGIN_HPP

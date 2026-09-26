@@ -23,10 +23,10 @@ extern "C" {
         return new DdsTypedPlugin();
     }
 
-    EXPORTED void pluginExit(DdsTypedPlugin *ptrPlugin)
+    EXPORTED void pluginExit(DdsTypedPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -40,13 +40,13 @@ namespace {
     // deliberately local/one-off rather than pulling in a shared split
     // utility, same convention as DdsTypedDriver's own local tokenize()
     // helper (dds_typed_driver.cpp).
-    std::vector<std::string> splitPreloadPaths(const std::string &csv)
+    std::vector<std::string> splitPreloadPaths(const std::string &strCsv)
     {
         std::vector<std::string> out;
         size_t start = 0;
-        while (start <= csv.size()) {
-            const size_t sep        = csv.find(';', start);
-            const std::string token = ustring::trim(csv.substr(start, sep == std::string::npos ? std::string::npos : sep - start));
+        while (start <= strCsv.size()) {
+            const size_t sep        = strCsv.find(';', start);
+            const std::string token = ustring::trim(strCsv.substr(start, sep == std::string::npos ? std::string::npos : sep - start));
             if (!token.empty()) {
                 out.push_back(token);
             }
@@ -97,9 +97,9 @@ std::shared_ptr<DdsTypedDriver> DdsTypedPlugin::m_OpenDriver(void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &args, std::stop_token st) const
+bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    (void)args;
+    (void)strArgs;
     (void)st;
     resetData();
     std::ostringstream oss;
@@ -190,12 +190,12 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &args, std::stop_token s
     return true;
 }
 
-bool DdsTypedPlugin::m_DDS_TYPED_CONFIG(const std::string &args, std::stop_token st) const
+bool DdsTypedPlugin::m_DDS_TYPED_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
 
-    if (false == generic_dds_typed_set_params(this, args)) {
+    if (false == generic_dds_typed_set_params(this, strArgs)) {
         return false;
     }
 
@@ -207,12 +207,12 @@ bool DdsTypedPlugin::m_DDS_TYPED_CONFIG(const std::string &args, std::stop_token
 // DDS_TYPED.CMD — see class doc comment (dds_typed_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool DdsTypedPlugin::m_DDS_TYPED_CMD(const std::string &args, std::stop_token st) const
+bool DdsTypedPlugin::m_DDS_TYPED_CMD(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<DdsTypedDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
@@ -229,12 +229,12 @@ bool DdsTypedPlugin::m_DDS_TYPED_CMD(const std::string &args, std::stop_token st
 // DDS_TYPED.SCRIPT
 // -----------------------------------------------------------------------
 
-bool DdsTypedPlugin::m_DDS_TYPED_SCRIPT(const std::string &args, std::stop_token st) const
+bool DdsTypedPlugin::m_DDS_TYPED_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<DdsTypedDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
@@ -251,12 +251,12 @@ bool DdsTypedPlugin::m_DDS_TYPED_SCRIPT(const std::string &args, std::stop_token
 // DDS_TYPED.CYCLIC
 // -----------------------------------------------------------------------
 
-bool DdsTypedPlugin::m_DDS_TYPED_CYCLIC(const std::string &args, std::stop_token st) const
+bool DdsTypedPlugin::m_DDS_TYPED_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<DdsTypedDriver> { return m_OpenDriver(); },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {

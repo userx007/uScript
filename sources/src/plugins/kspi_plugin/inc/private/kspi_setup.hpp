@@ -86,7 +86,7 @@ bool KSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
  */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename T>
-bool generic_spi_set_params(const T *pOwner, const std::string &args)
+bool generic_spi_set_params(const T *pOwner, const std::string &strArgs)
 {
     // clang-format off
     static constexpr KVSetterEntry<T> table[] = {
@@ -102,7 +102,7 @@ bool generic_spi_set_params(const T *pOwner, const std::string &args)
     };
     // clang-format on
 
-    return generic_setup_params(pOwner, args, table, LT_HDR);
+    return generic_setup_params(pOwner, strArgs, table, LT_HDR);
 }
 
 #endif // KSPI_SETUP_HPP

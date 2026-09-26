@@ -26,10 +26,10 @@ extern "C" {
         return new CP2112Plugin();
     }
 
-    EXPORTED void pluginExit(CP2112Plugin *ptrPlugin)
+    EXPORTED void pluginExit(CP2112Plugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -71,9 +71,9 @@ void CP2112Plugin::doCleanup()
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_CP2112_INFO(const std::string &args, std::stop_token st) const
+bool CP2112Plugin::m_CP2112_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
@@ -219,21 +219,21 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string &args, std::stop_token st) co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CP2112Plugin::m_CP2112_CONFIG(const std::string &args, std::stop_token st) const
+bool CP2112Plugin::m_CP2112_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    return generic_cp2112_set_params(this, args);
+    return generic_cp2112_set_params(this, strArgs);
 }
 
-bool CP2112Plugin::m_CP2112_I2C(const std::string &args, std::stop_token st) const
+bool CP2112Plugin::m_CP2112_I2C(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<CP2112Plugin>(this, "I2C", args);
+    return generic_module_dispatch<CP2112Plugin>(this, "I2C", strArgs);
 }
 
-bool CP2112Plugin::m_CP2112_GPIO(const std::string &args, std::stop_token st) const
+bool CP2112Plugin::m_CP2112_GPIO(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<CP2112Plugin>(this, "GPIO", args);
+    return generic_module_dispatch<CP2112Plugin>(this, "GPIO", strArgs);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -282,16 +282,16 @@ CP2112Gpio *CP2112Plugin::m_gpio() const
 //-------------------------------------------------------------------------------
 
 ModuleCommandsMap<CP2112Plugin> *
-CP2112Plugin::getModuleCmdsMap(const std::string &m) const
+CP2112Plugin::getModuleCmdsMap(const std::string &strM) const
 {
-    auto it = m_mapCommandsMaps.find(m);
+    auto it = m_mapCommandsMaps.find(strM);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
 ModuleSpeedMap *
-CP2112Plugin::getModuleSpeedsMap(const std::string &m) const
+CP2112Plugin::getModuleSpeedsMap(const std::string &strM) const
 {
-    auto it = m_mapSpeedsMaps.find(m);
+    auto it = m_mapSpeedsMaps.find(strM);
     if (it == m_mapSpeedsMaps.end()) {
         return nullptr;
     }
@@ -302,9 +302,9 @@ CP2112Plugin::getModuleSpeedsMap(const std::string &m) const
 //              setModuleSpeed                                                 //
 //-------------------------------------------------------------------------------
 
-bool CP2112Plugin::setModuleSpeed(const std::string &module, size_t hz) const
+bool CP2112Plugin::setModuleSpeed(const std::string &strModule, size_t hz) const
 {
-    if (module == "I2C") {
+    if (strModule == "I2C") {
         m_sI2cCfg.clockHz = static_cast<uint32_t>(hz);
 
         if (m_pI2C && m_pI2C->is_open()) {
@@ -327,7 +327,7 @@ bool CP2112Plugin::setModuleSpeed(const std::string &module, size_t hz) const
         return true;
     }
 
-    if (module == "GPIO") {
+    if (strModule == "GPIO") {
         // CP2112 GPIO has no numeric data-rate; the only "clock" is the
         // optional clock-output on GPIO.6, which is set via clockDivider in
         // the GpioConfig.  Direct frequency manipulation is not supported here.
@@ -337,6 +337,6 @@ bool CP2112Plugin::setModuleSpeed(const std::string &module, size_t hz) const
     }
 
     LOG_PRINT(LOG_ERROR, LOG_HDR;
-              LOG_STRING("setModuleSpeed: unknown module:"); LOG_STRING(module));
+              LOG_STRING("setModuleSpeed: unknown strModule:"); LOG_STRING(strModule));
     return false;
 }

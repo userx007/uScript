@@ -8,51 +8,51 @@
 #include <string.h>
 
 /*----------------------------------------------------------------------------*/
-char *strtok_ex(char *str, const char *delim, char **saveptr)
+char *strtok_ex(char *pstrStr, const char *pstrDelim, char **ppstrSaveptr)
 {
-    if (!delim || (!str && !*saveptr) || !*delim) {
+    if (!pstrDelim || (!pstrStr && !*ppstrSaveptr) || !*pstrDelim) {
         return nullptr;
     }
 
-    if (!str) {
-        str = *saveptr;
+    if (!pstrStr) {
+        pstrStr = *ppstrSaveptr;
     }
 
     // Skip leading delimiters
-    while (*str) {
-        const char *d = delim;
-        while (*d && *str != *d) {
+    while (*pstrStr) {
+        const char *d = pstrDelim;
+        while (*d && *pstrStr != *d) {
             ++d;
         }
         if (!*d) {
             break; // Not a delimiter
         }
-        ++str;
+        ++pstrStr;
     }
 
-    if (!*str) {
+    if (!*pstrStr) {
         return nullptr;
     }
 
-    char *ppstrToken = str;
+    char *ppstrToken = pstrStr;
 
     // Find end of ppstrToken
-    while (*str) {
-        const char *d = delim;
-        while (*d && *str != *d) {
+    while (*pstrStr) {
+        const char *d = pstrDelim;
+        while (*d && *pstrStr != *d) {
             ++d;
         }
         if (*d) {
             break; // Found delimiter
         }
-        ++str;
+        ++pstrStr;
     }
 
-    if (*str) {
-        *str     = '\0';
-        *saveptr = str + 1;
+    if (*pstrStr) {
+        *pstrStr     = '\0';
+        *ppstrSaveptr = pstrStr + 1;
     } else {
-        *saveptr = nullptr;
+        *ppstrSaveptr = nullptr;
     }
 
     return ppstrToken;
@@ -60,39 +60,39 @@ char *strtok_ex(char *str, const char *delim, char **saveptr)
 
 /*----------------------------------------------------------------------------*/
 #if defined(BIGNUM_T)
-bool asc2int(const char *s, BIGNUM_T *pNumber)
+bool asc2int(const char *pstrS, BIGNUM_T *pNumber)
 {
     BIGNUM_T numValue = 0;
     bool bRetVal      = true;
 
-    if (!s || *s == '\0') {
+    if (!pstrS || *pstrS == '\0') {
         return false;
     }
 
 #if (1 == uSHELL_SUPPORTS_SIGNED_TYPES)
     bool bNegative = false;
-    if (*s == '-') {
+    if (*pstrS == '-') {
         bNegative = true;
-        s++;
+        pstrS++;
     }
 #endif
 
     int base = 10;
-    if (*s == '0') {
-        if (tolower(*(s + 1)) == 'x') {
+    if (*pstrS == '0') {
+        if (tolower(*(pstrS + 1)) == 'x') {
             base = 16;
-            s += 2;
-        } else if (tolower(*(s + 1)) == 'b') {
+            pstrS += 2;
+        } else if (tolower(*(pstrS + 1)) == 'b') {
             base = 2;
-            s += 2;
-        } else if (tolower(*(s + 1)) == 'o') {
+            pstrS += 2;
+        } else if (tolower(*(pstrS + 1)) == 'o') {
             base = 8;
-            s += 2;
+            pstrS += 2;
         }
     }
 
-    while (*s) {
-        char c = tolower(*s);
+    while (*pstrS) {
+        char c = tolower(*pstrS);
         int digit;
 
         if (isdigit(c)) {
@@ -108,7 +108,7 @@ bool asc2int(const char *s, BIGNUM_T *pNumber)
         }
 
         numValue = numValue * base + digit;
-        s++;
+        pstrS++;
     }
 
 #if (1 == uSHELL_SUPPORTS_SIGNED_TYPES)
@@ -123,36 +123,36 @@ bool asc2int(const char *s, BIGNUM_T *pNumber)
 
 /*----------------------------------------------------------------------------*/
 #ifdef uSHELL_IMPLEMENTS_NUMBERS_FLOAT
-bool asc2float(const char *s, numfp_t *pFloatTypeVar)
+bool asc2float(const char *pstrS, numfp_t *pFloatTypeVar)
 {
     bool bNegative = false, bFraction = false;
     long lValue         = 0;
     numfp_t fptFraction = 1.0;
 
-    if (!s || *s == '\0') {
+    if (!pstrS || *pstrS == '\0') {
         return false;
     }
 
-    if (*s == '-') {
+    if (*pstrS == '-') {
         bNegative = true;
-        s++;
+        pstrS++;
     }
 
-    while (*s) {
-        if (*s == '.') {
-            if (bFraction || *(s + 1) == '\0') {
+    while (*pstrS) {
+        if (*pstrS == '.') {
+            if (bFraction || *(pstrS + 1) == '\0') {
                 return false;
             }
             bFraction = true;
-        } else if (isdigit(*s)) {
-            lValue = lValue * 10 + (*s - '0');
+        } else if (isdigit(*pstrS)) {
+            lValue = lValue * 10 + (*pstrS - '0');
             if (bFraction) {
                 fptFraction *= 0.1;
             }
         } else {
             return false;
         }
-        s++;
+        pstrS++;
     }
 
     *pFloatTypeVar = (bNegative ? -lValue : lValue) * (bFraction ? fptFraction : 1.0);
@@ -161,7 +161,7 @@ bool asc2float(const char *s, numfp_t *pFloatTypeVar)
 #endif /* uSHELL_IMPLEMENTS_NUMBERS_FLOAT */
 
 /*----------------------------------------------------------------------------*/
-int dump(BIGNUM_T address, num32_t length, bool show_address)
+int dump(BIGNUM_T address, num32_t length, bool bShow_address)
 {
 #define uSHELL_DUMP_ELEM_PER_LINE (16)
 
@@ -183,7 +183,7 @@ int dump(BIGNUM_T address, num32_t length, bool show_address)
 
     for (int i = 0; i < nr_lines; ++i) {
         int index = i * uSHELL_DUMP_ELEM_PER_LINE;
-        if (show_address) {
+        if (bShow_address) {
             uSHELL_PRINTF("%p | ", (p + index));
         }
 
@@ -205,23 +205,23 @@ int dump(BIGNUM_T address, num32_t length, bool show_address)
 
 #if (1 == uSHELL_IMPLEMENTS_HEXLIFY)
 /*----------------------------------------------------------------------------*/
-void hexlify(const uint8_t *bytes, size_t length, char *output)
+void hexlify(const uint8_t *pu8Bytes, size_t length, char *pstrOutput)
 {
     const char hex_chars[] = "0123456789ABCDEF";
     for (size_t i = 0; i < length; ++i) {
-        output[i * 2]     = hex_chars[(bytes[i] >> 4) & 0x0F];
-        output[i * 2 + 1] = hex_chars[bytes[i] & 0x0F];
+        pstrOutput[i * 2]     = hex_chars[(pu8Bytes[i] >> 4) & 0x0F];
+        pstrOutput[i * 2 + 1] = hex_chars[pu8Bytes[i] & 0x0F];
     }
-    output[length * 2] = '\0'; // Null-terminate the string
+    pstrOutput[length * 2] = '\0'; // Null-terminate the string
 }
 
 /*----------------------------------------------------------------------------*/
-bool unhexlify(const char *hexstr, uint8_t *output, size_t *out_len)
+bool unhexlify(const char *pstrHexstr, uint8_t *pu8Output, size_t *pOut_len)
 {
     size_t len = 0;
 
     // Must be even length
-    for (const char *p = hexstr; *p; ++p) {
+    for (const char *p = pstrHexstr; *p; ++p) {
         len++;
     }
 
@@ -229,11 +229,11 @@ bool unhexlify(const char *hexstr, uint8_t *output, size_t *out_len)
         return false;
     }
 
-    *out_len = len / 2;
+    *pOut_len = len / 2;
 
-    for (size_t i = 0; i < *out_len; ++i) {
-        char high = toupper(hexstr[i * 2]);
-        char low  = toupper(hexstr[i * 2 + 1]);
+    for (size_t i = 0; i < *pOut_len; ++i) {
+        char high = toupper(pstrHexstr[i * 2]);
+        char low  = toupper(pstrHexstr[i * 2 + 1]);
 
         if (!isxdigit(high) || !isxdigit(low)) {
             return false;
@@ -242,7 +242,7 @@ bool unhexlify(const char *hexstr, uint8_t *output, size_t *out_len)
         uint8_t high_val = (high >= 'A') ? (high - 'A' + 10) : (high - '0');
         uint8_t low_val  = (low >= 'A') ? (low - 'A' + 10) : (low - '0');
 
-        output[i]        = (high_val << 4) | low_val;
+        pu8Output[i]        = (high_val << 4) | low_val;
     }
 
     return true;
@@ -250,79 +250,79 @@ bool unhexlify(const char *hexstr, uint8_t *output, size_t *out_len)
 #endif /* (1 == uSHELL_IMPLEMENTS_HEXLIFY) */
 
 /*----------------------------------------------------------------------------*/
-char *trim_whitespace_inplace(char *str)
+char *trim_whitespace_inplace(char *pstrStr)
 {
-    if (!str) {
-        return str;
+    if (!pstrStr) {
+        return pstrStr;
     }
 
     // Trim leading whitespace
-    while (*str && isspace((unsigned char)*str)) {
-        str++;
+    while (*pstrStr && isspace((unsigned char)*pstrStr)) {
+        pstrStr++;
     }
 
     // Trim trailing whitespace (null terminate)
-    char *end = str + strlen(str) - 1;
-    while (end > str && isspace((unsigned char)*end)) {
+    char *end = pstrStr + strlen(pstrStr) - 1;
+    while (end > pstrStr && isspace((unsigned char)*end)) {
         *end = '\0';
         end--;
     }
 
-    return str;
+    return pstrStr;
 }
 
 /*----------------------------------------------------------------------------*/
-bool strings_equal_trimmed(const char *s1, const char *s2)
+bool strings_equal_trimmed(const char *pstrS1, const char *pstrS2)
 {
     // Skip leading whitespace
-    while (*s1 && isspace((unsigned char)*s1)) {
-        s1++;
+    while (*pstrS1 && isspace((unsigned char)*pstrS1)) {
+        pstrS1++;
     }
-    while (*s2 && isspace((unsigned char)*s2)) {
-        s2++;
+    while (*pstrS2 && isspace((unsigned char)*pstrS2)) {
+        pstrS2++;
     }
 
     // Compare content
-    while (*s1 && *s2) {
-        if (*s1 != *s2) {
+    while (*pstrS1 && *pstrS2) {
+        if (*pstrS1 != *pstrS2) {
             return false;
         }
-        s1++;
-        s2++;
+        pstrS1++;
+        pstrS2++;
     }
 
     // Skip trailing whitespace
-    while (*s1 && isspace((unsigned char)*s1)) {
-        s1++;
+    while (*pstrS1 && isspace((unsigned char)*pstrS1)) {
+        pstrS1++;
     }
-    while (*s2 && isspace((unsigned char)*s2)) {
-        s2++;
+    while (*pstrS2 && isspace((unsigned char)*pstrS2)) {
+        pstrS2++;
     }
 
-    return (*s1 == '\0' && *s2 == '\0');
+    return (*pstrS1 == '\0' && *pstrS2 == '\0');
 }
 
 /*----------------------------------------------------------------------------*/
-void trim_whitespace(const char *input, char *output, size_t output_size)
+void trim_whitespace(const char *pstrInput, char *pstrOutput, size_t output_size)
 {
     if (output_size == 0) {
         return;
     }
 
     // Skip leading whitespace
-    while (*input && isspace((unsigned char)*input)) {
-        input++;
+    while (*pstrInput && isspace((unsigned char)*pstrInput)) {
+        pstrInput++;
     }
 
     // Copy string
     size_t len = 0;
-    while (*input && len < output_size - 1) {
-        output[len++] = *input++;
+    while (*pstrInput && len < output_size - 1) {
+        pstrOutput[len++] = *pstrInput++;
     }
-    output[len] = '\0';
+    pstrOutput[len] = '\0';
 
     // Remove trailing whitespace
-    while (len > 0 && isspace((unsigned char)output[len - 1])) {
-        output[--len] = '\0';
+    while (len > 0 && isspace((unsigned char)pstrOutput[len - 1])) {
+        pstrOutput[--len] = '\0';
     }
 }

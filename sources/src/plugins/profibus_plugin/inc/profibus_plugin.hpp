@@ -189,9 +189,9 @@ class ProfibusPlugin : public PluginInterface {
             return m_strDevice;
         }
 
-        void setDevice(const std::string &device) const
+        void setDevice(const std::string &strDevice) const
         {
-            m_strDevice = device;
+            m_strDevice = strDevice;
         }
 
         uint32_t getBaud(void) const
@@ -203,7 +203,7 @@ class ProfibusPlugin : public PluginInterface {
         // UART::open() — see profibus_driver.hpp's "Known hardware/timing
         // limitations" for exactly which ones, and why the rest are rejected
         // outright here rather than silently mis-configured.
-        bool setBaud(const std::string &baudStr) const;
+        bool setBaud(const std::string &strBaud) const;
 
         uint8_t getOwnAddress(void) const
         {
@@ -213,16 +213,16 @@ class ProfibusPlugin : public PluginInterface {
         // Valid FDL station addresses are 0-125; 126 is reserved for
         // commissioning and 127 is the broadcast address — neither is a valid
         // address for this master's own identity.
-        bool setOwnAddress(const std::string &addrStr) const;
+        bool setOwnAddress(const std::string &strAddr) const;
 
         uint32_t getResponseTimeout(void) const
         {
             return m_u32ResponseTimeout;
         }
 
-        bool setResponseTimeout(const std::string &timeoutStr) const
+        bool setResponseTimeout(const std::string &strTimeout) const
         {
-            return numeric::str2uint32(timeoutStr, m_u32ResponseTimeout);
+            return numeric::str2uint32(strTimeout, m_u32ResponseTimeout);
         }
 
         bool getDefaultHighPriority(void) const
@@ -241,9 +241,9 @@ class ProfibusPlugin : public PluginInterface {
             return m_u32ReadBufferSize;
         }
 
-        bool setReadBufferSize(const std::string &bufSizeStr) const
+        bool setReadBufferSize(const std::string &strBufSize) const
         {
-            return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize, /*bFailOnZero=*/true);
+            return numeric::str2uint32(strBufSize, m_u32ReadBufferSize, /*bFailOnZero=*/true);
         }        
 
     private:

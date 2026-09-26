@@ -382,7 +382,7 @@ class SLCANFrameDriver : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32Timeout,
                              std::span<uint8_t> dataSpan,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override
         {
@@ -395,7 +395,7 @@ class SLCANFrameDriver : public ICommDriver {
                 return raw_tout_read(u32Timeout, dataSpan, xtra_params, stop_tok);
             }
 
-            (void)options; // segmented protocols always reassemble a full message
+            (void)sOptions; // segmented protocols always reassemble a full message
 
             char szRxId[16];
             std::snprintf(szRxId, sizeof(szRxId), "0x%X", resolveRxId(xtra_params));
@@ -411,34 +411,34 @@ class SLCANFrameDriver : public ICommDriver {
         // to CommScriptCommandInterpreter / CommScriptClient.
         // -------------------------------------------------------------------------
 
-        ICommDriver::Status set_bitrate(CanBitrate bitrate, uint32_t u32Timeout)
+        ICommDriver::Status set_bitrate(CanBitrate eBitrate, uint32_t u32Timeout)
         {
-            return m_slcan.set_bitrate(bitrate, u32Timeout);
+            return m_slcan.set_bitrate(eBitrate, u32Timeout);
         }
 
-        ICommDriver::Status set_fd_data_rate(CanFdDataRate rate, uint32_t u32Timeout)
+        ICommDriver::Status set_fd_data_rate(CanFdDataRate eRate, uint32_t u32Timeout)
         {
-            return m_slcan.set_fd_data_rate(rate, u32Timeout);
+            return m_slcan.set_fd_data_rate(eRate, u32Timeout);
         }
 
-        ICommDriver::Status set_mode(CanMode mode, uint32_t u32Timeout)
+        ICommDriver::Status set_mode(CanMode eMode, uint32_t u32Timeout)
         {
-            return m_slcan.set_mode(mode, u32Timeout);
+            return m_slcan.set_mode(eMode, u32Timeout);
         }
 
-        ICommDriver::Status set_auto_retx(CanAutoRetx retx, uint32_t u32Timeout)
+        ICommDriver::Status set_auto_retx(CanAutoRetx eRetx, uint32_t u32Timeout)
         {
-            return m_slcan.set_auto_retx(retx, u32Timeout);
+            return m_slcan.set_auto_retx(eRetx, u32Timeout);
         }
 
-        ICommDriver::Status set_std_filter(uint16_t id, uint16_t mask, uint32_t u32Timeout)
+        ICommDriver::Status set_std_filter(uint16_t u16Id, uint16_t u16Mask, uint32_t u32Timeout)
         {
-            return m_slcan.set_std_filter(id, mask, u32Timeout);
+            return m_slcan.set_std_filter(u16Id, u16Mask, u32Timeout);
         }
 
-        ICommDriver::Status set_ext_filter(uint32_t id, uint32_t mask, uint32_t u32Timeout)
+        ICommDriver::Status set_ext_filter(uint32_t u32Id, uint32_t u32Mask, uint32_t u32Timeout)
         {
-            return m_slcan.set_ext_filter(id, mask, u32Timeout);
+            return m_slcan.set_ext_filter(u32Id, u32Mask, u32Timeout);
         }
 
         ICommDriver::Status clear_filters(uint32_t u32Timeout)
@@ -469,9 +469,9 @@ class SLCANFrameDriver : public ICommDriver {
         }
 
         /** \brief Tuning parameters (block size, STmin, timeouts, ...) for set_tp_protocol(). */
-        void set_tp_config(const TpConfig &cfg)
+        void set_tp_config(const TpConfig &sCfg)
         {
-            m_sTpConfig = cfg;
+            m_sTpConfig = sCfg;
         }
 
         /**
@@ -604,7 +604,7 @@ class SLCANFrameDriver : public ICommDriver {
          *        special-casing needed here for which one is active. A no-op
          *        when gui_mode_active() is false.
          */
-        void dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
+        void dumpFrame(CommDir eDir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
         {
             if (!gui_mode_active()) {
                 return;
@@ -614,7 +614,7 @@ class SLCANFrameDriver : public ICommDriver {
                           m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel.c_str(),
                           u32Id, bExtended ? " (ext)" : "");
             gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::CAN, label),
-                                 dir, data.data(), static_cast<uint32_t>(data.size()));
+                                 eDir, data.data(), static_cast<uint32_t>(data.size()));
         }
 
     private:

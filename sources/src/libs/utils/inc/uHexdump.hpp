@@ -103,10 +103,10 @@ namespace hexutils {
         /**
          * @brief Fast hex byte to two-character conversion
          */
-        inline void byteToHex(uint8_t byte, char *out) noexcept
+        inline void byteToHex(uint8_t u8Byte, char *pstrOut) noexcept
         {
-            out[0] = HEX_DIGITS[(byte >> 4) & 0xF];
-            out[1] = HEX_DIGITS[byte & 0xF];
+            pstrOut[0] = HEX_DIGITS[(u8Byte >> 4) & 0xF];
+            pstrOut[1] = HEX_DIGITS[u8Byte & 0xF];
         }
 
         /**
@@ -117,31 +117,31 @@ namespace hexutils {
                                             size_t lineLen,
                                             size_t bytesPerLine,
                                             size_t offset,
-                                            const HexDumpConfig &config)
+                                            const HexDumpConfig &sConfig)
         {
             std::string result;
             result.reserve(256); // Pre-allocate reasonable size
 
             // Offset
-            if (config.showOffset) {
+            if (sConfig.showOffset) {
                 char offsetBuf[32];
-                if (config.decimalOffset) {
+                if (sConfig.decimalOffset) {
                     std::snprintf(offsetBuf, sizeof(offsetBuf), "%08zu | ", offset + lineStart);
                 } else {
                     std::snprintf(offsetBuf, sizeof(offsetBuf), "%08zX | ", offset + lineStart);
                 }
 
-                if (config.useColors) {
+                if (sConfig.useColors) {
                     result += HexDumpConfig::OFFSET_COLOR;
                 }
                 result += offsetBuf;
-                if (config.useColors) {
+                if (sConfig.useColors) {
                     result += HexDumpConfig::RESET_COLOR;
                 }
             }
 
             // Hex values
-            if (config.useColors) {
+            if (sConfig.useColors) {
                 result += HexDumpConfig::HEX_COLOR;
             }
 
@@ -149,22 +149,22 @@ namespace hexutils {
             for (size_t j = 0; j < bytesPerLine; ++j) {
                 if (j < lineLen) {
                     byteToHex(data[lineStart + j], hexBuf);
-                    hexBuf[2] = config.showSpaces ? ' ' : '\0';
-                    result.append(hexBuf, config.showSpaces ? 3 : 2);
+                    hexBuf[2] = sConfig.showSpaces ? ' ' : '\0';
+                    result.append(hexBuf, sConfig.showSpaces ? 3 : 2);
                 } else {
-                    result.append(config.showSpaces ? "   " : "  ");
+                    result.append(sConfig.showSpaces ? "   " : "  ");
                 }
             }
 
-            if (config.useColors) {
+            if (sConfig.useColors) {
                 result += HexDumpConfig::RESET_COLOR;
             }
 
             // ASCII characters
-            if (config.showAscii) {
+            if (sConfig.showAscii) {
                 result += " | ";
 
-                if (config.useColors) {
+                if (sConfig.useColors) {
                     result += HexDumpConfig::ASCII_COLOR;
                 }
 
@@ -173,7 +173,7 @@ namespace hexutils {
                     result.push_back(std::isprint(ch) ? static_cast<char>(ch) : '.');
                 }
 
-                if (config.useColors) {
+                if (sConfig.useColors) {
                     result += HexDumpConfig::RESET_COLOR;
                 }
             }
@@ -193,14 +193,14 @@ namespace hexutils {
      */
     /*--------------------------------------------------------------------------------------------------------*/
     [[nodiscard]] inline std::string hexdumpToString(std::span<const uint8_t> data,
-                                                     const HexDumpConfig &config = HexDumpConfig(),
+                                                     const HexDumpConfig &sConfig = HexDumpConfig(),
                                                      size_t offset               = 0)
     {
         if (data.empty()) {
             return "";
         }
 
-        size_t bytesPerLine = std::min(config.bytesPerLine, size_t(96)); // Max 96 bytes per line
+        size_t bytesPerLine = std::min(sConfig.bytesPerLine, size_t(96)); // Max 96 bytes per line
         size_t lines        = data.size() / bytesPerLine;
         size_t lastLineLen  = data.size() % bytesPerLine;
 
@@ -215,7 +215,7 @@ namespace hexutils {
             size_t lineStart = i * bytesPerLine;
             size_t lineLen   = (i == lines - 1 && lastLineLen != 0) ? lastLineLen : bytesPerLine;
 
-            result += internal::buildHexdumpLine(data, lineStart, lineLen, bytesPerLine, offset, config);
+            result += internal::buildHexdumpLine(data, lineStart, lineLen, bytesPerLine, offset, sConfig);
             result += '\n';
         }
 
@@ -223,12 +223,12 @@ namespace hexutils {
     }
 
     // Overload for pointer + size (backward compatible)
-    [[nodiscard]] inline std::string hexdumpToString(const uint8_t *pData,
+    [[nodiscard]] inline std::string hexdumpToString(const uint8_t *pu8Data,
                                                      size_t size,
-                                                     const HexDumpConfig &config = HexDumpConfig(),
+                                                     const HexDumpConfig &sConfig = HexDumpConfig(),
                                                      size_t offset               = 0)
     {
-        return hexdumpToString(std::span<const uint8_t>(pData, size), config, offset);
+        return hexdumpToString(std::span<const uint8_t>(pu8Data, size), sConfig, offset);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -240,20 +240,20 @@ namespace hexutils {
      */
     /*--------------------------------------------------------------------------------------------------------*/
     inline void printHexdump(std::span<const uint8_t> data,
-                             const HexDumpConfig &config = HexDumpConfig(),
+                             const HexDumpConfig &sConfig = HexDumpConfig(),
                              size_t offset               = 0)
     {
-        std::string dump = hexdumpToString(data, config, offset);
+        std::string dump = hexdumpToString(data, sConfig, offset);
         std::fputs(dump.c_str(), stdout);
     }
 
     // Overload for pointer + size
-    inline void printHexdump(const uint8_t *pData,
+    inline void printHexdump(const uint8_t *pu8Data,
                              size_t size,
-                             const HexDumpConfig &config = HexDumpConfig(),
+                             const HexDumpConfig &sConfig = HexDumpConfig(),
                              size_t offset               = 0)
     {
-        printHexdump(std::span<const uint8_t>(pData, size), config, offset);
+        printHexdump(std::span<const uint8_t>(pu8Data, size), sConfig, offset);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -262,7 +262,7 @@ namespace hexutils {
      * @note This variant immediately prints characters using std::printf
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    inline void HexDump1(const uint8_t *pData,
+    inline void HexDump1(const uint8_t *pu8Data,
                          size_t szDataSize,
                          size_t szBytesPerLine = 16,
                          bool bShowSpaces      = true,
@@ -278,7 +278,7 @@ namespace hexutils {
         config.decimalOffset = bDecimalOffset;
         config.useColors     = true;
 
-        printHexdump(pData, szDataSize, config);
+        printHexdump(pu8Data, szDataSize, config);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -286,14 +286,14 @@ namespace hexutils {
      * @brief Legacy HexDump1S - With flag string parsing (backward compatible)
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    inline void HexDump1S(const uint8_t *pData,
+    inline void HexDump1S(const uint8_t *pu8Data,
                           size_t szDataSize,
                           size_t szBytesPerLine         = 16,
-                          const std::string &flagString = "SAOD")
+                          const std::string &strFlagString = "SAOD")
     {
-        HexDumpConfig config = HexDumpConfig::fromFlags(flagString);
+        HexDumpConfig config = HexDumpConfig::fromFlags(strFlagString);
         config.bytesPerLine  = szBytesPerLine;
-        printHexdump(pData, szDataSize, config);
+        printHexdump(pu8Data, szDataSize, config);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -301,7 +301,7 @@ namespace hexutils {
      * @brief Legacy HexDump2 - Uses buffer accumulation (backward compatible)
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    inline void HexDump2(const uint8_t *pData,
+    inline void HexDump2(const uint8_t *pu8Data,
                          size_t szDataSize,
                          size_t szBytesPerLine = 16,
                          bool bShowSpaces      = true,
@@ -317,7 +317,7 @@ namespace hexutils {
         config.decimalOffset = bDecimalOffset;
         config.useColors     = true;
 
-        printHexdump(pData, szDataSize, config);
+        printHexdump(pu8Data, szDataSize, config);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -325,14 +325,14 @@ namespace hexutils {
      * @brief Legacy HexDump2S - With flag string parsing (backward compatible)
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    inline void HexDump2S(const uint8_t *pData,
+    inline void HexDump2S(const uint8_t *pu8Data,
                           size_t szDataSize,
                           size_t szBytesPerLine         = 16,
-                          const std::string &flagString = "SAOD")
+                          const std::string &strFlagString = "SAOD")
     {
-        HexDumpConfig config = HexDumpConfig::fromFlags(flagString);
+        HexDumpConfig config = HexDumpConfig::fromFlags(strFlagString);
         config.bytesPerLine  = std::min(szBytesPerLine, size_t(96));
-        printHexdump(pData, szDataSize, config);
+        printHexdump(pu8Data, szDataSize, config);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -340,7 +340,7 @@ namespace hexutils {
      * @brief Legacy HexDump3 - Full C++ version (backward compatible)
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    inline void HexDump3(const uint8_t *pData,
+    inline void HexDump3(const uint8_t *pu8Data,
                          size_t szDataSize,
                          size_t szBytesPerLine = 16,
                          bool bShowSpaces      = true,
@@ -356,7 +356,7 @@ namespace hexutils {
         config.decimalOffset = bDecimalOffset;
         config.useColors     = false; // HexDump3 didn't use colors in original
 
-        printHexdump(pData, szDataSize, config);
+        printHexdump(pu8Data, szDataSize, config);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -364,15 +364,15 @@ namespace hexutils {
      * @brief Legacy HexDump3S - With flag string parsing (backward compatible)
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    inline void HexDump3S(const uint8_t *pData,
+    inline void HexDump3S(const uint8_t *pu8Data,
                           size_t szDataSize,
                           size_t szBytesPerLine         = 16,
-                          const std::string &flagString = "SAOD")
+                          const std::string &strFlagString = "SAOD")
     {
-        HexDumpConfig config = HexDumpConfig::fromFlags(flagString);
+        HexDumpConfig config = HexDumpConfig::fromFlags(strFlagString);
         config.bytesPerLine  = szBytesPerLine;
         config.useColors     = false; // HexDump3 didn't use colors in original
-        printHexdump(pData, szDataSize, config);
+        printHexdump(pu8Data, szDataSize, config);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -383,12 +383,12 @@ namespace hexutils {
     template <typename T>
         requires std::is_trivially_copyable_v<T>
     [[nodiscard]] inline std::string dump(std::span<const T> data,
-                                          const HexDumpConfig &config = HexDumpConfig())
+                                          const HexDumpConfig &sConfig = HexDumpConfig())
     {
         auto byteView = std::span<const uint8_t>(
             reinterpret_cast<const uint8_t *>(data.data()),
             data.size() * sizeof(T));
-        return hexdumpToString(byteView, config);
+        return hexdumpToString(byteView, sConfig);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -402,7 +402,7 @@ namespace hexutils {
             { c.size() } -> std::convertible_to<size_t>;
         }
     [[nodiscard]] inline std::string dump(const Container &container,
-                                          const HexDumpConfig &config = HexDumpConfig())
+                                          const HexDumpConfig &sConfig = HexDumpConfig())
     {
         using T = std::remove_const_t<std::remove_reference_t<decltype(*container.data())>>;
         static_assert(std::is_trivially_copyable_v<T>, "Container element type must be trivially copyable");
@@ -410,7 +410,7 @@ namespace hexutils {
         auto byteView = std::span<const uint8_t>(
             reinterpret_cast<const uint8_t *>(container.data()),
             container.size() * sizeof(T));
-        return hexdumpToString(byteView, config);
+        return hexdumpToString(byteView, sConfig);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -419,10 +419,10 @@ namespace hexutils {
      */
     /*--------------------------------------------------------------------------------------------------------*/
     template <typename T>
-    inline void quickDump(const T *data, size_t count)
+    inline void quickDump(const T *pData, size_t count)
     {
         auto byteView = std::span<const uint8_t>(
-            reinterpret_cast<const uint8_t *>(data),
+            reinterpret_cast<const uint8_t *>(pData),
             count * sizeof(T));
         printHexdump(byteView);
     }
@@ -481,17 +481,17 @@ namespace hexutils {
      * @param offset      Logical start offset printed in the offset column (default 0).
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    inline void logHexdump(LogLevel level,
+    inline void logHexdump(LogLevel eLevel,
                            std::string_view caption,
                            std::string_view flagString,
                            std::span<const uint8_t> data,
                            size_t bytesPerLine = 16,
                            size_t offset       = 0)
     {
-        LOG_PRINT(level, LOG_HDR; LOG_STRING(caption));
+        LOG_PRINT(eLevel, LOG_HDR; LOG_STRING(caption));
 
         if (data.empty()) {
-            LOG_PRINT(level, LOG_HDR; LOG_STRING("<empty>"));
+            LOG_PRINT(eLevel, LOG_HDR; LOG_STRING("<empty>"));
             return;
         }
 
@@ -507,7 +507,7 @@ namespace hexutils {
 
             std::string line       = internal::buildHexdumpLine(data, lineStart, lineLen,
                                                                 bpl, offset, config);
-            LOG_PRINT(level, LOG_HDR; LOG_STRING(line.c_str()));
+            LOG_PRINT(eLevel, LOG_HDR; LOG_STRING(line.c_str()));
         }
     }
 
@@ -528,14 +528,14 @@ namespace hexutils {
     /*--------------------------------------------------------------------------------------------------------*/
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    inline void logHexdump(LogLevel level,
+    inline void logHexdump(LogLevel eLevel,
                            std::string_view caption,
                            std::string_view flagString,
                            std::span<const T> data,
                            size_t bytesPerLine = 16,
                            size_t offset       = 0)
     {
-        logHexdump(level,
+        logHexdump(eLevel,
                    caption,
                    flagString,
                    std::span<const uint8_t>(
@@ -565,7 +565,7 @@ namespace hexutils {
             { c.data() } -> std::convertible_to<const void *>;
             { c.size() } -> std::convertible_to<size_t>;
         }
-    inline void logHexdump(LogLevel level,
+    inline void logHexdump(LogLevel eLevel,
                            std::string_view caption,
                            std::string_view flagString,
                            const Container &container,
@@ -576,7 +576,7 @@ namespace hexutils {
         static_assert(std::is_trivially_copyable_v<T>,
                       "Container element type must be trivially copyable");
 
-        logHexdump(level,
+        logHexdump(eLevel,
                    caption,
                    flagString,
                    std::span<const uint8_t>(

@@ -76,7 +76,7 @@ static const char *pstrInvalidSubcommand = "Invalid subcommand:";
 /* ============================================================================================
  List the subcommands of the protocol
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_help(const std::string &args, std::stop_token /*st*/) const
+bool BuspiratePlugin::m_handle_i2c_help(const std::string &strArgs, std::stop_token /*st*/) const
 {
     if (false == m_bIsEnabled) {
         return true;
@@ -88,7 +88,7 @@ bool BuspiratePlugin::m_handle_i2c_help(const std::string &args, std::stop_token
 /* ============================================================================================
  get mode
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_mode(const std::string &strArgs, std::stop_token st) const
 {
     if (false == m_bIsEnabled) {
         return true;
@@ -104,7 +104,7 @@ bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args, std::stop_token
 /* ============================================================================================
  exit
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_exit(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_exit(const std::string &strArgs, std::stop_token st) const
 {
     if (false == m_bIsEnabled) {
         return true;
@@ -120,23 +120,23 @@ bool BuspiratePlugin::m_handle_i2c_exit(const std::string &args, std::stop_token
 /* ============================================================================================
 Examples: i2c bit start / i2c bit stop / i2c bit ack / i2c bit nack
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_bit(const std::string &strArgs, std::stop_token st) const
 {
     uint8_t request = 0x00;
 
-    if ("start" == args) {
+    if ("start" == strArgs) {
         return m_i2c_send_bit(I2C_START, st);
-    } else if ("stop" == args) {
+    } else if ("stop" == strArgs) {
         return m_i2c_send_bit(I2C_STOP, st);
-    } else if ("ack" == args) {
+    } else if ("ack" == strArgs) {
         return m_i2c_send_bit(I2C_ACK, st);
-    } else if ("nack" == args) {
+    } else if ("nack" == strArgs) {
         return m_i2c_send_bit(I2C_NACK, st);
-    } else if ("help" == args) {
+    } else if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: start stop ack nack"));
         return true;
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(strArgs));
         return false;
     }
 
@@ -160,18 +160,18 @@ bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args, std::stop_token 
      *             |              +--------------------> Power    : 1 - Enable, 0 - Disable.
      *             +-----------------------------------> Command  : 4xh - Configure peripherals.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_per(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_per(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_set_peripheral(args, st);
+    return generic_set_peripheral(strArgs, st);
 
 } /* m_handle_i2c_cfg() */
 
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_speed
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_speed(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_speed(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, args, st);
+    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, strArgs, st);
 
 } /* m_handle_i2c_speed() */
 
@@ -187,23 +187,23 @@ Sniffed traffic is encoded according to the table above.
 Data bytes are escaped with the '\' character.
 Send a single byte to exit, Bus Pirate responds 0x01 on exit.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use | on | off"));
     } else {
         uint8_t request = 0;
         bool bStop      = false;
 
-        if ("on" == args) {
+        if ("on" == strArgs) {
             request = I2C_SNIFF_START;
-        } else if ("off" == args) {
+        } else if ("off" == strArgs) {
             request = I2C_SNIFF_STOP;
             bStop   = true;
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(strArgs));
             bRetVal = false;
         }
 
@@ -228,15 +228,15 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args, std::stop_toke
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_read
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_read(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_read(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: N (nr. of bytes to read)"));
     } else {
         size_t szReadSize = 0;
-        if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
+        if (true == (bRetVal = numeric::str2sizet(strArgs, szReadSize))) {
             if (szReadSize > 0) {
                 if (true == m_bIsEnabled) {
                     std::vector<uint8_t> response(szReadSize);
@@ -255,9 +255,9 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args, std::stop_token
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_write
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_write(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_write(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_write_data(this, args, &BuspiratePlugin::m_i2c_bulk_write, st);
+    return generic_write_data(this, strArgs, &BuspiratePlugin::m_i2c_bulk_write, st);
 
 } /* m_handle_i2c_write() */
 
@@ -276,29 +276,29 @@ bool BuspiratePlugin::m_handle_i2c_write(const std::string &args, std::stop_toke
 
 Except as described above, there is no acknowledgment that a byte is received.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_wrrd(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_wrrd(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_write_read_data(m_CMD_I2C_WRRD, args, st);
+    return generic_write_read_data(m_CMD_I2C_WRRD, strArgs, st);
 
 } /* m_handle_i2c_wrrd() */
 
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_wrrdf
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_wrrdf(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_wrrdf(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_write_read_file(m_CMD_I2C_WRRD, args, st);
+    return generic_write_read_file(m_CMD_I2C_WRRD, strArgs, st);
 
 } /* m_handle_i2c_wrrdf() */
 
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_aux
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_aux(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("acl - AUX/CS low"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("ach - AUX/CS high"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("acz - AUX/CS HiZ"));
@@ -307,20 +307,20 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args, std::stop_token 
         LOG_PRINT(LOG_EMPTY, LOG_STRING("uc  - use CS"));
     } else {
         uint8_t cAux = 0x00;
-        if ("acl" == args) {
+        if ("acl" == strArgs) {
             cAux = 0x00;
-        } else if ("ach" == args) {
+        } else if ("ach" == strArgs) {
             cAux = 0x01;
-        } else if ("acz" == args) {
+        } else if ("acz" == strArgs) {
             cAux = 0x02;
-        } else if ("ra" == args) {
+        } else if ("ra" == strArgs) {
             cAux = 0x03;
-        } else if ("ua" == args) {
+        } else if ("ua" == strArgs) {
             cAux = 0x10;
-        } else if ("uc" == args) {
+        } else if ("uc" == strArgs) {
             cAux = 0x20;
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(strArgs));
             bRetVal = false;
         }
         if (true == bRetVal) {
@@ -469,16 +469,16 @@ bool BuspiratePlugin::m_i2c_read(std::span<uint8_t> response, std::stop_token st
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_read
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_script(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_script(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: scriptname"));
         return true;
     }
 
-    return generic_execute_script<BuspiratePlugin, BuspiratePlugin::I2C_CommDriver>(this, m_strInstanceName, args, st);
+    return generic_execute_script<BuspiratePlugin, BuspiratePlugin::I2C_CommDriver>(this, m_strInstanceName, strArgs, st);
 
 } /* m_handle_i2c_script() */
 
@@ -530,7 +530,7 @@ void BuspiratePlugin::m_i2c_flush_rx(std::stop_token st) const
     Returns true if all UART exchanges succeeded (even when the device NACKed).
     Returns false on any UART-level communication error.
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, std::stop_token st) const
+bool BuspiratePlugin::m_i2c_probe_address(const uint8_t u8Addr7bit, bool &bAcked, std::stop_token st) const
 {
     bAcked   = false;
     bool bOk = true;
@@ -544,7 +544,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, 
                                                                                   numeric::byte2span(m_positive_response), true, st);
         if (!bOk) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Probe"); LOG_HEX8(addr7bit);
+                      LOG_STRING("Probe"); LOG_HEX8(u8Addr7bit);
                       LOG_STRING(": START failed"));
             return false; // bus state unknown — cannot issue STOP safely
         }
@@ -555,7 +555,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, 
     //    ← 0x01  (command accepted)
     //    ← 0x00 / 0x01  (ACK / NACK per data byte)
     {
-        const uint8_t addrByte                           = static_cast<uint8_t>(addr7bit << 1);
+        const uint8_t addrByte                           = static_cast<uint8_t>(u8Addr7bit << 1);
         uint8_t request[]                                = {static_cast<uint8_t>(I2C_BULK_WR_BASE | 0x00), addrByte};
 
         uint8_t cmdResponse[sizeof(m_positive_response)] = {};
@@ -564,7 +564,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, 
                                                                                      numeric::byte2span(m_positive_response), true, st);
         if (!bOk) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Probe"); LOG_HEX8(addr7bit);
+                      LOG_STRING("Probe"); LOG_HEX8(u8Addr7bit);
                       LOG_STRING(": bulk-write failed"));
         } else {
             // Drain the single ACK/NACK byte the firmware always emits.
@@ -573,12 +573,12 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, 
             bOk             = generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte), std::span<const uint8_t>{}, true, st);
             if (!bOk) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Probe"); LOG_HEX8(addr7bit);
+                          LOG_STRING("Probe"); LOG_HEX8(u8Addr7bit);
                           LOG_STRING(": ACK/NACK drain failed"));
             } else {
                 bAcked = (ackByte == 0x00); // ACK=0x00, NACK=0x01 per spec
                 LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                          LOG_STRING("Probe"); LOG_HEX8(addr7bit);
+                          LOG_STRING("Probe"); LOG_HEX8(u8Addr7bit);
                           LOG_STRING(bAcked ? "-> ACK (found)" : "-> NACK"));
             }
         }
@@ -593,7 +593,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, 
                                                                                   numeric::byte2span(m_positive_response), true, st);
         if (!bStopOk) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Probe"); LOG_HEX8(addr7bit);
+                      LOG_STRING("Probe"); LOG_HEX8(u8Addr7bit);
                       LOG_STRING(": STOP failed"));
         }
         bOk = bOk && bStopOk;
@@ -608,7 +608,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, 
         generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain));
         if (drain != 0xFF) {
             LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                      LOG_STRING("Probe"); LOG_HEX8(addr7bit);
+                      LOG_STRING("Probe"); LOG_HEX8(u8Addr7bit);
                       LOG_STRING(": drained extra byte after STOP:"); LOG_UINT8(drain));
         }
     }
@@ -644,9 +644,9 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, 
       i2c scan          – run the scan
       i2c scan help     – show this help text
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_i2c_scan(const std::string &strArgs, std::stop_token st) const
 {
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Probes every valid 7-bit I2C address (0x08-0x77)."));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Output: address hex = found  |  -- = absent  |  EE = UART error"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Blank cells are reserved addresses and are not probed."));
@@ -657,7 +657,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args, std::stop_token
     static constexpr uint8_t SCAN_FIRST = 0x08;
     static constexpr uint8_t SCAN_LAST  = 0x77;
 
-    if ("all" == args) {
+    if ("all" == strArgs) {
 
         if (false == m_bIsEnabled) {
             return true;
@@ -747,8 +747,8 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args, std::stop_token
 
     // expected a string convertible to a number (address)
     uint8_t addr = 0;
-    if (!numeric::str2uint8(args, addr)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong argument:"); LOG_STRING(args));
+    if (!numeric::str2uint8(strArgs, addr)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong argument:"); LOG_STRING(strArgs));
         return false;
     }
 
@@ -779,14 +779,14 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args, std::stop_token
 /* ============================================================================================
     BuspiratePlugin::m_i2c_send_bit
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_send_bit(uint8_t bit, std::stop_token st) const
+bool BuspiratePlugin::m_i2c_send_bit(uint8_t u8Bit, std::stop_token st) const
 {
     if (false == m_bIsEnabled) {
         return true;
     }
 
     return generic_uart_send_receive(
-        numeric::byte2span(bit),
+        numeric::byte2span(u8Bit),
         numeric::byte2span(m_scratch_response),
         numeric::byte2span(m_positive_response), true, st); // expect 0x01
 

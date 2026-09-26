@@ -60,7 +60,7 @@ namespace {
     thread_local uint8_t tl_pendingFromSa   = 0;
 } // namespace
 
-ProfibusDriver::ProfibusDriver(Config config)
+ProfibusDriver::ProfibusDriver(Config sConfig)
     : m_config(std::move(config))
 {
     if (m_config.strInstanceName.empty()) {
@@ -140,16 +140,16 @@ ICommDriver::ReadResult ProfibusDriver::tout_read(uint32_t u32ReadTimeout, std::
 // Physical I/O
 // -----------------------------------------------------------------------
 
-ICommDriver::Status ProfibusDriver::m_PhysicalSend(std::span<const uint8_t> data, uint32_t timeoutMs) const
+ICommDriver::Status ProfibusDriver::m_PhysicalSend(std::span<const uint8_t> data, uint32_t u32TimeoutMs) const
 {
-    auto res = m_pUart->tout_write(timeoutMs, data);
+    auto res = m_pUart->tout_write(u32TimeoutMs, data);
     return res.status;
 }
 
-ICommDriver::Status ProfibusDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t &outBytesRead,
+ICommDriver::Status ProfibusDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t u32TimeoutMs, size_t &outBytesRead,
                                                    std::stop_token stop_tok) const
 {
-    auto res     = m_pUart->tout_read(timeoutMs, buffer, ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact}, {}, stop_tok);
+    auto res     = m_pUart->tout_read(u32TimeoutMs, buffer, ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact}, {}, stop_tok);
     outBytesRead = res.bytes_read;
     return res.status;
 }
@@ -179,22 +179,22 @@ void ProfibusDriver::m_EnsureSynPause() const
 // accurate replacement).
 // -----------------------------------------------------------------------
 
-ICommDriver::Status ProfibusDriver::m_SendTelegram(const std::vector<uint8_t> &telegram, std::string_view xtra_params) const
+ICommDriver::Status ProfibusDriver::m_SendTelegram(const std::vector<uint8_t> &vTelegram, std::string_view xtra_params) const
 {
     m_EnsureSynPause();
 
-    const auto st = m_PhysicalSend(std::span<const uint8_t>(telegram.data(), telegram.size()), 1000);
+    const auto st = m_PhysicalSend(std::span<const uint8_t>(vTelegram.data(), vTelegram.size()), 1000);
     if (st == ICommDriver::Status::SUCCESS) {
         m_lastTxActivity = std::chrono::steady_clock::now();
         if (gui_mode_active()) {
             gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
-                                 CommDir::Tx, telegram.data(), static_cast<uint32_t>(telegram.size()));
+                                 CommDir::Tx, vTelegram.data(), static_cast<uint32_t>(vTelegram.size()));
         }
     }
     return st;
 }
 
-ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTelegram &telegramOut, uint32_t timeoutMs,
+ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTelegram &telegramOut, uint32_t u32TimeoutMs,
                                                    std::string_view xtra_params, std::stop_token stop_tok) const
 {
     std::vector<uint8_t> raw;
@@ -203,7 +203,7 @@ ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTele
     {
         uint8_t buf[1];
         size_t got = 0;
-        auto st    = m_PhysicalRecv(std::span<uint8_t>(buf, 1), timeoutMs, got, stop_tok);
+        auto st    = m_PhysicalRecv(std::span<uint8_t>(buf, 1), u32TimeoutMs, got, stop_tok);
         if (st != ICommDriver::Status::SUCCESS || got == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
         }
@@ -299,14 +299,14 @@ ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTele
     return ICommDriver::Status::SUCCESS;
 }
 
-bool ProfibusDriver::m_WaitForResponse(uint8_t expectedFromSa, uint32_t timeoutMs,
+bool ProfibusDriver::m_WaitForResponse(uint8_t u8ExpectedFromSa, uint32_t u32TimeoutMs,
                                        ProfibusProtocol::DecodedTelegram &outTelegram, std::string_view xtra_params,
                                        std::stop_token stop_tok) const
 {
     // 0 == infinite timeout: never expire this wait, and forward 0 straight
     // through to m_ReadTelegram() on each attempt.
-    const bool bInfinite = (timeoutMs == 0);
-    const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite = (u32TimeoutMs == 0);
+    const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
     while (true) {
         if (stop_tok.stop_requested()) {
             return false;
@@ -315,7 +315,7 @@ bool ProfibusDriver::m_WaitForResponse(uint8_t expectedFromSa, uint32_t timeoutM
         if (!bInfinite) {
             const auto remaining = deadline - std::chrono::steady_clock::now();
             if (remaining <= std::chrono::milliseconds(0)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Timed out waiting for response from station"); LOG_UINT32(expectedFromSa));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Timed out waiting for response from station"); LOG_UINT32(u8ExpectedFromSa));
                 return false;
             }
             remainingMs = static_cast<uint32_t>(
@@ -346,7 +346,7 @@ bool ProfibusDriver::m_WaitForResponse(uint8_t expectedFromSa, uint32_t timeoutM
             return true;
         }
         // SD1/SD2/SD3: must be addressed back to us, from the station we asked.
-        if (t.da != m_config.ownAddress || t.sa != expectedFromSa) {
+        if (t.da != m_config.ownAddress || t.sa != u8ExpectedFromSa) {
             LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Unexpected telegram while waiting for response, DA=");
                       LOG_UINT32(t.da); LOG_STRING("SA="); LOG_UINT32(t.sa); LOG_STRING("— still waiting"));
             continue;
@@ -363,9 +363,9 @@ bool ProfibusDriver::m_WaitForResponse(uint8_t expectedFromSa, uint32_t timeoutM
 // Tokenizes on whitespace only, same convention as MqttDriver::m_TokenizeArgs()
 // (see its doc comment in mqtt_driver.cpp) — including stripping a trailing
 // NUL byte the interpreter's STRING_RAW conversion appends by default.
-void ProfibusDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens)
+void ProfibusDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens)
 {
-    outTokens.clear();
+    vOutTokens.clear();
 
     size_t len = dataSpan.size();
     while (len > 0 && dataSpan[len - 1] == 0) {
@@ -387,19 +387,19 @@ void ProfibusDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vect
         while (i < n && !std::isspace(static_cast<unsigned char>(text[i]))) {
             ++i;
         }
-        outTokens.push_back(text.substr(start, i - start));
+        vOutTokens.push_back(text.substr(start, i - start));
     }
 }
 
-bool ProfibusDriver::m_ParseHexBytes(const std::string &hex, std::vector<uint8_t> &outBytes)
+bool ProfibusDriver::m_ParseHexBytes(const std::string &strHex, std::vector<uint8_t> &vOutBytes)
 {
-    outBytes.clear();
-    if (hex.size() % 2 != 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Hex data must have an even number of digits:"); LOG_STRING(hex));
+    vOutBytes.clear();
+    if (strHex.size() % 2 != 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Hex data must have an even number of digits:"); LOG_STRING(strHex));
         return false;
     }
-    outBytes.reserve(hex.size() / 2);
-    for (size_t i = 0; i < hex.size(); i += 2) {
+    vOutBytes.reserve(strHex.size() / 2);
+    for (size_t i = 0; i < strHex.size(); i += 2) {
         auto nibble = [&](char c) -> int {
             if (c >= '0' && c <= '9') {
                 return c - '0';
@@ -412,33 +412,33 @@ bool ProfibusDriver::m_ParseHexBytes(const std::string &hex, std::vector<uint8_t
             }
             return -1;
         };
-        const int hi = nibble(hex[i]);
-        const int lo = nibble(hex[i + 1]);
+        const int hi = nibble(strHex[i]);
+        const int lo = nibble(strHex[i + 1]);
         if (hi < 0 || lo < 0) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid hex digit in:"); LOG_STRING(hex));
-            outBytes.clear();
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid strHex digit in:"); LOG_STRING(strHex));
+            vOutBytes.clear();
             return false;
         }
-        outBytes.push_back(static_cast<uint8_t>((hi << 4) | lo));
+        vOutBytes.push_back(static_cast<uint8_t>((hi << 4) | lo));
     }
     return true;
 }
 
-std::string ProfibusDriver::m_BytesToHex(const std::vector<uint8_t> &bytes)
+std::string ProfibusDriver::m_BytesToHex(const std::vector<uint8_t> &vBytes)
 {
     static const char *digits = "0123456789ABCDEF";
     std::string out;
-    out.reserve(bytes.size() * 2);
-    for (uint8_t b : bytes) {
+    out.reserve(vBytes.size() * 2);
+    for (uint8_t b : vBytes) {
         out.push_back(digits[(b >> 4) & 0x0F]);
         out.push_back(digits[b & 0x0F]);
     }
     return out;
 }
 
-const char *ProfibusDriver::m_StationTypeName(uint8_t stationType)
+const char *ProfibusDriver::m_StationTypeName(uint8_t u8StationType)
 {
-    switch (stationType) {
+    switch (u8StationType) {
     case 0:
         return "SLAVE";
     case 1:
@@ -452,7 +452,7 @@ const char *ProfibusDriver::m_StationTypeName(uint8_t stationType)
     }
 }
 
-std::string ProfibusDriver::m_FormatTelegramResult(const ProfibusProtocol::DecodedTelegram &t, bool wasStatusQuery)
+std::string ProfibusDriver::m_FormatTelegramResult(const ProfibusProtocol::DecodedTelegram &t, bool bWasStatusQuery)
 {
     if (t.kind == ProfibusProtocol::TelegramKind::Malformed) {
         return "MALFORMED";
@@ -471,7 +471,7 @@ std::string ProfibusDriver::m_FormatTelegramResult(const ProfibusProtocol::Decod
     if (rfc.isRequestFrame) {
         return "UNEXPECTED_REQUEST_FRAME";
     }
-    if (wasStatusQuery) {
+    if (bWasStatusQuery) {
         return std::string(m_StationTypeName(rfc.stationType)) + ":" + ProfibusProtocol::responseStatusName(rfc.statusCode);
     }
     if (t.du.empty()) {
@@ -566,13 +566,13 @@ ICommDriver::ReadResult ProfibusDriver::receive(uint32_t u32ReadTimeout, std::sp
     return result;
 }
 
-ICommDriver::ReadResult ProfibusDriver::m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params,
+ICommDriver::ReadResult ProfibusDriver::m_DoStandaloneReceive(uint32_t u32TimeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params,
                                                               std::stop_token stop_tok) const
 {
     ICommDriver::ReadResult result;
 
     ProfibusProtocol::DecodedTelegram t;
-    auto st = m_ReadTelegram(t, timeoutMs, xtra_params, stop_tok);
+    auto st = m_ReadTelegram(t, u32TimeoutMs, xtra_params, stop_tok);
     if (st != ICommDriver::Status::SUCCESS) {
         result.status = st;
         return result;
@@ -617,19 +617,19 @@ ICommDriver::ReadResult ProfibusDriver::m_DoStandaloneReceive(uint32_t timeoutMs
 // FDL sub-command handlers
 // -----------------------------------------------------------------------
 
-bool ProfibusDriver::m_HandleSdn(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ProfibusDriver::m_HandleSdn(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (args.empty() || args.size() > 2) {
+    if (vArgs.empty() || vArgs.size() > 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: SDN <station> [hexdata]"));
         return false;
     }
     uint8_t da = 0;
-    if (!numeric::str2uint8(args[0], da)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SDN: invalid station address:"); LOG_STRING(args[0]));
+    if (!numeric::str2uint8(vArgs[0], da)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SDN: invalid station address:"); LOG_STRING(vArgs[0]));
         return false;
     }
     std::vector<uint8_t> data;
-    if (args.size() == 2 && !m_ParseHexBytes(args[1], data)) {
+    if (vArgs.size() == 2 && !m_ParseHexBytes(vArgs[1], data)) {
         return false;
     }
 
@@ -642,19 +642,19 @@ bool ProfibusDriver::m_HandleSdn(const std::vector<std::string> &args, std::stri
     return true;
 }
 
-bool ProfibusDriver::m_HandleSda(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ProfibusDriver::m_HandleSda(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (args.empty() || args.size() > 2) {
+    if (vArgs.empty() || vArgs.size() > 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: SDA <station> [hexdata]"));
         return false;
     }
     uint8_t da = 0;
-    if (!numeric::str2uint8(args[0], da)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SDA: invalid station address:"); LOG_STRING(args[0]));
+    if (!numeric::str2uint8(vArgs[0], da)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SDA: invalid station address:"); LOG_STRING(vArgs[0]));
         return false;
     }
     std::vector<uint8_t> data;
-    if (args.size() == 2 && !m_ParseHexBytes(args[1], data)) {
+    if (vArgs.size() == 2 && !m_ParseHexBytes(vArgs[1], data)) {
         return false;
     }
 
@@ -668,19 +668,19 @@ bool ProfibusDriver::m_HandleSda(const std::vector<std::string> &args, std::stri
     return true;
 }
 
-bool ProfibusDriver::m_HandleSrd(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ProfibusDriver::m_HandleSrd(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (args.empty() || args.size() > 2) {
+    if (vArgs.empty() || vArgs.size() > 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: SRD <station> [hexdata]"));
         return false;
     }
     uint8_t da = 0;
-    if (!numeric::str2uint8(args[0], da)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SRD: invalid station address:"); LOG_STRING(args[0]));
+    if (!numeric::str2uint8(vArgs[0], da)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SRD: invalid station address:"); LOG_STRING(vArgs[0]));
         return false;
     }
     std::vector<uint8_t> data;
-    if (args.size() == 2 && !m_ParseHexBytes(args[1], data)) {
+    if (vArgs.size() == 2 && !m_ParseHexBytes(vArgs[1], data)) {
         return false;
     }
 
@@ -696,15 +696,15 @@ bool ProfibusDriver::m_HandleSrd(const std::vector<std::string> &args, std::stri
     return true;
 }
 
-bool ProfibusDriver::m_HandleStatus(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ProfibusDriver::m_HandleStatus(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (args.size() != 1) {
+    if (vArgs.size() != 1) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: STATUS <station>"));
         return false;
     }
     uint8_t da = 0;
-    if (!numeric::str2uint8(args[0], da)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("STATUS: invalid station address:"); LOG_STRING(args[0]));
+    if (!numeric::str2uint8(vArgs[0], da)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("STATUS: invalid station address:"); LOG_STRING(vArgs[0]));
         return false;
     }
 

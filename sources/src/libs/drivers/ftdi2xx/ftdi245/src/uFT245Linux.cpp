@@ -50,13 +50,13 @@ FT245Base::~FT245Base()
 // open_device
 // ============================================================================
 
-FT245Base::Status FT245Base::open_device(Variant variant,
-                                         FifoMode fifoMode,
+FT245Base::Status FT245Base::open_device(Variant eVariant,
+                                         FifoMode eFifoMode,
                                          uint8_t u8DeviceIndex)
 {
-    // ── Validate mode vs variant ──────────────────────────────────────────────
+    // ── Validate mode vs eVariant ──────────────────────────────────────────────
     // FT245R does not support synchronous FIFO mode.
-    if (variant == Variant::FT245R && fifoMode == FifoMode::Sync) {
+    if (eVariant == Variant::FT245R && eFifoMode == FifoMode::Sync) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("open_device: FT245R does not support Sync FIFO mode"));
         return Status::INVALID_PARAM;
@@ -109,7 +109,7 @@ FT245Base::Status FT245Base::open_device(Variant variant,
     // ── Set FIFO bit-mode ────────────────────────────────────────────────────
     // BITMODE_RESET (0x00) = async FIFO (both variants)
     // BITMODE_SYNC_FIFO (0x40) = sync FIFO (FT245BM only)
-    const uint8_t mode = (fifoMode == FifoMode::Sync)
+    const uint8_t mode = (eFifoMode == FifoMode::Sync)
                              ? BITMODE_SYNC_FIFO
                              : BITMODE_RESET;
 
@@ -139,14 +139,14 @@ FT245Base::Status FT245Base::open_device(Variant variant,
     (void)ftdi_tcioflush(ctx);
 
     // ── Store state ──────────────────────────────────────────────────────────
-    m_variant  = variant;
-    m_fifoMode = fifoMode;
+    m_variant  = eVariant;
+    m_fifoMode = eFifoMode;
     m_hDevice  = ctx;
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("FT245 opened: variant=");
-              LOG_UINT32(static_cast<uint8_t>(variant));
-              LOG_STRING("fifoMode="); LOG_UINT32(static_cast<uint8_t>(fifoMode));
+              LOG_STRING("FT245 opened: eVariant=");
+              LOG_UINT32(static_cast<uint8_t>(eVariant));
+              LOG_STRING("eFifoMode="); LOG_UINT32(static_cast<uint8_t>(eFifoMode));
               LOG_STRING("index="); LOG_UINT32(u8DeviceIndex));
 
     return Status::SUCCESS;
@@ -185,14 +185,14 @@ bool FT245Base::is_open() const
  *
  * Uses ftdi_write_data() which performs a synchronous USB bulk write.
  */
-FT245Base::Status FT245Base::fifo_write(const uint8_t *buf, size_t len) const
+FT245Base::Status FT245Base::fifo_write(const uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
     int ret = ftdi_write_data(CTX,
-                              const_cast<uint8_t *>(buf),
+                              const_cast<uint8_t *>(pu8Buf),
                               static_cast<int>(len));
     if (ret < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -216,24 +216,24 @@ FT245Base::Status FT245Base::fifo_write(const uint8_t *buf, size_t len) const
  * ftdi_read_data() is non-blocking; this wrapper polls with 1 ms sleeps
  * until the requested number of bytes arrives or the timeout expires.
  */
-FT245Base::Status FT245Base::fifo_read(uint8_t *buf, size_t len,
-                                       uint32_t timeoutMs,
+FT245Base::Status FT245Base::fifo_read(uint8_t *pu8Buf, size_t len,
+                                       uint32_t u32TimeoutMs,
                                        size_t &bytesRead,
                                        std::stop_token stop_tok) const
 {
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
     bytesRead            = 0;
 
     // 0 == infinite timeout: never expire this poll loop.
-    const bool bInfinite = (timeoutMs == 0);
-    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite = (u32TimeoutMs == 0);
+    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
 
     while (bytesRead < len) {
         int ret = ftdi_read_data(CTX,
-                                 buf + bytesRead,
+                                 pu8Buf + bytesRead,
                                  static_cast<int>(len - bytesRead));
         if (ret < 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;

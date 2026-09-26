@@ -22,10 +22,10 @@ extern "C" {
         return new VectorPlugin();
     }
 
-    EXPORTED void pluginExit(VectorPlugin *ptrPlugin)
+    EXPORTED void pluginExit(VectorPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -49,9 +49,9 @@ extern "C" {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_INFO(const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -221,9 +221,9 @@ bool VectorPlugin::m_VECTOR_INFO(const std::string &args, std::stop_token st) co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_CONFIG(const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_can_set_params<VectorPlugin>(this, args);
+    return generic_can_set_params<VectorPlugin>(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -242,7 +242,7 @@ bool VectorPlugin::m_VECTOR_CONFIG(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_FILTER(const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_FILTER(const std::string &strArgs, std::stop_token st) const
 {
     if (!m_bIsEnabled) {
         return true;
@@ -250,9 +250,9 @@ bool VectorPlugin::m_VECTOR_FILTER(const std::string &args, std::stop_token st) 
 
     std::vector<std::pair<uint32_t, uint32_t>> vFilters;
 
-    if (!args.empty()) {
-        if (false == m_ParseFilters(args, vFilters)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(args));
+    if (!strArgs.empty()) {
+        if (false == m_ParseFilters(strArgs, vFilters)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(strArgs));
             return false;
         }
     }
@@ -283,10 +283,10 @@ bool VectorPlugin::m_VECTOR_FILTER(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_CMD(const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_CMD(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<Vector> {
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
@@ -320,10 +320,10 @@ bool VectorPlugin::m_VECTOR_CMD(const std::string &args, std::stop_token st) con
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_SCRIPT(const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<Vector> {
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
@@ -357,10 +357,10 @@ bool VectorPlugin::m_VECTOR_SCRIPT(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_CYCLIC(const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<Vector> {
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
@@ -385,11 +385,11 @@ bool VectorPlugin::m_VECTOR_CYCLIC(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorPlugin::m_VECTOR_DEVICES(const std::string &args, std::stop_token st) const
+bool VectorPlugin::m_VECTOR_DEVICES(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }

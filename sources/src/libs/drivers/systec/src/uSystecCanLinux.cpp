@@ -156,7 +156,7 @@ SYSTECCAN::Status SYSTECCAN::close()
 // FILTER CONFIGURATION
 // ============================================================================
 
-SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter> &filters)
+SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter> &vFilters)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -165,7 +165,7 @@ SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter> &filters)
         return Status::PORT_ACCESS;
     }
 
-    if (filters.empty()) {
+    if (vFilters.empty()) {
         // Accept everything.
         //
         // A 0-length CAN_RAW_FILTER list does NOT mean "no filtering" in
@@ -198,8 +198,8 @@ SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter> &filters)
 
     // Convert to kernel struct can_filter array.
     std::vector<struct can_filter> kFilters;
-    kFilters.reserve(filters.size());
-    for (const auto &f : filters) {
+    kFilters.reserve(vFilters.size());
+    for (const auto &f : vFilters) {
         struct can_filter kf = {};
         kf.can_id            = f.can_id;
         kf.can_mask          = f.can_mask;
@@ -215,11 +215,11 @@ SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter> &filters)
         return Status::PORT_ACCESS;
     }
 
-    m_vFilters = filters; // mirror applied kernel state so tout_read()'s
+    m_vFilters = vFilters; // mirror applied kernel state so tout_read()'s
                           // transient-filter snapshot/restore stays accurate
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("SYSTEC CAN filters set, count:"); LOG_UINT32(static_cast<uint32_t>(filters.size())));
+              LOG_STRING("SYSTEC CAN vFilters set, count:"); LOG_UINT32(static_cast<uint32_t>(vFilters.size())));
 
     return Status::SUCCESS;
 }
@@ -364,14 +364,14 @@ SYSTECCAN::Status SYSTECCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
 
 namespace {
 
-    std::string sysfs_device_path(const std::string &strIface, const char *pszAttr)
+    std::string sysfs_device_path(const std::string &strIface, const char *pstrPszAttr)
     {
-        return "/sys/class/net/" + strIface + "/device/" + pszAttr;
+        return "/sys/class/net/" + strIface + "/device/" + pstrPszAttr;
     }
 
-    std::string sysfs_iface_path(const std::string &strIface, const char *pszAttr)
+    std::string sysfs_iface_path(const std::string &strIface, const char *pstrPszAttr)
     {
-        return "/sys/class/net/" + strIface + "/" + pszAttr;
+        return "/sys/class/net/" + strIface + "/" + pstrPszAttr;
     }
 
     /** @brief Read a sysfs attribute file and parse it as an unsigned integer (0=auto base). */

@@ -31,7 +31,7 @@
                              MAIN
 -------------------------------------------------------------------------------*/
 
-int main(int argc, char const *argv[])
+int main(int iArgc, char const *argv[])
 {
     bool bRetVal = false;
 
@@ -53,7 +53,7 @@ int main(int argc, char const *argv[])
         // set by the Qt front-end before launching this process.  No CLI flag needed.
 
         // Parse returns a result object with success status and error details
-        auto result = cli.parse(argc, argv);
+        auto result = cli.parse(iArgc, argv);
 
         if (!result) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Parsing failed!"));

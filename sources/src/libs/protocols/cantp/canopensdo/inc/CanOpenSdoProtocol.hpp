@@ -48,7 +48,7 @@
  */
 class CanOpenSdoProtocol final : public ITransportProtocol {
     public:
-        explicit CanOpenSdoProtocol(const TpConfig &cfg = {})
+        explicit CanOpenSdoProtocol(const TpConfig &sCfg = {})
             : m_cfg(cfg)
         {
         }
@@ -93,13 +93,13 @@ class CanOpenSdoProtocol final : public ITransportProtocol {
         /** Finishes an upload given an already-received Initiate-Upload-style response
          *  (scs=UL_INITIATE) — shared by receiveNormal() and receiveBlock()'s
          *  fallback when the server declines block transfer. */
-        ICommDriver::ReadResult finishUploadFromInitiateResponse(const Frame &resp,
+        ICommDriver::ReadResult finishUploadFromInitiateResponse(const Frame &sResp,
                                                                  const ICommDriver &, uint32_t, std::span<uint8_t>, std::string_view, std::string_view) const;
 
         // ---- shared wire-format helpers ----
-        void packIndex(Frame &f) const;
-        static void sendAbort(const ICommDriver &driver, uint32_t timeout, std::string_view txId,
-                              const Frame &ctx, uint32_t abortCode);
+        void packIndex(Frame &sF) const;
+        static void sendAbort(const ICommDriver &driver, uint32_t u32Timeout, std::string_view txId,
+                              const Frame &sCtx, uint32_t u32AbortCode);
 };
 
 #endif // CAN_TP_CANOPEN_SDO_PROTOCOL_HPP

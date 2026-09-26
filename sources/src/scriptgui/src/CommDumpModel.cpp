@@ -85,7 +85,7 @@ QColor CommDumpModel::colorForPlugin(const QString &plugin) const
     return color;
 }
 
-CommDumpModel::CommDumpModel(QObject *parent)
+CommDumpModel::CommDumpModel(QObject *pParent)
     : QAbstractItemModel(parent)
 {
     // Matches the default m_fullDumpFontSize (10.0) — see the
@@ -102,13 +102,13 @@ CommDumpModel::CommDumpModel(QObject *parent)
 //  Sets the point size for the full dump text. This is typically calculated
 //  by the view based on the parent widget's font size * proportion.
 // ─────────────────────────────────────────────────────────────────────────────
-void CommDumpModel::setFullDumpFontSize(double pointSize)
+void CommDumpModel::setFullDumpFontSize(double dPointSize)
 {
-    if (qFuzzyCompare(m_fullDumpFontSize, pointSize)) {
+    if (qFuzzyCompare(m_fullDumpFontSize, dPointSize)) {
         return;
     }
 
-    m_fullDumpFontSize = pointSize;
+    m_fullDumpFontSize = dPointSize;
 
     // Rebuilt here, once, rather than in data() on every FontRole query —
     // see the m_fullDumpFont member comment.
@@ -187,9 +187,9 @@ QString CommDumpModel::formatDurationSecUs(qint64 deltaUs)
 // ─────────────────────────────────────────────────────────────────────────────
 //  hexOnlyPreview — "DE AD BE EF 01 02 03 04 …" (first maxBytes only, no ASCII)
 // ─────────────────────────────────────────────────────────────────────────────
-QString CommDumpModel::hexOnlyPreview(const QByteArray &data, int maxBytes)
+QString CommDumpModel::hexOnlyPreview(const QByteArray &data, int iMaxBytes)
 {
-    const int n = qMin(data.size(), maxBytes);
+    const int n = qMin(data.size(), iMaxBytes);
     QString hex;
     for (int i = 0; i < n; ++i) {
         hex += hexByte(static_cast<unsigned char>(data[i]));
@@ -197,7 +197,7 @@ QString CommDumpModel::hexOnlyPreview(const QByteArray &data, int maxBytes)
             hex += ' ';
         }
     }
-    if (data.size() > maxBytes) {
+    if (data.size() > iMaxBytes) {
         hex += QStringLiteral(" …");
     }
     return hex;
@@ -206,9 +206,9 @@ QString CommDumpModel::hexOnlyPreview(const QByteArray &data, int maxBytes)
 // ─────────────────────────────────────────────────────────────────────────────
 //  asciiOnlyPreview — "|...ascii...|" for the same leading maxBytes window
 // ─────────────────────────────────────────────────────────────────────────────
-QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
+QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int iMaxBytes)
 {
-    const int n = qMin(data.size(), maxBytes);
+    const int n = qMin(data.size(), iMaxBytes);
     QString ascii;
     for (int i = 0; i < n; ++i) {
         ascii += asciiOrDot(static_cast<unsigned char>(data[i]));
@@ -216,7 +216,7 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
     if (ascii.isEmpty()) {
         return {};
     }
-    return ascii + (data.size() > maxBytes ? QStringLiteral("…") : QString());
+    return ascii + (data.size() > iMaxBytes ? QStringLiteral("…") : QString());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -235,13 +235,13 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 //  single colour, since Qt::ForegroundRole always wins over inline
 //  HTML/span colours when both are present.
 // ─────────────────────────────────────────────────────────────────────────────
-QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize, int bytesPerLine)
+QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool bIncludeAscii, double dFontSize, int iBytesPerLine)
 {
-    Q_UNUSED(fontSize) // Font size is handled by Qt's rendering context in the view,
+    Q_UNUSED(dFontSize) // Font size is handled by Qt's rendering context in the view,
                        // or via FontRole. The text content itself is just the dump.
 
     QString out;
-    const int perLine = bytesPerLine;
+    const int perLine = iBytesPerLine;
     const int midGap  = perLine / 2 - 1; // e.g. 7 for 16 bytes/line, 3 for 8 bytes/line
     for (int off = 0; off < data.size(); off += perLine) {
         const int n  = qMin(perLine, data.size() - off);
@@ -251,12 +251,12 @@ QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, d
             if (i < n) {
                 const unsigned char b = static_cast<unsigned char>(data[off + i]);
                 line += hexByte(b) + ' ';
-                if (includeAscii) {
+                if (bIncludeAscii) {
                     ascii += asciiOrDot(b);
                 }
             } else {
                 line += QStringLiteral("   ");
-                if (includeAscii) {
+                if (bIncludeAscii) {
                     ascii += ' ';
                 }
             }
@@ -264,7 +264,7 @@ QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, d
                 line += ' ';
             }
         }
-        if (includeAscii) {
+        if (bIncludeAscii) {
             line += " |" + ascii + "|";
         }
         out += line;
@@ -275,11 +275,11 @@ QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, d
     return out;
 }
 
-void CommDumpModel::addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
+void CommDumpModel::addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool bIsTx,
                               const QByteArray &data)
 {
     QVector<PendingRecord> one(1);
-    one[0] = {timestampUs, plugin, details, isTx, data};
+    one[0] = {timestampUs, plugin, details, bIsTx, data};
     addRecords(one);
 }
 
@@ -417,15 +417,15 @@ CommDumpModel::IngestResult CommDumpModel::addRecords(const QVector<PendingRecor
 //  (10% of maxRecords) new records, which amortizes to a small, bounded
 //  extra cost per insert rather than a per-insert O(n) cost.
 // ─────────────────────────────────────────────────────────────────────────────
-void CommDumpModel::setMaxRecords(int max)
+void CommDumpModel::setMaxRecords(int iMax)
 {
-    if (max < 0) {
-        max = 0;
+    if (iMax < 0) {
+        iMax = 0;
     }
-    if (m_maxRecords == max) {
+    if (m_maxRecords == iMax) {
         return;
     }
-    m_maxRecords = max;
+    m_maxRecords = iMax;
     evictIfNeeded();
 }
 
@@ -460,7 +460,7 @@ QString CommDumpModel::aggregateKey(const QString &plugin, const QString &detail
 }
 
 int CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &plugin, const QString &details,
-                                            bool isTx, const QByteArray &data)
+                                            bool bIsTx, const QByteArray &data)
 {
     const QString key = aggregateKey(plugin, details);
     const auto it     = m_aggregateKeyToRow.constFind(key);
@@ -470,7 +470,7 @@ int CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &p
         AggregateEntry &e     = m_aggregateRows[row];
         e.previousTimestampUs = e.timestampUs; // shift before overwriting — see TimeDeltaPrevious in data()
         e.timestampUs         = timestampUs;
-        e.isTx                = isTx;
+        e.bIsTx                = bIsTx;
         e.data                = data;
         e.fullDumpCache.clear(); // stale — the latest payload just changed
         e.count += 1;
@@ -487,7 +487,7 @@ int CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &p
     e.timestampUs          = timestampUs;
     e.plugin               = plugin;
     e.details              = details;
-    e.isTx                 = isTx;
+    e.bIsTx                 = bIsTx;
     e.data                 = data;
     e.count                = 1;
     e.firstSeenTimestampUs = timestampUs;
@@ -578,30 +578,30 @@ void CommDumpModel::rebuildAggregateFromRecords()
     evictAggregateIfNeeded();
 }
 
-void CommDumpModel::setCollapsedMode(bool on)
+void CommDumpModel::setCollapsedMode(bool bOn)
 {
-    if (m_collapsedMode == on) {
+    if (m_collapsedMode == bOn) {
         return;
     }
     beginResetModel();
-    m_collapsedMode = on;
+    m_collapsedMode = bOn;
     endResetModel();
 }
 
-const CommDumpModel::Record *CommDumpModel::rawRecordAt(int row) const
+const CommDumpModel::Record *CommDumpModel::rawRecordAt(int iRow) const
 {
-    if (row < 0 || row >= m_records.size()) {
+    if (iRow < 0 || iRow >= m_records.size()) {
         return nullptr;
     }
-    return &m_records[row];
+    return &m_records[iRow];
 }
 
-void CommDumpModel::setShowAscii(bool on)
+void CommDumpModel::setShowAscii(bool bOn)
 {
-    if (m_showAscii == on) {
+    if (m_showAscii == bOn) {
         return;
     }
-    m_showAscii = on;
+    m_showAscii = bOn;
 
     // Clear the full dump cache for both storages (see setFullDumpFontSize
     // for why both, regardless of m_collapsedMode).
@@ -618,12 +618,12 @@ void CommDumpModel::setShowAscii(bool on)
     }
 }
 
-void CommDumpModel::setTimeFormat(TimeFormat fmt)
+void CommDumpModel::setTimeFormat(TimeFormat eFmt)
 {
-    if (m_timeFormat == fmt) {
+    if (m_timeFormat == eFmt) {
         return;
     }
-    m_timeFormat = fmt;
+    m_timeFormat = eFmt;
 
     // Only the Timestamp column's *text* changes; nothing is recomputed on
     // the records themselves. Re-emitting headerDataChanged too so the
@@ -635,15 +635,15 @@ void CommDumpModel::setTimeFormat(TimeFormat fmt)
     emit headerDataChanged(Qt::Horizontal, ColTimestamp, ColTimestamp);
 }
 
-void CommDumpModel::setDumpBytesPerLine(int n)
+void CommDumpModel::setDumpBytesPerLine(int iN)
 {
-    if (n != 8 && n != 16 && n != 32) {
+    if (iN != 8 && iN != 16 && iN != 32) {
         return; // only 8/16/32 are valid — silently ignore anything else
     }
-    if (m_dumpBytesPerLine == n) {
+    if (m_dumpBytesPerLine == iN) {
         return;
     }
-    m_dumpBytesPerLine = n;
+    m_dumpBytesPerLine = iN;
 
     // Clear both storages' caches (see setFullDumpFontSize for why both),
     // then notify only whichever storage's child rows are currently
@@ -690,14 +690,14 @@ void CommDumpModel::clear()
     endResetModel();
 }
 
-QJsonObject CommDumpModel::recordToJson(const Record &r) const
+QJsonObject CommDumpModel::recordToJson(const Record &sR) const
 {
     QJsonObject o;
-    o["ts"]      = QString::number(r.timestampUs); // string: avoids double precision loss
-    o["plugin"]  = r.plugin;
-    o["details"] = r.details;
-    o["dir"]     = r.isTx ? QStringLiteral("Tx") : QStringLiteral("Rx");
-    o["data"]    = QString::fromLatin1(r.data.toBase64());
+    o["ts"]      = QString::number(sR.timestampUs); // string: avoids double precision loss
+    o["plugin"]  = sR.plugin;
+    o["details"] = sR.details;
+    o["dir"]     = sR.isTx ? QStringLiteral("Tx") : QStringLiteral("Rx");
+    o["data"]    = QString::fromLatin1(sR.data.toBase64());
     return o;
 }
 
@@ -753,19 +753,19 @@ void CommDumpModel::loadJsonArray(const QJsonArray &arr)
     m_totalIngested = m_records.size();
 }
 
-QModelIndex CommDumpModel::index(int row, int column, const QModelIndex &parent) const
+QModelIndex CommDumpModel::index(int iRow, int iColumn, const QModelIndex &parent) const
 {
-    if (!hasIndex(row, column, parent)) {
+    if (!hasIndex(iRow, iColumn, parent)) {
         return {};
     }
 
     if (!parent.isValid()) {
-        return createIndex(row, column, kTopLevelSentinel);
+        return createIndex(iRow, iColumn, kTopLevelSentinel);
     }
 
-    // Only top-level rows (records) have a child, and only exactly one (row 0).
-    if (parent.internalId() == kTopLevelSentinel && row == 0) {
-        return createIndex(row, column, static_cast<quintptr>(parent.row()));
+    // Only top-level rows (records) have a child, and only exactly one (iRow 0).
+    if (parent.internalId() == kTopLevelSentinel && iRow == 0) {
+        return createIndex(iRow, iColumn, static_cast<quintptr>(parent.iRow()));
     }
 
     return {};
@@ -814,17 +814,17 @@ bool CommDumpModel::isChildRow(const QModelIndex &index) const
     return index.isValid() && index.internalId() != kTopLevelSentinel;
 }
 
-QString CommDumpModel::fullDumpForRow(int row) const
+QString CommDumpModel::fullDumpForRow(int iRow) const
 {
-    // Mode-aware: `row` is always a CURRENTLY ACTIVE display-row index (raw
+    // Mode-aware: `iRow` is always a CURRENTLY ACTIVE display-iRow index (raw
     // or aggregate — matches what recordCount()/index() mean right now),
-    // since callers (CommDumpView's copy-to-clipboard) get `row` from
+    // since callers (CommDumpView's copy-to-clipboard) get `iRow` from
     // selection/iteration over the currently displayed tree.
     if (m_collapsedMode) {
-        if (row < 0 || row >= m_aggregateRows.size()) {
+        if (iRow < 0 || iRow >= m_aggregateRows.size()) {
             return {};
         }
-        const AggregateEntry &e = m_aggregateRows[row];
+        const AggregateEntry &e = m_aggregateRows[iRow];
         if (e.data.isEmpty()) {
             return {};
         }
@@ -834,16 +834,16 @@ QString CommDumpModel::fullDumpForRow(int row) const
         return e.fullDumpCache;
     }
 
-    if (row < 0 || row >= m_records.size()) {
+    if (iRow < 0 || iRow >= m_records.size()) {
         return {};
     }
 
-    const Record &rec = m_records[row];
+    const Record &rec = m_records[iRow];
     if (rec.data.isEmpty()) {
         return {};
     }
 
-    // Same lazily-built cache the expanded child row's data() uses — a row
+    // Same lazily-built cache the expanded child iRow's data() uses — a iRow
     // that's already been expanded on screen doesn't pay to reformat here.
     if (rec.fullDumpCache.isEmpty()) {
         rec.fullDumpCache = hexAsciiFull(rec.data, m_showAscii, m_fullDumpFontSize, m_dumpBytesPerLine);
@@ -879,9 +879,9 @@ const CommDumpModel::Record *CommDumpModel::recordForIndex(const QModelIndex &in
 // first-seen order, not time order, so comparing against "the row before
 // this one in the table" doesn't hold the same meaning there. Caller
 // guarantees 0 <= row < recordCount() and !collapsedMode().
-qint64 CommDumpModel::timestampAtActiveRow(int row) const
+qint64 CommDumpModel::timestampAtActiveRow(int iRow) const
 {
-    return m_records[row].timestampUs;
+    return m_records[iRow].timestampUs;
 }
 
 // The reference point for TimeSinceCaptureStart: the RAW log's own first
@@ -897,7 +897,7 @@ qint64 CommDumpModel::captureStartTimestampUs() const
     return m_records.isEmpty() ? 0 : m_records.first().timestampUs;
 }
 
-QVariant CommDumpModel::data(const QModelIndex &index, int role) const
+QVariant CommDumpModel::data(const QModelIndex &index, int iRole) const
 {
     const Record *rec = recordForIndex(index);
     if (!rec) {
@@ -911,7 +911,7 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
             return {};
         }
 
-        if (role == Qt::DisplayRole) {
+        if (iRole == Qt::DisplayRole) {
             if (rec->fullDumpCache.isEmpty()) {
                 // Generate the dump text
                 rec->fullDumpCache = hexAsciiFull(rec->data, m_showAscii, m_fullDumpFontSize, m_dumpBytesPerLine);
@@ -919,11 +919,11 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
             return rec->fullDumpCache;
         }
 
-        if (role == Qt::FontRole) {
+        if (iRole == Qt::FontRole) {
             return m_fullDumpFont; // cached — see setFullDumpFontSize()
         }
 
-        if (role == Qt::ForegroundRole) {
+        if (iRole == Qt::ForegroundRole) {
             static const QBrush kFullDumpFg{QColor("#8a95a8")};
             return kFullDumpFg;
         }
@@ -931,7 +931,7 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
     }
 
     // Top-level record row.
-    switch (role) {
+    switch (iRole) {
     case Qt::DisplayRole:
         switch (index.column()) {
         case ColTimestamp:
@@ -1026,14 +1026,14 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
     }
 }
 
-QVariant CommDumpModel::headerData(int section, Qt::Orientation orientation, int role) const
+QVariant CommDumpModel::headerData(int iSection, Qt::Orientation orientation, int iRole) const
 {
     if (orientation != Qt::Horizontal) {
         return {};
     }
 
-    if (role == Qt::ToolTipRole) {
-        switch (section) {
+    if (iRole == Qt::ToolTipRole) {
+        switch (iSection) {
         case ColTimestamp:
             return QStringLiteral("Double-click to cycle: wall-clock time → Δ since previous → since capture start");
         case ColData:
@@ -1045,11 +1045,11 @@ QVariant CommDumpModel::headerData(int section, Qt::Orientation orientation, int
         }
     }
 
-    if (role != Qt::DisplayRole) {
+    if (iRole != Qt::DisplayRole) {
         return {};
     }
 
-    switch (section) {
+    switch (iSection) {
     case ColTimestamp: {
         QString label;
         switch (m_timeFormat) {

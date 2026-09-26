@@ -6,13 +6,13 @@
 #include <google/protobuf/util/json_util.h>
 #include <sstream>
 
-bool GrpcProtocol::loadDescriptorSet(const std::string &protosetPath, std::string &outError)
+bool GrpcProtocol::loadDescriptorSet(const std::string &strProtosetPath, std::string &strOutError)
 {
     m_bLoaded = false;
 
-    std::ifstream in(protosetPath, std::ios::binary);
+    std::ifstream in(strProtosetPath, std::ios::binary);
     if (!in) {
-        outError = "cannot open descriptor set file: " + protosetPath;
+        strOutError = "cannot open descriptor set file: " + strProtosetPath;
         return false;
     }
 
@@ -21,9 +21,9 @@ bool GrpcProtocol::loadDescriptorSet(const std::string &protosetPath, std::strin
 
     google::protobuf::FileDescriptorSet fdSet;
     if (!fdSet.ParseFromString(ss.str())) {
-        outError = "not a valid FileDescriptorSet (produce it with: protoc --descriptor_set_out=... "
+        strOutError = "not a valid FileDescriptorSet (produce it with: protoc --descriptor_set_out=... "
                    "--include_imports your.proto): " +
-                   protosetPath;
+                   strProtosetPath;
         return false;
     }
 
@@ -36,7 +36,7 @@ bool GrpcProtocol::loadDescriptorSet(const std::string &protosetPath, std::strin
             continue;
         }
         if (m_pool.BuildFile(fileProto) == nullptr) {
-            outError = "failed to build descriptor for '" + fileProto.name() +
+            strOutError = "failed to build descriptor for '" + fileProto.name() +
                        "' (malformed or missing an import not included in the set)";
             return false;
         }
@@ -46,11 +46,11 @@ bool GrpcProtocol::loadDescriptorSet(const std::string &protosetPath, std::strin
     return true;
 }
 
-const google::protobuf::MethodDescriptor *GrpcProtocol::resolveMethod(const std::string &methodPath,
-                                                                      std::string &outError) const
+const google::protobuf::MethodDescriptor *GrpcProtocol::resolveMethod(const std::string &strMethodPath,
+                                                                      std::string &strOutError) const
 {
     if (!m_bLoaded) {
-        outError = "no descriptor set loaded — set GRPC.CONFIG d=<path.protoset> first";
+        strOutError = "no descriptor set loaded — set GRPC.CONFIG d=<path.protoset> first";
         return nullptr;
     }
 
@@ -59,28 +59,28 @@ const google::protobuf::MethodDescriptor *GrpcProtocol::resolveMethod(const std:
     // case a script author copies it straight out of a .proto file).
     std::string serviceName;
     std::string methodName;
-    auto slashPos = methodPath.find('/');
+    auto slashPos = strMethodPath.find('/');
     if (slashPos != std::string::npos) {
-        serviceName = methodPath.substr(0, slashPos);
-        methodName  = methodPath.substr(slashPos + 1);
+        serviceName = strMethodPath.substr(0, slashPos);
+        methodName  = strMethodPath.substr(slashPos + 1);
     } else {
-        auto dotPos = methodPath.rfind('.');
+        auto dotPos = strMethodPath.rfind('.');
         if (dotPos == std::string::npos) {
-            outError = "malformed method path '" + methodPath + "' — expected package.Service/Method";
+            strOutError = "malformed method path '" + strMethodPath + "' — expected package.Service/Method";
             return nullptr;
         }
-        serviceName = methodPath.substr(0, dotPos);
-        methodName  = methodPath.substr(dotPos + 1);
+        serviceName = strMethodPath.substr(0, dotPos);
+        methodName  = strMethodPath.substr(dotPos + 1);
     }
 
     const auto *serviceDesc = m_pool.FindServiceByName(serviceName);
     if (!serviceDesc) {
-        outError = "unknown service '" + serviceName + "' (not present in the loaded descriptor set)";
+        strOutError = "unknown service '" + serviceName + "' (not present in the loaded descriptor set)";
         return nullptr;
     }
     const auto *methodDesc = serviceDesc->FindMethodByName(methodName);
     if (!methodDesc) {
-        outError = "unknown method '" + methodName + "' on service '" + serviceName + "'";
+        strOutError = "unknown method '" + methodName + "' on service '" + serviceName + "'";
         return nullptr;
     }
     // Every RPC shape is accepted here — grpc_driver.hpp's send() dispatches
@@ -90,38 +90,38 @@ const google::protobuf::MethodDescriptor *GrpcProtocol::resolveMethod(const std:
 }
 
 std::unique_ptr<google::protobuf::Message> GrpcProtocol::newRequestMessage(
-    const google::protobuf::MethodDescriptor *method) const
+    const google::protobuf::MethodDescriptor *pMethod) const
 {
-    const google::protobuf::Message *prototype = m_factory.GetPrototype(method->input_type());
+    const google::protobuf::Message *prototype = m_factory.GetPrototype(pMethod->input_type());
     return std::unique_ptr<google::protobuf::Message>(prototype->New());
 }
 
 std::unique_ptr<google::protobuf::Message> GrpcProtocol::newResponseMessage(
-    const google::protobuf::MethodDescriptor *method) const
+    const google::protobuf::MethodDescriptor *pMethod) const
 {
-    const google::protobuf::Message *prototype = m_factory.GetPrototype(method->output_type());
+    const google::protobuf::Message *prototype = m_factory.GetPrototype(pMethod->output_type());
     return std::unique_ptr<google::protobuf::Message>(prototype->New());
 }
 
-bool GrpcProtocol::parseJsonIntoMessage(const std::string &jsonText, google::protobuf::Message &message,
-                                        std::string &outError) const
+bool GrpcProtocol::parseJsonIntoMessage(const std::string &strJsonText, google::protobuf::Message &message,
+                                        std::string &strOutError) const
 {
     message.Clear();
-    const std::string &toParse = jsonText.empty() ? std::string("{}") : jsonText;
+    const std::string &toParse = strJsonText.empty() ? std::string("{}") : strJsonText;
 
     auto status                = google::protobuf::util::JsonStringToMessage(toParse, &message);
     if (!status.ok()) {
-        outError = status.ToString();
+        strOutError = status.ToString();
         return false;
     }
     return true;
 }
 
-bool GrpcProtocol::messageToJson(const google::protobuf::Message &message, std::string &outText) const
+bool GrpcProtocol::messageToJson(const google::protobuf::Message &message, std::string &strOutText) const
 {
-    auto status = google::protobuf::util::MessageToJsonString(message, &outText);
+    auto status = google::protobuf::util::MessageToJsonString(message, &strOutText);
     if (!status.ok()) {
-        outText = status.ToString();
+        strOutText = status.ToString();
         return false;
     }
     return true;

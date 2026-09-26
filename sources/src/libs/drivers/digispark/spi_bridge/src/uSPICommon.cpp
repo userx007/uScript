@@ -79,7 +79,7 @@ ICommDriver::Status SPIBridge::configure(SPIMode eMode, SPIClockDiv eDiv)
 
 ICommDriver::ReadResult SPIBridge::tout_read(uint32_t u32ReadTimeout,
                                              std::span<uint8_t> buffer,
-                                             const ReadOptions &options,
+                                             const ReadOptions &sOptions,
                                              std::string_view /*xtra_params*/,
                                              std::stop_token stop_tok) const
 {
@@ -103,7 +103,7 @@ ICommDriver::ReadResult SPIBridge::tout_read(uint32_t u32ReadTimeout,
     // it to hidapi's native blocking-forever wait.
     uint32_t u32Timeout = u32ReadTimeout;
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
     // ── ReadMode::Exact ────────────────────────────────────────────────────
     // Clock buffer.size() dummy bytes on MOSI (0x00), fill buffer with MISO.
     case ReadMode::Exact: {
@@ -112,28 +112,28 @@ ICommDriver::ReadResult SPIBridge::tout_read(uint32_t u32ReadTimeout,
     }
 
     // ── ReadMode::UntilToken ───────────────────────────────────────────────
-    // Full-duplex: use options.token as the MOSI payload, fill buffer with MISO.
-    // options.token.size() must equal buffer.size().
+    // Full-duplex: use sOptions.token as the MOSI payload, fill buffer with MISO.
+    // sOptions.token.size() must equal buffer.size().
     case ReadMode::UntilToken: {
-        if (options.token.empty()) {
+        if (sOptions.token.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("tout_read(UntilToken): token span is empty"));
             result.status = Status::INVALID_PARAM;
             return result;
         }
 
-        if (options.token.size() != buffer.size()) {
+        if (sOptions.token.size() != buffer.size()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("tout_read(UntilToken): token/buffer size mismatch");
-                      LOG_UINT32(options.token.size()); LOG_UINT32(buffer.size()));
+                      LOG_UINT32(sOptions.token.size()); LOG_UINT32(buffer.size()));
             result.status = Status::INVALID_PARAM;
             return result;
         }
 
         SPIReadOptions spiOpts;
         spiOpts.mode   = SPIReadMode::Transfer;
-        spiOpts.length = options.token.size();
-        spiOpts.mosi_data.assign(options.token.begin(), options.token.end());
+        spiOpts.length = sOptions.token.size();
+        spiOpts.mosi_data.assign(sOptions.token.begin(), sOptions.token.end());
 
         result = priv_cmd_transfer(u32Timeout, buffer, spiOpts, stop_tok);
         break;
@@ -258,13 +258,13 @@ ICommDriver::Status SPIBridge::read_reg(uint8_t u8Reg, std::span<uint8_t> buffer
 
 ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t u32Timeout,
                                                      std::span<uint8_t> buffer,
-                                                     const SPIReadOptions &opts,
+                                                     const SPIReadOptions &sOpts,
                                                      std::stop_token stop_tok) const
 {
     ReadResult result;
 
     uint8_t u8Len = static_cast<uint8_t>(
-        std::min(opts.mosi_data.size(), SPI_MAX_TRANSFER_PAYLOAD));
+        std::min(sOpts.mosi_data.size(), SPI_MAX_TRANSFER_PAYLOAD));
 
     if (u8Len == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_transfer: mosi_data empty"));
@@ -285,7 +285,7 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t u32Timeout,
     txPkt[0]                    = CMD_SPI_TRANSFER;
     txPkt[1]                    = u8Len;
     for (uint8_t i = 0; i < u8Len; ++i) {
-        txPkt[2 + i] = opts.mosi_data[i];
+        txPkt[2 + i] = sOpts.mosi_data[i];
     }
 
     Status eSend = hid_pkt_send(std::span<const uint8_t>(txPkt, SPI_PKT_SIZE));

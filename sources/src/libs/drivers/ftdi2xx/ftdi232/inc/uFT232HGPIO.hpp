@@ -57,9 +57,9 @@ class FT232HGPIO : public FT232HBase {
 
         FT232HGPIO() = default;
 
-        explicit FT232HGPIO(const GpioConfig &config, uint8_t u8DeviceIndex = 0u)
+        explicit FT232HGPIO(const GpioConfig &sConfig, uint8_t u8DeviceIndex = 0u)
         {
-            this->open(config, u8DeviceIndex);
+            this->open(sConfig, u8DeviceIndex);
         }
 
         ~FT232HGPIO() override
@@ -73,7 +73,7 @@ class FT232HGPIO : public FT232HBase {
          * @param config        Pin configuration (directions, initial values)
          * @param u8DeviceIndex Physical device index
          */
-        Status open(const GpioConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const GpioConfig &sConfig, uint8_t u8DeviceIndex = 0u);
 
         Status close() override;
 
@@ -83,17 +83,17 @@ class FT232HGPIO : public FT232HBase {
         }
 
         // ── Direction control ────────────────────────────────────────────────
-        Status set_direction(Bank bank, uint8_t dirMask, uint8_t initialValue = 0x00u);
+        Status set_direction(Bank eBank, uint8_t u8DirMask, uint8_t u8InitialValue = 0x00u);
 
         // ── Output control ───────────────────────────────────────────────────
-        Status write(Bank bank, uint8_t value);
-        Status set_pins(Bank bank, uint8_t pinMask);
-        Status clear_pins(Bank bank, uint8_t pinMask);
-        Status toggle_pins(Bank bank, uint8_t pinMask);
+        Status write(Bank eBank, uint8_t u8Value);
+        Status set_pins(Bank eBank, uint8_t u8PinMask);
+        Status clear_pins(Bank eBank, uint8_t u8PinMask);
+        Status toggle_pins(Bank eBank, uint8_t u8PinMask);
 
         // ── Input reading ────────────────────────────────────────────────────
-        Status read(Bank bank, uint8_t &value);
-        Status read_pins(Bank bank, uint8_t pinMask, uint8_t &value);
+        Status read(Bank eBank, uint8_t &u8Value);
+        Status read_pins(Bank eBank, uint8_t u8PinMask, uint8_t &u8Value);
 
     private:
         uint8_t m_lowValue  = 0x00u;
@@ -101,9 +101,9 @@ class FT232HGPIO : public FT232HBase {
         uint8_t m_highValue = 0x00u;
         uint8_t m_highDir   = 0x00u;
 
-        Status configure_mpsse_gpio(const GpioConfig &config);
-        Status apply_low(uint8_t value, uint8_t dir) const;
-        Status apply_high(uint8_t value, uint8_t dir) const;
+        Status configure_mpsse_gpio(const GpioConfig &sConfig);
+        Status apply_low(uint8_t u8Value, uint8_t u8Dir) const;
+        Status apply_high(uint8_t u8Value, uint8_t u8Dir) const;
 };
 
 #endif // U_FT232H_GPIO_DRIVER_H

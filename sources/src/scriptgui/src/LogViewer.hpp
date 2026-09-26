@@ -30,23 +30,23 @@ class QWidget;
 class LogEdit : public QPlainTextEdit {
         Q_OBJECT
     public:
-        explicit LogEdit(QWidget *parent = nullptr);
+        explicit LogEdit(QWidget *pParent = nullptr);
 
         // Recalculate gutter width and repaint (call after font changes).
         void refreshGutter();
 
         // Gutter geometry/paint – called by LogLineNumberArea
         int lineNumberAreaWidth() const;
-        void lineNumberAreaPaintEvent(QPaintEvent *ev);
+        void lineNumberAreaPaintEvent(QPaintEvent *pEv);
 
     protected:
-        void resizeEvent(QResizeEvent *ev) override;
-        void mouseDoubleClickEvent(QMouseEvent *ev) override;
-        void mousePressEvent(QMouseEvent *ev) override;
+        void resizeEvent(QResizeEvent *pEv) override;
+        void mouseDoubleClickEvent(QMouseEvent *pEv) override;
+        void mousePressEvent(QMouseEvent *pEv) override;
 
     private slots:
-        void updateLineNumberAreaWidth(int newBlockCount);
-        void updateLineNumberArea(const QRect &rect, int dy);
+        void updateLineNumberAreaWidth(int iNewBlockCount);
+        void updateLineNumberArea(const QRect &rect, int iDy);
 
     private:
         void applyWordHighlights(const QString &word);
@@ -69,7 +69,7 @@ class LogEdit : public QPlainTextEdit {
 class LogViewer : public QFrame {
         Q_OBJECT
     public:
-        explicit LogViewer(QWidget *parent = nullptr);
+        explicit LogViewer(QWidget *pParent = nullptr);
 
         // Append a raw GUI:LOG:<message> payload (the "GUI:LOG:" prefix stripped).
         void appendLine(const QString &line);
@@ -100,16 +100,16 @@ class LogViewer : public QFrame {
 
     public slots:
 
-        void setAutoScroll(bool on)
+        void setAutoScroll(bool bOn)
         {
-            m_autoScroll = on;
+            m_autoScroll = bOn;
         }
 
         // Disable the log-level combo while the interpreter is running so the
         // selection cannot be changed mid-run (it only takes effect at launch).
-        void setRunning(bool running)
+        void setRunning(bool bRunning)
         {
-            m_logLevelCb->setEnabled(!running);
+            m_logLevelCb->setEnabled(!bRunning);
         }
 
     private:

@@ -52,24 +52,24 @@
 //              Helper: parse cmd_id and cmd_arg                 //
 ///////////////////////////////////////////////////////////////////
 
-static bool parseCmdArgs(const std::vector<std::string> &parts,
-                         uint8_t &cmd_id, uint32_t &cmd_arg)
+static bool parseCmdArgs(const std::vector<std::string> &vParts,
+                         uint8_t &u8Cmd_id, uint32_t &u32Cmd_arg)
 {
-    if (parts.size() < 2) {
+    if (vParts.size() < 2) {
         return false;
     }
 
     uint32_t id = 0;
-    if (!numeric::str2uint32(parts[0], id) || id > 63) {
+    if (!numeric::str2uint32(vParts[0], id) || id > 63) {
         return false;
     }
-    cmd_id = static_cast<uint8_t>(id);
+    u8Cmd_id = static_cast<uint8_t>(id);
 
     std::vector<uint8_t> argBuf;
-    if (hexutils::stringUnhexlify(parts[1], argBuf) && argBuf.size() == 4) {
-        cmd_arg = (static_cast<uint32_t>(argBuf[0]) << 24) | (static_cast<uint32_t>(argBuf[1]) << 16) | (static_cast<uint32_t>(argBuf[2]) << 8) | static_cast<uint32_t>(argBuf[3]);
+    if (hexutils::stringUnhexlify(vParts[1], argBuf) && argBuf.size() == 4) {
+        u32Cmd_arg = (static_cast<uint32_t>(argBuf[0]) << 24) | (static_cast<uint32_t>(argBuf[1]) << 16) | (static_cast<uint32_t>(argBuf[2]) << 8) | static_cast<uint32_t>(argBuf[3]);
     } else {
-        if (!numeric::str2uint32(parts[1], cmd_arg)) {
+        if (!numeric::str2uint32(vParts[1], u32Cmd_arg)) {
             return false;
         }
     }
@@ -83,10 +83,10 @@ bool HydrabusPlugin::m_handle_sdio_help(const std::string &, std::stop_token /*s
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
 
-bool HydrabusPlugin::m_handle_sdio_cfg(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_sdio_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
     auto *p = m_sdio();
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         if (p) {
             LOG_PRINT(LOG_EMPTY,
                       LOG_STRING("width=");
@@ -101,7 +101,7 @@ bool HydrabusPlugin::m_handle_sdio_cfg(const std::string &args, std::stop_token 
     }
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
@@ -127,9 +127,9 @@ bool HydrabusPlugin::m_handle_sdio_cfg(const std::string &args, std::stop_token 
     return true;
 }
 
-bool HydrabusPlugin::m_handle_sdio_send_no(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_sdio_send_no(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: send_no cmd_id cmd_arg  (e.g. send_no 0 00000000)"));
         return true;
@@ -140,7 +140,7 @@ bool HydrabusPlugin::m_handle_sdio_send_no(const std::string &args, std::stop_to
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     uint8_t cmd_id   = 0;
     uint32_t cmd_arg = 0;
@@ -152,9 +152,9 @@ bool HydrabusPlugin::m_handle_sdio_send_no(const std::string &args, std::stop_to
     return p->send_no(cmd_id, cmd_arg, st);
 }
 
-bool HydrabusPlugin::m_handle_sdio_send_short(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_sdio_send_short(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: send_short cmd_id cmd_arg  (4-byte response)"));
         return true;
@@ -165,7 +165,7 @@ bool HydrabusPlugin::m_handle_sdio_send_short(const std::string &args, std::stop
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     uint8_t cmd_id   = 0;
     uint32_t cmd_arg = 0;
@@ -183,9 +183,9 @@ bool HydrabusPlugin::m_handle_sdio_send_short(const std::string &args, std::stop
     return true;
 }
 
-bool HydrabusPlugin::m_handle_sdio_send_long(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_sdio_send_long(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: send_long cmd_id cmd_arg  (16-byte response)"));
         return true;
@@ -196,7 +196,7 @@ bool HydrabusPlugin::m_handle_sdio_send_long(const std::string &args, std::stop_
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     uint8_t cmd_id   = 0;
     uint32_t cmd_arg = 0;
@@ -214,9 +214,9 @@ bool HydrabusPlugin::m_handle_sdio_send_long(const std::string &args, std::stop_
     return true;
 }
 
-bool HydrabusPlugin::m_handle_sdio_read(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_sdio_read(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read cmd_id cmd_arg  (e.g. read 17 00000000)"));
         return true;
@@ -227,7 +227,7 @@ bool HydrabusPlugin::m_handle_sdio_read(const std::string &args, std::stop_token
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     uint8_t cmd_id   = 0;
     uint32_t cmd_arg = 0;
@@ -245,9 +245,9 @@ bool HydrabusPlugin::m_handle_sdio_read(const std::string &args, std::stop_token
 }
 
 // write cmd_id cmd_arg HEXDATA
-bool HydrabusPlugin::m_handle_sdio_write(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_sdio_write(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write cmd_id cmd_arg HEXDATA  (512 bytes)"));
         return true;
@@ -258,7 +258,7 @@ bool HydrabusPlugin::m_handle_sdio_write(const std::string &args, std::stop_toke
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() != 3) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Expected: write cmd_id cmd_arg HEXDATA"));
@@ -281,7 +281,7 @@ bool HydrabusPlugin::m_handle_sdio_write(const std::string &args, std::stop_toke
     return p->write(cmd_id, cmd_arg, data, st);
 }
 
-bool HydrabusPlugin::m_handle_sdio_aux(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_sdio_aux(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    return m_handle_aux_common(args, m_sdio());
+    return m_handle_aux_common(strArgs, m_sdio());
 }

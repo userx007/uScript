@@ -33,10 +33,10 @@ extern "C" {
         return new DSPKSPIPlugin();
     }
 
-    EXPORTED void pluginExit(DSPKSPIPlugin *ptrPlugin)
+    EXPORTED void pluginExit(DSPKSPIPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -59,10 +59,10 @@ extern "C" {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_DSPKSPI_INFO(const std::string &args, std::stop_token st) const
+bool DSPKSPIPlugin::m_DSPKSPI_INFO(const std::string &strArgs, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -142,9 +142,9 @@ bool DSPKSPIPlugin::m_DSPKSPI_INFO(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_DSPKSPI_CONFIG(const std::string &args, std::stop_token st) const
+bool DSPKSPIPlugin::m_DSPKSPI_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_spi_set_params<DSPKSPIPlugin>(this, args);
+    return generic_spi_set_params<DSPKSPIPlugin>(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -170,12 +170,12 @@ bool DSPKSPIPlugin::m_DSPKSPI_CONFIG(const std::string &args, std::stop_token st
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_DSPKSPI_CMD(const std::string &args, std::stop_token st) const
+bool DSPKSPIPlugin::m_DSPKSPI_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<SPIBridge> {
             // open the SPI bridge (RAII – close is done by destructor)
             auto shpDriver = std::make_shared<SPIBridge>(m_u16Vid, m_u16Pid);
@@ -209,12 +209,12 @@ bool DSPKSPIPlugin::m_DSPKSPI_CMD(const std::string &args, std::stop_token st) c
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_DSPKSPI_SCRIPT(const std::string &args, std::stop_token st) const
+bool DSPKSPIPlugin::m_DSPKSPI_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<SPIBridge> {
             // open the SPI bridge (RAII – close is done by destructor)
             auto shpDriver = std::make_shared<SPIBridge>(m_u16Vid, m_u16Pid);
@@ -256,10 +256,10 @@ bool DSPKSPIPlugin::m_DSPKSPI_SCRIPT(const std::string &args, std::stop_token st
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_DSPKSPI_CYCLIC(const std::string &args, std::stop_token st) const
+bool DSPKSPIPlugin::m_DSPKSPI_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<SPIBridge> {
             // open the SPI bridge (RAII – close is done by destructor)
             auto shpDriver = std::make_shared<SPIBridge>(m_u16Vid, m_u16Pid);
@@ -314,12 +314,12 @@ bool DSPKSPIPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKSPIPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+bool DSPKSPIPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType eReadType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;
 
-    switch (readType) {
+    switch (eReadType) {
     case CommCommandReadType::LINE:
         // Not supported on SPI – SPIBridge will return INVALID_PARAM.
         // Mapped here for structural symmetry with the UART plugin;

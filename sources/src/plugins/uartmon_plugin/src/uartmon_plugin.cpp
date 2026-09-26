@@ -21,10 +21,10 @@ extern "C" {
         return new UartmonPlugin();
     }
 
-    EXPORTED void pluginExit(UartmonPlugin *ptrPlugin)
+    EXPORTED void pluginExit(UartmonPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -33,9 +33,9 @@ extern "C" {
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool UartmonPlugin::m_Uartmon_INFO(const std::string &args, std::stop_token st) const
+bool UartmonPlugin::m_Uartmon_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -112,20 +112,20 @@ bool UartmonPlugin::m_Uartmon_INFO(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UartmonPlugin::m_Uartmon_CONFIG(const std::string &args, std::stop_token st) const
+bool UartmonPlugin::m_Uartmon_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    return generic_uartmon_set_params(this, args);
+    return generic_uartmon_set_params(this, strArgs);
 }
 
-bool UartmonPlugin::m_Uartmon_LIST_PORTS(const std::string &args, std::stop_token st) const
+bool UartmonPlugin::m_Uartmon_LIST_PORTS(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
-        if (false == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unexpected arguments:"); LOG_STRING(args));
+        if (false == strArgs.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unexpected arguments:"); LOG_STRING(strArgs));
             break;
         }
 
@@ -156,22 +156,22 @@ bool UartmonPlugin::m_Uartmon_LIST_PORTS(const std::string &args, std::stop_toke
     return bRetVal;
 }
 
-bool UartmonPlugin::m_Uartmon_WAIT_INSERT(const std::string &args, std::stop_token st) const
+bool UartmonPlugin::m_Uartmon_WAIT_INSERT(const std::string &strArgs, std::stop_token st) const
 {
-    return m_GenericWaitFor(args, true /*insert*/, st);
+    return m_GenericWaitFor(strArgs, true /*insert*/, st);
 }
 
-bool UartmonPlugin::m_Uartmon_WAIT_REMOVE(const std::string &args, std::stop_token st) const
+bool UartmonPlugin::m_Uartmon_WAIT_REMOVE(const std::string &strArgs, std::stop_token st) const
 {
-    return m_GenericWaitFor(args, false /*remove*/, st);
+    return m_GenericWaitFor(strArgs, false /*remove*/, st);
 }
 
-bool UartmonPlugin::m_Uartmon_START(const std::string &args, std::stop_token st) const
+bool UartmonPlugin::m_Uartmon_START(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
-        if (false == args.empty()) {
+        if (false == strArgs.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No argument expected"));
             break;
         }
@@ -193,12 +193,12 @@ bool UartmonPlugin::m_Uartmon_START(const std::string &args, std::stop_token st)
     return bRetVal;
 }
 
-bool UartmonPlugin::m_Uartmon_STOP(const std::string &args, std::stop_token st) const
+bool UartmonPlugin::m_Uartmon_STOP(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
-        if (false == args.empty()) {
+        if (false == strArgs.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No argument expected"));
             break;
         }
@@ -221,7 +221,7 @@ bool UartmonPlugin::m_Uartmon_STOP(const std::string &args, std::stop_token st) 
 //                      PRIVATE IMPLEMENTATION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool UartmonPlugin::m_GenericWaitFor(const std::string &args, bool bInsert, std::stop_token st) const
+bool UartmonPlugin::m_GenericWaitFor(const std::string &strArgs, bool bInsert, std::stop_token st) const
 {
     bool bRetVal = false;
 
@@ -233,19 +233,19 @@ bool UartmonPlugin::m_GenericWaitFor(const std::string &args, bool bInsert, std:
 
         uint32_t u32Delay = 0;
 
-        if (false == args.empty()) {
+        if (false == strArgs.empty()) {
             std::vector<std::string> vstrArgs;
-            ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
+            ustring::tokenizeSpaceQuotesAware(strArgs, vstrArgs);
             size_t szNrArgs = vstrArgs.size();
 
             if (szNrArgs > 1) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid args, expected [delay]"); LOG_STRING(args));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid strArgs, expected [delay]"); LOG_STRING(strArgs));
                 break;
             }
 
             if (1 == szNrArgs) {
                 if (false == numeric::str2uint32(vstrArgs[0], u32Delay)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value:"); LOG_STRING(args));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value:"); LOG_STRING(strArgs));
                     break;
                 }
             }

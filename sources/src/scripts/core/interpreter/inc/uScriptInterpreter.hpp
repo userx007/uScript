@@ -141,7 +141,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
                 double dBegin, dEnd, dStep;
         };
 
-        bool m_loadPlugin(PluginDataType &command, bool bInitEnable);
+        bool m_loadPlugin(PluginDataType &sCommand, bool bInitEnable);
         bool m_loadPlugins() noexcept;
         // Scan vCommands for PLUGIN:N references whose base PLUGIN is loaded but
         // the instance is not yet registered; create a fresh entry for each one.
@@ -169,7 +169,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // behaviour byte-for-byte) or fresh on every tick (un-cached mode, so the entry
         // always uses whatever a background thread most recently wrote via a threaded
         // "VAL ?= PLUGIN.CMD args &" - see uVolatileMacroStore.hpp's rationale).
-        bool m_replaceVariableMacros(std::string &input, bool bDeferRuntimeVarMacros = false);
+        bool m_replaceVariableMacros(std::string &strInput, bool bDeferRuntimeVarMacros = false);
         bool m_retrieveScriptSettings() noexcept;
         bool m_executeScript() noexcept;
 
@@ -181,10 +181,10 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // StreamStatement::bByteMode) and (indirectly, via that same visitor
         // path through m_dispatchShellLine) by executeCmd()'s interactive form.
         // Returns false and logs a reason on any resolution/range/overlap error.
-        bool m_buildStreamStatement(const StreamStatement &command, const std::string &lineNr,
+        bool m_buildStreamStatement(const StreamStatement &sCommand, const std::string &strLineNr,
                                     std::string &strResultHex) noexcept;
 
-        bool m_buildStreamValStatement(const StreamValStatement &command, const std::string &lineNr,
+        bool m_buildStreamValStatement(const StreamValStatement &sCommand, const std::string &strLineNr,
                                        std::string &strResultDecimal) noexcept;
 
         // Array counterpart of m_buildStreamValStatement(): same per-field
@@ -193,7 +193,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // returning every result in field order. Returns false and logs a
         // reason (naming the offending field's index) on the first field that
         // fails any check.
-        bool m_buildStreamValArrayStatement(const StreamValArrayStatement &command, const std::string &lineNr,
+        bool m_buildStreamValArrayStatement(const StreamValArrayStatement &sCommand, const std::string &strLineNr,
                                             std::vector<std::string> &vResultsDecimal) noexcept;
 
         // Shared END_REPEAT logic (decrement/condition/loop-back).
@@ -206,7 +206,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
 
         // iIndex is the current position in vCommands; loop constructs may modify it
         // to implement backward jumps.
-        bool m_executeCommand(ScriptLine &data, bool bRealExec, size_t &iIndex) noexcept;
+        bool m_executeCommand(ScriptLine &sData, bool bRealExec, size_t &iIndex) noexcept;
         bool m_executeCommands(bool bRealExec) noexcept;
         bool m_pluginIsLoaded(const std::string &strPluginName) noexcept;
 
@@ -214,7 +214,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // (delegated to BoolExprEvaluator) and EVAL-prefixed typed comparisons
         // (delegated to EvalExprEvaluator).  Returns true and sets result on
         // success; returns false and logs on any parse / evaluation error.
-        bool m_evaluateCondition(const std::string &strCondition, bool &result) noexcept;
+        bool m_evaluateCondition(const std::string &strCondition, bool &bResult) noexcept;
 
         // Shell-command helpers used by executeCmd().
         // m_dispatchShellLine: wraps a variant into a shell-origin ScriptLine
@@ -251,14 +251,14 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         //                         first entry.  No-op if strVarMacroName is empty.
         // m_advanceLoopIterIndex: increments the counter and updates the scope
         //                         macro.  No-op if strVarMacroName is empty.
-        void m_initLoopIterIndex(LoopState &state) noexcept;
-        void m_advanceLoopIterIndex(LoopState &state) noexcept;
+        void m_initLoopIterIndex(LoopState &sState) noexcept;
+        void m_advanceLoopIterIndex(LoopState &sState) noexcept;
 
         // Resolves a RepeatTimes node's begin/end/step (expanding any deferred
         // "$macroname" bounds) into a concrete integer or double range.
         // Returns false (and logs) if a deferred bound fails to parse as a number
         // or if the resolved step is exactly zero.
-        bool m_resolveRepeatRange(const RepeatTimes &rep, ResolvedRepeatRange &out) noexcept;
+        bool m_resolveRepeatRange(const RepeatTimes &sRep, ResolvedRepeatRange &sOut) noexcept;
 
         // Resolved begin/end/step/k (or array elements) of a GENERATOR statement,
         // after macro expansion — same "literal already typed, $macro
@@ -286,7 +286,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // number, or if a SQUARE waveform's resolved step is not a positive
         // integer (see GeneratorStatement::eWaveform's doc comment — SQUARE
         // reinterprets step as "ticks to hold each level").
-        bool m_resolveGeneratorRange(const GeneratorStatement &gen, ResolvedGeneratorRange &out) noexcept;
+        bool m_resolveGeneratorRange(const GeneratorStatement &sGen, ResolvedGeneratorRange &sOut) noexcept;
 
         // plugin loading helper
         std::string executableDir();

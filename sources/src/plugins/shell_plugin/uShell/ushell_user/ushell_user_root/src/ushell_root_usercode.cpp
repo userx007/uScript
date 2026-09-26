@@ -56,7 +56,7 @@ static int privListScriptItems(void);
 static int privListScriptCommands(void);
 static int privLoadScriptPlugin(const char *pstrPluginName);
 static int privExecScriptCommand(const char *pstrCommand);
-static std::string adaptInputLine(const std::string &line);
+static std::string adaptInputLine(const std::string &strLine);
 
 ///////////////////////////////////////////////////////////////////
 //            EXPORTED VARIABLES DECLARATION                     //
@@ -300,15 +300,15 @@ static int privExecScriptCommand(const char *pstrCommand)
 /*------------------------------------------------------------
  * adapt the input to match the script expected format (upprecases in some cases)
 ------------------------------------------------------------*/
-std::string adaptInputLine(const std::string &line)
+std::string adaptInputLine(const std::string &strLine)
 {
     // Normalize: ensure spaces around := and ?= so tokenizer sees them as separate tokens
-    std::string normalized = ustring::replace_all(line, "?=", " ?= ");
+    std::string normalized = ustring::replace_all(strLine, "?=", " ?= ");
     ustring::replace_all_inplace(normalized, ":=", " := ");
 
     auto tokens = ustring::tokenize(normalized); // split on whitespace
     if (tokens.empty()) {
-        return line;
+        return strLine;
     }
 
     auto upperDot = [](std::string &tok) {

@@ -208,29 +208,29 @@ class GrpcPlugin : public PluginInterface {
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
-        bool setPort(const std::string &portStr) const
+        bool setPort(const std::string &strPort) const
         {
-            return numeric::str2uint16(portStr, m_u16Port);
+            return numeric::str2uint16(strPort, m_u16Port);
         }
 
-        bool setCallTimeout(const std::string &timeoutStr) const
+        bool setCallTimeout(const std::string &strTimeout) const
         {
-            return numeric::str2uint32(timeoutStr, m_u32CallTimeout);
+            return numeric::str2uint32(strTimeout, m_u32CallTimeout);
         }
 
-        bool setConnectTimeout(const std::string &timeoutStr) const
+        bool setConnectTimeout(const std::string &strConnectTimeout) const
         {
-            return numeric::str2uint32(timeoutStr, m_u32ConnectTimeout);
+            return numeric::str2uint32(strConnectTimeout, m_u32ConnectTimeout);
         }
 
-        bool setReadTimeout(const std::string &timeoutStr) const
+        bool setReadTimeout(const std::string &strTimeout) const
         {
-            return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
+            return numeric::str2uint32(strTimeout, m_u32ReadTimeout);
         }
 
-        bool setReadBufferSize(const std::string &bufSizeStr) const
+        bool setReadBufferSize(const std::string &strBufSize) const
         {
-            return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize, /*bFailOnZero=*/true);
+            return numeric::str2uint32(strBufSize, m_u32ReadBufferSize, /*bFailOnZero=*/true);
         }
 
         // Getters/Setters
@@ -239,9 +239,9 @@ class GrpcPlugin : public PluginInterface {
             return m_strHost;
         }
 
-        void setHost(const std::string &host) const
+        void setHost(const std::string &strHost) const
         {
-            m_strHost = host;
+            m_strHost = strHost;
         }
 
         uint16_t getPort(void) const
@@ -265,9 +265,9 @@ class GrpcPlugin : public PluginInterface {
             return m_strTlsCaPath;
         }
 
-        void setTlsCaPath(const std::string &path) const
+        void setTlsCaPath(const std::string &strPath) const
         {
-            m_strTlsCaPath = path;
+            m_strTlsCaPath = strPath;
         }
 
         const std::string &getTlsCertPath(void) const
@@ -275,9 +275,9 @@ class GrpcPlugin : public PluginInterface {
             return m_strTlsCertPath;
         }
 
-        void setTlsCertPath(const std::string &path) const
+        void setTlsCertPath(const std::string &strPath) const
         {
-            m_strTlsCertPath = path;
+            m_strTlsCertPath = strPath;
         }
 
         const std::string &getTlsKeyPath(void) const
@@ -285,9 +285,9 @@ class GrpcPlugin : public PluginInterface {
             return m_strTlsKeyPath;
         }
 
-        void setTlsKeyPath(const std::string &path) const
+        void setTlsKeyPath(const std::string &strPath) const
         {
-            m_strTlsKeyPath = path;
+            m_strTlsKeyPath = strPath;
         }
 
         const std::string &getDescriptorSetPath(void) const
@@ -295,9 +295,9 @@ class GrpcPlugin : public PluginInterface {
             return m_strDescriptorSetPath;
         }
 
-        void setDescriptorSetPath(const std::string &path) const
+        void setDescriptorSetPath(const std::string &strPath) const
         {
-            m_strDescriptorSetPath = path;
+            m_strDescriptorSetPath = strPath;
         }
 
         const std::string &getAuthToken(void) const
@@ -305,9 +305,9 @@ class GrpcPlugin : public PluginInterface {
             return m_strAuthToken;
         }
 
-        void setAuthToken(const std::string &val) const
+        void setAuthToken(const std::string &strVal) const
         {
-            m_strAuthToken = val;
+            m_strAuthToken = strVal;
         }
 
         uint32_t getCallTimeout(void) const

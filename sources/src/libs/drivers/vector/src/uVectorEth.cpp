@@ -30,9 +30,9 @@ namespace {
      *  order; every XL-API host this driver targets (x86-64 Windows and Linux)
      *  is little-endian, so this swap is unconditional - there is no htons()
      *  dependency to pull in winsock2.h for. */
-    constexpr uint16_t hostToNetU16(uint16_t v)
+    constexpr uint16_t hostToNetU16(uint16_t u16V)
     {
-        return static_cast<uint16_t>((v << 8) | (v >> 8));
+        return static_cast<uint16_t>((u16V << 8) | (u16V >> 8));
     }
 } // namespace
 
@@ -84,10 +84,10 @@ std::string VectorEth::formatMac(const MacAddress &mac)
     return buf;
 }
 
-void VectorEth::resolveDest(std::string_view xtra_params, MacAddress &outMac, uint16_t &outEtherType) const
+void VectorEth::resolveDest(std::string_view xtra_params, MacAddress &outMac, uint16_t &u16OutEtherType) const
 {
     outMac       = m_defaultDestMac;
-    outEtherType = m_u16DefaultEtherType;
+    u16OutEtherType = m_u16DefaultEtherType;
 
     if (xtra_params.empty()) {
         return;
@@ -120,7 +120,7 @@ void VectorEth::resolveDest(std::string_view xtra_params, MacAddress &outMac, ui
         }
         auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), u32Type, base);
         if (ec == std::errc{} && ptr == sv.data() + sv.size() && u32Type <= 0xFFFFU) {
-            outEtherType = static_cast<uint16_t>(u32Type);
+            u16OutEtherType = static_cast<uint16_t>(u32Type);
         } else {
             LOG_PRINT(LOG_WARNING, LOG_HDR;
                       LOG_STRING("resolveDest: cannot parse EtherType in xtra_params, using default:");
@@ -150,7 +150,7 @@ ICommDriver::Status VectorEth::mapXlError(XLstatus sts)
     return Status::READ_ERROR;
 }
 
-void VectorEth::dumpFrame(CommDir dir, const MacAddress &peerMac, uint16_t u16EtherType, std::span<const uint8_t> data) const
+void VectorEth::dumpFrame(CommDir eDir, const MacAddress &peerMac, uint16_t u16EtherType, std::span<const uint8_t> data) const
 {
     if (!gui_mode_active()) {
         return;
@@ -158,18 +158,18 @@ void VectorEth::dumpFrame(CommDir dir, const MacAddress &peerMac, uint16_t u16Et
     char label[k_labelSize];
     std::snprintf(label, sizeof(label), "%s %s=%s type=0x%04X",
                   m_strIdentityLabel.empty() ? "VectorEth" : m_strIdentityLabel.c_str(),
-                  (dir == CommDir::Tx) ? "dst" : "src",
+                  (eDir == CommDir::Tx) ? "dst" : "src",
                   formatMac(peerMac).c_str(), u16EtherType);
     gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::NET, label),
-                         dir, data.data(), static_cast<uint32_t>(data.size()));
+                         eDir, data.data(), static_cast<uint32_t>(data.size()));
 }
 
-bool VectorEth::frameMatchesFilter(const VectorEthRxFrame &frame) const
+bool VectorEth::frameMatchesFilter(const VectorEthRxFrame &sFrame) const
 {
-    if (m_rxFilterSrcMac.has_value() && frame.srcMac != m_rxFilterSrcMac.value()) {
+    if (m_rxFilterSrcMac.has_value() && sFrame.srcMac != m_rxFilterSrcMac.value()) {
         return false;
     }
-    if (m_rxFilterEtherType.has_value() && frame.u16EtherType != m_rxFilterEtherType.value()) {
+    if (m_rxFilterEtherType.has_value() && sFrame.u16EtherType != m_rxFilterEtherType.value()) {
         return false;
     }
     return true;
@@ -367,8 +367,8 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
 
 #if defined(__linux__)
 ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelIndex,
-                                                         std::string &outMeasurementPointName,
-                                                         std::string &outNetworkName) const
+                                                         std::string &strOutMeasurementPointName,
+                                                         std::string &strOutNetworkName) const
 {
     // Self-contained driver-config query, same pattern (and same underlying
     // XL-API interface) Vector::enumerateChannels() uses on Linux - see that
@@ -422,7 +422,7 @@ ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelInd
         return Status::PORT_ACCESS;
     }
 
-    outMeasurementPointName       = (pFound->measurementPointName != nullptr) ? pFound->measurementPointName : "";
+    strOutMeasurementPointName       = (pFound->measurementPointName != nullptr) ? pFound->measurementPointName : "";
     const unsigned int networkIdx = pFound->networkIdx;
 
     XLnetworkDrvConfigListV1 netList;
@@ -438,7 +438,7 @@ ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelInd
     }
 
     const auto &net = netList.item[networkIdx];
-    outNetworkName  = (net.networkName != nullptr) ? net.networkName : "";
+    strOutNetworkName  = (net.networkName != nullptr) ? net.networkName : "";
 
     if (net.statusCode != 0) {
         LOG_PRINT(LOG_WARNING, LOG_HDR;
@@ -449,7 +449,7 @@ ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelInd
     xlDestroyDriverConfig(configIface.configHandle);
     VectorDriverHandle::Release();
 
-    if (outMeasurementPointName.empty() || outNetworkName.empty()) {
+    if (strOutMeasurementPointName.empty() || strOutNetworkName.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("resolved measurement point/network name is empty"));
         return Status::PORT_ACCESS;
     }
@@ -608,7 +608,7 @@ bool VectorEth::is_open() const
 // FRAME-LEVEL PRIMITIVES
 // ============================================================================
 
-ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame &out, std::stop_token stop_tok) const
+ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame &sOut, std::stop_token stop_tok) const
 {
     std::stop_callback onStop(stop_tok, [this]() { m_notifyWaiter.forceWake(); });
 
@@ -629,11 +629,11 @@ ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame
             if (evt.tag == XL_ETH_EVENT_TAG_FRAMERX) {
                 const auto &rx = evt.tagData.frameRxOk;
 
-                out.u16Len     = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
-                std::memcpy(out.destMac.data(), rx.destMAC, out.destMac.size());
-                std::memcpy(out.srcMac.data(), rx.sourceMAC, out.srcMac.size());
-                out.u16EtherType = hostToNetU16(rx.frameData.ethFrame.etherType); // network -> host order
-                std::memcpy(out.data.data(), rx.frameData.ethFrame.payload, out.u16Len);
+                sOut.u16Len     = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
+                std::memcpy(sOut.destMac.data(), rx.destMAC, sOut.destMac.size());
+                std::memcpy(sOut.srcMac.data(), rx.sourceMAC, sOut.srcMac.size());
+                sOut.u16EtherType = hostToNetU16(rx.frameData.ethFrame.etherType); // network -> host order
+                std::memcpy(sOut.data.data(), rx.frameData.ethFrame.payload, sOut.u16Len);
                 return Status::SUCCESS;
             }
             // Any other tag (TX ACK/ERROR variants, CONFIGRESULT, CHANNEL_STATUS,
@@ -669,11 +669,11 @@ ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame
             if (evt.tag == XL_ETH_EVENT_TAG_FRAMERX_MEASUREMENT) {
                 const auto &rx = evt.tagData.frameMeasureRx;
 
-                out.u16Len     = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
-                std::memcpy(out.destMac.data(), rx.destMAC, out.destMac.size());
-                std::memcpy(out.srcMac.data(), rx.sourceMAC, out.srcMac.size());
-                out.u16EtherType = hostToNetU16(rx.frameData.ethFrame.etherType); // network -> host order
-                std::memcpy(out.data.data(), rx.frameData.ethFrame.payload, out.u16Len);
+                sOut.u16Len     = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
+                std::memcpy(sOut.destMac.data(), rx.destMAC, sOut.destMac.size());
+                std::memcpy(sOut.srcMac.data(), rx.sourceMAC, sOut.srcMac.size());
+                sOut.u16EtherType = hostToNetU16(rx.frameData.ethFrame.etherType); // network -> host order
+                std::memcpy(sOut.data.data(), rx.frameData.ethFrame.payload, sOut.u16Len);
                 return Status::SUCCESS;
             }
             // Any other tag (FRAMETX_MEASUREMENT is our own TX echo/ack,
@@ -744,19 +744,19 @@ ICommDriver::Status VectorEth::sendFrame(const MacAddress &destMac, uint16_t u16
 // READ-MODE IMPLEMENTATIONS (identical structure to uVector.cpp)
 // ============================================================================
 
-void VectorEth::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &viLps)
+void VectorEth::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &vViLps)
 {
     const size_t n = pattern.size();
-    viLps.assign(n, 0);
+    vViLps.assign(n, 0);
     int len = 0;
 
     for (size_t i = 1; i < n;) {
         if (pattern[i] == pattern[len]) {
-            viLps[i++] = ++len;
+            vViLps[i++] = ++len;
         } else if (len != 0) {
-            len = viLps[len - 1];
+            len = vViLps[len - 1];
         } else {
-            viLps[i++] = 0;
+            vViLps[i++] = 0;
         }
     }
 }
@@ -791,7 +791,7 @@ ICommDriver::Status VectorEth::readExact(uint32_t u32TimeoutMs,
 
 ICommDriver::Status VectorEth::readUntilDelimiter(uint32_t u32TimeoutMs,
                                                   std::span<uint8_t> buffer,
-                                                  uint8_t cDelimiter,
+                                                  uint8_t u8CDelimiter,
                                                   size_t &szBytesRead,
                                                   std::stop_token stop_tok) const
 {
@@ -817,7 +817,7 @@ ICommDriver::Status VectorEth::readUntilDelimiter(uint32_t u32TimeoutMs,
 
         for (size_t i = 0; i < frame.u16Len; ++i) {
             uint8_t ch = frame.data[i];
-            if (ch == cDelimiter) {
+            if (ch == u8CDelimiter) {
                 if (szBytesRead < buffer.size()) {
                     buffer[szBytesRead] = '\0';
                 }
@@ -881,7 +881,7 @@ ICommDriver::Status VectorEth::readUntilToken(uint32_t u32TimeoutMs,
 
 ICommDriver::ReadResult VectorEth::tout_read(uint32_t u32ReadTimeout,
                                              std::span<uint8_t> buffer,
-                                             const ReadOptions &options,
+                                             const ReadOptions &sOptions,
                                              std::string_view /*xtra_params*/,
                                              std::stop_token stop_tok) const
 {
@@ -895,7 +895,7 @@ ICommDriver::ReadResult VectorEth::tout_read(uint32_t u32ReadTimeout,
         return result;
     }
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
 
     case ReadMode::Exact: {
         size_t bytesRead        = 0;
@@ -907,14 +907,14 @@ ICommDriver::ReadResult VectorEth::tout_read(uint32_t u32ReadTimeout,
 
     case ReadMode::UntilDelimiter: {
         size_t bytesRead        = 0;
-        result.status           = readUntilDelimiter(u32ReadTimeout, buffer, options.delimiter, bytesRead, stop_tok);
+        result.status           = readUntilDelimiter(u32ReadTimeout, buffer, sOptions.delimiter, bytesRead, stop_tok);
         result.bytes_read       = bytesRead;
         result.found_terminator = (result.status == Status::SUCCESS);
         break;
     }
 
     case ReadMode::UntilToken: {
-        result.status           = readUntilToken(u32ReadTimeout, options.token, stop_tok);
+        result.status           = readUntilToken(u32ReadTimeout, sOptions.token, stop_tok);
         result.bytes_read       = 0;
         result.found_terminator = (result.status == Status::SUCCESS);
         break;

@@ -15,7 +15,7 @@
 
 class RealCommDriver : public ICommDriver {
     public:
-        explicit RealCommDriver(const std::string &interfaceName);
+        explicit RealCommDriver(const std::string &strInterfaceName);
         ~RealCommDriver() override;
 
         bool is_open() const override;
@@ -31,7 +31,7 @@ class RealCommDriver : public ICommDriver {
         ReadResult tout_read(
             uint32_t u32ReadTimeout,
             std::span<uint8_t> buffer,
-            const ReadOptions &opts,
+            const ReadOptions &sOpts,
             std::string_view xtra_params = {},
             std::stop_token stop_tok     = {}) const override;
 
@@ -42,6 +42,6 @@ class RealCommDriver : public ICommDriver {
         struct ifreq ifr;
         struct sockaddr_can addr;
 
-        bool init(const std::string &iface);
+        bool init(const std::string &strIface);
         uint32_t parse_can_id(std::string_view xtra_params) const;
 };

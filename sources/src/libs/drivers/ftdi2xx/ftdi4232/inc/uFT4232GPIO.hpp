@@ -79,9 +79,9 @@ class FT4232GPIO : public FT4232Base {
          * @param config        GPIO pin configuration
          * @param u8DeviceIndex Zero-based index when multiple FT4232H chips are connected
          */
-        explicit FT4232GPIO(const GpioConfig &config, uint8_t u8DeviceIndex = 0u)
+        explicit FT4232GPIO(const GpioConfig &sConfig, uint8_t u8DeviceIndex = 0u)
         {
-            this->open(config, u8DeviceIndex);
+            this->open(sConfig, u8DeviceIndex);
         }
 
         ~FT4232GPIO() override
@@ -99,7 +99,7 @@ class FT4232GPIO : public FT4232Base {
          * @param config        GPIO configuration (directions, initial values, channel)
          * @param u8DeviceIndex Physical device index
          */
-        Status open(const GpioConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const GpioConfig &sConfig, uint8_t u8DeviceIndex = 0u);
 
         /** @copydoc FT4232Base::close — drives all output pins low before closing */
         Status close() override;
@@ -122,7 +122,7 @@ class FT4232GPIO : public FT4232Base {
          * @param dirMask       Bitmask: 1 = output, 0 = input
          * @param initialValue  Output level for pins becoming outputs (default 0)
          */
-        Status set_direction(Bank bank, uint8_t dirMask, uint8_t initialValue = 0x00u);
+        Status set_direction(Bank eBank, uint8_t u8DirMask, uint8_t u8InitialValue = 0x00u);
 
         // ── Output control ───────────────────────────────────────────────────
 
@@ -135,7 +135,7 @@ class FT4232GPIO : public FT4232Base {
          * @param bank  Bank::Low or Bank::High
          * @param value Desired output levels (full 8-bit mask)
          */
-        Status write(Bank bank, uint8_t value);
+        Status write(Bank eBank, uint8_t u8Value);
 
         /**
          * @brief Set (drive HIGH) one or more output pins
@@ -143,7 +143,7 @@ class FT4232GPIO : public FT4232Base {
          * @param bank    Bank::Low or Bank::High
          * @param pinMask Bitmask of pins to drive high (non-output pins ignored)
          */
-        Status set_pins(Bank bank, uint8_t pinMask);
+        Status set_pins(Bank eBank, uint8_t u8PinMask);
 
         /**
          * @brief Clear (drive LOW) one or more output pins
@@ -151,7 +151,7 @@ class FT4232GPIO : public FT4232Base {
          * @param bank    Bank::Low or Bank::High
          * @param pinMask Bitmask of pins to drive low (non-output pins ignored)
          */
-        Status clear_pins(Bank bank, uint8_t pinMask);
+        Status clear_pins(Bank eBank, uint8_t u8PinMask);
 
         /**
          * @brief Toggle one or more output pins
@@ -159,7 +159,7 @@ class FT4232GPIO : public FT4232Base {
          * @param bank    Bank::Low or Bank::High
          * @param pinMask Bitmask of pins to toggle (non-output pins ignored)
          */
-        Status toggle_pins(Bank bank, uint8_t pinMask);
+        Status toggle_pins(Bank eBank, uint8_t u8PinMask);
 
         // ── Input reading ────────────────────────────────────────────────────
 
@@ -173,7 +173,7 @@ class FT4232GPIO : public FT4232Base {
          * @param bank   Bank::Low or Bank::High
          * @param value  Receives the 8-bit pin state
          */
-        Status read(Bank bank, uint8_t &value);
+        Status read(Bank eBank, uint8_t &u8Value);
 
         /**
          * @brief Read the level of specific pins and return their masked state
@@ -184,7 +184,7 @@ class FT4232GPIO : public FT4232Base {
          * @param pinMask Bitmask of pins to query
          * @param value   Receives (rawBankValue & pinMask)
          */
-        Status read_pins(Bank bank, uint8_t pinMask, uint8_t &value);
+        Status read_pins(Bank eBank, uint8_t u8PinMask, uint8_t &u8Value);
 
     private:
         // ── Cached pin state ─────────────────────────────────────────────────
@@ -199,21 +199,21 @@ class FT4232GPIO : public FT4232Base {
         // ── Internal helpers (implemented in uFT4232GPIOCommon.cpp) ─────────
 
         /** Push MPSSE init sequence and apply initial pin config */
-        Status configure_mpsse_gpio(const GpioConfig &config);
+        Status configure_mpsse_gpio(const GpioConfig &sConfig);
 
         /**
          * @brief Apply a SET_BITS_LOW command (ADBUS bank)
          * @param value  Output level byte
          * @param dir    Direction byte (1=output)
          */
-        Status apply_low(uint8_t value, uint8_t dir) const;
+        Status apply_low(uint8_t u8Value, uint8_t u8Dir) const;
 
         /**
          * @brief Apply a SET_BITS_HIGH command (ACBUS bank)
          * @param value  Output level byte
          * @param dir    Direction byte (1=output)
          */
-        Status apply_high(uint8_t value, uint8_t dir) const;
+        Status apply_high(uint8_t u8Value, uint8_t u8Dir) const;
 };
 
 #endif // U_FT4232_GPIO_DRIVER_H

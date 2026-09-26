@@ -52,9 +52,9 @@ bool HydrabusPlugin::m_handle_uart_help(const std::string &, std::stop_token /*s
 //                       BAUD                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_uart_baud(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_uart_baud(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: baud N  (e.g. baud 115200)"));
         return true;
     }
@@ -64,8 +64,8 @@ bool HydrabusPlugin::m_handle_uart_baud(const std::string &args, std::stop_token
     }
 
     uint32_t baud = 0;
-    if (!numeric::str2uint32(args, baud) || baud == 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid baud rate:"); LOG_STRING(args));
+    if (!numeric::str2uint32(strArgs, baud) || baud == 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid baud rate:"); LOG_STRING(strArgs));
         return false;
     }
     if (!p->set_baud(baud)) {
@@ -80,9 +80,9 @@ bool HydrabusPlugin::m_handle_uart_baud(const std::string &args, std::stop_token
 //                       PARITY                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_uart_parity(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_uart_parity(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: parity [none|even|odd]"));
         return true;
     }
@@ -92,14 +92,14 @@ bool HydrabusPlugin::m_handle_uart_parity(const std::string &args, std::stop_tok
     }
 
     HydraHAL::UART::Parity par;
-    if (args == "none") {
+    if (strArgs == "none") {
         par = HydraHAL::UART::Parity::None;
-    } else if (args == "even") {
+    } else if (strArgs == "even") {
         par = HydraHAL::UART::Parity::Even;
-    } else if (args == "odd") {
+    } else if (strArgs == "odd") {
         par = HydraHAL::UART::Parity::Odd;
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown parity:"); LOG_STRING(args));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown parity:"); LOG_STRING(strArgs));
         return false;
     }
 
@@ -110,9 +110,9 @@ bool HydrabusPlugin::m_handle_uart_parity(const std::string &args, std::stop_tok
 //                       ECHO                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_uart_echo(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_uart_echo(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: echo [on|off]"));
         return true;
     }
@@ -121,9 +121,9 @@ bool HydrabusPlugin::m_handle_uart_echo(const std::string &args, std::stop_token
         return false;
     }
 
-    if (args == "on") {
+    if (strArgs == "on") {
         return p->set_echo(true);
-    } else if (args == "off") {
+    } else if (strArgs == "off") {
         return p->set_echo(false);
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected on or off"));
@@ -135,9 +135,9 @@ bool HydrabusPlugin::m_handle_uart_echo(const std::string &args, std::stop_token
 //                       BRIDGE                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_uart_bridge(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_uart_bridge(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Transparent bridge mode. Press UBTN on HydraBus to exit."));
         return true;
@@ -159,9 +159,9 @@ bool HydrabusPlugin::m_handle_uart_bridge(const std::string &args, std::stop_tok
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_uart_write(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_uart_write(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
         return true;
     }
@@ -171,7 +171,7 @@ bool HydrabusPlugin::m_handle_uart_write(const std::string &args, std::stop_toke
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data) || data.empty() || data.size() > 16) {
+    if (!hexutils::stringUnhexlify(strArgs, data) || data.empty() || data.size() > 16) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 1-16 hex bytes"));
         return false;
     }
@@ -182,9 +182,9 @@ bool HydrabusPlugin::m_handle_uart_write(const std::string &args, std::stop_toke
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_uart_read(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_uart_read(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
         return true;
     }
@@ -194,7 +194,7 @@ bool HydrabusPlugin::m_handle_uart_read(const std::string &args, std::stop_token
     }
 
     size_t n = 0;
-    if (!numeric::str2sizet(args, n) || n == 0) {
+    if (!numeric::str2sizet(strArgs, n) || n == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid byte count"));
         return false;
     }
@@ -208,21 +208,21 @@ bool HydrabusPlugin::m_handle_uart_read(const std::string &args, std::stop_token
 //                       AUX                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_uart_aux(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_uart_aux(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    return m_handle_aux_common(args, m_uart());
+    return m_handle_aux_common(strArgs, m_uart());
 }
 
 ///////////////////////////////////////////////////////////////////
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_uart_script(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_uart_script(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
-    return generic_execute_script(this, m_strInstanceName, args, st);
+    return generic_execute_script(this, m_strInstanceName, strArgs, st);
 }

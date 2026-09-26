@@ -32,14 +32,14 @@
 
 namespace eval {
 
-    inline bool string2bool(std::string_view token, bool &result)
+    inline bool string2bool(std::string_view token, bool &bResult)
     {
         static const std::unordered_map<std::string_view, bool> token_map = {
             {"TRUE", true}, {"!FALSE", true}, {"FALSE", false}, {"!TRUE", false}};
 
         auto it = token_map.find(token);
         if (it != token_map.end()) {
-            result = it->second;
+            bResult = it->second;
             return true;
         }
 
@@ -47,13 +47,13 @@ namespace eval {
         return false;
     }
 
-    inline bool isMathOperator(const std::string &op)
+    inline bool isMathOperator(const std::string &strOp)
     {
         static const std::unordered_set<std::string> validOperators = {
             "+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>",
             "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="};
 
-        return validOperators.count(op) > 0;
+        return validOperators.count(strOp) > 0;
     }
 
     inline bool isStringValidationRule(const std::string &strRule)
@@ -74,31 +74,31 @@ namespace eval {
         return validRules.count(strRule) > 0;
     }
 
-    inline bool isValidVectorOfNumbers(const std::string &input)
+    inline bool isValidVectorOfNumbers(const std::string &strInput)
     {
         static const std::regex rx(R"(^\s*(0[xX][0-9A-Fa-f]+|\d+)(\s+(0[xX][0-9A-Fa-f]+|\d+))*\s*$)", std::regex::ECMAScript | std::regex::optimize);
-        return std::regex_match(input, rx);
+        return std::regex_match(strInput, rx);
     }
 
-    inline bool isValidVectorOfStrings(const std::string &input)
+    inline bool isValidVectorOfStrings(const std::string &strInput)
     {
         static const std::regex rx(R"(^\s*(\w+)(\s+\w+)*\s*$)", std::regex::ECMAScript | std::regex::optimize);
-        return std::regex_match(input, rx);
+        return std::regex_match(strInput, rx);
     }
 
-    inline bool isValidVectorOfBools(const std::string &input)
+    inline bool isValidVectorOfBools(const std::string &strInput)
     {
         static const std::regex rx(R"(^(?:\s*(?:!?(?:TRUE|FALSE))\s*)+$)", std::regex::ECMAScript | std::regex::optimize);
-        return std::regex_match(input, rx);
+        return std::regex_match(strInput, rx);
     }
 
-    inline bool isValidVersion(const std::string &input)
+    inline bool isValidVersion(const std::string &strInput)
     {
         static const std::regex rgx(R"(^\d+(\.\d+){1,3}$)", std::regex::ECMAScript | std::regex::optimize);
-        return std::regex_match(input, rgx);
+        return std::regex_match(strInput, rgx);
     }
 
-    inline bool validateVectorBooleans(const std::string &boolString, const std::string &rule, bool &outResult)
+    inline bool validateVectorBooleans(const std::string &strBoolString, const std::string &strRule, bool &bOutResult)
     {
         enum class BoolRule {
             OR,
@@ -107,17 +107,17 @@ namespace eval {
 
         BoolRule evalRule;
 
-        if (rule == "OR") {
+        if (strRule == "OR") {
             evalRule = BoolRule::OR;
-        } else if (rule == "AND") {
+        } else if (strRule == "AND") {
             evalRule = BoolRule::AND;
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid boolean rule:"); LOG_STRING(rule); LOG_STRING("use AND OR"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid boolean strRule:"); LOG_STRING(strRule); LOG_STRING("use AND OR"));
             return false;
         }
 
         std::vector<std::string> vstrBools;
-        ustring::tokenize(boolString, vstrBools);
+        ustring::tokenize(strBoolString, vstrBools);
         std::vector<bool> values;
 
         for (const auto &token : vstrBools) {
@@ -134,9 +134,9 @@ namespace eval {
         }
 
         if (evalRule == BoolRule::OR) {
-            outResult = std::any_of(values.begin(), values.end(), [](bool b) { return b; });
+            bOutResult = std::any_of(values.begin(), values.end(), [](bool b) { return b; });
         } else {
-            outResult = std::all_of(values.begin(), values.end(), [](bool b) { return b; });
+            bOutResult = std::all_of(values.begin(), values.end(), [](bool b) { return b; });
         }
 
         return true;

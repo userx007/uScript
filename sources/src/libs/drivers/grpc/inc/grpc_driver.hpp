@@ -274,7 +274,7 @@ class GrpcDriver : public ICommDriver {
                 uint32_t connectTimeoutMs = 5000;
         };
 
-        explicit GrpcDriver(Config config);
+        explicit GrpcDriver(Config sConfig);
         ~GrpcDriver() override = default;
 
         /**
@@ -313,19 +313,19 @@ class GrpcDriver : public ICommDriver {
                                         std::stop_token stop_tok     = {}) const;
 
     private:
-        static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens);
+        static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens);
 
-        ICommDriver::WriteResult m_CallUnary(const google::protobuf::MethodDescriptor *method,
-                                             const std::string &methodPath, const std::string &jsonBody,
+        ICommDriver::WriteResult m_CallUnary(const google::protobuf::MethodDescriptor *pMethod,
+                                             const std::string &strMethodPath, const std::string &strJsonBody,
                                              std::string_view xtra_params, std::stop_token stop_tok = {}) const;
-        ICommDriver::WriteResult m_CallServerStreaming(const google::protobuf::MethodDescriptor *method,
-                                                       const std::string &methodPath, const std::string &jsonBody,
+        ICommDriver::WriteResult m_CallServerStreaming(const google::protobuf::MethodDescriptor *pMethod,
+                                                       const std::string &strMethodPath, const std::string &strJsonBody,
                                                        std::string_view xtra_params, std::stop_token stop_tok = {}) const;
-        ICommDriver::WriteResult m_CallClientStreaming(const google::protobuf::MethodDescriptor *method,
-                                                       const std::string &methodPath, const std::string &jsonBody,
+        ICommDriver::WriteResult m_CallClientStreaming(const google::protobuf::MethodDescriptor *pMethod,
+                                                       const std::string &strMethodPath, const std::string &strJsonBody,
                                                        std::string_view xtra_params, std::stop_token stop_tok = {}) const;
-        ICommDriver::WriteResult m_CallBidiStreaming(const google::protobuf::MethodDescriptor *method,
-                                                     const std::string &methodPath, const std::string &jsonBody,
+        ICommDriver::WriteResult m_CallBidiStreaming(const google::protobuf::MethodDescriptor *pMethod,
+                                                     const std::string &strMethodPath, const std::string &strJsonBody,
                                                      std::string_view xtra_params, std::stop_token stop_tok = {}) const;
         ICommDriver::WriteResult m_Finish(std::string_view xtra_params) const;
 

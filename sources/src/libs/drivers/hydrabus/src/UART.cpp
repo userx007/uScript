@@ -34,7 +34,7 @@ namespace HydraHAL {
     // Construction
     // ---------------------------------------------------------------------------
 
-    UART::UART(std::shared_ptr<Hydrabus> hydrabus)
+    UART::UART(std::shared_ptr<Hydrabus> shpHydrabus)
         : Protocol(std::move(hydrabus), "ART1", "UART", 0x03)
     {
     }
@@ -103,16 +103,16 @@ namespace HydraHAL {
         return _baud;
     }
 
-    bool UART::set_baud(uint32_t baud)
+    bool UART::set_baud(uint32_t u32Baud)
     {
         _write_byte(0b00000111);
-        _write_u32_be(baud);
+        _write_u32_be(u32Baud);
 
         if (!_ack("set_baud")) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting baud rate"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting u32Baud rate"));
             return false;
         }
-        _baud = baud;
+        _baud = u32Baud;
         return true;
     }
 
@@ -125,17 +125,17 @@ namespace HydraHAL {
         return _parity;
     }
 
-    bool UART::set_parity(Parity parity)
+    bool UART::set_parity(Parity eParity)
     {
-        // CMD 0b10000000 | (parity << 2)
-        uint8_t cmd = static_cast<uint8_t>(0b10000000 | (static_cast<uint8_t>(parity) << 2));
+        // CMD 0b10000000 | (eParity << 2)
+        uint8_t cmd = static_cast<uint8_t>(0b10000000 | (static_cast<uint8_t>(eParity) << 2));
         _write_byte(cmd);
 
         if (!_ack("set_parity")) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting parity"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting eParity"));
             return false;
         }
-        _parity = parity;
+        _parity = eParity;
         return true;
     }
 
@@ -148,19 +148,19 @@ namespace HydraHAL {
         return _echo;
     }
 
-    bool UART::set_echo(bool enable)
+    bool UART::set_echo(bool bEnable)
     {
         // CMD 0b0000001x : x=0 means echo ON (NOT inverted in firmware),
         //                  x=1 means echo OFF
-        // Python: CMD = 0b00000010 | (not value)  → same as (enable ? 0x02 : 0x03)
-        uint8_t cmd = static_cast<uint8_t>(enable ? 0x02 : 0x03);
+        // Python: CMD = 0b00000010 | (not value)  → same as (bEnable ? 0x02 : 0x03)
+        uint8_t cmd = static_cast<uint8_t>(bEnable ? 0x02 : 0x03);
         _write_byte(cmd);
 
         if (!_ack("set_echo")) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting echo"));
             return false;
         }
-        _echo = enable;
+        _echo = bEnable;
         return true;
     }
 

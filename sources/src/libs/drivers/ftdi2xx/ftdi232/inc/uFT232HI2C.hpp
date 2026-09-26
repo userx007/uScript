@@ -96,7 +96,7 @@ class FT232HI2C : public FT232HBase, public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -123,22 +123,22 @@ class FT232HI2C : public FT232HBase, public ICommDriver {
 
         Status configure_mpsse_i2c(uint32_t u32ClockHz) const;
 
-        static void push_pin_state(std::vector<uint8_t> &buf,
-                                   bool scl, bool drive_sda_low);
-        static void push_read_sda(std::vector<uint8_t> &buf);
+        static void push_pin_state(std::vector<uint8_t> &vBuf,
+                                   bool bScl, bool bDrive_sda_low);
+        static void push_read_sda(std::vector<uint8_t> &vBuf);
 
         Status i2c_start() const;
         Status i2c_repeated_start() const;
         Status i2c_stop() const;
-        Status i2c_write_byte(uint8_t byte, bool &ack) const;
-        Status i2c_read_byte(uint8_t &byte, bool sendAck, std::stop_token stop_tok = {}) const;
+        Status i2c_write_byte(uint8_t u8Byte, bool &bAck) const;
+        Status i2c_read_byte(uint8_t &u8Byte, bool bSendAck, std::stop_token stop_tok = {}) const;
 
         Status i2c_write(std::span<const uint8_t> data,
-                         uint32_t timeoutMs,
+                         uint32_t u32TimeoutMs,
                          size_t &bytesWritten) const;
         Status i2c_read(std::span<uint8_t> data,
                         size_t &bytesRead,
-                        uint32_t timeoutMs,
+                        uint32_t u32TimeoutMs,
                         std::stop_token stop_tok = {}) const;
 };
 

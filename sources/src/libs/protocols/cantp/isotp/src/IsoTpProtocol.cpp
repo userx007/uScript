@@ -21,29 +21,29 @@ namespace {
     constexpr uint8_t kFsWait        = 0x1;
     constexpr uint8_t kFsOverflow    = 0x2;
 
-    inline uint8_t pci_type(uint8_t b0)
+    inline uint8_t pci_type(uint8_t u8B0)
     {
-        return static_cast<uint8_t>((b0 & 0xF0) >> 4);
+        return static_cast<uint8_t>((u8B0 & 0xF0) >> 4);
     }
 
     inline void fill_padding(std::array<uint8_t, kFrameLen> &frame, size_t usedLen,
-                             bool pad, uint8_t padByte)
+                             bool bPad, uint8_t u8PadByte)
     {
-        if (pad && usedLen < kFrameLen) {
-            std::fill(frame.begin() + static_cast<long>(usedLen), frame.end(), padByte);
+        if (bPad && usedLen < kFrameLen) {
+            std::fill(frame.begin() + static_cast<long>(usedLen), frame.end(), u8PadByte);
         }
     }
 } // namespace
 
-void IsoTpProtocol::sleep_st_min(uint8_t stMin)
+void IsoTpProtocol::sleep_st_min(uint8_t u8StMin)
 {
-    if (stMin == 0) {
+    if (u8StMin == 0) {
         return;
     }
-    if (stMin <= 0x7F) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(stMin));
-    } else if (stMin >= 0xF1 && stMin <= 0xF9) {
-        std::this_thread::sleep_for(std::chrono::microseconds(100u * (stMin - 0xF0u)));
+    if (u8StMin <= 0x7F) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(u8StMin));
+    } else if (u8StMin >= 0xF1 && u8StMin <= 0xF9) {
+        std::this_thread::sleep_for(std::chrono::microseconds(100u * (u8StMin - 0xF0u)));
     }
     // 0x80-0xF0 and 0xFA-0xFF are reserved by the standard; treat as "no delay".
 }

@@ -97,18 +97,18 @@ FT4232UART::Status FT4232UART::open_device(FT4232Base::Channel channel,
 // apply_config
 // ============================================================================
 
-FT4232UART::Status FT4232UART::apply_config(const UartConfig &config) const
+FT4232UART::Status FT4232UART::apply_config(const UartConfig &sConfig) const
 {
-    if (ftdi_set_baudrate(CTX, static_cast<int>(config.baudRate)) < 0) {
+    if (ftdi_set_baudrate(CTX, static_cast<int>(sConfig.baudRate)) < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_set_baudrate() failed: "); LOG_STRING(ftdi_get_error_string(CTX)));
         return Status::PORT_ACCESS;
     }
 
-    enum ftdi_bits_type bits = (config.dataBits == 7) ? BITS_7 : BITS_8;
+    enum ftdi_bits_type bits = (sConfig.dataBits == 7) ? BITS_7 : BITS_8;
 
     enum ftdi_stopbits_type stop;
-    switch (config.stopBits) {
+    switch (sConfig.stopBits) {
     case 1:
         stop = STOP_BIT_15;
         break;
@@ -121,7 +121,7 @@ FT4232UART::Status FT4232UART::apply_config(const UartConfig &config) const
     }
 
     enum ftdi_parity_type parity;
-    switch (config.parity) {
+    switch (sConfig.parity) {
     case 1:
         parity = ODD;
         break;
@@ -145,7 +145,7 @@ FT4232UART::Status FT4232UART::apply_config(const UartConfig &config) const
         return Status::PORT_ACCESS;
     }
 
-    const int flow = config.hwFlowCtrl ? SIO_RTS_CTS_HS : SIO_DISABLE_FLOW_CTRL;
+    const int flow = sConfig.hwFlowCtrl ? SIO_RTS_CTS_HS : SIO_DISABLE_FLOW_CTRL;
     if (ftdi_setflowctrl(CTX, flow) < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_setflowctrl() failed: "); LOG_STRING(ftdi_get_error_string(CTX)));
@@ -153,11 +153,11 @@ FT4232UART::Status FT4232UART::apply_config(const UartConfig &config) const
     }
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("UART cfg: baud="); LOG_UINT32(config.baudRate);
-              LOG_STRING(" data="); LOG_UINT32(config.dataBits);
-              LOG_STRING(" stop="); LOG_UINT32(config.stopBits);
-              LOG_STRING(" par="); LOG_UINT32(config.parity);
-              LOG_STRING(" flow="); LOG_UINT32(config.hwFlowCtrl ? 1u : 0u));
+              LOG_STRING("UART cfg: baud="); LOG_UINT32(sConfig.baudRate);
+              LOG_STRING(" data="); LOG_UINT32(sConfig.dataBits);
+              LOG_STRING(" stop="); LOG_UINT32(sConfig.stopBits);
+              LOG_STRING(" par="); LOG_UINT32(sConfig.parity);
+              LOG_STRING(" flow="); LOG_UINT32(sConfig.hwFlowCtrl ? 1u : 0u));
 
     return Status::SUCCESS;
 }
@@ -243,7 +243,7 @@ FT4232UART::WriteResult FT4232UART::tout_write(uint32_t u32WriteTimeout,
 
 FT4232UART::ReadResult FT4232UART::tout_read(uint32_t u32ReadTimeout,
                                              std::span<uint8_t> buffer,
-                                             const ReadOptions &options,
+                                             const ReadOptions &sOptions,
                                              std::string_view /*xtra_params*/,
                                              std::stop_token stop_tok) const
 {
@@ -285,7 +285,7 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t u32ReadTimeout,
         }
     };
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
 
     case ReadMode::Exact:
     default: {
@@ -319,7 +319,7 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t u32ReadTimeout,
                 return result;
             }
             buffer[result.bytes_read++] = byte;
-            if (byte == options.delimiter) {
+            if (byte == sOptions.delimiter) {
                 result.status = Status::SUCCESS;
                 return result;
             }
@@ -329,7 +329,7 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t u32ReadTimeout,
     }
 
     case ReadMode::UntilToken: {
-        const auto &token = options.token;
+        const auto &token = sOptions.token;
         if (token.empty()) {
             result.status = Status::INVALID_PARAM;
             return result;

@@ -44,8 +44,8 @@
 template <typename T>
 struct KVSetterEntry {
         const char *key;
-        bool (T::*boolSetter)(const std::string &) const = nullptr;
-        void (T::*voidSetter)(const std::string &) const = nullptr;
+        bool (T::*pBoolSetter)(const std::string &) const = nullptr;
+        void (T::*pVoidSetter)(const std::string &) const = nullptr;
 };
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -68,17 +68,17 @@ struct KVSetterEntry {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename T, std::size_t N>
-bool parseAndCallSetupHandlers(const T *pOwner, const std::string &input,
-                               const KVSetterEntry<T> (&table)[N], const char *pszLogHdr)
+bool parseAndCallSetupHandlers(const T *pOwner, const std::string &strInput,
+                               const KVSetterEntry<T> (&table)[N], const char *pstrPszLogHdr)
 {
-    std::istringstream stream(input);
+    std::istringstream stream(strInput);
     std::string token;
     bool bRetVal = true;
 
     while (stream >> token) {
         const auto delimiterPos = token.find(CHAR_SEPARATOR_EQUAL);
         if (delimiterPos == std::string::npos || delimiterPos == 0) {
-            LOG_PRINT(LOG_WARNING, LOG_STRING(pszLogHdr); LOG_STRING("Ignoring malformed token:"); LOG_STRING(token));
+            LOG_PRINT(LOG_WARNING, LOG_STRING(pstrPszLogHdr); LOG_STRING("Ignoring malformed token:"); LOG_STRING(token));
             continue;
         }
 
@@ -96,7 +96,7 @@ bool parseAndCallSetupHandlers(const T *pOwner, const std::string &input,
         // value/range check to real execution, when this setter will see
         // the already-resolved literal instead of "$...".
         if (!value.empty() && value[0] == '$') {
-            LOG_PRINT(LOG_WERBOSE, LOG_STRING(pszLogHdr); LOG_STRING("Deferring '"); LOG_STRING(key);
+            LOG_PRINT(LOG_WERBOSE, LOG_STRING(pstrPszLogHdr); LOG_STRING("Deferring '"); LOG_STRING(key);
                       LOG_STRING("="); LOG_STRING(value);
                       LOG_STRING("' - value is a macro, resolved at execution time"));
             continue;
@@ -118,7 +118,7 @@ bool parseAndCallSetupHandlers(const T *pOwner, const std::string &input,
         }
 
         if (!bMatched) {
-            LOG_PRINT(LOG_WARNING, LOG_STRING(pszLogHdr); LOG_STRING("Unrecognized key:"); LOG_STRING(key));
+            LOG_PRINT(LOG_WARNING, LOG_STRING(pstrPszLogHdr); LOG_STRING("Unrecognized key:"); LOG_STRING(key));
         }
 
         if (!bRetVal) {
@@ -141,15 +141,15 @@ bool parseAndCallSetupHandlers(const T *pOwner, const std::string &input,
  */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename T, std::size_t N>
-bool generic_setup_params(const T *pOwner, const std::string &args,
-                          const KVSetterEntry<T> (&table)[N], const char *pszLogHdr)
+bool generic_setup_params(const T *pOwner, const std::string &strArgs,
+                          const KVSetterEntry<T> (&table)[N], const char *pstrPszLogHdr)
 {
-    if (args.empty()) {
-        LOG_PRINT(LOG_DEBUG, LOG_STRING(pszLogHdr); LOG_STRING("Missing args"));
+    if (strArgs.empty()) {
+        LOG_PRINT(LOG_DEBUG, LOG_STRING(pstrPszLogHdr); LOG_STRING("Missing strArgs"));
         return false;
     }
 
-    return parseAndCallSetupHandlers(pOwner, args, table, pszLogHdr);
+    return parseAndCallSetupHandlers(pOwner, strArgs, table, pstrPszLogHdr);
 }
 
 #endif // U_PLUGIN_SETUP_HPP

@@ -29,7 +29,7 @@
 // STATIC HELPERS
 // ============================================================================
 
-bool Vector::parseUint32(std::string_view sv, uint32_t &out)
+bool Vector::parseUint32(std::string_view sv, uint32_t &u32Out)
 {
     if (sv.empty()) {
         return false;
@@ -41,7 +41,7 @@ bool Vector::parseUint32(std::string_view sv, uint32_t &out)
         base = 16;
     }
 
-    auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), out, base);
+    auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), u32Out, base);
     return (ec == std::errc{} && ptr == sv.data() + sv.size());
 }
 
@@ -91,7 +91,7 @@ uint32_t Vector::resolveTpRxId(std::string_view xtra_params) const
     return m_bTpRxIdSet ? m_u32TpRxId : m_u32DefaultTxId;
 }
 
-void Vector::dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
+void Vector::dumpFrame(CommDir eDir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
 {
     if (!gui_mode_active()) {
         return;
@@ -101,10 +101,10 @@ void Vector::dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<co
                   m_strIdentityLabel.empty() ? "Vector" : m_strIdentityLabel.c_str(),
                   u32Id, bExtended ? " (ext)" : "", m_bFD ? " (FD)" : "");
     gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::CAN, label),
-                         dir, data.data(), static_cast<uint32_t>(data.size()));
+                         eDir, data.data(), static_cast<uint32_t>(data.size()));
 }
 
-bool Vector::frameMatchesFilter(const VectorRxFrame &frame, uint32_t u32RxFilterId) const
+bool Vector::frameMatchesFilter(const VectorRxFrame &sFrame, uint32_t u32RxFilterId) const
 {
     if (u32RxFilterId == 0) {
         return true; // accept-all
@@ -116,7 +116,7 @@ bool Vector::frameMatchesFilter(const VectorRxFrame &frame, uint32_t u32RxFilter
                                ((u32RxFilterId & CAN_EFF_MASK) > CAN_SFF_MASK);
     const uint32_t u32WantId = u32RxFilterId & (bWantExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
 
-    return (frame.bExtended == bWantExtended) && (frame.u32Id == u32WantId);
+    return (sFrame.bExtended == bWantExtended) && (sFrame.u32Id == u32WantId);
 }
 
 ICommDriver::Status Vector::mapXlError(XLstatus sts)
@@ -383,7 +383,7 @@ ICommDriver::Status Vector::open(const std::string &strAppName,
     return Status::SUCCESS;
 }
 
-ICommDriver::Status Vector::openDirect(const DeviceSelector &sel,
+ICommDriver::Status Vector::openDirect(const DeviceSelector &sSel,
                                        uint32_t u32Bitrate,
                                        uint32_t u32TxId,
                                        bool bExtended,
@@ -408,7 +408,7 @@ ICommDriver::Status Vector::openDirect(const DeviceSelector &sel,
         m_u8FdPaddingByte  = fdOpts.u8PaddingByte;
     }
 
-    if (sel.i32HwType < 0 && sel.u32SerialNumber == 0 && sel.strChannelName.empty()) {
+    if (sSel.i32HwType < 0 && sSel.u32SerialNumber == 0 && sSel.strChannelName.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("openDirect: DeviceSelector is empty (set at least one of "
                              "i32HwType / u32SerialNumber / strChannelName) - refusing to "
@@ -419,7 +419,7 @@ ICommDriver::Status Vector::openDirect(const DeviceSelector &sel,
     // matchChannels() opens/releases the process-wide driver handle itself
     // (see enumerateChannels()) - independent of the VectorDriverHandle::Acquire()
     // this function calls below for the port it's about to open.
-    std::vector<ChannelInfo> vMatches = matchChannels(sel);
+    std::vector<ChannelInfo> vMatches = matchChannels(sSel);
 
     if (vMatches.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -616,7 +616,7 @@ std::vector<Vector::ChannelInfo> Vector::enumerateChannels()
     return vResult;
 }
 
-std::vector<Vector::ChannelInfo> Vector::matchChannels(const DeviceSelector &sel)
+std::vector<Vector::ChannelInfo> Vector::matchChannels(const DeviceSelector &sSel)
 {
     std::vector<ChannelInfo> vResult;
 
@@ -624,19 +624,19 @@ std::vector<Vector::ChannelInfo> Vector::matchChannels(const DeviceSelector &sel
         if (!info.bSupportsCan) {
             continue;
         }
-        if (sel.i32HwType >= 0 && info.u32HwType != static_cast<uint32_t>(sel.i32HwType)) {
+        if (sSel.i32HwType >= 0 && info.u32HwType != static_cast<uint32_t>(sSel.i32HwType)) {
             continue;
         }
-        if (sel.u32SerialNumber != 0 && info.u32SerialNumber != sel.u32SerialNumber) {
+        if (sSel.u32SerialNumber != 0 && info.u32SerialNumber != sSel.u32SerialNumber) {
             continue;
         }
-        if (!sel.strChannelName.empty() && info.strName != sel.strChannelName) {
+        if (!sSel.strChannelName.empty() && info.strName != sSel.strChannelName) {
             continue;
         }
-        if (sel.i32HwIndex >= 0 && info.u32HwIndex != static_cast<uint32_t>(sel.i32HwIndex)) {
+        if (sSel.i32HwIndex >= 0 && info.u32HwIndex != static_cast<uint32_t>(sSel.i32HwIndex)) {
             continue;
         }
-        if (sel.i32HwChannel >= 0 && info.u32HwChannel != static_cast<uint32_t>(sel.i32HwChannel)) {
+        if (sSel.i32HwChannel >= 0 && info.u32HwChannel != static_cast<uint32_t>(sSel.i32HwChannel)) {
             continue;
         }
 
@@ -786,7 +786,7 @@ bool Vector::is_open() const
 // FRAME-LEVEL PRIMITIVES
 // ============================================================================
 
-ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &out, std::stop_token stop_tok) const
+ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &sOut, std::stop_token stop_tok) const
 {
     // Registered once for the whole call (not per wait-iteration below) so
     // a stop request at any point during this recvFrame() wakes whichever
@@ -811,14 +811,14 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &out,
                     const auto &msg = evt.tagData.canRxOkMsg;
                     const bool ext  = (msg.canId & XL_CAN_EXT_MSG_ID) != 0U;
 
-                    out.u32Id       = msg.canId & CAN_EFF_MASK;
-                    out.bExtended   = ext;
-                    out.u8Len       = static_cast<uint8_t>(
+                    sOut.u32Id       = msg.canId & CAN_EFF_MASK;
+                    sOut.bExtended   = ext;
+                    sOut.u8Len       = static_cast<uint8_t>(
                         std::min<size_t>(VECTOR_FD_MAX_PAYLOAD,
                                          CANFD_GET_NUM_DATABYTES(msg.dlc,
                                                                  (msg.msgFlags & XL_CAN_RXMSG_FLAG_EDL) != 0U,
                                                                  (msg.msgFlags & XL_CAN_RXMSG_FLAG_RTR) != 0U)));
-                    std::memcpy(out.data.data(), msg.data, out.u8Len);
+                    std::memcpy(sOut.data.data(), msg.data, sOut.u8Len);
                     return Status::SUCCESS;
                 }
                 // Any other tag (TX_OK echo, TX_REQUEST, RX_ERROR, TX_ERROR,
@@ -853,10 +853,10 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &out,
                     }
 
                     const bool ext = (evt.tagData.msg.id & XL_CAN_EXT_MSG_ID) != 0U;
-                    out.u32Id      = evt.tagData.msg.id & CAN_EFF_MASK;
-                    out.bExtended  = ext;
-                    out.u8Len      = static_cast<uint8_t>(std::min<uint16_t>(VECTOR_MAX_PAYLOAD, evt.tagData.msg.dlc));
-                    std::memcpy(out.data.data(), evt.tagData.msg.data, out.u8Len);
+                    sOut.u32Id      = evt.tagData.msg.id & CAN_EFF_MASK;
+                    sOut.bExtended  = ext;
+                    sOut.u8Len      = static_cast<uint8_t>(std::min<uint16_t>(VECTOR_MAX_PAYLOAD, evt.tagData.msg.dlc));
+                    std::memcpy(sOut.data.data(), evt.tagData.msg.data, sOut.u8Len);
                     return Status::SUCCESS;
                 }
                 // Non-data event (chip state, etc.) — keep draining without
@@ -963,19 +963,19 @@ ICommDriver::Status Vector::sendFrame(uint32_t u32Id,
 // READ-MODE IMPLEMENTATIONS (identical structure to uPcan.cpp)
 // ============================================================================
 
-void Vector::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &viLps)
+void Vector::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &vViLps)
 {
     const size_t n = pattern.size();
-    viLps.assign(n, 0);
+    vViLps.assign(n, 0);
     int len = 0;
 
     for (size_t i = 1; i < n;) {
         if (pattern[i] == pattern[len]) {
-            viLps[i++] = ++len;
+            vViLps[i++] = ++len;
         } else if (len != 0) {
-            len = viLps[len - 1];
+            len = vViLps[len - 1];
         } else {
-            viLps[i++] = 0;
+            vViLps[i++] = 0;
         }
     }
 }
@@ -1012,7 +1012,7 @@ ICommDriver::Status Vector::readExact(uint32_t u32TimeoutMs,
 
 ICommDriver::Status Vector::readUntilDelimiter(uint32_t u32TimeoutMs,
                                                std::span<uint8_t> buffer,
-                                               uint8_t cDelimiter,
+                                               uint8_t u8CDelimiter,
                                                size_t &szBytesRead,
                                                uint32_t u32RxFilterId,
                                                std::stop_token stop_tok) const
@@ -1040,7 +1040,7 @@ ICommDriver::Status Vector::readUntilDelimiter(uint32_t u32TimeoutMs,
 
         for (size_t i = 0; i < frame.u8Len; ++i) {
             uint8_t ch = frame.data[i];
-            if (ch == cDelimiter) {
+            if (ch == u8CDelimiter) {
                 if (szBytesRead < buffer.size()) {
                     buffer[szBytesRead] = '\0';
                 }
@@ -1149,7 +1149,7 @@ ICommDriver::ReadResult Vector::readOneFrame_locked(uint32_t u32TimeoutMs,
 
 ICommDriver::ReadResult Vector::readDispatch_locked(uint32_t u32ReadTimeout,
                                                     std::span<uint8_t> buffer,
-                                                    const ReadOptions &options,
+                                                    const ReadOptions &sOptions,
                                                     std::string_view xtra_params,
                                                     std::stop_token stop_tok) const
 {
@@ -1159,7 +1159,7 @@ ICommDriver::ReadResult Vector::readDispatch_locked(uint32_t u32ReadTimeout,
     const uint32_t timeout    = u32ReadTimeout;
     const uint32_t rxFilterId = resolveRxId(xtra_params);
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
 
     case ReadMode::Exact: {
         size_t bytesRead        = 0;
@@ -1172,7 +1172,7 @@ ICommDriver::ReadResult Vector::readDispatch_locked(uint32_t u32ReadTimeout,
     case ReadMode::UntilDelimiter: {
         size_t bytesRead        = 0;
         result.status           = readUntilDelimiter(timeout, buffer,
-                                                     options.delimiter,
+                                                     sOptions.delimiter,
                                                      bytesRead, rxFilterId, stop_tok);
         result.bytes_read       = bytesRead;
         result.found_terminator = (result.status == Status::SUCCESS);
@@ -1180,7 +1180,7 @@ ICommDriver::ReadResult Vector::readDispatch_locked(uint32_t u32ReadTimeout,
     }
 
     case ReadMode::UntilToken: {
-        result.status           = readUntilToken(timeout, options.token, rxFilterId, stop_tok);
+        result.status           = readUntilToken(timeout, sOptions.token, rxFilterId, stop_tok);
         result.bytes_read       = 0;
         result.found_terminator = (result.status == Status::SUCCESS);
         break;
@@ -1197,7 +1197,7 @@ ICommDriver::ReadResult Vector::readDispatch_locked(uint32_t u32ReadTimeout,
 
 ICommDriver::ReadResult Vector::tout_read(uint32_t u32ReadTimeout,
                                           std::span<uint8_t> buffer,
-                                          const ReadOptions &options,
+                                          const ReadOptions &sOptions,
                                           std::string_view xtra_params,
                                           std::stop_token stop_tok) const
 {
@@ -1210,8 +1210,8 @@ ICommDriver::ReadResult Vector::tout_read(uint32_t u32ReadTimeout,
         return result;
     }
 
-    if (m_eTpProtocol == TpProtocol::NONE || options.mode != ReadMode::Exact) {
-        return readDispatch_locked(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
+    if (m_eTpProtocol == TpProtocol::NONE || sOptions.mode != ReadMode::Exact) {
+        return readDispatch_locked(u32ReadTimeout, buffer, sOptions, xtra_params, stop_tok);
     }
 
     auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);

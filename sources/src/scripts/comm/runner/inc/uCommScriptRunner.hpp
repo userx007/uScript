@@ -43,8 +43,8 @@ class CommScriptRunner : public ScriptRunner<TScriptEntries> {
          * @param shvScriptInterpreter Communication-enabled script interpreter (Level 2+)
          */
         explicit CommScriptRunner(std::shared_ptr<IScriptReader> shpScriptReader,
-                                  std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
-                                  std::shared_ptr<ICommScriptInterpreter<TScriptEntries, TDriver>> shvScriptInterpreter)
+                                  std::shared_ptr<IScriptValidator<TScriptEntries>> shpShvScriptValidator,
+                                  std::shared_ptr<ICommScriptInterpreter<TScriptEntries, TDriver>> shpShvScriptInterpreter)
             : ScriptRunner<TScriptEntries>(shpScriptReader, shvScriptValidator, shvScriptInterpreter)
             , m_shpScriptInterpreterComm(std::move(shvScriptInterpreter))
         {

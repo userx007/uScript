@@ -22,10 +22,10 @@ extern "C" {
         return new ModbusPlugin();
     }
 
-    EXPORTED void pluginExit(ModbusPlugin *ptrPlugin)
+    EXPORTED void pluginExit(ModbusPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -70,9 +70,9 @@ std::shared_ptr<ModbusDriver> ModbusPlugin::m_OpenDriver(void) const
 // MODBUS.INFO
 // ------------------------------------------------------------------------------
 
-bool ModbusPlugin::m_MODBUS_INFO(const std::string &args, std::stop_token st) const
+bool ModbusPlugin::m_MODBUS_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    (void)args;
+    (void)strArgs;
     (void)st;
     resetData();
     std::ostringstream oss;
@@ -91,7 +91,7 @@ bool ModbusPlugin::m_MODBUS_INFO(const std::string &args, std::stop_token st) co
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MODBUS.CONFIG h=plc.local p=502"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : one Modbus request/response, on the plugin's single persistent connection (opened on first use)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : > <FUNCTION> <unit_id> <address> <args...> [| expected]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : > <FUNCTION> <unit_id> <address> <strArgs...> [| expected]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MODBUS.CMD > READ_HOLDING_REGISTERS 1 100 4 | 12,34,56,78"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         MODBUS.CMD > READ_COILS 1 0 8 | 1,0,1,1,0,0,0,1"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         MODBUS.CMD > WRITE_SINGLE_COIL 1 5 1 | OK"));
@@ -128,25 +128,25 @@ bool ModbusPlugin::m_MODBUS_INFO(const std::string &args, std::stop_token st) co
 // -----------------------------------------------------------------------
 // MODBUS.CONFIG — see class doc comment (modbus_plugin.hpp)
 // -----------------------------------------------------------------------
-bool ModbusPlugin::m_MODBUS_CONFIG(const std::string &args, std::stop_token st) const
+bool ModbusPlugin::m_MODBUS_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
-    return generic_modbus_set_params(this, args);
+    return generic_modbus_set_params(this, strArgs);
 
 } /* m_MODBUS_CONFIG() */
 
 // -----------------------------------------------------------------------
 // MODBUS.CMD / MODBUS.CMD — see class doc comment (modbus_plugin.hpp)
 // -----------------------------------------------------------------------
-bool ModbusPlugin::m_MODBUS_CMD(const std::string &args, std::stop_token st) const
+bool ModbusPlugin::m_MODBUS_CMD(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
@@ -165,12 +165,12 @@ bool ModbusPlugin::m_MODBUS_CMD(const std::string &args, std::stop_token st) con
 // -----------------------------------------------------------------------
 // MODBUS.CMD / MODBUS.SCRIPT — see class doc comment (modbus_plugin.hpp)
 // -----------------------------------------------------------------------
-bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string &args, std::stop_token st) const
+bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
@@ -186,12 +186,12 @@ bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string &args, std::stop_token st) 
 // -----------------------------------------------------------------------
 // MODBUS.CYCLIC — see class doc comment (modbus_plugin.hpp)
 // -----------------------------------------------------------------------
-bool ModbusPlugin::m_MODBUS_CYCLIC(const std::string &args, std::stop_token st) const
+bool ModbusPlugin::m_MODBUS_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
         // Non-capturing: ModbusDriver::send()/receive() are handed

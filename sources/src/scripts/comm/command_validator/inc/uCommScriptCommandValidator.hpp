@@ -58,21 +58,21 @@
  */
 class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
     public:
-        bool validateCommand(int iLineNumber, const std::string &command, CommCommand &token) noexcept override
+        bool validateCommand(int iLineNumber, const std::string &strCommand, CommCommand &sToken) noexcept override
         {
             ItemParser itemParser;
-            bool bRetVal      = itemParser.parse(command, token);
-            token.iLineNumber = iLineNumber;
+            bool bRetVal      = itemParser.parse(strCommand, sToken);
+            sToken.iLineNumber = iLineNumber;
 
             auto lineNr       = ustring::fmtLineNr(iLineNumber);
             LOG_PRINT((bRetVal ? LOG_WERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(lineNr.data());
-                      LOG_STRING(getDirectionName(token.direction));
-                      LOG_STRING("["); LOG_STRING(token.values.first);
-                      LOG_STRING(":"); LOG_STRING(token.values.second);
-                      LOG_STRING("]=["); LOG_STRING(getTokenTypeName(token.tokens.first));
-                      LOG_STRING(":"); LOG_STRING(getTokenTypeName(token.tokens.second));
-                      LOG_STRING("] xtra=["); LOG_STRING(token.xtra_params.first);
-                      LOG_STRING(":"); LOG_STRING(token.xtra_params.second);
+                      LOG_STRING(getDirectionName(sToken.direction));
+                      LOG_STRING("["); LOG_STRING(sToken.values.first);
+                      LOG_STRING(":"); LOG_STRING(sToken.values.second);
+                      LOG_STRING("]=["); LOG_STRING(getTokenTypeName(sToken.tokens.first));
+                      LOG_STRING(":"); LOG_STRING(getTokenTypeName(sToken.tokens.second));
+                      LOG_STRING("] xtra=["); LOG_STRING(sToken.xtra_params.first);
+                      LOG_STRING(":"); LOG_STRING(sToken.xtra_params.second);
                       LOG_STRING("]"));
             return bRetVal;
         }
@@ -86,16 +86,16 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                  * @param result Output parameter containing parsed command
                  * @return true if parsing and validation succeeded, false otherwise
                  */
-                bool parse(std::string_view command, CommCommand &result)
+                bool parse(std::string_view command, CommCommand &sResult)
                 {
-                    result = CommCommand{};
+                    sResult = CommCommand{};
 
                     if (command.empty()) {
                         return false;
                     }
 
                     /* Determine direction from first character */
-                    if (!parseDirection(command, result.direction)) {
+                    if (!parseDirection(command, sResult.direction)) {
                         return false;
                     }
 
@@ -110,7 +110,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                      * a message. Macro substitution ($NAME) already happened on the
                      * raw line in CommScriptValidator::validateScript() before this
                      * parse() call, so any macros are already expanded here. */
-                    if (result.direction == CommCommandDirection::PRINT) {
+                    if (sResult.direction == CommCommandDirection::PRINT) {
                         std::string message(command);
                         ustring::trimInPlace(message);
 
@@ -119,8 +119,8 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                             return false;
                         }
 
-                        result.values = std::make_pair(std::move(message), std::string{});
-                        result.tokens = std::make_pair(CommCommandTokenType::STRING_RAW, CommCommandTokenType::EMPTY);
+                        sResult.values = std::make_pair(std::move(message), std::string{});
+                        sResult.tokens = std::make_pair(CommCommandTokenType::STRING_RAW, CommCommandTokenType::EMPTY);
                         return true;
                     }
 
@@ -128,17 +128,17 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                      * unit pair produced by splitValueUnit(), so the owned-string
                      * getTokenType() wrapper (one extra move, no measurable cost here)
                      * is used rather than duplicating classify()'s call sites. */
-                    if (result.direction == CommCommandDirection::DELAY) {
+                    if (sResult.direction == CommCommandDirection::DELAY) {
                         std::string field1, field2;
                         if (command.empty() || !ustring::splitValueUnit(command, std::array<std::string_view, 3>{TIME_MICROSECONDS, TIME_MILISECONDS, TIME_SECONDS}, field1, field2)) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid delay value/format"));
                             return false;
                         }
 
-                        result.values           = std::make_pair(std::move(field1), std::move(field2));
-                        CommCommandTokenType t1 = getTokenType(result.values.first);
-                        CommCommandTokenType t2 = getTokenType(result.values.second);
-                        return evaluateAndValidate(result, t1, t2, /*separatorFound=*/false);
+                        sResult.values           = std::make_pair(std::move(field1), std::move(field2));
+                        CommCommandTokenType t1 = getTokenType(sResult.values.first);
+                        CommCommandTokenType t2 = getTokenType(sResult.values.second);
+                        return evaluateAndValidate(sResult, t1, t2, /*separatorFound=*/false);
                     }
 
                     /* command */
@@ -160,22 +160,22 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                         return false;
                     }
 
-                    /* Classify + extract directly into result.values - exactly one
+                    /* Classify + extract directly into sResult.values - exactly one
                      * allocation per field (see classify()'s doc comment), instead
                      * of building an intermediate owned field1/field2 first and
                      * reclassifying/moving it afterward. */
-                    CommCommandTokenType firstToken  = classify(field1View, result.values.first);
-                    CommCommandTokenType secondToken = classify(field2View, result.values.second);
+                    CommCommandTokenType firstToken  = classify(field1View, sResult.values.first);
+                    CommCommandTokenType secondToken = classify(field2View, sResult.values.second);
 
                     /* Parse '~ param' or '~ param1 | param2' */
                     if (hasXtra && !xtraView.empty()) {
-                        if (!parseXtraParamsSuffix(xtraView, separatorFound, result.xtra_params)) {
+                        if (!parseXtraParamsSuffix(xtraView, separatorFound, sResult.xtra_params)) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid xtra_params format"));
                             return false;
                         }
                     }
 
-                    return evaluateAndValidate(result, firstToken, secondToken, separatorFound);
+                    return evaluateAndValidate(sResult, firstToken, secondToken, separatorFound);
 
                 } /* parse() */
 
@@ -186,21 +186,21 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                  * @param direction Output parameter for parsed direction
                  * @return true if valid direction found
                  */
-                bool parseDirection(std::string_view command, CommCommandDirection &direction) const
+                bool parseDirection(std::string_view command, CommCommandDirection &eDirection) const
                 {
                     char firstChar = command.front();
                     switch (firstChar) {
                     case '>':
-                        direction = CommCommandDirection::SEND_RECV;
+                        eDirection = CommCommandDirection::SEND_RECV;
                         return true;
                     case '<':
-                        direction = CommCommandDirection::RECV_SEND;
+                        eDirection = CommCommandDirection::RECV_SEND;
                         return true;
                     case '!':
-                        direction = CommCommandDirection::DELAY;
+                        eDirection = CommCommandDirection::DELAY;
                         return true;
                     case '@':
-                        direction = CommCommandDirection::PRINT;
+                        eDirection = CommCommandDirection::PRINT;
                         return true;
                     default:
                         return false;
@@ -242,7 +242,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                 bool splitCommandBody(std::string_view command,
                                       std::string_view &field1, std::string_view &field2,
                                       std::string_view &xtraRaw,
-                                      bool &separatorFound, bool &hasXtra) const
+                                      bool &bSeparatorFound, bool &bHasXtra) const
                 {
                     bool insideQuote     = false;
                     std::size_t pipePos  = std::string_view::npos;
@@ -267,12 +267,12 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                                                 ? command
                                                 : command.substr(0, tildePos);
 
-                    separatorFound        = (pipePos != std::string_view::npos);
-                    field1                = ustring::trim_view(separatorFound ? body.substr(0, pipePos) : body);
-                    field2                = ustring::trim_view(separatorFound ? body.substr(pipePos + 1) : std::string_view{});
+                    bSeparatorFound        = (pipePos != std::string_view::npos);
+                    field1                = ustring::trim_view(bSeparatorFound ? body.substr(0, pipePos) : body);
+                    field2                = ustring::trim_view(bSeparatorFound ? body.substr(pipePos + 1) : std::string_view{});
 
-                    hasXtra               = (tildePos != std::string_view::npos);
-                    xtraRaw               = hasXtra ? ustring::trim_view(command.substr(tildePos + 1)) : std::string_view{};
+                    bHasXtra               = (tildePos != std::string_view::npos);
+                    xtraRaw               = bHasXtra ? ustring::trim_view(command.substr(tildePos + 1)) : std::string_view{};
 
                     return true;
                 }
@@ -310,7 +310,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                  * two never compete over the same character position.
                  */
                 bool parseXtraParamsSuffix(std::string_view xtraRaw,
-                                           bool dualOp,
+                                           bool bDualOp,
                                            std::pair<std::string, std::string> &xtraParams) const
                 {
                     if (xtraRaw.empty()) {
@@ -331,7 +331,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                     }
 
                     /* '|' present — only valid when the command has two operations */
-                    if (!dualOp) {
+                    if (!bDualOp) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR;
                                   LOG_STRING("xtra_params '|' separator not allowed for single-operation commands"));
                         return false;
@@ -372,72 +372,72 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                  * - Valid numeric for SIZE type
                  * - Valid regex pattern for REGEX type
                  */
-                CommCommandTokenType classify(std::string_view input, std::string &output) const
+                CommCommandTokenType classify(std::string_view input, std::string &strOutput) const
                 {
                     /* Empty expression */
                     if (input.empty()) {
-                        output.clear();
+                        strOutput.clear();
                         return CommCommandTokenType::EMPTY;
                     }
 
                     /* Delimited string: "content" or "" */
-                    if (ustring::undecorate(input, DECORATOR_STRING_START, DECORATOR_ANY_END, output)) {
-                        return !output.empty() ? CommCommandTokenType::STRING_DELIMITED : CommCommandTokenType::STRING_DELIMITED_EMPTY;
+                    if (ustring::undecorate(input, DECORATOR_STRING_START, DECORATOR_ANY_END, strOutput)) {
+                        return !strOutput.empty() ? CommCommandTokenType::STRING_DELIMITED : CommCommandTokenType::STRING_DELIMITED_EMPTY;
                     }
 
                     /* Regex pattern: R"pattern" - validate that pattern is non-empty */
-                    if (ustring::undecorate(input, DECORATOR_REGEX_START, DECORATOR_ANY_END, output)) {
-                        return !output.empty() ? CommCommandTokenType::REGEX : CommCommandTokenType::INVALID;
+                    if (ustring::undecorate(input, DECORATOR_REGEX_START, DECORATOR_ANY_END, strOutput)) {
+                        return !strOutput.empty() ? CommCommandTokenType::REGEX : CommCommandTokenType::INVALID;
                     }
 
                     /* Token String: T"value" - validate that value is non-empty */
-                    if (ustring::undecorate(input, DECORATOR_TOKEN_STRING_START, DECORATOR_ANY_END, output)) {
-                        return !output.empty() ? CommCommandTokenType::TOKEN_STRING : CommCommandTokenType::INVALID;
+                    if (ustring::undecorate(input, DECORATOR_TOKEN_STRING_START, DECORATOR_ANY_END, strOutput)) {
+                        return !strOutput.empty() ? CommCommandTokenType::TOKEN_STRING : CommCommandTokenType::INVALID;
                     }
 
                     /* Token String: X"value" - validate that value is non-empty */
-                    if (ustring::undecorate(input, DECORATOR_TOKEN_HEXSTREAM_START, DECORATOR_ANY_END, output)) {
-                        ustring::removeWhitespace(output);
-                        return !output.empty() ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::INVALID;
+                    if (ustring::undecorate(input, DECORATOR_TOKEN_HEXSTREAM_START, DECORATOR_ANY_END, strOutput)) {
+                        ustring::removeWhitespace(strOutput);
+                        return !strOutput.empty() ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::INVALID;
                     }
 
                     /* Line: L"content" - validate that content is non-empty */
-                    if (ustring::undecorate(input, DECORATOR_LINE_START, DECORATOR_ANY_END, output)) {
-                        return !output.empty() ? CommCommandTokenType::LINE : CommCommandTokenType::INVALID;
+                    if (ustring::undecorate(input, DECORATOR_LINE_START, DECORATOR_ANY_END, strOutput)) {
+                        return !strOutput.empty() ? CommCommandTokenType::LINE : CommCommandTokenType::INVALID;
                     }
 
                     /* Size: S"number" - validate numeric and non-empty */
-                    if (ustring::undecorate(input, DECORATOR_SIZE_START, DECORATOR_ANY_END, output)) {
+                    if (ustring::undecorate(input, DECORATOR_SIZE_START, DECORATOR_ANY_END, strOutput)) {
                         size_t szSize = 0;
-                        return (!output.empty() && numeric::str2sizet(output, szSize)) ? CommCommandTokenType::SIZEOF : CommCommandTokenType::INVALID;
+                        return (!strOutput.empty() && numeric::str2sizet(strOutput, szSize)) ? CommCommandTokenType::SIZEOF : CommCommandTokenType::INVALID;
                     }
 
                     /* Hex stream: H"hexstring" - validate hex format */
-                    if (ustring::undecorate(input, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, output)) {
-                        ustring::removeWhitespace(output);
-                        return (!output.empty() && hexutils::isHexlified(output)) ? CommCommandTokenType::HEXSTREAM : CommCommandTokenType::INVALID;
+                    if (ustring::undecorate(input, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, strOutput)) {
+                        ustring::removeWhitespace(strOutput);
+                        return (!strOutput.empty() && hexutils::isHexlified(strOutput)) ? CommCommandTokenType::HEXSTREAM : CommCommandTokenType::INVALID;
                     }
 
                     /* File: F"filename.bin" or F"filename.bin,options" - validate file exists and is non-empty */
-                    if (ustring::undecorate(input, DECORATOR_FILENAME_START, DECORATOR_ANY_END, output)) {
+                    if (ustring::undecorate(input, DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutput)) {
                         /* Extract filename part (before optional comma-separated options).
                          * ufile::fileExistsAndNotEmpty(string_view) avoids an extra
                          * std::string allocation here. */
-                        std::string_view filename = ustring::substringUntil(output, CHAR_SEPARATOR_COMMA);
-                        return (!output.empty() && ufile::fileExistsAndNotEmpty(filename)) ? CommCommandTokenType::FILENAME : CommCommandTokenType::INVALID;
+                        std::string_view filename = ustring::substringUntil(strOutput, CHAR_SEPARATOR_COMMA);
+                        return (!strOutput.empty() && ufile::fileExistsAndNotEmpty(filename)) ? CommCommandTokenType::FILENAME : CommCommandTokenType::INVALID;
                     }
 
                     /* Validate raw string format */
                     if (!ustring::isValidTaggedOrPlainString(input)) {
                         /* Matches the previous behaviour: an invalid raw/tagged string
                          * clears the field rather than preserving the offending text. */
-                        output.clear();
+                        strOutput.clear();
                         return CommCommandTokenType::INVALID;
                     }
 
                     /* Raw undecorated string: nothing to extract, `input` verbatim
                      * becomes the value - exactly one allocation. */
-                    output.assign(input);
+                    strOutput.assign(input);
                     return CommCommandTokenType::STRING_RAW;
                 }
 
@@ -476,55 +476,55 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                  * - Cannot have both fields empty
                  * - Cannot send or receive empty expressions
                  */
-                bool evaluateAndValidate(CommCommand &command, CommCommandTokenType firstToken,
-                                         CommCommandTokenType secondToken, bool separatorFound = false)
+                bool evaluateAndValidate(CommCommand &sCommand, CommCommandTokenType eFirstToken,
+                                         CommCommandTokenType eSecondToken, bool bSeparatorFound = false)
                 {
-                    CommCommandDirection direction = command.direction;
+                    CommCommandDirection direction = sCommand.direction;
 
                     /* If pipe was present but recv side is empty → mark as hexdump recv */
-                    if (separatorFound && direction == CommCommandDirection::SEND_RECV && secondToken == CommCommandTokenType::EMPTY) {
-                        secondToken = CommCommandTokenType::ANYTHING;
+                    if (bSeparatorFound && direction == CommCommandDirection::SEND_RECV && eSecondToken == CommCommandTokenType::EMPTY) {
+                        eSecondToken = CommCommandTokenType::ANYTHING;
                     }
 
                     /* If direction is RECV_SEND and both tokens are empty the just read anything in buffer */
-                    if (!separatorFound && direction == CommCommandDirection::RECV_SEND && firstToken == CommCommandTokenType::EMPTY && secondToken == CommCommandTokenType::EMPTY) {
-                        firstToken = CommCommandTokenType::ANYTHING;
+                    if (!bSeparatorFound && direction == CommCommandDirection::RECV_SEND && eFirstToken == CommCommandTokenType::EMPTY && eSecondToken == CommCommandTokenType::EMPTY) {
+                        eFirstToken = CommCommandTokenType::ANYTHING;
                     }
 
-                    command.tokens = std::make_pair(firstToken, secondToken);
+                    sCommand.tokens = std::make_pair(eFirstToken, eSecondToken);
 
-                    if (firstToken == CommCommandTokenType::INVALID ||
-                        secondToken == CommCommandTokenType::INVALID) {
+                    if (eFirstToken == CommCommandTokenType::INVALID ||
+                        eSecondToken == CommCommandTokenType::INVALID) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid token type detected"));
                         return false;
                     }
 
                     if (direction == CommCommandDirection::SEND_RECV) {
-                        if (firstToken == CommCommandTokenType::TOKEN_STRING ||
-                            firstToken == CommCommandTokenType::TOKEN_HEXSTREAM ||
-                            firstToken == CommCommandTokenType::SIZEOF ||
-                            firstToken == CommCommandTokenType::REGEX ||
-                            firstToken == CommCommandTokenType::EMPTY) {
+                        if (eFirstToken == CommCommandTokenType::TOKEN_STRING ||
+                            eFirstToken == CommCommandTokenType::TOKEN_HEXSTREAM ||
+                            eFirstToken == CommCommandTokenType::SIZEOF ||
+                            eFirstToken == CommCommandTokenType::REGEX ||
+                            eFirstToken == CommCommandTokenType::EMPTY) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot send TOKEN_*, SIZE, REGEX, or EMPTY"));
                             return false;
                         }
                         /* ANYTHING on the recv side is always valid — no further checks needed */
                     } else if (direction == CommCommandDirection::RECV_SEND) {
-                        if (firstToken == CommCommandTokenType::STRING_DELIMITED_EMPTY ||
-                            firstToken == CommCommandTokenType::EMPTY) {
+                        if (eFirstToken == CommCommandTokenType::STRING_DELIMITED_EMPTY ||
+                            eFirstToken == CommCommandTokenType::EMPTY) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot receive EMPTY or STRING_DELIMITED_EMPTY"));
                             return false;
                         }
                     } else if (direction == CommCommandDirection::DELAY) {
                         size_t szDelay = 0;
-                        if (!(firstToken == CommCommandTokenType::STRING_RAW) && !numeric::str2sizet(command.values.first, szDelay)) {
+                        if (!(eFirstToken == CommCommandTokenType::STRING_RAW) && !numeric::str2sizet(sCommand.values.first, szDelay)) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value for delay"));
                             return false;
                         }
                     }
 
-                    if ((firstToken == CommCommandTokenType::EMPTY && secondToken == CommCommandTokenType::EMPTY) ||
-                        (firstToken == CommCommandTokenType::STRING_DELIMITED_EMPTY && secondToken == CommCommandTokenType::STRING_DELIMITED_EMPTY)) {
+                    if ((eFirstToken == CommCommandTokenType::EMPTY && eSecondToken == CommCommandTokenType::EMPTY) ||
+                        (eFirstToken == CommCommandTokenType::STRING_DELIMITED_EMPTY && eSecondToken == CommCommandTokenType::STRING_DELIMITED_EMPTY)) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Both fields cannot be empty for sending"));
                         return false;
                     }

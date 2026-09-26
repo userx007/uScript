@@ -54,7 +54,7 @@ struct TermCell {
 class TermView : public QAbstractScrollArea {
         Q_OBJECT
     public:
-        explicit TermView(QWidget *parent = nullptr);
+        explicit TermView(QWidget *pParent = nullptr);
 
         void setTermFont(const QFont &font);
         void processBytes(const QByteArray &data);
@@ -64,11 +64,11 @@ class TermView : public QAbstractScrollArea {
     protected:
         void paintEvent(QPaintEvent *) override;
         void resizeEvent(QResizeEvent *) override;
-        void keyPressEvent(QKeyEvent *ev) override;
-        void mousePressEvent(QMouseEvent *ev) override;
-        void mouseMoveEvent(QMouseEvent *ev) override;
-        void mouseReleaseEvent(QMouseEvent *ev) override;
-        void contextMenuEvent(QContextMenuEvent *ev) override;
+        void keyPressEvent(QKeyEvent *pEv) override;
+        void mousePressEvent(QMouseEvent *pEv) override;
+        void mouseMoveEvent(QMouseEvent *pEv) override;
+        void mouseReleaseEvent(QMouseEvent *pEv) override;
+        void contextMenuEvent(QContextMenuEvent *pEv) override;
 
     signals:
         void keyBytesReady(const QByteArray &bytes);
@@ -77,13 +77,13 @@ class TermView : public QAbstractScrollArea {
         void blinkCursor();
 
     private:
-        void ensureLine(int row);
-        TermCell &cell(int row, int col);
+        void ensureLine(int iRow);
+        TermCell &cell(int iRow, int iCol);
         void putChar(QChar c);
         void newline();
         void eraseToEndOfLine();
         void applySgr(const QList<int> &params);
-        static QColor sgrColor(int code);
+        static QColor sgrColor(int iCode);
         void updateScrollbar();
         // Scrolls the viewport to the bottom, matching what every newline() used
         // to do individually — now called at most once per processBytes() batch
@@ -169,9 +169,9 @@ class TermView : public QAbstractScrollArea {
 class ShellTerminal : public QFrame {
         Q_OBJECT
     public:
-        explicit ShellTerminal(QWidget *parent = nullptr);
+        explicit ShellTerminal(QWidget *pParent = nullptr);
 
-        void setActive(bool active);
+        void setActive(bool bActive);
         void processRawBytes(const QByteArray &bytes);
         void setTerminalFont(const QFont &font);
         void clear();       // full wipe (used on new session)

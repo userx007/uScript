@@ -177,15 +177,15 @@ class FT2232Plugin : public PluginInterface {
             return m_bIsEnabled;
         }
 
-        bool setParams(const PluginDataSet *ps)
+        bool setParams(const PluginDataSet *psPs)
         {
-            bool ok = generic_setparams<FT2232Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
-            return ok && m_LocalSetParams(ps);
+            bool ok = generic_setparams<FT2232Plugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
+            return ok && m_LocalSetParams(psPs);
         }
 
-        void getParams(PluginDataGet *pg) const
+        void getParams(PluginDataGet *psPg) const
         {
-            generic_getparams<FT2232Plugin>(this, pg);
+            generic_getparams<FT2232Plugin>(this, psPg);
         }
 
         const PluginCommandsMap<FT2232Plugin> *getMap() const
@@ -216,10 +216,10 @@ class FT2232Plugin : public PluginInterface {
             return true;
         }
 
-        bool doDispatch(const std::string &cmd, const std::string &params,
+        bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
-            return generic_dispatch<FT2232Plugin>(this, cmd, params, st);
+            return generic_dispatch<FT2232Plugin>(this, strCmd, strParams, st);
         }
 
         void doCleanup();
@@ -241,8 +241,8 @@ class FT2232Plugin : public PluginInterface {
 
         // Module-map accessors
 
-        ModuleCommandsMap<FT2232Plugin> *getModuleCmdsMap(const std::string &m) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
+        ModuleCommandsMap<FT2232Plugin> *getModuleCmdsMap(const std::string &strM) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
 
         /**
          * @brief Apply a speed (Hz) to an open module.
@@ -250,7 +250,7 @@ class FT2232Plugin : public PluginInterface {
          * Re-opens the driver at the new clock if currently open.
          * For FT2232D, speeds above the hardware limit return false.
          */
-        bool setModuleSpeed(const std::string &module, size_t hz) const;
+        bool setModuleSpeed(const std::string &strModule, size_t hz) const;
 
         // INI accessor
 
@@ -384,7 +384,7 @@ class FT2232Plugin : public PluginInterface {
         // Top-level command handlers
 
 #define FT2_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_FT2232_##a(const std::string &args, std::stop_token st) const;
+    bool m_FT2232_##a(const std::string &strArgs, std::stop_token st) const;
         FT2232_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef FT2_PLUGIN_CMD_RECORD
 
@@ -448,22 +448,22 @@ class FT2232Plugin : public PluginInterface {
         ModuleSpeedMap m_mapSpeed_I2C;
         ModuleSpeedMap m_mapSpeed_UART;
 
-        bool m_LocalSetParams(const PluginDataSet *ps);
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         // Parse helpers
 
-        static bool parseChannel(const std::string &s, FT2232Base::Channel &out);
-        static bool parseVariant(const std::string &s, FT2232Base::Variant &out);
-        static bool parseUartParams(const std::string &args, UartPendingCfg &cfg,
-                                    uint8_t *pDeviceIndexOut = nullptr);
+        static bool parseChannel(const std::string &strS, FT2232Base::Channel &out);
+        static bool parseVariant(const std::string &strS, FT2232Base::Variant &out);
+        static bool parseUartParams(const std::string &strArgs, UartPendingCfg &cfg,
+                                    uint8_t *pu8DeviceIndexOut = nullptr);
 
-        static bool parseSpiKV(const std::string &key,
-                               const std::string &val,
-                               SpiPendingCfg &cfg);
+        static bool parseSpiKV(const std::string &strKey,
+                               const std::string &strVal,
+                               SpiPendingCfg &sCfg);
 
-        static bool parseSpiParams(const std::string &args,
-                                   SpiPendingCfg &cfg,
-                                   uint8_t *pDeviceIndexOut = nullptr);
+        static bool parseSpiParams(const std::string &strArgs,
+                                   SpiPendingCfg &sCfg,
+                                   uint8_t *pu8DeviceIndexOut = nullptr);
 
         /**
          * @brief Validate requested Hz against the FT2232D 3 MHz SPI / 400 kHz I2C cap.
@@ -472,8 +472,8 @@ class FT2232Plugin : public PluginInterface {
          * @param protocol  "SPI" or "I2C" — determines which limit applies
          */
         static bool checkVariantSpeedLimit(FT2232Base::Variant v,
-                                           const std::string &protocol,
-                                           uint32_t hz);
+                                           const std::string &strProtocol,
+                                           uint32_t u32Hz);
 };
 
 #endif // FT2232_PLUGIN_HPP

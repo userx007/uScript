@@ -68,7 +68,7 @@ class CP2112Gpio : public CP2112Base, public IGpioDriver {
          * @param config  directionMask, pushPullMask, specialFuncMask, clockDivider
          *                See IGpioDriver::GpioConfig for full field documentation.
          */
-        Status gpio_configure(const GpioConfig &config) const override;
+        Status gpio_configure(const GpioConfig &sConfig) const override;
 
         /**
          * @brief Drive logic levels on output pins
@@ -82,13 +82,13 @@ class CP2112Gpio : public CP2112Base, public IGpioDriver {
          *   gpio.gpio_write(PIN_4,   PIN_4);   // drive high
          * @endcode
          */
-        Status gpio_write(uint8_t valueMask, uint8_t applyMask) const override;
+        Status gpio_write(uint8_t u8ValueMask, uint8_t u8ApplyMask) const override;
 
         /**
          * @brief Read current logic levels of all 8 pins
          * @param valueMask  Output bitmask — bit = 1 → high, 0 → low
          */
-        Status gpio_read(uint8_t &valueMask) const override;
+        Status gpio_read(uint8_t &u8ValueMask) const override;
 };
 
 #endif // U_CP2112_GPIO_DRIVER_H

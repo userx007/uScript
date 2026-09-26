@@ -84,7 +84,7 @@ class GrpcProtocol {
          * @return true if the file was read and every contained descriptor
          *         built successfully.
          */
-        bool loadDescriptorSet(const std::string &protosetPath, std::string &outError);
+        bool loadDescriptorSet(const std::string &strProtosetPath, std::string &strOutError);
 
         /**
          * @brief Resolve "package.Service/Method" (or "package.Service.Method",
@@ -95,16 +95,16 @@ class GrpcProtocol {
          *         dispatches on method->client_streaming()/server_streaming()
          *         to decide which of the four it's doing.
          */
-        const google::protobuf::MethodDescriptor *resolveMethod(const std::string &methodPath,
-                                                                std::string &outError) const;
+        const google::protobuf::MethodDescriptor *resolveMethod(const std::string &strMethodPath,
+                                                                std::string &strOutError) const;
 
         /** @brief Build a fresh, empty, writable request message for a method. */
         std::unique_ptr<google::protobuf::Message> newRequestMessage(
-            const google::protobuf::MethodDescriptor *method) const;
+            const google::protobuf::MethodDescriptor *pMethod) const;
 
         /** @brief Build a fresh, empty, writable response message for a method. */
         std::unique_ptr<google::protobuf::Message> newResponseMessage(
-            const google::protobuf::MethodDescriptor *method) const;
+            const google::protobuf::MethodDescriptor *pMethod) const;
 
         /**
          * @brief Parse real JSON text (see class doc comment) into an
@@ -112,11 +112,11 @@ class GrpcProtocol {
          *        failed parse never leaves partial fields. An empty
          *        `jsonText` is treated as `{}` (every field defaulted).
          */
-        bool parseJsonIntoMessage(const std::string &jsonText, google::protobuf::Message &message,
-                                  std::string &outError) const;
+        bool parseJsonIntoMessage(const std::string &strJsonText, google::protobuf::Message &message,
+                                  std::string &strOutError) const;
 
         /** @brief Serialize a message to real JSON text. */
-        bool messageToJson(const google::protobuf::Message &message, std::string &outText) const;
+        bool messageToJson(const google::protobuf::Message &message, std::string &strOutText) const;
 
     private:
         // Owns every descriptor built from the loaded .protoset; the pool (and

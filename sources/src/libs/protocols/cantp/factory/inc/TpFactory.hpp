@@ -20,6 +20,6 @@ struct TpConfig;
  * @return owning pointer to a stateless, reusable protocol instance, or
  *         nullptr for TpProtocol::NONE.
  */
-std::unique_ptr<ITransportProtocol> make_transport_protocol(TpProtocol proto, const TpConfig &cfg = {});
+std::unique_ptr<ITransportProtocol> make_transport_protocol(TpProtocol eProto, const TpConfig &sCfg = {});
 
 #endif // CAN_TP_FACTORY_HPP

@@ -12,7 +12,7 @@ extern "C" {
 #include <stdarg.h>
     char uart_getchar(void);
     void uart_putchar(char data);
-    int uart_printf(const char *format, ...);
+    int uart_printf(const char *pstrFormat, ...);
 #define uSHELL_PRINTF   uart_printf
 #define uSHELL_SNPRINTF mini_snprintf
 #define uSHELL_GETCH()  uart_getchar()

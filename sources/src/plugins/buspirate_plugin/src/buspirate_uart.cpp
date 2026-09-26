@@ -42,7 +42,7 @@ http://dangerousprototypes.com/docs/UART_(binary)
  List the subcommands of the protocol
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_help(const std::string &args, std::stop_token /*st*/) const
+bool BuspiratePlugin::m_handle_uart_help(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
 }
@@ -59,18 +59,18 @@ Use the UART manual [PDF] or an online calculator to find the correct value
 Bus Pirate responds 0x01 to each byte. Settings take effect immediately.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_bdr(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_uart_bdr(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <BRG> (16-bit hex or decimal, e.g. 0x0022)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Baud = Fosc / (4 * (BRG+1)), Fosc=32MHz, BRGH=1"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Example: 9600 baud -> BRG = 0x0340"));
     } else {
         uint32_t u32Brg = 0;
-        if (false == (bRetVal = numeric::str2uint32(args, u32Brg))) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid BRG value:"); LOG_STRING(args));
+        if (false == (bRetVal = numeric::str2uint32(strArgs, u32Brg))) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid BRG value:"); LOG_STRING(strArgs));
         } else if (u32Brg > 0xFFFFU) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("BRG value out of range (0x0000-0xFFFF):"); LOG_UINT32(u32Brg));
             bRetVal = false;
@@ -113,7 +113,7 @@ Note: that this command code is three bits because the databits and parity setti
 It is not quite the same as the binary SPI mode configuration command code.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_cfg(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_uart_cfg(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal           = true;
 
@@ -126,51 +126,51 @@ bool BuspiratePlugin::m_handle_uart_cfg(const std::string &args, std::stop_token
 
     static uint8_t request = 0x80U;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("z/V   - output type  : z=HiZ(0)  V=3.3V(1)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("8N/8E/8O/9N - data+parity: 8N(00)! 8E(01) 8O(10) 9N(11)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("1/2   - stop bits    : 1(0)! 2(1)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("n/i   - RX polarity  : n=idle-1/normal(0)! i=idle-0/inverted(1)"));
-    } else if ("?" == args) {
+    } else if ("?" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("uart::cfg:"); LOG_UINT8(request));
     } else {
         // output type (bit 4)
-        if (ustring::containsChar(args, 'z')) {
+        if (ustring::containsChar(strArgs, 'z')) {
             BIT_CLEAR(request, 4);
         }
-        if (ustring::containsChar(args, 'V')) {
+        if (ustring::containsChar(strArgs, 'V')) {
             BIT_SET(request, 4);
         }
 
         // databits + parity (bits 3:2) — matched as substrings so order matters: check
         // two-char tokens before single chars to avoid false positives.
-        if (args.find("9N") != std::string::npos) {
+        if (strArgs.find("9N") != std::string::npos) {
             BIT_SET(request, 3);
             BIT_SET(request, 2);
-        } else if (args.find("8O") != std::string::npos) {
+        } else if (strArgs.find("8O") != std::string::npos) {
             BIT_SET(request, 3);
             BIT_CLEAR(request, 2);
-        } else if (args.find("8E") != std::string::npos) {
+        } else if (strArgs.find("8E") != std::string::npos) {
             BIT_CLEAR(request, 3);
             BIT_SET(request, 2);
-        } else if (args.find("8N") != std::string::npos) {
+        } else if (strArgs.find("8N") != std::string::npos) {
             BIT_CLEAR(request, 3);
             BIT_CLEAR(request, 2);
         }
 
         // stop bits (bit 1)
-        if (ustring::containsChar(args, '1')) {
+        if (ustring::containsChar(strArgs, '1')) {
             BIT_CLEAR(request, 1);
         }
-        if (ustring::containsChar(args, '2')) {
+        if (ustring::containsChar(strArgs, '2')) {
             BIT_SET(request, 1);
         }
 
         // RX polarity (bit 0)
-        if (ustring::containsChar(args, 'n')) {
+        if (ustring::containsChar(strArgs, 'n')) {
             BIT_CLEAR(request, 0);
         }
-        if (ustring::containsChar(args, 'i')) {
+        if (ustring::containsChar(strArgs, 'i')) {
             BIT_SET(request, 0);
         }
 
@@ -192,19 +192,19 @@ This mode has no impact on data transmissions.
 Responds 0x01. Clears buffer overrun bit.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_echo(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_uart_echo(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal    = true;
     uint8_t request = 0;
 
-    if ("start" == args) {
+    if ("start" == strArgs) {
         request = 0x02;
-    } else if ("stop" == args) {
+    } else if ("stop" == strArgs) {
         request = 0x03;
-    } else if ("help" == args) {
+    } else if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: start stop"));
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(strArgs));
         bRetVal = false;
     }
 
@@ -224,17 +224,17 @@ Starts a transparent UART bridge using the current configuration.
 Unplug the Bus Pirate to exit.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_mode(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_uart_mode(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal    = true;
     uint8_t request = 0;
 
-    if ("bridge" == args) {
+    if ("bridge" == strArgs) {
         request = 0x0F;
-    } else if ("help" == args) {
+    } else if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: bridge (unplug to exit)"));
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(strArgs));
         bRetVal = false;
     }
 
@@ -260,9 +260,9 @@ Features not present in a specific hardware version are ignored. Bus Pirate resp
 Note: CS pin always follows the current HiZ pin configuration. AUX is always a normal pin output (0=GND, 1=3.3volts).
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_per(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_uart_per(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_set_peripheral(args, st);
+    return generic_set_peripheral(strArgs, st);
 
 } /* m_handle_uart_per() */
 
@@ -278,9 +278,9 @@ Start default is 300 baud. Bus Pirate responds 0×01 on success.
 A read command is planned but not implemented in this version.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_speed(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_uart_speed(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, args, st);
+    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, strArgs, st);
 
 } /* m_handle_uart_speed() */
 
@@ -292,12 +292,12 @@ Up to 16 data bytes can be sent at once.
 Note that 0000 indicates 1 byte because there’s no reason to send 0. BP replies 0×01 to each byte.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_write(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_uart_write(const std::string &strArgs, std::stop_token st) const
 {
     // 0001xxxx – Bulk UART write, 1-16 bytes (0=1byte!), same command base as 1-Wire/Raw-wire.
     // generic_wire_write_data encodes: cmd = 0x10 | (count-1), then the data bytes.
     // BP replies 0x01 to each bulk transaction.
-    return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data, st);
+    return generic_write_data(this, strArgs, &BuspiratePlugin::generic_wire_write_data, st);
 
 } /* m_handle_uart_write() */
 
@@ -336,15 +336,15 @@ bool BuspiratePlugin::m_uart_bulk_write(std::span<const uint8_t> request, std::s
 /* ============================================================================================
     BuspiratePlugin::m_handle_uart_script
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_uart_script(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_uart_script(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
     } else {
-        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::UART_CommDriver>(this, m_strInstanceName, args, st);
+        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::UART_CommDriver>(this, m_strInstanceName, strArgs, st);
     }
 
     return bRetVal;

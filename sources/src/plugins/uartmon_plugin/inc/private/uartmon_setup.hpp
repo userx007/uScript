@@ -65,13 +65,13 @@ bool UartmonPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
  */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename T>
-bool generic_uartmon_set_params(const T *pOwner, const std::string &args)
+bool generic_uartmon_set_params(const T *pOwner, const std::string &strArgs)
 {
     static constexpr KVSetterEntry<T> table[] = {
         {.key = "i", .boolSetter = &T::setPollingInterval},
     };
 
-    return generic_setup_params(pOwner, args, table, LT_HDR);
+    return generic_setup_params(pOwner, strArgs, table, LT_HDR);
 }
 
 #endif // UARTMON_SETUP_HPP

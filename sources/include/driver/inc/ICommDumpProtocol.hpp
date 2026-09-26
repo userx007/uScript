@@ -130,10 +130,10 @@ struct CommDetails {
 // (with a trailing '~') if the label doesn't fit k_labelSize - 1 characters.
 // This is the ONLY way driver code should construct a CommDetails — it keeps
 // the truncation/NUL-termination logic in one place.
-inline CommDetails commdump_details(CommFamily family, std::string_view label)
+inline CommDetails commdump_details(CommFamily eFamily, std::string_view label)
 {
     CommDetails d;
-    d.family            = family;
+    d.eFamily            = eFamily;
     const size_t maxLen = sizeof(d.label) - 1;
     if (label.size() <= maxLen) {
         std::memcpy(d.label, label.data(), label.size());
@@ -163,40 +163,40 @@ inline int64_t commdump_now_us() noexcept
 // ---------------------------------------------------------------------------
 // commdump_pack — serialize one record into a flat byte buffer
 // ---------------------------------------------------------------------------
-inline std::vector<uint8_t> commdump_pack(int64_t timestampUs,
-                                          const std::string &pluginName,
-                                          const CommDetails &details,
-                                          CommDir dir,
-                                          const uint8_t *data,
-                                          uint32_t dataLen)
+inline std::vector<uint8_t> commdump_pack(int64_t i64TimestampUs,
+                                          const std::string &strPluginName,
+                                          const CommDetails &sDetails,
+                                          CommDir eDir,
+                                          const uint8_t *pu8Data,
+                                          uint32_t u32DataLen)
 {
     std::vector<uint8_t> buf;
     const uint8_t nameLen = static_cast<uint8_t>(
-        pluginName.size() > 255 ? 255 : pluginName.size());
+        strPluginName.size() > 255 ? 255 : strPluginName.size());
 
-    buf.reserve(8 + 1 + nameLen + 1 + k_labelSize + 1 + 4 + dataLen);
+    buf.reserve(8 + 1 + nameLen + 1 + k_labelSize + 1 + 4 + u32DataLen);
 
-    const uint64_t tsBits = static_cast<uint64_t>(timestampUs);
+    const uint64_t tsBits = static_cast<uint64_t>(i64TimestampUs);
     for (int i = 0; i < 8; ++i) {
         buf.push_back(static_cast<uint8_t>((tsBits >> (8 * i)) & 0xFF));
     }
 
     buf.push_back(nameLen);
-    buf.insert(buf.end(), pluginName.begin(), pluginName.begin() + nameLen);
+    buf.insert(buf.end(), strPluginName.begin(), strPluginName.begin() + nameLen);
 
-    buf.push_back(static_cast<uint8_t>(details.family));
+    buf.push_back(static_cast<uint8_t>(sDetails.family));
     buf.insert(buf.end(),
-               reinterpret_cast<const uint8_t *>(details.label),
-               reinterpret_cast<const uint8_t *>(details.label) + k_labelSize);
+               reinterpret_cast<const uint8_t *>(sDetails.label),
+               reinterpret_cast<const uint8_t *>(sDetails.label) + k_labelSize);
 
-    buf.push_back(static_cast<uint8_t>(dir));
+    buf.push_back(static_cast<uint8_t>(eDir));
 
     for (int i = 0; i < 4; ++i) {
-        buf.push_back(static_cast<uint8_t>((dataLen >> (8 * i)) & 0xFF));
+        buf.push_back(static_cast<uint8_t>((u32DataLen >> (8 * i)) & 0xFF));
     }
 
-    if (dataLen && data) {
-        buf.insert(buf.end(), data, data + dataLen);
+    if (u32DataLen && pu8Data) {
+        buf.insert(buf.end(), pu8Data, pu8Data + u32DataLen);
     }
 
     return buf;
@@ -207,32 +207,32 @@ inline std::vector<uint8_t> commdump_pack(int64_t timestampUs,
 // (the Qt side decodes with QByteArray::fromBase64(), which is a compatible
 // standard-alphabet, padded encoder/decoder pair)
 // ---------------------------------------------------------------------------
-inline std::string commdump_base64_encode(const std::vector<uint8_t> &in)
+inline std::string commdump_base64_encode(const std::vector<uint8_t> &vIn)
 {
     static const char *tbl =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     std::string out;
-    out.reserve(((in.size() + 2) / 3) * 4);
+    out.reserve(((vIn.size() + 2) / 3) * 4);
 
     size_t i = 0;
-    while (i + 3 <= in.size()) {
-        const uint32_t n = (uint32_t(in[i]) << 16) | (uint32_t(in[i + 1]) << 8) | in[i + 2];
+    while (i + 3 <= vIn.size()) {
+        const uint32_t n = (uint32_t(vIn[i]) << 16) | (uint32_t(vIn[i + 1]) << 8) | vIn[i + 2];
         out.push_back(tbl[(n >> 18) & 0x3F]);
         out.push_back(tbl[(n >> 12) & 0x3F]);
         out.push_back(tbl[(n >> 6) & 0x3F]);
         out.push_back(tbl[n & 0x3F]);
         i += 3;
     }
-    const size_t rem = in.size() - i;
+    const size_t rem = vIn.size() - i;
     if (rem == 1) {
-        const uint32_t n = uint32_t(in[i]) << 16;
+        const uint32_t n = uint32_t(vIn[i]) << 16;
         out.push_back(tbl[(n >> 18) & 0x3F]);
         out.push_back(tbl[(n >> 12) & 0x3F]);
         out.push_back('=');
         out.push_back('=');
     } else if (rem == 2) {
-        const uint32_t n = (uint32_t(in[i]) << 16) | (uint32_t(in[i + 1]) << 8);
+        const uint32_t n = (uint32_t(vIn[i]) << 16) | (uint32_t(vIn[i + 1]) << 8);
         out.push_back(tbl[(n >> 18) & 0x3F]);
         out.push_back(tbl[(n >> 12) & 0x3F]);
         out.push_back(tbl[(n >> 6) & 0x3F]);

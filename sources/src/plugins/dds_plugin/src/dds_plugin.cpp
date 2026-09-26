@@ -20,10 +20,10 @@ extern "C" {
         return new DdsPlugin();
     }
 
-    EXPORTED void pluginExit(DdsPlugin *ptrPlugin)
+    EXPORTED void pluginExit(DdsPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -70,9 +70,9 @@ std::shared_ptr<DdsDriver> DdsPlugin::m_OpenDriver(void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool DdsPlugin::m_DDS_INFO(const std::string &args, std::stop_token st) const
+bool DdsPlugin::m_DDS_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    (void)args;
+    (void)strArgs;
     (void)st;
     resetData();
     std::ostringstream oss;
@@ -182,12 +182,12 @@ bool DdsPlugin::m_DDS_INFO(const std::string &args, std::stop_token st) const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DdsPlugin::m_DDS_CONFIG(const std::string &args, std::stop_token st) const
+bool DdsPlugin::m_DDS_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
 
-    if (false == generic_dds_set_params(this, args)) {
+    if (false == generic_dds_set_params(this, strArgs)) {
         return false;
     }
 
@@ -200,12 +200,12 @@ bool DdsPlugin::m_DDS_CONFIG(const std::string &args, std::stop_token st) const
 // DDS.CMD see class doc comment (dds_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool DdsPlugin::m_DDS_CMD(const std::string &args, std::stop_token st) const
+bool DdsPlugin::m_DDS_CMD(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<DdsDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
@@ -222,12 +222,12 @@ bool DdsPlugin::m_DDS_CMD(const std::string &args, std::stop_token st) const
 // DDS.SCRIPT — see class doc comment (dds_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool DdsPlugin::m_DDS_SCRIPT(const std::string &args, std::stop_token st) const
+bool DdsPlugin::m_DDS_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<DdsDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
@@ -244,12 +244,12 @@ bool DdsPlugin::m_DDS_SCRIPT(const std::string &args, std::stop_token st) const
 // DDS.CYCLIC — see class doc comment (dds_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool DdsPlugin::m_DDS_CYCLIC(const std::string &args, std::stop_token st) const
+bool DdsPlugin::m_DDS_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<DdsDriver> { return m_OpenDriver(); },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsDriver> drv, std::string_view x, std::stop_token stop_tok) {

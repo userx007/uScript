@@ -86,14 +86,14 @@ bool FT232HBase::is_open() const
     return true;
 }
 
-FT232HBase::Status FT232HBase::mpsse_write(const uint8_t *buf, size_t len) const
+FT232HBase::Status FT232HBase::mpsse_write(const uint8_t *pu8Buf, size_t len) const
 {
 #if defined(_WIN32) || defined(_WIN64)
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
     DWORD written = 0;
-    if (FT_Write(FTHS, const_cast<LPVOID>(static_cast<const void *>(buf)),
+    if (FT_Write(FTHS, const_cast<LPVOID>(static_cast<const void *>(pu8Buf)),
                  static_cast<DWORD>(len), &written) != FT_OK ||
         written != static_cast<DWORD>(len)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FT_Write failed"));
@@ -101,25 +101,25 @@ FT232HBase::Status FT232HBase::mpsse_write(const uint8_t *buf, size_t len) const
     }
     return Status::SUCCESS;
 #else
-    (void)buf;
+    (void)pu8Buf;
     (void)len;
     return Status::WRITE_ERROR;
 #endif
 }
 
-FT232HBase::Status FT232HBase::mpsse_read(uint8_t *buf, size_t len,
-                                          uint32_t timeoutMs,
+FT232HBase::Status FT232HBase::mpsse_read(uint8_t *pu8Buf, size_t len,
+                                          uint32_t u32TimeoutMs,
                                           size_t &bytesRead,
                                           std::stop_token /*stop_tok*/) const
 {
 #if defined(_WIN32) || defined(_WIN64)
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
     bytesRead = 0;
-    FT_SetTimeouts(FTHS, timeoutMs, 0);
+    FT_SetTimeouts(FTHS, u32TimeoutMs, 0);
     DWORD got = 0;
-    if (FT_Read(FTHS, buf, static_cast<DWORD>(len), &got) != FT_OK) {
+    if (FT_Read(FTHS, pu8Buf, static_cast<DWORD>(len), &got) != FT_OK) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FT_Read failed"));
         return Status::READ_ERROR;
     }
@@ -129,9 +129,9 @@ FT232HBase::Status FT232HBase::mpsse_read(uint8_t *buf, size_t len,
     }
     return Status::SUCCESS;
 #else
-    (void)buf;
+    (void)pu8Buf;
     (void)len;
-    (void)timeoutMs;
+    (void)u32TimeoutMs;
     (void)bytesRead;
     return Status::READ_ERROR;
 #endif

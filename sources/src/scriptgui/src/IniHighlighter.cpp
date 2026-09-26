@@ -11,14 +11,14 @@ class QTextDocument;
 //  Helper
 // ─────────────────────────────────────────────────────────────────────────────
 
-QTextCharFormat IniHighlighter::fmt(const QString &hex, bool bold, bool italic)
+QTextCharFormat IniHighlighter::fmt(const QString &hex, bool bBold, bool bItalic)
 {
     QTextCharFormat f;
     f.setForeground(QColor(hex));
-    if (bold) {
+    if (bBold) {
         f.setFontWeight(QFont::Bold);
     }
-    if (italic) {
+    if (bItalic) {
         f.setFontItalic(true);
     }
     return f;
@@ -28,7 +28,7 @@ QTextCharFormat IniHighlighter::fmt(const QString &hex, bool bold, bool italic)
 //  Construction
 // ─────────────────────────────────────────────────────────────────────────────
 
-IniHighlighter::IniHighlighter(QTextDocument *parent)
+IniHighlighter::IniHighlighter(QTextDocument *pParent)
     : QSyntaxHighlighter(parent)
 {
     // [section header]

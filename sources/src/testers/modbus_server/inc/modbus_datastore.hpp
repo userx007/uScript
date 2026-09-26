@@ -32,107 +32,107 @@ class ModbusDataStore {
         {
         }
 
-        uint8_t readCoils(uint16_t addr, uint16_t qty, std::vector<bool> &out) const
+        uint8_t readCoils(uint16_t u16Addr, uint16_t u16Qty, std::vector<bool> &vOut) const
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            return m_readBits(m_coils, addr, qty, out);
+            return m_readBits(m_coils, u16Addr, u16Qty, vOut);
         }
 
-        uint8_t readDiscreteInputs(uint16_t addr, uint16_t qty, std::vector<bool> &out) const
+        uint8_t readDiscreteInputs(uint16_t u16Addr, uint16_t u16Qty, std::vector<bool> &vOut) const
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            return m_readBits(m_discreteInputs, addr, qty, out);
+            return m_readBits(m_discreteInputs, u16Addr, u16Qty, vOut);
         }
 
-        uint8_t readHoldingRegisters(uint16_t addr, uint16_t qty, std::vector<uint16_t> &out) const
+        uint8_t readHoldingRegisters(uint16_t u16Addr, uint16_t u16Qty, std::vector<uint16_t> &vOut) const
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            return m_readRegs(m_holdingRegisters, addr, qty, out);
+            return m_readRegs(m_holdingRegisters, u16Addr, u16Qty, vOut);
         }
 
-        uint8_t readInputRegisters(uint16_t addr, uint16_t qty, std::vector<uint16_t> &out) const
+        uint8_t readInputRegisters(uint16_t u16Addr, uint16_t u16Qty, std::vector<uint16_t> &vOut) const
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            return m_readRegs(m_inputRegisters, addr, qty, out);
+            return m_readRegs(m_inputRegisters, u16Addr, u16Qty, vOut);
         }
 
-        uint8_t writeSingleCoil(uint16_t addr, bool value)
+        uint8_t writeSingleCoil(uint16_t u16Addr, bool bValue)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            if (addr >= m_coils.size()) {
+            if (u16Addr >= m_coils.size()) {
                 return kExceptionIllegalAddress;
             }
-            m_coils[addr] = value;
+            m_coils[u16Addr] = bValue;
             return kExceptionNone;
         }
 
-        uint8_t writeSingleRegister(uint16_t addr, uint16_t value)
+        uint8_t writeSingleRegister(uint16_t u16Addr, uint16_t u16Value)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            if (addr >= m_holdingRegisters.size()) {
+            if (u16Addr >= m_holdingRegisters.size()) {
                 return kExceptionIllegalAddress;
             }
-            m_holdingRegisters[addr] = value;
+            m_holdingRegisters[u16Addr] = u16Value;
             return kExceptionNone;
         }
 
-        uint8_t writeMultipleCoils(uint16_t addr, const std::vector<bool> &values)
+        uint8_t writeMultipleCoils(uint16_t u16Addr, const std::vector<bool> &vValues)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            if (values.empty() || static_cast<size_t>(addr) + values.size() > m_coils.size()) {
+            if (vValues.empty() || static_cast<size_t>(u16Addr) + vValues.size() > m_coils.size()) {
                 return kExceptionIllegalAddress;
             }
-            for (size_t i = 0; i < values.size(); ++i) {
-                m_coils[addr + i] = values[i];
+            for (size_t i = 0; i < vValues.size(); ++i) {
+                m_coils[u16Addr + i] = vValues[i];
             }
             return kExceptionNone;
         }
 
-        uint8_t writeMultipleRegisters(uint16_t addr, const std::vector<uint16_t> &values)
+        uint8_t writeMultipleRegisters(uint16_t u16Addr, const std::vector<uint16_t> &vValues)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            if (values.empty() || static_cast<size_t>(addr) + values.size() > m_holdingRegisters.size()) {
+            if (vValues.empty() || static_cast<size_t>(u16Addr) + vValues.size() > m_holdingRegisters.size()) {
                 return kExceptionIllegalAddress;
             }
-            for (size_t i = 0; i < values.size(); ++i) {
-                m_holdingRegisters[addr + i] = values[i];
+            for (size_t i = 0; i < vValues.size(); ++i) {
+                m_holdingRegisters[u16Addr + i] = vValues[i];
             }
             return kExceptionNone;
         }
 
         // Direct seeding for test setup, mirroring pymodbus's ModbusSequentialDataBlock.setValues().
-        void seedHoldingRegisters(uint16_t addr, const std::vector<uint16_t> &values)
+        void seedHoldingRegisters(uint16_t u16Addr, const std::vector<uint16_t> &vValues)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            for (size_t i = 0; i < values.size() && addr + i < m_holdingRegisters.size(); ++i) {
-                m_holdingRegisters[addr + i] = values[i];
+            for (size_t i = 0; i < vValues.size() && u16Addr + i < m_holdingRegisters.size(); ++i) {
+                m_holdingRegisters[u16Addr + i] = vValues[i];
             }
         }
 
-        void seedCoils(uint16_t addr, const std::vector<bool> &values)
+        void seedCoils(uint16_t u16Addr, const std::vector<bool> &vValues)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            for (size_t i = 0; i < values.size() && addr + i < m_coils.size(); ++i) {
-                m_coils[addr + i] = values[i];
+            for (size_t i = 0; i < vValues.size() && u16Addr + i < m_coils.size(); ++i) {
+                m_coils[u16Addr + i] = vValues[i];
             }
         }
 
     private:
-        static uint8_t m_readBits(const std::vector<bool> &table, uint16_t addr, uint16_t qty, std::vector<bool> &out)
+        static uint8_t m_readBits(const std::vector<bool> &vTable, uint16_t u16Addr, uint16_t u16Qty, std::vector<bool> &vOut)
         {
-            if (qty == 0 || static_cast<size_t>(addr) + qty > table.size()) {
+            if (u16Qty == 0 || static_cast<size_t>(u16Addr) + u16Qty > vTable.size()) {
                 return kExceptionIllegalAddress;
             }
-            out.assign(table.begin() + addr, table.begin() + addr + qty);
+            vOut.assign(vTable.begin() + u16Addr, vTable.begin() + u16Addr + u16Qty);
             return kExceptionNone;
         }
 
-        static uint8_t m_readRegs(const std::vector<uint16_t> &table, uint16_t addr, uint16_t qty, std::vector<uint16_t> &out)
+        static uint8_t m_readRegs(const std::vector<uint16_t> &vTable, uint16_t u16Addr, uint16_t u16Qty, std::vector<uint16_t> &vOut)
         {
-            if (qty == 0 || static_cast<size_t>(addr) + qty > table.size()) {
+            if (u16Qty == 0 || static_cast<size_t>(u16Addr) + u16Qty > vTable.size()) {
                 return kExceptionIllegalAddress;
             }
-            out.assign(table.begin() + addr, table.begin() + addr + qty);
+            vOut.assign(vTable.begin() + u16Addr, vTable.begin() + u16Addr + u16Qty);
             return kExceptionNone;
         }
 

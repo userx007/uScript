@@ -65,7 +65,7 @@ class QToolButton;
 class CommDumpView : public QFrame {
         Q_OBJECT
     public:
-        explicit CommDumpView(QWidget *parent = nullptr);
+        explicit CommDumpView(QWidget *pParent = nullptr);
 
         // plugin: e.g. "uart0". details: pre-formatted per plugin type (comm
         // port / "ip:port" / i2c addr / "SPI0 CS1" / CAN id / ...).
@@ -75,7 +75,7 @@ class CommDumpView : public QFrame {
         // straight through to the model rather than re-stamped with "now" here,
         // so this panel's Timestamp column stays on the same time base as the
         // Log panel's.
-        void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
+        void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool bIsTx,
                        const QByteArray &data);
 
         void clear();
@@ -83,9 +83,9 @@ class CommDumpView : public QFrame {
 
     public slots:
 
-        void setAutoScroll(bool on)
+        void setAutoScroll(bool bOn)
         {
-            m_autoScroll = on;
+            m_autoScroll = bOn;
         }
 
         void setTreeFont(const QFont &font);
@@ -94,7 +94,7 @@ class CommDumpView : public QFrame {
         void onSaveAll();
         void onSaveFilteredOnly();
         void onLoadTriggered();
-        void onPluginActionToggled(bool checked);
+        void onPluginActionToggled(bool bChecked);
         void onCopySelected();
         void onSelectAllRows();
         void onExpandAll();
@@ -104,12 +104,12 @@ class CommDumpView : public QFrame {
         void flushPending();
 
     protected:
-        bool eventFilter(QObject *watched, QEvent *event) override;
+        bool eventFilter(QObject *pWatched, QEvent *pEvent) override;
 
     private:
         void updateCountLabel();
         void ensurePluginKnown(const QString &plugin);
-        bool rowPassesFilters(int row) const;
+        bool rowPassesFilters(int iRow) const;
         // Same criteria as rowPassesFilters(), but taking a Record directly —
         // used when filtering must be evaluated against the RAW record log
         // regardless of which display mode is currently active (see
@@ -117,7 +117,7 @@ class CommDumpView : public QFrame {
         bool recordPassesFilters(const CommDumpModel::Record &rec) const;
         void reapplyAllFilters();
         void rebuildPluginMenuFromModel();
-        void saveToFile(bool filteredOnly);
+        void saveToFile(bool bFilteredOnly);
         void updateFullDumpFontSize();
         // Applies filter-visibility to exactly the rows CommDumpModel::
         // IngestResult::touchedRows says one addRecords() batch actually

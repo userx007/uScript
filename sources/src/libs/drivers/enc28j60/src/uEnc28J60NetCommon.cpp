@@ -46,23 +46,23 @@
 // receive_packet()/send_command() below.
 // ============================================================================
 namespace {
-    inline long net_recv(int iSocketFd, void *pBuf, size_t szLen, int iFlags)
+    inline long net_recv(int iSocketFd, void *pvBuf, size_t szLen, int iFlags)
     {
 #ifdef _WIN32
-        return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char *>(pBuf),
+        return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char *>(pvBuf),
                       static_cast<int>(szLen), iFlags);
 #else
-        return ::recv(iSocketFd, pBuf, szLen, iFlags);
+        return ::recv(iSocketFd, pvBuf, szLen, iFlags);
 #endif
     }
 
-    inline long net_send(int iSocketFd, const void *pBuf, size_t szLen, int iFlags)
+    inline long net_send(int iSocketFd, const void *pvBuf, size_t szLen, int iFlags)
     {
 #ifdef _WIN32
-        return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char *>(pBuf),
+        return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char *>(pvBuf),
                       static_cast<int>(szLen), iFlags);
 #else
-        return ::send(iSocketFd, pBuf, szLen, iFlags);
+        return ::send(iSocketFd, pvBuf, szLen, iFlags);
 #endif
     }
 } // namespace
@@ -104,12 +104,12 @@ Enc28J60Net::Status Enc28J60Net::receive_packet(std::span<uint8_t> response_buff
     return Status::SUCCESS;
 }
 
-Enc28J60Net::Status Enc28J60Net::send_command(uint8_t cmd_id, const uint8_t *payload, size_t payload_len) const
+Enc28J60Net::Status Enc28J60Net::send_command(uint8_t u8Cmd_id, const uint8_t *pu8Payload, size_t payload_len) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     uint8_t header[3];
-    header[0]        = cmd_id;
+    header[0]        = u8Cmd_id;
     header[1]        = (payload_len >> 8) & 0xFF;
     header[2]        = payload_len & 0xFF;
 
@@ -131,7 +131,7 @@ Enc28J60Net::Status Enc28J60Net::send_command(uint8_t cmd_id, const uint8_t *pay
         offset = 0;
         while (offset < payload_len) {
             long n = net_send(m_iSocketFd,
-                              payload + offset,
+                              pu8Payload + offset,
                               payload_len - offset,
                               0);
             if (n < 0) {
@@ -150,7 +150,7 @@ Enc28J60Net::Status Enc28J60Net::send_command(uint8_t cmd_id, const uint8_t *pay
 
 Enc28J60Net::ReadResult Enc28J60Net::tout_read(uint32_t u32ReadTimeout,
                                                std::span<uint8_t> buffer,
-                                               const ReadOptions &options,
+                                               const ReadOptions &sOptions,
                                                std::string_view xtra_params,
                                                std::stop_token stop_tok) const
 {
@@ -161,7 +161,7 @@ Enc28J60Net::ReadResult Enc28J60Net::tout_read(uint32_t u32ReadTimeout,
     // retry loop, so it does not use this value either way.)
     const uint32_t timeout = u32ReadTimeout;
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
     case ReadMode::Exact: {
         // 1. Ask for available bytes
         // The ENC28J60 server implementation might just send data on RECV (0x03)
@@ -244,7 +244,7 @@ Enc28J60Net::ReadResult Enc28J60Net::tout_read(uint32_t u32ReadTimeout,
                 for (size_t i = 0; i < len && offset < buffer.size() - 1; ++i) {
                     uint8_t b        = pkt[3 + i];
                     buffer[offset++] = b;
-                    if (b == options.delimiter) {
+                    if (b == sOptions.delimiter) {
                         found = true;
                         break;
                     }

@@ -62,14 +62,14 @@
 // open / close
 // ============================================================================
 
-FT4232GPIO::Status FT4232GPIO::open(const GpioConfig &config, uint8_t u8DeviceIndex)
+FT4232GPIO::Status FT4232GPIO::open(const GpioConfig &sConfig, uint8_t u8DeviceIndex)
 {
-    Status s = open_device(config.channel, u8DeviceIndex);
+    Status s = open_device(sConfig.channel, u8DeviceIndex);
     if (s != Status::SUCCESS) {
         return s;
     }
 
-    s = configure_mpsse_gpio(config);
+    s = configure_mpsse_gpio(sConfig);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("MPSSE GPIO init failed"));
@@ -79,10 +79,10 @@ FT4232GPIO::Status FT4232GPIO::open(const GpioConfig &config, uint8_t u8DeviceIn
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT4232H GPIO opened: ch=");
-              LOG_UINT32(static_cast<uint8_t>(config.channel));
+              LOG_UINT32(static_cast<uint8_t>(sConfig.channel));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex);
-              LOG_STRING("lowDir="); LOG_HEX8(config.lowDirMask);
-              LOG_STRING("highDir="); LOG_HEX8(config.highDirMask));
+              LOG_STRING("lowDir="); LOG_HEX8(sConfig.lowDirMask);
+              LOG_STRING("highDir="); LOG_HEX8(sConfig.highDirMask));
 
     return Status::SUCCESS;
 }
@@ -103,13 +103,13 @@ FT4232GPIO::Status FT4232GPIO::close()
 // MPSSE CONFIGURATION
 // ============================================================================
 
-FT4232GPIO::Status FT4232GPIO::configure_mpsse_gpio(const GpioConfig &config)
+FT4232GPIO::Status FT4232GPIO::configure_mpsse_gpio(const GpioConfig &sConfig)
 {
     // ── Cache initial state ───────────────────────────────────────────────────
-    m_lowValue  = config.lowValue;
-    m_lowDir    = config.lowDirMask;
-    m_highValue = config.highValue;
-    m_highDir   = config.highDirMask;
+    m_lowValue  = sConfig.lowValue;
+    m_lowDir    = sConfig.lowDirMask;
+    m_highValue = sConfig.highValue;
+    m_highDir   = sConfig.highDirMask;
 
     // ── MPSSE synchronisation (bad-opcode echo) ───────────────────────────────
     // Sending 0xAA causes the MPSSE to echo 0xFA 0xAA, confirming it is in
@@ -156,15 +156,15 @@ FT4232GPIO::Status FT4232GPIO::configure_mpsse_gpio(const GpioConfig &config)
 // INTERNAL PIN-STATE HELPERS
 // ============================================================================
 
-FT4232GPIO::Status FT4232GPIO::apply_low(uint8_t value, uint8_t dir) const
+FT4232GPIO::Status FT4232GPIO::apply_low(uint8_t u8Value, uint8_t u8Dir) const
 {
-    const uint8_t cmd[3] = {MPSSE_SET_BITS_LOW, value, dir};
+    const uint8_t cmd[3] = {MPSSE_SET_BITS_LOW, u8Value, u8Dir};
     return mpsse_write(cmd, sizeof(cmd));
 }
 
-FT4232GPIO::Status FT4232GPIO::apply_high(uint8_t value, uint8_t dir) const
+FT4232GPIO::Status FT4232GPIO::apply_high(uint8_t u8Value, uint8_t u8Dir) const
 {
-    const uint8_t cmd[3] = {MPSSE_SET_BITS_HIGH, value, dir};
+    const uint8_t cmd[3] = {MPSSE_SET_BITS_HIGH, u8Value, u8Dir};
     return mpsse_write(cmd, sizeof(cmd));
 }
 
@@ -172,38 +172,38 @@ FT4232GPIO::Status FT4232GPIO::apply_high(uint8_t value, uint8_t dir) const
 // DIRECTION CONTROL
 // ============================================================================
 
-FT4232GPIO::Status FT4232GPIO::set_direction(Bank bank,
-                                             uint8_t dirMask,
-                                             uint8_t initialValue)
+FT4232GPIO::Status FT4232GPIO::set_direction(Bank eBank,
+                                             uint8_t u8DirMask,
+                                             uint8_t u8InitialValue)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
     }
 
-    if (bank == Bank::Low) {
-        // Pins switching from input to output are driven to initialValue.
+    if (eBank == Bank::Low) {
+        // Pins switching from input to output are driven to u8InitialValue.
         // Pins already output keep their current cached value.
-        const uint8_t newOutputPins = static_cast<uint8_t>(dirMask & ~m_lowDir);
+        const uint8_t newOutputPins = static_cast<uint8_t>(u8DirMask & ~m_lowDir);
         m_lowValue                  = static_cast<uint8_t>(
-            (m_lowValue & ~newOutputPins) | (initialValue & newOutputPins));
-        m_lowDir = dirMask;
+            (m_lowValue & ~newOutputPins) | (u8InitialValue & newOutputPins));
+        m_lowDir = u8DirMask;
 
         Status s = apply_low(m_lowValue, m_lowDir);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("set_direction Low failed, dir="); LOG_HEX8(dirMask));
+                      LOG_STRING("set_direction Low failed, dir="); LOG_HEX8(u8DirMask));
         }
         return s;
     } else {
-        const uint8_t newOutputPins = static_cast<uint8_t>(dirMask & ~m_highDir);
+        const uint8_t newOutputPins = static_cast<uint8_t>(u8DirMask & ~m_highDir);
         m_highValue                 = static_cast<uint8_t>(
-            (m_highValue & ~newOutputPins) | (initialValue & newOutputPins));
-        m_highDir = dirMask;
+            (m_highValue & ~newOutputPins) | (u8InitialValue & newOutputPins));
+        m_highDir = u8DirMask;
 
         Status s  = apply_high(m_highValue, m_highDir);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("set_direction High failed, dir="); LOG_HEX8(dirMask));
+                      LOG_STRING("set_direction High failed, dir="); LOG_HEX8(u8DirMask));
         }
         return s;
     }
@@ -213,67 +213,67 @@ FT4232GPIO::Status FT4232GPIO::set_direction(Bank bank,
 // OUTPUT CONTROL
 // ============================================================================
 
-FT4232GPIO::Status FT4232GPIO::write(Bank bank, uint8_t value)
+FT4232GPIO::Status FT4232GPIO::write(Bank eBank, uint8_t u8Value)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
     }
 
-    if (bank == Bank::Low) {
-        m_lowValue = value;
+    if (eBank == Bank::Low) {
+        m_lowValue = u8Value;
         Status s   = apply_low(m_lowValue, m_lowDir);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("write Low failed, value="); LOG_HEX8(value));
+                      LOG_STRING("write Low failed, u8Value="); LOG_HEX8(u8Value));
         }
         return s;
     } else {
-        m_highValue = value;
+        m_highValue = u8Value;
         Status s    = apply_high(m_highValue, m_highDir);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("write High failed, value="); LOG_HEX8(value));
+                      LOG_STRING("write High failed, u8Value="); LOG_HEX8(u8Value));
         }
         return s;
     }
 }
 
-FT4232GPIO::Status FT4232GPIO::set_pins(Bank bank, uint8_t pinMask)
+FT4232GPIO::Status FT4232GPIO::set_pins(Bank eBank, uint8_t u8PinMask)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
     }
 
-    if (bank == Bank::Low) {
-        return write(Bank::Low, static_cast<uint8_t>(m_lowValue | pinMask));
+    if (eBank == Bank::Low) {
+        return write(Bank::Low, static_cast<uint8_t>(m_lowValue | u8PinMask));
     } else {
-        return write(Bank::High, static_cast<uint8_t>(m_highValue | pinMask));
+        return write(Bank::High, static_cast<uint8_t>(m_highValue | u8PinMask));
     }
 }
 
-FT4232GPIO::Status FT4232GPIO::clear_pins(Bank bank, uint8_t pinMask)
+FT4232GPIO::Status FT4232GPIO::clear_pins(Bank eBank, uint8_t u8PinMask)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
     }
 
-    if (bank == Bank::Low) {
-        return write(Bank::Low, static_cast<uint8_t>(m_lowValue & ~pinMask));
+    if (eBank == Bank::Low) {
+        return write(Bank::Low, static_cast<uint8_t>(m_lowValue & ~u8PinMask));
     } else {
-        return write(Bank::High, static_cast<uint8_t>(m_highValue & ~pinMask));
+        return write(Bank::High, static_cast<uint8_t>(m_highValue & ~u8PinMask));
     }
 }
 
-FT4232GPIO::Status FT4232GPIO::toggle_pins(Bank bank, uint8_t pinMask)
+FT4232GPIO::Status FT4232GPIO::toggle_pins(Bank eBank, uint8_t u8PinMask)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
     }
 
-    if (bank == Bank::Low) {
-        return write(Bank::Low, static_cast<uint8_t>(m_lowValue ^ pinMask));
+    if (eBank == Bank::Low) {
+        return write(Bank::Low, static_cast<uint8_t>(m_lowValue ^ u8PinMask));
     } else {
-        return write(Bank::High, static_cast<uint8_t>(m_highValue ^ pinMask));
+        return write(Bank::High, static_cast<uint8_t>(m_highValue ^ u8PinMask));
     }
 }
 
@@ -281,52 +281,52 @@ FT4232GPIO::Status FT4232GPIO::toggle_pins(Bank bank, uint8_t pinMask)
 // INPUT READING
 // ============================================================================
 
-FT4232GPIO::Status FT4232GPIO::read(Bank bank, uint8_t &value)
+FT4232GPIO::Status FT4232GPIO::read(Bank eBank, uint8_t &u8Value)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
     }
 
-    value                = 0;
+    u8Value                = 0;
 
     // Build: GET_BITS + SEND_IMMEDIATE → fetch 1 response byte
-    const uint8_t getCmd = (bank == Bank::Low) ? MPSSE_GET_BITS_LOW : MPSSE_GET_BITS_HIGH;
+    const uint8_t getCmd = (eBank == Bank::Low) ? MPSSE_GET_BITS_LOW : MPSSE_GET_BITS_HIGH;
     const uint8_t cmd[2] = {getCmd, MPSSE_SEND_IMMEDIATE};
 
     Status s             = mpsse_write(cmd, sizeof(cmd));
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("read: GET_BITS cmd failed, bank=");
-                  LOG_UINT32(static_cast<uint8_t>(bank)));
+                  LOG_STRING("read: GET_BITS cmd failed, eBank=");
+                  LOG_UINT32(static_cast<uint8_t>(eBank)));
         return s;
     }
 
     size_t got = 0;
-    s          = mpsse_read(&value, 1, 200, got);
+    s          = mpsse_read(&u8Value, 1, 200, got);
     if (s != Status::SUCCESS || got == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("read: mpsse_read failed, bank=");
-                  LOG_UINT32(static_cast<uint8_t>(bank)));
+                  LOG_STRING("read: mpsse_read failed, eBank=");
+                  LOG_UINT32(static_cast<uint8_t>(eBank)));
         return Status::READ_ERROR;
     }
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-              LOG_STRING("read: bank="); LOG_UINT32(static_cast<uint8_t>(bank));
-              LOG_STRING("value="); LOG_HEX8(value));
+              LOG_STRING("read: eBank="); LOG_UINT32(static_cast<uint8_t>(eBank));
+              LOG_STRING("u8Value="); LOG_HEX8(u8Value));
 
     return Status::SUCCESS;
 }
 
-FT4232GPIO::Status FT4232GPIO::read_pins(Bank bank, uint8_t pinMask, uint8_t &value)
+FT4232GPIO::Status FT4232GPIO::read_pins(Bank eBank, uint8_t u8PinMask, uint8_t &u8Value)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
     }
 
     uint8_t raw = 0;
-    Status s    = read(bank, raw);
+    Status s    = read(eBank, raw);
     if (s == Status::SUCCESS) {
-        value = static_cast<uint8_t>(raw & pinMask);
+        u8Value = static_cast<uint8_t>(raw & u8PinMask);
     }
     return s;
 }

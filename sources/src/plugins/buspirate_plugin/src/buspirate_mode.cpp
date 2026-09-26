@@ -32,21 +32,21 @@ http://dangerousprototypes.com/docs/Bitbang
 //            PUBLIC INTERFACES IMPLEMENTATION                   //
 ///////////////////////////////////////////////////////////////////
 
-bool BuspiratePlugin::m_handle_mode(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_mode(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal   = false;
     bool bShowHelp = false;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         bShowHelp = true;
         bRetVal   = true;
     } else {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Mode:"); LOG_STRING(args));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Mode:"); LOG_STRING(strArgs));
 
-        ModesMap::const_iterator it = m_mapModes.find(args);
+        ModesMap::const_iterator it = m_mapModes.find(strArgs);
         if (it != m_mapModes.end()) {
 
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Found mode:"); LOG_STRING(args));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Found mode:"); LOG_STRING(strArgs));
 
             // request
             std::vector<uint8_t> request(it->second.iRepetition);
@@ -63,7 +63,7 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args, std::stop_token st)
                 bRetVal = generic_uart_send_receive(request, response, expected, true, st);
             }
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mode:"); LOG_STRING(args));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mode:"); LOG_STRING(strArgs));
             bShowHelp = true;
         }
     }

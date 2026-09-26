@@ -40,7 +40,7 @@ namespace {
         g_running = false;
     }
 
-    void print_usage(const char *argv0)
+    void print_usage(const char *pstrArgv0)
     {
         std::fprintf(stderr,
                      "Real CAN-TP loopback echo server (Linux SocketCAN / vcan)\n\n"
@@ -70,7 +70,7 @@ namespace {
                      "example (physical addressing on vcan0):\n"
                      "  ip link add dev vcan0 type vcan && ip link set up vcan0\n"
                      "  %s isotp vcan0 7E0 7E8 50\n",
-                     argv0, argv0);
+                     pstrArgv0, pstrArgv0);
     }
 
     struct Args {
@@ -85,50 +85,50 @@ namespace {
             bool verbose       = false;
     };
 
-    bool parse_uint(const char *s, uint32_t &out)
+    bool parse_uint(const char *pstrS, uint32_t &u32Out)
     {
         try {
-            out = static_cast<uint32_t>(std::stoul(s));
+            u32Out = static_cast<uint32_t>(std::stoul(pstrS));
             return true;
         } catch (...) {
             return false;
         }
     }
 
-    bool parse_args(int argc, char **argv, Args &out)
+    bool parse_args(int iArgc, char **ppstrArgv, Args &sOut)
     {
-        if (argc < 6) {
+        if (iArgc < 6) {
             return false;
         }
 
-        out.protocol = argv[1];
-        out.iface    = argv[2];
-        out.rxId     = argv[3];
-        out.txId     = argv[4];
+        sOut.protocol = ppstrArgv[1];
+        sOut.iface    = ppstrArgv[2];
+        sOut.rxId     = ppstrArgv[3];
+        sOut.txId     = ppstrArgv[4];
 
-        if (!parse_uint(argv[5], out.delayMs)) {
-            std::fprintf(stderr, "Invalid delay-ms: %s\n", argv[5]);
+        if (!parse_uint(ppstrArgv[5], sOut.delayMs)) {
+            std::fprintf(stderr, "Invalid delay-ms: %s\n", ppstrArgv[5]);
             return false;
         }
 
-        for (int i = 6; i < argc; ++i) {
-            const std::string a = argv[i];
+        for (int i = 6; i < iArgc; ++i) {
+            const std::string a = ppstrArgv[i];
             if (a == "--verbose") {
-                out.verbose = true;
+                sOut.verbose = true;
             } else if (a == "--once") {
-                out.once = true;
-            } else if (a == "--timeout" && i + 1 < argc) {
-                if (!parse_uint(argv[++i], out.timeoutMs)) {
-                    std::fprintf(stderr, "Invalid --timeout: %s\n", argv[i]);
+                sOut.once = true;
+            } else if (a == "--timeout" && i + 1 < iArgc) {
+                if (!parse_uint(ppstrArgv[++i], sOut.timeoutMs)) {
+                    std::fprintf(stderr, "Invalid --timeout: %s\n", ppstrArgv[i]);
                     return false;
                 }
-            } else if (a == "--maxlen" && i + 1 < argc) {
+            } else if (a == "--maxlen" && i + 1 < iArgc) {
                 uint32_t v = 0;
-                if (!parse_uint(argv[++i], v)) {
-                    std::fprintf(stderr, "Invalid --maxlen: %s\n", argv[i]);
+                if (!parse_uint(ppstrArgv[++i], v)) {
+                    std::fprintf(stderr, "Invalid --maxlen: %s\n", ppstrArgv[i]);
                     return false;
                 }
-                out.maxLen = v;
+                sOut.maxLen = v;
             } else {
                 std::fprintf(stderr, "Unknown argument: %s\n", a.c_str());
                 return false;
@@ -137,87 +137,87 @@ namespace {
         return true;
     }
 
-    void log_frame(bool verbose, const char *dir, const std::string &rxId, const std::string &txId,
-                   const std::vector<uint8_t> &data)
+    void log_frame(bool bVerbose, const char *pstrDir, const std::string &strRxId, const std::string &strTxId,
+                   const std::vector<uint8_t> &vData)
     {
-        if (!verbose) {
+        if (!bVerbose) {
             return;
         }
-        std::fprintf(stderr, "  [%s] rxId=%-8s txId=%-8s len=%3zu  ", dir, rxId.c_str(), txId.c_str(), data.size());
-        for (uint8_t b : data) {
+        std::fprintf(stderr, "  [%s] strRxId=%-8s strTxId=%-8s len=%3zu  ", pstrDir, strRxId.c_str(), strTxId.c_str(), vData.size());
+        for (uint8_t b : vData) {
             std::fprintf(stderr, "%02X ", b);
         }
         std::fprintf(stderr, "\n");
     }
 
-    void sleep_delay(uint32_t delayMs)
+    void sleep_delay(uint32_t u32DelayMs)
     {
-        if (delayMs > 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(delayMs));
+        if (u32DelayMs > 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(u32DelayMs));
         }
     }
 
     // ---- "none": no ITransportProtocol at all, driver used directly (single frame, <= 8 bytes). ----
     // status: true = message handled (success or hard failure), false = nothing arrived (timeout, keep looping).
-    bool run_none_iteration(RealCommDriver &drv, const Args &args, bool &ok)
+    bool run_none_iteration(RealCommDriver &drv, const Args &sArgs, bool &bOk)
     {
         std::vector<uint8_t> buf(8, 0);
         ICommDriver::ReadOptions opts;
         opts.mode = ICommDriver::ReadMode::Exact;
 
-        auto rr   = drv.tout_read(args.timeoutMs, std::span<uint8_t>(buf), opts, args.rxId);
+        auto rr   = drv.tout_read(sArgs.timeoutMs, std::span<uint8_t>(buf), opts, sArgs.rxId);
         if (rr.status == ICommDriver::Status::READ_TIMEOUT) {
             return false;
         }
 
         if (rr.status != ICommDriver::Status::SUCCESS) {
             std::fprintf(stderr, "  receive failed, status=%d\n", static_cast<int>(rr.status));
-            ok = false;
+            bOk = false;
             return true;
         }
         buf.resize(rr.bytes_read);
-        log_frame(args.verbose, "RX", args.rxId, args.txId, buf);
+        log_frame(sArgs.verbose, "RX", sArgs.rxId, sArgs.txId, buf);
 
-        sleep_delay(args.delayMs);
+        sleep_delay(sArgs.delayMs);
 
-        auto wr = drv.tout_write(args.timeoutMs, std::span<const uint8_t>(buf), args.txId);
-        log_frame(args.verbose, "TX", args.rxId, args.txId, buf);
+        auto wr = drv.tout_write(sArgs.timeoutMs, std::span<const uint8_t>(buf), sArgs.txId);
+        log_frame(sArgs.verbose, "TX", sArgs.rxId, sArgs.txId, buf);
 
-        ok = (wr.status == ICommDriver::Status::SUCCESS);
-        if (!ok) {
+        bOk = (wr.status == ICommDriver::Status::SUCCESS);
+        if (!bOk) {
             std::fprintf(stderr, "  echo send failed, status=%d\n", static_cast<int>(wr.status));
         }
         return true;
     }
 
     // ---- ISO-TP / J1939 / NMEA2000 Fast Packet: symmetric ITransportProtocol send()/receive(). ----
-    bool run_tp_iteration(ITransportProtocol &tp, RealCommDriver &drv, const Args &args, bool &ok)
+    bool run_tp_iteration(ITransportProtocol &tp, RealCommDriver &drv, const Args &sArgs, bool &bOk)
     {
-        std::vector<uint8_t> buf(args.maxLen, 0);
+        std::vector<uint8_t> buf(sArgs.maxLen, 0);
 
-        auto rr = tp.receive(drv, args.timeoutMs, std::span<uint8_t>(buf), args.rxId, args.txId);
+        auto rr = tp.receive(drv, sArgs.timeoutMs, std::span<uint8_t>(buf), sArgs.rxId, sArgs.txId);
         if (rr.status == ICommDriver::Status::READ_TIMEOUT) {
             return false;
         }
 
         if (rr.status != ICommDriver::Status::SUCCESS) {
             std::fprintf(stderr, "  receive failed, status=%d\n", static_cast<int>(rr.status));
-            ok = false;
+            bOk = false;
             return true;
         }
         buf.resize(rr.bytes_read);
-        log_frame(args.verbose, "RX", args.rxId, args.txId, buf);
+        log_frame(sArgs.verbose, "RX", sArgs.rxId, sArgs.txId, buf);
 
-        sleep_delay(args.delayMs);
+        sleep_delay(sArgs.delayMs);
 
         // Roles are mirrored on the way back: what we received on rxId (with
         // handshake replies stamped txId) we now transmit on txId (with any
         // handshake we still need from the peer expected back on rxId).
-        auto wr = tp.send(drv, args.timeoutMs, buf, args.txId, args.rxId);
-        log_frame(args.verbose, "TX", args.rxId, args.txId, buf);
+        auto wr = tp.send(drv, sArgs.timeoutMs, buf, sArgs.txId, sArgs.rxId);
+        log_frame(sArgs.verbose, "TX", sArgs.rxId, sArgs.txId, buf);
 
-        ok = (wr.status == ICommDriver::Status::SUCCESS);
-        if (!ok) {
+        bOk = (wr.status == ICommDriver::Status::SUCCESS);
+        if (!bOk) {
             std::fprintf(stderr, "  echo send failed, status=%d\n", static_cast<int>(wr.status));
         }
         return true;
@@ -227,8 +227,8 @@ namespace {
     // See SdoLoopbackServer.hpp / the usage note in print_usage() for why this
     // can't be a simple "receive, then push back" loop the way the other
     // protocols are.
-    bool run_canopen_iteration(RealCommDriver &drv, const Args &args, std::vector<uint8_t> &stored,
-                               bool &haveStored, bool &ok)
+    bool run_canopen_iteration(RealCommDriver &drv, const Args &sArgs, std::vector<uint8_t> &vStored,
+                               bool &bHaveStored, bool &bOk)
     {
         bool isDownload       = false;
         bool sawFirstFrame    = false;
@@ -236,14 +236,14 @@ namespace {
         auto onDirectionKnown = [&](bool download) {
             isDownload    = download;
             sawFirstFrame = true;
-            // Only an Upload echoes previously-stored data back to the peer;
+            // Only an Upload echoes previously-vStored data back to the peer;
             // that's the response this app's configurable delay applies to.
             if (!download) {
-                sleep_delay(args.delayMs);
+                sleep_delay(sArgs.delayMs);
             }
         };
 
-        bool transacted = SdoLoopbackServer::serve_one(drv, args.rxId, args.txId, args.timeoutMs, stored, onDirectionKnown);
+        bool transacted = SdoLoopbackServer::serve_one(drv, sArgs.rxId, sArgs.txId, sArgs.timeoutMs, vStored, onDirectionKnown);
 
         if (!sawFirstFrame) {
             // Nothing arrived at all within the timeout -- not an error, just keep polling.
@@ -252,24 +252,24 @@ namespace {
 
         if (!transacted) {
             std::fprintf(stderr, "  SDO %s transaction failed\n", isDownload ? "download" : "upload");
-            ok = false;
+            bOk = false;
             return true;
         }
 
         if (isDownload) {
-            haveStored = true;
+            bHaveStored = true;
         }
-        log_frame(args.verbose, isDownload ? "RX(download)" : "TX(upload)", args.rxId, args.txId, stored);
-        ok = true;
+        log_frame(sArgs.verbose, isDownload ? "RX(download)" : "TX(upload)", sArgs.rxId, sArgs.txId, vStored);
+        bOk = true;
         return true;
     }
 } // namespace
 
-int main(int argc, char **argv)
+int main(int iArgc, char **ppstrArgv)
 {
     Args args;
-    if (!parse_args(argc, argv, args)) {
-        print_usage(argv[0]);
+    if (!parse_args(iArgc, ppstrArgv, args)) {
+        print_usage(ppstrArgv[0]);
         return 2;
     }
 
@@ -292,7 +292,7 @@ int main(int argc, char **argv)
 
         if (!tp_protocol_from_string(lookup, protoEnum)) {
             std::fprintf(stderr, "Unknown protocol: %s\n\n", args.protocol.c_str());
-            print_usage(argv[0]);
+            print_usage(ppstrArgv[0]);
             return 2;
         }
     }

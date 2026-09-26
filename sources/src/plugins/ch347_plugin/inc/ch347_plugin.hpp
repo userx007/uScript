@@ -184,15 +184,15 @@ class CH347Plugin : public PluginInterface {
             return m_bIsEnabled;
         }
 
-        bool setParams(const PluginDataSet *ps)
+        bool setParams(const PluginDataSet *psPs)
         {
-            bool ok = generic_setparams<CH347Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
-            return ok && m_LocalSetParams(ps);
+            bool ok = generic_setparams<CH347Plugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
+            return ok && m_LocalSetParams(psPs);
         }
 
-        void getParams(PluginDataGet *pg) const
+        void getParams(PluginDataGet *psPg) const
         {
-            generic_getparams<CH347Plugin>(this, pg);
+            generic_getparams<CH347Plugin>(this, psPg);
         }
 
         const PluginCommandsMap<CH347Plugin> *getMap() const
@@ -223,10 +223,10 @@ class CH347Plugin : public PluginInterface {
             return true;
         }
 
-        bool doDispatch(const std::string &cmd, const std::string &params,
+        bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
-            return generic_dispatch<CH347Plugin>(this, cmd, params, st);
+            return generic_dispatch<CH347Plugin>(this, strCmd, strParams, st);
         }
 
         void doCleanup();
@@ -248,10 +248,10 @@ class CH347Plugin : public PluginInterface {
 
         // Module-map accessors
 
-        ModuleCommandsMap<CH347Plugin> *getModuleCmdsMap(const std::string &m) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
+        ModuleCommandsMap<CH347Plugin> *getModuleCmdsMap(const std::string &strM) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
 
-        bool setModuleSpeed(const std::string &module, size_t hz) const;
+        bool setModuleSpeed(const std::string &strModule, size_t hz) const;
 
         // INI accessor
 
@@ -356,7 +356,7 @@ class CH347Plugin : public PluginInterface {
         // Top-level command handlers
 
 #define CH347_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_CH347_##a(const std::string &args, std::stop_token st) const;
+    bool m_CH347_##a(const std::string &strArgs, std::stop_token st) const;
         CH347_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef CH347_PLUGIN_CMD_RECORD
 
@@ -417,16 +417,16 @@ class CH347Plugin : public PluginInterface {
         ModuleSpeedMap m_mapSpeed_SPI;
         ModuleSpeedMap m_mapSpeed_I2C;
 
-        bool m_LocalSetParams(const PluginDataSet *ps);
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         //  Parse helpers
-        static bool parseI2cSpeed(const std::string &s, I2cSpeed &out);
-        static bool parseSpiParams(const std::string &args,
-                                   SpiPendingCfg &cfg,
-                                   std::string *pDevPathOut = nullptr);
-        static bool parseI2cParams(const std::string &args,
-                                   I2cPendingCfg &cfg,
-                                   std::string *pDevPathOut = nullptr);
+        static bool parseI2cSpeed(const std::string &strS, I2cSpeed &eOut);
+        static bool parseSpiParams(const std::string &strArgs,
+                                   SpiPendingCfg &sCfg,
+                                   std::string *pstrDeviceIndexOut = nullptr);
+        static bool parseI2cParams(const std::string &strArgs,
+                                   I2cPendingCfg &sCfg,
+                                   std::string *pstrDevPathOut = nullptr);
 };
 
 #endif // CH374_PLUGIN_HPP

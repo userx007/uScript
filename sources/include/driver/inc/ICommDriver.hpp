@@ -139,7 +139,7 @@ class ICommDriver {
          */
         virtual ReadResult tout_read(uint32_t u32ReadTimeout,
                                      std::span<uint8_t> buffer,
-                                     const ReadOptions &options,
+                                     const ReadOptions &sOptions,
                                      std::string_view xtra_params = {},
                                      std::stop_token stop_tok     = {}) const           = 0;
 
@@ -179,9 +179,9 @@ class ICommDriver {
          * @param code Status code to convert
          * @return String representation of the status
          */
-        static std::string to_string(Status code)
+        static std::string to_string(Status eCode)
         {
-            switch (code) {
+            switch (eCode) {
             case Status::SUCCESS:
                 return "SUCCESS";
             case Status::INVALID_PARAM:
@@ -231,9 +231,9 @@ class ICommDriver {
  */
 template <typename TDriver>
 using PFSEND = std::function<typename ICommDriver::WriteResult(
-    uint32_t timeout,
+    uint32_t u32Timeout,
     std::span<const uint8_t> buffer,
-    std::shared_ptr<const TDriver> driver,
+    std::shared_ptr<const TDriver> shpDriver,
     std::string_view xtra_params,
     std::stop_token stop_tok)>;
 
@@ -251,10 +251,10 @@ using PFSEND = std::function<typename ICommDriver::WriteResult(
  */
 template <typename TDriver>
 using PFRECV = std::function<typename ICommDriver::ReadResult(
-    uint32_t timeout,
+    uint32_t u32Timeout,
     std::span<uint8_t> buffer,
     const typename ICommDriver::ReadOptions &options,
-    std::shared_ptr<const TDriver> driver,
+    std::shared_ptr<const TDriver> shpDriver,
     std::string_view xtra_params,
     std::stop_token stop_tok)>;
 

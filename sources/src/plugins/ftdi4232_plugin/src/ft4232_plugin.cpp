@@ -39,10 +39,10 @@ extern "C" {
         return new FT4232Plugin();
     }
 
-    EXPORTED void pluginExit(FT4232Plugin *ptrPlugin)
+    EXPORTED void pluginExit(FT4232Plugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -98,9 +98,9 @@ void FT4232Plugin::doCleanup()
 //              TOP-LEVEL COMMAND HANDLERS                                     //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_FT4232_INFO(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_FT4232_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
@@ -344,24 +344,24 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string &args, std::stop_token st) co
 
 // SPI / I2C / GPIO / UART each route straight into their module dispatch map
 
-bool FT4232Plugin::m_FT4232_SPI(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_FT4232_SPI(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<FT4232Plugin>(this, "SPI", args, st);
+    return generic_module_dispatch<FT4232Plugin>(this, "SPI", strArgs, st);
 }
 
-bool FT4232Plugin::m_FT4232_I2C(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_FT4232_I2C(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<FT4232Plugin>(this, "I2C", args, st);
+    return generic_module_dispatch<FT4232Plugin>(this, "I2C", strArgs, st);
 }
 
-bool FT4232Plugin::m_FT4232_GPIO(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_FT4232_GPIO(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<FT4232Plugin>(this, "GPIO", args, st);
+    return generic_module_dispatch<FT4232Plugin>(this, "GPIO", strArgs, st);
 }
 
-bool FT4232Plugin::m_FT4232_UART(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_FT4232_UART(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<FT4232Plugin>(this, "UART", args, st);
+    return generic_module_dispatch<FT4232Plugin>(this, "UART", strArgs, st);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -377,9 +377,9 @@ bool FT4232Plugin::m_FT4232_UART(const std::string &args, std::stop_token st) co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool FT4232Plugin::m_FT4232_CONFIG(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_FT4232_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    return generic_ft4232_set_params(this, args);
+    return generic_ft4232_set_params(this, strArgs);
 }

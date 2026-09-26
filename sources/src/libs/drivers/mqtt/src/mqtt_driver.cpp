@@ -69,7 +69,7 @@ namespace {
     thread_local uint16_t tl_pendingPacketId = 0;
 } // namespace
 
-MqttDriver::MqttDriver(Config config)
+MqttDriver::MqttDriver(Config sConfig)
     : m_config(std::move(config))
 {
     if (m_config.strInstanceName.empty()) {
@@ -301,17 +301,17 @@ bool MqttDriver::open()
 // real driver's tout_write()/tout_read().
 // -----------------------------------------------------------------------
 
-ICommDriver::Status MqttDriver::m_PhysicalSend(std::span<const uint8_t> data, uint32_t timeoutMs) const
+ICommDriver::Status MqttDriver::m_PhysicalSend(std::span<const uint8_t> data, uint32_t u32TimeoutMs) const
 {
     if (!m_ssl) {
-        auto res = m_pTcpip->tout_write(timeoutMs, data);
+        auto res = m_pTcpip->tout_write(u32TimeoutMs, data);
         return res.status;
     }
 
     // 0 == infinite timeout: never expire the SSL_write retry loop, and
     // block indefinitely (poll(2) timeout -1) on each WANT_READ/WANT_WRITE wait.
-    const bool bInfinite = (timeoutMs == 0);
-    const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite = (u32TimeoutMs == 0);
+    const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
     size_t totalWritten  = 0;
     while (totalWritten < data.size()) {
         const int rc = SSL_write(m_ssl, data.data() + totalWritten, static_cast<int>(data.size() - totalWritten));
@@ -340,13 +340,13 @@ ICommDriver::Status MqttDriver::m_PhysicalSend(std::span<const uint8_t> data, ui
     return ICommDriver::Status::SUCCESS;
 }
 
-ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t &outBytesRead,
+ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t u32TimeoutMs, size_t &outBytesRead,
                                                std::stop_token stop_tok) const
 {
     outBytesRead = 0;
 
     if (!m_ssl) {
-        auto res     = m_pTcpip->tout_read(timeoutMs, buffer,
+        auto res     = m_pTcpip->tout_read(u32TimeoutMs, buffer,
                                            ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact}, {}, stop_tok);
         outBytesRead = res.bytes_read;
         return res.status;
@@ -359,8 +359,8 @@ ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite       = (timeoutMs == 0);
-    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite       = (u32TimeoutMs == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
 
     int pollRc                 = 0;
     while (true) {
@@ -418,40 +418,40 @@ ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32
 // accurate replacement).
 // -----------------------------------------------------------------------
 
-ICommDriver::Status MqttDriver::m_SendPacket(const std::vector<uint8_t> &packet, std::string_view xtra_params) const
+ICommDriver::Status MqttDriver::m_SendPacket(const std::vector<uint8_t> &vPacket, std::string_view xtra_params) const
 {
-    auto st = m_PhysicalSend(std::span<const uint8_t>(packet.data(), packet.size()), 5000);
+    auto st = m_PhysicalSend(std::span<const uint8_t>(vPacket.data(), vPacket.size()), 5000);
     if (st == ICommDriver::Status::SUCCESS) {
         m_lastActivity = std::chrono::steady_clock::now();
         if (gui_mode_active()) {
             gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
-                                 CommDir::Tx, packet.data(), static_cast<uint32_t>(packet.size()));
+                                 CommDir::Tx, vPacket.data(), static_cast<uint32_t>(vPacket.size()));
         }
     }
     return st;
 }
 
-ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t> &packetOut, uint32_t timeoutMs, std::string_view xtra_params,
+ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t> &vPacketOut, uint32_t u32TimeoutMs, std::string_view xtra_params,
                                              std::stop_token stop_tok) const
 {
-    packetOut.clear();
+    vPacketOut.clear();
 
     uint8_t firstByte = 0;
     {
         uint8_t buf[1];
         size_t got = 0;
-        auto st    = m_PhysicalRecv(std::span<uint8_t>(buf, 1), timeoutMs, got, stop_tok);
+        auto st    = m_PhysicalRecv(std::span<uint8_t>(buf, 1), u32TimeoutMs, got, stop_tok);
         if (st != ICommDriver::Status::SUCCESS || got == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
         }
         firstByte = buf[0];
     }
-    packetOut.push_back(firstByte);
+    vPacketOut.push_back(firstByte);
 
     int multiplier  = 1;
     uint32_t remLen = 0;
     while (true) {
-        if (packetOut.size() >= 5) {
+        if (vPacketOut.size() >= 5) {
             return ICommDriver::Status::PROTOCOL_ERROR;
         }
         uint8_t buf[1];
@@ -460,7 +460,7 @@ ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t> &packetOut, ui
         if (st != ICommDriver::Status::SUCCESS || got == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
         }
-        packetOut.push_back(buf[0]);
+        vPacketOut.push_back(buf[0]);
         remLen += (buf[0] & 0x7F) * multiplier;
         multiplier *= 128;
         if ((buf[0] & 0x80) == 0) {
@@ -487,27 +487,27 @@ ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t> &packetOut, ui
             }
             totalRead += got;
         }
-        packetOut.insert(packetOut.end(), payloadBuf.begin(), payloadBuf.end());
+        vPacketOut.insert(vPacketOut.end(), payloadBuf.begin(), payloadBuf.end());
     }
 
     // One dump row per complete MQTT packet — see this function's doc
     // comment in mqtt_driver.hpp for why not one row per physical byte read.
     if (gui_mode_active()) {
         gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
-                             CommDir::Rx, packetOut.data(), static_cast<uint32_t>(packetOut.size()));
+                             CommDir::Rx, vPacketOut.data(), static_cast<uint32_t>(vPacketOut.size()));
     }
 
     return ICommDriver::Status::SUCCESS;
 }
 
-bool MqttDriver::m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacketId,
-                                    uint32_t timeoutMs, std::vector<uint8_t> &outPacket, std::string_view xtra_params,
+bool MqttDriver::m_WaitForAckPacket(uint8_t u8ExpectedType, uint16_t u16ExpectedPacketId,
+                                    uint32_t u32TimeoutMs, std::vector<uint8_t> &vOutPacket, std::string_view xtra_params,
                                     std::stop_token stop_tok) const
 {
     // 0 == infinite timeout: never expire this wait, and forward 0 straight
     // through to m_ReadPacket() on each attempt.
-    const bool bInfinite = (timeoutMs == 0);
-    const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite = (u32TimeoutMs == 0);
+    const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
     while (true) {
         if (stop_tok.stop_requested()) {
             return false;
@@ -516,7 +516,7 @@ bool MqttDriver::m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacke
         if (!bInfinite) {
             const auto remaining = deadline - std::chrono::steady_clock::now();
             if (remaining <= std::chrono::milliseconds(0)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Timed out waiting for ack, type=0x"); LOG_HEX8(expectedType));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Timed out waiting for ack, type=0x"); LOG_HEX8(u8ExpectedType));
                 return false;
             }
             remainingMs = static_cast<uint32_t>(
@@ -529,7 +529,7 @@ bool MqttDriver::m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacke
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed waiting for ack:"); LOG_STRING(ICommDriver::to_string(st)));
             return false;
         }
-        if (MqttProtocol::packetType(packet) != expectedType) {
+        if (MqttProtocol::packetType(packet) != u8ExpectedType) {
             LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Unexpected packet while waiting for ack, got type=0x");
                       LOG_HEX8(MqttProtocol::packetType(packet)));
             continue;
@@ -539,12 +539,12 @@ bool MqttDriver::m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacke
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Malformed ack packet"));
             return false;
         }
-        if (gotPacketId != expectedPacketId) {
-            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Ack packet id mismatch, expected"); LOG_UINT32(expectedPacketId);
+        if (gotPacketId != u16ExpectedPacketId) {
+            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Ack packet id mismatch, expected"); LOG_UINT32(u16ExpectedPacketId);
                       LOG_STRING("got"); LOG_UINT32(gotPacketId); LOG_STRING("— still waiting"));
             continue;
         }
-        outPacket = std::move(packet);
+        vOutPacket = std::move(packet);
         return true;
     }
 }
@@ -602,9 +602,9 @@ bool MqttDriver::m_EnsureKeepAlive(std::string_view xtra_params, std::stop_token
 // there is no room for this layer to support its own embedded quoting on
 // top of that; a payload or topic containing a literal '"' cannot be
 // expressed through MQTT.CMD at all under the current grammar.
-void MqttDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens)
+void MqttDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens)
 {
-    outTokens.clear();
+    vOutTokens.clear();
 
     // Strip a trailing NUL — see this function's doc comment in mqtt_driver.hpp.
     size_t len = dataSpan.size();
@@ -627,7 +627,7 @@ void MqttDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<s
         while (i < n && !std::isspace(static_cast<unsigned char>(text[i]))) {
             ++i;
         }
-        outTokens.push_back(text.substr(start, i - start));
+        vOutTokens.push_back(text.substr(start, i - start));
     }
 }
 
@@ -787,7 +787,7 @@ ICommDriver::ReadResult MqttDriver::receive(uint32_t u32ReadTimeout, std::span<u
     return result;
 }
 
-ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params,
+ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t u32TimeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params,
                                                           std::stop_token stop_tok) const
 {
     ICommDriver::ReadResult result;
@@ -801,8 +801,8 @@ ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, st
     std::vector<uint8_t> packet;
     // 0 == infinite timeout: never expire this wait, and forward 0 straight
     // through to m_ReadPacket() on each attempt.
-    const bool bInfinite = (timeoutMs == 0);
-    const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite = (u32TimeoutMs == 0);
+    const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
     while (true) {
         if (stop_tok.stop_requested()) {
             result.status = ICommDriver::Status::READ_TIMEOUT;
@@ -843,7 +843,7 @@ ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, st
         auto pkt = m_protocol.buildPubRec(msg.packetId);
         if (m_SendPacket(pkt, xtra_params) == ICommDriver::Status::SUCCESS) {
             std::vector<uint8_t> rel;
-            if (m_WaitForAckPacket(MqttProtocol::kPubRel, msg.packetId, timeoutMs, rel, xtra_params)) {
+            if (m_WaitForAckPacket(MqttProtocol::kPubRel, msg.packetId, u32TimeoutMs, rel, xtra_params)) {
                 auto comp = m_protocol.buildPubComp(msg.packetId);
                 m_SendPacket(comp, xtra_params);
             } else {
@@ -868,24 +868,24 @@ ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, st
 // MQTT sub-command handlers
 // -----------------------------------------------------------------------
 
-bool MqttDriver::m_HandleSubscribe(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool MqttDriver::m_HandleSubscribe(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (args.empty() || args.size() > 2) {
+    if (vArgs.empty() || vArgs.size() > 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: SUBSCRIBE <topic> [qos]"));
         return false;
     }
-    const std::string &topic = args[0];
+    const std::string &topic = vArgs[0];
     if (topic.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SUBSCRIBE: empty topic filter"));
         return false;
     }
     uint8_t qos = m_config.qos;
-    if (args.size() == 2) {
-        if (args[1].size() != 1 || args[1][0] < '0' || args[1][0] > '2') {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SUBSCRIBE: qos must be 0-2, got:"); LOG_STRING(args[1]));
+    if (vArgs.size() == 2) {
+        if (vArgs[1].size() != 1 || vArgs[1][0] < '0' || vArgs[1][0] > '2') {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SUBSCRIBE: qos must be 0-2, got:"); LOG_STRING(vArgs[1]));
             return false;
         }
-        qos = static_cast<uint8_t>(args[1][0] - '0');
+        qos = static_cast<uint8_t>(vArgs[1][0] - '0');
     }
 
     uint16_t packetId = 0;
@@ -900,13 +900,13 @@ bool MqttDriver::m_HandleSubscribe(const std::vector<std::string> &args, std::st
     return true;
 }
 
-bool MqttDriver::m_HandleUnsubscribe(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool MqttDriver::m_HandleUnsubscribe(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (args.size() != 1) {
+    if (vArgs.size() != 1) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: UNSUBSCRIBE <topic>"));
         return false;
     }
-    const std::string &topic = args[0];
+    const std::string &topic = vArgs[0];
     if (topic.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UNSUBSCRIBE: empty topic filter"));
         return false;
@@ -924,9 +924,9 @@ bool MqttDriver::m_HandleUnsubscribe(const std::vector<std::string> &args, std::
     return true;
 }
 
-bool MqttDriver::m_HandlePing(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool MqttDriver::m_HandlePing(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (!args.empty()) {
+    if (!vArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: PING (no arguments)"));
         return false;
     }
@@ -942,26 +942,26 @@ bool MqttDriver::m_HandlePing(const std::vector<std::string> &args, std::string_
     return true;
 }
 
-bool MqttDriver::m_HandlePublish(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool MqttDriver::m_HandlePublish(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     // <payload> <topic>: the topic is always the LAST token (MQTT topics
     // never contain whitespace); everything before it is the payload,
     // rejoined with single spaces — this is what lets a multi-word payload
     // work without quoting, which the shared grammar this text arrived
     // through does not support here (see m_TokenizeArgs()'s doc comment).
-    if (args.size() < 2) {
+    if (vArgs.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: PUBLISH <payload> <topic>"));
         return false;
     }
-    const std::string &topic = args.back();
+    const std::string &topic = vArgs.back();
     if (topic.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("PUBLISH: empty topic"));
         return false;
     }
-    std::string payload = args[0];
-    for (size_t i = 1; i + 1 < args.size(); ++i) {
+    std::string payload = vArgs[0];
+    for (size_t i = 1; i + 1 < vArgs.size(); ++i) {
         payload += ' ';
-        payload += args[i];
+        payload += vArgs[i];
     }
 
     uint16_t packetId = 0;

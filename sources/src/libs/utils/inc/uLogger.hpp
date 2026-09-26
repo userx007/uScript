@@ -142,9 +142,9 @@ namespace log_concepts {
  * @param level The log level to convert.
  * @return The string representation of the log level.
  */
-[[nodiscard]] constexpr const char *toString(LogLevel level) noexcept
+[[nodiscard]] constexpr const char *toString(LogLevel eLevel) noexcept
 {
-    switch (level) {
+    switch (eLevel) {
     case LOG_WERBOSE:
         return "WERBOSE";
     case LOG_VERBOSE:
@@ -173,9 +173,9 @@ namespace log_concepts {
  * @param level The log level to get the color code for.
  * @return The color code for the log level.
  */
-[[nodiscard]] constexpr const char *getColor(LogLevel level) noexcept
+[[nodiscard]] constexpr const char *getColor(LogLevel eLevel) noexcept
 {
-    switch (level) {
+    switch (eLevel) {
     case LOG_WERBOSE:
         return "\033[30m"; // Black/dark navy-gray — one shade dimmer than VERBOSE
     case LOG_VERBOSE:
@@ -310,14 +310,14 @@ struct LogBuffer {
          * @return Number of characters actually written
          */
         template <typename... Args>
-        size_t appendSafe(const char *format, Args &&...args) noexcept
+        size_t appendSafe(const char *pstrFormat, Args &&...args) noexcept
         {
             auto &s = slot();
             if (s.size >= BUFFER_SIZE) {
                 return 0;
             }
 
-            int written = std::snprintf(s.buffer + s.size, BUFFER_SIZE - s.size, format, std::forward<Args>(args)...);
+            int written = std::snprintf(s.buffer + s.size, BUFFER_SIZE - s.size, pstrFormat, std::forward<Args>(args)...);
             if (written < 0) {
                 return 0;
             }
@@ -346,10 +346,10 @@ struct LogBuffer {
          * @brief Appends a text message to the log buffer.
          * @param text The text message to append. If 'text' is 'nullptr', no action is taken.
          */
-        void append(const char *text) noexcept
+        void append(const char *pstrText) noexcept
         {
-            if (text != nullptr) {
-                appendSafe("%s ", text);
+            if (pstrText != nullptr) {
+                appendSafe("%s ", pstrText);
             }
         }
 
@@ -357,10 +357,10 @@ struct LogBuffer {
          * @brief Appends a string message to the log buffer.
          * @param text The string message to append. If 'text' is empty, no action is taken.
          */
-        void append(const std::string &text) noexcept
+        void append(const std::string &strText) noexcept
         {
-            if (!text.empty()) {
-                append(text.c_str());
+            if (!strText.empty()) {
+                append(strText.c_str());
             }
         }
 
@@ -419,9 +419,9 @@ struct LogBuffer {
          *
          * @param value The boolean value to append.
          */
-        void append(bool value) noexcept
+        void append(bool bValue) noexcept
         {
-            appendSafe("%s ", value ? "true" : "false");
+            appendSafe("%s ", bValue ? "true" : "false");
         }
 
         /**
@@ -674,45 +674,45 @@ struct LogBuffer {
          * @brief Sets the current log level.
          * @param level The log level to set.
          */
-        void setLevel(LogLevel level) noexcept
+        void setLevel(LogLevel eLevel) noexcept
         {
-            slot().currentLevel = level;
+            slot().currentLevel = eLevel;
         }
 
         /**
          * @brief Sets the console log level threshold.
          * @param level The log level threshold to set.
          */
-        void setConsoleThreshold(LogLevel level) noexcept
+        void setConsoleThreshold(LogLevel eLevel) noexcept
         {
-            consoleThreshold.store(level, std::memory_order_relaxed);
+            consoleThreshold.store(eLevel, std::memory_order_relaxed);
         }
 
         /**
          * @brief Sets the file log level threshold.
          * @param level The log level threshold to set.
          */
-        void setFileThreshold(LogLevel level) noexcept
+        void setFileThreshold(LogLevel eLevel) noexcept
         {
-            fileThreshold.store(level, std::memory_order_relaxed);
+            fileThreshold.store(eLevel, std::memory_order_relaxed);
         }
 
         /**
          * @brief Sets the usage of colored logs
          * @param value The boolean value to set.
          */
-        void setColoredLogs(bool value) noexcept
+        void setColoredLogs(bool bValue) noexcept
         {
-            useColors.store(value, std::memory_order_relaxed);
+            useColors.store(bValue, std::memory_order_relaxed);
         }
 
         /**
          * @brief Sets the usage of date in logs
          * @param value The boolean value to set.
          */
-        void setIncludeDate(bool value) noexcept
+        void setIncludeDate(bool bValue) noexcept
         {
-            includeDate.store(value, std::memory_order_relaxed);
+            includeDate.store(bValue, std::memory_order_relaxed);
         }
 
         /**
@@ -724,9 +724,9 @@ struct LogBuffer {
          *
          * @param value true → include thread ID; false → omit it.
          */
-        void setIncludeThreadId(bool value) noexcept
+        void setIncludeThreadId(bool bValue) noexcept
         {
-            includeThreadId.store(value, std::memory_order_relaxed);
+            includeThreadId.store(bValue, std::memory_order_relaxed);
         }
 
         /**
@@ -734,7 +734,7 @@ struct LogBuffer {
          * @param filename Optional custom filename. If empty, auto-generates timestamp-based name.
          * @return true if file logging was successfully enabled, false otherwise.
          */
-        bool enableFileLogging(const std::string &filename = "")
+        bool enableFileLogging(const std::string &strFilename = "")
         {
             std::lock_guard<std::mutex> lock(logMutex);
 
@@ -743,8 +743,8 @@ struct LogBuffer {
             }
 
             std::string actualFilename;
-            if (filename.empty()) {
-                // Auto-generate filename with timestamp
+            if (strFilename.empty()) {
+                // Auto-generate strFilename with timestamp
                 auto now      = std::chrono::system_clock::now();
                 std::time_t t = std::chrono::system_clock::to_time_t(now);
                 std::tm tm;
@@ -757,7 +757,7 @@ struct LogBuffer {
                 oss << "log_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".txt";
                 actualFilename = oss.str();
             } else {
-                actualFilename = filename;
+                actualFilename = strFilename;
             }
 
             logFile.open(actualFilename, std::ios::out | std::ios::app);
@@ -835,20 +835,20 @@ inline std::atomic<std::shared_ptr<LogBuffer>> log_local{std::make_shared<LogBuf
  * or LOG_PRINT concurrently will observe either the old or the new pointer
  * but never a torn/partial value.
  */
-inline void setLogger(std::shared_ptr<LogBuffer> logger) noexcept
+inline void setLogger(std::shared_ptr<LogBuffer> shpLogger) noexcept
 {
-    if (logger) {
-        log_local.store(std::move(logger));
+    if (shpLogger) {
+        log_local.store(std::move(shpLogger));
     }
 }
 
-inline void log_separator(const char *color = "\033[95m") noexcept
+inline void log_separator(const char *pstrColor = "\033[95m") noexcept
 {
     if (gui_mode_active()) {
-        std::printf("\nGUI:LOG:%s%s\033[0m\n", color, g_pstrLogSeparator);
+        std::printf("\nGUI:LOG:%s%s\033[0m\n", pstrColor, g_pstrLogSeparator);
         std::fflush(stdout);
     } else {
-        std::printf("%s%s\033[0m\n", color, g_pstrLogSeparator);
+        std::printf("%s%s\033[0m\n", pstrColor, g_pstrLogSeparator);
     }
 }
 

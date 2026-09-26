@@ -42,7 +42,7 @@ static constexpr auto C_FILE_PFX   = "#ff79c6"; // pink   — F  (file resource)
 static constexpr auto C_XTRA_PARAM = "#ff79c6"; // pink   — param values (same family as := / F)
 
 // ─────────────────────────────────────────────────────────────────────────────
-ScriptHighlighterBase::ScriptHighlighterBase(QTextDocument *parent)
+ScriptHighlighterBase::ScriptHighlighterBase(QTextDocument *pParent)
     : QSyntaxHighlighter(parent)
 {
     m_blockStart = QRegularExpression("^---");
@@ -52,14 +52,14 @@ ScriptHighlighterBase::ScriptHighlighterBase(QTextDocument *parent)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-QTextCharFormat ScriptHighlighterBase::fmt(const QString &hex, bool bold, bool italic)
+QTextCharFormat ScriptHighlighterBase::fmt(const QString &hex, bool bBold, bool bItalic)
 {
     QTextCharFormat f;
     f.setForeground(QColor(hex));
-    if (bold) {
+    if (bBold) {
         f.setFontWeight(QFont::Bold);
     }
-    if (italic) {
+    if (bItalic) {
         f.setFontItalic(true);
     }
     return f;
@@ -67,9 +67,9 @@ QTextCharFormat ScriptHighlighterBase::fmt(const QString &hex, bool bold, bool i
 
 // ─────────────────────────────────────────────────────────────────────────────
 void ScriptHighlighterBase::addRule(const QString &pattern,
-                                    const QTextCharFormat &f, int cap)
+                                    const QTextCharFormat &f, int iCap)
 {
-    m_rules.append({QRegularExpression(pattern), f, cap});
+    m_rules.append({QRegularExpression(pattern), f, iCap});
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

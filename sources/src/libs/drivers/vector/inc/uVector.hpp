@@ -284,7 +284,7 @@ class Vector : public ICommDriver {
          * @return Zero, one, or many matches — callers needing exactly one (openDirect())
          *         must check size() themselves and report ambiguity/absence distinctly.
          */
-        static std::vector<ChannelInfo> matchChannels(const DeviceSelector &sel);
+        static std::vector<ChannelInfo> matchChannels(const DeviceSelector &sSel);
 
         /** Map an XL_HWTYPE_* value to a short human-readable name, e.g. 55 -> "VN1610". */
         static std::string hwTypeToString(uint32_t u32HwType);
@@ -332,7 +332,7 @@ class Vector : public ICommDriver {
          * @brief Convenience constructor — resolves sel via matchChannels() and opens it
          *        immediately, bypassing Vector Hardware Config entirely. See openDirect().
          */
-        explicit Vector(const DeviceSelector &sel,
+        explicit Vector(const DeviceSelector &sSel,
                         uint32_t u32Bitrate                 = 500000,
                         uint32_t u32TxId                    = VECTOR_DEFAULT_TX_ID,
                         bool bExtended                      = false,
@@ -343,7 +343,7 @@ class Vector : public ICommDriver {
             : m_strIdentityLabel(strIdentityLabel)
             , m_strInstanceName(strInstanceName.empty() ? "Vector" : strInstanceName)
         {
-            openDirect(sel, u32Bitrate, u32TxId, bExtended, bFD, fdOpts);
+            openDirect(sSel, u32Bitrate, u32TxId, bExtended, bFD, fdOpts);
         }
 
         virtual ~Vector()
@@ -388,7 +388,7 @@ class Vector : public ICommDriver {
          *         more than one channel (both cases are logged with the full candidate list
          *         so the caller can tighten sel), or if the single match isn't CAN-capable.
          */
-        Status openDirect(const DeviceSelector &sel,
+        Status openDirect(const DeviceSelector &sSel,
                           uint32_t u32Bitrate     = 500000,
                           uint32_t u32TxId        = VECTOR_DEFAULT_TX_ID,
                           bool bExtended          = false,
@@ -431,7 +431,7 @@ class Vector : public ICommDriver {
 
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -537,9 +537,9 @@ class Vector : public ICommDriver {
             m_eTpProtocol = eProto;
         }
 
-        void setTpConfig(const TpConfig &cfg)
+        void setTpConfig(const TpConfig &sCfg)
         {
-            m_sTpConfig = cfg;
+            m_sTpConfig = sCfg;
         }
 
         void setTpRxId(uint32_t u32Id)
@@ -615,16 +615,16 @@ class Vector : public ICommDriver {
                                      bool bExtended,
                                      bool bFD);
 
-        static bool parseUint32(std::string_view sv, uint32_t &out);
+        static bool parseUint32(std::string_view sv, uint32_t &u32Out);
 
         uint32_t resolveTxId(std::string_view xtra_params) const;
         uint32_t resolveRxId(std::string_view xtra_params) const;
         uint32_t resolveTpRxId(std::string_view xtra_params) const;
 
-        void dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
+        void dumpFrame(CommDir eDir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
 
         /** Check whether a received frame matches an RX filter id (SocketCAN canid_t convention). */
-        bool frameMatchesFilter(const VectorRxFrame &frame, uint32_t u32RxFilterId) const;
+        bool frameMatchesFilter(const VectorRxFrame &sFrame, uint32_t u32RxFilterId) const;
 
         /** Map an XLstatus return code to ICommDriver::Status. */
         static Status mapXlError(XLstatus sts);
@@ -665,7 +665,7 @@ class Vector : public ICommDriver {
          * Status::READ_TIMEOUT rather than looping back on a wakeup that was
          * never a real frame.
          */
-        Status recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &out, std::stop_token stop_tok = {}) const;
+        Status recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &sOut, std::stop_token stop_tok = {}) const;
 
         /** Transmit one CAN or CAN-FD frame with the given payload slice (classic: <=8 bytes, FD: <=64 bytes). */
         Status sendFrame(uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
@@ -679,7 +679,7 @@ class Vector : public ICommDriver {
                          std::stop_token stop_tok = {}) const;
 
         Status readUntilDelimiter(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
-                                  uint8_t cDelimiter, size_t &szBytesRead,
+                                  uint8_t u8CDelimiter, size_t &szBytesRead,
                                   uint32_t u32RxFilterId,
                                   std::stop_token stop_tok = {}) const;
 
@@ -688,7 +688,7 @@ class Vector : public ICommDriver {
                               uint32_t u32RxFilterId,
                               std::stop_token stop_tok = {}) const;
 
-        static void buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &viLps);
+        static void buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &vViLps);
 
         // ------------------------------------------------------------------ //
         //  Transport-protocol dispatch internals (see uPcan.hpp for rationale) //
@@ -700,7 +700,7 @@ class Vector : public ICommDriver {
 
         ReadResult readDispatch_locked(uint32_t u32ReadTimeout,
                                        std::span<uint8_t> buffer,
-                                       const ReadOptions &options,
+                                       const ReadOptions &sOptions,
                                        std::string_view xtra_params,
                                        std::stop_token stop_tok = {}) const;
 

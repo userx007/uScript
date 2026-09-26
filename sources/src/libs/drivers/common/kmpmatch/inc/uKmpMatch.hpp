@@ -40,20 +40,20 @@ namespace ukmp {
      * \param[out] viLps     resized to szLength and filled with the failure-function values
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    inline void build_kmp_table(std::span<const uint8_t> pattern, size_t szLength, std::vector<int> &viLps)
+    inline void build_kmp_table(std::span<const uint8_t> pattern, size_t szLength, std::vector<int> &vViLps)
     {
-        viLps.resize(szLength);
+        vViLps.resize(szLength);
         int len  = 0;
-        viLps[0] = 0;
+        vViLps[0] = 0;
 
         for (size_t i = 1; i < szLength;) {
             if (pattern[i] == pattern[len]) {
-                viLps[i++] = ++len;
+                vViLps[i++] = ++len;
             } else {
                 if (len != 0) {
-                    len = viLps[len - 1];
+                    len = vViLps[len - 1];
                 } else {
-                    viLps[i++] = 0;
+                    vViLps[i++] = 0;
                 }
             }
         }
@@ -95,10 +95,10 @@ namespace ukmp {
     template <typename ReaderFn>
     auto kmp_stream_match(ReaderFn &&readFn,
                           std::span<const uint8_t> token,
-                          const std::vector<int> &viLps,
-                          uint32_t u32Timeout,
-                          bool bReturnOnTimeout,
-                          bool useBuffer,
+                          const std::vector<int> &vTimeout,
+                          uint32_t u32ReturnOnTimeout,
+                          bool bUseBuffer,
+                          bool bUseBuffer,
                           size_t szChunkBufferSize,
                           size_t szRingBufferSize)
         -> std::invoke_result_t<ReaderFn, uint32_t, std::span<uint8_t>, size_t &>

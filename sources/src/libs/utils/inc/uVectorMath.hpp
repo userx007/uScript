@@ -62,52 +62,52 @@ class VectorMath {
         }
 
         // Public interface for uint64_t math
-        bool mathInteger(const std::vector<std::string> &v1,
-                         const std::vector<std::string> &v2,
-                         const std::string &rule,
-                         std::vector<std::string> &result,
+        bool mathInteger(const std::vector<std::string> &vV1,
+                         const std::vector<std::string> &vV2,
+                         const std::string &strRule,
+                         std::vector<std::string> &vResult,
                          bool bHexResult = false) const
         {
-            result.clear();
+            vResult.clear();
 
             // Early validation
-            if (v1.empty() || v2.empty()) {
+            if (vV1.empty() || vV2.empty()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty input vectors"));
                 return false;
             }
 
-            if (v1.size() != v2.size()) {
+            if (vV1.size() != vV2.size()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("Vector size mismatch: ");
-                          LOG_SIZET(v1.size()); LOG_STRING(" vs "); LOG_SIZET(v2.size()));
+                          LOG_SIZET(vV1.size()); LOG_STRING(" vs "); LOG_SIZET(vV2.size()));
                 return false;
             }
 
             // Parse operation once
-            IntOp op = parseIntOp(rule);
+            IntOp op = parseIntOp(strRule);
             if (op == IntOp::Invalid) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Invalid integer operation: "); LOG_STRING(rule));
+                          LOG_STRING("Invalid integer operation: "); LOG_STRING(strRule));
                 return false;
             }
 
             // Reserve space
-            result.reserve(v1.size());
+            vResult.reserve(vV1.size());
 
             // Process each element
-            for (size_t i = 0; i < v1.size(); ++i) {
+            for (size_t i = 0; i < vV1.size(); ++i) {
                 try {
-                    uint64_t a = parseUint64(v1[i]);
-                    uint64_t b = parseUint64(v2[i]);
+                    uint64_t a = parseUint64(vV1[i]);
+                    uint64_t b = parseUint64(vV2[i]);
                     uint64_t r = computeUInt64(a, b, op);
 
-                    result.push_back(formatUint64(r, bHexResult));
+                    vResult.push_back(formatUint64(r, bHexResult));
                 } catch (const std::exception &ex) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING("Integer error at index "); LOG_SIZET(i);
                               LOG_STRING(": "); LOG_STRING(ex.what());
-                              LOG_STRING(" (values: '"); LOG_STRING(v1[i]);
-                              LOG_STRING("', '"); LOG_STRING(v2[i]); LOG_STRING("')"));
+                              LOG_STRING(" (values: '"); LOG_STRING(vV1[i]);
+                              LOG_STRING("', '"); LOG_STRING(vV2[i]); LOG_STRING("')"));
                     return false;
                 }
             }
@@ -116,43 +116,43 @@ class VectorMath {
         }
 
         // Public interface for double math
-        bool mathDouble(const std::vector<std::string> &v1,
-                        const std::vector<std::string> &v2,
-                        const std::string &rule,
-                        std::vector<std::string> &result,
-                        int precision = 15) const
+        bool mathDouble(const std::vector<std::string> &vV1,
+                        const std::vector<std::string> &vV2,
+                        const std::string &strRule,
+                        std::vector<std::string> &vResult,
+                        int iPrecision = 15) const
         {
-            result.clear();
+            vResult.clear();
 
             // Early validation
-            if (v1.empty() || v2.empty()) {
+            if (vV1.empty() || vV2.empty()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty input vectors"));
                 return false;
             }
 
-            if (v1.size() != v2.size()) {
+            if (vV1.size() != vV2.size()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("Vector size mismatch: ");
-                          LOG_SIZET(v1.size()); LOG_STRING(" vs "); LOG_SIZET(v2.size()));
+                          LOG_SIZET(vV1.size()); LOG_STRING(" vs "); LOG_SIZET(vV2.size()));
                 return false;
             }
 
             // Parse operation once
-            DoubleOp op = parseDoubleOp(rule);
+            DoubleOp op = parseDoubleOp(strRule);
             if (op == DoubleOp::Invalid) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Invalid double operation: "); LOG_STRING(rule));
+                          LOG_STRING("Invalid double operation: "); LOG_STRING(strRule));
                 return false;
             }
 
             // Reserve space
-            result.reserve(v1.size());
+            vResult.reserve(vV1.size());
 
             // Process each element
-            for (size_t i = 0; i < v1.size(); ++i) {
+            for (size_t i = 0; i < vV1.size(); ++i) {
                 try {
-                    double a = parseDouble(v1[i]);
-                    double b = parseDouble(v2[i]);
+                    double a = parseDouble(vV1[i]);
+                    double b = parseDouble(vV2[i]);
                     double r = computeDouble(a, b, op);
 
                     // Check for invalid results
@@ -160,13 +160,13 @@ class VectorMath {
                         throw std::domain_error("Result is not finite (inf or nan)");
                     }
 
-                    result.push_back(formatDouble(r, precision));
+                    vResult.push_back(formatDouble(r, iPrecision));
                 } catch (const std::exception &ex) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING("Double error at index "); LOG_SIZET(i);
                               LOG_STRING(": "); LOG_STRING(ex.what());
-                              LOG_STRING(" (values: '"); LOG_STRING(v1[i]);
-                              LOG_STRING("', '"); LOG_STRING(v2[i]); LOG_STRING("')"));
+                              LOG_STRING(" (values: '"); LOG_STRING(vV1[i]);
+                              LOG_STRING("', '"); LOG_STRING(vV2[i]); LOG_STRING("')"));
                     return false;
                 }
             }
@@ -200,132 +200,132 @@ class VectorMath {
             double_ops_["/"] = double_ops_["/="] = DoubleOp::Div;
         }
 
-        IntOp parseIntOp(const std::string &rule) const
+        IntOp parseIntOp(const std::string &strRule) const
         {
-            auto it = int_ops_.find(rule);
+            auto it = int_ops_.find(strRule);
             return (it != int_ops_.end()) ? it->second : IntOp::Invalid;
         }
 
-        DoubleOp parseDoubleOp(const std::string &rule) const
+        DoubleOp parseDoubleOp(const std::string &strRule) const
         {
-            auto it = double_ops_.find(rule);
+            auto it = double_ops_.find(strRule);
             return (it != double_ops_.end()) ? it->second : DoubleOp::Invalid;
         }
 
         // Parsing utilities
-        uint64_t parseUint64(const std::string &s) const
+        uint64_t parseUint64(const std::string &strS) const
         {
-            if (s.empty()) {
+            if (strS.empty()) {
                 throw std::invalid_argument("Empty string");
             }
 
             // Check for invalid characters
-            if (s[0] == '-') {
-                throw std::invalid_argument("Negative number not allowed: " + s);
+            if (strS[0] == '-') {
+                throw std::invalid_argument("Negative number not allowed: " + strS);
             }
 
             size_t idx   = 0;
-            uint64_t val = std::stoull(s, &idx, 10);
+            uint64_t val = std::stoull(strS, &idx, 10);
 
-            if (idx != s.length()) {
-                throw std::invalid_argument("Invalid uint64 string: " + s);
+            if (idx != strS.length()) {
+                throw std::invalid_argument("Invalid uint64 string: " + strS);
             }
 
             return val;
         }
 
-        double parseDouble(const std::string &s) const
+        double parseDouble(const std::string &strS) const
         {
-            if (s.empty()) {
+            if (strS.empty()) {
                 throw std::invalid_argument("Empty string");
             }
 
             size_t idx = 0;
-            double val = std::stod(s, &idx);
+            double val = std::stod(strS, &idx);
 
-            if (idx != s.length()) {
-                throw std::invalid_argument("Invalid double string: " + s);
+            if (idx != strS.length()) {
+                throw std::invalid_argument("Invalid double string: " + strS);
             }
 
             if (!std::isfinite(val)) {
-                throw std::invalid_argument("Non-finite value: " + s);
+                throw std::invalid_argument("Non-finite value: " + strS);
             }
 
             return val;
         }
 
         // Formatting utilities
-        std::string formatUint64(uint64_t val, bool bHexResult) const
+        std::string formatUint64(uint64_t u64Val, bool bHexResult) const
         {
             if (bHexResult) {
                 std::ostringstream ss;
-                ss << std::hex << std::uppercase << val;
+                ss << std::hex << std::uppercase << u64Val;
                 return ss.str();
             }
-            return std::to_string(val);
+            return std::to_string(u64Val);
         }
 
-        std::string formatDouble(double val, int precision) const
+        std::string formatDouble(double dVal, int iPrecision) const
         {
             std::ostringstream oss;
-            oss << std::setprecision(precision) << val;
+            oss << std::setprecision(iPrecision) << dVal;
             return oss.str();
         }
 
         // Computation logic for uint64_t with overflow detection
-        uint64_t computeUInt64(uint64_t a, uint64_t b, IntOp op) const
+        uint64_t computeUInt64(uint64_t u64A, uint64_t u64B, IntOp eOp) const
         {
-            switch (op) {
+            switch (eOp) {
             case IntOp::Add:
-                if (a > std::numeric_limits<uint64_t>::max() - b) {
+                if (u64A > std::numeric_limits<uint64_t>::max() - u64B) {
                     throw std::overflow_error("Addition overflow");
                 }
-                return a + b;
+                return u64A + u64B;
 
             case IntOp::Sub:
-                if (a < b) {
+                if (u64A < u64B) {
                     throw std::underflow_error("Subtraction underflow (result would be negative)");
                 }
-                return a - b;
+                return u64A - u64B;
 
             case IntOp::Mul:
-                if (b != 0 && a > std::numeric_limits<uint64_t>::max() / b) {
+                if (u64B != 0 && u64A > std::numeric_limits<uint64_t>::max() / u64B) {
                     throw std::overflow_error("Multiplication overflow");
                 }
-                return a * b;
+                return u64A * u64B;
 
             case IntOp::Div:
-                if (b == 0) {
+                if (u64B == 0) {
                     throw std::domain_error("Division by zero");
                 }
-                return a / b;
+                return u64A / u64B;
 
             case IntOp::Mod:
-                if (b == 0) {
+                if (u64B == 0) {
                     throw std::domain_error("Modulo by zero");
                 }
-                return a % b;
+                return u64A % u64B;
 
             case IntOp::BitAnd:
-                return a & b;
+                return u64A & u64B;
 
             case IntOp::BitOr:
-                return a | b;
+                return u64A | u64B;
 
             case IntOp::BitXor:
-                return a ^ b;
+                return u64A ^ u64B;
 
             case IntOp::ShiftLeft:
-                if (b >= 64) {
+                if (u64B >= 64) {
                     throw std::domain_error("Shift amount >= 64 (undefined behavior)");
                 }
-                return a << b;
+                return u64A << u64B;
 
             case IntOp::ShiftRight:
-                if (b >= 64) {
+                if (u64B >= 64) {
                     throw std::domain_error("Shift amount >= 64 (undefined behavior)");
                 }
-                return a >> b;
+                return u64A >> u64B;
 
             default:
                 throw std::logic_error("Invalid operation (should never reach here)");
@@ -333,23 +333,23 @@ class VectorMath {
         }
 
         // Computation logic for double
-        double computeDouble(double a, double b, DoubleOp op) const
+        double computeDouble(double dA, double dB, DoubleOp eOp) const
         {
-            switch (op) {
+            switch (eOp) {
             case DoubleOp::Add:
-                return a + b;
+                return dA + dB;
 
             case DoubleOp::Sub:
-                return a - b;
+                return dA - dB;
 
             case DoubleOp::Mul:
-                return a * b;
+                return dA * dB;
 
             case DoubleOp::Div:
-                if (b == 0.0) {
+                if (dB == 0.0) {
                     throw std::domain_error("Division by zero");
                 }
-                return a / b;
+                return dA / dB;
 
             default:
                 throw std::logic_error("Invalid operation (should never reach here)");

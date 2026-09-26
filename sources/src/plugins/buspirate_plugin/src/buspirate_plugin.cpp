@@ -22,10 +22,10 @@ extern "C" {
         return new BuspiratePlugin();
     }
 
-    EXPORTED void pluginExit(BuspiratePlugin *ptrPlugin)
+    EXPORTED void pluginExit(BuspiratePlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -106,10 +106,10 @@ void BuspiratePlugin::doCleanup(void)
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool BuspiratePlugin::m_Buspirate_INFO(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_Buspirate_INFO(const std::string &strArgs, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -417,13 +417,13 @@ bool BuspiratePlugin::m_Buspirate_INFO(const std::string &args, std::stop_token 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool BuspiratePlugin::m_Buspirate_MODE(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_Buspirate_MODE(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
 
-        if (true == args.empty()) {
+        if (true == strArgs.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Argument expected: mode"));
             break;
         }
@@ -434,7 +434,7 @@ bool BuspiratePlugin::m_Buspirate_MODE(const std::string &args, std::stop_token 
             break;
         }
 
-        bRetVal = m_handle_mode(args);
+        bRetVal = m_handle_mode(strArgs);
 
     } while (false);
 
@@ -454,11 +454,11 @@ bool BuspiratePlugin::m_Buspirate_MODE(const std::string &args, std::stop_token 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool BuspiratePlugin::m_Buspirate_CONFIG(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_Buspirate_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    return generic_buspirate_set_params(this, args);
+    return generic_buspirate_set_params(this, strArgs);
 
 } /* m_LocalSetParams() */
 

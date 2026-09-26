@@ -69,11 +69,11 @@ namespace {
     // SHA-1 + base64 - self-contained, only used to derive
     // Sec-WebSocket-Accept from the client's Sec-WebSocket-Key.
     // ------------------------------------------------------------------
-    void sha1(const uint8_t *data, size_t len, uint8_t digestOut[20])
+    void sha1(const uint8_t *pu8Data, size_t len, uint8_t digestOut[20])
     {
         uint32_t h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0;
 
-        std::vector<uint8_t> msg(data, data + len);
+        std::vector<uint8_t> msg(pu8Data, pu8Data + len);
         const uint64_t ml = static_cast<uint64_t>(len) * 8ULL;
         msg.push_back(0x80);
         while ((msg.size() % 64) != 56) {
@@ -132,13 +132,13 @@ namespace {
         }
     }
 
-    std::string base64_encode(const uint8_t *data, size_t len)
+    std::string base64_encode(const uint8_t *pu8Data, size_t len)
     {
         static const char *tbl = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         std::string out;
         size_t i = 0;
         while (i + 3 <= len) {
-            uint32_t n = (uint32_t(data[i]) << 16) | (uint32_t(data[i + 1]) << 8) | data[i + 2];
+            uint32_t n = (uint32_t(pu8Data[i]) << 16) | (uint32_t(pu8Data[i + 1]) << 8) | pu8Data[i + 2];
             out += tbl[(n >> 18) & 0x3F];
             out += tbl[(n >> 12) & 0x3F];
             out += tbl[(n >> 6) & 0x3F];
@@ -147,12 +147,12 @@ namespace {
         }
         const size_t rem = len - i;
         if (rem == 1) {
-            uint32_t n = uint32_t(data[i]) << 16;
+            uint32_t n = uint32_t(pu8Data[i]) << 16;
             out += tbl[(n >> 18) & 0x3F];
             out += tbl[(n >> 12) & 0x3F];
             out += "==";
         } else if (rem == 2) {
-            uint32_t n = (uint32_t(data[i]) << 16) | (uint32_t(data[i + 1]) << 8);
+            uint32_t n = (uint32_t(pu8Data[i]) << 16) | (uint32_t(pu8Data[i + 1]) << 8);
             out += tbl[(n >> 18) & 0x3F];
             out += tbl[(n >> 12) & 0x3F];
             out += tbl[(n >> 6) & 0x3F];
@@ -161,9 +161,9 @@ namespace {
         return out;
     }
 
-    std::string compute_accept(const std::string &key)
+    std::string compute_accept(const std::string &strKey)
     {
-        const std::string concat = key + WS_GUID;
+        const std::string concat = strKey + WS_GUID;
         uint8_t digest[20];
         sha1(reinterpret_cast<const uint8_t *>(concat.data()), concat.size(), digest);
         return base64_encode(digest, sizeof(digest));
@@ -172,11 +172,11 @@ namespace {
     // ------------------------------------------------------------------
     // Blocking socket helpers
     // ------------------------------------------------------------------
-    bool recv_exact(int fd, uint8_t *buf, size_t len)
+    bool recv_exact(int iFd, uint8_t *pu8Buf, size_t len)
     {
         size_t got = 0;
         while (got < len) {
-            const ssize_t n = ::recv(fd, buf + got, len - got, 0);
+            const ssize_t n = ::recv(iFd, pu8Buf + got, len - got, 0);
             if (n < 0) {
                 if (errno == EINTR) {
                     continue;
@@ -191,11 +191,11 @@ namespace {
         return true;
     }
 
-    bool send_all(int fd, const uint8_t *data, size_t len)
+    bool send_all(int iFd, const uint8_t *pu8Data, size_t len)
     {
         size_t sent = 0;
         while (sent < len) {
-            const ssize_t n = ::send(fd, data + sent, len - sent, MSG_NOSIGNAL);
+            const ssize_t n = ::send(iFd, pu8Data + sent, len - sent, MSG_NOSIGNAL);
             if (n < 0) {
                 if (errno == EINTR) {
                     continue;
@@ -218,14 +218,14 @@ namespace {
     // ------------------------------------------------------------------
     // Handshake (server side)
     // ------------------------------------------------------------------
-    bool do_handshake(int fd)
+    bool do_handshake(int iFd)
     {
         std::string request;
         std::array<uint8_t, 512> chunk{};
         size_t terminator = std::string::npos;
 
         while (terminator == std::string::npos) {
-            const ssize_t n = ::recv(fd, chunk.data(), chunk.size(), 0);
+            const ssize_t n = ::recv(iFd, chunk.data(), chunk.size(), 0);
             if (n <= 0) {
                 return false;
             }
@@ -274,16 +274,16 @@ namespace {
             "Sec-WebSocket-Accept: " +
             accept + "\r\n\r\n";
 
-        return send_all(fd, reinterpret_cast<const uint8_t *>(response.data()), response.size());
+        return send_all(iFd, reinterpret_cast<const uint8_t *>(response.data()), response.size());
     }
 
     // ------------------------------------------------------------------
     // Frame echo loop
     // ------------------------------------------------------------------
-    void send_frame(int fd, uint8_t opcode, const uint8_t *payload, size_t len)
+    void send_frame(int iFrame, uint8_t u8Timeout_ms, const uint8_t *pu8Payload, size_t len)
     {
         std::vector<uint8_t> frame;
-        frame.push_back(uint8_t(0x80 | (opcode & 0x0F))); // FIN=1, server frames are never masked
+        frame.push_back(uint8_t(0x80 | (u8Timeout_ms & 0x0F))); // FIN=1, server frames are never masked
         if (len <= 125) {
             frame.push_back(uint8_t(len));
         } else if (len <= 0xFFFF) {
@@ -296,23 +296,23 @@ namespace {
                 frame.push_back(uint8_t((uint64_t(len) >> (8 * i)) & 0xFF));
             }
         }
-        frame.insert(frame.end(), payload, payload + len);
-        send_all(fd, frame.data(), frame.size());
+        frame.insert(frame.end(), pu8Payload, pu8Payload + len);
+        send_all(iFrame, frame.data(), frame.size());
     }
 
-    void serve_client(int fd, const std::string &peer)
+    void serve_client(int iFd, const std::string &strPeer)
     {
-        if (!do_handshake(fd)) {
-            std::fprintf(stderr, "[%s] handshake failed\n", peer.c_str());
+        if (!do_handshake(iFd)) {
+            std::fprintf(stderr, "[%s] handshake failed\n", strPeer.c_str());
             return;
         }
-        std::printf("[%s] handshake OK, echoing frames\n", peer.c_str());
+        std::printf("[%s] handshake OK, echoing frames\n", strPeer.c_str());
 
         size_t totalMessages = 0;
 
         while (!g_stop) {
             uint8_t hdr[2];
-            if (!recv_exact(fd, hdr, 2)) {
+            if (!recv_exact(iFd, hdr, 2)) {
                 break;
             }
 
@@ -323,13 +323,13 @@ namespace {
 
             if (len == 126) {
                 uint8_t ext[2];
-                if (!recv_exact(fd, ext, 2)) {
+                if (!recv_exact(iFd, ext, 2)) {
                     break;
                 }
                 len = (uint64_t(ext[0]) << 8) | ext[1];
             } else if (len == 127) {
                 uint8_t ext[8];
-                if (!recv_exact(fd, ext, 8)) {
+                if (!recv_exact(iFd, ext, 8)) {
                     break;
                 }
                 len = 0;
@@ -340,13 +340,13 @@ namespace {
 
             uint8_t maskKey[4] = {0, 0, 0, 0};
             if (masked) {
-                if (!recv_exact(fd, maskKey, 4)) {
+                if (!recv_exact(iFd, maskKey, 4)) {
                     break;
                 }
             }
 
             std::vector<uint8_t> payload(static_cast<size_t>(len));
-            if (len > 0 && !recv_exact(fd, payload.data(), payload.size())) {
+            if (len > 0 && !recv_exact(iFd, payload.data(), payload.size())) {
                 break;
             }
             if (masked) {
@@ -356,12 +356,12 @@ namespace {
             }
 
             if (opcode == 0x8) { // Close
-                send_frame(fd, 0x8, payload.data(), payload.size());
-                std::printf("[%s] client closed the connection (echoed %zu messages total)\n", peer.c_str(), totalMessages);
+                send_frame(iFd, 0x8, payload.data(), payload.size());
+                std::printf("[%s] client closed the connection (echoed %zu messages total)\n", strPeer.c_str(), totalMessages);
                 break;
             }
             if (opcode == 0x9) { // Ping -> Pong
-                send_frame(fd, 0xA, payload.data(), payload.size());
+                send_frame(iFd, 0xA, payload.data(), payload.size());
                 continue;
             }
             if (opcode == 0xA) { // Pong - ignore
@@ -371,7 +371,7 @@ namespace {
             // Text (0x1) / Binary (0x2) / Continuation (0x0): echo back as-is,
             // same opcode and FIN bit, no defragmentation needed for an echo.
             std::printf("[%s] echoing %llu bytes (opcode=0x%X, fin=%d)\n",
-                        peer.c_str(), static_cast<unsigned long long>(len), opcode, fin ? 1 : 0);
+                        strPeer.c_str(), static_cast<unsigned long long>(len), opcode, fin ? 1 : 0);
 
             std::vector<uint8_t> frame;
             frame.push_back(uint8_t((fin ? 0x80 : 0x00) | (opcode & 0x0F)));
@@ -388,8 +388,8 @@ namespace {
                 }
             }
             frame.insert(frame.end(), payload.begin(), payload.end());
-            if (!send_all(fd, frame.data(), frame.size())) {
-                std::fprintf(stderr, "[%s] failed to echo frame, dropping connection\n", peer.c_str());
+            if (!send_all(iFd, frame.data(), frame.size())) {
+                std::fprintf(stderr, "[%s] failed to echo frame, dropping connection\n", strPeer.c_str());
                 break;
             }
             ++totalMessages;
@@ -397,13 +397,13 @@ namespace {
     }
 } // namespace
 
-int main(int argc, char **argv)
+int main(int iArgc, char **ppstrArgv)
 {
-    const int iPort             = (argc > 1) ? std::atoi(argv[1]) : DEFAULT_PORT;
-    const std::string strBindTo = (argc > 2) ? argv[2] : DEFAULT_BIND;
+    const int iPort             = (iArgc > 1) ? std::atoi(ppstrArgv[1]) : DEFAULT_PORT;
+    const std::string strBindTo = (iArgc > 2) ? ppstrArgv[2] : DEFAULT_BIND;
 
     if (iPort <= 0 || iPort > 65535) {
-        std::fprintf(stderr, "Invalid port: %s\n", (argc > 1) ? argv[1] : "");
+        std::fprintf(stderr, "Invalid port: %s\n", (iArgc > 1) ? ppstrArgv[1] : "");
         return 1;
     }
 

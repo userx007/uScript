@@ -54,14 +54,14 @@
 //             Internal helpers                                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-static bool parseJtagReg(const std::string &s, JtagRegister &out)
+static bool parseJtagReg(const std::string &strS, JtagRegister &eOut)
 {
-    if (s == "ir" || s == "IR") {
-        out = JtagRegister::IR;
+    if (strS == "ir" || strS == "IR") {
+        eOut = JtagRegister::IR;
         return true;
     }
-    if (s == "dr" || s == "DR") {
-        out = JtagRegister::DR;
+    if (strS == "dr" || strS == "DR") {
+        eOut = JtagRegister::DR;
         return true;
     }
     return false;
@@ -80,9 +80,9 @@ bool CH347Plugin::m_handle_jtag_help(const std::string &, std::stop_token /*st*/
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_open(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_jtag_open(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [rate=0-5] [device=/dev/... (Linux) or 0 (Windows)]"));
         LOG_PRINT(LOG_EMPTY,
@@ -92,7 +92,7 @@ bool CH347Plugin::m_handle_jtag_open(const std::string &args, std::stop_token /*
 
     std::string devPath = m_sIniValues.strDevicePath;
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -162,9 +162,9 @@ bool CH347Plugin::m_handle_jtag_close(const std::string &, std::stop_token /*st*
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_cfg(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_jtag_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("JTAG config: rate=");
                   LOG_UINT32(m_sJtagCfg.clockRate));
@@ -174,7 +174,7 @@ bool CH347Plugin::m_handle_jtag_cfg(const std::string &args, std::stop_token /*s
     }
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
@@ -198,11 +198,11 @@ bool CH347Plugin::m_handle_jtag_cfg(const std::string &args, std::stop_token /*s
 //                       RESET                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_reset(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_jtag_reset(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: reset [trst]"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  (no args) = TAP logic reset via TMS"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  (no strArgs) = TAP logic reset via TMS"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  trst      = assert TRST pin"));
         return true;
     }
@@ -212,7 +212,7 @@ bool CH347Plugin::m_handle_jtag_reset(const std::string &args, std::stop_token /
         return false;
     }
 
-    if (args == "trst") {
+    if (strArgs == "trst") {
         auto s = p->tap_reset_trst(true);
         if (s != CH347JTAG::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("TRST reset failed"));
@@ -234,9 +234,9 @@ bool CH347Plugin::m_handle_jtag_reset(const std::string &args, std::stop_token /
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_write(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_jtag_write(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write [ir|dr] AABB..  (hex bytes)"));
         return true;
     }
@@ -247,7 +247,7 @@ bool CH347Plugin::m_handle_jtag_write(const std::string &args, std::stop_token /
     }
 
     std::vector<std::string> parts;
-    ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::splitAtFirst(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: write [ir|dr] HEXDATA"));
         return false;
@@ -258,7 +258,7 @@ bool CH347Plugin::m_handle_jtag_write(const std::string &args, std::stop_token /
         m_sJtagCfg.lastReg = reg;
     } else {
         // First token is hex data, not ir/dr — reassemble
-        parts[1] = args;
+        parts[1] = strArgs;
     }
 
     std::vector<uint8_t> data;
@@ -283,9 +283,9 @@ bool CH347Plugin::m_handle_jtag_write(const std::string &args, std::stop_token /
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_read(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_jtag_read(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read [ir|dr] N"));
         return true;
     }
@@ -296,7 +296,7 @@ bool CH347Plugin::m_handle_jtag_read(const std::string &args, std::stop_token /*
     }
 
     std::vector<std::string> parts;
-    ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::splitAtFirst(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: read [ir|dr] N"));
         return false;
@@ -335,9 +335,9 @@ bool CH347Plugin::m_handle_jtag_read(const std::string &args, std::stop_token /*
 //                       WRRD                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_wrrd(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_jtag_wrrd(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: wrrd [ir|dr] HEXDATA:rdlen"));
         LOG_PRINT(LOG_EMPTY,
@@ -351,7 +351,7 @@ bool CH347Plugin::m_handle_jtag_wrrd(const std::string &args, std::stop_token /*
     }
 
     std::vector<std::string> parts;
-    ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::splitAtFirst(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     JtagRegister reg = m_sJtagCfg.lastReg;
     std::string transferSpec;
@@ -360,7 +360,7 @@ bool CH347Plugin::m_handle_jtag_wrrd(const std::string &args, std::stop_token /*
         m_sJtagCfg.lastReg = reg;
         transferSpec       = parts[1];
     } else {
-        transferSpec = args;
+        transferSpec = strArgs;
     }
 
     // Parse HEXDATA:rdlen
@@ -399,9 +399,9 @@ bool CH347Plugin::m_handle_jtag_wrrd(const std::string &args, std::stop_token /*
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_script(const std::string &args, std::stop_token st) const
+bool CH347Plugin::m_handle_jtag_script(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  JTAG must be open first"));
@@ -417,7 +417,7 @@ bool CH347Plugin::m_handle_jtag_script(const std::string &args, std::stop_token 
     return generic_execute_script(
         pJtag,
         CH347_PLUGIN_NAME,
-        args,
+        strArgs,
         ini->strArtefactsPath,
         CH347_BULK_MAX_BYTES,
         ini->u32ReadTimeout,

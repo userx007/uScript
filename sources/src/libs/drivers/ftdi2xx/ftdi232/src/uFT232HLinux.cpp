@@ -144,13 +144,13 @@ bool FT232HBase::is_open() const
 // MPSSE transport primitives
 // ============================================================================
 
-FT232HBase::Status FT232HBase::mpsse_write(const uint8_t *buf, size_t len) const
+FT232HBase::Status FT232HBase::mpsse_write(const uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
-    int ret = ftdi_write_data(CTX, const_cast<uint8_t *>(buf), static_cast<int>(len));
+    int ret = ftdi_write_data(CTX, const_cast<uint8_t *>(pu8Buf), static_cast<int>(len));
     if (ret < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_write_data() failed, ret="); LOG_INT(ret);
@@ -166,24 +166,24 @@ FT232HBase::Status FT232HBase::mpsse_write(const uint8_t *buf, size_t len) const
     return Status::SUCCESS;
 }
 
-FT232HBase::Status FT232HBase::mpsse_read(uint8_t *buf, size_t len,
-                                          uint32_t timeoutMs,
+FT232HBase::Status FT232HBase::mpsse_read(uint8_t *pu8Buf, size_t len,
+                                          uint32_t u32TimeoutMs,
                                           size_t &bytesRead,
                                           std::stop_token stop_tok) const
 {
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
     bytesRead            = 0;
 
     // 0 == infinite timeout: never expire this poll loop.
-    const bool bInfinite = (timeoutMs == 0);
-    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite = (u32TimeoutMs == 0);
+    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
 
     while (bytesRead < len) {
         int ret = ftdi_read_data(CTX,
-                                 buf + bytesRead,
+                                 pu8Buf + bytesRead,
                                  static_cast<int>(len - bytesRead));
         if (ret < 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;

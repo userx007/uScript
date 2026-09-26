@@ -33,14 +33,14 @@ namespace loopback {
             struct ClientTag {
             };
 
-            UdpChannel(ServerTag, std::string bind_addr, int port)
+            UdpChannel(ServerTag, std::string strBind_addr, int iPort)
                 : is_server_(true)
                 , host_(std::move(bind_addr))
                 , port_(port)
             {
             }
 
-            UdpChannel(ClientTag, std::string host, int port)
+            UdpChannel(ClientTag, std::string strHost, int iPort)
                 : is_server_(false)
                 , host_(std::move(host))
                 , port_(port)
@@ -65,7 +65,7 @@ namespace loopback {
                 }
             }
 
-            bool readMessage(Message &msg) override
+            bool readMessage(Message &sMsg) override
             {
                 while (!g_stop) {
                     uint8_t buf[65507]; // IPv4 theoretical UDP payload ceiling
@@ -89,14 +89,14 @@ namespace loopback {
                         last_peer_str_   = peerToString(sender, sender_len);
                     }
 
-                    msg.data.assign(buf, buf + n);
-                    msg.has_can_id = false;
+                    sMsg.data.assign(buf, buf + n);
+                    sMsg.has_can_id = false;
                     return true;
                 }
                 return false;
             }
 
-            bool writeMessage(Message &msg) override
+            bool writeMessage(Message &sMsg) override
             {
                 ssize_t sent;
                 if (is_server_) {
@@ -105,19 +105,19 @@ namespace loopback {
                                         "datagram to reply to; use udp:client/<host>/<port> for a pure output");
                         return false;
                     }
-                    sent = ::sendto(fd_, msg.data.data(), msg.data.size(), 0,
+                    sent = ::sendto(fd_, sMsg.data.data(), sMsg.data.size(), 0,
                                     reinterpret_cast<struct sockaddr *>(&last_sender_), last_sender_len_);
                 } else {
-                    sent = ::send(fd_, msg.data.data(), msg.data.size(), 0);
+                    sent = ::send(fd_, sMsg.data.data(), sMsg.data.size(), 0);
                 }
 
                 if (sent < 0) {
                     log_err(name(), std::string("send: ") + std::strerror(errno));
                     return false;
                 }
-                if (static_cast<size_t>(sent) != msg.data.size()) {
+                if (static_cast<size_t>(sent) != sMsg.data.size()) {
                     log_warn(name(), "short send: " + std::to_string(sent) + " of " +
-                                         std::to_string(msg.data.size()) + " bytes");
+                                         std::to_string(sMsg.data.size()) + " bytes");
                 }
                 return true;
             }
@@ -136,9 +136,9 @@ namespace loopback {
                                   : "udp:client:" + host_ + ":" + std::to_string(port_);
             }
 
-            void dump(const char *dir, const Message &msg) const override
+            void dump(const char *pstrDir, const Message &sMsg) const override
             {
-                dump_bytes(name(), dir, msg.data.data(), msg.data.size());
+                dump_bytes(name(), pstrDir, sMsg.data.data(), sMsg.data.size());
             }
 
         private:

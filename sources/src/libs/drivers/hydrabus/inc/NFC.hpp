@@ -39,7 +39,7 @@ namespace HydraHAL {
                 ISO_15693  = 1,
             };
 
-            explicit NFC(std::shared_ptr<Hydrabus> hydrabus);
+            explicit NFC(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // RF field
@@ -52,7 +52,7 @@ namespace HydraHAL {
              * @brief Turn the RF field on or off.
              * @param on true = RF on, false = RF off.
              */
-            void set_rf(bool on, std::stop_token stop_tok = {});
+            void set_rf(bool bOn, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Mode
@@ -65,7 +65,7 @@ namespace HydraHAL {
              * @brief Select the NFC modulation/protocol mode.
              * @param mode ISO_14443A or ISO_15693.
              */
-            void set_mode(Mode mode, std::stop_token stop_tok = {});
+            void set_mode(Mode eMode, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Data transfer
@@ -78,7 +78,7 @@ namespace HydraHAL {
              * @param crc   1 = append CRC, 0 = no CRC.
              * @return Response bytes (length determined by firmware).
              */
-            std::vector<uint8_t> write(std::span<const uint8_t> data, bool append_crc = false, std::stop_token stop_tok = {});
+            std::vector<uint8_t> write(std::span<const uint8_t> data, bool bAppend_crc = false, std::stop_token stop_tok = {});
 
             /**
              * @brief Transmit a partial byte (for anticollision) (HydraFW 0b00000100).
@@ -87,7 +87,7 @@ namespace HydraHAL {
              * @param num_bits Number of bits to transmit from `data` (1–7).
              * @return Response bytes.
              */
-            std::vector<uint8_t> write_bits(uint8_t data, uint8_t num_bits, std::stop_token stop_tok = {});
+            std::vector<uint8_t> write_bits(uint8_t u8Data, uint8_t u8Num_bits, std::stop_token stop_tok = {});
 
         private:
             Mode _mode{Mode::ISO_14443A};

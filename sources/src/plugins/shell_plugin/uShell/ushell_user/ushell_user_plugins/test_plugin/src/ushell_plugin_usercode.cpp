@@ -57,38 +57,38 @@ int vhexlify(void)
 }
 
 /*---------------------------------------------------------------*/
-int itest(uint32_t i)
+int itest(uint32_t u32I)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> itest()");
-    uSHELL_LOG(ULOG_INFO, "i = %u", i);
+    uSHELL_LOG(ULOG_INFO, "u32I = %u", u32I);
 
     return 0;
 }
 
 /*---------------------------------------------------------------*/
-int stest(char *s)
+int stest(char *pstrS)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> stest()");
-    uSHELL_LOG(ULOG_INFO, "s = %s", s);
+    uSHELL_LOG(ULOG_INFO, "pstrS = %pstrS", pstrS);
 
     return 0;
 }
 
 /*---------------------------------------------------------------*/
-int sunhexlify(char *s)
+int sunhexlify(char *pstrS)
 {
     int iRetVal = SHELLFCT_RETVAL_ERR;
 
     uSHELL_LOG(ULOG_VERBOSE, "--> sunhexlify()");
 
-    size_t szLen = strlen(s);
+    size_t szLen = strlen(pstrS);
     if (0 != szLen) {
         uint8_t *pu8Buf = (uint8_t *)malloc(szLen / 2 + 1);
 
         if (nullptr != pu8Buf) {
             size_t szOutLen = 0;
 
-            if (unhexlify(s, pu8Buf, &szOutLen)) {
+            if (unhexlify(pstrS, pu8Buf, &szOutLen)) {
                 for (size_t i = 0; i < szOutLen; ++i) {
                     uSHELL_LOG(ULOG_VERBOSE, "%d : %d (0x%02X)", i, pu8Buf[i], pu8Buf[i]);
                 }
@@ -108,46 +108,46 @@ int sunhexlify(char *s)
 }
 
 /*---------------------------------------------------------------*/
-int iitest(uint32_t i1, uint32_t i2)
+int iitest(uint32_t u32I1, uint32_t u32I2)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> iitest()");
-    uSHELL_LOG(ULOG_INFO, "i1 = %d", i1);
-    uSHELL_LOG(ULOG_INFO, "i2 = %d", i2);
+    uSHELL_LOG(ULOG_INFO, "u32I1 = %d", u32I1);
+    uSHELL_LOG(ULOG_INFO, "u32I2 = %d", u32I2);
 
     return 0;
 }
 
 /*---------------------------------------------------------------*/
-int istest(uint32_t i, char *s)
+int istest(uint32_t u32I, char *pstrS)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> istest()");
-    uSHELL_LOG(ULOG_INFO, "i = %d", i);
-    uSHELL_LOG(ULOG_INFO, "s = %s", s);
+    uSHELL_LOG(ULOG_INFO, "u32I = %d", u32I);
+    uSHELL_LOG(ULOG_INFO, "pstrS = %pstrS", pstrS);
 
     return 0;
 }
 
 /*---------------------------------------------------------------*/
-int sstest(char *s1, char *s2)
+int sstest(char *pstrS1, char *pstrS2)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> sstest()");
-    uSHELL_LOG(ULOG_INFO, "s1 = %s", s1);
-    uSHELL_LOG(ULOG_INFO, "s2 = %s", s2);
+    uSHELL_LOG(ULOG_INFO, "pstrS1 = %s", pstrS1);
+    uSHELL_LOG(ULOG_INFO, "pstrS2 = %s", pstrS2);
 
     return 0;
 }
 
 /*---------------------------------------------------------------*/
-int liotest(uint64_t l, uint32_t i, bool o)
+int liotest(uint64_t u64L, uint32_t u32I, bool bO)
 {
     uSHELL_PRINTF("--> liotest()\n");
 #if (defined(__MINGW32__) || defined(_MSC_VER))
-    uSHELL_PRINTF("l = %lld\n", l);
+    uSHELL_PRINTF("u64L = %lld\n", u64L);
 #else
-    uSHELL_PRINTF("l = %ld\n", l);
+    uSHELL_PRINTF("u64L = %ld\n", u64L);
 #endif
-    uSHELL_PRINTF("i = %d\n", i);
-    uSHELL_PRINTF("o = %d\n", o);
+    uSHELL_PRINTF("u32I = %d\n", u32I);
+    uSHELL_PRINTF("bO = %d\n", bO);
 
     return 0;
 }

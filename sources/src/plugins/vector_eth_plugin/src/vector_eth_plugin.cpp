@@ -25,10 +25,10 @@ extern "C" {
         return new VectorEthPlugin();
     }
 
-    EXPORTED void pluginExit(VectorEthPlugin *ptrPlugin)
+    EXPORTED void pluginExit(VectorEthPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -52,9 +52,9 @@ extern "C" {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_INFO(const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -182,9 +182,9 @@ bool VectorEthPlugin::m_VECTOR_ETH_INFO(const std::string &args, std::stop_token
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_CONFIG(const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_eth_set_params<VectorEthPlugin>(this, args);
+    return generic_eth_set_params<VectorEthPlugin>(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -203,21 +203,21 @@ bool VectorEthPlugin::m_VECTOR_ETH_CONFIG(const std::string &args, std::stop_tok
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_FILTER(const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_FILTER(const std::string &strArgs, std::stop_token st) const
 {
     if (!m_bIsEnabled) {
         return true;
     }
 
-    if (args.empty()) {
+    if (strArgs.empty()) {
         m_rxFilterSrcMac.reset();
         m_rxFilterEtherType.reset();
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Filters cleared"));
         return true;
     }
 
-    if (false == m_ParseFilter(args, m_rxFilterSrcMac, m_rxFilterEtherType)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(args));
+    if (false == m_ParseFilter(strArgs, m_rxFilterSrcMac, m_rxFilterEtherType)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(strArgs));
         return false;
     }
 
@@ -241,10 +241,10 @@ bool VectorEthPlugin::m_VECTOR_ETH_FILTER(const std::string &args, std::stop_tok
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_CMD(const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_CMD(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<VectorEth> {
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
@@ -270,10 +270,10 @@ bool VectorEthPlugin::m_VECTOR_ETH_CMD(const std::string &args, std::stop_token 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_SCRIPT(const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<VectorEth> {
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
@@ -300,10 +300,10 @@ bool VectorEthPlugin::m_VECTOR_ETH_SCRIPT(const std::string &args, std::stop_tok
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_CYCLIC(const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<VectorEth> {
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
@@ -322,11 +322,11 @@ bool VectorEthPlugin::m_VECTOR_ETH_CYCLIC(const std::string &args, std::stop_tok
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool VectorEthPlugin::m_VECTOR_ETH_DEVICES(const std::string &args, std::stop_token st) const
+bool VectorEthPlugin::m_VECTOR_ETH_DEVICES(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -377,10 +377,10 @@ bool VectorEthPlugin::m_VECTOR_ETH_DEVICES(const std::string &args, std::stop_to
 //            PRIVATE INTERFACES IMPLEMENTATION                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-int VectorEthPlugin::ustring_icompare(const std::string &a, const char *b)
+int VectorEthPlugin::ustring_icompare(const std::string &strA, const char *pstrB)
 {
-    std::string strUpperA(a);
-    std::string strUpperB(b);
+    std::string strUpperA(strA);
+    std::string strUpperB(pstrB);
     std::transform(strUpperA.begin(), strUpperA.end(), strUpperA.begin(),
                    [](unsigned char c) { return std::toupper(c); });
     std::transform(strUpperB.begin(), strUpperB.end(), strUpperB.begin(),

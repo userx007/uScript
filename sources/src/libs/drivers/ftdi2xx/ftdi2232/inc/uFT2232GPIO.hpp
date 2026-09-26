@@ -57,9 +57,9 @@ class FT2232GPIO : public FT2232Base {
 
         FT2232GPIO() = default;
 
-        explicit FT2232GPIO(const GpioConfig &config, uint8_t u8DeviceIndex = 0u)
+        explicit FT2232GPIO(const GpioConfig &sConfig, uint8_t u8DeviceIndex = 0u)
         {
-            this->open(config, u8DeviceIndex);
+            this->open(sConfig, u8DeviceIndex);
         }
 
         ~FT2232GPIO() override
@@ -67,7 +67,7 @@ class FT2232GPIO : public FT2232Base {
             close();
         }
 
-        Status open(const GpioConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const GpioConfig &sConfig, uint8_t u8DeviceIndex = 0u);
 
         /** @copydoc FT2232Base::close — drives all output pins low before closing */
         Status close() override;
@@ -83,19 +83,19 @@ class FT2232GPIO : public FT2232Base {
          * @param dirMask       1 = output, 0 = input
          * @param initialValue  Output level for pins newly becoming outputs
          */
-        Status set_direction(Bank bank, uint8_t dirMask, uint8_t initialValue = 0x00u);
+        Status set_direction(Bank eBank, uint8_t u8DirMask, uint8_t u8InitialValue = 0x00u);
 
         // ── Output control ───────────────────────────────────────────────────
-        Status write(Bank bank, uint8_t value);
-        Status set_pins(Bank bank, uint8_t pinMask);
-        Status clear_pins(Bank bank, uint8_t pinMask);
-        Status toggle_pins(Bank bank, uint8_t pinMask);
+        Status write(Bank eBank, uint8_t u8Value);
+        Status set_pins(Bank eBank, uint8_t u8PinMask);
+        Status clear_pins(Bank eBank, uint8_t u8PinMask);
+        Status toggle_pins(Bank eBank, uint8_t u8PinMask);
 
         // ── Input reading ────────────────────────────────────────────────────
         /** Read the instantaneous level of all pins in a bank */
-        Status read(Bank bank, uint8_t &value);
+        Status read(Bank eBank, uint8_t &u8Value);
         /** Read (rawValue & pinMask) into value */
-        Status read_pins(Bank bank, uint8_t pinMask, uint8_t &value);
+        Status read_pins(Bank eBank, uint8_t u8PinMask, uint8_t &u8Value);
 
     private:
         uint8_t m_lowValue  = 0x00u;
@@ -103,9 +103,9 @@ class FT2232GPIO : public FT2232Base {
         uint8_t m_highValue = 0x00u;
         uint8_t m_highDir   = 0x00u;
 
-        Status configure_mpsse_gpio(const GpioConfig &config);
-        Status apply_low(uint8_t value, uint8_t dir) const;
-        Status apply_high(uint8_t value, uint8_t dir) const;
+        Status configure_mpsse_gpio(const GpioConfig &sConfig);
+        Status apply_low(uint8_t u8Value, uint8_t u8Dir) const;
+        Status apply_high(uint8_t u8Value, uint8_t u8Dir) const;
 };
 
 #endif // U_FT2232_GPIO_DRIVER_H

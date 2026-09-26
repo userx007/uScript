@@ -109,16 +109,16 @@ class IniCfgLoader {
         //  On missing key or evaluation failure the caller-supplied default in
         //  'value' is preserved and false is returned.
         // -------------------------------------------------------------------------
-        bool getBoolFromIni(std::string_view key, bool &value) noexcept
+        bool getBoolFromIni(std::string_view key, bool &bValue) noexcept
         {
             const std::string strKey(key);
 
             if ((m_mapSettings.count(strKey) == 0) ||
-                (false == m_beEvaluator.evaluate(m_mapSettings.at(strKey), value))) {
+                (false == m_beEvaluator.evaluate(m_mapSettings.at(strKey), bValue))) {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
-                          LOG_STRING("Missing/wrong ini value for:");
+                          LOG_STRING("Missing/wrong ini bValue for:");
                           LOG_STRING(key);
-                          LOG_STRING(": using default value"));
+                          LOG_STRING(": using default bValue"));
                 return false;
             }
 
@@ -167,7 +167,7 @@ class IniCfgLoader {
 
         /*  Resolves a named section into a caller-supplied map. */
         bool resolveSection(std::string_view sectionName,
-                            std::unordered_map<std::string, std::string> &outMap) const noexcept
+                            std::unordered_map<std::string, std::string> &mapOutMap) const noexcept
         {
             if (false == m_bLoaded) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -175,7 +175,7 @@ class IniCfgLoader {
                           LOG_STRING(sectionName));
                 return false;
             }
-            return m_IniParser.getResolvedSection(std::string(sectionName), outMap);
+            return m_IniParser.getResolvedSection(std::string(sectionName), mapOutMap);
         }
 
         /** Returns true if load() completed successfully. */

@@ -26,7 +26,7 @@
 
 namespace HydraHAL {
 
-    Utils::Utils(std::shared_ptr<Hydrabus> hydrabus)
+    Utils::Utils(std::shared_ptr<Hydrabus> shpHydrabus)
         : _hydrabus(std::move(hydrabus))
     {
         _hydrabus->flush_input();

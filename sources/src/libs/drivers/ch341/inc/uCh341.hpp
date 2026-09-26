@@ -91,7 +91,7 @@ class CH341 : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -130,14 +130,14 @@ class CH341 : public ICommDriver {
 
         // Legacy internal methods (kept for implementation compatibility, mirrors UART)
         Status timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t &szBytesRead, std::stop_token stop_tok = {}) const;
-        Status timeout_read_until(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, uint8_t cDelimiter, size_t &szBytesRead, std::stop_token stop_tok = {}) const;
-        Status timeout_wait_for_token(uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool useBuffer, std::stop_token stop_tok = {}) const;
-        Status timeout_write(uint32_t u32WriteTimeouts, std::span<const uint8_t> buffer, size_t &szBytesWritten, std::stop_token stop_tok = {}) const;
+        Status timeout_read_until(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, uint8_t u8CDelimiter, size_t &szBytesRead, std::stop_token stop_tok = {}) const;
+        Status timeout_wait_for_token(uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool bUseBuffer, std::stop_token stop_tok = {}) const;
+        Status timeout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, size_t &szBytesWritten, std::stop_token stop_tok = {}) const;
 
         Status purge(bool bInput, bool bOutput) const;
         Status setup(uint32_t u32Speed) const;
-        Status kmp_stream_match(std::span<const uint8_t> token, const std::vector<int> &viLps, uint32_t u32Timeout, bool bReturnOnTimeout, bool useBuffer, std::stop_token stop_tok = {}) const;
-        void build_kmp_table(std::span<const uint8_t> pattern, size_t szLength, std::vector<int> &viLps) const;
+        Status kmp_stream_match(std::span<const uint8_t> token, const std::vector<int> &vViLps, uint32_t u32Timeout, bool bReturnOnTimeout, bool bUseBuffer, std::stop_token stop_tok = {}) const;
+        void build_kmp_table(std::span<const uint8_t> pattern, size_t szLength, std::vector<int> &vViLps) const;
 };
 
 #endif // U_CH341_DRIVER_H

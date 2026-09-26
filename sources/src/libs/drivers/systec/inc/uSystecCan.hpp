@@ -183,7 +183,7 @@ class SYSTECCAN : public ICommDriver {
          * @param filters  Vector of CanFilter entries.
          * @return Status::SUCCESS or Status::PORT_ACCESS on ioctl failure.
          */
-        Status set_filters(const std::vector<CanFilter> &filters);
+        Status set_filters(const std::vector<CanFilter> &vFilters);
 
         /**
          * @brief Unified read interface supporting multiple operation modes.
@@ -207,7 +207,7 @@ class SYSTECCAN : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -286,7 +286,7 @@ class SYSTECCAN : public ICommDriver {
          */
         Status timeout_read_until(uint32_t u32ReadTimeout,
                                   std::span<uint8_t> buffer,
-                                  uint8_t cDelimiter,
+                                  uint8_t u8CDelimiter,
                                   size_t &szBytesRead,
                                   std::stop_token stop_tok = {}) const;
 
@@ -296,7 +296,7 @@ class SYSTECCAN : public ICommDriver {
          */
         Status timeout_wait_for_token(uint32_t u32ReadTimeout,
                                       std::span<const uint8_t> token,
-                                      bool useBuffer,
+                                      bool bUseBuffer,
                                       std::stop_token stop_tok = {}) const;
 
         /**
@@ -314,16 +314,16 @@ class SYSTECCAN : public ICommDriver {
 
         /** @brief Run KMP stream matching over CAN frame payload bytes. */
         Status kmp_stream_match(std::span<const uint8_t> token,
-                                const std::vector<int> &viLps,
+                                const std::vector<int> &vViLps,
                                 uint32_t u32Timeout,
                                 bool bReturnOnTimeout,
-                                bool useBuffer,
+                                bool bUseBuffer,
                                 std::stop_token stop_tok = {}) const;
 
         /** @brief Build the KMP failure-function table for @p pattern. */
         void build_kmp_table(std::span<const uint8_t> pattern,
                              size_t szLength,
-                             std::vector<int> &viLps) const;
+                             std::vector<int> &vViLps) const;
 };
 
 #endif // U_SYSTEC_CAN_DRIVER_H

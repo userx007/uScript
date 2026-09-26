@@ -57,9 +57,9 @@
 
 static volatile int running = 1;
 
-static void sig_handler(int sig)
+static void sig_handler(int iSig)
 {
-    (void)sig;
+    (void)iSig;
     running = 0;
 }
 
@@ -68,9 +68,9 @@ static void sig_handler(int sig)
 /* ------------------------------------------------------------------ */
 
 /** Print a CAN frame in candump-like format. */
-static void print_frame(const char *prefix, const struct can_frame *f)
+static void print_frame(const char *pstrPrefix, const struct can_frame *f)
 {
-    printf("%s  %03X  [%u] ", prefix, f->can_id & CAN_EFF_MASK, f->can_dlc);
+    printf("%s  %03X  [%u] ", pstrPrefix, f->can_id & CAN_EFF_MASK, f->can_dlc);
     for (int i = 0; i < f->can_dlc; i++)
         printf("%02X ", f->data[i]);
     printf("\n");
@@ -81,9 +81,9 @@ static void print_frame(const char *prefix, const struct can_frame *f)
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
-int main(int argc, char *argv[])
+int main(int iArgc, char *argv[])
 {
-    const char *ifname = (argc > 1) ? argv[1] : "vcan0";
+    const char *ifname = (iArgc > 1) ? argv[1] : "vcan0";
 
     /* ---- resolve interface index ---- */
     struct ifreq ifr;

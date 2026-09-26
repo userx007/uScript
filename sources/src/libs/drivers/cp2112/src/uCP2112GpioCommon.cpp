@@ -63,7 +63,7 @@ CP2112Gpio::Status CP2112Gpio::open(uint8_t u8DeviceIndex)
  *   Byte 4  : Clock divider (used only when GPIO.6 = clock output)
  *   Bytes 5–63 : Reserved (zero)
  */
-CP2112Gpio::Status CP2112Gpio::gpio_configure(const GpioConfig &config) const
+CP2112Gpio::Status CP2112Gpio::gpio_configure(const GpioConfig &sConfig) const
 {
     if (!is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_configure: device not open"));
@@ -72,10 +72,10 @@ CP2112Gpio::Status CP2112Gpio::gpio_configure(const GpioConfig &config) const
 
     uint8_t report[HID_REPORT_SIZE] = {0};
     report[0]                       = RPT_GPIO_CONFIG;
-    report[1]                       = config.directionMask;
-    report[2]                       = config.pushPullMask;
-    report[3]                       = config.specialFuncMask;
-    report[4]                       = config.clockDivider;
+    report[1]                       = sConfig.directionMask;
+    report[2]                       = sConfig.pushPullMask;
+    report[3]                       = sConfig.specialFuncMask;
+    report[4]                       = sConfig.clockDivider;
 
     Status s                        = hid_set_feature(report, HID_REPORT_SIZE);
     if (s != Status::SUCCESS) {
@@ -94,29 +94,29 @@ CP2112Gpio::Status CP2112Gpio::gpio_configure(const GpioConfig &config) const
  *
  * The apply-mask allows atomic partial updates without a read-modify-write.
  */
-CP2112Gpio::Status CP2112Gpio::gpio_write(uint8_t valueMask, uint8_t applyMask) const
+CP2112Gpio::Status CP2112Gpio::gpio_write(uint8_t u8ValueMask, uint8_t u8ApplyMask) const
 {
     if (!is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_write: device not open"));
         return Status::PORT_ACCESS;
     }
 
-    if (applyMask == 0x00) {
+    if (u8ApplyMask == 0x00) {
         // Nothing to do — mask explicitly says touch no pins
         return Status::SUCCESS;
     }
 
     uint8_t report[HID_REPORT_SIZE] = {0};
     report[0]                       = RPT_GPIO_SET;
-    report[1]                       = valueMask;
-    report[2]                       = applyMask;
+    report[1]                       = u8ValueMask;
+    report[2]                       = u8ApplyMask;
 
     Status s                        = hid_set_feature(report, HID_REPORT_SIZE);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("gpio_write: hid_set_feature failed");
-                  LOG_STRING("value ="); LOG_HEX8(valueMask);
-                  LOG_STRING("mask ="); LOG_HEX8(applyMask));
+                  LOG_STRING("value ="); LOG_HEX8(u8ValueMask);
+                  LOG_STRING("mask ="); LOG_HEX8(u8ApplyMask));
     }
 
     return s;
@@ -128,9 +128,9 @@ CP2112Gpio::Status CP2112Gpio::gpio_write(uint8_t valueMask, uint8_t applyMask) 
  *   Byte 1  : Pin levels — bit = 1 → high, 0 → low
  *   Bytes 2–63 : Reserved
  */
-CP2112Gpio::Status CP2112Gpio::gpio_read(uint8_t &valueMask) const
+CP2112Gpio::Status CP2112Gpio::gpio_read(uint8_t &u8ValueMask) const
 {
-    valueMask = 0x00;
+    u8ValueMask = 0x00;
 
     if (!is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_read: device not open"));
@@ -146,10 +146,10 @@ CP2112Gpio::Status CP2112Gpio::gpio_read(uint8_t &valueMask) const
         return s;
     }
 
-    valueMask = report[1];
+    u8ValueMask = report[1];
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-              LOG_STRING("gpio_read: value="); LOG_HEX8(valueMask));
+              LOG_STRING("gpio_read: value="); LOG_HEX8(u8ValueMask));
 
     return Status::SUCCESS;
 }

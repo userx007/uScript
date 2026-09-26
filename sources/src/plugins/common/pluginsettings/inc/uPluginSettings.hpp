@@ -80,29 +80,29 @@ class PluginSettingsBinder {
          * \note one overload per supported member type keeps call sites type-safe --
          *       there is no way to accidentally bind a key to an unsupported type
          */
-        void Bind(const std::string &strKey, std::string &member)
+        void Bind(const std::string &strKey, std::string &strMember)
         {
-            m_vectEntries.push_back({strKey, &member});
+            m_vectEntries.push_back({strKey, &strMember});
         }
 
-        void Bind(const std::string &strKey, bool &member)
+        void Bind(const std::string &strKey, bool &bMember)
         {
-            m_vectEntries.push_back({strKey, &member});
+            m_vectEntries.push_back({strKey, &bMember});
         }
 
-        void Bind(const std::string &strKey, uint8_t &member)
+        void Bind(const std::string &strKey, uint8_t &u8Member)
         {
-            m_vectEntries.push_back({strKey, &member});
+            m_vectEntries.push_back({strKey, &u8Member});
         }
 
-        void Bind(const std::string &strKey, uint16_t &member)
+        void Bind(const std::string &strKey, uint16_t &u16Member)
         {
-            m_vectEntries.push_back({strKey, &member});
+            m_vectEntries.push_back({strKey, &u16Member});
         }
 
-        void Bind(const std::string &strKey, uint32_t &member)
+        void Bind(const std::string &strKey, uint32_t &u32Member)
         {
-            m_vectEntries.push_back({strKey, &member});
+            m_vectEntries.push_back({strKey, &u32Member});
         }
 
         void Bind(const std::string &strKey, size_t &member)
@@ -186,31 +186,31 @@ class PluginSettingsBinder {
         // break-on-first-failure behaviour matches the original per-plugin ordering
         std::vector<Entry> m_vectEntries;
 
-        static bool Convert(const std::string &strVal, std::string &out)
+        static bool Convert(const std::string &strVal, std::string &strOut)
         {
-            out = strVal;
+            strOut = strVal;
             return true;
         }
 
-        static bool Convert(const std::string &strVal, bool &out)
+        static bool Convert(const std::string &strVal, bool &bOut)
         {
             BoolExprEvaluator sEvaluator;
-            return sEvaluator.evaluate(strVal, out);
+            return sEvaluator.evaluate(strVal, bOut);
         }
 
-        static bool Convert(const std::string &strVal, uint8_t &out)
+        static bool Convert(const std::string &strVal, uint8_t &u8Out)
         {
-            return numeric::str2uint8(strVal, out);
+            return numeric::str2uint8(strVal, u8Out);
         }
 
-        static bool Convert(const std::string &strVal, uint16_t &out)
+        static bool Convert(const std::string &strVal, uint16_t &u16Out)
         {
-            return numeric::str2uint16(strVal, out);
+            return numeric::str2uint16(strVal, u16Out);
         }
 
-        static bool Convert(const std::string &strVal, uint32_t &out)
+        static bool Convert(const std::string &strVal, uint32_t &u32Out)
         {
-            return numeric::str2uint32(strVal, out);
+            return numeric::str2uint32(strVal, u32Out);
         }
 
         static bool Convert(const std::string &strVal, size_t &out)

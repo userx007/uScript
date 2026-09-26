@@ -72,7 +72,7 @@ namespace loopback {
 
 namespace {
 
-    void printUsage(const char *argv0)
+    void printUsage(const char *pstrArgv0)
     {
         std::fprintf(stderr,
                      "Usage: %s -i <input-spec> [-o <output-spec>] [-t <delay-ms>]\n"
@@ -91,13 +91,13 @@ namespace {
                      "  %s -i uart:/dev/tnt0/115200\n"
                      "  %s -i kvcan:vcan0\n"
                      "  %s -i uart:/dev/tnt0/115200 -o kvcan:vcan0/0x100 -t 500\n",
-                     argv0, argv0, argv0, argv0);
+                     pstrArgv0, pstrArgv0, pstrArgv0, pstrArgv0);
     }
 
-    void sleepInterruptible(int delay_ms)
+    void sleepInterruptible(int iDelay_ms)
     {
         const int step_ms = 20;
-        int remaining     = delay_ms;
+        int remaining     = iDelay_ms;
         while (remaining > 0 && !loopback::g_stop) {
             int chunk = std::min(remaining, step_ms);
             std::this_thread::sleep_for(std::chrono::milliseconds(chunk));
@@ -107,18 +107,18 @@ namespace {
 
 } // namespace
 
-int main(int argc, char *argv[])
+int main(int iArgc, char *argv[])
 {
     std::string in_spec, out_spec;
     int delay_ms = 0;
 
-    for (int i = 1; i < argc; i++) {
+    for (int i = 1; i < iArgc; i++) {
         std::string arg = argv[i];
-        if (arg == "-i" && i + 1 < argc) {
+        if (arg == "-i" && i + 1 < iArgc) {
             in_spec = argv[++i];
-        } else if (arg == "-o" && i + 1 < argc) {
+        } else if (arg == "-o" && i + 1 < iArgc) {
             out_spec = argv[++i];
-        } else if (arg == "-t" && i + 1 < argc) {
+        } else if (arg == "-t" && i + 1 < iArgc) {
             delay_ms = std::atoi(argv[++i]);
         } else if (arg == "-h" || arg == "--help") {
             printUsage(argv[0]);

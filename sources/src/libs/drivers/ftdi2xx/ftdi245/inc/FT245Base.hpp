@@ -157,7 +157,7 @@ class FT245Base {
          * @param fifoMode      Async (all variants) or Sync (FT245BM only)
          * @param u8DeviceIndex Zero-based index among connected chips of this variant
          */
-        Status open_device(Variant variant, FifoMode fifoMode, uint8_t u8DeviceIndex);
+        Status open_device(Variant eVariant, FifoMode eFifoMode, uint8_t u8DeviceIndex);
 
         // ── FIFO transport primitives — implemented in platform .cpp files ──
 
@@ -168,7 +168,7 @@ class FT245Base {
          * @param buf     Pointer to data to transmit
          * @param len     Number of bytes to write
          */
-        Status fifo_write(const uint8_t *buf, size_t len) const;
+        Status fifo_write(const uint8_t *pu8Buf, size_t len) const;
 
         /**
          * @brief Read bytes from the device RX FIFO with a timeout
@@ -181,8 +181,8 @@ class FT245Base {
          * @param timeoutMs  ms before returning READ_TIMEOUT
          * @param bytesRead  Actual bytes received
          */
-        Status fifo_read(uint8_t *buf, size_t len,
-                         uint32_t timeoutMs, size_t &bytesRead,
+        Status fifo_read(uint8_t *pu8Buf, size_t len,
+                         uint32_t u32TimeoutMs, size_t &bytesRead,
                          std::stop_token stop_tok = {}) const;
 
         /** Discard any pending bytes in the device RX/TX FIFOs */

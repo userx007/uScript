@@ -78,7 +78,7 @@ enum class GpioIrqEdge : uint8_t {
 };
 
 /** Callback type invoked from the CH347 ISR thread. */
-using GpioIrqHandler = std::function<void(uint8_t pinIndex)>;
+using GpioIrqHandler = std::function<void(uint8_t u8PinIndex)>;
 
 // ---------------------------------------------------------------------------
 
@@ -160,7 +160,7 @@ class CH347GPIO : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -191,7 +191,7 @@ class CH347GPIO : public ICommDriver {
          * @param pin    GpioPin bitmask (single bit)
          * @param level  true = high, false = low
          */
-        Status pin_write(uint8_t pin, bool level) const;
+        Status pin_write(uint8_t u8Pin, bool bLevel) const;
 
         /**
          * @brief Read the current level of one or more input pins.
@@ -199,7 +199,7 @@ class CH347GPIO : public ICommDriver {
          * @param pinMask  GpioPin bitmask of pins to read
          * @param level    Receives the raw data bitmask (masked by pinMask)
          */
-        Status pin_read(uint8_t pinMask, uint8_t &level) const;
+        Status pin_read(uint8_t u8PinMask, uint8_t &u8Level) const;
 
         /**
          * @brief Set the direction of one or more pins without changing levels.
@@ -207,7 +207,7 @@ class CH347GPIO : public ICommDriver {
          * @param pinMask   Pins to configure
          * @param isOutput  true = output, false = input
          */
-        Status pin_set_direction(uint8_t pinMask, bool isOutput) const;
+        Status pin_set_direction(uint8_t u8PinMask, bool bIsOutput) const;
 
         /**
          * @brief Drive multiple output pins simultaneously.
@@ -215,7 +215,7 @@ class CH347GPIO : public ICommDriver {
          * @param pinMask   Pins to update (must already be configured as outputs)
          * @param levelMask Desired levels for each selected pin
          */
-        Status pins_write(uint8_t pinMask, uint8_t levelMask) const;
+        Status pins_write(uint8_t u8PinMask, uint8_t u8LevelMask) const;
 
         // -----------------------------------------------------------------------
         // Interrupt / IRQ helpers
@@ -237,13 +237,13 @@ class CH347GPIO : public ICommDriver {
          *                  function.
          * @return Status
          */
-        Status irq_set(uint8_t pinIndex, GpioIrqEdge edge, void *handler) const;
+        Status irq_set(uint8_t u8PinIndex, GpioIrqEdge eEdge, void *pvHandler) const;
 
         /**
          * @brief Disable a previously configured GPIO interrupt.
          * @param pinIndex  0-based pin number
          */
-        Status irq_disable(uint8_t pinIndex) const;
+        Status irq_disable(uint8_t u8PinIndex) const;
 
     private:
         CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;

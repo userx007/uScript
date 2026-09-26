@@ -77,7 +77,7 @@ CP2112::Status CP2112::close()
 
 CP2112::ReadResult CP2112::tout_read(uint32_t u32ReadTimeout,
                                      std::span<uint8_t> buffer,
-                                     const ReadOptions &options,
+                                     const ReadOptions &sOptions,
                                      std::string_view /*xtra_params*/,
                                      std::stop_token stop_tok) const
 {
@@ -93,7 +93,7 @@ CP2112::ReadResult CP2112::tout_read(uint32_t u32ReadTimeout,
     // which now block indefinitely rather than substituting a default.
     uint32_t timeout = u32ReadTimeout;
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
     // ------------------------------------------------------------------
     case ReadMode::Exact: {
         size_t bytesRead        = 0;
@@ -124,7 +124,7 @@ CP2112::ReadResult CP2112::tout_read(uint32_t u32ReadTimeout,
                 break;
             }
 
-            if (byte == options.delimiter) {
+            if (byte == sOptions.delimiter) {
                 buffer[pos]             = '\0';
                 result.found_terminator = true;
                 result.status           = Status::SUCCESS;
@@ -145,13 +145,13 @@ CP2112::ReadResult CP2112::tout_read(uint32_t u32ReadTimeout,
 
     // ------------------------------------------------------------------
     case ReadMode::UntilToken: {
-        if (options.token.empty()) {
+        if (sOptions.token.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty token"));
             result.status = Status::INVALID_PARAM;
             break;
         }
 
-        const auto &token = options.token;
+        const auto &token = sOptions.token;
 
         // Build KMP failure table
         std::vector<int> lps(token.size(), 0);
@@ -253,7 +253,7 @@ CP2112::Status CP2112::configure_smbus(uint32_t u32ClockHz) const
 }
 
 CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
-                                 uint32_t timeoutMs,
+                                 uint32_t u32TimeoutMs,
                                  size_t &bytesWritten,
                                  std::stop_token stop_tok) const
 {
@@ -272,7 +272,7 @@ CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
                   LOG_STRING("i2c_write: chunk offset="); LOG_UINT32(bytesWritten);
                   LOG_STRING("size="); LOG_UINT32(chunkSize));
 
-        Status s = i2c_write_chunk(chunk, timeoutMs, stop_tok);
+        Status s = i2c_write_chunk(chunk, u32TimeoutMs, stop_tok);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write: chunk failed at offset"); LOG_UINT32(bytesWritten));
             return s;
@@ -284,7 +284,7 @@ CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
     return Status::SUCCESS;
 }
 
-CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t timeoutMs, std::stop_token stop_tok) const
+CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t u32TimeoutMs, std::stop_token stop_tok) const
 {
     if (chunk.empty() || chunk.size() > MAX_I2C_WRITE_PAYLOAD) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write_chunk: invalid size:"); LOG_UINT32(chunk.size()));
@@ -303,7 +303,7 @@ CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t 
         return s;
     }
 
-    s = poll_transfer_done(timeoutMs, stop_tok);
+    s = poll_transfer_done(u32TimeoutMs, stop_tok);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write_chunk: transfer did not complete"));
         (void)cancel_transfer();
@@ -312,7 +312,7 @@ CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t 
     return s;
 }
 
-CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t &bytesRead, uint32_t timeoutMs, std::stop_token stop_tok) const
+CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t &bytesRead, uint32_t u32TimeoutMs, std::stop_token stop_tok) const
 {
     bytesRead = 0;
 
@@ -341,7 +341,7 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t &bytesRead, uint
 
     while (bytesRead < data.size()) {
         size_t got = 0;
-        s          = hid_interrupt_read(response, HID_REPORT_SIZE, timeoutMs, got, stop_tok);
+        s          = hid_interrupt_read(response, HID_REPORT_SIZE, u32TimeoutMs, got, stop_tok);
 
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -381,16 +381,16 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t &bytesRead, uint
     return Status::SUCCESS;
 }
 
-CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs, std::stop_token stop_tok) const
+CP2112::Status CP2112::poll_transfer_done(uint32_t u32TimeoutMs, std::stop_token stop_tok) const
 {
     uint8_t reqBuf[HID_REPORT_SIZE] = {0};
     uint8_t rspBuf[HID_REPORT_SIZE] = {0};
     uint32_t elapsed                = 0;
 
     // 0 == infinite timeout: keep polling for transfer completion forever.
-    const bool bInfinite            = (timeoutMs == 0);
+    const bool bInfinite            = (u32TimeoutMs == 0);
 
-    while (bInfinite || elapsed < timeoutMs) {
+    while (bInfinite || elapsed < u32TimeoutMs) {
         if (stop_tok.stop_requested()) {
             return Status::WRITE_TIMEOUT;
         }
@@ -426,7 +426,7 @@ CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs, std::stop_token st
         elapsed += STATUS_POLL_INTERVAL_MS;
     }
 
-    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll_transfer_done: timeout after"); LOG_UINT32(timeoutMs); LOG_STRING("ms"));
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll_transfer_done: timeout after"); LOG_UINT32(u32TimeoutMs); LOG_STRING("ms"));
     return Status::WRITE_TIMEOUT;
 }
 

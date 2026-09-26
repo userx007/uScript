@@ -306,7 +306,7 @@ class KSPIPlugin : public PluginInterface {
         /**
          * \brief message receiver
          */
-        bool m_Receive(std::span<uint8_t> data, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const;
+        bool m_Receive(std::span<uint8_t> data, size_t &szSize, CommCommandReadType eReadType, std::shared_ptr<const ICommDriver> shpDriver) const;
 
         /**
          * \brief processing of the plugin specific settings

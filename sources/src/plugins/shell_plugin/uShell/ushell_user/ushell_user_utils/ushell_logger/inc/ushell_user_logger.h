@@ -14,10 +14,10 @@ typedef enum {
 } uLogLevel;
 
 /* Logging function */
-static inline void uSHELL_LOG(uLogLevel level, const char *format, ...)
+static inline void uSHELL_LOG(uLogLevel level, const char *pstrFormat, ...)
 {
     va_list args;
-    va_start(args, format);
+    va_start(args, pstrFormat);
 
     /* Determine severity string */
     char severity;
@@ -73,7 +73,7 @@ static inline void uSHELL_LOG(uLogLevel level, const char *format, ...)
 
 #endif /* (1 == uSHELL_SUPPORTS_COLORS) */
 
-    uSHELL_VPRINTF(format, args);
+    uSHELL_VPRINTF(pstrFormat, args);
     uSHELL_PRINTF("%s\n", uSHELL_RESET_COLOR);
     va_end(args);
 }

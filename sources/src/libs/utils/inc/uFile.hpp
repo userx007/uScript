@@ -33,11 +33,11 @@ namespace ufile {
      */
     /*--------------------------------------------------------------------------------------------------------*/
 
-    inline bool fileExistsAndNotEmpty(const std::string &path)
+    inline bool fileExistsAndNotEmpty(const std::string &strPath)
     {
         namespace fs = std::filesystem;
         try {
-            return fs::exists(path) && fs::is_regular_file(path) && fs::file_size(path) > 0;
+            return fs::exists(strPath) && fs::is_regular_file(strPath) && fs::file_size(strPath) > 0;
         } catch (const fs::filesystem_error &) {
             return false;
         }
@@ -72,10 +72,10 @@ namespace ufile {
      */
     /*--------------------------------------------------------------------------------------------------------*/
 
-    inline std::string buildFilePath(const std::string &dir, const std::string &filename)
+    inline std::string buildFilePath(const std::string &strDir, const std::string &strFilename)
     {
-        std::filesystem::path fullPath = dir;
-        fullPath /= filename;
+        std::filesystem::path fullPath = strDir;
+        fullPath /= strFilename;
         return fullPath.string();
     }
 
@@ -86,11 +86,11 @@ namespace ufile {
      */
     /*--------------------------------------------------------------------------------------------------------*/
 
-    inline void buildFilePath(const std::string &dir, const std::string &filename, std::string &outPath)
+    inline void buildFilePath(const std::string &strDir, const std::string &strFilename, std::string &strOutPath)
     {
-        std::filesystem::path fullPath = dir;
-        fullPath /= filename;
-        outPath = fullPath.string();
+        std::filesystem::path fullPath = strDir;
+        fullPath /= strFilename;
+        strOutPath = fullPath.string();
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -100,10 +100,10 @@ namespace ufile {
      */
     /*--------------------------------------------------------------------------------------------------------*/
 
-    inline std::uintmax_t getFileSize(const std::string &filePath)
+    inline std::uintmax_t getFileSize(const std::string &strFilePath)
     {
         try {
-            return std::filesystem::file_size(filePath);
+            return std::filesystem::file_size(strFilePath);
         } catch (const std::filesystem::filesystem_error &e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error getting file size:"); LOG_STRING(e.what()));
             return 0;
@@ -117,10 +117,10 @@ namespace ufile {
      */
     /*--------------------------------------------------------------------------------------------------------*/
 
-    inline bool getFileSize(const std::string &filePath, std::uintmax_t &sizeOut)
+    inline bool getFileSize(const std::string &strFilePath, std::uintmax_t &sizeOut)
     {
         try {
-            sizeOut = std::filesystem::file_size(filePath);
+            sizeOut = std::filesystem::file_size(strFilePath);
             return true;
         } catch (const std::filesystem::filesystem_error &e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error getting file size:"); LOG_STRING(e.what()));

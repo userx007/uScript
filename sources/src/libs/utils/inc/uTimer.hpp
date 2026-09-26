@@ -36,13 +36,13 @@ namespace utime {
             using Duration  = std::chrono::duration<double>;
 
             // Constructor - optionally auto-start
-            explicit Timer(const std::string &context = "", bool auto_start = true, bool auto_log = true)
+            explicit Timer(const std::string &strContext = "", bool bAuto_start = true, bool bAuto_log = true)
                 : context_(context)
                 , auto_log_(auto_log)
                 , is_running_(false)
                 , accumulated_time_(0.0)
             {
-                if (auto_start) {
+                if (bAuto_start) {
                     start();
                 }
             }
@@ -192,9 +192,9 @@ namespace utime {
                 return context_;
             }
 
-            void set_context(const std::string &ctx)
+            void set_context(const std::string &strCtx)
             {
-                context_ = ctx;
+                context_ = strCtx;
             }
 
             // Manual logging
@@ -204,10 +204,10 @@ namespace utime {
             }
 
             // Format elapsed time as string
-            std::string to_string(bool include_context = true) const
+            std::string to_string(bool bInclude_context = true) const
             {
                 std::ostringstream oss;
-                if (include_context && !context_.empty()) {
+                if (bInclude_context && !context_.empty()) {
                     oss << "[" << context_ << "] ";
                 }
                 oss << elapsed_seconds() << " sec";
@@ -252,24 +252,24 @@ namespace utime {
             }
 
             // Format time in human-readable form
-            std::string formatTime(double seconds) const
+            std::string formatTime(double dSeconds) const
             {
-                if (seconds < 0.000001) {
+                if (dSeconds < 0.000001) {
                     return std::to_string(elapsed_nanoseconds()) + " ns";
-                } else if (seconds < 0.001) {
+                } else if (dSeconds < 0.001) {
                     return std::to_string(elapsed_microseconds()) + " μs";
-                } else if (seconds < 1.0) {
+                } else if (dSeconds < 1.0) {
                     return std::to_string(elapsed_milliseconds()) + " ms";
-                } else if (seconds < 60.0) {
-                    return std::to_string(seconds) + " sec";
-                } else if (seconds < 3600.0) {
-                    int mins    = static_cast<int>(seconds / 60);
-                    double secs = seconds - (mins * 60);
+                } else if (dSeconds < 60.0) {
+                    return std::to_string(dSeconds) + " sec";
+                } else if (dSeconds < 3600.0) {
+                    int mins    = static_cast<int>(dSeconds / 60);
+                    double secs = dSeconds - (mins * 60);
                     return std::to_string(mins) + " min " + std::to_string(secs) + " sec";
                 } else {
-                    int hours   = static_cast<int>(seconds / 3600);
-                    int mins    = static_cast<int>((seconds - hours * 3600) / 60);
-                    double secs = seconds - (hours * 3600) - (mins * 60);
+                    int hours   = static_cast<int>(dSeconds / 3600);
+                    int mins    = static_cast<int>((dSeconds - hours * 3600) / 60);
+                    double secs = dSeconds - (hours * 3600) - (mins * 60);
                     return std::to_string(hours) + " hr " + std::to_string(mins) + " min " + std::to_string(secs) + " sec";
                 }
             }
@@ -278,7 +278,7 @@ namespace utime {
     // RAII timer that auto-logs (original behavior)
     class ScopedTimer : public Timer {
         public:
-            explicit ScopedTimer(const std::string &context = "")
+            explicit ScopedTimer(const std::string &strContext = "")
                 : Timer(context, true, true) // auto-start, auto-log
             {
             }

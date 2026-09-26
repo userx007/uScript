@@ -27,10 +27,10 @@ extern "C" {
         return new Lan8720NetPlugin();
     }
 
-    EXPORTED void pluginExit(Lan8720NetPlugin *ptrPlugin)
+    EXPORTED void pluginExit(Lan8720NetPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -76,12 +76,12 @@ std::shared_ptr<Lan8720Net> Lan8720NetPlugin::m_OpenDriver(void) const
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool Lan8720NetPlugin::m_LAN8720NET_INFO(const std::string &args, std::stop_token st) const
+bool Lan8720NetPlugin::m_LAN8720NET_INFO(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -144,35 +144,35 @@ bool Lan8720NetPlugin::m_LAN8720NET_INFO(const std::string &args, std::stop_toke
  *
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool Lan8720NetPlugin::m_LAN8720NET_CONFIG(const std::string &args, std::stop_token st) const
+bool Lan8720NetPlugin::m_LAN8720NET_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
-    return generic_lan8720net_set_params(this, args);
+    return generic_lan8720net_set_params(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
 /* LAN8720NET.CMD                                                                                         */
 /*--------------------------------------------------------------------------------------------------------*/
-bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string &args, std::stop_token st) const
+bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<Lan8720Net> { return m_OpenDriver(); },
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string &args, std::stop_token st) const
+bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<Lan8720Net> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
@@ -197,12 +197,12 @@ bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string &args, std::stop_to
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool Lan8720NetPlugin::m_LAN8720NET_CYCLIC(const std::string &args, std::stop_token st) const
+bool Lan8720NetPlugin::m_LAN8720NET_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<Lan8720Net> { return m_OpenDriver(); },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }

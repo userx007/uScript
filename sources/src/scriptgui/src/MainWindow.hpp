@@ -78,26 +78,26 @@ class StatusLed;
 class MainWindow : public QMainWindow {
         Q_OBJECT
     public:
-        explicit MainWindow(QWidget *parent = nullptr);
+        explicit MainWindow(QWidget *pParent = nullptr);
         ~MainWindow() override;
 
     protected:
-        void closeEvent(QCloseEvent *ev) override;
-        void dragEnterEvent(QDragEnterEvent *ev) override;
-        bool eventFilter(QObject *obj, QEvent *ev) override;
-        void dropEvent(QDropEvent *ev) override;
+        void closeEvent(QCloseEvent *pEv) override;
+        void dragEnterEvent(QDragEnterEvent *pEv) override;
+        bool eventFilter(QObject *pObj, QEvent *pEv) override;
+        void dropEvent(QDropEvent *pEv) override;
 
     private slots:
         void onBrowse();
         void onStartStop();
-        void onTabCloseRequested(int index);
-        void onCurrentTabChanged(int index);
+        void onTabCloseRequested(int iIndex);
+        void onCurrentTabChanged(int iIndex);
         void onCommScriptRequested(const QString &scriptName);
         void onIncludeFileRequested(const QString &resolvedPath); // INCLUDE "file" clicked in editor
 
         void onProcessOutput();
         void onProcessError();
-        void onProcessFinished(int exitCode, QProcess::ExitStatus status);
+        void onProcessFinished(int iExitCode, QProcess::ExitStatus status);
         void onProcessStarted();
 
     private:
@@ -110,35 +110,35 @@ class MainWindow : public QMainWindow {
         ScriptViewer *addTab(const QString &filePath = {}); // empty path = blank tab
         ScriptViewer *currentViewer() const;
         ScriptViewer *runningViewer() const;
-        void loadIntoTab(int index, const QString &filePath);
+        void loadIntoTab(int iIndex, const QString &filePath);
         void loadIntoCurrentTab(const QString &filePath);
-        void syncPathEdit(int tabIndex);
+        void syncPathEdit(int iTabIndex);
         void saveCurrentTab();
         void saveAllTabs();
-        void updateTabModifiedState(ScriptViewer *viewer);
+        void updateTabModifiedState(ScriptViewer *pViewer);
 
         // ── Protocol dispatch ──────────────────────────────────────────────────
         void dispatchLine(const QString &raw);
         void dispatchCommDump(const QString &base64Payload);                       // GUI:COMM_DUMP:<base64>
         void processTerminalModeBytes(const QByteArray &newBytes);                 // filters GUI: lines out of m_terminalMode traffic, see onProcessOutput()
-        bool autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo);          // returns true if comm script was (re)loaded
+        bool autoLoadCommScriptForLine(ScriptViewer *pViewer, int iLineNo);          // returns true if comm script was (re)loaded
         QString resolveCommScriptPath(const QString &rawPath) const;               // resolve interpreter-relative path to absolute
-        QString threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) const; // canonical path of comm script on a '&' line, or empty
+        QString threadedCommScriptForLine(ScriptViewer *pViewer, int iLineNo) const; // canonical path of comm script on a '&' line, or empty
         bool isThreadedCommFile(const QString &filePath) const;                    // true when filePath is in m_threadedCommScripts
 
         // ── Per-thread comm-script tabs (GUI:LOAD_COMM_T / EXEC_COMM_T / CLEAR_COMM_T) ──
         // Each parallel '&' comm script gets its own closable tab (tid > 0) in
         // m_commTabs, alongside the permanent "MAIN" tab (m_w2, tid implicitly 0)
         // used for sequential (non-threaded) comm-script execution.
-        void loadCommTabForThread(int tid, const QString &rawPath);
-        void markCommTabFinished(int tid);
-        void updateCommTabLabel(int tid, bool live);
-        void onCommTabCloseRequested(int index);
+        void loadCommTabForThread(int iTid, const QString &rawPath);
+        void markCommTabFinished(int iTid);
+        void updateCommTabLabel(int iTid, bool bLive);
+        void onCommTabCloseRequested(int iIndex);
         void closeAllCommThreadTabs(); // closes every tab except "MAIN"; used by the
                                        // panel's CLOSE ALL button and by RESET
 
         // ── State helpers ──────────────────────────────────────────────────────
-        void setRunning(bool on);
+        void setRunning(bool bOn);
         void onResetErrorBars(); // clear all error markers without clearing content
         void onReloadAll();      // re-read every open script/INI (tabs + comm window) from disk
         void setStatus(const QString &msg);
@@ -150,7 +150,7 @@ class MainWindow : public QMainWindow {
         void terminateProcess();
 
         // ── Font scaling (Ctrl++ / Ctrl+- / Ctrl+0) ───────────────────────────
-        void adjustFontSize(int delta);
+        void adjustFontSize(int iDelta);
         void applyFontSize();
 
         // ── UI elements ────────────────────────────────────────────────────────

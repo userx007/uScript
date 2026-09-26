@@ -26,32 +26,32 @@ namespace {
     constexpr uint32_t kAbortLengthMismatch = 0x06070010u; // data length does not match
     constexpr uint32_t kAbortGeneralError   = 0x08000000u;
 
-    inline uint8_t cmdByte0(uint8_t specifier3, uint8_t rest5)
+    inline uint8_t cmdByte0(uint8_t u8Specifier3, uint8_t u8Rest5)
     {
-        return static_cast<uint8_t>((specifier3 << 5) | (rest5 & 0x1F));
+        return static_cast<uint8_t>((u8Specifier3 << 5) | (u8Rest5 & 0x1F));
     }
 } // namespace
 
-void CanOpenSdoProtocol::packIndex(Frame &f) const
+void CanOpenSdoProtocol::packIndex(Frame &sF) const
 {
-    f[1] = static_cast<uint8_t>(m_cfg.canOpenIndex & 0xFF);
-    f[2] = static_cast<uint8_t>((m_cfg.canOpenIndex >> 8) & 0xFF);
-    f[3] = m_cfg.canOpenSubIndex;
+    sF[1] = static_cast<uint8_t>(m_cfg.canOpenIndex & 0xFF);
+    sF[2] = static_cast<uint8_t>((m_cfg.canOpenIndex >> 8) & 0xFF);
+    sF[3] = m_cfg.canOpenSubIndex;
 }
 
-void CanOpenSdoProtocol::sendAbort(const ICommDriver &driver, uint32_t timeout, std::string_view txId,
-                                   const Frame &ctx, uint32_t abortCode)
+void CanOpenSdoProtocol::sendAbort(const ICommDriver &driver, uint32_t u32Timeout, std::string_view txId,
+                                   const Frame &sCtx, uint32_t u32AbortCode)
 {
     Frame abort{};
     abort[0] = kSdoAbort;
-    abort[1] = ctx[1];
-    abort[2] = ctx[2];
-    abort[3] = ctx[3];
-    abort[4] = static_cast<uint8_t>(abortCode & 0xFF);
-    abort[5] = static_cast<uint8_t>((abortCode >> 8) & 0xFF);
-    abort[6] = static_cast<uint8_t>((abortCode >> 16) & 0xFF);
-    abort[7] = static_cast<uint8_t>((abortCode >> 24) & 0xFF);
-    driver.tout_write(timeout, std::span<const uint8_t>(abort.data(), abort.size()), txId);
+    abort[1] = sCtx[1];
+    abort[2] = sCtx[2];
+    abort[3] = sCtx[3];
+    abort[4] = static_cast<uint8_t>(u32AbortCode & 0xFF);
+    abort[5] = static_cast<uint8_t>((u32AbortCode >> 8) & 0xFF);
+    abort[6] = static_cast<uint8_t>((u32AbortCode >> 16) & 0xFF);
+    abort[7] = static_cast<uint8_t>((u32AbortCode >> 24) & 0xFF);
+    driver.tout_write(u32Timeout, std::span<const uint8_t>(abort.data(), abort.size()), txId);
 }
 
 // ============================================================================
@@ -81,7 +81,7 @@ ICommDriver::WriteResult CanOpenSdoProtocol::send(
 }
 
 ICommDriver::WriteResult CanOpenSdoProtocol::sendExpedited(
-    const ICommDriver &driver, uint32_t timeout, std::span<const uint8_t> data,
+    const ICommDriver &driver, uint32_t u32Timeout, std::span<const uint8_t> data,
     std::string_view txId, std::string_view rxId) const
 {
     ICommDriver::WriteResult result;
@@ -94,14 +94,14 @@ ICommDriver::WriteResult CanOpenSdoProtocol::sendExpedited(
     packIndex(req);
     std::copy(data.begin(), data.end(), req.begin() + 4);
 
-    auto wr = driver.tout_write(timeout, std::span<const uint8_t>(req.data(), req.size()), txId);
+    auto wr = driver.tout_write(u32Timeout, std::span<const uint8_t>(req.data(), req.size()), txId);
     if (wr.status != ICommDriver::Status::SUCCESS) {
         result.status = wr.status;
         return result;
     }
 
     Frame resp{};
-    auto rr = driver.tout_read(timeout, std::span<uint8_t>(resp.data(), resp.size()), opts, rxId);
+    auto rr = driver.tout_read(u32Timeout, std::span<uint8_t>(resp.data(), resp.size()), opts, rxId);
     if (rr.status != ICommDriver::Status::SUCCESS) {
         result.status = rr.status;
         return result;
@@ -122,7 +122,7 @@ ICommDriver::WriteResult CanOpenSdoProtocol::sendExpedited(
 }
 
 ICommDriver::WriteResult CanOpenSdoProtocol::sendSegmented(
-    const ICommDriver &driver, uint32_t timeout, std::span<const uint8_t> data,
+    const ICommDriver &driver, uint32_t u32Timeout, std::span<const uint8_t> data,
     std::string_view txId, std::string_view rxId) const
 {
     ICommDriver::WriteResult result;
@@ -139,14 +139,14 @@ ICommDriver::WriteResult CanOpenSdoProtocol::sendSegmented(
     req[6]            = static_cast<uint8_t>((sz >> 16) & 0xFF);
     req[7]            = static_cast<uint8_t>((sz >> 24) & 0xFF);
 
-    auto wr           = driver.tout_write(timeout, std::span<const uint8_t>(req.data(), req.size()), txId);
+    auto wr           = driver.tout_write(u32Timeout, std::span<const uint8_t>(req.data(), req.size()), txId);
     if (wr.status != ICommDriver::Status::SUCCESS) {
         result.status = wr.status;
         return result;
     }
 
     Frame resp{};
-    auto rr = driver.tout_read(timeout, std::span<uint8_t>(resp.data(), resp.size()), opts, rxId);
+    auto rr = driver.tout_read(u32Timeout, std::span<uint8_t>(resp.data(), resp.size()), opts, rxId);
     if (rr.status != ICommDriver::Status::SUCCESS) {
         result.status = rr.status;
         return result;
@@ -174,14 +174,14 @@ ICommDriver::WriteResult CanOpenSdoProtocol::sendSegmented(
         std::copy(data.begin() + static_cast<long>(sent), data.begin() + static_cast<long>(sent + chunk), seg.begin() + 1);
         std::fill(seg.begin() + 1 + static_cast<long>(chunk), seg.end(), 0);
 
-        auto wrSeg = driver.tout_write(timeout, std::span<const uint8_t>(seg.data(), seg.size()), txId);
+        auto wrSeg = driver.tout_write(u32Timeout, std::span<const uint8_t>(seg.data(), seg.size()), txId);
         if (wrSeg.status != ICommDriver::Status::SUCCESS) {
             result.status = wrSeg.status;
             return result;
         }
 
         Frame segResp{};
-        auto rrSeg = driver.tout_read(timeout, std::span<uint8_t>(segResp.data(), segResp.size()), opts, rxId);
+        auto rrSeg = driver.tout_read(u32Timeout, std::span<uint8_t>(segResp.data(), segResp.size()), opts, rxId);
         if (rrSeg.status != ICommDriver::Status::SUCCESS) {
             result.status = rrSeg.status;
             return result;
@@ -209,7 +209,7 @@ ICommDriver::WriteResult CanOpenSdoProtocol::sendSegmented(
 }
 
 ICommDriver::WriteResult CanOpenSdoProtocol::sendBlock(
-    const ICommDriver &driver, uint32_t timeout, std::span<const uint8_t> data,
+    const ICommDriver &driver, uint32_t u32Timeout, std::span<const uint8_t> data,
     std::string_view txId, std::string_view rxId) const
 {
     ICommDriver::WriteResult result;
@@ -226,14 +226,14 @@ ICommDriver::WriteResult CanOpenSdoProtocol::sendBlock(
     req[6]            = static_cast<uint8_t>((sz >> 16) & 0xFF);
     req[7]            = static_cast<uint8_t>((sz >> 24) & 0xFF);
 
-    auto wr           = driver.tout_write(timeout, std::span<const uint8_t>(req.data(), req.size()), txId);
+    auto wr           = driver.tout_write(u32Timeout, std::span<const uint8_t>(req.data(), req.size()), txId);
     if (wr.status != ICommDriver::Status::SUCCESS) {
         result.status = wr.status;
         return result;
     }
 
     Frame resp{};
-    auto rr = driver.tout_read(timeout, std::span<uint8_t>(resp.data(), resp.size()), opts, rxId);
+    auto rr = driver.tout_read(u32Timeout, std::span<uint8_t>(resp.data(), resp.size()), opts, rxId);
     if (rr.status != ICommDriver::Status::SUCCESS) {
         result.status = rr.status;
         return result;
@@ -279,7 +279,7 @@ ICommDriver::WriteResult CanOpenSdoProtocol::sendBlock(
             std::copy(data.begin() + static_cast<long>(sent), data.begin() + static_cast<long>(sent + chunk), seg.begin() + 1);
             std::fill(seg.begin() + 1 + static_cast<long>(chunk), seg.end(), 0);
 
-            auto wrSeg = driver.tout_write(timeout, std::span<const uint8_t>(seg.data(), seg.size()), txId);
+            auto wrSeg = driver.tout_write(u32Timeout, std::span<const uint8_t>(seg.data(), seg.size()), txId);
             if (wrSeg.status != ICommDriver::Status::SUCCESS) {
                 result.status = wrSeg.status;
                 return result;
@@ -291,7 +291,7 @@ ICommDriver::WriteResult CanOpenSdoProtocol::sendBlock(
 
         // ---- Wait for the per-block acknowledgement ----
         Frame ackResp{};
-        auto rrAck = driver.tout_read(timeout, std::span<uint8_t>(ackResp.data(), ackResp.size()), opts, rxId);
+        auto rrAck = driver.tout_read(u32Timeout, std::span<uint8_t>(ackResp.data(), ackResp.size()), opts, rxId);
         if (rrAck.status != ICommDriver::Status::SUCCESS) {
             result.status = rrAck.status;
             return result;
@@ -326,14 +326,14 @@ ICommDriver::WriteResult CanOpenSdoProtocol::sendBlock(
     endReq[0]  = static_cast<uint8_t>((kCcsBlockDl << 5) | (lastN << 2) | 1);
     // bytes1-2 would carry the CRC if cc had been negotiated; left 0.
 
-    auto wrEnd = driver.tout_write(timeout, std::span<const uint8_t>(endReq.data(), endReq.size()), txId);
+    auto wrEnd = driver.tout_write(u32Timeout, std::span<const uint8_t>(endReq.data(), endReq.size()), txId);
     if (wrEnd.status != ICommDriver::Status::SUCCESS) {
         result.status = wrEnd.status;
         return result;
     }
 
     Frame endResp{};
-    auto rrEnd = driver.tout_read(timeout, std::span<uint8_t>(endResp.data(), endResp.size()), opts, rxId);
+    auto rrEnd = driver.tout_read(u32Timeout, std::span<uint8_t>(endResp.data(), endResp.size()), opts, rxId);
     if (rrEnd.status != ICommDriver::Status::SUCCESS) {
         result.status = rrEnd.status;
         return result;
@@ -368,7 +368,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receive(
 }
 
 ICommDriver::ReadResult CanOpenSdoProtocol::receiveNormal(
-    const ICommDriver &driver, uint32_t timeout, std::span<uint8_t> buffer,
+    const ICommDriver &driver, uint32_t u32Timeout, std::span<uint8_t> buffer,
     std::string_view rxId, std::string_view txId) const
 {
     ICommDriver::ReadResult result;
@@ -379,14 +379,14 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveNormal(
     req[0] = static_cast<uint8_t>(kCcsUlInitiate << 5);
     packIndex(req);
 
-    auto wr = driver.tout_write(timeout, std::span<const uint8_t>(req.data(), req.size()), txId);
+    auto wr = driver.tout_write(u32Timeout, std::span<const uint8_t>(req.data(), req.size()), txId);
     if (wr.status != ICommDriver::Status::SUCCESS) {
         result.status = wr.status;
         return result;
     }
 
     Frame resp{};
-    auto rr = driver.tout_read(timeout, std::span<uint8_t>(resp.data(), resp.size()), opts, rxId);
+    auto rr = driver.tout_read(u32Timeout, std::span<uint8_t>(resp.data(), resp.size()), opts, rxId);
     if (rr.status != ICommDriver::Status::SUCCESS) {
         result.status = rr.status;
         return result;
@@ -400,28 +400,28 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveNormal(
         return result;
     }
 
-    return finishUploadFromInitiateResponse(resp, driver, timeout, buffer, rxId, txId);
+    return finishUploadFromInitiateResponse(resp, driver, u32Timeout, buffer, rxId, txId);
 }
 
 ICommDriver::ReadResult CanOpenSdoProtocol::finishUploadFromInitiateResponse(
-    const Frame &resp, const ICommDriver &driver, uint32_t timeout, std::span<uint8_t> buffer,
+    const Frame &sResp, const ICommDriver &driver, uint32_t u32Timeout, std::span<uint8_t> buffer,
     std::string_view rxId, std::string_view txId) const
 {
     ICommDriver::ReadResult result;
     ICommDriver::ReadOptions opts;
     opts.mode    = ICommDriver::ReadMode::Exact;
 
-    const bool e = ((resp[0] >> 1) & 1) != 0;
-    const bool s = (resp[0] & 1) != 0;
+    const bool e = ((sResp[0] >> 1) & 1) != 0;
+    const bool s = (sResp[0] & 1) != 0;
 
     if (e) {
-        const uint8_t n  = s ? static_cast<uint8_t>((resp[0] >> 2) & 0x03) : 0;
+        const uint8_t n  = s ? static_cast<uint8_t>((sResp[0] >> 2) & 0x03) : 0;
         const size_t len = s ? static_cast<size_t>(4 - n) : 4;
         if (len > buffer.size()) {
             result.status = ICommDriver::Status::BUFFER_OVERFLOW;
             return result;
         }
-        std::copy(resp.begin() + 4, resp.begin() + 4 + static_cast<long>(len), buffer.begin());
+        std::copy(sResp.begin() + 4, sResp.begin() + 4 + static_cast<long>(len), buffer.begin());
         result.status     = ICommDriver::Status::SUCCESS;
         result.bytes_read = len;
         return result;
@@ -434,8 +434,8 @@ ICommDriver::ReadResult CanOpenSdoProtocol::finishUploadFromInitiateResponse(
         return result;
     }
 
-    const size_t totalLen = static_cast<size_t>(resp[4]) | (static_cast<size_t>(resp[5]) << 8) |
-                            (static_cast<size_t>(resp[6]) << 16) | (static_cast<size_t>(resp[7]) << 24);
+    const size_t totalLen = static_cast<size_t>(sResp[4]) | (static_cast<size_t>(sResp[5]) << 8) |
+                            (static_cast<size_t>(sResp[6]) << 16) | (static_cast<size_t>(sResp[7]) << 24);
 
     if (totalLen == 0) {
         result.status = ICommDriver::Status::PROTOCOL_ERROR;
@@ -443,7 +443,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::finishUploadFromInitiateResponse(
     }
 
     if (totalLen > buffer.size()) {
-        sendAbort(driver, timeout, txId, resp, kAbortLengthMismatch);
+        sendAbort(driver, u32Timeout, txId, sResp, kAbortLengthMismatch);
         result.status = ICommDriver::Status::BUFFER_OVERFLOW;
         return result;
     }
@@ -456,14 +456,14 @@ ICommDriver::ReadResult CanOpenSdoProtocol::finishUploadFromInitiateResponse(
         Frame segReq{};
         segReq[0]  = static_cast<uint8_t>((kCcsUlSegment << 5) | (toggle << 4));
 
-        auto wrSeg = driver.tout_write(timeout, std::span<const uint8_t>(segReq.data(), segReq.size()), txId);
+        auto wrSeg = driver.tout_write(u32Timeout, std::span<const uint8_t>(segReq.data(), segReq.size()), txId);
         if (wrSeg.status != ICommDriver::Status::SUCCESS) {
             result.status = wrSeg.status;
             return result;
         }
 
         Frame segResp{};
-        auto rrSeg = driver.tout_read(timeout, std::span<uint8_t>(segResp.data(), segResp.size()), opts, rxId);
+        auto rrSeg = driver.tout_read(u32Timeout, std::span<uint8_t>(segResp.data(), segResp.size()), opts, rxId);
         if (rrSeg.status != ICommDriver::Status::SUCCESS) {
             result.status = rrSeg.status;
             return result;
@@ -502,7 +502,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::finishUploadFromInitiateResponse(
 }
 
 ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
-    const ICommDriver &driver, uint32_t timeout, std::span<uint8_t> buffer,
+    const ICommDriver &driver, uint32_t u32Timeout, std::span<uint8_t> buffer,
     std::string_view rxId, std::string_view txId) const
 {
     ICommDriver::ReadResult result;
@@ -516,14 +516,14 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
     req[4]  = m_cfg.canOpenBlockSize == 0 ? 127 : m_cfg.canOpenBlockSize; // requested block size
     req[5]  = 0;                                                          // pst (protocol switch threshold) disabled
 
-    auto wr = driver.tout_write(timeout, std::span<const uint8_t>(req.data(), req.size()), txId);
+    auto wr = driver.tout_write(u32Timeout, std::span<const uint8_t>(req.data(), req.size()), txId);
     if (wr.status != ICommDriver::Status::SUCCESS) {
         result.status = wr.status;
         return result;
     }
 
     Frame resp{};
-    auto rr = driver.tout_read(timeout, std::span<uint8_t>(resp.data(), resp.size()), opts, rxId);
+    auto rr = driver.tout_read(u32Timeout, std::span<uint8_t>(resp.data(), resp.size()), opts, rxId);
     if (rr.status != ICommDriver::Status::SUCCESS) {
         result.status = rr.status;
         return result;
@@ -536,7 +536,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
     if ((resp[0] >> 5) == kScsUlInitiate) {
         // Server declined block transfer and answered as a plain Initiate
         // Upload instead — spec-legal graceful fallback.
-        return finishUploadFromInitiateResponse(resp, driver, timeout, buffer, rxId, txId);
+        return finishUploadFromInitiateResponse(resp, driver, u32Timeout, buffer, rxId, txId);
     }
 
     // Only the top 3 bits (scs) are checked here — bit1 doubles as the
@@ -562,7 +562,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
     }
 
     if (totalLen > buffer.size()) {
-        sendAbort(driver, timeout, txId, resp, kAbortLengthMismatch);
+        sendAbort(driver, u32Timeout, txId, resp, kAbortLengthMismatch);
         result.status = ICommDriver::Status::BUFFER_OVERFLOW;
         return result;
     }
@@ -572,7 +572,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
     // ---- Tell the server to start streaming segments ----
     Frame startReq{};
     startReq[0]  = static_cast<uint8_t>((kCcsBlockUl << 5) | 3); // cs=3: start upload
-    auto wrStart = driver.tout_write(timeout, std::span<const uint8_t>(startReq.data(), startReq.size()), txId);
+    auto wrStart = driver.tout_write(u32Timeout, std::span<const uint8_t>(startReq.data(), startReq.size()), txId);
     if (wrStart.status != ICommDriver::Status::SUCCESS) {
         result.status = wrStart.status;
         return result;
@@ -584,7 +584,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
 
     while (received < totalLen) {
         Frame seg{};
-        auto rrSeg = driver.tout_read(timeout, std::span<uint8_t>(seg.data(), seg.size()), opts, rxId);
+        auto rrSeg = driver.tout_read(u32Timeout, std::span<uint8_t>(seg.data(), seg.size()), opts, rxId);
         if (rrSeg.status != ICommDriver::Status::SUCCESS) {
             result.status = rrSeg.status;
             return result;
@@ -611,7 +611,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
             ackReq[0]  = static_cast<uint8_t>((kCcsBlockUl << 5) | 2); // cs=2: block ack
             ackReq[1]  = expectedSeq;
             ackReq[2]  = blksizeRequested;
-            auto wrAck = driver.tout_write(timeout, std::span<const uint8_t>(ackReq.data(), ackReq.size()), txId);
+            auto wrAck = driver.tout_write(u32Timeout, std::span<const uint8_t>(ackReq.data(), ackReq.size()), txId);
             if (wrAck.status != ICommDriver::Status::SUCCESS) {
                 result.status = wrAck.status;
                 return result;
@@ -627,7 +627,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
     ackReq[0]  = static_cast<uint8_t>((kCcsBlockUl << 5) | 2);
     ackReq[1]  = expectedSeq;
     ackReq[2]  = blksizeRequested;
-    auto wrAck = driver.tout_write(timeout, std::span<const uint8_t>(ackReq.data(), ackReq.size()), txId);
+    auto wrAck = driver.tout_write(u32Timeout, std::span<const uint8_t>(ackReq.data(), ackReq.size()), txId);
     if (wrAck.status != ICommDriver::Status::SUCCESS) {
         result.status = wrAck.status;
         return result;
@@ -635,7 +635,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
 
     // ---- End Block Upload ----
     Frame endResp{};
-    auto rrEnd = driver.tout_read(timeout, std::span<uint8_t>(endResp.data(), endResp.size()), opts, rxId);
+    auto rrEnd = driver.tout_read(u32Timeout, std::span<uint8_t>(endResp.data(), endResp.size()), opts, rxId);
     if (rrEnd.status != ICommDriver::Status::SUCCESS) {
         result.status = rrEnd.status;
         return result;
@@ -652,7 +652,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
     // ---- Final client acknowledgement, ends the transfer ----
     Frame finalAck{};
     finalAck[0] = static_cast<uint8_t>((kCcsBlockUl << 5) | 1); // cs=1
-    driver.tout_write(timeout, std::span<const uint8_t>(finalAck.data(), finalAck.size()), txId);
+    driver.tout_write(u32Timeout, std::span<const uint8_t>(finalAck.data(), finalAck.size()), txId);
 
     result.status     = ICommDriver::Status::SUCCESS;
     result.bytes_read = received;

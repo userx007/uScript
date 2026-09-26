@@ -60,11 +60,11 @@ bool HydrabusPlugin::m_handle_i2c_help(const std::string &, std::stop_token /*st
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_i2c_cfg(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_i2c_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
     auto *p = m_i2c();
 
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         if (p) {
             LOG_PRINT(LOG_EMPTY,
                       LOG_STRING("pullup=");
@@ -78,7 +78,7 @@ bool HydrabusPlugin::m_handle_i2c_cfg(const std::string &args, std::stop_token /
     }
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -107,18 +107,18 @@ bool HydrabusPlugin::m_handle_i2c_cfg(const std::string &args, std::stop_token /
 //                       SPEED                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_i2c_speed(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_i2c_speed(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    return generic_module_set_speed<HydrabusPlugin>(this, PROTOCOL_NAME, args);
+    return generic_module_set_speed<HydrabusPlugin>(this, PROTOCOL_NAME, strArgs);
 }
 
 ///////////////////////////////////////////////////////////////////
 //                       BIT                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_i2c_bit(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_i2c_bit(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: bit [start|stop|ack|nack]"));
         return true;
     }
@@ -127,16 +127,16 @@ bool HydrabusPlugin::m_handle_i2c_bit(const std::string &args, std::stop_token s
         return false;
     }
 
-    if (args == "start") {
+    if (strArgs == "start") {
         return p->start(st);
-    } else if (args == "stop") {
+    } else if (strArgs == "stop") {
         return p->stop(st);
-    } else if (args == "ack") {
+    } else if (strArgs == "ack") {
         return p->send_ack(st);
-    } else if (args == "nack") {
+    } else if (strArgs == "nack") {
         return p->send_nack(st);
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown bit cmd:"); LOG_STRING(args));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown bit cmd:"); LOG_STRING(strArgs));
         return false;
     }
 }
@@ -145,9 +145,9 @@ bool HydrabusPlugin::m_handle_i2c_bit(const std::string &args, std::stop_token s
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_i2c_write(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_i2c_write(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
         return true;
     }
@@ -157,7 +157,7 @@ bool HydrabusPlugin::m_handle_i2c_write(const std::string &args, std::stop_token
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data) || data.empty() || data.size() > 16) {
+    if (!hexutils::stringUnhexlify(strArgs, data) || data.empty() || data.size() > 16) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 1-16 hex bytes"));
         return false;
     }
@@ -180,9 +180,9 @@ bool HydrabusPlugin::m_handle_i2c_write(const std::string &args, std::stop_token
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_i2c_read(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_i2c_read(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N  (ACKs all but last byte)"));
         return true;
     }
@@ -192,7 +192,7 @@ bool HydrabusPlugin::m_handle_i2c_read(const std::string &args, std::stop_token 
     }
 
     size_t n = 0;
-    if (!numeric::str2sizet(args, n) || n == 0) {
+    if (!numeric::str2sizet(strArgs, n) || n == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid byte count"));
         return false;
     }
@@ -225,16 +225,16 @@ bool HydrabusPlugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, s
     return true;
 }
 
-bool HydrabusPlugin::m_handle_i2c_wrrd(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_i2c_wrrd(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_data<HydrabusPlugin>(
-        this, args, &HydrabusPlugin::m_i2c_wrrd_cb, st);
+        this, strArgs, &HydrabusPlugin::m_i2c_wrrd_cb, st);
 }
 
-bool HydrabusPlugin::m_handle_i2c_wrrdf(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_i2c_wrrdf(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_file<HydrabusPlugin>(
-        this, args, &HydrabusPlugin::m_i2c_wrrd_cb,
+        this, strArgs, &HydrabusPlugin::m_i2c_wrrd_cb,
         m_sIniValues.strArtefactsPath, st);
 }
 
@@ -242,9 +242,9 @@ bool HydrabusPlugin::m_handle_i2c_wrrdf(const std::string &args, std::stop_token
 //                       SCAN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_i2c_scan(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_i2c_scan(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Probe all 7-bit I2C addresses"));
         return true;
     }
@@ -273,9 +273,9 @@ bool HydrabusPlugin::m_handle_i2c_scan(const std::string &args, std::stop_token 
 //                       STRETCH                                 //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_i2c_stretch(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_i2c_stretch(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: stretch N  (N=0 to disable)"));
         return true;
     }
@@ -285,7 +285,7 @@ bool HydrabusPlugin::m_handle_i2c_stretch(const std::string &args, std::stop_tok
     }
 
     uint32_t clocks = 0;
-    if (!numeric::str2uint32(args, clocks)) {
+    if (!numeric::str2uint32(strArgs, clocks)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid clock count"));
         return false;
     }
@@ -296,21 +296,21 @@ bool HydrabusPlugin::m_handle_i2c_stretch(const std::string &args, std::stop_tok
 //                       AUX                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_i2c_aux(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_i2c_aux(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    return m_handle_aux_common(args, m_i2c());
+    return m_handle_aux_common(strArgs, m_i2c());
 }
 
 ///////////////////////////////////////////////////////////////////
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_i2c_script(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_i2c_script(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
-    return generic_execute_script(this, m_strInstanceName, args, st);
+    return generic_execute_script(this, m_strInstanceName, strArgs, st);
 }

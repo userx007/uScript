@@ -39,7 +39,7 @@ namespace HydraHAL {
         public:
             static constexpr size_t BLOCK_SIZE = 512;
 
-            explicit SDIO(std::shared_ptr<Hydrabus> hydrabus);
+            explicit SDIO(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // Command variants
@@ -51,19 +51,19 @@ namespace HydraHAL {
              * @param cmd_arg 32-bit command argument.
              * @return true if firmware confirms transmission.
              */
-            bool send_no(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
+            bool send_no(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::stop_token stop_tok = {});
 
             /**
              * @brief Send a command and receive a short (4-byte) response.
              * @return 4 response bytes, or nullopt on error.
              */
-            std::optional<std::vector<uint8_t>> send_short(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
+            std::optional<std::vector<uint8_t>> send_short(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::stop_token stop_tok = {});
 
             /**
              * @brief Send a command and receive a long (16-byte) response.
              * @return 16 response bytes, or nullopt on error.
              */
-            std::optional<std::vector<uint8_t>> send_long(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
+            std::optional<std::vector<uint8_t>> send_long(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Data transfer (single block)
@@ -76,7 +76,7 @@ namespace HydraHAL {
              * @param data    Exactly 512 bytes.
              * @return true on success.
              */
-            bool write(uint8_t cmd_id, uint32_t cmd_arg, std::span<const uint8_t> data, std::stop_token stop_tok = {});
+            bool write(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
             /**
              * @brief Read a 512-byte block via a data-read command.
@@ -84,7 +84,7 @@ namespace HydraHAL {
              * @param cmd_arg Block address.
              * @return 512 bytes, or empty on error.
              */
-            std::vector<uint8_t> read(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
+            std::vector<uint8_t> read(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Configuration
@@ -94,7 +94,7 @@ namespace HydraHAL {
             int get_bus_width() const;
 
             /** @param width 1 or 4. */
-            bool set_bus_width(int width);
+            bool set_bus_width(int iWidth);
 
             /**
              * @brief Select clock frequency.
@@ -103,7 +103,7 @@ namespace HydraHAL {
             int get_frequency() const;
 
             /** @param freq 0 = slow, 1 = fast. */
-            bool set_frequency(int freq);
+            bool set_frequency(int iFreq);
 
         private:
             bool _configure_port();

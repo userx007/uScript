@@ -29,9 +29,9 @@ extern "C" {
         return new FT2232Plugin();
     }
 
-    EXPORTED void pluginExit(FT2232Plugin *p)
+    EXPORTED void pluginExit(FT2232Plugin *pP)
     {
-        delete p;
+        delete pP;
     }
 }
 
@@ -94,9 +94,9 @@ void FT2232Plugin::doCleanup()
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_FT2232_INFO(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_FT2232_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
@@ -344,24 +344,24 @@ bool FT2232Plugin::m_FT2232_INFO(const std::string &args, std::stop_token st) co
     return true;
 }
 
-bool FT2232Plugin::m_FT2232_SPI(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_FT2232_SPI(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<FT2232Plugin>(this, "SPI", args, st);
+    return generic_module_dispatch<FT2232Plugin>(this, "SPI", strArgs, st);
 }
 
-bool FT2232Plugin::m_FT2232_I2C(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_FT2232_I2C(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<FT2232Plugin>(this, "I2C", args, st);
+    return generic_module_dispatch<FT2232Plugin>(this, "I2C", strArgs, st);
 }
 
-bool FT2232Plugin::m_FT2232_GPIO(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_FT2232_GPIO(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<FT2232Plugin>(this, "GPIO", args, st);
+    return generic_module_dispatch<FT2232Plugin>(this, "GPIO", strArgs, st);
 }
 
-bool FT2232Plugin::m_FT2232_UART(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_FT2232_UART(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<FT2232Plugin>(this, "UART", args, st);
+    return generic_module_dispatch<FT2232Plugin>(this, "UART", strArgs, st);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -377,47 +377,47 @@ bool FT2232Plugin::m_FT2232_UART(const std::string &args, std::stop_token st) co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool FT2232Plugin::m_FT2232_CONFIG(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_FT2232_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    return generic_ft2232_set_params(this, args);
+    return generic_ft2232_set_params(this, strArgs);
 }
 
 ///////////////////////////////////////////////////////////////////
 //              UART params parse helper                         //
 ///////////////////////////////////////////////////////////////////
 
-static bool parseParity_ft2232(const std::string &s, uint8_t &out)
+static bool parseParity_ft2232(const std::string &strS, uint8_t &u8Out)
 {
-    if (s == "none" || s == "NONE") {
-        out = 0;
+    if (strS == "none" || strS == "NONE") {
+        u8Out = 0;
         return true;
     }
-    if (s == "odd" || s == "ODD") {
-        out = 1;
+    if (strS == "odd" || strS == "ODD") {
+        u8Out = 1;
         return true;
     }
-    if (s == "even" || s == "EVEN") {
-        out = 2;
+    if (strS == "even" || strS == "EVEN") {
+        u8Out = 2;
         return true;
     }
-    if (s == "mark" || s == "MARK") {
-        out = 3;
+    if (strS == "mark" || strS == "MARK") {
+        u8Out = 3;
         return true;
     }
-    if (s == "space" || s == "SPACE") {
-        out = 4;
+    if (strS == "space" || strS == "SPACE") {
+        u8Out = 4;
         return true;
     }
     return false;
 }
 
-bool FT2232Plugin::parseUartParams(const std::string &args, UartPendingCfg &cfg,
-                                   uint8_t *pDeviceIndexOut)
+bool FT2232Plugin::parseUartParams(const std::string &strArgs, UartPendingCfg &cfg,
+                                   uint8_t *pu8DeviceIndexOut)
 {
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     bool ok = true;
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -439,8 +439,8 @@ bool FT2232Plugin::parseUartParams(const std::string &args, UartPendingCfg &cfg,
             cfg.hwFlowCtrl = (v == "hw" || v == "HW" || v == "rtscts");
         } else if (k == "variant") {
             ok &= parseVariant(v, cfg.variant);
-        } else if (k == "device" && pDeviceIndexOut) {
-            ok &= numeric::str2uint8(v, *pDeviceIndexOut);
+        } else if (k == "device" && pu8DeviceIndexOut) {
+            ok &= numeric::str2uint8(v, *pu8DeviceIndexOut);
         }
         if (!ok) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -461,50 +461,50 @@ const FT2232Plugin::IniValues *getAccessIniValues(const FT2232Plugin &obj)
     return &obj.m_sIniValues;
 }
 
-bool FT2232Plugin::parseChannel(const std::string &s, FT2232Base::Channel &out)
+bool FT2232Plugin::parseChannel(const std::string &strS, FT2232Base::Channel &out)
 {
-    if (s == "A" || s == "a") {
+    if (strS == "A" || strS == "a") {
         out = FT2232Base::Channel::A;
         return true;
     }
-    if (s == "B" || s == "b") {
+    if (strS == "B" || strS == "b") {
         out = FT2232Base::Channel::B;
         return true;
     }
     LOG_PRINT(LOG_ERROR, LOG_STRING("FT2232     |");
-              LOG_STRING("Invalid channel (use A or B):"); LOG_STRING(s));
+              LOG_STRING("Invalid channel (use A or B):"); LOG_STRING(strS));
     return false;
 }
 
-bool FT2232Plugin::parseVariant(const std::string &s, FT2232Base::Variant &out)
+bool FT2232Plugin::parseVariant(const std::string &strS, FT2232Base::Variant &out)
 {
-    if (s == "H" || s == "h" || s == "FT2232H" || s == "2232H") {
+    if (strS == "H" || strS == "h" || strS == "FT2232H" || strS == "2232H") {
         out = FT2232Base::Variant::FT2232H;
         return true;
     }
-    if (s == "D" || s == "d" || s == "FT2232D" || s == "2232D") {
+    if (strS == "D" || strS == "d" || strS == "FT2232D" || strS == "2232D") {
         out = FT2232Base::Variant::FT2232D;
         return true;
     }
     LOG_PRINT(LOG_ERROR, LOG_STRING("FT2232     |");
-              LOG_STRING("Invalid variant (use H or D):"); LOG_STRING(s));
+              LOG_STRING("Invalid variant (use H or D):"); LOG_STRING(strS));
     return false;
 }
 
 bool FT2232Plugin::checkVariantSpeedLimit(FT2232Base::Variant v,
-                                          const std::string &protocol,
-                                          uint32_t hz)
+                                          const std::string &strProtocol,
+                                          uint32_t u32Hz)
 {
     if (v != FT2232Base::Variant::FT2232D) {
         return true;
     }
 
     // FT2232D limits: SPI max 3 MHz, I2C max 400 kHz (practical; base 6 MHz / 2 / 7 ≈ 428 kHz)
-    const uint32_t limit = (protocol == "SPI") ? 3000000u : 400000u;
-    if (hz > limit) {
+    const uint32_t limit = (strProtocol == "SPI") ? 3000000u : 400000u;
+    if (u32Hz > limit) {
         LOG_PRINT(LOG_ERROR, LOG_STRING("FT2232     |");
-                  LOG_STRING("FT2232D variant:"); LOG_STRING(protocol);
-                  LOG_STRING("clock"); LOG_UINT32(hz);
+                  LOG_STRING("FT2232D variant:"); LOG_STRING(strProtocol);
+                  LOG_STRING("clock"); LOG_UINT32(u32Hz);
                   LOG_STRING("Hz exceeds hardware limit of"); LOG_UINT32(limit); LOG_STRING("Hz"));
         return false;
     }

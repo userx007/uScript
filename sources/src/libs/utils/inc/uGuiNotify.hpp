@@ -132,11 +132,11 @@ inline int get_gui_comm_tid() noexcept
         pthread_getspecific(gui_tls_detail::g_tid_key)));
 }
 
-inline void set_gui_comm_tid(int tid) noexcept
+inline void set_gui_comm_tid(int iTid) noexcept
 {
     pthread_once(&gui_tls_detail::g_tid_once, gui_tls_detail::make_tid_key);
     pthread_setspecific(gui_tls_detail::g_tid_key,
-                        reinterpret_cast<void *>(static_cast<std::intptr_t>(tid)));
+                        reinterpret_cast<void *>(static_cast<std::intptr_t>(iTid)));
 }
 
 // ---------------------------------------------------------------------------
@@ -165,12 +165,12 @@ inline bool gui_mode_active() noexcept
 // Notify: main-script line executing (→ w1 highlight)
 // Called from ScriptInterpreter::m_executeCommand() for every script line.
 // ---------------------------------------------------------------------------
-inline void gui_notify_exec_main(int lineNo) noexcept
+inline void gui_notify_exec_main(int iLineNo) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("\nGUI:EXEC_MAIN:%d\n", lineNo);
+    std::printf("\nGUI:EXEC_MAIN:%d\n", iLineNo);
     std::fflush(stdout);
 }
 
@@ -179,12 +179,12 @@ inline void gui_notify_exec_main(int lineNo) noexcept
 // Called from CommScriptInterpreter::interpretScript() for every comm-script
 // line, but only during real execution (bRealExec == true).
 // ---------------------------------------------------------------------------
-inline void gui_notify_exec_comm(int lineNo) noexcept
+inline void gui_notify_exec_comm(int iLineNo) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("\nGUI:EXEC_COMM:%d\n", lineNo);
+    std::printf("\nGUI:EXEC_COMM:%d\n", iLineNo);
     std::fflush(stdout);
 }
 
@@ -192,12 +192,12 @@ inline void gui_notify_exec_comm(int lineNo) noexcept
 // Notify: comm-script about to start (→ load file into w2)
 // Called from CommScriptClient::execute() before runScript(), real exec only.
 // ---------------------------------------------------------------------------
-inline void gui_notify_load_comm(const std::string &path) noexcept
+inline void gui_notify_load_comm(const std::string &strPath) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("\nGUI:LOAD_COMM:%s\n", path.c_str());
+    std::printf("\nGUI:LOAD_COMM:%s\n", strPath.c_str());
     std::fflush(stdout);
 }
 
@@ -273,12 +273,12 @@ inline void gui_notify_shell_exit() noexcept
 // The GUI draws a persistent outline rectangle around the line until
 // GUI:THREAD_DONE:<lineNo> arrives.
 // ---------------------------------------------------------------------------
-inline void gui_notify_thread_start(int lineNo) noexcept
+inline void gui_notify_thread_start(int iLineNo) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("\nGUI:THREAD_START:%d\n", lineNo);
+    std::printf("\nGUI:THREAD_START:%d\n", iLineNo);
     std::fflush(stdout);
 }
 
@@ -287,12 +287,12 @@ inline void gui_notify_thread_start(int lineNo) noexcept
 // Call from the thread lambda just before setting the done flag, so the GUI
 // knows to remove the outline rectangle for that line.
 // ---------------------------------------------------------------------------
-inline void gui_notify_thread_done(int lineNo) noexcept
+inline void gui_notify_thread_done(int iLineNo) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("\nGUI:THREAD_DONE:%d\n", lineNo);
+    std::printf("\nGUI:THREAD_DONE:%d\n", iLineNo);
     std::fflush(stdout);
 }
 
@@ -301,12 +301,12 @@ inline void gui_notify_thread_done(int lineNo) noexcept
 // Call once per failing line during the dry-run validation phase.
 // Multiple calls are allowed (one per distinct error line).
 // ---------------------------------------------------------------------------
-inline void gui_notify_error_main(int lineNo) noexcept
+inline void gui_notify_error_main(int iLineNo) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("\nGUI:ERROR_MAIN:%d\n", lineNo);
+    std::printf("\nGUI:ERROR_MAIN:%d\n", iLineNo);
     std::fflush(stdout);
 }
 
@@ -315,12 +315,12 @@ inline void gui_notify_error_main(int lineNo) noexcept
 // Call once per failing line during the dry-run validation phase.
 // Multiple calls are allowed (one per distinct error line).
 // ---------------------------------------------------------------------------
-inline void gui_notify_error_comm(int lineNo) noexcept
+inline void gui_notify_error_comm(int iLineNo) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("\nGUI:ERROR_COMM:%d\n", lineNo);
+    std::printf("\nGUI:ERROR_COMM:%d\n", iLineNo);
     std::fflush(stdout);
 }
 
@@ -332,12 +332,12 @@ inline void gui_notify_error_comm(int lineNo) noexcept
 // The GUI opens a new tab labelled "<filename> #<tid>" with a ● live marker,
 // or reuses an existing finished tab for the same tid.
 // ---------------------------------------------------------------------------
-inline void gui_notify_load_comm_t(int tid, const std::string &path) noexcept
+inline void gui_notify_load_comm_t(int iTid, const std::string &strPath) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("\nGUI:LOAD_COMM_T:%d:%s\n", tid, path.c_str());
+    std::printf("\nGUI:LOAD_COMM_T:%d:%s\n", iTid, strPath.c_str());
     std::fflush(stdout);
 }
 
@@ -346,12 +346,12 @@ inline void gui_notify_load_comm_t(int tid, const std::string &path) noexcept
 // Called from CommScriptInterpreter::interpretScript() for every comm-script
 // line during real execution when running in a background thread (tid > 0).
 // ---------------------------------------------------------------------------
-inline void gui_notify_exec_comm_t(int tid, int lineNo) noexcept
+inline void gui_notify_exec_comm_t(int iTid, int iLineNo) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("\nGUI:EXEC_COMM_T:%d:%d\n", tid, lineNo);
+    std::printf("\nGUI:EXEC_COMM_T:%d:%d\n", iTid, iLineNo);
     std::fflush(stdout);
 }
 
@@ -361,12 +361,12 @@ inline void gui_notify_exec_comm_t(int tid, int lineNo) noexcept
 // client is running in a background thread (tid > 0).
 // The tab stays visible for inspection; only the liveness indicator is removed.
 // ---------------------------------------------------------------------------
-inline void gui_notify_clear_comm_t(int tid) noexcept
+inline void gui_notify_clear_comm_t(int iTid) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("\nGUI:CLEAR_COMM_T:%d\n", tid);
+    std::printf("\nGUI:CLEAR_COMM_T:%d\n", iTid);
     std::fflush(stdout);
 }
 
@@ -397,17 +397,17 @@ inline void gui_notify_clear_comm_t(int tid) noexcept
 // Safe to call at high frequency: this is a no-op (single bool check) in
 // non-GUI mode, same as every other gui_notify_*() function.
 // ---------------------------------------------------------------------------
-inline void gui_notify_comm_dump(const std::string &pluginName,
-                                 const CommDetails &details,
-                                 CommDir dir,
-                                 const uint8_t *data,
-                                 uint32_t dataLen) noexcept
+inline void gui_notify_comm_dump(const std::string &strPluginName,
+                                 const CommDetails &sDetails,
+                                 CommDir eDir,
+                                 const uint8_t *pu8Data,
+                                 uint32_t u32DataLen) noexcept
 {
     if (!gui_mode_active()) {
         return;
     }
     const int64_t timestampUs         = commdump_now_us();
-    const std::vector<uint8_t> packed = commdump_pack(timestampUs, pluginName, details, dir, data, dataLen);
+    const std::vector<uint8_t> packed = commdump_pack(timestampUs, strPluginName, sDetails, eDir, pu8Data, u32DataLen);
     const std::string b64             = commdump_base64_encode(packed);
     std::printf("\nGUI:COMM_DUMP:%s\n", b64.c_str());
     std::fflush(stdout);

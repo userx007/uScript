@@ -25,9 +25,9 @@ class StatusLed : public QWidget {
             Error
         };
 
-        explicit StatusLed(QWidget *parent = nullptr);
+        explicit StatusLed(QWidget *pParent = nullptr);
 
-        void setState(State s);
+        void setState(State eS);
 
         State state() const
         {

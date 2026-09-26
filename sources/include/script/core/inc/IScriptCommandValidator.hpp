@@ -9,7 +9,7 @@ class IScriptCommandValidator {
         IScriptCommandValidator()                                                                 = default;
         virtual ~IScriptCommandValidator()                                                        = default;
 
-        virtual bool validateCommand(int iLineNumber, const std::string &command, TCommand &type) = 0;
+        virtual bool validateCommand(int iLineNumber, const std::string &strCommand, TCommand &type) = 0;
 };
 
 #endif // ISCRIPTITEMVALIDATOR_HPP

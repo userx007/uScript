@@ -3,7 +3,7 @@
 #include "ushell_plugin_datatypes.h"
 
 /* user commands dispatcher */
-static int uShellExecuteCommand(const command_s *psCmd);
+static int uShellExecuteCommand(const command_s *pCmd);
 
 #if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)
 void *pvLocalUserData = nullptr;
@@ -179,30 +179,30 @@ extern "C" {
      * This function is called when a plugin is being unloaded or when the shell
      * instance is being destroyed. It provides a hook for resource cleanup.
      */
-    EXPORTED void uShellPluginExit(uShellPluginInterface *ptrPlugin)
+    EXPORTED void uShellPluginExit(uShellPluginInterface *pPtrPlugin)
     {
-        if (!ptrPlugin) {
+        if (!pPtrPlugin) {
             return;
         }
 
         /* Reset the bKeepRunning flag to ensure clean shutdown */
 #if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
-        ptrPlugin->bKeepRuning = false;
+        pPtrPlugin->bKeepRuning = false;
 #endif
 
         /* Clear autocomplete index array if present */
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-        if (ptrPlugin->piAutocompleteIndexArray) {
-            for (int i = 0; i < ptrPlugin->iNrFunctions; i++) {
-                ptrPlugin->piAutocompleteIndexArray[i] = 0;
+        if (pPtrPlugin->piAutocompleteIndexArray) {
+            for (int i = 0; i < pPtrPlugin->iNrFunctions; i++) {
+                pPtrPlugin->piAutocompleteIndexArray[i] = 0;
             }
         }
 #endif
 
         /* Clear prompt */
-        if (ptrPlugin->vstrPrompt[0] != '\0') {
-            ptrPlugin->vstrPrompt[0] = '\0';
-            ptrPlugin->iPromptLength = 0;
+        if (pPtrPlugin->vstrPrompt[0] != '\0') {
+            pPtrPlugin->vstrPrompt[0] = '\0';
+            pPtrPlugin->iPromptLength = 0;
         }
 
         /* Note: We don't free the static arrays (g_vsFuncDefArray, etc.) as they
@@ -219,24 +219,24 @@ extern "C" {
  * @param psCmd Pointer to command structure with parsed parameters
  * @return Error code from uSHELL_ERR_* enumeration
  */
-static int uShellExecuteCommand(const command_s *psCmd)
+static int uShellExecuteCommand(const command_s *pCmd)
 {
     /* void:v, (byte)u8:b:vb, (word)u16:w:vw, (int)u32:i:vi, (long)u64:l:vl, float:f:vf, string:s:vs, bool:o:vo */
-    switch (g_vsFuncDefExArray[psCmd->iFctIndex].eParamType) {
+    switch (g_vsFuncDefExArray[pCmd->iFctIndex].eParamType) {
     case v_type:
-        return g_vsFuncDefExArray[psCmd->iFctIndex].uFctType.v_fct();
+        return g_vsFuncDefExArray[pCmd->iFctIndex].uFctType.v_fct();
     case i_type:
-        return g_vsFuncDefExArray[psCmd->iFctIndex].uFctType.i_fct(psCmd->vi[0]);
+        return g_vsFuncDefExArray[pCmd->iFctIndex].uFctType.i_fct(pCmd->vi[0]);
     case s_type:
-        return g_vsFuncDefExArray[psCmd->iFctIndex].uFctType.s_fct(psCmd->vs[0]);
+        return g_vsFuncDefExArray[pCmd->iFctIndex].uFctType.s_fct(pCmd->vs[0]);
     case ii_type:
-        return g_vsFuncDefExArray[psCmd->iFctIndex].uFctType.ii_fct(psCmd->vi[0], psCmd->vi[1]);
+        return g_vsFuncDefExArray[pCmd->iFctIndex].uFctType.ii_fct(pCmd->vi[0], pCmd->vi[1]);
     case ss_type:
-        return g_vsFuncDefExArray[psCmd->iFctIndex].uFctType.ss_fct(psCmd->vs[0], psCmd->vs[1]);
+        return g_vsFuncDefExArray[pCmd->iFctIndex].uFctType.ss_fct(pCmd->vs[0], pCmd->vs[1]);
     case is_type:
-        return g_vsFuncDefExArray[psCmd->iFctIndex].uFctType.is_fct(psCmd->vi[0], psCmd->vs[0]);
+        return g_vsFuncDefExArray[pCmd->iFctIndex].uFctType.is_fct(pCmd->vi[0], pCmd->vs[0]);
     case lio_type:
-        return g_vsFuncDefExArray[psCmd->iFctIndex].uFctType.lio_fct(psCmd->vl[0], psCmd->vi[0], psCmd->vo[0]);
+        return g_vsFuncDefExArray[pCmd->iFctIndex].uFctType.lio_fct(pCmd->vl[0], pCmd->vi[0], pCmd->vo[0]);
     default:
         return uSHELL_ERR_PARAMS_PATTERN_NOT_IMPLEM;
     }

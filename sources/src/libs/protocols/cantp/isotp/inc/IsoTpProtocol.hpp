@@ -38,7 +38,7 @@
  */
 class IsoTpProtocol final : public ITransportProtocol {
     public:
-        explicit IsoTpProtocol(const TpConfig &cfg = {})
+        explicit IsoTpProtocol(const TpConfig &sCfg = {})
             : m_cfg(cfg)
         {
         }
@@ -66,7 +66,7 @@ class IsoTpProtocol final : public ITransportProtocol {
         TpConfig m_cfg;
 
         /** @brief Blocks for the duration encoded by an ISO-TP STmin byte. */
-        static void sleep_st_min(uint8_t stMin);
+        static void sleep_st_min(uint8_t u8StMin);
 };
 
 #endif // CAN_TP_ISO_TP_PROTOCOL_HPP

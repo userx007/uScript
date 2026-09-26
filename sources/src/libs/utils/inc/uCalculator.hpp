@@ -119,8 +119,8 @@ class Calculator {
 
         // vars is a persistent map shared across multiple Calculator invocations
         // so that assigned variables survive between calls.
-        Calculator(const std::string &expr,
-                   std::unordered_map<std::string, double> &vars)
+        Calculator(const std::string &strExpr,
+                   std::unordered_map<std::string, double> &mapVars)
             : m_expr(expr)
             , m_pos(0)
             , m_vars(vars)
@@ -172,16 +172,16 @@ class Calculator {
             return (i < m_expr.size()) ? m_expr[i] : '\0';
         }
 
-        bool match(const char *s)
+        bool match(const char *pstrS)
         {
             size_t len = 0;
-            while (s[len]) {
+            while (pstrS[len]) {
                 ++len;
             }
             if (m_pos + len > m_expr.size()) {
                 return false;
             }
-            if (m_expr.compare(m_pos, len, s) != 0) {
+            if (m_expr.compare(m_pos, len, pstrS) != 0) {
                 return false;
             }
             m_pos += len;
@@ -189,16 +189,16 @@ class Calculator {
         }
 
         // Consume a specific character; throw if not present.
-        void expect(char c, const char *ctx = "")
+        void expect(char c, const char *pstrCtx = "")
         {
             skipWhitespace();
             if (m_pos >= m_expr.size() || m_expr[m_pos] != c) {
                 std::string msg = "Expected '";
                 msg += c;
                 msg += "'";
-                if (ctx && ctx[0]) {
+                if (pstrCtx && pstrCtx[0]) {
                     msg += " ";
-                    msg += ctx;
+                    msg += pstrCtx;
                 }
                 throw std::runtime_error(msg);
             }
@@ -206,15 +206,15 @@ class Calculator {
         }
 
         // Cast double to int64 for bitwise ops, with range check
-        static int64_t toInt(double v)
+        static int64_t toInt(double dV)
         {
-            if (!std::isfinite(v)) {
+            if (!std::isfinite(dV)) {
                 throw std::runtime_error("Bitwise operation on non-finite value");
             }
-            if (v < static_cast<double>(INT64_MIN) || v > static_cast<double>(INT64_MAX)) {
+            if (dV < static_cast<double>(INT64_MIN) || dV > static_cast<double>(INT64_MAX)) {
                 throw std::runtime_error("Value out of range for bitwise operation");
             }
-            return static_cast<int64_t>(v);
+            return static_cast<int64_t>(dV);
         }
 
         // ─────────────────────────────────────────────────────────────────────────
@@ -761,7 +761,7 @@ class Calculator {
         // ─────────────────────────────────────────────────────────────────────────
         // Function dispatch — single-arg and two-arg
         // ─────────────────────────────────────────────────────────────────────────
-        double dispatchFunction(const std::string &name)
+        double dispatchFunction(const std::string &strName)
         {
             // Helper: read first argument (already past the opening '(')
             auto readArg = [&]() -> double {
@@ -772,34 +772,34 @@ class Calculator {
 
             // Helper: expect comma
             auto comma = [&]() {
-                expect(',', ("in function '" + name + "'").c_str());
+                expect(',', ("in function '" + strName + "'").c_str());
                 skipWhitespace();
             };
 
             // Helper: close paren
             auto close = [&]() {
-                expect(')', ("closing '" + name + "()'").c_str());
+                expect(')', ("closing '" + strName + "()'").c_str());
             };
 
             // ── Single-argument functions ──────────────────────────────────────
 
             // Trigonometric
-            if (name == "sin") {
+            if (strName == "sin") {
                 double a = readArg();
                 close();
                 return std::sin(a);
             }
-            if (name == "cos") {
+            if (strName == "cos") {
                 double a = readArg();
                 close();
                 return std::cos(a);
             }
-            if (name == "tan") {
+            if (strName == "tan") {
                 double a = readArg();
                 close();
                 return std::tan(a);
             }
-            if (name == "asin") {
+            if (strName == "asin") {
                 double a = readArg();
                 close();
                 if (a < -1.0 || a > 1.0) {
@@ -807,7 +807,7 @@ class Calculator {
                 }
                 return std::asin(a);
             }
-            if (name == "acos") {
+            if (strName == "acos") {
                 double a = readArg();
                 close();
                 if (a < -1.0 || a > 1.0) {
@@ -815,29 +815,29 @@ class Calculator {
                 }
                 return std::acos(a);
             }
-            if (name == "atan") {
+            if (strName == "atan") {
                 double a = readArg();
                 close();
                 return std::atan(a);
             }
-            if (name == "sinh") {
+            if (strName == "sinh") {
                 double a = readArg();
                 close();
                 return std::sinh(a);
             }
-            if (name == "cosh") {
+            if (strName == "cosh") {
                 double a = readArg();
                 close();
                 return std::cosh(a);
             }
-            if (name == "tanh") {
+            if (strName == "tanh") {
                 double a = readArg();
                 close();
                 return std::tanh(a);
             }
 
             // Exponential / logarithmic
-            if (name == "sqrt") {
+            if (strName == "sqrt") {
                 double a = readArg();
                 close();
                 if (a < 0.0) {
@@ -845,22 +845,22 @@ class Calculator {
                 }
                 return std::sqrt(a);
             }
-            if (name == "cbrt") {
+            if (strName == "cbrt") {
                 double a = readArg();
                 close();
                 return std::cbrt(a);
             }
-            if (name == "exp") {
+            if (strName == "exp") {
                 double a = readArg();
                 close();
                 return std::exp(a);
             }
-            if (name == "exp2") {
+            if (strName == "exp2") {
                 double a = readArg();
                 close();
                 return std::exp2(a);
             }
-            if (name == "log") {
+            if (strName == "log") {
                 double a = readArg();
                 close();
                 if (a <= 0.0) {
@@ -868,7 +868,7 @@ class Calculator {
                 }
                 return std::log(a);
             }
-            if (name == "log2") {
+            if (strName == "log2") {
                 double a = readArg();
                 close();
                 if (a <= 0.0) {
@@ -876,7 +876,7 @@ class Calculator {
                 }
                 return std::log2(a);
             }
-            if (name == "log10") {
+            if (strName == "log10") {
                 double a = readArg();
                 close();
                 if (a <= 0.0) {
@@ -886,34 +886,34 @@ class Calculator {
             }
 
             // Rounding
-            if (name == "abs") {
+            if (strName == "abs") {
                 double a = readArg();
                 close();
                 return std::abs(a);
             }
-            if (name == "ceil") {
+            if (strName == "ceil") {
                 double a = readArg();
                 close();
                 return std::ceil(a);
             }
-            if (name == "floor") {
+            if (strName == "floor") {
                 double a = readArg();
                 close();
                 return std::floor(a);
             }
-            if (name == "round") {
+            if (strName == "round") {
                 double a = readArg();
                 close();
                 return std::round(a);
             }
-            if (name == "trunc") {
+            if (strName == "trunc") {
                 double a = readArg();
                 close();
                 return std::trunc(a);
             }
 
             // Sign
-            if (name == "sign") {
+            if (strName == "sign") {
                 double a = readArg();
                 close();
                 return (a > 0.0) ? 1.0 : (a < 0.0) ? -1.0
@@ -922,42 +922,42 @@ class Calculator {
 
             // ── Two-argument functions ─────────────────────────────────────────
 
-            if (name == "pow") {
+            if (strName == "pow") {
                 double base = readArg();
                 comma();
                 double exp = readArg();
                 close();
                 return std::pow(base, exp);
             }
-            if (name == "atan2") {
+            if (strName == "atan2") {
                 double y = readArg();
                 comma();
                 double x = readArg();
                 close();
                 return std::atan2(y, x);
             }
-            if (name == "min") {
+            if (strName == "min") {
                 double a = readArg();
                 comma();
                 double b = readArg();
                 close();
                 return std::min(a, b);
             }
-            if (name == "max") {
+            if (strName == "max") {
                 double a = readArg();
                 comma();
                 double b = readArg();
                 close();
                 return std::max(a, b);
             }
-            if (name == "hypot") {
+            if (strName == "hypot") {
                 double a = readArg();
                 comma();
                 double b = readArg();
                 close();
                 return std::hypot(a, b);
             }
-            if (name == "fmod") {
+            if (strName == "fmod") {
                 double a = readArg();
                 comma();
                 double b = readArg();
@@ -967,7 +967,7 @@ class Calculator {
                 }
                 return std::fmod(a, b);
             }
-            if (name == "log_b") {
+            if (strName == "log_b") {
                 // log_b(value, base) = log(value) / log(base)
                 double v = readArg();
                 comma();
@@ -982,7 +982,7 @@ class Calculator {
                 return std::log(v) / std::log(b);
             }
 
-            throw std::runtime_error("Unknown function: " + name);
+            throw std::runtime_error("Unknown function: " + strName);
         }
 };
 

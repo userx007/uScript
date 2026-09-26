@@ -91,12 +91,12 @@ class CH347JTAG : public ICommDriver {
          *                         strDevice — e.g. "/dev/ch34xpis0".
          */
         explicit CH347JTAG(const std::string &strDevice,
-                           uint8_t iClockRate                  = 2,
+                           uint8_t u8ClockRate                  = 2,
                            const std::string &strIdentityLabel = {})
             : m_iHandle(CH347_INVALID_HANDLE)
             , m_strIdentityLabel(strIdentityLabel)
         {
-            open(strDevice, iClockRate);
+            open(strDevice, u8ClockRate);
         }
 
         virtual ~CH347JTAG()
@@ -108,7 +108,7 @@ class CH347JTAG : public ICommDriver {
         // Lifecycle
         // -----------------------------------------------------------------------
 
-        Status open(const std::string &strDevice, uint8_t iClockRate = 2);
+        Status open(const std::string &strDevice, uint8_t u8ClockRate = 2);
         Status close();
         bool is_open() const override;
 
@@ -127,7 +127,7 @@ class CH347JTAG : public ICommDriver {
         // -----------------------------------------------------------------------
 
         /** Get current JTAG clock-rate setting. */
-        Status get_clock_rate(uint8_t &iClockRate) const;
+        Status get_clock_rate(uint8_t &u8ClockRate) const;
 
         // -----------------------------------------------------------------------
         // ICommDriver interface
@@ -153,7 +153,7 @@ class CH347JTAG : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -195,10 +195,10 @@ class CH347JTAG : public ICommDriver {
          * @note No-op on Windows (TRST-pin control not available in the DLL).
          *       Use tap_reset() instead.
          */
-        Status tap_reset_trst(bool highLevel) const;
+        Status tap_reset_trst(bool bHighLevel) const;
 
         /** Drive TMS to reach the specified TAP state. */
-        Status tap_set_state(uint8_t tapState) const;
+        Status tap_set_state(uint8_t u8TapState) const;
 
         /**
          * @brief Shift a TMS sequence to navigate the state machine.
@@ -207,20 +207,20 @@ class CH347JTAG : public ICommDriver {
          * @param skip      Starting bit offset within tmsBytes
          */
         Status tap_tms_change(std::span<const uint8_t> tmsBytes,
-                              uint32_t step, uint32_t skip) const;
+                              uint32_t u32Step, uint32_t u32Skip) const;
 
         /**
          * @brief Write to IR or DR register (byte granularity).
          * State machine: Run-Test → Shift-IR/DR → Exit IR/DR → Run-Test.
          */
-        Status write_register(JtagRegister reg,
+        Status write_register(JtagRegister eReg,
                               std::span<const uint8_t> buffer) const;
 
         /**
          * @brief Read from IR or DR register (byte granularity).
          * State machine: Run-Test → Shift-IR/DR → Exit IR/DR → Run-Test.
          */
-        Status read_register(JtagRegister reg,
+        Status read_register(JtagRegister eReg,
                              std::span<uint8_t> buffer) const;
 
         /**
@@ -233,7 +233,7 @@ class CH347JTAG : public ICommDriver {
          * @param readBuf     Buffer receiving read bits; size = expected read bits
          * @return ReadResult { status, bitsRead, false }
          */
-        ReadResult write_read(JtagRegister reg,
+        ReadResult write_read(JtagRegister eReg,
                               std::span<const uint8_t> writeBuf,
                               std::span<uint8_t> readBuf) const;
 
@@ -247,7 +247,7 @@ class CH347JTAG : public ICommDriver {
          * @param readBuf     Buffer receiving read bytes; size = expected bytes
          * @return ReadResult { status, bytesRead, false }
          */
-        ReadResult write_read_fast(JtagRegister reg,
+        ReadResult write_read_fast(JtagRegister eReg,
                                    std::span<const uint8_t> writeBuf,
                                    std::span<uint8_t> readBuf) const;
 
@@ -267,9 +267,9 @@ class CH347JTAG : public ICommDriver {
          * @param isLastPacket true = exit to Exit-DR/IR after this packet
          */
         Status io_scan(std::span<uint8_t> dataBuffer,
-                       uint32_t dataBitsNb,
-                       bool isRead,
-                       bool isLastPacket) const;
+                       uint32_t u32DataBitsNb,
+                       bool bIsRead,
+                       bool bIsLastPacket) const;
 
         /**
          * @brief Build a bit-bang protocol packet with TMS clock changes.
@@ -281,11 +281,11 @@ class CH347JTAG : public ICommDriver {
          * @return New byte index after appending the TMS entry
          */
         static uint32_t build_tms_clock(std::span<uint8_t> pkt,
-                                        uint32_t tms,
-                                        uint32_t bi);
+                                        uint32_t u32Tms,
+                                        uint32_t u32Bi);
 
         /** Append an idle (TCK low) entry to a bit-bang packet. */
-        static uint32_t build_idle_clock(std::span<uint8_t> pkt, uint32_t bi);
+        static uint32_t build_idle_clock(std::span<uint8_t> pkt, uint32_t u32Bi);
 
     private:
         CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;

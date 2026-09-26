@@ -221,9 +221,9 @@ class ModbusPlugin : public PluginInterface {
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
-        bool setPort(const std::string &portStr) const
+        bool setPort(const std::string &strPort) const
         {
-            return numeric::str2uint16(portStr, m_u16Port);
+            return numeric::str2uint16(strPort, m_u16Port);
         }
 
         /**
@@ -235,14 +235,14 @@ class ModbusPlugin : public PluginInterface {
             return true;
         }
 
-        bool setReadTimeout(const std::string &timeoutStr) const
+        bool setReadTimeout(const std::string &strTimeout) const
         {
-            return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
+            return numeric::str2uint32(strTimeout, m_u32ReadTimeout);
         }
 
-        bool setReadBufferSize(const std::string &bufSizeStr) const
+        bool setReadBufferSize(const std::string &strBufSize) const
         {
-            return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize, /*bFailOnZero=*/true);
+            return numeric::str2uint32(strBufSize, m_u32ReadBufferSize, /*bFailOnZero=*/true);
         }
 
     private:

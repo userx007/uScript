@@ -26,7 +26,7 @@
 
 namespace HydraHAL {
 
-    Smartcard::Smartcard(std::shared_ptr<Hydrabus> hydrabus)
+    Smartcard::Smartcard(std::shared_ptr<Hydrabus> shpHydrabus)
         : Protocol(std::move(hydrabus), "CRD1", "Smartcard", 0x0B)
     {
         _configure_port();
@@ -94,17 +94,17 @@ namespace HydraHAL {
         return _rst;
     }
 
-    bool Smartcard::set_rst(int level)
+    bool Smartcard::set_rst(int iLevel)
     {
-        level       = level & 1;
-        uint8_t cmd = static_cast<uint8_t>(0b00000010 | level);
+        iLevel       = iLevel & 1;
+        uint8_t cmd = static_cast<uint8_t>(0b00000010 | iLevel);
         _write_byte(cmd);
 
         if (!_ack("set_rst")) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting RST pin"));
             return false;
         }
-        _rst = level;
+        _rst = iLevel;
         return true;
     }
 
@@ -132,45 +132,45 @@ namespace HydraHAL {
         return (_config & 0b100) != 0;
     }
 
-    bool Smartcard::set_baud(uint32_t baud)
+    bool Smartcard::set_baud(uint32_t u32Baud)
     {
         _write_byte(0b01100000);
-        _write_u32_be(baud);
+        _write_u32_be(u32Baud);
         if (!_ack("set_baud")) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting baud"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting u32Baud"));
             return false;
         }
-        _baud = baud;
+        _baud = u32Baud;
         return true;
     }
 
-    bool Smartcard::set_prescaler(uint8_t value)
+    bool Smartcard::set_prescaler(uint8_t u8Value)
     {
         _write_byte(0b00000110);
-        _write_byte(value);
+        _write_byte(u8Value);
         if (!_ack("set_prescaler")) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting prescaler"));
             return false;
         }
-        _prescaler = value;
+        _prescaler = u8Value;
         return true;
     }
 
-    bool Smartcard::set_guardtime(uint8_t value)
+    bool Smartcard::set_guardtime(uint8_t u8Value)
     {
         _write_byte(0b00000111);
-        _write_byte(value);
+        _write_byte(u8Value);
         if (!_ack("set_guardtime")) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting guard time"));
             return false;
         }
-        _guardtime = value;
+        _guardtime = u8Value;
         return true;
     }
 
-    bool Smartcard::set_pullup(bool enable)
+    bool Smartcard::set_pullup(bool bEnable)
     {
-        if (enable) {
+        if (bEnable) {
             _config = static_cast<uint8_t>(_config | (1 << 2));
         } else {
             _config = static_cast<uint8_t>(_config & ~(1 << 2));

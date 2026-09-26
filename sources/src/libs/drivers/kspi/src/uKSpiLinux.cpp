@@ -40,7 +40,7 @@
 // OPEN / CLOSE
 // ============================================================================
 
-KSPI::Status KSPI::open(const std::string &strDevice, const SpiConfig &config)
+KSPI::Status KSPI::open(const std::string &strDevice, const SpiConfig &sConfig)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -59,7 +59,7 @@ KSPI::Status KSPI::open(const std::string &strDevice, const SpiConfig &config)
         return Status::PORT_ACCESS;
     }
 
-    const Status result = setup(config);
+    const Status result = setup(sConfig);
     if (result != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to configure ["); LOG_STRING(strDevice.c_str());
@@ -69,13 +69,13 @@ KSPI::Status KSPI::open(const std::string &strDevice, const SpiConfig &config)
         return Status::PORT_ACCESS;
     }
 
-    m_config = config;
+    m_config = sConfig;
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("KSPI ["); LOG_STRING(strDevice.c_str());
-              LOG_STRING("] opened, mode:"); LOG_UINT32(config.mode);
-              LOG_STRING(" speed:"); LOG_UINT32(config.speed_hz);
-              LOG_STRING(" bpw:"); LOG_UINT32(config.bits_per_word);
+              LOG_STRING("] opened, mode:"); LOG_UINT32(sConfig.mode);
+              LOG_STRING(" speed:"); LOG_UINT32(sConfig.speed_hz);
+              LOG_STRING(" bpw:"); LOG_UINT32(sConfig.bits_per_word);
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
 
     return Status::SUCCESS;
@@ -99,10 +99,10 @@ KSPI::Status KSPI::close()
 // BUS CONFIGURATION
 // ============================================================================
 
-KSPI::Status KSPI::setup(const SpiConfig &config) const
+KSPI::Status KSPI::setup(const SpiConfig &sConfig) const
 {
     // KSPI mode (CPOL / CPHA)
-    uint8_t mode = config.mode & 0x03u;
+    uint8_t mode = sConfig.mode & 0x03u;
     if (::ioctl(m_iHandle, SPI_IOC_WR_MODE, &mode) < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -111,7 +111,7 @@ KSPI::Status KSPI::setup(const SpiConfig &config) const
     }
 
     // LSB / MSB bit order
-    uint8_t lsb = config.lsb_first ? 1u : 0u;
+    uint8_t lsb = sConfig.lsb_first ? 1u : 0u;
     if (::ioctl(m_iHandle, SPI_IOC_WR_LSB_FIRST, &lsb) < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -120,7 +120,7 @@ KSPI::Status KSPI::setup(const SpiConfig &config) const
     }
 
     // Bits per word
-    uint8_t bpw = config.bits_per_word;
+    uint8_t bpw = sConfig.bits_per_word;
     if (::ioctl(m_iHandle, SPI_IOC_WR_BITS_PER_WORD, &bpw) < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -129,7 +129,7 @@ KSPI::Status KSPI::setup(const SpiConfig &config) const
     }
 
     // Maximum bus speed
-    uint32_t speed = config.speed_hz;
+    uint32_t speed = sConfig.speed_hz;
     if (::ioctl(m_iHandle, SPI_IOC_WR_MAX_SPEED_HZ, &speed) < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -144,15 +144,15 @@ KSPI::Status KSPI::setup(const SpiConfig &config) const
 // INTERNAL FULL-DUPLEX TRANSFER PRIMITIVE
 // ============================================================================
 
-KSPI::Status KSPI::spi_transfer(const uint8_t *txBuf,
-                                uint8_t *rxBuf,
+KSPI::Status KSPI::spi_transfer(const uint8_t *pu8TxBuf,
+                                uint8_t *pu8RxBuf,
                                 size_t length) const
 {
     // Zero-initialise so any un-set fields default to using the values
     // already configured on the file descriptor by setup().
     struct spi_ioc_transfer xfer = {};
-    xfer.tx_buf                  = reinterpret_cast<uintptr_t>(txBuf);
-    xfer.rx_buf                  = reinterpret_cast<uintptr_t>(rxBuf);
+    xfer.tx_buf                  = reinterpret_cast<uintptr_t>(pu8TxBuf);
+    xfer.rx_buf                  = reinterpret_cast<uintptr_t>(pu8RxBuf);
     xfer.len                     = static_cast<uint32_t>(length);
     xfer.speed_hz                = m_config.speed_hz;
     xfer.bits_per_word           = m_config.bits_per_word;

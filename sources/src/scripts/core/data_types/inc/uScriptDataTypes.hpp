@@ -188,12 +188,12 @@ inline bool tryParseRepeatInteger(const std::string &strTok, long long &outValue
 // is hex-float notation (e.g. "0x1.8p3"), which str2double's istringstream-
 // based parser does not accept — irrelevant here since REPEAT range literals
 // never use hex floats (hex notation is reserved for the integer path).
-inline bool tryParseRepeatDouble(const std::string &strTok, double &outValue) noexcept
+inline bool tryParseRepeatDouble(const std::string &strTok, double &dOutValue) noexcept
 {
     if (strTok.empty()) {
         return false;
     }
-    return numeric::str2double(strTok, outValue);
+    return numeric::str2double(strTok, dOutValue);
 }
 
 // Parse an already macro-expanded, whitespace-trimmed token into either an
@@ -778,9 +778,9 @@ using ScriptEntriesType = ScriptEntries;
 //                 DATATYPES LOGGING SUPPORT (type to string)                  //
 /////////////////////////////////////////////////////////////////////////////////
 
-inline const std::string &getTokenTypeName(Token type)
+inline const std::string &getTokenTypeName(Token eType)
 {
-    switch (type) {
+    switch (eType) {
     case Token::LOAD_PLUGIN: {
         static const std::string name = "LOAD_PLUGIN";
         return name;

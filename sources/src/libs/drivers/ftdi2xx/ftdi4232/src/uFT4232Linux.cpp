@@ -51,9 +51,9 @@ FT4232Base::~FT4232Base()
 // open_device
 // ============================================================================
 
-FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceIndex)
+FT4232Base::Status FT4232Base::open_device(Channel eChannel, uint8_t u8DeviceIndex)
 {
-    if (channel != Channel::A && channel != Channel::B) {
+    if (eChannel != Channel::A && eChannel != Channel::B) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("open_device: FT4232H MPSSE only available on channels A and B"));
         return Status::INVALID_PARAM;
@@ -66,9 +66,9 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
         return Status::OUT_OF_MEMORY;
     }
 
-    // Select the interface (channel) before opening.
+    // Select the interface (eChannel) before opening.
     // INTERFACE_A = 1, INTERFACE_B = 2 in libftdi1's enum.
-    ftdi_interface iface = (channel == Channel::A) ? INTERFACE_A : INTERFACE_B;
+    ftdi_interface iface = (eChannel == Channel::A) ? INTERFACE_A : INTERFACE_B;
     if (ftdi_set_interface(ctx, iface) < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_set_interface() failed:"); LOG_STRING(ftdi_get_error_string(ctx)));
@@ -128,7 +128,7 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
     m_hDevice = ctx;
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("FT4232H opened: channel="); LOG_UINT32(static_cast<uint8_t>(channel));
+              LOG_STRING("FT4232H opened: eChannel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
               LOG_STRING("device index="); LOG_UINT32(u8DeviceIndex));
 
     return Status::SUCCESS;
@@ -167,14 +167,14 @@ bool FT4232Base::is_open() const
  *
  * Uses ftdi_write_data() which performs a synchronous USB bulk write.
  */
-FT4232Base::Status FT4232Base::mpsse_write(const uint8_t *buf, size_t len) const
+FT4232Base::Status FT4232Base::mpsse_write(const uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
     int ret = ftdi_write_data(CTX,
-                              const_cast<uint8_t *>(buf),
+                              const_cast<uint8_t *>(pu8Buf),
                               static_cast<int>(len));
     if (ret < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -199,24 +199,24 @@ FT4232Base::Status FT4232Base::mpsse_write(const uint8_t *buf, size_t len) const
  * data is available yet. This wrapper polls with short sleeps until the
  * requested number of bytes arrives or the timeout expires.
  */
-FT4232Base::Status FT4232Base::mpsse_read(uint8_t *buf, size_t len,
-                                          uint32_t timeoutMs,
+FT4232Base::Status FT4232Base::mpsse_read(uint8_t *pu8Buf, size_t len,
+                                          uint32_t u32TimeoutMs,
                                           size_t &bytesRead,
                                           std::stop_token stop_tok) const
 {
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
     bytesRead            = 0;
 
     // 0 == infinite timeout: never expire this poll loop.
-    const bool bInfinite = (timeoutMs == 0);
-    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite = (u32TimeoutMs == 0);
+    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
 
     while (bytesRead < len) {
         int ret = ftdi_read_data(CTX,
-                                 buf + bytesRead,
+                                 pu8Buf + bytesRead,
                                  static_cast<int>(len - bytesRead));
         if (ret < 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;

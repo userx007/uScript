@@ -53,7 +53,7 @@ namespace uart {
             OperationType operation;
             std::chrono::system_clock::time_point timestamp;
 
-            PortEvent(std::string name, OperationType op)
+            PortEvent(std::string strName, OperationType eOp)
                 : port_name(std::move(name))
                 , operation(op)
                 , timestamp(std::chrono::system_clock::now())
@@ -237,11 +237,11 @@ namespace uart {
          * @param patterns List of glob patterns to match
          * @return Vector of available TTY device paths
          */
-        inline std::vector<std::string> scan_linux_ports(const std::vector<std::string> &patterns)
+        inline std::vector<std::string> scan_linux_ports(const std::vector<std::string> &vPatterns)
         {
             std::vector<std::string> ports;
 
-            for (const auto &pattern : patterns) {
+            for (const auto &pattern : vPatterns) {
                 auto matches = glob_pattern(pattern);
                 ports.insert(ports.end(),
                              std::make_move_iterator(matches.begin()),
@@ -286,7 +286,7 @@ namespace uart {
         public:
             SimplePortHandler() = default;
 
-            explicit SimplePortHandler(ScanConfig config) noexcept
+            explicit SimplePortHandler(ScanConfig sConfig) noexcept
                 : config_(std::move(config))
             {
             }
@@ -386,9 +386,9 @@ namespace uart {
                 }
             }
 
-            void set_config(ScanConfig config) noexcept
+            void set_config(ScanConfig sConfig) noexcept
             {
-                config_ = std::move(config);
+                config_ = std::move(sConfig);
             }
 
             [[nodiscard]] const ScanConfig &get_config() const noexcept
@@ -434,16 +434,16 @@ namespace uart {
              * @param interval_ms  New interval in milliseconds; must be > 0.
              * @return true on success, false if monitoring is currently active or interval_ms == 0.
              */
-            [[nodiscard]] bool setPollingInterval(uint32_t interval_ms) noexcept
+            [[nodiscard]] bool setPollingInterval(uint32_t u32Interval_ms) noexcept
             {
                 std::lock_guard<std::mutex> lock(control_mutex_);
                 if (monitoring_active_.load(std::memory_order_acquire)) {
                     return false; // cannot change interval while monitoring is running
                 }
-                if (interval_ms == 0) {
+                if (u32Interval_ms == 0) {
                     return false; // interval must be > 0
                 }
-                polling_interval_ = interval_ms;
+                polling_interval_ = u32Interval_ms;
                 return true;
             }
 
@@ -684,13 +684,13 @@ namespace uart {
      * @return Port name if detected, std::nullopt on timeout
      */
     [[nodiscard]] inline std::optional<std::string> wait_for_insertion(
-        uint32_t timeout_ms          = 0,
-        uint32_t polling_interval_ms = 100)
+        uint32_t u32Timeout_ms          = 0,
+        uint32_t u32Polling_interval_ms = 100)
     {
 
         ScanConfig config{
-            std::chrono::milliseconds{polling_interval_ms},
-            std::chrono::milliseconds{timeout_ms}};
+            std::chrono::milliseconds{u32Polling_interval_ms},
+            std::chrono::milliseconds{u32Timeout_ms}};
 
         SimplePortHandler handler{config};
         return handler.wait_for_insertion();
@@ -703,13 +703,13 @@ namespace uart {
      * @return Port name if detected, std::nullopt on timeout
      */
     [[nodiscard]] inline std::optional<std::string> wait_for_removal(
-        uint32_t timeout_ms          = 0,
-        uint32_t polling_interval_ms = 100)
+        uint32_t u32Timeout_ms          = 0,
+        uint32_t u32Polling_interval_ms = 100)
     {
 
         ScanConfig config{
-            std::chrono::milliseconds{polling_interval_ms},
-            std::chrono::milliseconds{timeout_ms}};
+            std::chrono::milliseconds{u32Polling_interval_ms},
+            std::chrono::milliseconds{u32Timeout_ms}};
 
         SimplePortHandler handler{config};
         return handler.wait_for_removal();

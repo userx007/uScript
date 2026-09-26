@@ -60,7 +60,7 @@ class Enc28J60Net : public ICommDriver {
         {
         }
 
-        Status open(const std::string &ipAddr, uint16_t u16Port = 5000);
+        Status open(const std::string &strIpAddr, uint16_t u16Port = 5000);
         Status close();
         bool is_open() const override;
 
@@ -80,7 +80,7 @@ class Enc28J60Net : public ICommDriver {
 
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -98,7 +98,7 @@ class Enc28J60Net : public ICommDriver {
         std::string m_strIdentityLabel; /**< GUI comm-dump display label, see describeConnection(). */
 
         Status receive_packet(std::span<uint8_t> response_buffer, size_t max_len, size_t &bytes_read) const;
-        Status send_command(uint8_t cmd_id, const uint8_t *payload, size_t payload_len) const;
+        Status send_command(uint8_t u8Cmd_id, const uint8_t *pu8Payload, size_t payload_len) const;
 };
 
 #endif // U_ENC28J60_NET_DRIVER_H

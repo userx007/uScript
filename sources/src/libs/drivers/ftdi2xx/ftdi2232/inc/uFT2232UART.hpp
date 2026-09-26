@@ -73,11 +73,11 @@ class FT2232UART : public ICommDriver {
          *                         describeConnection()), supplied separately —
          *                         e.g. "FT2232 #0 chB" or the adapter's serial number.
          */
-        explicit FT2232UART(const UartConfig &config, uint8_t u8DeviceIndex = 0u,
+        explicit FT2232UART(const UartConfig &sConfig, uint8_t u8DeviceIndex = 0u,
                             const std::string &strIdentityLabel = {})
             : m_strIdentityLabel(strIdentityLabel)
         {
-            this->open(config, u8DeviceIndex);
+            this->open(sConfig, u8DeviceIndex);
         }
 
         ~FT2232UART() override
@@ -98,7 +98,7 @@ class FT2232UART : public ICommDriver {
          * @param config        UART bus parameters
          * @param u8DeviceIndex Physical device index (0 = first chip found)
          */
-        Status open(const UartConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const UartConfig &sConfig, uint8_t u8DeviceIndex = 0u);
 
         /**
          * @brief Close the channel handle (safe to call more than once)
@@ -122,12 +122,12 @@ class FT2232UART : public ICommDriver {
          *
          * The variant field is ignored (use close() + open() to change chips).
          */
-        Status configure(const UartConfig &config);
+        Status configure(const UartConfig &sConfig);
 
         /**
          * @brief Change baud rate on an already-open channel
          */
-        Status set_baud(uint32_t baudRate);
+        Status set_baud(uint32_t u32BaudRate);
 
         /**
          * @brief Blocking write  (implements ICommDriver)
@@ -147,7 +147,7 @@ class FT2232UART : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -163,7 +163,7 @@ class FT2232UART : public ICommDriver {
 
         // Platform helpers (uFT2232UARTCommon.cpp + platform .cpp files)
         Status open_device(FT2232Base::Variant variant, uint8_t u8DeviceIndex);
-        Status apply_config(const UartConfig &config) const;
+        Status apply_config(const UartConfig &sConfig) const;
 };
 
 #endif // U_FT2232_UART_DRIVER_H

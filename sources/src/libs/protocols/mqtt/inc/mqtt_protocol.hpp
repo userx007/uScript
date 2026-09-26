@@ -98,50 +98,50 @@ class MqttProtocol {
         // (Callers — MqttPlugin — are expected to have already validated topic/
         // argument shape before calling; these assume well-formed input.)
 
-        std::vector<uint8_t> buildConnect(const ConnectParams &params) const;
+        std::vector<uint8_t> buildConnect(const ConnectParams &sParams) const;
         std::vector<uint8_t> buildDisconnect() const;
         std::vector<uint8_t> buildPingReq() const;
 
         // Assigns a fresh packet id for qos > 0 (written to *pOutPacketId; left
         // at 0, matching "no packet id" for qos == 0, when pOutPacketId is
         // non-null but qos == 0).
-        std::vector<uint8_t> buildPublish(const std::string &topic, const std::string &payload,
-                                          uint8_t qos, bool retain, uint16_t *pOutPacketId);
+        std::vector<uint8_t> buildPublish(const std::string &strTopic, const std::string &strPayload,
+                                          uint8_t u8Qos, bool bRetain, uint16_t *pu16OutPacketId);
 
         // Subscriber-side acknowledgements MqttPlugin sends back for an
         // incoming PUBLISH it just received (mirror image of the wait-for-ack
         // side below): PUBACK for QoS 1, PUBREC/PUBCOMP bracketing the
         // broker's own PUBREL for QoS 2.
-        std::vector<uint8_t> buildPubAck(uint16_t packetId) const;
-        std::vector<uint8_t> buildPubRec(uint16_t packetId) const;
-        std::vector<uint8_t> buildPubRel(uint16_t packetId) const;
-        std::vector<uint8_t> buildPubComp(uint16_t packetId) const;
+        std::vector<uint8_t> buildPubAck(uint16_t u16PacketId) const;
+        std::vector<uint8_t> buildPubRec(uint16_t u16PacketId) const;
+        std::vector<uint8_t> buildPubRel(uint16_t u16PacketId) const;
+        std::vector<uint8_t> buildPubComp(uint16_t u16PacketId) const;
 
-        std::vector<uint8_t> buildSubscribe(const std::string &topic, uint8_t qos, uint16_t *pOutPacketId);
-        std::vector<uint8_t> buildUnsubscribe(const std::string &topic, uint16_t *pOutPacketId);
+        std::vector<uint8_t> buildSubscribe(const std::string &strTopic, uint8_t u8Qos, uint16_t *pu16OutPacketId);
+        std::vector<uint8_t> buildUnsubscribe(const std::string &strTopic, uint16_t *pu16OutPacketId);
 
         // ---- Decoders: pure decode of one already-complete raw packet ----
 
-        static uint8_t packetType(const std::vector<uint8_t> &packet)
+        static uint8_t packetType(const std::vector<uint8_t> &vPacket)
         {
-            return packet.empty() ? 0 : packet[0];
+            return vPacket.empty() ? 0 : vPacket[0];
         }
 
-        static bool isPublish(const std::vector<uint8_t> &packet)
+        static bool isPublish(const std::vector<uint8_t> &vPacket)
         {
-            return (packetType(packet) & 0xF0) == kPublish;
+            return (packetType(vPacket) & 0xF0) == kPublish;
         }
 
-        ConnAckResult decodeConnAck(const std::vector<uint8_t> &packet) const;
-        SubAckResult decodeSubAck(const std::vector<uint8_t> &packet) const;
+        ConnAckResult decodeConnAck(const std::vector<uint8_t> &vPacket) const;
+        SubAckResult decodeSubAck(const std::vector<uint8_t> &vPacket) const;
 
         // PUBACK / PUBREC / PUBREL / PUBCOMP / UNSUBACK all share one shape —
         // fixed header + Remaining Length(2) + Packet Identifier, nothing else
         // — so one decoder covers all five. Returns false if the packet is too
         // short to contain a Packet Identifier.
-        static bool decodeSimpleAck(const std::vector<uint8_t> &packet, uint16_t *pOutPacketId);
+        static bool decodeSimpleAck(const std::vector<uint8_t> &vPacket, uint16_t *pu16OutPacketId);
 
-        PublishMessage decodePublish(const std::vector<uint8_t> &packet) const;
+        PublishMessage decodePublish(const std::vector<uint8_t> &vPacket) const;
 
         // ---- Variable Byte Integer helpers ----
         // Used both internally (Remaining Length on every packet this class
@@ -150,13 +150,13 @@ class MqttProtocol {
         // continuation-bit semantics mirrored byte-by-byte while it reads a
         // packet's Remaining Length field off the wire — see
         // MqttPlugin::m_readPacket().
-        static std::vector<uint8_t> encodeVarInt(uint32_t value);
+        static std::vector<uint8_t> encodeVarInt(uint32_t u32Value);
         // Assumes 'data' already contains a complete, well-formed Variable Byte
         // Integer starting at 'offset' (true for anything this class is asked
         // to decode, since MqttPlugin's read loop only ever hands over packets
         // it has already fully received) — advances 'offset' past it and
         // returns the value.
-        static uint32_t decodeVarInt(const std::vector<uint8_t> &data, size_t &offset);
+        static uint32_t decodeVarInt(const std::vector<uint8_t> &vData, size_t &offset);
 
         void resetPacketIdSequence()
         {

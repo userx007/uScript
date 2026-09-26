@@ -90,7 +90,7 @@ class CH347SPI : public ICommDriver {
          */
         explicit CH347SPI(const std::string &strDevice,
                           const mSpiCfgS &cfg,
-                          const SpiXferOptions &xferOpts      = {},
+                          const SpiXferOptions &sXferOpts      = {},
                           const std::string &strIdentityLabel = {})
             : m_iHandle(CH347_INVALID_HANDLE)
             , m_xferOpts(xferOpts)
@@ -134,10 +134,10 @@ class CH347SPI : public ICommDriver {
         // -----------------------------------------------------------------------
 
         /** Change SPI clock frequency (Hz).  Valid range: 218 750 – 60 000 000. */
-        Status set_frequency(uint32_t iHz);
+        Status set_frequency(uint32_t u32Hz);
 
         /** Switch between 8-bit (0) and 16-bit (1) data frames. */
-        Status set_data_bits(uint8_t iDataBits);
+        Status set_data_bits(uint8_t u8DataBits);
 
         /**
          * @brief Enable or disable automatic CS management on WriteRead calls.
@@ -145,10 +145,10 @@ class CH347SPI : public ICommDriver {
          * @note No-op on Windows.  Set mSpiCfgS::iIsAutoDeativeCS in the config
          *       passed to open() instead.
          */
-        Status set_auto_cs(bool disable);
+        Status set_auto_cs(bool bDisable);
 
         /** Manually assert (iStatus=1) or de-assert (iStatus=0) the CS line. */
-        Status change_cs(uint8_t iStatus);
+        Status change_cs(uint8_t u8Status);
 
         /** Read back the current hardware SPI configuration. */
         Status get_config(mSpiCfgS &cfg) const;
@@ -179,7 +179,7 @@ class CH347SPI : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -209,13 +209,13 @@ class CH347SPI : public ICommDriver {
          * @return ReadResult { status, bytesXfered, false }
          */
         ReadResult tout_xfer(std::span<uint8_t> buffer,
-                             const SpiXferOptions &opts) const;
+                             const SpiXferOptions &sOpts) const;
 
         /**
          * @brief Write-only transfer with explicit per-call options.
          */
         WriteResult tout_write_ex(std::span<const uint8_t> buffer,
-                                  const SpiXferOptions &opts) const;
+                                  const SpiXferOptions &sOpts) const;
 
     private:
         CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
@@ -223,7 +223,7 @@ class CH347SPI : public ICommDriver {
         std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 
         /** Resolve effective CS value for CH347SPI_* calls. */
-        std::pair<bool, uint8_t> resolve_cs(const SpiXferOptions &opts) const;
+        std::pair<bool, uint8_t> resolve_cs(const SpiXferOptions &sOpts) const;
 };
 
 #endif // U_CH347_SPI_DRIVER_H

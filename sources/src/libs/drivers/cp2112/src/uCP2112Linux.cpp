@@ -122,17 +122,17 @@ bool CP2112Base::is_open() const
 // HID primitives
 // ============================================================================
 
-CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t *buf, size_t len) const
+CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len != HID_REPORT_SIZE) {
+    if (!pu8Buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
     }
 
-    int ret = ioctl(m_hDevice, HIDIOCSFEATURE(len), buf);
+    int ret = ioctl(m_hDevice, HIDIOCSFEATURE(len), pu8Buf);
     if (ret < 0) {
         int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("HIDIOCSFEATURE failed, report ="); LOG_HEX8(buf[0]);
+                  LOG_STRING("HIDIOCSFEATURE failed, report ="); LOG_HEX8(pu8Buf[0]);
                   LOG_STRING("errno="); LOG_INT(err));
         return Status::WRITE_ERROR;
     }
@@ -140,17 +140,17 @@ CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t *buf, size_t len) c
     return Status::SUCCESS;
 }
 
-CP2112Base::Status CP2112Base::hid_get_feature(uint8_t *buf, size_t len) const
+CP2112Base::Status CP2112Base::hid_get_feature(uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len != HID_REPORT_SIZE) {
+    if (!pu8Buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
     }
 
-    int ret = ioctl(m_hDevice, HIDIOCGFEATURE(len), buf);
+    int ret = ioctl(m_hDevice, HIDIOCGFEATURE(len), pu8Buf);
     if (ret < 0) {
         int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("HIDIOCGFEATURE failed, report ="); LOG_HEX8(buf[0]);
+                  LOG_STRING("HIDIOCGFEATURE failed, report ="); LOG_HEX8(pu8Buf[0]);
                   LOG_STRING("errno="); LOG_INT(err));
         return Status::READ_ERROR;
     }
@@ -158,13 +158,13 @@ CP2112Base::Status CP2112Base::hid_get_feature(uint8_t *buf, size_t len) const
     return Status::SUCCESS;
 }
 
-CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t *buf, size_t len) const
+CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len != HID_REPORT_SIZE) {
+    if (!pu8Buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
     }
 
-    ssize_t written = ::write(m_hDevice, buf, len);
+    ssize_t written = ::write(m_hDevice, pu8Buf, len);
     if (written < 0) {
         int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -180,12 +180,12 @@ CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t *buf, size_t le
     return Status::SUCCESS;
 }
 
-CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t *buf, size_t len,
-                                                  uint32_t timeoutMs,
+CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t *pu8Buf, size_t len,
+                                                  uint32_t u32TimeoutMs,
                                                   size_t &bytesRead,
                                                   std::stop_token stop_tok) const
 {
-    if (!buf || len != HID_REPORT_SIZE) {
+    if (!pu8Buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
     }
 
@@ -199,8 +199,8 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t *buf, size_t len,
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
     constexpr int kPollSliceMs = 200;
-    const bool bInfinite       = (timeoutMs == 0);
-    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite       = (u32TimeoutMs == 0);
+    const auto tDeadline       = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
 
     int pollRet                = 0;
     while (true) {
@@ -230,7 +230,7 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t *buf, size_t len,
         }
     }
 
-    ssize_t ret = ::read(m_hDevice, buf, len);
+    ssize_t ret = ::read(m_hDevice, pu8Buf, len);
     if (ret < 0) {
         int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;

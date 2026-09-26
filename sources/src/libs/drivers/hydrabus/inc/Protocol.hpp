@@ -51,10 +51,10 @@ namespace HydraHAL {
              * @param fname     Human-readable name used in log messages.
              * @param mode_byte Command byte sent to enter this mode.
              */
-            Protocol(std::shared_ptr<Hydrabus> hydrabus,
-                     std::string name,
-                     std::string fname,
-                     uint8_t mode_byte);
+            Protocol(std::shared_ptr<Hydrabus> shpHydrabus,
+                     std::string strName,
+                     std::string strFname,
+                     uint8_t u8Mode_byte);
 
             virtual ~Protocol()                   = default;
 
@@ -96,23 +96,23 @@ namespace HydraHAL {
             // -------------------------------------------------------------------------
 
             bool _write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
-            bool _write_byte(uint8_t b, std::stop_token stop_tok = {});
-            bool _write_u16_be(uint16_t v, std::stop_token stop_tok = {});
-            bool _write_u32_be(uint32_t v, std::stop_token stop_tok = {});
-            bool _write_u32_le(uint32_t v, std::stop_token stop_tok = {});
+            bool _write_byte(uint8_t u8B, std::stop_token stop_tok = {});
+            bool _write_u16_be(uint16_t u16V, std::stop_token stop_tok = {});
+            bool _write_u32_be(uint32_t u32V, std::stop_token stop_tok = {});
+            bool _write_u32_le(uint32_t u32V, std::stop_token stop_tok = {});
 
             std::vector<uint8_t> _read(size_t n, std::stop_token stop_tok = {});
-            std::vector<uint8_t> _read_with_timeout(size_t n, uint32_t timeout_ms, std::stop_token stop_tok = {});
+            std::vector<uint8_t> _read_with_timeout(size_t n, uint32_t u32Timeout_ms, std::stop_token stop_tok = {});
             uint8_t _read_byte(std::stop_token stop_tok = {});
 
             /**
              * @brief Read one byte and return true if it equals `expected`.
              * Logs an error if the value differs.
              */
-            bool _expect_byte(uint8_t expected, const char *context = nullptr, std::stop_token stop_tok = {});
+            bool _expect_byte(uint8_t u8Expected, const char *pstrContext = nullptr, std::stop_token stop_tok = {});
 
             /** @brief Convenience: expect 0x01 (ACK). */
-            bool _ack(const char *context = nullptr, std::stop_token stop_tok = {});
+            bool _ack(const char *pstrContext = nullptr, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Mode management

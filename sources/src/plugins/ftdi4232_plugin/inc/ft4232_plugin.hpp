@@ -185,15 +185,15 @@ class FT4232Plugin : public PluginInterface {
             return m_bIsEnabled;
         }
 
-        bool setParams(const PluginDataSet *ps)
+        bool setParams(const PluginDataSet *psPs)
         {
-            bool ok = generic_setparams<FT4232Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
-            return ok && m_LocalSetParams(ps);
+            bool ok = generic_setparams<FT4232Plugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
+            return ok && m_LocalSetParams(psPs);
         }
 
-        void getParams(PluginDataGet *pg) const
+        void getParams(PluginDataGet *psPg) const
         {
-            generic_getparams<FT4232Plugin>(this, pg);
+            generic_getparams<FT4232Plugin>(this, psPg);
         }
 
         const PluginCommandsMap<FT4232Plugin> *getMap() const
@@ -224,10 +224,10 @@ class FT4232Plugin : public PluginInterface {
             return true;
         }
 
-        bool doDispatch(const std::string &cmd, const std::string &params,
+        bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
-            return generic_dispatch<FT4232Plugin>(this, cmd, params, st);
+            return generic_dispatch<FT4232Plugin>(this, strCmd, strParams, st);
         }
 
         void doCleanup();
@@ -249,8 +249,8 @@ class FT4232Plugin : public PluginInterface {
 
         // Module-map accessors (used by generic helpers)
 
-        ModuleCommandsMap<FT4232Plugin> *getModuleCmdsMap(const std::string &m) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
+        ModuleCommandsMap<FT4232Plugin> *getModuleCmdsMap(const std::string &strM) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
 
         /**
          * @brief Apply a speed (Hz) to an open module.
@@ -260,7 +260,7 @@ class FT4232Plugin : public PluginInterface {
          * new clock; for GPIO there is no clock concept; for UART it sets
          * the baud rate.
          */
-        bool setModuleSpeed(const std::string &module, size_t hz) const;
+        bool setModuleSpeed(const std::string &strModule, size_t hz) const;
 
         // INI accessor (friend for generic_execute_script)
 
@@ -394,7 +394,7 @@ class FT4232Plugin : public PluginInterface {
         // Top-level command handlers
 
 #define FT_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_FT4232_##a(const std::string &args, std::stop_token st) const;
+    bool m_FT4232_##a(const std::string &strArgs, std::stop_token st) const;
         FT4232_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef FT_PLUGIN_CMD_RECORD
 
@@ -462,12 +462,12 @@ class FT4232Plugin : public PluginInterface {
         ModuleSpeedMap m_mapSpeed_I2C;
         ModuleSpeedMap m_mapSpeed_UART;
 
-        bool m_LocalSetParams(const PluginDataSet *ps);
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         // Helpers
-        static bool parseChannel(const std::string &s, FT4232Base::Channel &out);
-        static bool parseUartParams(const std::string &args, UartPendingCfg &cfg,
-                                    uint8_t *pDeviceIndexOut = nullptr);
+        static bool parseChannel(const std::string &strS, FT4232Base::Channel &out);
+        static bool parseUartParams(const std::string &strArgs, UartPendingCfg &cfg,
+                                    uint8_t *pu8DeviceIndexOut = nullptr);
 };
 
 #endif // FT4232_PLUGIN_HPP

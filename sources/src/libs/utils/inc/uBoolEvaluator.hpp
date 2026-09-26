@@ -26,11 +26,11 @@
 
 class BoolExprEvaluator {
     public:
-        bool evaluate(std::string_view input, bool &result) const
+        bool evaluate(std::string_view input, bool &bResult) const
         {
             try {
-                result       = false;
-                bool success = parseExpression(input, result);
+                bResult       = false;
+                bool success = parseExpression(input, bResult);
                 if (!(success && input.empty())) { // Ensure full input was consumed
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate, remained:"); LOG_STRING(input));
                     return false;
@@ -42,7 +42,7 @@ class BoolExprEvaluator {
         }
 
     private:
-        bool parseExpression(std::string_view &expr, bool &result) const
+        bool parseExpression(std::string_view &expr, bool &bResult) const
         {
             bool lhs;
             if (!parseTerm(expr, lhs)) {
@@ -62,11 +62,11 @@ class BoolExprEvaluator {
                     break;
                 }
             }
-            result = lhs;
+            bResult = lhs;
             return true;
         }
 
-        bool parseTerm(std::string_view &expr, bool &result) const
+        bool parseTerm(std::string_view &expr, bool &bResult) const
         {
             bool lhs;
             if (!parseFactor(expr, lhs)) {
@@ -86,11 +86,11 @@ class BoolExprEvaluator {
                     break;
                 }
             }
-            result = lhs;
+            bResult = lhs;
             return true;
         }
 
-        bool parseFactor(std::string_view &expr, bool &result) const
+        bool parseFactor(std::string_view &expr, bool &bResult) const
         {
             skipWhitespace(expr);
 
@@ -100,13 +100,13 @@ class BoolExprEvaluator {
                 if (!parseFactor(expr, inner)) {
                     return false;
                 }
-                result = !inner;
+                bResult = !inner;
                 return true;
             }
 
             if (expr.starts_with("(")) {
                 expr.remove_prefix(1);
-                if (!parseExpression(expr, result)) {
+                if (!parseExpression(expr, bResult)) {
                     return false;
                 }
                 skipWhitespace(expr);
@@ -119,13 +119,13 @@ class BoolExprEvaluator {
 
             if (expr.starts_with("TRUE")) {
                 expr.remove_prefix(4);
-                result = true;
+                bResult = true;
                 return true;
             }
 
             if (expr.starts_with("FALSE")) {
                 expr.remove_prefix(5);
-                result = false;
+                bResult = false;
                 return true;
             }
 

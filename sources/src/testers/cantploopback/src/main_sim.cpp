@@ -18,16 +18,16 @@ namespace {
 
     // Deterministic test payload — byte i = (i*31 + seed) & 0xFF — so a
     // mismatch is trivially reproducible and diffable, not random noise.
-    std::vector<uint8_t> make_payload(size_t len, uint8_t seed)
+    std::vector<uint8_t> make_payload(size_t len, uint8_t u8Seed)
     {
         std::vector<uint8_t> data(len);
         for (size_t i = 0; i < len; ++i) {
-            data[i] = static_cast<uint8_t>((i * 31 + seed) & 0xFF);
+            data[i] = static_cast<uint8_t>((i * 31 + u8Seed) & 0xFF);
         }
         return data;
     }
 
-    void print_usage(const char *argv0)
+    void print_usage(const char *pstrArgv0)
     {
         std::fprintf(stderr,
                      "Usage: %s <protocol> [--size N] [--timeout MS] [--verbose]\n\n"
@@ -49,7 +49,7 @@ namespace {
                      "counter all use the same bit positions for different things), so the two ends of\n"
                      "a real link always agree on the protocol out of band (config, PGN, or CAN ID\n"
                      "convention) rather than sniffing it from a frame.\n",
-                     argv0);
+                     pstrArgv0);
     }
 
     struct Args {
@@ -60,22 +60,22 @@ namespace {
             size_t customSize  = 0;
     };
 
-    bool parse_args(int argc, char **argv, Args &out)
+    bool parse_args(int iArgc, char **ppstrArgv, Args &sOut)
     {
-        if (argc < 2) {
+        if (iArgc < 2) {
             return false;
         }
-        out.protocol = argv[1];
+        sOut.protocol = ppstrArgv[1];
 
-        for (int i = 2; i < argc; ++i) {
-            const std::string a = argv[i];
+        for (int i = 2; i < iArgc; ++i) {
+            const std::string a = ppstrArgv[i];
             if (a == "--verbose") {
-                out.verbose = true;
-            } else if (a == "--timeout" && i + 1 < argc) {
-                out.timeoutMs = static_cast<uint32_t>(std::stoul(argv[++i]));
-            } else if (a == "--size" && i + 1 < argc) {
-                out.customSize    = static_cast<size_t>(std::stoul(argv[++i]));
-                out.customSizeSet = true;
+                sOut.verbose = true;
+            } else if (a == "--timeout" && i + 1 < iArgc) {
+                sOut.timeoutMs = static_cast<uint32_t>(std::stoul(ppstrArgv[++i]));
+            } else if (a == "--size" && i + 1 < iArgc) {
+                sOut.customSize    = static_cast<size_t>(std::stoul(ppstrArgv[++i]));
+                sOut.customSizeSet = true;
             } else {
                 std::fprintf(stderr, "Unknown argument: %s\n", a.c_str());
                 return false;
@@ -88,36 +88,36 @@ namespace {
     // Covers NONE, ISO-TP, J1939 (both modes), and NMEA 2000 Fast Packet —
     // every protocol here where send()/receive() are two ends of one
     // continuous handshake rather than distinct client/server roles.
-    bool run_symmetric_case(ITransportProtocol *proto, LoopbackCommDriver &bus,
-                            uint32_t timeoutMs, const std::vector<uint8_t> &payload)
+    bool run_symmetric_case(ITransportProtocol *pProto, LoopbackCommDriver &bus,
+                            uint32_t u32TimeoutMs, const std::vector<uint8_t> &vPayload)
     {
-        std::vector<uint8_t> rxBuf(payload.size() + 64, 0);
+        std::vector<uint8_t> rxBuf(vPayload.size() + 64, 0);
         ICommDriver::ReadResult rr;
 
-        std::thread receiver([&] { rr = proto->receive(bus, timeoutMs, std::span<uint8_t>(rxBuf), kIdAtoB, kIdBtoA); });
-        ICommDriver::WriteResult wr = proto->send(bus, timeoutMs, payload, kIdAtoB, kIdBtoA);
+        std::thread receiver([&] { rr = pProto->receive(bus, u32TimeoutMs, std::span<uint8_t>(rxBuf), kIdAtoB, kIdBtoA); });
+        ICommDriver::WriteResult wr = pProto->send(bus, u32TimeoutMs, vPayload, kIdAtoB, kIdBtoA);
         receiver.join();
 
         const bool ok = wr.status == ICommDriver::Status::SUCCESS &&
                         rr.status == ICommDriver::Status::SUCCESS &&
-                        rr.bytes_read == payload.size() &&
-                        std::equal(payload.begin(), payload.end(), rxBuf.begin());
+                        rr.bytes_read == vPayload.size() &&
+                        std::equal(vPayload.begin(), vPayload.end(), rxBuf.begin());
 
         if (!ok) {
             std::fprintf(stderr,
                          "    send status=%d written=%zu | receive status=%d read=%zu (expected %zu)\n",
                          static_cast<int>(wr.status), wr.bytes_written,
-                         static_cast<int>(rr.status), rr.bytes_read, payload.size());
+                         static_cast<int>(rr.status), rr.bytes_read, vPayload.size());
         }
         return ok;
     }
 
     // ---- "none": no ITransportProtocol at all, driver used directly — the
     // path TpFactory's doc comment says callers should take for TpProtocol::NONE. ----
-    bool run_none_case(LoopbackCommDriver &bus, uint32_t timeoutMs, const std::vector<uint8_t> &payload)
+    bool run_none_case(LoopbackCommDriver &bus, uint32_t u32TimeoutMs, const std::vector<uint8_t> &vPayload)
     {
-        if (payload.size() > 8) {
-            std::fprintf(stderr, "    'none' has no segmentation; payload must be <= 8 bytes\n");
+        if (vPayload.size() > 8) {
+            std::fprintf(stderr, "    'none' has no segmentation; vPayload must be <= 8 bytes\n");
             return false;
         }
         std::vector<uint8_t> rxBuf(8, 0);
@@ -126,50 +126,50 @@ namespace {
         std::thread receiver([&] {
         ICommDriver::ReadOptions opts;
         opts.mode = ICommDriver::ReadMode::Exact;
-        rr        = bus.tout_read(timeoutMs, std::span<uint8_t>(rxBuf), opts, kIdAtoB); });
-        auto wr = bus.tout_write(timeoutMs, payload, kIdAtoB);
+        rr        = bus.tout_read(u32TimeoutMs, std::span<uint8_t>(rxBuf), opts, kIdAtoB); });
+        auto wr = bus.tout_write(u32TimeoutMs, vPayload, kIdAtoB);
         receiver.join();
 
         return wr.status == ICommDriver::Status::SUCCESS &&
                rr.status == ICommDriver::Status::SUCCESS &&
-               rr.bytes_read == payload.size() &&
-               std::equal(payload.begin(), payload.end(), rxBuf.begin());
+               rr.bytes_read == vPayload.size() &&
+               std::equal(vPayload.begin(), vPayload.end(), rxBuf.begin());
     }
 
     // ---- CANopen SDO: client (this library) vs. SdoLoopbackServer (this app). ----
-    bool run_canopen_case(ITransportProtocol *proto, LoopbackCommDriver &bus,
-                          uint32_t timeoutMs, const std::vector<uint8_t> &payload)
+    bool run_canopen_case(ITransportProtocol *pProto, LoopbackCommDriver &bus,
+                          uint32_t u32TimeoutMs, const std::vector<uint8_t> &vPayload)
     {
-        // Download: client send()s payload to our server; verify the server
+        // Download: client send()s vPayload to our server; verify the server
         // reconstructed it byte-for-byte.
         std::vector<uint8_t> serverReceived;
         bool downloadServerOk = false;
-        std::thread server([&] { downloadServerOk = SdoLoopbackServer::serve_download(bus, kIdAtoB, kIdBtoA, timeoutMs, serverReceived); });
-        auto wr = proto->send(bus, timeoutMs, payload, kIdAtoB, kIdBtoA);
+        std::thread server([&] { downloadServerOk = SdoLoopbackServer::serve_download(bus, kIdAtoB, kIdBtoA, u32TimeoutMs, serverReceived); });
+        auto wr = pProto->send(bus, u32TimeoutMs, vPayload, kIdAtoB, kIdBtoA);
         server.join();
 
         const bool downloadOk = wr.status == ICommDriver::Status::SUCCESS && downloadServerOk &&
-                                serverReceived.size() == payload.size() &&
-                                std::equal(payload.begin(), payload.end(), serverReceived.begin());
+                                serverReceived.size() == vPayload.size() &&
+                                std::equal(vPayload.begin(), vPayload.end(), serverReceived.begin());
         if (!downloadOk) {
             std::fprintf(stderr, "    download: client status=%d | server_ok=%d server_len=%zu (expected %zu)\n",
-                         static_cast<int>(wr.status), downloadServerOk, serverReceived.size(), payload.size());
+                         static_cast<int>(wr.status), downloadServerOk, serverReceived.size(), vPayload.size());
         }
 
-        // Upload: our server serves `payload` back; client receive()s it.
-        std::vector<uint8_t> rxBuf(payload.size() + 64, 0);
+        // Upload: our server serves `vPayload` back; client receive()s it.
+        std::vector<uint8_t> rxBuf(vPayload.size() + 64, 0);
         ICommDriver::ReadResult rr;
         bool uploadServerOk = false;
-        std::thread server2([&] { uploadServerOk = SdoLoopbackServer::serve_upload(bus, kIdAtoB, kIdBtoA, timeoutMs, payload); });
-        rr = proto->receive(bus, timeoutMs, std::span<uint8_t>(rxBuf), kIdBtoA, kIdAtoB);
+        std::thread server2([&] { uploadServerOk = SdoLoopbackServer::serve_upload(bus, kIdAtoB, kIdBtoA, u32TimeoutMs, vPayload); });
+        rr = pProto->receive(bus, u32TimeoutMs, std::span<uint8_t>(rxBuf), kIdBtoA, kIdAtoB);
         server2.join();
 
         const bool uploadOk = rr.status == ICommDriver::Status::SUCCESS && uploadServerOk &&
-                              rr.bytes_read == payload.size() &&
-                              std::equal(payload.begin(), payload.end(), rxBuf.begin());
+                              rr.bytes_read == vPayload.size() &&
+                              std::equal(vPayload.begin(), vPayload.end(), rxBuf.begin());
         if (!uploadOk) {
             std::fprintf(stderr, "    upload: server_ok=%d | client status=%d read=%zu (expected %zu)\n",
-                         uploadServerOk, static_cast<int>(rr.status), rr.bytes_read, payload.size());
+                         uploadServerOk, static_cast<int>(rr.status), rr.bytes_read, vPayload.size());
         }
 
         return downloadOk && uploadOk;
@@ -189,39 +189,39 @@ namespace {
             std::string note;
     };
 
-    ProtocolPlan plan_for(const std::string &name, TpConfig &cfg)
+    ProtocolPlan plan_for(const std::string &strName, TpConfig &sCfg)
     {
-        if (name == "isotp") {
+        if (strName == "isotp") {
             return {TpProtocol::ISO_TP, {1, 7, 8, 50, 500, 4000}, ""};
         }
-        if (name == "j1939-bam") {
-            cfg.j1939UseBam = true;
+        if (strName == "j1939-bam") {
+            sCfg.j1939UseBam = true;
             // BAM paces consecutive frames with a fixed 50ms inter-packet
             // gap and has no flow control to speed that up, so sizes here
             // are kept modest to keep the test's runtime reasonable
             // (200 bytes / 7 per frame * 50ms is already ~1.4s).
             return {TpProtocol::J1939_TP, {1, 8, 9, 50, 200}, "BAM paces frames at 50ms/frame — larger sizes take proportionally longer"};
         }
-        if (name == "j1939-rtscts") {
-            cfg.j1939UseBam = false;
+        if (strName == "j1939-rtscts") {
+            sCfg.j1939UseBam = false;
             return {TpProtocol::J1939_TP, {1, 8, 9, 50, 500, 1785}, ""};
         }
-        if (name == "canopen") {
-            cfg.canOpenUseBlock = false; // see SdoLoopbackServer.hpp
+        if (strName == "canopen") {
+            sCfg.canOpenUseBlock = false; // see SdoLoopbackServer.hpp
             return {TpProtocol::CANOPEN_SDO, {1, 4, 5, 50, 500}, "block transfer is intentionally not exercised — see SdoLoopbackServer.hpp"};
         }
-        if (name == "nmea2000") {
+        if (strName == "nmea2000") {
             return {TpProtocol::NMEA2000_FAST_PACKET, {1, 6, 7, 50, 223}, ""};
         }
         return {TpProtocol::NONE, {}, ""};
     }
 } // namespace
 
-int main(int argc, char **argv)
+int main(int iArgc, char **ppstrArgv)
 {
     Args args;
-    if (!parse_args(argc, argv, args)) {
-        print_usage(argv[0]);
+    if (!parse_args(iArgc, ppstrArgv, args)) {
+        print_usage(ppstrArgv[0]);
         return 2;
     }
 
@@ -232,7 +232,7 @@ int main(int argc, char **argv)
 
     if (!isNone && plan.sizes.empty() && args.protocol != "none") {
         std::fprintf(stderr, "Unknown protocol: %s\n\n", args.protocol.c_str());
-        print_usage(argv[0]);
+        print_usage(ppstrArgv[0]);
         return 2;
     }
 

@@ -68,9 +68,9 @@ bool CP2112Plugin::m_handle_i2c_help(const std::string &, std::stop_token /*st*/
 //                       OPEN                                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_i2c_open(const std::string &args, std::stop_token /*st*/) const
+bool CP2112Plugin::m_handle_i2c_open(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [addr=0xNN] [clock=N] [device=N]"));
         LOG_PRINT(LOG_EMPTY,
@@ -83,7 +83,7 @@ bool CP2112Plugin::m_handle_i2c_open(const std::string &args, std::stop_token /*
     }
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -168,9 +168,9 @@ bool CP2112Plugin::m_handle_i2c_close(const std::string &, std::stop_token /*st*
 //                       CFG                                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_i2c_cfg(const std::string &args, std::stop_token /*st*/) const
+bool CP2112Plugin::m_handle_i2c_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C pending config:"));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("addr=");
@@ -182,7 +182,7 @@ bool CP2112Plugin::m_handle_i2c_cfg(const std::string &args, std::stop_token /*s
     }
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -226,16 +226,16 @@ bool CP2112Plugin::m_handle_i2c_cfg(const std::string &args, std::stop_token /*s
 //                       WRITE                                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_i2c_write(const std::string &args, std::stop_token st) const
+bool CP2112Plugin::m_handle_i2c_write(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex bytes; I2C START + addr+W + data + STOP)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Max payload: 512 bytes, auto-chunked at 61-byte HID boundaries"));
         return true;
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data) || data.empty()) {
+    if (!hexutils::stringUnhexlify(strArgs, data) || data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected at least 1 hex byte"));
         return false;
     }
@@ -264,15 +264,15 @@ bool CP2112Plugin::m_handle_i2c_write(const std::string &args, std::stop_token s
 //                       READ                                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_i2c_read(const std::string &args, std::stop_token st) const
+bool CP2112Plugin::m_handle_i2c_read(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N  (reads N bytes from the current slave address; max 512)"));
         return true;
     }
 
     size_t n = 0;
-    if (!numeric::str2sizet(args, n) || n == 0) {
+    if (!numeric::str2sizet(strArgs, n) || n == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid byte count (must be 1..512)"));
         return false;
     }
@@ -356,16 +356,16 @@ bool CP2112Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
     return true;
 }
 
-bool CP2112Plugin::m_handle_i2c_wrrd(const std::string &args, std::stop_token st) const
+bool CP2112Plugin::m_handle_i2c_wrrd(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_data<CP2112Plugin>(
-        this, args, &CP2112Plugin::m_i2c_wrrd_cb, st);
+        this, strArgs, &CP2112Plugin::m_i2c_wrrd_cb, st);
 }
 
-bool CP2112Plugin::m_handle_i2c_wrrdf(const std::string &args, std::stop_token st) const
+bool CP2112Plugin::m_handle_i2c_wrrdf(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_file<CP2112Plugin>(
-        this, args, &CP2112Plugin::m_i2c_wrrd_cb,
+        this, strArgs, &CP2112Plugin::m_i2c_wrrd_cb,
         m_sIniValues.strArtefactsPath, st);
 }
 
@@ -373,9 +373,9 @@ bool CP2112Plugin::m_handle_i2c_wrrdf(const std::string &args, std::stop_token s
 //                       SCAN                                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_i2c_scan(const std::string &args, std::stop_token st) const
+bool CP2112Plugin::m_handle_i2c_scan(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Probe I2C addresses 0x08..0x77 using a zero-byte write"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Uses current clock and device index; no open required"));
         return true;
@@ -435,9 +435,9 @@ bool CP2112Plugin::m_handle_i2c_scan(const std::string &args, std::stop_token st
    Usage:  CP2112.I2C script <filename>
            CP2112.I2C script help
 ============================================================ */
-bool CP2112Plugin::m_handle_i2c_script(const std::string &args, std::stop_token st) const
+bool CP2112Plugin::m_handle_i2c_script(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  I2C must be open first (CP2112.I2C open ...)"));
@@ -456,7 +456,7 @@ bool CP2112Plugin::m_handle_i2c_script(const std::string &args, std::stop_token 
     return generic_execute_script(
         pI2c,
         m_strInstanceName,
-        args,
+        strArgs,
         ini->strArtefactsPath,
         CP2112_BULK_MAX_BYTES,
         ini->u32ReadTimeout,

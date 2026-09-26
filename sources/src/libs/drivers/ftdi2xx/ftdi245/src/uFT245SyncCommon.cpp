@@ -28,17 +28,17 @@
 // open / close
 // ============================================================================
 
-FT245Sync::Status FT245Sync::open(const SyncConfig &config, uint8_t u8DeviceIndex)
+FT245Sync::Status FT245Sync::open(const SyncConfig &sConfig, uint8_t u8DeviceIndex)
 {
-    Status s = open_device(config.variant, config.fifoMode, u8DeviceIndex);
+    Status s = open_device(sConfig.variant, sConfig.fifoMode, u8DeviceIndex);
     if (s != Status::SUCCESS) {
         return s;
     }
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT245 Sync opened: variant=");
-              LOG_UINT32(static_cast<uint8_t>(config.variant));
-              LOG_STRING("fifoMode="); LOG_UINT32(static_cast<uint8_t>(config.fifoMode));
+              LOG_UINT32(static_cast<uint8_t>(sConfig.variant));
+              LOG_STRING("fifoMode="); LOG_UINT32(static_cast<uint8_t>(sConfig.fifoMode));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex));
 
     return Status::SUCCESS;
@@ -108,7 +108,7 @@ FT245Sync::WriteResult FT245Sync::tout_write(uint32_t u32WriteTimeout,
 
 FT245Sync::ReadResult FT245Sync::tout_read(uint32_t u32ReadTimeout,
                                            std::span<uint8_t> buffer,
-                                           const ReadOptions &options,
+                                           const ReadOptions &sOptions,
                                            [[maybe_unused]] std::string_view xtra_params,
                                            std::stop_token stop_tok) const
 {
@@ -129,7 +129,7 @@ FT245Sync::ReadResult FT245Sync::tout_read(uint32_t u32ReadTimeout,
     // indefinitely rather than substituting a default.
     const uint32_t timeout = u32ReadTimeout;
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
     // ── Exact: fill the entire buffer ─────────────────────────────────────
     case ReadMode::Exact: {
         size_t bytesRead        = 0;
@@ -160,7 +160,7 @@ FT245Sync::ReadResult FT245Sync::tout_read(uint32_t u32ReadTimeout,
                 break;
             }
 
-            if (byte == options.delimiter) {
+            if (byte == sOptions.delimiter) {
                 buffer[pos]             = '\0';
                 result.found_terminator = true;
                 result.status           = Status::SUCCESS;
@@ -179,12 +179,12 @@ FT245Sync::ReadResult FT245Sync::tout_read(uint32_t u32ReadTimeout,
 
     // ── UntilToken: KMP search for byte sequence ───────────────────────────
     case ReadMode::UntilToken: {
-        if (options.token.empty()) {
+        if (sOptions.token.empty()) {
             result.status = Status::INVALID_PARAM;
             break;
         }
 
-        const auto &token = options.token;
+        const auto &token = sOptions.token;
 
         // Build KMP failure table
         std::vector<int> lps(token.size(), 0);

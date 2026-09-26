@@ -56,11 +56,11 @@ class FT245Sync : public FT245Base, public ICommDriver {
          * @param strIdentityLabel Display text for the GUI comm-dump panel (see
          *                         describeConnection()), supplied separately.
          */
-        explicit FT245Sync(const SyncConfig &config, uint8_t u8DeviceIndex = 0u,
+        explicit FT245Sync(const SyncConfig &sConfig, uint8_t u8DeviceIndex = 0u,
                            const std::string &strIdentityLabel = {})
             : m_strIdentityLabel(strIdentityLabel)
         {
-            this->open(config, u8DeviceIndex);
+            this->open(sConfig, u8DeviceIndex);
         }
 
         ~FT245Sync() override
@@ -74,7 +74,7 @@ class FT245Sync : public FT245Base, public ICommDriver {
          * @param config        FIFO variant and mode
          * @param u8DeviceIndex Physical device index (0 = first chip found)
          */
-        Status open(const SyncConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const SyncConfig &sConfig, uint8_t u8DeviceIndex = 0u);
 
         /** @copydoc FT245Base::close — purges FIFO before closing */
         Status close() override;
@@ -106,7 +106,7 @@ class FT245Sync : public FT245Base, public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 

@@ -173,13 +173,13 @@ namespace ucmdexec {
      */
     /*--------------------------------------------------------------------------------------------------------*/
     template <typename OpenFn>
-    bool generic_cmd(const std::string &args,
+    bool generic_cmd(const std::string &strArgs,
                      bool bIsEnabled,
                      OpenFn &&openFn,
-                     const std::string &pluginName,
+                     const std::string &strPluginName,
                      size_t u32ReadBufferSize,
                      uint32_t u32ReadTimeout,
-                     const char *pszLogHdr,
+                     const char *pstrPszLogHdr,
                      std::string *pstrResult                                                                                     = nullptr,
                      bool bRawResult                                                                                             = false,
                      typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
@@ -198,8 +198,8 @@ namespace ucmdexec {
         }
 
         do {
-            if (args.empty()) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Missing command"));
+            if (strArgs.empty()) {
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Missing command"));
                 break;
             }
 
@@ -216,8 +216,8 @@ namespace ucmdexec {
                     CommScriptCommandValidator validator;
                     CommCommand command;
 
-                    if (validator.validateCommand(0, args, command)) {
-                        CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
+                    if (validator.validateCommand(0, strArgs, command)) {
+                        CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, strPluginName, u32ReadBufferSize, u32ReadTimeout,
                                                                           std::move(pfsend), std::move(pfrecv), stop_tok);
                         // interpretCommand()'s bRealExec parameter decides whether it may
                         // reach the actual send/receive interface: false during a script
@@ -243,9 +243,9 @@ namespace ucmdexec {
                     }
                 }
             } catch (const std::bad_alloc &e) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
             } catch (const std::exception &e) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
             }
 
         } while (false);
@@ -282,14 +282,14 @@ namespace ucmdexec {
      */
     /*--------------------------------------------------------------------------------------------------------*/
     template <typename OpenFn>
-    bool generic_script(const std::string &args,
+    bool generic_script(const std::string &strArgs,
                         bool bIsEnabled,
                         OpenFn &&openFn,
-                        const std::string &pluginName,
+                        const std::string &strPluginName,
                         const std::string &strArtefactsPath,
                         size_t u32ReadBufferSize,
                         uint32_t u32ReadTimeout,
-                        const char *pszLogHdr,
+                        const char *pstrPszLogHdr,
                         typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
                         typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {},
                         std::stop_token stop_tok                                                                        = {})
@@ -300,17 +300,17 @@ namespace ucmdexec {
 
         do {
             // expected to have as parameter the name of the script
-            if (args.empty()) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
+            if (strArgs.empty()) {
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
                 break;
             }
 
             std::vector<std::string> vstrArgs;
-            ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
+            ustring::tokenizeSpaceQuotesAware(strArgs, vstrArgs);
             const size_t szNrArgs = vstrArgs.size();
 
             if ((szNrArgs < 1) || (szNrArgs > 2)) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Expected: scriptpathname [|delay]"));
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Expected: scriptpathname [|delay]"));
                 break;
             }
 
@@ -325,7 +325,7 @@ namespace ucmdexec {
             ufile::buildFilePath(strArtefactsPath, vstrArgs[0], strScriptPathName);
 
             if (!ufile::fileExistsAndNotEmpty(strScriptPathName)) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
                 break;
             }
 
@@ -333,14 +333,14 @@ namespace ucmdexec {
                 auto shpDriver = openFn();
 
                 if (shpDriver) {
-                    CommScriptClient<DriverT> client(strScriptPathName, shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
+                    CommScriptClient<DriverT> client(strScriptPathName, shpDriver, strPluginName, u32ReadBufferSize, u32ReadTimeout,
                                                      szDelay, std::move(pfsend), std::move(pfrecv), stop_tok);
                     bRetVal = client.execute(bIsEnabled);
                 }
             } catch (const std::bad_alloc &e) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
             } catch (const std::exception &e) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
             }
 
         } while (false);
@@ -386,7 +386,7 @@ namespace ucmdexec {
      * \return true if strArray held at least one syntactically valid entry, false otherwise
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    inline bool parseCyclicArray(const std::string &strArray, std::vector<CyclicEntry> &vEntries, const char *pszLogHdr)
+    inline bool parseCyclicArray(const std::string &strArray, std::vector<CyclicEntry> &vEntries, const char *pstrPszLogHdr)
     {
         vEntries.clear();
 
@@ -413,14 +413,14 @@ namespace ucmdexec {
             ustring::splitAtFirst(strGroup, ':', vTokens);
 
             if (vTokens.size() != 2) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr);
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr);
                           LOG_STRING("CYCLIC: expected 'time val', got:"); LOG_STRING(strGroup));
                 return false;
             }
 
             uint32_t u32Period = 0U;
             if (!numeric::str2uint32(vTokens[0], u32Period) || (u32Period == 0U)) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr);
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr);
                           LOG_STRING("CYCLIC: invalid (or zero) time:"); LOG_STRING(vTokens[0]));
                 return false;
             }
@@ -431,12 +431,12 @@ namespace ucmdexec {
         }
 
         if (vEntries.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: empty array"));
+            LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("CYCLIC: empty array"));
             return false;
         }
 
         for (auto &i : vEntries) {
-            LOG_PRINT(LOG_DEBUG, LOG_STRING(pszLogHdr); LOG_STRING(i.strVal); LOG_UINT32(i.u32PeriodMs));
+            LOG_PRINT(LOG_DEBUG, LOG_STRING(pstrPszLogHdr); LOG_STRING(i.strVal); LOG_UINT32(i.u32PeriodMs));
         }
 
         return true;
@@ -527,13 +527,13 @@ namespace ucmdexec {
      */
     /*--------------------------------------------------------------------------------------------------------*/
     template <typename OpenFn>
-    bool generic_send_cyclic(const std::string &args,
+    bool generic_send_cyclic(const std::string &strArgs,
                              bool bIsEnabled,
                              OpenFn &&openFn,
-                             const std::string &pluginName,
+                             const std::string &strPluginName,
                              uint32_t u32ReadBufferSize,
                              uint32_t u32ReadTimeout,
-                             const char *pszLogHdr,
+                             const char *pstrPszLogHdr,
                              std::stop_token st,
                              bool bCached                                                                                                = true,
                              typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
@@ -544,8 +544,8 @@ namespace ucmdexec {
         bool bRetVal  = false;
 
         do {
-            if (args.empty()) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr);
+            if (strArgs.empty()) {
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr);
                           LOG_STRING("Missing arg(s): time1:val1, time2:val2, ..."));
                 break;
             }
@@ -567,13 +567,13 @@ namespace ucmdexec {
             // array structure itself (entry count, each entry's time_i) never depends on a
             // volatile macro's value, so it is safe to do exactly once here regardless of
             // bCached.
-            std::string strArgs = args;
+            std::string strArgs = strArgs;
             if (bCached) {
                 uvolatile::resolveVolatileMacros(strArgs);
             }
 
             std::vector<CyclicEntry> vEntries;
-            if (!parseCyclicArray(strArgs, vEntries, pszLogHdr)) {
+            if (!parseCyclicArray(strArgs, vEntries, pstrPszLogHdr)) {
                 break;
             }
 
@@ -588,7 +588,7 @@ namespace ucmdexec {
             }
 
             if (u64Tick == 0U) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: invalid (zero) tick"));
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("CYCLIC: invalid (zero) tick"));
                 break;
             }
 
@@ -650,7 +650,7 @@ namespace ucmdexec {
                     }
 
                     if (vResolvedEntries.empty()) {
-                        LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: no valid entry to send"));
+                        LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("CYCLIC: no valid entry to send"));
                         break;
                     }
                 } else {
@@ -660,7 +660,7 @@ namespace ucmdexec {
                     // there is at least one entry to ever be due, same up-front check
                     // the cached branch gets for free out of vResolvedEntries.empty().
                     if (vEntries.empty()) {
-                        LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: no valid entry to send"));
+                        LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("CYCLIC: no valid entry to send"));
                         break;
                     }
                 }
@@ -677,7 +677,7 @@ namespace ucmdexec {
                 // once and then serve every remaining tick of the session, exactly
                 // the same way one CommScriptCommandInterpreter already serves every
                 // line of a whole SCRIPT/CMD run.
-                CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
+                CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, strPluginName, u32ReadBufferSize, u32ReadTimeout,
                                                                   std::move(pfsend), std::move(pfrecv), st);
                 bRetVal                                             = true;
 
@@ -727,7 +727,7 @@ namespace ucmdexec {
                         // re-validate/re-parse it into a fresh, throwaway CommCommand - on
                         // every single due tick, deliberately not reusing anything from a
                         // previous tick. This is what lets an entry track a background
-                        // thread's latest "VAL ?= PLUGIN.CMD args &" result for as long as
+                        // thread's latest "VAL ?= PLUGIN.CMD strArgs &" result for as long as
                         // the CYCLIC session runs; see bCached's doc comment above for the
                         // cost/benefit trade-off against the cached (default) branch.
                         for (const auto &sEntry : vEntries) {
@@ -779,10 +779,10 @@ namespace ucmdexec {
                     std::this_thread::sleep_until(tpNextTick);
                 }
             } catch (const std::bad_alloc &e) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
                 bRetVal = false;
             } catch (const std::exception &e) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
                 bRetVal = false;
             }
 

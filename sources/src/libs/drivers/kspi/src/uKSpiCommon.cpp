@@ -41,14 +41,14 @@ bool KSPI::is_open() const
 
 KSPI::ReadResult KSPI::tout_read(uint32_t u32ReadTimeout,
                                  std::span<uint8_t> buffer,
-                                 const ReadOptions &options,
+                                 const ReadOptions &sOptions,
                                  std::string_view /*xtra_params*/,
                                  std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     ReadResult result;
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
     case ReadMode::Exact: {
         size_t bytes_read       = 0;
         result.status           = timeout_read(u32ReadTimeout, buffer, bytes_read, stop_tok);
@@ -60,7 +60,7 @@ KSPI::ReadResult KSPI::tout_read(uint32_t u32ReadTimeout,
     case ReadMode::UntilDelimiter: {
         size_t bytes_read       = 0;
         result.status           = timeout_read_until(u32ReadTimeout, buffer,
-                                                     options.delimiter, bytes_read, stop_tok);
+                                                     sOptions.delimiter, bytes_read, stop_tok);
         result.bytes_read       = bytes_read;
         result.found_terminator = (result.status == Status::SUCCESS);
         break;
@@ -68,8 +68,8 @@ KSPI::ReadResult KSPI::tout_read(uint32_t u32ReadTimeout,
 
     case ReadMode::UntilToken: {
         result.status           = timeout_wait_for_token(u32ReadTimeout,
-                                                         options.token,
-                                                         options.use_buffer,
+                                                         sOptions.token,
+                                                         sOptions.use_buffer,
                                                          stop_tok);
         result.bytes_read       = 0; // Token search does not fill the user buffer
         result.found_terminator = (result.status == Status::SUCCESS);
@@ -107,7 +107,7 @@ KSPI::WriteResult KSPI::tout_write(uint32_t u32WriteTimeout,
 
 KSPI::Status KSPI::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                           std::span<const uint8_t> token,
-                                          bool useBuffer,
+                                          bool bUseBuffer,
                                           std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
@@ -122,32 +122,32 @@ KSPI::Status KSPI::timeout_wait_for_token(uint32_t u32ReadTimeout,
     std::vector<int> viLps;
     build_kmp_table(token, szTokenLength, viLps);
 
-    return kmp_stream_match(token, viLps, u32Timeout, bReturnOnTimeout, useBuffer, stop_tok);
+    return kmp_stream_match(token, viLps, u32Timeout, bReturnOnTimeout, bUseBuffer, stop_tok);
 }
 
 void KSPI::build_kmp_table(std::span<const uint8_t> pattern,
                            size_t szLength,
-                           std::vector<int> &viLps) const
+                           std::vector<int> &vViLps) const
 {
-    ukmp::build_kmp_table(pattern, szLength, viLps);
+    ukmp::build_kmp_table(pattern, szLength, vViLps);
 }
 
 KSPI::Status KSPI::kmp_stream_match(std::span<const uint8_t> token,
-                                    const std::vector<int> &viLps,
+                                    const std::vector<int> &vViLps,
                                     uint32_t u32Timeout,
                                     bool bReturnOnTimeout,
-                                    bool useBuffer,
+                                    bool bUseBuffer,
                                     std::stop_token stop_tok) const
 {
     return ukmp::kmp_stream_match(
         [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t &bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
-        token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
+        token, vViLps, u32Timeout, bReturnOnTimeout, bUseBuffer,
         /*szChunkBufferSize=*/1, /*szRingBufferSize=*/KSPI_MAX_BUFLENGTH);
 }
 
 KSPI::Status KSPI::timeout_read_until(uint32_t u32ReadTimeout,
                                       std::span<uint8_t> buffer,
-                                      uint8_t cDelimiter,
+                                      uint8_t u8CDelimiter,
                                       size_t &szBytesRead,
                                       std::stop_token stop_tok) const
 {
@@ -174,7 +174,7 @@ KSPI::Status KSPI::timeout_read_until(uint32_t u32ReadTimeout,
             timeout_read(u32ReadTimeout, std::span<uint8_t>(&cByte, 1), actualBytesRead, stop_tok);
 
         if (readResult == Status::SUCCESS && actualBytesRead > 0) {
-            if (cByte == cDelimiter) {
+            if (cByte == u8CDelimiter) {
                 buffer[szBytesRead] = '\0';
                 return Status::SUCCESS;
             }

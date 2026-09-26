@@ -82,32 +82,32 @@ namespace ustring {
     /**
      * @brief Trims leading and trailing whitespace in place preserving eventually the last one
      */
-    inline void trimInPlace(std::string& input, bool keepOneTrailingSpace = false)
+    inline void trimInPlace(std::string& strInput, bool bKeepOneTrailingSpace = false)
     {
-        auto first = std::find_if_not(input.begin(), input.end(), is_space);
+        auto first = std::find_if_not(strInput.begin(), strInput.end(), is_space);
 
-        if (first == input.end()) {
-            input.clear();
+        if (first == strInput.end()) {
+            strInput.clear();
             return;
         }
 
-        auto last = std::find_if_not(input.rbegin(), input.rend(), is_space).base();
-        const bool hadTrailingWhitespace = last != input.end();
+        auto last = std::find_if_not(strInput.rbegin(), strInput.rend(), is_space).base();
+        const bool hadTrailingWhitespace = last != strInput.end();
 
-        input.erase(last, input.end());  // trim trailing
-        input.erase(input.begin(), first); // trim leading
+        strInput.erase(last, strInput.end());  // trim trailing
+        strInput.erase(strInput.begin(), first); // trim leading
 
-        if (keepOneTrailingSpace && hadTrailingWhitespace)
-            input.push_back(' ');
+        if (bKeepOneTrailingSpace && hadTrailingWhitespace)
+            strInput.push_back(' ');
     }
 
     /**
      * @brief Trims leading and trailing whitespace from each string in a vector
      */
-    inline void trimInPlace(std::vector<std::string> &vstr, bool keepOneTrailingSpace = false)
+    inline void trimInPlace(std::vector<std::string> &vVstr, bool bKeepOneTrailingSpace = false)
     {
-        for (auto &str : vstr) {
-            trimInPlace(str, keepOneTrailingSpace);
+        for (auto &str : vVstr) {
+            trimInPlace(str, bKeepOneTrailingSpace);
         }
     }
 
@@ -145,17 +145,17 @@ namespace ustring {
     /**
      * @brief Remove all whitespace from string in place
      */
-    inline void removeWhitespace(std::string &input)
+    inline void removeWhitespace(std::string &strInput)
     {
-        input.erase(std::remove_if(input.begin(), input.end(), is_space), input.end());
+        strInput.erase(std::remove_if(strInput.begin(), strInput.end(), is_space), strInput.end());
     }
 
     /**
      * @brief Remove all spaces from string in place
      */
-    inline void removeSpaces(std::string &input)
+    inline void removeSpaces(std::string &strInput)
     {
-        input.erase(std::remove(input.begin(), input.end(), ' '), input.end());
+        strInput.erase(std::remove(strInput.begin(), strInput.end(), ' '), strInput.end());
     }
 
     /*========================================================================================================*/
@@ -177,9 +177,9 @@ namespace ustring {
     /**
      * @brief Converts a string to lowercase in place
      */
-    inline void tolowercase(std::string &input)
+    inline void tolowercase(std::string &strInput)
     {
-        std::transform(input.begin(), input.end(), input.begin(),
+        std::transform(strInput.begin(), strInput.end(), strInput.begin(),
                        [](unsigned char c) { return std::tolower(c); });
     }
 
@@ -198,9 +198,9 @@ namespace ustring {
     /**
      * @brief Converts a string to uppercase in place
      */
-    inline void touppercase(std::string &input)
+    inline void touppercase(std::string &strInput)
     {
-        std::transform(input.begin(), input.end(), input.begin(),
+        std::transform(strInput.begin(), strInput.end(), strInput.begin(),
                        [](unsigned char c) { return std::toupper(c); });
     }
 
@@ -302,13 +302,13 @@ namespace ustring {
      * @brief Split at first occurrence of delimiter (output to vector)
      */
     inline void splitAtFirst(std::string_view input, char delimiter,
-                             std::vector<std::string> &result)
+                             std::vector<std::string> &vResult)
     {
-        result.clear();
+        vResult.clear();
         auto [first, second] = splitAtFirst(input, delimiter);
-        result.push_back(std::move(first));
+        vResult.push_back(std::move(first));
         if (!second.empty()) {
-            result.push_back(std::move(second));
+            vResult.push_back(std::move(second));
         }
     }
 
@@ -350,12 +350,12 @@ namespace ustring {
     /**
      * @brief Split in reverse at last occurrence of delimiter (output params)
      */
-    inline void splitReverseAtChar(std::string_view input, std::string &left,
-                                   std::string &right, char ch)
+    inline void splitReverseAtChar(std::string_view input, std::string &strLeft,
+                                   std::string &strRight, char ch)
     {
         auto [l, r] = splitReverseAtChar(input, ch);
-        left        = std::move(l);
-        right       = std::move(r);
+        strLeft        = std::move(l);
+        strRight       = std::move(r);
     }
 
     /**
@@ -454,11 +454,11 @@ namespace ustring {
      * @brief Remove decoration markers (output parameter version)
      */
     inline bool undecorate(std::string_view input, std::string_view start,
-                           std::string_view end, std::string &output)
+                           std::string_view end, std::string &strOutput)
     {
         auto result = undecorate(input, start, end);
         if (result) {
-            output = std::move(*result);
+            strOutput = std::move(*result);
             return true;
         }
         return false;
@@ -467,12 +467,12 @@ namespace ustring {
     /**
      * @brief Remove decoration markers in place
      */
-    inline bool undecorate(std::string &input, std::string_view start, std::string_view end)
+    inline bool undecorate(std::string &strInput, std::string_view start, std::string_view end)
     {
-        if (!isDecorated(input, start, end)) {
+        if (!isDecorated(strInput, start, end)) {
             return false;
         }
-        input = input.substr(start.size(), input.size() - start.size() - end.size());
+        strInput = strInput.substr(start.size(), strInput.size() - start.size() - end.size());
         return true;
     }
 
@@ -487,17 +487,17 @@ namespace ustring {
     /**
      * @brief Remove surrounding double quotes (output parameter)
      */
-    inline bool undecorate(std::string_view input, std::string &output)
+    inline bool undecorate(std::string_view input, std::string &strOutput)
     {
-        return undecorate(input, "\"", "\"", output);
+        return undecorate(input, "\"", "\"", strOutput);
     }
 
     /**
      * @brief Remove surrounding double quotes in place
      */
-    inline bool undecorate(std::string &input)
+    inline bool undecorate(std::string &strInput)
     {
-        return undecorate(input, "\"", "\"");
+        return undecorate(strInput, "\"", "\"");
     }
 
     /*========================================================================================================*/
@@ -723,25 +723,25 @@ namespace ustring {
      * @brief Tokenize using string delimiter (output parameter)
      */
     inline void tokenize(std::string_view input, std::string_view delimiter,
-                         std::vector<std::string> &tokens)
+                         std::vector<std::string> &vTokens)
     {
-        tokens = tokenize(input, delimiter);
+        vTokens = tokenize(input, delimiter);
     }
 
     /**
      * @brief Tokenize using multiple delimiters (closest match priority)
      */
     inline std::vector<std::string> tokenize(std::string_view input,
-                                             const std::vector<std::string> &delimiters)
+                                             const std::vector<std::string> &vDelimiters)
     {
         std::vector<std::string> tokens;
-        if (delimiters.empty()) {
+        if (vDelimiters.empty()) {
             tokens.push_back(trim(input));
             return tokens;
         }
 
-        // Sort delimiters by length (longest first) to prioritize longer matches
-        std::vector<std::string> sortedDelims = delimiters;
+        // Sort vDelimiters by length (longest first) to prioritize longer matches
+        std::vector<std::string> sortedDelims = vDelimiters;
         std::sort(sortedDelims.begin(), sortedDelims.end(),
                   [](const auto &a, const auto &b) { return a.length() > b.length(); });
 
@@ -781,23 +781,23 @@ namespace ustring {
     /**
      * @brief Tokenize using multiple delimiters (output parameter)
      */
-    inline void tokenize(std::string_view input, const std::vector<std::string> &delimiters,
-                         std::vector<std::string> &tokens)
+    inline void tokenize(std::string_view input, const std::vector<std::string> &vDelimiters,
+                         std::vector<std::string> &vTokens)
     {
-        tokens = tokenize(input, delimiters);
+        vTokens = tokenize(input, vDelimiters);
     }
 
     /**
      * @brief Tokenize using ordered sequence of delimiters
      */
     inline std::vector<std::string> tokenizeEx(std::string_view input,
-                                               const std::vector<std::string> &delimiters)
+                                               const std::vector<std::string> &vDelimiters)
     {
         std::vector<std::string> tokens;
-        tokens.reserve(delimiters.size() + 1);
+        tokens.reserve(vDelimiters.size() + 1);
 
         size_t start = 0;
-        for (const auto &delimiter : delimiters) {
+        for (const auto &delimiter : vDelimiters) {
             size_t pos = input.find(delimiter, start);
             if (pos != std::string_view::npos) {
                 tokens.push_back(trim(input.substr(start, pos - start)));
@@ -815,10 +815,10 @@ namespace ustring {
     /**
      * @brief Tokenize using ordered sequence of delimiters (output parameter)
      */
-    inline void tokenizeEx(std::string_view input, const std::vector<std::string> &delimiters,
-                           std::vector<std::string> &tokens)
+    inline void tokenizeEx(std::string_view input, const std::vector<std::string> &vDelimiters,
+                           std::vector<std::string> &vTokens)
     {
-        tokens = tokenizeEx(input, delimiters);
+        vTokens = tokenizeEx(input, vDelimiters);
     }
 
     /**
@@ -872,9 +872,9 @@ namespace ustring {
      * @brief Tokenize by spaces (quote-aware, output parameter)
      */
     inline void tokenizeSpaceQuotesAware(std::string_view input,
-                                         std::vector<std::string> &tokens)
+                                         std::vector<std::string> &vTokens)
     {
-        tokens = tokenizeSpaceQuotesAware(input);
+        vTokens = tokenizeSpaceQuotesAware(input);
     }
 
     /*========================================================================================================*/
@@ -884,27 +884,27 @@ namespace ustring {
     /**
      * @brief Join strings with delimiter (returns new string)
      */
-    inline std::string joinStrings(const std::vector<std::string> &strings,
+    inline std::string joinStrings(const std::vector<std::string> &vStrings,
                                    std::string_view delimiter)
     {
-        if (strings.empty()) {
+        if (vStrings.empty()) {
             return "";
         }
 
         // Calculate total size to avoid reallocations
         size_t total_size = 0;
-        for (const auto &s : strings) {
+        for (const auto &s : vStrings) {
             total_size += s.size();
         }
-        total_size += delimiter.size() * (strings.size() - 1);
+        total_size += delimiter.size() * (vStrings.size() - 1);
 
         std::string result;
         result.reserve(total_size);
 
-        result += strings[0];
-        for (size_t i = 1; i < strings.size(); ++i) {
+        result += vStrings[0];
+        for (size_t i = 1; i < vStrings.size(); ++i) {
             result += delimiter;
-            result += strings[i];
+            result += vStrings[i];
         }
 
         return result;
@@ -913,25 +913,25 @@ namespace ustring {
     /**
      * @brief Join strings with character delimiter
      */
-    inline std::string joinStrings(const std::vector<std::string> &strings, char delimiter)
+    inline std::string joinStrings(const std::vector<std::string> &vStrings, char delimiter)
     {
-        if (strings.empty()) {
+        if (vStrings.empty()) {
             return "";
         }
 
         size_t total_size = 0;
-        for (const auto &s : strings) {
+        for (const auto &s : vStrings) {
             total_size += s.size();
         }
-        total_size += (strings.size() - 1); // delimiters
+        total_size += (vStrings.size() - 1); // delimiters
 
         std::string result;
         result.reserve(total_size);
 
-        result += strings[0];
-        for (size_t i = 1; i < strings.size(); ++i) {
+        result += vStrings[0];
+        for (size_t i = 1; i < vStrings.size(); ++i) {
             result += delimiter;
-            result += strings[i];
+            result += vStrings[i];
         }
 
         return result;
@@ -940,10 +940,10 @@ namespace ustring {
     /**
      * @brief Join strings with delimiter (output parameter)
      */
-    inline void joinStrings(const std::vector<std::string> &strings,
-                            std::string_view delimiter, std::string &outResult)
+    inline void joinStrings(const std::vector<std::string> &vStrings,
+                            std::string_view delimiter, std::string &strOutResult)
     {
-        outResult = joinStrings(strings, delimiter);
+        strOutResult = joinStrings(vStrings, delimiter);
     }
 
     /*========================================================================================================*/
@@ -979,7 +979,7 @@ namespace ustring {
     /**
      * @brief Replace all occurrences in place
      */
-    inline void replace_all_inplace(std::string &input, std::string_view from,
+    inline void replace_all_inplace(std::string &strInput, std::string_view from,
                                     std::string_view to)
     {
         if (from.empty()) {
@@ -987,8 +987,8 @@ namespace ustring {
         }
 
         size_t pos = 0;
-        while ((pos = input.find(from, pos)) != std::string::npos) {
-            input.replace(pos, from.length(), to);
+        while ((pos = strInput.find(from, pos)) != std::string::npos) {
+            strInput.replace(pos, from.length(), to);
             pos += to.length();
         }
     }
@@ -996,43 +996,43 @@ namespace ustring {
     /**
      * @brief Replace macros in string using map
      */
-    inline void replaceMacros(std::string &input,
-                              const std::unordered_map<std::string, std::string> &macroMap,
+    inline void replaceMacros(std::string &strInput,
+                              const std::unordered_map<std::string, std::string> &mapMacroMap,
                               char macroMarker)
     {
         std::string result;
-        result.reserve(input.size() * 1.2); // Reserve extra space
+        result.reserve(strInput.size() * 1.2); // Reserve extra space
 
         size_t i = 0;
-        while (i < input.size()) {
-            if (input[i] == macroMarker && i + 1 < input.size() &&
-                (is_alpha(input[i + 1]) || input[i + 1] == '_')) {
+        while (i < strInput.size()) {
+            if (strInput[i] == macroMarker && i + 1 < strInput.size() &&
+                (is_alpha(strInput[i + 1]) || strInput[i + 1] == '_')) {
 
                 // Extract macro name
                 size_t start = i + 1;
                 size_t end   = start;
-                while (end < input.size() && (is_alnum(input[end]) || input[end] == '_')) {
+                while (end < strInput.size() && (is_alnum(strInput[end]) || strInput[end] == '_')) {
                     ++end;
                 }
 
-                std::string macroName = input.substr(start, end - start);
-                auto it               = macroMap.find(macroName);
+                std::string macroName = strInput.substr(start, end - start);
+                auto it               = mapMacroMap.find(macroName);
 
-                if (it != macroMap.end()) {
+                if (it != mapMacroMap.end()) {
                     result += it->second;
                 } else {
-                    result += input[i]; // Keep marker
+                    result += strInput[i]; // Keep marker
                     result += macroName;
                 }
 
                 i = end;
             } else {
-                result += input[i];
+                result += strInput[i];
                 ++i;
             }
         }
 
-        input = std::move(result);
+        strInput = std::move(result);
     }
 
     /*========================================================================================================*/
@@ -1065,20 +1065,20 @@ namespace ustring {
     /**
      * @brief Convert string to vector (output parameter)
      */
-    inline bool stringToVector(std::string_view input, std::vector<uint8_t> &output, bool bTerminator = true)
+    inline bool stringToVector(std::string_view input, std::vector<uint8_t> &vOutput, bool bTerminator = true)
     {
-        output = stringToVector(input, bTerminator);
+        vOutput = stringToVector(input, bTerminator);
         return true;
     }
 
     /**
      * @brief Replace null terminator with newline
      */
-    inline void replaceNullWithNewline(std::vector<uint8_t> &data)
+    inline void replaceNullWithNewline(std::vector<uint8_t> &vData)
     {
-        if (!data.empty() && data.back() == '\0') {
-            data.back() = '\n';
-            data.push_back('\0');
+        if (!vData.empty() && vData.back() == '\0') {
+            vData.back() = '\n';
+            vData.push_back('\0');
         }
     }
 
@@ -1152,8 +1152,8 @@ namespace ustring {
 
     inline bool splitValueUnit(std::string_view input,
                                std::span<const std::string_view> supported_units,
-                               std::string &value,
-                               std::string &unit)
+                               std::string &strValue,
+                               std::string &strUnit)
     {
         size_t end = input.find_last_not_of(" \t");
         if (end == std::string::npos) {
@@ -1185,8 +1185,8 @@ namespace ustring {
         std::string_view value_sv = before_unit.substr(0, value_end + 1);
         size_t value_start        = value_sv.find_first_not_of(" \t");
 
-        value                     = std::string(value_sv.substr(value_start));
-        unit                      = std::string(matched_unit);
+        strValue                     = std::string(value_sv.substr(value_start));
+        strUnit                      = std::string(matched_unit);
         return true;
     }
 
@@ -1194,11 +1194,11 @@ namespace ustring {
      * Strip a known keyword prefix from str in-place.
      * No-op when the prefix is absent
      */
-    inline void stripPrefix(std::string &str, std::string_view prefix) noexcept
+    inline void stripPrefix(std::string &strStr, std::string_view prefix) noexcept
     {
-        if (str.size() >= prefix.size() &&
-            str.compare(0, prefix.size(), prefix.data(), prefix.size()) == 0) {
-            str.erase(0, prefix.size());
+        if (strStr.size() >= prefix.size() &&
+            strStr.compare(0, prefix.size(), prefix.data(), prefix.size()) == 0) {
+            strStr.erase(0, prefix.size());
         }
     }
 
@@ -1211,15 +1211,15 @@ namespace ustring {
      *
      */
     template <typename T = std::array<char, 16>>
-    inline T fmtLineNr(int n)
+    inline T fmtLineNr(int iN)
     {
         if constexpr (std::is_same_v<T, std::string>) {
             char buf[16];
-            std::snprintf(buf, sizeof(buf), "%04d:", n);
+            std::snprintf(buf, sizeof(buf), "%04d:", iN);
             return buf;
         } else {
             std::array<char, 16> buf{};
-            std::snprintf(buf.data(), buf.size(), "%04d:", n);
+            std::snprintf(buf.data(), buf.size(), "%04d:", iN);
             return buf;
         }
     }

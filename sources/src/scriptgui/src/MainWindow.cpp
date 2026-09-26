@@ -73,12 +73,12 @@
 //  system fixed font so we always get a real monospace — never a proportional
 //  fallback that would make spaces look narrow.
 // ─────────────────────────────────────────────────────────────────────────────
-static QFont buildEditorFont(int pointSize)
+static QFont buildEditorFont(int iPointSize)
 {
     // Cache per point-size — the preferred-family scan is identical every call.
     static QHash<int, QFont> cache;
-    if (cache.contains(pointSize)) {
-        return cache.value(pointSize);
+    if (cache.contains(iPointSize)) {
+        return cache.value(iPointSize);
     }
 
     static const QStringList preferred = {
@@ -89,23 +89,23 @@ static QFont buildEditorFont(int pointSize)
     QFont f;
     for (const QString &fam : preferred) {
         if (QFontDatabase::hasFamily(fam)) {
-            f = QFont(fam, pointSize);
+            f = QFont(fam, iPointSize);
             f.setFixedPitch(true);
             f.setStyleHint(QFont::Monospace);
-            cache.insert(pointSize, f);
+            cache.insert(iPointSize, f);
             return f;
         }
     }
     f = QFontDatabase::systemFont(QFontDatabase::FixedFont);
-    f.setPointSize(pointSize);
-    cache.insert(pointSize, f);
+    f.setPointSize(iPointSize);
+    cache.insert(iPointSize, f);
     return f;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Construction
 // ─────────────────────────────────────────────────────────────────────────────
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget *pParent)
     : QMainWindow(parent)
     , m_process(new QProcess(this))
 {
@@ -735,20 +735,20 @@ ScriptViewer *MainWindow::runningViewer() const
     return qobject_cast<ScriptViewer *>(m_tabWidget->widget(m_runningTab));
 }
 
-void MainWindow::loadIntoTab(int index, const QString &filePath)
+void MainWindow::loadIntoTab(int iIndex, const QString &filePath)
 {
-    if (index < 0 || index >= m_tabWidget->count()) {
+    if (iIndex < 0 || iIndex >= m_tabWidget->count()) {
         return;
     }
-    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(index));
+    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(iIndex));
     if (!viewer) {
         return;
     }
 
     viewer->loadScript(filePath);
     const QString name = QFileInfo(filePath).fileName();
-    m_tabWidget->setTabText(index, name);
-    m_tabWidget->setTabToolTip(index, filePath);
+    m_tabWidget->setTabText(iIndex, name);
+    m_tabWidget->setTabToolTip(iIndex, filePath);
 
     QSettings cfg;
     // Persist all tab paths
@@ -780,12 +780,12 @@ void MainWindow::loadIntoCurrentTab(const QString &filePath)
     syncPathEdit(m_tabWidget->currentIndex());
 }
 
-void MainWindow::syncPathEdit(int tabIndex)
+void MainWindow::syncPathEdit(int iTabIndex)
 {
-    if (tabIndex < 0 || tabIndex >= m_tabWidget->count()) {
+    if (iTabIndex < 0 || iTabIndex >= m_tabWidget->count()) {
         return;
     }
-    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(tabIndex));
+    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(iTabIndex));
     if (!viewer) {
         return;
     }
@@ -813,16 +813,16 @@ void MainWindow::syncPathEdit(int tabIndex)
 // ─────────────────────────────────────────────────────────────────────────────
 //  Tab slots
 // ─────────────────────────────────────────────────────────────────────────────
-void MainWindow::onTabCloseRequested(int index)
+void MainWindow::onTabCloseRequested(int iIndex)
 {
     if (m_tabWidget->count() <= 1) {
         return; // always keep at least one tab
     }
 
     // Check for unsaved changes
-    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(index));
+    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(iIndex));
     if (viewer && viewer->isModified()) {
-        QString name = m_tabWidget->tabText(index);
+        QString name = m_tabWidget->tabText(iIndex);
         if (name.startsWith("● ")) {
             name = name.mid(2); // strip "● " only if present
         }
@@ -843,7 +843,7 @@ void MainWindow::onTabCloseRequested(int index)
         }
     }
 
-    if (index == m_runningTab) {
+    if (iIndex == m_runningTab) {
         const auto ans = QMessageBox::question(
             this, "Script running",
             "This tab's script is currently running.\nClose the tab anyway?",
@@ -856,7 +856,7 @@ void MainWindow::onTabCloseRequested(int index)
         // onProcessFinished will fire asynchronously and clean up m_runningTab
     }
 
-    m_tabWidget->removeTab(index);
+    m_tabWidget->removeTab(iIndex);
     // QTabWidget::removeTab() only detaches the page widget from the tab bar —
     // per Qt docs it does NOT delete it. Without this, every closed tab (and
     // its CodeEditor/QTextDocument/highlighter) would leak for the life of
@@ -866,17 +866,17 @@ void MainWindow::onTabCloseRequested(int index)
         viewer->deleteLater();
     }
 
-    // Adjust running tab index if needed
-    if (m_runningTab > index) {
+    // Adjust running tab iIndex if needed
+    if (m_runningTab > iIndex) {
         --m_runningTab;
     }
 
     syncPathEdit(m_tabWidget->currentIndex());
 }
 
-void MainWindow::onCurrentTabChanged(int index)
+void MainWindow::onCurrentTabChanged(int iIndex)
 {
-    syncPathEdit(index);
+    syncPathEdit(iIndex);
 
     // Highlight the running tab label so the user can see which one is active
     for (int i = 0; i < m_tabWidget->count(); ++i) {
@@ -1304,7 +1304,7 @@ void MainWindow::onProcessError()
     m_w3->endBatch();
 }
 
-void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
+void MainWindow::onProcessFinished(int iExitCode, QProcess::ExitStatus status)
 {
     // Flush any remaining buffered stdout (last line without trailing '\n')
     if (!m_lineBuf.isEmpty()) {
@@ -1378,7 +1378,7 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
                                  ? "stopped by user"
                              : (status == QProcess::CrashExit)
                                  ? "interpreter crashed"
-                                 : QString("exit code %1").arg(exitCode);
+                                 : QString("exit code %1").arg(iExitCode);
     m_w3->appendStatus(QString("Interpreter finished — %1").arg(reason));
     setStatus(QString("Finished (%1)").arg(reason));
 
@@ -1388,7 +1388,7 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
         if (savedRunningTab >= 0 && savedRunningTab < m_tabWidget->count()) {
             m_tabWidget->tabBar()->setTabTextColor(savedRunningTab, QColor("#c8d0e0"));
         }
-    } else if (exitCode != 0 || status == QProcess::CrashExit) {
+    } else if (iExitCode != 0 || status == QProcess::CrashExit) {
         m_led->setState(StatusLed::State::Error);
         m_ledLabel->setText("ERROR");
         // Tint the finished tab red briefly
@@ -1659,11 +1659,11 @@ void MainWindow::dispatchLine(const QString &raw)
 // Reads a fixed-size, NUL-padded char buffer (as written by commdump_details()
 // in ICommDumpProtocol.hpp) into a QString, stopping at the first NUL rather
 // than assuming it's fully populated.
-static QString fixedCStr(const char *buf, size_t maxLen)
+static QString fixedCStr(const char *pstrBuf, size_t maxLen)
 {
-    const void *nul  = std::memchr(buf, '\0', maxLen);
-    const size_t len = nul ? (static_cast<const char *>(nul) - buf) : maxLen;
-    return QString::fromUtf8(buf, static_cast<int>(len));
+    const void *nul  = std::memchr(pstrBuf, '\0', maxLen);
+    const size_t len = nul ? (static_cast<const char *>(nul) - pstrBuf) : maxLen;
+    return QString::fromUtf8(pstrBuf, static_cast<int>(len));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1767,9 +1767,9 @@ void MainWindow::dispatchCommDump(const QString &base64Payload)
 //  After this call the main-script bar stays fixed on line N while the
 //  interpreter sends EXEC_COMM:M messages that advance the bar inside m_w2.
 // ─────────────────────────────────────────────────────────────────────────────
-bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
+bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *pViewer, int iLineNo)
 {
-    const QString line = viewer->lineText(lineNo);
+    const QString line = pViewer->lineText(iLineNo);
     if (line.isEmpty()) {
         return false;
     }
@@ -1793,8 +1793,8 @@ bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
     // scriptCmd: group 1 = filename
     // scriptArg: group 1 = command name, group 2 = filename
     const QString scriptName = m.captured(m.regularExpression() == scriptCmd ? 1 : 2);
-    const QString baseDir    = !viewer->currentFile().isEmpty()
-                                   ? QFileInfo(viewer->currentFile()).absolutePath()
+    const QString baseDir    = !pViewer->currentFile().isEmpty()
+                                   ? QFileInfo(pViewer->currentFile()).absolutePath()
                                    : QDir::currentPath();
     const QString resolved   = QDir(baseDir).filePath(scriptName);
 
@@ -1859,7 +1859,7 @@ QString MainWindow::resolveCommScriptPath(const QString &rawPath) const
 // confusing, and there's already a perfectly good "MAIN" tab / file browser
 // for editing comm scripts at rest. This also means no save/modified/close-
 // confirmation plumbing is needed per tab, unlike m_w2.
-void MainWindow::loadCommTabForThread(int tid, const QString &rawPath)
+void MainWindow::loadCommTabForThread(int iTid, const QString &rawPath)
 {
     if (!m_commTabs) {
         return;
@@ -1870,7 +1870,7 @@ void MainWindow::loadCommTabForThread(int tid, const QString &rawPath)
                                  ? resolved
                                  : rawPath;
 
-    auto it                = m_commThreadTabs.find(tid);
+    auto it                = m_commThreadTabs.find(iTid);
     if (it == m_commThreadTabs.end()) {
         auto *v = new ScriptViewer(m_commTabs);
         v->enableCommHighlighting(true);
@@ -1878,8 +1878,8 @@ void MainWindow::loadCommTabForThread(int tid, const QString &rawPath)
 
         CommThreadTab tab;
         tab.viewer = v;
-        m_commThreadTabs.insert(tid, tab);
-        it            = m_commThreadTabs.find(tid);
+        m_commThreadTabs.insert(iTid, tab);
+        it            = m_commThreadTabs.find(iTid);
 
         const int idx = m_commTabs->addTab(v, QString());
         m_commTabs->setTabToolTip(idx, loadPath);
@@ -1890,31 +1890,31 @@ void MainWindow::loadCommTabForThread(int tid, const QString &rawPath)
     const QString loadCanon    = QFileInfo(loadPath).canonicalFilePath();
     if (currentCanon != loadCanon || currentCanon.isEmpty()) {
         v->loadScript(loadPath);
-        it->baseLabel = QString("%1 #%2").arg(QFileInfo(loadPath).fileName()).arg(tid);
+        it->baseLabel = QString("%1 #%2").arg(QFileInfo(loadPath).fileName()).arg(iTid);
         const int idx = m_commTabs->indexOf(v);
         if (idx >= 0) {
             m_commTabs->setTabToolTip(idx, loadPath);
         }
     }
-    updateCommTabLabel(tid, /*live=*/true);
+    updateCommTabLabel(iTid, /*live=*/true);
 }
 
 // GUI:CLEAR_COMM_T:<tid> — thread finished. Drops the "●" live marker; the
 // tab itself is left open (per user preference) until closed via its ×.
-void MainWindow::markCommTabFinished(int tid)
+void MainWindow::markCommTabFinished(int iTid)
 {
-    updateCommTabLabel(tid, /*live=*/false);
+    updateCommTabLabel(iTid, /*live=*/false);
 }
 
 // Redraws tab <tid>'s label/colour to reflect whether its thread is
 // currently running — same "● " prefix + colour convention already used
 // for the modified-state marker on m_tabWidget's script tabs.
-void MainWindow::updateCommTabLabel(int tid, bool live)
+void MainWindow::updateCommTabLabel(int iTid, bool bLive)
 {
     if (!m_commTabs) {
         return;
     }
-    const auto it = m_commThreadTabs.constFind(tid);
+    const auto it = m_commThreadTabs.constFind(iTid);
     if (it == m_commThreadTabs.constEnd()) {
         return;
     }
@@ -1924,27 +1924,27 @@ void MainWindow::updateCommTabLabel(int tid, bool live)
         return;
     }
 
-    m_commTabs->setTabText(idx, (live ? QStringLiteral("\u25CF ") : QString()) + it->baseLabel);
-    m_commTabs->tabBar()->setTabTextColor(idx, live ? QColor("#50fa7b") : QColor("#c8d0e0"));
+    m_commTabs->setTabText(idx, (bLive ? QStringLiteral("\u25CF ") : QString()) + it->baseLabel);
+    m_commTabs->tabBar()->setTabTextColor(idx, bLive ? QColor("#50fa7b") : QColor("#c8d0e0"));
 }
 
 // User clicked a per-thread tab's × button. The "MAIN" tab (index 0) has no
 // close button (removed at construction), so index is always a dynamic
 // per-thread tab here — but guard defensively anyway.
-void MainWindow::onCommTabCloseRequested(int index)
+void MainWindow::onCommTabCloseRequested(int iIndex)
 {
-    if (!m_commTabs || index <= 0) {
+    if (!m_commTabs || iIndex <= 0) {
         return;
     }
 
-    QWidget *w = m_commTabs->widget(index);
+    QWidget *w = m_commTabs->widget(iIndex);
     for (auto it = m_commThreadTabs.begin(); it != m_commThreadTabs.end(); ++it) {
         if (it->viewer == w) {
             m_commThreadTabs.erase(it);
             break;
         }
     }
-    m_commTabs->removeTab(index);
+    m_commTabs->removeTab(iIndex);
     w->deleteLater();
 }
 
@@ -1973,9 +1973,9 @@ void MainWindow::closeAllCommThreadTabs()
 // Returns the canonical path of the comm script invoked on the given main-script
 // line when that line is a threaded (&) invocation, or an empty string otherwise.
 // Used by THREAD_START/DONE to populate m_threadedCommScripts.
-QString MainWindow::threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) const
+QString MainWindow::threadedCommScriptForLine(ScriptViewer *pViewer, int iLineNo) const
 {
-    const QString line = viewer->lineText(lineNo);
+    const QString line = pViewer->lineText(iLineNo);
     if (line.isEmpty()) {
         return {};
     }
@@ -2000,8 +2000,8 @@ QString MainWindow::threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) 
     }
 
     const QString scriptName = m.captured(m.regularExpression() == scriptCmd ? 1 : 2);
-    const QString baseDir    = !viewer->currentFile().isEmpty()
-                                   ? QFileInfo(viewer->currentFile()).absolutePath()
+    const QString baseDir    = !pViewer->currentFile().isEmpty()
+                                   ? QFileInfo(pViewer->currentFile()).absolutePath()
                                    : QDir::currentPath();
     const QString resolved   = QDir(baseDir).filePath(scriptName);
     return QFileInfo(resolved).canonicalFilePath(); // empty if file does not exist
@@ -2188,16 +2188,16 @@ void MainWindow::onReloadAll()
     setStatus(QString("Reloaded %1 file(s)").arg(viewers.size()));
 }
 
-void MainWindow::setRunning(bool on)
+void MainWindow::setRunning(bool bOn)
 {
-    m_running = on;
-    m_startStopBtn->setText(on ? "■  STOP" : "▶  RUN");
-    m_startStopBtn->setProperty("running", on);
+    m_running = bOn;
+    m_startStopBtn->setText(bOn ? "■  STOP" : "▶  RUN");
+    m_startStopBtn->setProperty("running", bOn);
     m_startStopBtn->style()->unpolish(m_startStopBtn);
     m_startStopBtn->style()->polish(m_startStopBtn);
 
     // Disable reset button while running; re-enable after if errors are present
-    if (on) {
+    if (bOn) {
         m_resetBtn->setEnabled(false);
     } else {
         bool bAnyErrors = m_w2->hasErrorLines();
@@ -2212,7 +2212,7 @@ void MainWindow::setRunning(bool on)
         m_resetBtn->setEnabled(bAnyErrors);
     }
 
-    if (on) {
+    if (bOn) {
         m_led->setState(StatusLed::State::Running);
         m_ledLabel->setText("RUNNING");
     }
@@ -2227,10 +2227,10 @@ void MainWindow::setStatus(const QString &msg)
 // ─────────────────────────────────────────────────────────────────────────────
 //  Font scaling
 // ─────────────────────────────────────────────────────────────────────────────
-void MainWindow::adjustFontSize(int delta)
+void MainWindow::adjustFontSize(int iDelta)
 {
-    m_fontSize = (delta == 0) ? k_fontDefault
-                              : qBound(k_fontMin, m_fontSize + delta, k_fontMax);
+    m_fontSize = (iDelta == 0) ? k_fontDefault
+                              : qBound(k_fontMin, m_fontSize + iDelta, k_fontMax);
     applyFontSize();
     setStatus(QString("Font size: %1 pt").arg(m_fontSize));
 }
@@ -2257,11 +2257,11 @@ void MainWindow::applyFontSize()
 // ─────────────────────────────────────────────────────────────────────────────
 //  Event filter — INI path edit click-to-open
 // ─────────────────────────────────────────────────────────────────────────────
-bool MainWindow::eventFilter(QObject *obj, QEvent *ev)
+bool MainWindow::eventFilter(QObject *pObj, QEvent *pEv)
 {
-    if (ev->type() == QEvent::MouseButtonPress &&
-        (obj == m_iniPathEdit || obj == m_scriptPathEdit)) {
-        const QString path = static_cast<QLineEdit *>(obj)->text().trimmed();
+    if (pEv->type() == QEvent::MouseButtonPress &&
+        (pObj == m_iniPathEdit || pObj == m_scriptPathEdit)) {
+        const QString path = static_cast<QLineEdit *>(pObj)->text().trimmed();
         if (!path.isEmpty() && QFileInfo::exists(path)) {
             // Scan all tabs for an already-loaded copy
             for (int i = 0; i < m_tabWidget->count(); ++i) {
@@ -2275,34 +2275,34 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *ev)
             addTab(path);
         }
     }
-    return QMainWindow::eventFilter(obj, ev);
+    return QMainWindow::eventFilter(pObj, pEv);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Drag and drop
 // ─────────────────────────────────────────────────────────────────────────────
-void MainWindow::dragEnterEvent(QDragEnterEvent *ev)
+void MainWindow::dragEnterEvent(QDragEnterEvent *pEv)
 {
-    if (ev->mimeData()->hasUrls()) {
-        for (const QUrl &url : ev->mimeData()->urls()) {
+    if (pEv->mimeData()->hasUrls()) {
+        for (const QUrl &url : pEv->mimeData()->urls()) {
             if (url.isLocalFile()) {
-                ev->acceptProposedAction();
+                pEv->acceptProposedAction();
                 return;
             }
         }
     }
-    ev->ignore();
+    pEv->ignore();
 }
 
-void MainWindow::dropEvent(QDropEvent *ev)
+void MainWindow::dropEvent(QDropEvent *pEv)
 {
-    if (!ev->mimeData()->hasUrls()) {
-        ev->ignore();
+    if (!pEv->mimeData()->hasUrls()) {
+        pEv->ignore();
         return;
     }
 
     bool accepted = false;
-    for (const QUrl &url : ev->mimeData()->urls()) {
+    for (const QUrl &url : pEv->mimeData()->urls()) {
         if (!url.isLocalFile()) {
             continue;
         }
@@ -2315,16 +2315,16 @@ void MainWindow::dropEvent(QDropEvent *ev)
         accepted = true;
     }
     if (accepted) {
-        ev->acceptProposedAction();
+        pEv->acceptProposedAction();
     } else {
-        ev->ignore();
+        pEv->ignore();
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Close event
 // ─────────────────────────────────────────────────────────────────────────────
-void MainWindow::closeEvent(QCloseEvent *ev)
+void MainWindow::closeEvent(QCloseEvent *pEv)
 {
     if (m_running) {
         const auto ans = QMessageBox::question(
@@ -2332,7 +2332,7 @@ void MainWindow::closeEvent(QCloseEvent *ev)
             "The interpreter is still running.\nTerminate it and quit?",
             QMessageBox::Yes | QMessageBox::Cancel);
         if (ans != QMessageBox::Yes) {
-            ev->ignore();
+            pEv->ignore();
             return;
         }
         terminateProcess();
@@ -2352,11 +2352,11 @@ void MainWindow::closeEvent(QCloseEvent *ev)
         dlg.exec();
         const auto *clicked = dlg.clickedButton();
         if (clicked == saveBtn && !m_w2->save()) {
-            ev->ignore();
+            pEv->ignore();
             return;
         }
         if (clicked != saveBtn && clicked != discardBtn) {
-            ev->ignore();
+            pEv->ignore();
             return;
         }
     }
@@ -2373,7 +2373,7 @@ void MainWindow::closeEvent(QCloseEvent *ev)
 
             const auto ans = msgBox.exec();
             if (ans == QMessageBox::Cancel) {
-                ev->ignore();
+                pEv->ignore();
                 return;
             }
             if (ans == QMessageBox::SaveAll) {
@@ -2398,7 +2398,7 @@ void MainWindow::closeEvent(QCloseEvent *ev)
     cfg.setValue("session/activeTab", m_tabWidget->currentIndex());
     cfg.setValue("session/fontSize", m_fontSize);
 
-    ev->accept();
+    pEv->accept();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2453,15 +2453,15 @@ void MainWindow::saveAllTabs()
 //    ● filename   → modified (amber)
 //    filename     → clean    (normal colour)
 // ─────────────────────────────────────────────────────────────────────────────
-void MainWindow::updateTabModifiedState(ScriptViewer *viewer)
+void MainWindow::updateTabModifiedState(ScriptViewer *pViewer)
 {
-    // Find which tab owns this viewer
+    // Find which tab owns this pViewer
     for (int i = 0; i < m_tabWidget->count(); ++i) {
-        if (m_tabWidget->widget(i) != viewer) {
+        if (m_tabWidget->widget(i) != pViewer) {
             continue;
         }
 
-        const bool mod = viewer->isModified();
+        const bool mod = pViewer->isModified();
 
         // Build clean label (strip any existing prefix)
         QString label  = m_tabWidget->tabText(i);

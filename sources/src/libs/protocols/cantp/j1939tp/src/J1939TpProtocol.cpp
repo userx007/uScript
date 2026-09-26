@@ -20,14 +20,14 @@ namespace {
     // commonly-used 50ms floor when the caller hasn't tuned timeouts).
     constexpr uint32_t kBamInterPacketGapMs = 50;
 
-    inline void pack_size_pgn(std::array<uint8_t, kFrameLen> &f, uint8_t ctrl,
-                              size_t totalSize, uint8_t totalPackets, uint8_t byte4)
+    inline void pack_size_pgn(std::array<uint8_t, kFrameLen> &f, uint8_t u8Ctrl,
+                              size_t totalSize, uint8_t u8TotalPackets, uint8_t u8Byte4)
     {
-        f[0] = ctrl;
+        f[0] = u8Ctrl;
         f[1] = static_cast<uint8_t>(totalSize & 0xFF);
         f[2] = static_cast<uint8_t>((totalSize >> 8) & 0xFF);
-        f[3] = totalPackets;
-        f[4] = byte4;
+        f[3] = u8TotalPackets;
+        f[4] = u8Byte4;
         // Bytes 5-7 (PGN of the data message) are intentionally left 0: the
         // caller distinguishes streams via txId/rxId, not the PGN payload
         // field, so this implementation does not require the data PGN to
@@ -67,7 +67,7 @@ ICommDriver::WriteResult J1939TpProtocol::send(
 }
 
 ICommDriver::WriteResult J1939TpProtocol::send_bam(
-    const ICommDriver &driver, uint32_t timeout,
+    const ICommDriver &driver, uint32_t u32Timeout,
     std::span<const uint8_t> data, std::string_view txId) const
 {
     ICommDriver::WriteResult result;
@@ -77,7 +77,7 @@ ICommDriver::WriteResult J1939TpProtocol::send_bam(
     std::array<uint8_t, kFrameLen> bam{};
     pack_size_pgn(bam, kCtrlBam, data.size(), totalPackets, 0xFF);
 
-    auto wrBam = driver.tout_write(timeout, std::span<const uint8_t>(bam.data(), kFrameLen), txId);
+    auto wrBam = driver.tout_write(u32Timeout, std::span<const uint8_t>(bam.data(), kFrameLen), txId);
     if (wrBam.status != ICommDriver::Status::SUCCESS) {
         result.status = wrBam.status;
         return result;
@@ -92,7 +92,7 @@ ICommDriver::WriteResult J1939TpProtocol::send_bam(
                   data.begin() + static_cast<long>(sent + chunk), dt.begin() + 1);
         std::fill(dt.begin() + 1 + static_cast<long>(chunk), dt.end(), 0xFF);
 
-        auto wrDt = driver.tout_write(timeout, std::span<const uint8_t>(dt.data(), kFrameLen), txId);
+        auto wrDt = driver.tout_write(u32Timeout, std::span<const uint8_t>(dt.data(), kFrameLen), txId);
         if (wrDt.status != ICommDriver::Status::SUCCESS) {
             result.status = wrDt.status;
             return result;
@@ -110,7 +110,7 @@ ICommDriver::WriteResult J1939TpProtocol::send_bam(
 }
 
 ICommDriver::WriteResult J1939TpProtocol::send_rts_cts(
-    const ICommDriver &driver, uint32_t timeout,
+    const ICommDriver &driver, uint32_t u32Timeout,
     std::span<const uint8_t> data, std::string_view txId, std::string_view rxId) const
 {
     ICommDriver::WriteResult result;
@@ -120,7 +120,7 @@ ICommDriver::WriteResult J1939TpProtocol::send_rts_cts(
     std::array<uint8_t, kFrameLen> rts{};
     pack_size_pgn(rts, kCtrlRts, data.size(), totalPackets, m_cfg.j1939MaxPackets);
 
-    auto wrRts = driver.tout_write(timeout, std::span<const uint8_t>(rts.data(), kFrameLen), txId);
+    auto wrRts = driver.tout_write(u32Timeout, std::span<const uint8_t>(rts.data(), kFrameLen), txId);
     if (wrRts.status != ICommDriver::Status::SUCCESS) {
         result.status = wrRts.status;
         return result;
@@ -178,7 +178,7 @@ ICommDriver::WriteResult J1939TpProtocol::send_rts_cts(
                       data.begin() + static_cast<long>(sent + chunk), dt.begin() + 1);
             std::fill(dt.begin() + 1 + static_cast<long>(chunk), dt.end(), 0xFF);
 
-            auto wrDt = driver.tout_write(timeout, std::span<const uint8_t>(dt.data(), kFrameLen), txId);
+            auto wrDt = driver.tout_write(u32Timeout, std::span<const uint8_t>(dt.data(), kFrameLen), txId);
             if (wrDt.status != ICommDriver::Status::SUCCESS) {
                 result.status = wrDt.status;
                 return result;
@@ -302,7 +302,7 @@ ICommDriver::ReadResult J1939TpProtocol::receive_bam(
 }
 
 ICommDriver::ReadResult J1939TpProtocol::receive_rts_cts(
-    const ICommDriver &driver, uint32_t timeout,
+    const ICommDriver &driver, uint32_t u32Timeout,
     std::span<uint8_t> buffer, std::string_view rxId, std::string_view txId, const uint8_t firstFrame[8]) const
 {
     ICommDriver::ReadResult result;
@@ -320,7 +320,7 @@ ICommDriver::ReadResult J1939TpProtocol::receive_rts_cts(
         abort[0] = kCtrlAbort;
         abort[1] = 0x02; // "insufficient buffer" — see SAE J1939-21 abort reasons
         std::fill(abort.begin() + 2, abort.end(), 0xFF);
-        driver.tout_write(timeout, std::span<const uint8_t>(abort.data(), kFrameLen), txId);
+        driver.tout_write(u32Timeout, std::span<const uint8_t>(abort.data(), kFrameLen), txId);
         result.status = ICommDriver::Status::BUFFER_OVERFLOW;
         return result;
     }
@@ -344,7 +344,7 @@ ICommDriver::ReadResult J1939TpProtocol::receive_rts_cts(
         cts[4] = 0xFF;
         cts[5] = cts[6] = cts[7] = 0xFF;
 
-        auto wrCts               = driver.tout_write(timeout, std::span<const uint8_t>(cts.data(), kFrameLen), txId);
+        auto wrCts               = driver.tout_write(u32Timeout, std::span<const uint8_t>(cts.data(), kFrameLen), txId);
         if (wrCts.status != ICommDriver::Status::SUCCESS) {
             result.status = wrCts.status;
             return result;
@@ -374,7 +374,7 @@ ICommDriver::ReadResult J1939TpProtocol::receive_rts_cts(
     // ---- Send End-Of-Message Ack. ----
     std::array<uint8_t, kFrameLen> eom{};
     pack_size_pgn(eom, kCtrlEndOfMsg, totalLen, totalPackets, 0xFF);
-    driver.tout_write(timeout, std::span<const uint8_t>(eom.data(), kFrameLen), txId);
+    driver.tout_write(u32Timeout, std::span<const uint8_t>(eom.data(), kFrameLen), txId);
 
     result.status     = ICommDriver::Status::SUCCESS;
     result.bytes_read = received;

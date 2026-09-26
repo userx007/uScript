@@ -115,21 +115,21 @@ class CP2112Base {
         // ── HID primitives — implemented in the platform .cpp files ─────────
 
         /** Send a 64-byte Feature report (buf[0] = report ID) */
-        Status hid_set_feature(const uint8_t *buf, size_t len) const;
+        Status hid_set_feature(const uint8_t *pu8Buf, size_t len) const;
 
         /** Receive a 64-byte Feature report (buf[0] = desired report ID on entry) */
-        Status hid_get_feature(uint8_t *buf, size_t len) const;
+        Status hid_get_feature(uint8_t *pu8Buf, size_t len) const;
 
         /** Write a 64-byte Interrupt OUT report (buf[0] = report ID) */
-        Status hid_interrupt_write(const uint8_t *buf, size_t len) const;
+        Status hid_interrupt_write(const uint8_t *pu8Buf, size_t len) const;
 
         /**
          * Read one Interrupt IN report with timeout
          * @param timeoutMs   ms to wait before returning READ_TIMEOUT
          * @param bytesRead   filled with the number of bytes returned by the OS
          */
-        Status hid_interrupt_read(uint8_t *buf, size_t len,
-                                  uint32_t timeoutMs, size_t &bytesRead,
+        Status hid_interrupt_read(uint8_t *pu8Buf, size_t len,
+                                  uint32_t u32TimeoutMs, size_t &bytesRead,
                                   std::stop_token stop_tok = {}) const;
 };
 

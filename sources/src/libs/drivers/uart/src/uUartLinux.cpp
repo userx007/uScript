@@ -35,7 +35,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 UART::Status UART::open(const std::string &strDevice, uint32_t u32Speed,
-                        Parity parity, uint8_t u8DataBits, uint8_t u8StopBits)
+                        Parity eParity, uint8_t u8DataBits, uint8_t u8StopBits)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     if (strDevice.empty() || u32Speed == 0) {
@@ -65,7 +65,7 @@ UART::Status UART::open(const std::string &strDevice, uint32_t u32Speed,
         return Status::PORT_ACCESS;
     }
 
-    UART::Status result = setup(u32Speed, parity, u8DataBits, u8StopBits);
+    UART::Status result = setup(u32Speed, eParity, u8DataBits, u8StopBits);
     if (result != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to configure ["); LOG_STRING(strDevice.c_str());
@@ -76,7 +76,7 @@ UART::Status UART::open(const std::string &strDevice, uint32_t u32Speed,
         return Status::PORT_ACCESS;
     }
 
-    m_eParity    = parity;
+    m_eParity    = eParity;
     m_u8DataBits = u8DataBits;
     m_u8StopBits = u8StopBits;
 
@@ -210,7 +210,7 @@ UART::Status UART::timeout_write(uint32_t /*u32WriteTimeout*/, std::span<const u
     return Status::SUCCESS;
 }
 
-UART::Status UART::setup(uint32_t u32Speed, Parity parity, uint8_t u8DataBits, uint8_t u8StopBits) const
+UART::Status UART::setup(uint32_t u32Speed, Parity eParity, uint8_t u8DataBits, uint8_t u8StopBits) const
 {
     struct termios settings;
     if (tcgetattr(m_iHandle, &settings) != 0) {
@@ -241,12 +241,12 @@ UART::Status UART::setup(uint32_t u32Speed, Parity parity, uint8_t u8DataBits, u
     }
 
     // Parity — PARENB/PARODD control the hardware's transmit-side generation
-    // and receive-side checking of the parity bit; see the Parity enum's doc
+    // and receive-side checking of the eParity bit; see the Parity enum's doc
     // comment (uUart.hpp) for why this driver leaves INPCK off regardless.
     settings.c_cflag &= ~(PARENB | PARODD);
-    if (parity == Parity::Even) {
+    if (eParity == Parity::Even) {
         settings.c_cflag |= PARENB;
-    } else if (parity == Parity::Odd) {
+    } else if (eParity == Parity::Odd) {
         settings.c_cflag |= PARENB | PARODD;
     }
 
@@ -269,7 +269,7 @@ UART::Status UART::setup(uint32_t u32Speed, Parity parity, uint8_t u8DataBits, u
 
     // POSIX only requires tcsetattr() to apply *some* of the requested
     // changes to report success (see `man tcsetattr`) — some backends
-    // (notably Linux pseudo-terminals, which have no real parity hardware
+    // (notably Linux pseudo-terminals, which have no real eParity hardware
     // to emulate) silently drop bits like PARENB while still returning 0.
     // Read the settings back and warn (rather than fail open() outright,
     // since a caller on a genuinely constrained device might still want
@@ -283,7 +283,7 @@ UART::Status UART::setup(uint32_t u32Speed, Parity parity, uint8_t u8DataBits, u
                       LOG_STRING("Port accepted tcsetattr() but framing did not fully apply — requested cflag:");
                       LOG_UINT32(static_cast<uint32_t>(settings.c_cflag & (PARENB | PARODD | CSIZE | CSTOPB)));
                       LOG_STRING("actual:"); LOG_UINT32(static_cast<uint32_t>(verify.c_cflag & (PARENB | PARODD | CSIZE | CSTOPB)));
-                      LOG_STRING("(a pseudo-terminal cannot emulate parity — this is expected on a PTY, not on real serial hardware)"));
+                      LOG_STRING("(a pseudo-terminal cannot emulate eParity — this is expected on a PTY, not on real serial hardware)"));
         }
     }
 

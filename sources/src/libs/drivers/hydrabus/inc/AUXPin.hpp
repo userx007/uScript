@@ -32,7 +32,7 @@ namespace HydraHAL {
              * @param number   Pin index 0–3.
              * @param hydrabus Shared Hydrabus instance (must outlive this object).
              */
-            AUXPin(int number, std::shared_ptr<Hydrabus> hydrabus);
+            AUXPin(int iNumber, std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // Value
@@ -49,7 +49,7 @@ namespace HydraHAL {
              * @param value 0 or 1.
              * @return true on success.
              */
-            bool set_value(int value);
+            bool set_value(int iValue);
 
             /** @brief Toggle the current output level. */
             bool toggle();
@@ -67,7 +67,7 @@ namespace HydraHAL {
              * @brief Set the pin direction.
              * @return true on success.
              */
-            bool set_direction(Direction dir);
+            bool set_direction(Direction eDir);
 
             // -------------------------------------------------------------------------
             // Pull-up
@@ -84,7 +84,7 @@ namespace HydraHAL {
              * @param enable 1 = enable, 0 = disable.
              * @return true on success.
              */
-            bool set_pullup(int enable);
+            bool set_pullup(int iEnable);
 
         private:
             /** @brief Read raw AUX config byte from device (pullup | direction). */

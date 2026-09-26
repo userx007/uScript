@@ -69,9 +69,9 @@ bool FT4232Plugin::m_handle_spi_help(const std::string &, std::stop_token /*st*/
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_spi_open(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_spi_open(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [clock=Hz] [mode=0-3] [bitorder=msb|lsb]"));
         LOG_PRINT(LOG_EMPTY,
@@ -81,7 +81,7 @@ bool FT4232Plugin::m_handle_spi_open(const std::string &args, std::stop_token /*
 
     // Parse optional key=value pairs
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -189,9 +189,9 @@ bool FT4232Plugin::m_handle_spi_close(const std::string &, std::stop_token /*st*
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_spi_cfg(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_spi_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("SPI pending config:"));
         LOG_PRINT(LOG_EMPTY,
@@ -212,7 +212,7 @@ bool FT4232Plugin::m_handle_spi_cfg(const std::string &args, std::stop_token /*s
     // Simpler: just parse the pairs directly here.
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -271,9 +271,9 @@ bool FT4232Plugin::m_handle_spi_cfg(const std::string &args, std::stop_token /*s
 //                       CS                                      //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_spi_cs(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_spi_cs(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cs [en|dis]"));
         return true;
     }
@@ -292,9 +292,9 @@ bool FT4232Plugin::m_handle_spi_cs(const std::string &args, std::stop_token /*st
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_spi_write(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_handle_spi_write(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex bytes, MOSI only)"));
         return true;
     }
@@ -305,7 +305,7 @@ bool FT4232Plugin::m_handle_spi_write(const std::string &args, std::stop_token s
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data) || data.empty()) {
+    if (!hexutils::stringUnhexlify(strArgs, data) || data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected at least 1 hex byte"));
         return false;
     }
@@ -325,9 +325,9 @@ bool FT4232Plugin::m_handle_spi_write(const std::string &args, std::stop_token s
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_spi_read(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_handle_spi_read(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (read N bytes, clocks 0x00 on MOSI)"));
         return true;
@@ -339,7 +339,7 @@ bool FT4232Plugin::m_handle_spi_read(const std::string &args, std::stop_token st
     }
 
     size_t n = 0;
-    if (!numeric::str2sizet(args, n) || n == 0) {
+    if (!numeric::str2sizet(strArgs, n) || n == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid byte count"));
         return false;
     }
@@ -417,16 +417,16 @@ bool FT4232Plugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
     return true;
 }
 
-bool FT4232Plugin::m_handle_spi_wrrd(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_handle_spi_wrrd(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_data<FT4232Plugin>(
-        this, args, &FT4232Plugin::m_spi_wrrd_cb, st);
+        this, strArgs, &FT4232Plugin::m_spi_wrrd_cb, st);
 }
 
-bool FT4232Plugin::m_handle_spi_wrrdf(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_handle_spi_wrrdf(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_file<FT4232Plugin>(
-        this, args, &FT4232Plugin::m_spi_wrrd_cb,
+        this, strArgs, &FT4232Plugin::m_spi_wrrd_cb,
         m_sIniValues.strArtefactsPath, st);
 }
 
@@ -434,9 +434,9 @@ bool FT4232Plugin::m_handle_spi_wrrdf(const std::string &args, std::stop_token s
 //                       XFER (full-duplex)                      //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_spi_xfer(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_handle_spi_xfer(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: xfer AABB..  (full-duplex: TX hex, MISO printed)"));
         return true;
@@ -448,7 +448,7 @@ bool FT4232Plugin::m_handle_spi_xfer(const std::string &args, std::stop_token st
     }
 
     std::vector<uint8_t> txBuf;
-    if (!hexutils::stringUnhexlify(args, txBuf) || txBuf.empty()) {
+    if (!hexutils::stringUnhexlify(strArgs, txBuf) || txBuf.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected at least 1 hex byte"));
         return false;
     }
@@ -471,9 +471,9 @@ bool FT4232Plugin::m_handle_spi_xfer(const std::string &args, std::stop_token st
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_spi_script(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_handle_spi_script(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
@@ -486,7 +486,7 @@ bool FT4232Plugin::m_handle_spi_script(const std::string &args, std::stop_token 
     return generic_execute_script(
         pDrv,
         m_strInstanceName,
-        args,
+        strArgs,
         ini->strArtefactsPath,
         FT_BULK_MAX_BYTES,
         ini->u32ReadTimeout,

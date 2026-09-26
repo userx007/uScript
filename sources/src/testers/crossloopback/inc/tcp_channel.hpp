@@ -41,7 +41,7 @@ namespace loopback {
             };
 
             // Server: listen on bind_addr:port.
-            TcpChannel(ServerTag, std::string bind_addr, int port)
+            TcpChannel(ServerTag, std::string strBind_addr, int iPort)
                 : is_server_(true)
                 , host_(std::move(bind_addr))
                 , port_(port)
@@ -49,7 +49,7 @@ namespace loopback {
             }
 
             // Client: connect out to host:port.
-            TcpChannel(ClientTag, std::string host, int port)
+            TcpChannel(ClientTag, std::string strHost, int iPort)
                 : is_server_(false)
                 , host_(std::move(host))
                 , port_(port)
@@ -78,7 +78,7 @@ namespace loopback {
                 }
             }
 
-            bool readMessage(Message &msg) override
+            bool readMessage(Message &sMsg) override
             {
                 while (!g_stop) {
                     if (client_fd_ < 0 && !acceptOrConnect()) {
@@ -107,22 +107,22 @@ namespace loopback {
                         continue; // server: accept the next client
                     }
 
-                    msg.data.assign(buf, buf + n);
-                    msg.has_can_id = false;
+                    sMsg.data.assign(buf, buf + n);
+                    sMsg.has_can_id = false;
                     return true;
                 }
                 return false;
             }
 
-            bool writeMessage(Message &msg) override
+            bool writeMessage(Message &sMsg) override
             {
                 if (client_fd_ < 0 && !acceptOrConnect()) {
                     return false;
                 }
 
                 size_t sent = 0;
-                while (sent < msg.data.size()) {
-                    ssize_t n = ::send(client_fd_, msg.data.data() + sent, msg.data.size() - sent, MSG_NOSIGNAL);
+                while (sent < sMsg.data.size()) {
+                    ssize_t n = ::send(client_fd_, sMsg.data.data() + sent, sMsg.data.size() - sent, MSG_NOSIGNAL);
                     if (n < 0) {
                         if (errno == EINTR) {
                             continue;
@@ -150,9 +150,9 @@ namespace loopback {
                                   : "tcpip:client:" + host_ + ":" + std::to_string(port_);
             }
 
-            void dump(const char *dir, const Message &msg) const override
+            void dump(const char *pstrDir, const Message &sMsg) const override
             {
-                dump_bytes(name(), dir, msg.data.data(), msg.data.size());
+                dump_bytes(name(), pstrDir, sMsg.data.data(), sMsg.data.size());
             }
 
         private:

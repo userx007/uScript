@@ -40,7 +40,7 @@ namespace loopback {
             // Returns false when no further messages will come (stop requested,
             // fatal error, or - for connection oriented transports - the peer is
             // gone and cannot be replaced).
-            virtual bool readMessage(Message &msg)  = 0;
+            virtual bool readMessage(Message &sMsg)  = 0;
 
             // Send a message out this channel. May mutate msg (the CAN channel
             // truncates oversized payloads to 8 bytes here, logging a warning,
@@ -51,7 +51,7 @@ namespace loopback {
             // more input rather than aborting the whole bridge, since a single
             // failed delivery (e.g. no TCP client connected yet) does not mean
             // the input side is done.
-            virtual bool writeMessage(Message &msg) = 0;
+            virtual bool writeMessage(Message &sMsg) = 0;
 
             // Short human-readable identity used in banners and dump lines, e.g.
             // "uart:/dev/tnt0@115200" or "kvcan:vcan0".
@@ -72,7 +72,7 @@ namespace loopback {
             }
 
             // Print an RX/TX dump line for msg, in this channel's native format.
-            virtual void dump(const char *dir, const Message &msg) const = 0;
+            virtual void dump(const char *pstrDir, const Message &sMsg) const = 0;
     };
 
     using ChannelPtr = std::shared_ptr<IChannel>;

@@ -160,15 +160,15 @@ class FT245Plugin : public PluginInterface {
             return m_bIsEnabled;
         }
 
-        bool setParams(const PluginDataSet *ps)
+        bool setParams(const PluginDataSet *psPs)
         {
-            bool ok = generic_setparams<FT245Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
-            return ok && m_LocalSetParams(ps);
+            bool ok = generic_setparams<FT245Plugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
+            return ok && m_LocalSetParams(psPs);
         }
 
-        void getParams(PluginDataGet *pg) const
+        void getParams(PluginDataGet *psPg) const
         {
-            generic_getparams<FT245Plugin>(this, pg);
+            generic_getparams<FT245Plugin>(this, psPg);
         }
 
         const PluginCommandsMap<FT245Plugin> *getMap() const
@@ -199,10 +199,10 @@ class FT245Plugin : public PluginInterface {
             return true;
         }
 
-        bool doDispatch(const std::string &cmd, const std::string &params,
+        bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
-            return generic_dispatch<FT245Plugin>(this, cmd, params, st);
+            return generic_dispatch<FT245Plugin>(this, strCmd, strParams, st);
         }
 
         void doCleanup();
@@ -224,14 +224,14 @@ class FT245Plugin : public PluginInterface {
 
         // Module-map accessors
 
-        ModuleCommandsMap<FT245Plugin> *getModuleCmdsMap(const std::string &m) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
+        ModuleCommandsMap<FT245Plugin> *getModuleCmdsMap(const std::string &strM) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
 
         /**
          * @brief Not applicable for FT245 (no configurable clock divisor).
          *        Returns false for all modules; included for interface parity.
          */
-        bool setModuleSpeed(const std::string &module, size_t hz) const;
+        bool setModuleSpeed(const std::string &strModule, size_t hz) const;
 
         // INI accessor
 
@@ -304,7 +304,7 @@ class FT245Plugin : public PluginInterface {
         // Top-level command handlers
 
 #define FT245_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_FT245_##a(const std::string &args, std::stop_token st) const;
+    bool m_FT245_##a(const std::string &strArgs, std::stop_token st) const;
         FT245_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef FT245_PLUGIN_CMD_RECORD
 
@@ -348,19 +348,19 @@ class FT245Plugin : public PluginInterface {
         ModuleCommandsMap<FT245Plugin> m_mapCmds_FIFO;
         ModuleCommandsMap<FT245Plugin> m_mapCmds_GPIO;
 
-        bool m_LocalSetParams(const PluginDataSet *ps);
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         // Parse helpers
-        static bool parseVariant(const std::string &s, FT245Base::Variant &out);
-        static bool parseFifoMode(const std::string &s, FT245Base::FifoMode &out);
+        static bool parseVariant(const std::string &strS, FT245Base::Variant &out);
+        static bool parseFifoMode(const std::string &strS, FT245Base::FifoMode &out);
 
-        static bool parseFifoParams(const std::string &args,
-                                    FifoPendingCfg &cfg,
-                                    uint8_t *pDeviceIndexOut = nullptr);
+        static bool parseFifoParams(const std::string &strArgs,
+                                    FifoPendingCfg &sCfg,
+                                    uint8_t *pu8DeviceIndexOut = nullptr);
 
-        static bool parseGpioParams(const std::string &args,
-                                    GpioPendingCfg &cfg,
-                                    uint8_t *pDeviceIndexOut = nullptr);
+        static bool parseGpioParams(const std::string &strArgs,
+                                    GpioPendingCfg &sCfg,
+                                    uint8_t *pu8DeviceIndexOut = nullptr);
 };
 
 #endif // FT245_PLUGIN_HPP

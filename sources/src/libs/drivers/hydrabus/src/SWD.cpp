@@ -39,7 +39,7 @@ namespace HydraHAL {
     // Construction
     // ---------------------------------------------------------------------------
 
-    SWD::SWD(std::shared_ptr<Hydrabus> hydrabus)
+    SWD::SWD(std::shared_ptr<Hydrabus> shpHydrabus)
         : RawWire(std::move(hydrabus))
     {
         // SWD requires 3-Wire, Open-Drain, polarity 0  → config = 0b1010
@@ -51,14 +51,14 @@ namespace HydraHAL {
     // Private helpers
     // ---------------------------------------------------------------------------
 
-    uint8_t SWD::_apply_dp_parity(uint8_t value) const
+    uint8_t SWD::_apply_dp_parity(uint8_t u8Value) const
     {
         // The parity bit lives at bit 5; it covers bits [4:1] of the request
-        uint8_t tmp = (value >> 1) & 0b00001111;
+        uint8_t tmp = (u8Value >> 1) & 0b00001111;
         if ((std::bitset<8>(tmp).count() % 2) == 1) {
-            value = value | (1 << 5);
+            u8Value = u8Value | (1 << 5);
         }
-        return value;
+        return u8Value;
     }
 
     void SWD::_sync(std::stop_token stop_tok)
@@ -83,7 +83,7 @@ namespace HydraHAL {
         _sync(stop_tok);
     }
 
-    void SWD::multidrop_init(uint32_t addr, std::stop_token stop_tok)
+    void SWD::multidrop_init(uint32_t u32Addr, std::stop_token stop_tok)
     {
         bus_init(stop_tok);
 
@@ -104,19 +104,19 @@ namespace HydraHAL {
         _sync(stop_tok);
 
         // Select the target DP
-        write_dp(0x0C, addr, 0, /*ignore_status=*/true, stop_tok);
+        write_dp(0x0C, u32Addr, 0, /*ignore_status=*/true, stop_tok);
     }
 
     // ---------------------------------------------------------------------------
     // Debug Port (DP)
     // ---------------------------------------------------------------------------
 
-    uint32_t SWD::read_dp(uint8_t addr, int to_ap, std::stop_token stop_tok)
+    uint32_t SWD::read_dp(uint8_t u8Addr, int iTo_ap, std::stop_token stop_tok)
     {
-        // Build request byte: 0b10000101 | to_ap<<1 | addr_bits<<1
+        // Build request byte: 0b10000101 | iTo_ap<<1 | addr_bits<<1
         uint8_t cmd = 0x85;
-        cmd         = cmd | static_cast<uint8_t>(to_ap << 1);
-        cmd         = cmd | static_cast<uint8_t>((addr & 0b1100) << 1);
+        cmd         = cmd | static_cast<uint8_t>(iTo_ap << 1);
+        cmd         = cmd | static_cast<uint8_t>((u8Addr & 0b1100) << 1);
         cmd         = _apply_dp_parity(cmd);
 
         const std::array<uint8_t, 1> req_rd{cmd};
@@ -142,7 +142,7 @@ namespace HydraHAL {
                 throw std::runtime_error("[SWD] read_dp: cancelled while target WAIT-ing");
             }
             write_dp(0x00, 0x0000001F, 0, false, stop_tok); // ABORT — clear all fault flags
-            return read_dp(addr, to_ap, stop_tok);
+            return read_dp(u8Addr, iTo_ap, stop_tok);
         } else {
             _sync(stop_tok);
             throw std::runtime_error(
@@ -151,14 +151,14 @@ namespace HydraHAL {
         }
     }
 
-    void SWD::write_dp(uint8_t addr, uint32_t value,
-                       int to_ap,
-                       bool ignore_status,
+    void SWD::write_dp(uint8_t u8Addr, uint32_t u32Value,
+                       int iTo_ap,
+                       bool bIgnore_status,
                        std::stop_token stop_tok)
     {
         uint8_t cmd = 0x81;
-        cmd         = cmd | static_cast<uint8_t>(to_ap << 1);
-        cmd         = cmd | static_cast<uint8_t>((addr & 0b1100) << 1);
+        cmd         = cmd | static_cast<uint8_t>(iTo_ap << 1);
+        cmd         = cmd | static_cast<uint8_t>((u8Addr & 0b1100) << 1);
         cmd         = _apply_dp_parity(cmd);
 
         const std::array<uint8_t, 1> req_wr{cmd};
@@ -170,7 +170,7 @@ namespace HydraHAL {
         }
         clocks(2, stop_tok); // turnaround clocks
 
-        if (!ignore_status) {
+        if (!bIgnore_status) {
             if (status == 2) {
                 // WAIT — abort and retry, unless cancellation has been requested.
                 _sync(stop_tok);
@@ -178,7 +178,7 @@ namespace HydraHAL {
                     throw std::runtime_error("[SWD] write_dp: cancelled while target WAIT-ing");
                 }
                 write_dp(0x00, 0x0000001F, 0, false, stop_tok);
-                write_dp(addr, value, to_ap, false, stop_tok);
+                write_dp(u8Addr, u32Value, iTo_ap, false, stop_tok);
                 return;
             }
             if (status != 1) {
@@ -190,12 +190,12 @@ namespace HydraHAL {
         }
 
         // Send 32-bit data (LE)
-        auto payload = u32_le(value);
+        auto payload = u32_le(u32Value);
         write(std::vector<uint8_t>(payload.begin(), payload.end()), stop_tok);
 
-        // Parity bit: 1 if odd number of set bits in value, else 0
+        // Parity bit: 1 if odd number of set bits in u32Value, else 0
         uint8_t parity = static_cast<uint8_t>(
-            std::bitset<32>(value).count() % 2);
+            std::bitset<32>(u32Value).count() % 2);
         const std::array<uint8_t, 1> par_byte{parity};
         write(par_byte, stop_tok);
     }
@@ -204,28 +204,28 @@ namespace HydraHAL {
     // Access Port (AP)
     // ---------------------------------------------------------------------------
 
-    uint32_t SWD::read_ap(uint8_t ap_address, uint8_t bank, std::stop_token stop_tok)
+    uint32_t SWD::read_ap(uint8_t u8Ap_address, uint8_t u8Bank, std::stop_token stop_tok)
     {
         // Build SELECT register:
         //   bits [31:24] = AP address
-        //   bits [7:4]   = bank select
-        uint32_t select_reg = (static_cast<uint32_t>(ap_address) << 24) | (static_cast<uint32_t>(bank) & 0xF0u);
+        //   bits [7:4]   = u8Bank select
+        uint32_t select_reg = (static_cast<uint32_t>(u8Ap_address) << 24) | (static_cast<uint32_t>(u8Bank) & 0xF0u);
 
         write_dp(0x08, select_reg, 0, false, stop_tok); // DP SELECT register
 
         // Trigger AP read (result goes into RDBUFF)
-        read_dp(static_cast<uint8_t>(bank & 0b1100), 1, stop_tok);
+        read_dp(static_cast<uint8_t>(u8Bank & 0b1100), 1, stop_tok);
 
         // Read buffered result from RDBUFF (DP address 0x0C)
         return read_dp(0x0C, 0, stop_tok);
     }
 
-    void SWD::write_ap(uint8_t ap_address, uint8_t bank, uint32_t value, std::stop_token stop_tok)
+    void SWD::write_ap(uint8_t u8Ap_address, uint8_t u8Bank, uint32_t u32Value, std::stop_token stop_tok)
     {
-        uint32_t select_reg = (static_cast<uint32_t>(ap_address) << 24) | (static_cast<uint32_t>(bank) & 0xF0u);
+        uint32_t select_reg = (static_cast<uint32_t>(u8Ap_address) << 24) | (static_cast<uint32_t>(u8Bank) & 0xF0u);
 
         write_dp(0x08, select_reg, 0, false, stop_tok); // DP SELECT register
-        write_dp(static_cast<uint8_t>(bank & 0b1100), value, 1, false, stop_tok);
+        write_dp(static_cast<uint8_t>(u8Bank & 0b1100), u32Value, 1, false, stop_tok);
     }
 
     // ---------------------------------------------------------------------------
@@ -248,9 +248,9 @@ namespace HydraHAL {
         }
     }
 
-    void SWD::abort(uint8_t flags, std::stop_token stop_tok)
+    void SWD::abort(uint8_t u8Flags, std::stop_token stop_tok)
     {
-        write_dp(0x00, flags, 0, false, stop_tok);
+        write_dp(0x00, u8Flags, 0, false, stop_tok);
     }
 
 } // namespace HydraHAL

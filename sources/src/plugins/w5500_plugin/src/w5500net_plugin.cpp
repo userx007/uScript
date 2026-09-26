@@ -27,10 +27,10 @@ extern "C" {
         return new W5500NetPlugin();
     }
 
-    EXPORTED void pluginExit(W5500NetPlugin *ptrPlugin)
+    EXPORTED void pluginExit(W5500NetPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -62,12 +62,12 @@ std::shared_ptr<W5500Net> W5500NetPlugin::m_OpenDriver(void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool W5500NetPlugin::m_W5500NET_INFO(const std::string &args, std::stop_token st) const
+bool W5500NetPlugin::m_W5500NET_INFO(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -125,35 +125,35 @@ bool W5500NetPlugin::m_W5500NET_INFO(const std::string &args, std::stop_token st
 // -----------------------------------------------------------------------
 // W5500NET.CONFIG
 // -----------------------------------------------------------------------
-bool W5500NetPlugin::m_W5500NET_CONFIG(const std::string &args, std::stop_token st) const
+bool W5500NetPlugin::m_W5500NET_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
-    return generic_w5500net_set_params(this, args);
+    return generic_w5500net_set_params(this, strArgs);
 }
 
 // -----------------------------------------------------------------------
 // W5500NET.CMD
 // -----------------------------------------------------------------------
-bool W5500NetPlugin::m_W5500NET_CMD(const std::string &args, std::stop_token st) const
+bool W5500NetPlugin::m_W5500NET_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string &args, std::stop_token st) const
+bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
@@ -178,12 +178,12 @@ bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string &args, std::stop_token 
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool W5500NetPlugin::m_W5500NET_CYCLIC(const std::string &args, std::stop_token st) const
+bool W5500NetPlugin::m_W5500NET_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }

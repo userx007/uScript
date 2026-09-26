@@ -50,15 +50,15 @@ FT2232Base::~FT2232Base()
 // open_device
 // ============================================================================
 
-FT2232Base::Status FT2232Base::open_device(Variant variant,
-                                           Channel channel,
+FT2232Base::Status FT2232Base::open_device(Variant eVariant,
+                                           Channel eChannel,
                                            uint8_t u8DeviceIndex)
 {
     // ── Channel validation ────────────────────────────────────────────────────
-    // FT2232D only has MPSSE on channel A.  FT2232H supports both A and B.
-    if (variant == Variant::FT2232D && channel != Channel::A) {
+    // FT2232D only has MPSSE on eChannel A.  FT2232H supports both A and B.
+    if (eVariant == Variant::FT2232D && eChannel != Channel::A) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("open_device: FT2232D MPSSE is only available on channel A"));
+                  LOG_STRING("open_device: FT2232D MPSSE is only available on eChannel A"));
         return Status::INVALID_PARAM;
     }
 
@@ -70,9 +70,9 @@ FT2232Base::Status FT2232Base::open_device(Variant variant,
         return Status::OUT_OF_MEMORY;
     }
 
-    // ── Select the interface (channel) before opening ─────────────────────────
+    // ── Select the interface (eChannel) before opening ─────────────────────────
     // INTERFACE_A = 1, INTERFACE_B = 2 in libftdi1.
-    ftdi_interface iface = (channel == Channel::A) ? INTERFACE_A : INTERFACE_B;
+    ftdi_interface iface = (eChannel == Channel::A) ? INTERFACE_A : INTERFACE_B;
     if (ftdi_set_interface(ctx, iface) < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_set_interface() failed:"); LOG_STRING(ftdi_get_error_string(ctx)));
@@ -84,7 +84,7 @@ FT2232Base::Status FT2232Base::open_device(Variant variant,
     // PID differs between FT2232H and FT2232D.
     // ftdi_usb_open_desc_index(ctx, vid, pid, description, serial, index)
     // Passing NULL for description and serial matches any device.
-    const uint16_t pid = (variant == Variant::FT2232H) ? FT2232H_PID : FT2232D_PID;
+    const uint16_t pid = (eVariant == Variant::FT2232H) ? FT2232H_PID : FT2232D_PID;
 
     if (ftdi_usb_open_desc_index(ctx,
                                  static_cast<int>(FT2232_VID),
@@ -131,13 +131,13 @@ FT2232Base::Status FT2232Base::open_device(Variant variant,
     (void)ftdi_write_data_set_chunksize(ctx, 65536);
 
     // ── Store state ──────────────────────────────────────────────────────────
-    m_variant = variant;
+    m_variant = eVariant;
     m_hDevice = ctx;
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("FT2232 opened: variant=");
-              LOG_UINT32(static_cast<uint8_t>(variant));
-              LOG_STRING("channel="); LOG_UINT32(static_cast<uint8_t>(channel));
+              LOG_STRING("FT2232 opened: eVariant=");
+              LOG_UINT32(static_cast<uint8_t>(eVariant));
+              LOG_STRING("eChannel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
               LOG_STRING("index="); LOG_UINT32(u8DeviceIndex));
 
     return Status::SUCCESS;
@@ -176,14 +176,14 @@ bool FT2232Base::is_open() const
  *
  * Uses ftdi_write_data() which performs a synchronous USB bulk write.
  */
-FT2232Base::Status FT2232Base::mpsse_write(const uint8_t *buf, size_t len) const
+FT2232Base::Status FT2232Base::mpsse_write(const uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
     int ret = ftdi_write_data(CTX,
-                              const_cast<uint8_t *>(buf),
+                              const_cast<uint8_t *>(pu8Buf),
                               static_cast<int>(len));
     if (ret < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -207,24 +207,24 @@ FT2232Base::Status FT2232Base::mpsse_write(const uint8_t *buf, size_t len) const
  * ftdi_read_data() is non-blocking; this wrapper polls with 1 ms sleeps
  * until the requested number of bytes arrives or the timeout expires.
  */
-FT2232Base::Status FT2232Base::mpsse_read(uint8_t *buf, size_t len,
-                                          uint32_t timeoutMs,
+FT2232Base::Status FT2232Base::mpsse_read(uint8_t *pu8Buf, size_t len,
+                                          uint32_t u32TimeoutMs,
                                           size_t &bytesRead,
                                           std::stop_token stop_tok) const
 {
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
     bytesRead            = 0;
 
     // 0 == infinite timeout: never expire this poll loop.
-    const bool bInfinite = (timeoutMs == 0);
-    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite = (u32TimeoutMs == 0);
+    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
 
     while (bytesRead < len) {
         int ret = ftdi_read_data(CTX,
-                                 buf + bytesRead,
+                                 pu8Buf + bytesRead,
                                  static_cast<int>(len - bytesRead));
         if (ret < 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;

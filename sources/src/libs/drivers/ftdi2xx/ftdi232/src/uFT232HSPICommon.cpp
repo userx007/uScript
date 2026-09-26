@@ -36,7 +36,7 @@
 // open / close
 // ============================================================================
 
-FT232HSPI::Status FT232HSPI::open(const SpiConfig &config, uint8_t u8DeviceIndex)
+FT232HSPI::Status FT232HSPI::open(const SpiConfig &sConfig, uint8_t u8DeviceIndex)
 {
     if (is_open()) {
         close();
@@ -52,13 +52,13 @@ FT232HSPI::Status FT232HSPI::open(const SpiConfig &config, uint8_t u8DeviceIndex
     mpsse_purge();
 
     // Configure MPSSE for SPI
-    s = configure_mpsse_spi(config);
+    s = configure_mpsse_spi(sConfig);
     if (s != Status::SUCCESS) {
         FT232HBase::close();
         return s;
     }
 
-    m_config = config;
+    m_config = sConfig;
     return Status::SUCCESS;
 }
 
@@ -74,10 +74,10 @@ FT232HSPI::Status FT232HSPI::close()
 // configure_mpsse_spi
 // ============================================================================
 
-FT232HSPI::Status FT232HSPI::configure_mpsse_spi(const SpiConfig &config)
+FT232HSPI::Status FT232HSPI::configure_mpsse_spi(const SpiConfig &sConfig)
 {
     // Resolve shift commands for the requested mode
-    switch (config.mode) {
+    switch (sConfig.mode) {
     case SpiMode::Mode0:
     case SpiMode::Mode3:
         m_cmdWrite = MPSSE_SPI_WRITE_NRE;
@@ -91,18 +91,18 @@ FT232HSPI::Status FT232HSPI::configure_mpsse_spi(const SpiConfig &config)
         break;
     }
 
-    if (config.bitOrder == BitOrder::LsbFirst) {
+    if (sConfig.bitOrder == BitOrder::LsbFirst) {
         m_cmdWrite |= 0x08u;
         m_cmdRead |= 0x08u;
         m_cmdXfer |= 0x08u;
     }
 
     // CS idle level depends on polarity
-    bool csIdleHigh = (config.csPolarity == CsPolarity::ActiveLow);
+    bool csIdleHigh = (sConfig.csPolarity == CsPolarity::ActiveLow);
 
     // SCK idle level depends on CPOL (Mode2/Mode3 = high)
-    bool sckIdle    = (config.mode == SpiMode::Mode2 ||
-                       config.mode == SpiMode::Mode3);
+    bool sckIdle    = (sConfig.mode == SpiMode::Mode2 ||
+                       sConfig.mode == SpiMode::Mode3);
 
     // Build initial pin state
     m_pinDir        = 0x0Bu; // SCK+MOSI+CS = outputs; MISO = input
@@ -111,11 +111,11 @@ FT232HSPI::Status FT232HSPI::configure_mpsse_spi(const SpiConfig &config)
         m_pinValue |= 0x01u; // ADBUS0 = SCK
     }
     if (csIdleHigh) {
-        m_pinValue |= config.csPin;
+        m_pinValue |= sConfig.csPin;
     }
 
     // Compute clock divisor
-    uint32_t divisor = (CLOCK_BASE_HZ / 2u / config.clockHz) - 1u;
+    uint32_t divisor = (CLOCK_BASE_HZ / 2u / sConfig.clockHz) - 1u;
 
     std::vector<uint8_t> init;
     init.reserve(16);
@@ -137,10 +137,10 @@ FT232HSPI::Status FT232HSPI::configure_mpsse_spi(const SpiConfig &config)
 // CS helpers
 // ============================================================================
 
-FT232HSPI::Status FT232HSPI::apply_pin_state(bool csActive) const
+FT232HSPI::Status FT232HSPI::apply_pin_state(bool bCsActive) const
 {
     uint8_t val = m_pinValue;
-    if (csActive) {
+    if (bCsActive) {
         if (m_config.csPolarity == CsPolarity::ActiveLow) {
             val &= static_cast<uint8_t>(~m_config.csPin);
         } else {
@@ -194,7 +194,7 @@ FT232HSPI::Status FT232HSPI::spi_write_raw(std::span<const uint8_t> data,
 
 FT232HSPI::Status FT232HSPI::spi_read_raw(std::span<uint8_t> data,
                                           size_t &bytesRead,
-                                          uint32_t timeoutMs,
+                                          uint32_t u32TimeoutMs,
                                           std::stop_token stop_tok) const
 {
     bytesRead         = 0;
@@ -213,13 +213,13 @@ FT232HSPI::Status FT232HSPI::spi_read_raw(std::span<uint8_t> data,
     }
     // 0 == infinite timeout: forwarded to mpsse_read() unchanged, which now
     // blocks indefinitely rather than substituting a default.
-    return mpsse_read(data.data(), len, timeoutMs, bytesRead, stop_tok);
+    return mpsse_read(data.data(), len, u32TimeoutMs, bytesRead, stop_tok);
 }
 
 FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
                                           std::span<uint8_t> rxBuf,
                                           size_t &bytesXferd,
-                                          uint32_t timeoutMs,
+                                          uint32_t u32TimeoutMs,
                                           std::stop_token stop_tok) const
 {
     bytesXferd        = 0;
@@ -239,7 +239,7 @@ FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
         return s;
     }
     // 0 == infinite timeout: forwarded to mpsse_read() unchanged.
-    return mpsse_read(rxBuf.data(), len, timeoutMs, bytesXferd, stop_tok);
+    return mpsse_read(rxBuf.data(), len, u32TimeoutMs, bytesXferd, stop_tok);
 }
 
 // ============================================================================

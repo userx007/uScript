@@ -55,11 +55,11 @@ bool HydrabusPlugin::m_handle_onewire_help(const std::string &, std::stop_token 
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_onewire_cfg(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_onewire_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
     auto *p = m_onewire();
 
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cfg pullup=[0|1]"));
         return true;
     }
@@ -70,7 +70,7 @@ bool HydrabusPlugin::m_handle_onewire_cfg(const std::string &args, std::stop_tok
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("pullup="); LOG_UINT8(p->get_pullup() ? 1 : 0));
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -99,9 +99,9 @@ bool HydrabusPlugin::m_handle_onewire_cfg(const std::string &args, std::stop_tok
 //                       RESET                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_onewire_reset(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_onewire_reset(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Send 1-Wire reset pulse"));
         return true;
     }
@@ -119,9 +119,9 @@ bool HydrabusPlugin::m_handle_onewire_reset(const std::string &args, std::stop_t
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_onewire_write(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_onewire_write(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
         return true;
     }
@@ -131,7 +131,7 @@ bool HydrabusPlugin::m_handle_onewire_write(const std::string &args, std::stop_t
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data) || data.empty() || data.size() > 16) {
+    if (!hexutils::stringUnhexlify(strArgs, data) || data.empty() || data.size() > 16) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 1-16 hex bytes"));
         return false;
     }
@@ -142,9 +142,9 @@ bool HydrabusPlugin::m_handle_onewire_write(const std::string &args, std::stop_t
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_onewire_read(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_onewire_read(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
         return true;
     }
@@ -154,7 +154,7 @@ bool HydrabusPlugin::m_handle_onewire_read(const std::string &args, std::stop_to
     }
 
     size_t n = 0;
-    if (!numeric::str2sizet(args, n) || n == 0) {
+    if (!numeric::str2sizet(strArgs, n) || n == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid byte count"));
         return false;
     }
@@ -170,9 +170,9 @@ bool HydrabusPlugin::m_handle_onewire_read(const std::string &args, std::stop_to
 //  swio write ADDR VALUE   (hex byte, hex 32-bit LE)
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_onewire_swio(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_onewire_swio(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use:"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  swio init"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  swio read  ADDR         (e.g. swio read 00)"));
@@ -185,7 +185,7 @@ bool HydrabusPlugin::m_handle_onewire_swio(const std::string &args, std::stop_to
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     if (parts.empty()) {
         return false;
@@ -227,7 +227,7 @@ bool HydrabusPlugin::m_handle_onewire_swio(const std::string &args, std::stop_to
 //                       AUX                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_onewire_aux(const std::string &args, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_onewire_aux(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    return m_handle_aux_common(args, m_onewire());
+    return m_handle_aux_common(strArgs, m_onewire());
 }

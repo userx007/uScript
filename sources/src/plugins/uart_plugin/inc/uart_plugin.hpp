@@ -339,12 +339,12 @@ class UARTPlugin : public PluginInterface {
         /**
          * \brief message receiver
          */
-        bool m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+        bool m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType eReadType, std::shared_ptr<const ICommDriver> shpDriver) const
         {
             bool bRetVal = false;
             ICommDriver::ReadOptions options;
 
-            switch (readType) {
+            switch (eReadType) {
             case CommCommandReadType::LINE:
                 options.mode      = ICommDriver::ReadMode::UntilDelimiter;
                 options.delimiter = '\n'; // CHAR_SEPARATOR_NEWLINE

@@ -42,7 +42,7 @@ namespace HydraHAL {
             /**
              * @param hydrabus Open, BBIO-enabled Hydrabus instance.
              */
-            explicit Utils(std::shared_ptr<Hydrabus> hydrabus);
+            explicit Utils(std::shared_ptr<Hydrabus> shpHydrabus);
 
             Utils(const Utils &)            = delete;
 

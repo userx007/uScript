@@ -34,7 +34,7 @@ namespace HydraHAL {
     class SWD : public RawWire {
 
         public:
-            explicit SWD(std::shared_ptr<Hydrabus> hydrabus);
+            explicit SWD(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // Bus initialisation
@@ -54,7 +54,7 @@ namespace HydraHAL {
              *
              * @param addr DP target address (use 0 for single-drop).
              */
-            void multidrop_init(uint32_t addr = 0, std::stop_token stop_tok = {});
+            void multidrop_init(uint32_t u32Addr = 0, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Debug Port (DP) access
@@ -68,7 +68,7 @@ namespace HydraHAL {
              * @return Register value.
              * @throws std::runtime_error on FAULT response.
              */
-            uint32_t read_dp(uint8_t addr, int to_ap = 0, std::stop_token stop_tok = {});
+            uint32_t read_dp(uint8_t u8Addr, int iTo_ap = 0, std::stop_token stop_tok = {});
 
             /**
              * @brief Write a 32-bit DP register.
@@ -79,9 +79,9 @@ namespace HydraHAL {
              * @param ignore_status Skip ACK checking (useful during multi-drop init).
              * @throws std::runtime_error on FAULT response (unless ignore_status).
              */
-            void write_dp(uint8_t addr, uint32_t value,
-                          int to_ap                = 0,
-                          bool ignore_status       = false,
+            void write_dp(uint8_t u8Addr, uint32_t u32Value,
+                          int iTo_ap                = 0,
+                          bool bIgnore_status       = false,
                           std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
@@ -97,7 +97,7 @@ namespace HydraHAL {
              * @param bank       AP register bank address (e.g. 0xFC for IDR).
              * @return Register value.
              */
-            uint32_t read_ap(uint8_t ap_address, uint8_t bank, std::stop_token stop_tok = {});
+            uint32_t read_ap(uint8_t u8Ap_address, uint8_t u8Bank, std::stop_token stop_tok = {});
 
             /**
              * @brief Write a 32-bit AP register.
@@ -108,7 +108,7 @@ namespace HydraHAL {
              * @param bank       AP register bank address.
              * @param value      Value to write.
              */
-            void write_ap(uint8_t ap_address, uint8_t bank, uint32_t value, std::stop_token stop_tok = {});
+            void write_ap(uint8_t u8Ap_address, uint8_t u8Bank, uint32_t u32Value, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Utilities
@@ -124,11 +124,11 @@ namespace HydraHAL {
              *
              * @param flags Bits to set in the ABORT register (default = all fault bits).
              */
-            void abort(uint8_t flags = 0b11111, std::stop_token stop_tok = {});
+            void abort(uint8_t u8Flags = 0b11111, std::stop_token stop_tok = {});
 
         private:
             /** @brief Apply odd parity to the request header byte. */
-            uint8_t _apply_dp_parity(uint8_t value) const;
+            uint8_t _apply_dp_parity(uint8_t u8Value) const;
 
             /** @brief Send a sync byte (0x00) after a read/write transaction. */
             void _sync(std::stop_token stop_tok = {});

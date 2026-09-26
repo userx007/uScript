@@ -27,7 +27,7 @@
 
 namespace HydraHAL {
 
-    AUXPin::AUXPin(int number, std::shared_ptr<Hydrabus> hydrabus)
+    AUXPin::AUXPin(int iNumber, std::shared_ptr<Hydrabus> shpHydrabus)
         : _number(number)
         , _hydrabus(std::move(hydrabus))
     {
@@ -66,17 +66,17 @@ namespace HydraHAL {
         return (_get_values() >> _number) & 0x01;
     }
 
-    bool AUXPin::set_value(int value)
+    bool AUXPin::set_value(int iValue)
     {
         // CMD 0b11010000 | new_values_byte
         uint8_t current = _get_values();
-        uint8_t updated = set_bit(current, value, _number);
+        uint8_t updated = set_bit(current, iValue, _number);
         uint8_t cmd     = static_cast<uint8_t>(0b11010000 | updated);
 
         _hydrabus->write_byte(cmd);
         auto resp = _hydrabus->read(1);
         if (resp.empty() || resp[0] != 0x01) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting auxiliary pin value"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting auxiliary pin iValue"));
             return false;
         }
         return true;
@@ -97,13 +97,13 @@ namespace HydraHAL {
         return ((cfg >> _number) & 0x01) ? Direction::Input : Direction::Output;
     }
 
-    bool AUXPin::set_direction(Direction dir)
+    bool AUXPin::set_direction(Direction eDir)
     {
         // CMD 0b11110000, then 1-byte parameter with the new config
         constexpr uint8_t CMD = 0b11110000;
 
         uint8_t cfg           = _get_config();
-        int bit_val           = (dir == Direction::Input) ? 1 : 0;
+        int bit_val           = (eDir == Direction::Input) ? 1 : 0;
         uint8_t param         = set_bit(cfg, bit_val, _number);
 
         _hydrabus->write_byte(CMD);
@@ -127,12 +127,12 @@ namespace HydraHAL {
         return (_get_config() >> (4 + _number)) & 0x01;
     }
 
-    bool AUXPin::set_pullup(int enable)
+    bool AUXPin::set_pullup(int iEnable)
     {
         constexpr uint8_t CMD = 0b11110000;
 
         uint8_t cfg           = _get_config();
-        uint8_t param         = set_bit(cfg, enable ? 1 : 0, 4 + _number);
+        uint8_t param         = set_bit(cfg, iEnable ? 1 : 0, 4 + _number);
 
         _hydrabus->write_byte(CMD);
         _hydrabus->write_byte(param);

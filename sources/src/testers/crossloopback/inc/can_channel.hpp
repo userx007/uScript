@@ -37,7 +37,7 @@ namespace loopback {
             // "kvcan:vcan0/0x100"). If absent, TX falls back to the ID carried in
             // the Message (i.e. whatever a CAN *input* channel last received),
             // and finally to kDefaultId.
-            CanChannel(std::string ifname, std::optional<uint32_t> fixed_id)
+            CanChannel(std::string strIfname, std::optional<uint32_t> fixed_id)
                 : ifname_(std::move(ifname))
                 , fixed_id_(fixed_id)
             {
@@ -51,9 +51,9 @@ namespace loopback {
             // Called by loopback.cpp when this exact channel object will serve as
             // both the input and the output (implicit mirror, or an explicit "-o"
             // that resolves to the same interface as "-i").
-            void setMirrorMode(bool mirror)
+            void setMirrorMode(bool bMirror)
             {
-                mirror_mode_ = mirror;
+                mirror_mode_ = bMirror;
             }
 
             bool open() override
@@ -111,7 +111,7 @@ namespace loopback {
                 }
             }
 
-            bool readMessage(Message &msg) override
+            bool readMessage(Message &sMsg) override
             {
                 while (!g_stop) {
                     struct can_frame frame;
@@ -133,34 +133,34 @@ namespace loopback {
                         continue;
                     }
 
-                    msg.data.assign(frame.data, frame.data + frame.can_dlc);
-                    msg.has_can_id = true;
-                    msg.can_id     = frame.can_id & CAN_EFF_MASK;
+                    sMsg.data.assign(frame.data, frame.data + frame.can_dlc);
+                    sMsg.has_can_id = true;
+                    sMsg.can_id     = frame.can_id & CAN_EFF_MASK;
                     return true;
                 }
                 return false;
             }
 
-            bool writeMessage(Message &msg) override
+            bool writeMessage(Message &sMsg) override
             {
-                if (msg.data.size() > CAN_MAX_DLEN) {
-                    log_warn(name(), "message is " + std::to_string(msg.data.size()) +
+                if (sMsg.data.size() > CAN_MAX_DLEN) {
+                    log_warn(name(), "message is " + std::to_string(sMsg.data.size()) +
                                          " bytes, CAN payload is limited to 8 - dropping bytes 9.." +
-                                         std::to_string(msg.data.size()));
-                    msg.data.resize(CAN_MAX_DLEN);
+                                         std::to_string(sMsg.data.size()));
+                    sMsg.data.resize(CAN_MAX_DLEN);
                 }
 
                 struct can_frame frame;
                 std::memset(&frame, 0, sizeof(frame));
-                frame.can_id  = fixed_id_ ? *fixed_id_ : (msg.has_can_id ? msg.can_id : kDefaultId);
-                frame.can_dlc = static_cast<uint8_t>(msg.data.size());
-                std::memcpy(frame.data, msg.data.data(), msg.data.size());
+                frame.can_id  = fixed_id_ ? *fixed_id_ : (sMsg.has_can_id ? sMsg.can_id : kDefaultId);
+                frame.can_dlc = static_cast<uint8_t>(sMsg.data.size());
+                std::memcpy(frame.data, sMsg.data.data(), sMsg.data.size());
 
-                // Reflect the ID actually transmitted back into msg so the TX
+                // Reflect the ID actually transmitted back into sMsg so the TX
                 // dump line (printed by the caller after writeMessage returns)
                 // shows what really went on the bus.
-                msg.has_can_id = true;
-                msg.can_id     = frame.can_id;
+                sMsg.has_can_id = true;
+                sMsg.can_id     = frame.can_id;
 
                 ssize_t sent   = ::write(fd_, &frame, sizeof(frame));
                 if (sent < 0) {
@@ -195,9 +195,9 @@ namespace loopback {
                 return true;
             }
 
-            void dump(const char *dir, const Message &msg) const override
+            void dump(const char *pstrDir, const Message &sMsg) const override
             {
-                dump_can("kvcan:" + ifname_, dir, msg.can_id, msg.data.data(), msg.data.size());
+                dump_can("kvcan:" + ifname_, pstrDir, sMsg.can_id, sMsg.data.data(), sMsg.data.size());
             }
 
         private:

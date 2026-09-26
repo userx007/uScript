@@ -29,43 +29,43 @@ class CommandLineParser {
             Float
         };
 
-        CommandLineParser(std::string description = "")
+        CommandLineParser(std::string strDescription = "")
             : description_(std::move(description))
         {
         }
 
         // Add an option with comprehensive configuration
-        void add_option(std::string long_flag, std::string short_flag = "",
-                        std::string help = "", bool required = false,
-                        std::string default_value = "",
-                        OptionType type           = OptionType::String)
+        void add_option(std::string strLong_flag, std::string strShort_flag = "",
+                        std::string strHelp = "", bool bRequired = false,
+                        std::string strDefault_value = "",
+                        OptionType eType           = OptionType::String)
         {
-            OptionConfig config{std::move(long_flag), std::move(short_flag),
-                                std::move(help), std::move(default_value),
-                                required, type};
-            options_[config.long_flag] = config;
-            if (!config.short_flag.empty()) {
-                short_to_long_[config.short_flag] = config.long_flag;
+            OptionConfig config{std::move(strLong_flag), std::move(strShort_flag),
+                                std::move(strHelp), std::move(strDefault_value),
+                                bRequired, eType};
+            options_[config.strLong_flag] = config;
+            if (!config.strShort_flag.empty()) {
+                short_to_long_[config.strShort_flag] = config.strLong_flag;
             }
         }
 
         // Convenience method for boolean flags
-        void add_flag(std::string long_flag, std::string short_flag = "",
-                      std::string help = "")
+        void add_flag(std::string strLong_flag, std::string strShort_flag = "",
+                      std::string strHelp = "")
         {
-            add_option(std::move(long_flag), std::move(short_flag),
-                       std::move(help), false, "false", OptionType::Flag);
+            add_option(std::move(strLong_flag), std::move(strShort_flag),
+                       std::move(strHelp), false, "false", OptionType::Flag);
         }
 
         // Parse command line arguments with error handling
-        ParseResult parse(int argc, const char *argv[])
+        ParseResult parse(int iArgc, const char *argv[])
         {
             ParseResult result;
 
             // Clear previous parse state (CRITICAL BUG FIX)
             parsed_options_.clear();
             positional_args_.clear();
-            positional_args_.reserve(argc);
+            positional_args_.reserve(iArgc);
 
             // Apply defaults
             for (const auto &[flag, config] : options_) {
@@ -77,7 +77,7 @@ class CommandLineParser {
             std::string current_flag;
             OptionType current_type = OptionType::String;
 
-            for (int i = 1; i < argc; ++i) {
+            for (int i = 1; i < iArgc; ++i) {
                 std::string_view arg = argv[i];
 
                 // Handle long flags (--flag)
@@ -157,29 +157,29 @@ class CommandLineParser {
         }
 
         // Check if option was provided
-        bool has(const std::string &key) const
+        bool has(const std::string &strKey) const
         {
-            return parsed_options_.count(key) > 0;
+            return parsed_options_.count(strKey) > 0;
         }
 
         // Get string value
-        std::optional<std::string> get(const std::string &key) const
+        std::optional<std::string> get(const std::string &strKey) const
         {
-            auto it = parsed_options_.find(key);
+            auto it = parsed_options_.find(strKey);
             return (it != parsed_options_.end()) ? std::optional(it->second) : std::nullopt;
         }
 
         // Get string value with default
-        std::string get_or(const std::string &key, const std::string &default_value) const
+        std::string get_or(const std::string &strKey, const std::string &strDefault_value) const
         {
-            auto it = parsed_options_.find(key);
-            return (it != parsed_options_.end()) ? it->second : default_value;
+            auto it = parsed_options_.find(strKey);
+            return (it != parsed_options_.end()) ? it->second : strDefault_value;
         }
 
         // Get boolean value (TYPE-SAFE)
-        bool get_flag(const std::string &key) const
+        bool get_flag(const std::string &strKey) const
         {
-            auto it = parsed_options_.find(key);
+            auto it = parsed_options_.find(strKey);
             if (it != parsed_options_.end()) {
                 const std::string &val = it->second;
                 return val == "true" || val == "1" || val == "yes";
@@ -188,9 +188,9 @@ class CommandLineParser {
         }
 
         // Get integer value (TYPE-SAFE)
-        std::optional<int> get_int(const std::string &key) const
+        std::optional<int> get_int(const std::string &strKey) const
         {
-            auto it = parsed_options_.find(key);
+            auto it = parsed_options_.find(strKey);
             if (it != parsed_options_.end()) {
                 try {
                     return std::stoi(it->second);
@@ -202,9 +202,9 @@ class CommandLineParser {
         }
 
         // Get float value (TYPE-SAFE)
-        std::optional<float> get_float(const std::string &key) const
+        std::optional<float> get_float(const std::string &strKey) const
         {
-            auto it = parsed_options_.find(key);
+            auto it = parsed_options_.find(strKey);
             if (it != parsed_options_.end()) {
                 try {
                     return std::stof(it->second);
@@ -222,14 +222,14 @@ class CommandLineParser {
         }
 
         // Print formatted usage information (IMPROVED FORMATTING)
-        void print_usage(const std::string &program_name = "") const
+        void print_usage(const std::string &strProgram_name = "") const
         {
             if (!description_.empty()) {
                 std::cout << description_ << "\n\n";
             }
 
-            if (!program_name.empty()) {
-                std::cout << "Usage: " << program_name << " [OPTIONS]\n\n";
+            if (!strProgram_name.empty()) {
+                std::cout << "Usage: " << strProgram_name << " [OPTIONS]\n\n";
             }
 
             if (options_.empty()) {
@@ -282,11 +282,11 @@ class CommandLineParser {
         }
 
         // Print errors from parse result
-        static void print_errors(const ParseResult &result, std::ostream &out = std::cerr)
+        static void print_errors(const ParseResult &sResult, std::ostream &out = std::cerr)
         {
-            if (!result.success && !result.errors.empty()) {
+            if (!sResult.success && !sResult.errors.empty()) {
                 out << "Parsing errors:\n";
-                for (const auto &error : result.errors) {
+                for (const auto &error : sResult.errors) {
                     out << "  - " << error << "\n";
                 }
             }
@@ -309,22 +309,22 @@ class CommandLineParser {
         }
 
         // Validate value matches expected type
-        static bool validate_type(const std::string &value, OptionType type)
+        static bool validate_type(const std::string &strValue, OptionType eType)
         {
-            if (value.empty()) {
+            if (strValue.empty()) {
                 return true;
             }
 
             try {
-                switch (type) {
+                switch (eType) {
                 case OptionType::String:
                 case OptionType::Flag:
                     return true;
                 case OptionType::Int:
-                    std::stoi(value);
+                    std::stoi(strValue);
                     return true;
                 case OptionType::Float:
-                    std::stof(value);
+                    std::stof(strValue);
                     return true;
                 }
             } catch (...) {
@@ -334,9 +334,9 @@ class CommandLineParser {
         }
 
         // Get human-readable type name
-        static std::string type_name(OptionType type)
+        static std::string type_name(OptionType eType)
         {
-            switch (type) {
+            switch (eType) {
             case OptionType::String:
                 return "string";
             case OptionType::Flag:

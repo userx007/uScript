@@ -31,7 +31,7 @@ namespace HydraHAL {
     // Construction
     // ---------------------------------------------------------------------------
 
-    I2C::I2C(std::shared_ptr<Hydrabus> hydrabus)
+    I2C::I2C(std::shared_ptr<Hydrabus> shpHydrabus)
         : Protocol(std::move(hydrabus), "I2C1", "I2C", 0x02)
     {
         _configure_port();
@@ -189,11 +189,11 @@ namespace HydraHAL {
     // Configuration
     // ---------------------------------------------------------------------------
 
-    bool I2C::set_speed(Speed speed)
+    bool I2C::set_speed(Speed eSpeed)
     {
-        auto s = static_cast<uint8_t>(speed);
+        auto s = static_cast<uint8_t>(eSpeed);
         if (s > 0b11) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: invalid speed value"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: invalid eSpeed value"));
             return false;
         }
 
@@ -201,16 +201,16 @@ namespace HydraHAL {
         _write_byte(cmd);
 
         if (!_ack("set_speed")) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting speed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting eSpeed"));
             return false;
         }
         return true;
     }
 
-    bool I2C::set_clock_stretch(uint32_t clocks)
+    bool I2C::set_clock_stretch(uint32_t u32Clocks)
     {
         _write_byte(0b00100000);
-        _write_u32_be(clocks);
+        _write_u32_be(u32Clocks);
 
         if (!_ack("set_clock_stretch")) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting clock stretch"));
@@ -224,9 +224,9 @@ namespace HydraHAL {
         return (_config & 0b100) != 0;
     }
 
-    bool I2C::set_pullup(bool enable)
+    bool I2C::set_pullup(bool bEnable)
     {
-        if (enable) {
+        if (bEnable) {
             _config = static_cast<uint8_t>(_config | (1 << 2));
         } else {
             _config = static_cast<uint8_t>(_config & ~(1 << 2));

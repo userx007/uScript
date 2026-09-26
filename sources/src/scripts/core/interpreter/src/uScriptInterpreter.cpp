@@ -97,85 +97,85 @@ namespace {
     // in m_executeCommand); SQUARE/SINE/EXP/LOG use dStep as documented in
     // GeneratorWaveform's doc comment (uScriptDataTypes.hpp).
     double nextGeneratorSample(GeneratorWaveform eWaveform, double dMin, double dMax, double dStep,
-                               double dK, GeneratorSampleState &state) noexcept
+                               double dK, GeneratorSampleState &sState) noexcept
     {
         switch (eWaveform) {
 
         case GeneratorWaveform::SAWTOOTH: {
-            state.current += dStep;
-            if ((dStep >= 0.0 && state.current > dMax) ||
-                (dStep < 0.0 && state.current < dMax)) {
-                state.current = dMin;
+            sState.current += dStep;
+            if ((dStep >= 0.0 && sState.current > dMax) ||
+                (dStep < 0.0 && sState.current < dMax)) {
+                sState.current = dMin;
             }
-            return state.current;
+            return sState.current;
         }
 
         case GeneratorWaveform::TRIANGLE: {
             // Clamp against the numeric low/high bound rather than assuming
             // dMax > dMin, so a reversed range (begin > end) ping-pongs
             // exactly the same as a forward one — only the seeded initial
-            // direction (state.direction, set by the caller) differs.
+            // direction (sState.direction, set by the caller) differs.
             const double dLow  = std::min(dMin, dMax);
             const double dHigh = std::max(dMin, dMax);
-            state.current += dStep * state.direction;
-            if (state.current >= dHigh) {
-                state.current   = dHigh;
-                state.direction = -1;
+            sState.current += dStep * sState.direction;
+            if (sState.current >= dHigh) {
+                sState.current   = dHigh;
+                sState.direction = -1;
             }
-            if (state.current <= dLow) {
-                state.current   = dLow;
-                state.direction = 1;
+            if (sState.current <= dLow) {
+                sState.current   = dLow;
+                sState.direction = 1;
             }
-            return state.current;
+            return sState.current;
         }
 
         case GeneratorWaveform::SQUARE: {
             // dStep is reinterpreted as "ticks to hold each level" (a positive
             // integer, already checked at validation/resolution time).
-            // Assumes state.current was seeded to dMin by the caller (see the
+            // Assumes sState.current was seeded to dMin by the caller (see the
             // GeneratorStatement launch code in m_executeCommand). Order of
             // dMin/dMax doesn't matter here — it just toggles between the
             // two configured levels.
-            if (++state.ticksAtLevel >= static_cast<uint64_t>(dStep)) {
-                state.current      = (state.current == dMin) ? dMax : dMin;
-                state.ticksAtLevel = 0;
+            if (++sState.ticksAtLevel >= static_cast<uint64_t>(dStep)) {
+                sState.current      = (sState.current == dMin) ? dMax : dMin;
+                sState.ticksAtLevel = 0;
             }
-            return state.current;
+            return sState.current;
         }
 
         case GeneratorWaveform::SINE: {
             const double dMid = (dMin + dMax) / 2.0;
             const double dAmp = (dMax - dMin) / 2.0;
-            state.phaseDeg += dStep;
-            if (state.phaseDeg >= 360.0) {
-                state.phaseDeg = std::fmod(state.phaseDeg, 360.0);
+            sState.phaseDeg += dStep;
+            if (sState.phaseDeg >= 360.0) {
+                sState.phaseDeg = std::fmod(sState.phaseDeg, 360.0);
             }
-            return dMid + dAmp * std::sin(state.phaseDeg * M_PI / 180.0);
+            return dMid + dAmp * std::sin(sState.phaseDeg * M_PI / 180.0);
         }
 
         case GeneratorWaveform::EXP: {
-            double t = state.current + dStep / (dMax - dMin);
+            double t = sState.current + dStep / (dMax - dMin);
             if (t > 1.0) {
                 t -= 1.0;
             }
-            state.current = t;
-            return dMin + (dMax - dMin) * ((std::exp(dK * t) - 1.0) / (std::exp(dK) - 1.0));
+            sState.current = t;
+            return dMin + (dMax - dMin) * ((std::exp(dK * pT) - 1.0) / (std::exp(dK) - 1.0));
         }
 
         case GeneratorWaveform::LOG: {
-            double t = state.current + dStep / (dMax - dMin);
+            double t = sState.current + dStep / (dMax - dMin);
             if (t > 1.0) {
                 t -= 1.0;
             }
-            state.current = t;
-            return dMin + (dMax - dMin) * std::log1p(dK * t);
+            sState.current = t;
+            return dMin + (dMax - dMin) * std::log1p(dK * pT);
         }
 
         case GeneratorWaveform::RANDOM: {
             const double dLow  = std::min(dMin, dMax);
             const double dHigh = std::max(dMin, dMax);
             std::uniform_real_distribution<double> dist(dLow, dHigh);
-            return dist(state.rng);
+            return dist(sState.rng);
         }
         }
         return dMin; // unreachable — silences -Wreturn-type on some compilers
@@ -188,7 +188,7 @@ namespace {
     // SAWTOOTH/LINEAR, TRIANGLE and RANDOM are ever passed in (every other
     // waveform is rejected for an array source at validation time).
     double nextGeneratorArraySample(GeneratorWaveform eWaveform, const std::vector<double> &vValues,
-                                    GeneratorSampleState &state) noexcept
+                                    GeneratorSampleState &sState) noexcept
     {
         const size_t n = vValues.size();
 
@@ -198,33 +198,33 @@ namespace {
             // walk it in order (so all n elements are emitted exactly once, in a
             // random order, with no immediate repeats across the reshuffle
             // boundary other than by chance), then reshuffle once exhausted.
-            if (state.arrShuffleOrder.size() != n || state.arrShufflePos >= n) {
-                state.arrShuffleOrder.resize(n);
-                std::iota(state.arrShuffleOrder.begin(), state.arrShuffleOrder.end(), size_t{0});
-                std::shuffle(state.arrShuffleOrder.begin(), state.arrShuffleOrder.end(), state.rng);
-                state.arrShufflePos = 0;
+            if (sState.arrShuffleOrder.size() != n || sState.arrShufflePos >= n) {
+                sState.arrShuffleOrder.resize(n);
+                std::iota(sState.arrShuffleOrder.begin(), sState.arrShuffleOrder.end(), size_t{0});
+                std::shuffle(sState.arrShuffleOrder.begin(), sState.arrShuffleOrder.end(), sState.rng);
+                sState.arrShufflePos = 0;
             }
-            const double dVal = vValues[state.arrShuffleOrder[state.arrShufflePos]];
-            ++state.arrShufflePos;
+            const double dVal = vValues[sState.arrShuffleOrder[sState.arrShufflePos]];
+            ++sState.arrShufflePos;
             return dVal;
         }
 
         if (eWaveform == GeneratorWaveform::TRIANGLE) {
-            const double dVal = vValues[state.arrIndex];
+            const double dVal = vValues[sState.arrIndex];
             if (n > 1) {
-                if (state.arrDirection > 0) {
-                    if (state.arrIndex + 1 >= n) {
-                        state.arrDirection = -1;
-                        state.arrIndex -= 1;
+                if (sState.arrDirection > 0) {
+                    if (sState.arrIndex + 1 >= n) {
+                        sState.arrDirection = -1;
+                        sState.arrIndex -= 1;
                     } else {
-                        state.arrIndex += 1;
+                        sState.arrIndex += 1;
                     }
                 } else {
-                    if (state.arrIndex == 0) {
-                        state.arrDirection = 1;
-                        state.arrIndex     = 1;
+                    if (sState.arrIndex == 0) {
+                        sState.arrDirection = 1;
+                        sState.arrIndex     = 1;
                     } else {
-                        state.arrIndex -= 1;
+                        sState.arrIndex -= 1;
                     }
                 }
             }
@@ -232,8 +232,8 @@ namespace {
         }
 
         // SAWTOOTH/LINEAR: sequential, wraps back to element 0 after the last one.
-        const double dVal = vValues[state.arrIndex];
-        state.arrIndex    = (state.arrIndex + 1) % n;
+        const double dVal = vValues[sState.arrIndex];
+        sState.arrIndex    = (sState.arrIndex + 1) % n;
         return dVal;
     }
 
@@ -529,10 +529,10 @@ bool ScriptInterpreter::m_dispatchShellLine(decltype(ScriptLine::command) varian
   Returns false and logs a reason on any resolution/range/overlap error.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, const std::string &lineNr,
+bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &sCommand, const std::string &strLineNr,
                                                std::string &strResultHex) noexcept
 {
-    const char *pszKind = command.bByteMode ? "BYTESTREAM" : "BITSTREAM";
+    const char *pszKind = sCommand.bByteMode ? "BYTESTREAM" : "BITSTREAM";
 
     struct ResolvedField {
             uint64_t offset;
@@ -541,10 +541,10 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
     };
 
     std::vector<ResolvedField> vResolved;
-    vResolved.reserve(command.vFields.size());
+    vResolved.reserve(sCommand.vFields.size());
 
     // ── 1 & 2: resolve + range-check every field ──────────────────────────
-    for (const auto &field : command.vFields) {
+    for (const auto &field : sCommand.vFields) {
 
         auto resolveOne = [&](const std::string &strTpl, const char *pszWhich, uint64_t &out) -> bool {
             std::string strExpanded = strTpl;
@@ -552,7 +552,7 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
                 return false; // fatal: constant array index out of range, already logged
             }
             if (!numeric::str2uint64(strExpanded, out)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                           LOG_STRING(pszKind); LOG_STRING(": field ["); LOG_STRING(strTpl);
                           LOG_STRING("] -"); LOG_STRING(pszWhich); LOG_STRING("=[");
                           LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
@@ -573,16 +573,16 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
         }
 
         if (length == 0) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": length must be at least 1 bit (offset="); LOG_UINT64(rawOffset); LOG_STRING(")"));
             return false;
         }
 
-        const uint64_t szMaxLength = command.bByteMode ? 8 : 64;
+        const uint64_t szMaxLength = sCommand.bByteMode ? 8 : 64;
         if (length > szMaxLength) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": length"); LOG_UINT64(length);
-                      LOG_STRING(command.bByteMode
+                      LOG_STRING(sCommand.bByteMode
                                      ? "exceeds 8 bits (a BYTESTREAM field cannot cross a byte boundary — use BITSTREAM for that)"
                                      : "exceeds 64 bits (maximum supported field width)"));
             return false;
@@ -593,9 +593,9 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
         // so everything below (fit/overlap/sizing/packing) is identical
         // for both keywords. See StreamStatement's doc comment.
         uint64_t offset = rawOffset;
-        if (command.bByteMode) {
+        if (sCommand.bByteMode) {
             if (rawOffset > (UINT64_MAX - 7) / 8) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                           LOG_STRING(pszKind); LOG_STRING(": byte offset"); LOG_UINT64(rawOffset); LOG_STRING("is too large"));
                 return false;
             }
@@ -604,14 +604,14 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
 
         const uint64_t szMaxValue = (length >= 64) ? UINT64_MAX : ((uint64_t(1) << length) - 1);
         if (value > szMaxValue) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": value"); LOG_UINT64(value);
                       LOG_STRING("cannot fit on"); LOG_UINT64(length); LOG_STRING("bits (max"); LOG_UINT64(szMaxValue); LOG_STRING(")"));
             return false;
         }
 
         if (offset + 1 < length) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": field with offset"); LOG_UINT64(rawOffset);
                       LOG_STRING("and length"); LOG_UINT64(length); LOG_STRING("would start before bit 0"));
             return false;
@@ -630,7 +630,7 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
 
     static constexpr size_t kMaxStreamBytes = 65536; // sanity cap against a typo'd huge offset
     if (szTotalBytes > kMaxStreamBytes) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                   LOG_STRING(pszKind); LOG_STRING(": resulting stream ("); LOG_SIZET(szTotalBytes);
                   LOG_STRING("bytes) exceeds the"); LOG_SIZET(kMaxStreamBytes); LOG_STRING("byte sanity limit"));
         return false;
@@ -648,7 +648,7 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
             const uint64_t bitIndex = firstBit + b;
 
             if (vOwner[static_cast<size_t>(bitIndex)] != -1) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                           LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
                           LOG_STRING("(offset"); LOG_UINT64(f.offset);
                           LOG_STRING(") overlaps field #"); LOG_INT64(vOwner[static_cast<size_t>(bitIndex)]);
@@ -667,9 +667,9 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
     }
 
     // ── 5. Optional REVERSE_BIT / REVERSE_BYTE post-processing ─────────────
-    if (command.eReverse == StreamReverseMode::REVERSE_BYTE) {
+    if (sCommand.eReverse == StreamReverseMode::REVERSE_BYTE) {
         std::reverse(vBytes.begin(), vBytes.end());
-    } else if (command.eReverse == StreamReverseMode::REVERSE_BIT) {
+    } else if (sCommand.eReverse == StreamReverseMode::REVERSE_BIT) {
         std::reverse(vBytes.begin(), vBytes.end());
         for (auto &b : vBytes) {
             b = static_cast<uint8_t>(((b & 0xF0u) >> 4) | ((b & 0x0Fu) << 4));
@@ -681,7 +681,7 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
     // ── 6. Hexlify ───────────────────────────────────────────────────────
     strResultHex = hexutils::stringHexlify(vBytes);
 
-    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strLineNr.data());
               LOG_STRING(pszKind); LOG_STRING("->"); LOG_SIZET(vBytes.size());
               LOG_STRING("bytes ["); LOG_STRING(strResultHex); LOG_STRING("]"));
 
@@ -689,10 +689,10 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &command, c
 
 } // m_buildStreamStatement()
 
-bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &command, const std::string &lineNr,
+bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &sCommand, const std::string &strLineNr,
                                                   std::string &strResultDecimal) noexcept
 {
-    const char *pszKind = command.bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
+    const char *pszKind = sCommand.bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
 
     auto resolveOne     = [&](const std::string &strTpl, const char *pszWhich, uint64_t &out) -> bool {
         std::string strExpanded = strTpl;
@@ -700,7 +700,7 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &comm
             return false; // fatal: constant array index out of range, already logged
         }
         if (!numeric::str2uint64(strExpanded, out)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
                       LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
             return false;
@@ -709,14 +709,14 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &comm
     };
 
     // ── 1. Resolve and decode the hex source ───────────────────────────────
-    std::string strSource = command.strSourceTpl;
+    std::string strSource = sCommand.strSourceTpl;
     if (!m_replaceVariableMacros(strSource)) {
         return false; // fatal: constant array index out of range, already logged
     }
 
     std::vector<uint8_t> vBytes;
     if (!hexutils::hexstringToVector(strSource, vBytes) || vBytes.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                   LOG_STRING(pszKind); LOG_STRING(": source ["); LOG_STRING(strSource);
                   LOG_STRING("] is not a valid (non-empty) hexlified byte string"));
         return false;
@@ -728,27 +728,27 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &comm
     //       both keywords, exactly like m_buildStreamStatement()'s own
     //       BYTESTREAM->BITSTREAM offset translation ──────────────────────
     uint64_t offset             = 0;
-    if (!command.bByteMode) {
-        if (!resolveOne(command.strBitOffsetTpl, "bit_offset", offset)) {
+    if (!sCommand.bByteMode) {
+        if (!resolveOne(sCommand.strBitOffsetTpl, "bit_offset", offset)) {
             return false;
         }
     } else {
         uint64_t byteOffset = 0, bitInByte = 0;
-        if (!resolveOne(command.strByteOffsetTpl, "byte_offset", byteOffset)) {
+        if (!resolveOne(sCommand.strByteOffsetTpl, "byte_offset", byteOffset)) {
             return false;
         }
-        if (!resolveOne(command.strBitOffsetTpl, "bit_offset", bitInByte)) {
+        if (!resolveOne(sCommand.strBitOffsetTpl, "bit_offset", bitInByte)) {
             return false;
         }
 
         if (bitInByte > 7) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": bit_offset"); LOG_UINT64(bitInByte);
                       LOG_STRING("must be 0-7 (bit position within the byte — 0 is that byte's MSB)"));
             return false;
         }
         if (byteOffset > (UINT64_MAX - 7) / 8) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": byte_offset"); LOG_UINT64(byteOffset); LOG_STRING("is too large"));
             return false;
         }
@@ -756,17 +756,17 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &comm
     }
 
     uint64_t szValueSize = 0;
-    if (!resolveOne(command.strValueSizeTpl, "value_size", szValueSize)) {
+    if (!resolveOne(sCommand.strValueSizeTpl, "value_size", szValueSize)) {
         return false;
     }
 
     if (szValueSize == 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                   LOG_STRING(pszKind); LOG_STRING(": value_size must be at least 1 bit"));
         return false;
     }
     if (szValueSize > 64) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                   LOG_STRING(pszKind); LOG_STRING(": value_size"); LOG_UINT64(szValueSize);
                   LOG_STRING("exceeds 64 bits (maximum supported result width)"));
         return false;
@@ -778,10 +778,10 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &comm
     // (bit_offset here is still the resolved byte-local value from step 2's
     // else-branch; re-derive it from the global offset since it's the only
     // copy still in scope.)
-    if (command.bByteMode) {
+    if (sCommand.bByteMode) {
         const uint64_t bitInByte = offset % 8;
         if (bitInByte + 1 < szValueSize) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": field with bit_offset"); LOG_UINT64(bitInByte);
                       LOG_STRING("and value_size"); LOG_UINT64(szValueSize);
                       LOG_STRING("exceeds 8 bits (a BYTESTREAMVAL field cannot cross a byte boundary — use BITSTREAMVAL for that)"));
@@ -791,13 +791,13 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &comm
 
     // ── 3. Range-check against the source buffer and extract ───────────────
     if (offset + 1 < szValueSize) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                   LOG_STRING(pszKind); LOG_STRING(": field with offset"); LOG_UINT64(offset);
                   LOG_STRING("and value_size"); LOG_UINT64(szValueSize); LOG_STRING("would start before bit 0"));
         return false;
     }
     if (offset >= szSourceBits) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                   LOG_STRING(pszKind); LOG_STRING(": offset"); LOG_UINT64(offset);
                   LOG_STRING("is beyond the end of the"); LOG_SIZET(vBytes.size());
                   LOG_STRING("-byte ("); LOG_UINT64(szSourceBits); LOG_STRING("-bit) source"));
@@ -818,18 +818,18 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &comm
 
     strResultDecimal = std::to_string(result);
 
-    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-              LOG_STRING(pszKind); LOG_STRING("["); LOG_STRING(command.strName);
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strLineNr.data());
+              LOG_STRING(pszKind); LOG_STRING("["); LOG_STRING(sCommand.strName);
               LOG_STRING("]->["); LOG_STRING(strResultDecimal); LOG_STRING("]"));
 
     return true;
 
 } // m_buildStreamValStatement()
 
-bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayStatement &command, const std::string &lineNr,
+bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayStatement &sCommand, const std::string &strLineNr,
                                                        std::vector<std::string> &vResultsDecimal) noexcept
 {
-    const char *pszKind = command.bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
+    const char *pszKind = sCommand.bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
 
     auto resolveOne     = [&](const std::string &strTpl, const char *pszWhich, size_t idx, uint64_t &out) -> bool {
         std::string strExpanded = strTpl;
@@ -837,7 +837,7 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
             return false; // fatal: constant array index out of range, already logged
         }
         if (!numeric::str2uint64(strExpanded, out)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
                       LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
                       LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
@@ -848,14 +848,14 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
 
     // ── 1. Resolve and decode the hex source once — shared by every field,
     //       exactly like m_buildStreamValStatement()'s own step 1 ──────────
-    std::string strSource = command.strSourceTpl;
+    std::string strSource = sCommand.strSourceTpl;
     if (!m_replaceVariableMacros(strSource)) {
         return false; // fatal: constant array index out of range, already logged
     }
 
     std::vector<uint8_t> vBytes;
     if (!hexutils::hexstringToVector(strSource, vBytes) || vBytes.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                   LOG_STRING(pszKind); LOG_STRING(": source ["); LOG_STRING(strSource);
                   LOG_STRING("] is not a valid (non-empty) hexlified byte string"));
         return false;
@@ -866,13 +866,13 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
     //       otherwise identical to m_buildStreamValStatement()'s own
     //       steps 2/3 ──────────────────────────────────────────────────────
     vResultsDecimal.clear();
-    vResultsDecimal.reserve(command.vFields.size());
+    vResultsDecimal.reserve(sCommand.vFields.size());
 
-    for (size_t idx = 0; idx < command.vFields.size(); ++idx) {
-        const auto &f   = command.vFields[idx];
+    for (size_t idx = 0; idx < sCommand.vFields.size(); ++idx) {
+        const auto &f   = sCommand.vFields[idx];
 
         uint64_t offset = 0;
-        if (!command.bByteMode) {
+        if (!sCommand.bByteMode) {
             if (!resolveOne(f.strBitOffsetTpl, "bit_offset", idx, offset)) {
                 return false;
             }
@@ -886,14 +886,14 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
             }
 
             if (bitInByte > 7) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                           LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
                           LOG_STRING(": bit_offset"); LOG_UINT64(bitInByte);
                           LOG_STRING("must be 0-7 (bit position within the byte — 0 is that byte's MSB)"));
                 return false;
             }
             if (byteOffset > (UINT64_MAX - 7) / 8) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                           LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
                           LOG_STRING(": byte_offset"); LOG_UINT64(byteOffset); LOG_STRING("is too large"));
                 return false;
@@ -907,13 +907,13 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
         }
 
         if (szValueSize == 0) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
                       LOG_STRING(": value_size must be at least 1 bit"));
             return false;
         }
         if (szValueSize > 64) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
                       LOG_STRING(": value_size"); LOG_UINT64(szValueSize);
                       LOG_STRING("exceeds 64 bits (maximum supported result width)"));
@@ -922,10 +922,10 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
 
         // A BYTESTREAMVAL field cannot cross into a neighbouring byte —
         // same check (and rationale) as m_buildStreamValStatement()'s own.
-        if (command.bByteMode) {
+        if (sCommand.bByteMode) {
             const uint64_t bitInByte = offset % 8;
             if (bitInByte + 1 < szValueSize) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                           LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
                           LOG_STRING(": bit_offset"); LOG_UINT64(bitInByte);
                           LOG_STRING("and value_size"); LOG_UINT64(szValueSize);
@@ -935,14 +935,14 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
         }
 
         if (offset + 1 < szValueSize) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
                       LOG_STRING(": offset"); LOG_UINT64(offset);
                       LOG_STRING("and value_size"); LOG_UINT64(szValueSize); LOG_STRING("would start before bit 0"));
             return false;
         }
         if (offset >= szSourceBits) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
                       LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
                       LOG_STRING(": offset"); LOG_UINT64(offset);
                       LOG_STRING("is beyond the end of the"); LOG_SIZET(vBytes.size());
@@ -964,8 +964,8 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
         vResultsDecimal.push_back(std::to_string(result));
     }
 
-    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-              LOG_STRING(pszKind); LOG_STRING("["); LOG_STRING(command.strName);
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strLineNr.data());
+              LOG_STRING(pszKind); LOG_STRING("["); LOG_STRING(sCommand.strName);
               LOG_STRING("]->"); LOG_SIZET(vResultsDecimal.size()); LOG_STRING("element(s)"));
 
     return true;
@@ -1264,7 +1264,7 @@ bool ScriptInterpreter::executeCmd(const std::string &strCommand)
   here rather than throughout m_executeCommand / m_runEndRepeat.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_evaluateCondition(const std::string &strCondition, bool &result) noexcept
+bool ScriptInterpreter::m_evaluateCondition(const std::string &strCondition, bool &bResult) noexcept
 {
     std::string strExpr = strCondition;
     ustring::stripPrefix(strExpr, kEvalPrefix);
@@ -1272,11 +1272,11 @@ bool ScriptInterpreter::m_evaluateCondition(const std::string &strCondition, boo
     if (strExpr.size() < strCondition.size()) {
         // Prefix was present — delegate to the typed evaluator.
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("EVAL expression:"); LOG_STRING(strExpr));
-        return m_evalExprEvaluator.evaluate(strExpr, result);
+        return m_evalExprEvaluator.evaluate(strExpr, bResult);
     }
 
     // Plain boolean expression (TRUE / FALSE / && / ||).
-    return m_beEvaluator.evaluate(strCondition, result);
+    return m_beEvaluator.evaluate(strCondition, bResult);
 
 } /* m_evaluateCondition() */
 
@@ -1284,16 +1284,16 @@ bool ScriptInterpreter::m_evaluateCondition(const std::string &strCondition, boo
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_loadPlugin(PluginDataType &command, bool bInitEnable)
+bool ScriptInterpreter::m_loadPlugin(PluginDataType &sCommand, bool bInitEnable)
 {
     bool bRetVal = false;
 
     do {
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Loading :"); LOG_STRING(command.strPluginName));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Loading :"); LOG_STRING(sCommand.strPluginName));
 
-        auto [handle, error] = m_PluginLoader(command.strPluginName);
+        auto [handle, error] = m_PluginLoader(sCommand.strPluginName);
         if (!(handle.first && handle.second)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING("-> loading failed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(sCommand.strPluginName); LOG_STRING("-> loading failed"));
             if (error) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(error.value().message));
             } else {
@@ -1303,36 +1303,36 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType &command, bool bInitEnable)
         }
 
         // Transfer the pointers to the internal storage
-        command.hLibHandle            = std::move(handle.first);
-        command.shptrPluginEntryPoint = std::move(handle.second);
+        sCommand.hLibHandle            = std::move(handle.first);
+        sCommand.shptrPluginEntryPoint = std::move(handle.second);
 
         // Retrieve data from plugin
-        command.shptrPluginEntryPoint->getParams(&command.sGetParams);
+        sCommand.shptrPluginEntryPoint->getParams(&sCommand.sGetParams);
 
         if (m_IniCfgLoader.isLoaded()) {
-            if (m_IniCfgLoader.sectionExists(command.strPluginName)) {
-                if (false == m_IniCfgLoader.resolveSection(command.strPluginName, command.sSetParams.mapSettings)) {
+            if (m_IniCfgLoader.sectionExists(sCommand.strPluginName)) {
+                if (false == m_IniCfgLoader.resolveSection(sCommand.strPluginName, sCommand.sSetParams.mapSettings)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
-                              LOG_STRING(command.strPluginName);
+                              LOG_STRING(sCommand.strPluginName);
                               LOG_STRING(": failed to load settings from .ini file"));
                     break;
                 }
             } else {
                 LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                          LOG_STRING(command.strPluginName);
+                          LOG_STRING(sCommand.strPluginName);
                           LOG_STRING(": no settings in .ini file"));
             }
         }
 
-        command.sSetParams.shpLogger       = getLogger();
+        sCommand.sSetParams.shpLogger       = getLogger();
 
         // Runtime instance identity (e.g. "UART" or "UART:1") — see the doc
-        // comment on PluginDataSet::strInstanceName. command.strPluginName
+        // comment on PluginDataSet::strInstanceName. sCommand.strPluginName
         // already carries the ":N" suffix for auto-instantiated instances
         // (see m_autoInstantiatePlugins()), so this is simply forwarded
         // verbatim; the plugin itself decides what to do with it (report it
         // to the GUI comm-dump panel via gui_notify_comm_dump()).
-        command.sSetParams.strInstanceName = command.strPluginName;
+        sCommand.sSetParams.strInstanceName = sCommand.strPluginName;
 
         // Ensure ARTEFACTS_PATH always resolves relative to the main script's
         // directory, not the process working directory.
@@ -1345,21 +1345,21 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType &command, bool bInitEnable)
         //   - If the ini set an absolute path → leave it untouched (explicit
         //     absolute paths are intentional and always unambiguous).
         if (!m_strScriptDir.empty()) {
-            auto it = command.sSetParams.mapSettings.find("ARTEFACTS_PATH");
-            if (it == command.sSetParams.mapSettings.end()) {
+            auto it = sCommand.sSetParams.mapSettings.find("ARTEFACTS_PATH");
+            if (it == sCommand.sSetParams.mapSettings.end()) {
                 // Not in ini at all — use script directory
-                command.sSetParams.mapSettings["ARTEFACTS_PATH"] = m_strScriptDir;
+                sCommand.sSetParams.mapSettings["ARTEFACTS_PATH"] = m_strScriptDir;
             } else if (!std::filesystem::path(it->second).is_absolute()) {
                 // Relative ini value — resolve it against the script directory
-                command.sSetParams.mapSettings["ARTEFACTS_PATH"] =
+                sCommand.sSetParams.mapSettings["ARTEFACTS_PATH"] =
                     (std::filesystem::path(m_strScriptDir) / it->second).string();
             }
             // else: absolute path in ini — leave it as-is
         }
 
         // set parameters to plugin
-        if (false == command.shptrPluginEntryPoint->setParams(&command.sSetParams)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING(": failed to set params loaded from .ini file"));
+        if (false == sCommand.shptrPluginEntryPoint->setParams(&sCommand.sSetParams)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(sCommand.strPluginName); LOG_STRING(": failed to set params loaded from .ini file"));
             break; // Exit early on failure
         }
 
@@ -1372,19 +1372,19 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType &command, bool bInitEnable)
             }
             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(oss.str()); LOG_STRING("| loaded"));
         };
-        printPluginInfo(command.strPluginName, command.sGetParams.strPluginVersion, command.sGetParams.vstrPluginCommands);
+        printPluginInfo(sCommand.strPluginName, sCommand.sGetParams.strPluginVersion, sCommand.sGetParams.vstrPluginCommands);
 
         // if explicitly requested, perform also the plugin initialization and enabling
         if (bInitEnable) {
-            if (false == command.shptrPluginEntryPoint->doInit((true == command.shptrPluginEntryPoint->isPrivileged()) ? this : nullptr)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to initialize plugin:"); LOG_STRING(command.strPluginName));
+            if (false == sCommand.shptrPluginEntryPoint->doInit((true == sCommand.shptrPluginEntryPoint->isPrivileged()) ? this : nullptr)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to initialize plugin:"); LOG_STRING(sCommand.strPluginName));
                 bRetVal = false;
             }
-            if (!command.shptrPluginEntryPoint->doEnable()) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to enable plugin:"); LOG_STRING(command.strPluginName));
+            if (!sCommand.shptrPluginEntryPoint->doEnable()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to enable plugin:"); LOG_STRING(sCommand.strPluginName));
                 bRetVal = false;
             }
-            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING("initialized and enabled"));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(sCommand.strPluginName); LOG_STRING("initialized and enabled"));
         }
 
         bRetVal = true;
@@ -1593,7 +1593,7 @@ bool ScriptInterpreter::m_enablePlugins() noexcept
  * Traverse the command list in reverse to resolve macros using their most recently assigned values.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_replaceVariableMacros(std::string &input, bool bDeferRuntimeVarMacros)
+bool ScriptInterpreter::m_replaceVariableMacros(std::string &strInput, bool bDeferRuntimeVarMacros)
 {
     /*
     Extended pattern — four forms:
@@ -1673,10 +1673,10 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string &input, bool bDeferR
     while (replaced) {
         replaced = false;
         std::string result;
-        result.reserve(input.size());
-        std::string::const_iterator searchStart = input.cbegin();
+        result.reserve(strInput.size());
+        std::string::const_iterator searchStart = strInput.cbegin();
 
-        while (std::regex_search(searchStart, input.cend(), match, macroPattern)) {
+        while (std::regex_search(searchStart, strInput.cend(), match, macroPattern)) {
             result.append(match.prefix());
 
             const std::string macroName  = match[1].str();
@@ -1835,8 +1835,8 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string &input, bool bDeferR
             }
             searchStart = match.suffix().first;
         }
-        result.append(searchStart, input.cend());
-        input = result;
+        result.append(searchStart, strInput.cend());
+        strInput = result;
     }
 
     return true;
@@ -1850,16 +1850,16 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string &input, bool bDeferR
   No-op when strVarMacroName is empty (loop has no capture variable).
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_initLoopIterIndex(LoopState &state) noexcept
+void ScriptInterpreter::m_initLoopIterIndex(LoopState &sState) noexcept
 {
-    if (!state.strVarMacroName.empty()) {
-        const std::string strVal                   = state.bIsUntil
+    if (!sState.strVarMacroName.empty()) {
+        const std::string strVal                   = sState.bIsUntil
                                                          ? "0"
-                                                         : (state.bRangeIsInteger ? std::to_string(state.llCurrent)
-                                                                                  : formatRepeatDouble(state.dCurrent));
-        state.mapLoopMacros[state.strVarMacroName] = strVal;
+                                                         : (sState.bRangeIsInteger ? std::to_string(sState.llCurrent)
+                                                                                  : formatRepeatDouble(sState.dCurrent));
+        sState.mapLoopMacros[sState.strVarMacroName] = strVal;
         LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                  LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName);
+                  LOG_STRING("REPEAT iter-index $"); LOG_STRING(sState.strVarMacroName);
                   LOG_STRING("="); LOG_STRING(strVal));
     }
 } /* m_initLoopIterIndex() */
@@ -1870,29 +1870,29 @@ void ScriptInterpreter::m_initLoopIterIndex(LoopState &state) noexcept
   No-op when strVarMacroName is empty.
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_advanceLoopIterIndex(LoopState &state) noexcept
+void ScriptInterpreter::m_advanceLoopIterIndex(LoopState &sState) noexcept
 {
-    ++state.uIterationCount;
+    ++sState.uIterationCount;
 
     std::string strVal;
-    if (state.bIsUntil) {
+    if (sState.bIsUntil) {
         // REPEAT UNTIL has no range to walk — the capture macro is a plain
         // 0-based iteration counter, as before.
-        strVal = std::to_string(state.uIterationCount);
+        strVal = std::to_string(sState.uIterationCount);
     } else {
-        if (state.bRangeIsInteger) {
-            state.llCurrent += state.llStep;
-            strVal = std::to_string(state.llCurrent);
+        if (sState.bRangeIsInteger) {
+            sState.llCurrent += sState.llStep;
+            strVal = std::to_string(sState.llCurrent);
         } else {
-            state.dCurrent += state.dStep;
-            strVal = formatRepeatDouble(state.dCurrent);
+            sState.dCurrent += sState.dStep;
+            strVal = formatRepeatDouble(sState.dCurrent);
         }
     }
 
-    if (!state.strVarMacroName.empty()) {
-        state.mapLoopMacros[state.strVarMacroName] = strVal;
+    if (!sState.strVarMacroName.empty()) {
+        sState.mapLoopMacros[sState.strVarMacroName] = strVal;
         LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                  LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName);
+                  LOG_STRING("REPEAT iter-index $"); LOG_STRING(sState.strVarMacroName);
                   LOG_STRING("="); LOG_STRING(strVal));
     }
 } /* m_advanceLoopIterIndex() */
@@ -2106,17 +2106,17 @@ void ScriptInterpreter::m_stopAllGenerators() noexcept
   caller's unconditional ++iIndex lands at the correct body-start address.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_t &iIndex) noexcept
+bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size_t &iIndex) noexcept
 {
     bool bRetVal          = true;
     bool bIsPluginCommand = false;
-    auto lineNr           = ustring::fmtLineNr(data.iLineNumber);
-    const int lineNo      = data.iLineNumber; // captured by value into the visit lambda below
+    auto lineNr           = ustring::fmtLineNr(sData.iLineNumber);
+    const int lineNo      = sData.iLineNumber; // captured by value into the visit lambda below
 
     // Notify the GUI front-end which main-script line is about to execute.
     // In CLI mode g_gui_mode is false so this is a single branch-not-taken.
     if (bRealExec) {
-        gui_notify_exec_main(data.iLineNumber);
+        gui_notify_exec_main(sData.iLineNumber);
     }
 
     std::visit([this, bRealExec, lineNo, &lineNr, &bIsPluginCommand, &bRetVal, &iIndex](auto &command) {
@@ -2159,7 +2159,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                                 {
                                     std::lock_guard<std::mutex> lock(m_threadsMutex);
                                     if (m_busyPlugins.count(command.strPlugin)) {
-                                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                                                   LOG_STRING("Cannot launch thread: plugin already has an active thread:");
                                                   LOG_STRING(command.strPlugin));
                                         bRetVal = false;
@@ -2167,7 +2167,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                                     }
                                 }
 
-                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data());
+                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.sData());
                                           LOG_STRING("--- Exec:");
                                           LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams);
                                           LOG_STRING("&"));
@@ -2232,7 +2232,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                                                     // "receive whatever is sent" CMD whose read timed out
                                                     // with 0 bytes) yields an empty result here - see
                                                     // receiveAndHexdump()'s READ_TIMEOUT handling. That is
-                                                    // a normal idle tick, not new data, so it must NOT
+                                                    // a normal idle tick, not new sData, so it must NOT
                                                     // clobber VAL back to "": only overwrite the captured
                                                     // variable when something was actually received.
                                                     if (!strValue.empty()) {
@@ -2272,18 +2272,18 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                                     gui_notify_thread_start(lineNo);
                                 }
 
-                                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.sData());
                                           LOG_STRING("Thread launched ok:"); LOG_STRING(command.strPlugin));
 
                             } else {
                                 // ---- Sequential dispatch (bThreaded=false) ----
-                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data());
+                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.sData());
                                           LOG_STRING("--- Exec:");
                                           LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                                 {
-                                    utime::Timer timer(std::string(lineNr.data()) + " Command");
+                                    utime::Timer timer(std::string(lineNr.sData()) + " Command");
                                     if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, strExpandedParams, uexec::getStopToken())) {
-                                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                                                   LOG_STRING("Failed executing");
                                                   LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                                         bRetVal = false;
@@ -2292,7 +2292,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                                         if constexpr (std::is_same_v<T, MacroCommand>) {
                                             const std::string strValue = plugin.shptrPluginEntryPoint->getData();
                                             m_setRuntimeVarMacro(command.strVarMacroName, strValue);
-                                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.sData());
                                                       LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName);
                                                       LOG_STRING("]->["); LOG_STRING(strValue); LOG_STRING("]"));
                                             plugin.shptrPluginEntryPoint->resetData();
@@ -2304,7 +2304,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                             utime::delay_ms(m_szDelay); /* delay between the commands execution */
 
                         } else { // only for validation purposes
-                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                                       LOG_STRING("Validate:");
                                       LOG_STRING(command.strPlugin + "." + command.strCommand);
                                       LOG_STRING(command.strParams));
@@ -2317,7 +2317,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                             // of a doDispatch() parameter.
                             uexec::DryRunScope dryRunScope(true);
                             if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
-                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                                           LOG_STRING("Failed validating");
                                           LOG_STRING(command.strPlugin + "." + command.strCommand);
                                           LOG_STRING(command.strParams));
@@ -2328,7 +2328,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     }
                 }
             } else {
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("Skipped:"); LOG_STRING(command.strPlugin);
                           LOG_STRING(command.strCommand); LOG_STRING("args[");
                           LOG_STRING(command.strParams); LOG_STRING("]"));
@@ -2356,18 +2356,18 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                         if (true == beResult) {
                             m_strSkipUntilLabel = command.strLabelName;
                             m_eSkipReason       = SkipReason::GOTO;
-                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                                       LOG_STRING("Start skipping to label:");
                                       LOG_STRING(m_strSkipUntilLabel));
                         }
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                                   LOG_STRING("Failed to evaluate condition:");
                                   LOG_STRING(strCondExpanded));
                         bRetVal = false;
                     }
                 } else {
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                               LOG_STRING("Skipped:");
                               LOG_STRING("[IF ..] GOTO:");
                               LOG_STRING(command.strLabelName));
@@ -2384,7 +2384,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     m_eSkipReason == SkipReason::GOTO) {
                     m_strSkipUntilLabel.clear();
                     m_eSkipReason = SkipReason::NONE;
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                               LOG_STRING("Stop skipping at label:");
                               LOG_STRING(command.strLabelName));
                 }
@@ -2400,7 +2400,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 ResolvedRepeatRange range{};
                 if (!m_resolveRepeatRange(command, range)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                               LOG_STRING("REPEAT: failed to resolve range for loop:");
                               LOG_STRING(command.strLabel));
                     bRetVal = false;
@@ -2417,14 +2417,14 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     // LoopState, reusing END_REPEAT's transparent BREAK_LOOP
                     // unwind logic (it pops nothing since nothing was pushed,
                     // and passes through unrelated nested loops untouched).
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                               LOG_STRING("REPEAT: empty range, skipping body:"); LOG_STRING(command.strLabel));
                     m_strSkipUntilLabel = command.strLabel;
                     m_eSkipReason       = SkipReason::BREAK_LOOP;
                     return;
                 }
 
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("REPEAT start:");
                           LOG_STRING(command.strLabel));
 
@@ -2455,7 +2455,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
 
         } else if constexpr (std::is_same_v<T, RepeatUntil>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("REPEAT UNTIL start:");
                           LOG_STRING(command.strLabel);
                           LOG_STRING("cond:");
@@ -2505,7 +2505,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                 if (m_eSkipReason == SkipReason::NONE) {
                     // ---- Normal execution path ----
                     if (m_loopStateStack.empty() || m_loopStateStack.back().strLabel != command.strLabel) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                                   LOG_STRING("END_REPEAT: unexpected label or empty stack:");
                                   LOG_STRING(command.strLabel));
                         bRetVal = false;
@@ -2520,7 +2520,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     // (never pushed), so there is nothing to pop.
                     if (!m_loopStateStack.empty() &&
                         m_loopStateStack.back().strLabel == command.strLabel) {
-                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                                   LOG_STRING("BREAK: unwinding loop:");
                                   LOG_STRING(command.strLabel));
                         m_loopStateStack.pop_back();
@@ -2529,7 +2529,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                         // Target reached — resume after this END_REPEAT with no loop-back.
                         m_strSkipUntilLabel.clear();
                         m_eSkipReason = SkipReason::NONE;
-                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                                   LOG_STRING("BREAK: exited loop:");
                                   LOG_STRING(command.strLabel));
                     }
@@ -2541,7 +2541,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                         // i.e. its label matches the current stack back.
                         if (!m_loopStateStack.empty() &&
                             m_loopStateStack.back().strLabel == command.strLabel) {
-                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                                       LOG_STRING("CONTINUE: unwinding inner loop:");
                                       LOG_STRING(command.strLabel));
                             m_loopStateStack.pop_back();
@@ -2550,7 +2550,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                         // Target reached — clear skip, keep LoopState alive, run loop logic.
                         m_strSkipUntilLabel.clear();
                         m_eSkipReason = SkipReason::NONE;
-                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                                   LOG_STRING("CONTINUE: resuming at END_REPEAT:");
                                   LOG_STRING(command.strLabel));
                         m_runEndRepeat(iIndex, bRetVal);
@@ -2567,7 +2567,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
 
         } else if constexpr (std::is_same_v<T, LoopBreak>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("BREAK:");
                           LOG_STRING(command.strLabel));
                 m_strSkipUntilLabel = command.strLabel;
@@ -2582,7 +2582,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
 
         } else if constexpr (std::is_same_v<T, LoopContinue>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("CONTINUE:");
                           LOG_STRING(command.strLabel));
                 m_strSkipUntilLabel = command.strLabel;
@@ -2603,7 +2603,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     bRetVal = false; // fatal: constant array index out of range, already logged
                     return;
                 }
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING(strExpanded));
             }
 
@@ -2629,7 +2629,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 const std::string strUnit = (command.eUnit == DelayUnit::US) ? "us" : (command.eUnit == DelayUnit::MS) ? "ms"
                                                                                                                        : "sec";
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("DELAY:");
                           LOG_STRING(std::to_string(command.szValue));
                           LOG_STRING(strUnit));
@@ -2658,7 +2658,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     if (target > now) {
                         std::this_thread::sleep_for(target - now);
                     } else {
-                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                                   LOG_STRING("DELAY: loop running behind schedule by");
                                   LOG_STRING(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(now - target).count()));
                                   LOG_STRING("us — skipping sleep, not catching up in one jump"));
@@ -2704,13 +2704,13 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     bool bEvalResult = false;
                     if (m_evaluateCondition(strExpanded, bEvalResult)) {
                         strExpanded = bEvalResult ? "TRUE" : "FALSE";
-                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                                   LOG_STRING("EVAL result for VAR_INIT [");
                                   LOG_STRING(command.strName);
                                   LOG_STRING("] -> [");
                                   LOG_STRING(strExpanded); LOG_STRING("]"));
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                                   LOG_STRING("EVAL failed for VAR_INIT [");
                                   LOG_STRING(command.strName);
                                   LOG_STRING("]"));
@@ -2720,7 +2720,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                 }
 
                 m_setRuntimeVarMacro(command.strName, strExpanded);
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("VAR_INIT ["); LOG_STRING(command.strName);
                           LOG_STRING("]->[");
                           LOG_STRING(strExpanded); LOG_STRING("]"));
@@ -2764,7 +2764,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                 const size_t szNrItems = vItems.size();
 
                 if (szNrItems == 0) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                               LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
                               LOG_STRING("]: input expanded to empty — no items to substitute"));
                     bRetVal = false;
@@ -2780,7 +2780,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     if (c == '%') {
                         // Validator guarantees a digit follows, but guard anyway.
                         if (i + 1 >= strFormat.size()) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                                       LOG_STRING("FORMAT [");
                                       LOG_STRING(command.strName);
                                       LOG_STRING("]: '%' at end of expanded format template"));
@@ -2789,7 +2789,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                         }
                         const char cIdx = strFormat[++i];
                         if (!std::isdigit(static_cast<unsigned char>(cIdx))) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                                       LOG_STRING("FORMAT [");
                                       LOG_STRING(command.strName);
                                       LOG_STRING("]: '%");
@@ -2800,7 +2800,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                         }
                         const size_t uiIndex = static_cast<size_t>(cIdx - '0');
                         if (uiIndex >= szNrItems) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                                       LOG_STRING("FORMAT [");
                                       LOG_STRING(command.strName);
                                       LOG_STRING("]: index %");
@@ -2819,7 +2819,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
 
                 // store result
                 m_setRuntimeVarMacro(command.strName, strResult);
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("FORMAT [");
                           LOG_STRING(command.strName);
                           LOG_STRING("]->[");
@@ -2860,7 +2860,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     return;
                 }
 
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("MATH [");
                           LOG_STRING(command.strName);
                           LOG_STRING("] expr=[");
@@ -2873,7 +2873,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     Calculator calc(strExpr, m_mathVars);
                     dResult = calc.evaluate();
                 } catch (const std::exception &ex) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                               LOG_STRING("MATH [");
                               LOG_STRING(command.strName);
                               LOG_STRING("]: evaluation failed:");
@@ -2923,7 +2923,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                         strResult                = hexutils::intToHexStringFixed(uVal, szByteWidth, eEndian);
                     }
 
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                               LOG_STRING("MATH HEX [");
                               LOG_STRING(command.strName);
                               LOG_STRING("] format=[");
@@ -2934,7 +2934,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
 
                 // store result
                 m_setRuntimeVarMacro(command.strName, strResult);
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("MATH [");
                           LOG_STRING(command.strName);
                           LOG_STRING("]->[");
@@ -2963,13 +2963,13 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
 
                 std::string strResultHex;
-                if (!m_buildStreamStatement(command, lineNr.data(), strResultHex)) {
+                if (!m_buildStreamStatement(command, lineNr.sData(), strResultHex)) {
                     bRetVal = false;
                     return;
                 }
 
                 m_setRuntimeVarMacro(command.strName, strResultHex);
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING(command.bByteMode ? "BYTESTREAM [" : " BITSTREAM [");
                           LOG_STRING(command.strName);
                           LOG_STRING("]->[");
@@ -2998,13 +2998,13 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
 
                 std::string strResultDecimal;
-                if (!m_buildStreamValStatement(command, lineNr.data(), strResultDecimal)) {
+                if (!m_buildStreamValStatement(command, lineNr.sData(), strResultDecimal)) {
                     bRetVal = false;
                     return;
                 }
 
                 m_setRuntimeVarMacro(command.strName, strResultDecimal);
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING(command.bByteMode ? "BYTESTREAMVAL [" : " BITSTREAMVAL [");
                           LOG_STRING(command.strName);
                           LOG_STRING("]->[");
@@ -3039,13 +3039,13 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
 
                 std::vector<std::string> vResultsDecimal;
-                if (!m_buildStreamValArrayStatement(command, lineNr.data(), vResultsDecimal)) {
+                if (!m_buildStreamValArrayStatement(command, lineNr.sData(), vResultsDecimal)) {
                     bRetVal = false;
                     return;
                 }
 
                 m_sScriptEntries->mapArrayMacros[command.strName] = vResultsDecimal;
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING(command.bByteMode ? "BYTESTREAMVAL [" : " BITSTREAMVAL [");
                           LOG_STRING(command.strName);
                           LOG_STRING("]->"); LOG_SIZET(vResultsDecimal.size());
@@ -3079,7 +3079,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                     return;
                 }
 
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                           LOG_STRING("BREAKPOINT hit:");
                           LOG_STRING(strLabel.empty() ? "<no label>" : strLabel));
 
@@ -3087,7 +3087,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                 const bool bOk = checkContinue(strLabel);
 
                 if (!bOk) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData());
                               LOG_STRING("BREAKPOINT: script aborted by user"));
                     bRetVal = false;
                 }
@@ -3114,7 +3114,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                 the thread lambda — the thread itself never touches interpreter
                 macro-expansion state, same pattern the "&"-threaded MacroCommand
                 dispatch above uses (expand on the main thread first, hand the
-                thread only already-resolved data).
+                thread only already-resolved sData).
 
                 The thread sleeps via std::condition_variable_any::wait_for(lock,
                 stop_token, duration, pred) rather than a plain sleep_for(), so
@@ -3128,7 +3128,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                 m_stopNamedGenerator(command.strName);
 
                 if (command.bStop) {
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                               LOG_STRING("GENERATOR ["); LOG_STRING(command.strName); LOG_STRING("] STOP"));
                 } else {
                     ResolvedGeneratorRange range;
@@ -3137,7 +3137,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
                         return;
                     }
 
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.sData());
                               LOG_STRING("GENERATOR ["); LOG_STRING(command.strName);
                               LOG_STRING("] launching, every"); LOG_STRING(std::to_string(command.uIntervalUs));
                               LOG_STRING("us waveform=["); LOG_STRING(getGeneratorWaveformName(command.eWaveform));
@@ -3225,14 +3225,14 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
         } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 m_stopAllGenerators();
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("GENERATOR STOP ALL"));
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.sData()); LOG_STRING("GENERATOR STOP ALL"));
             }
         } },
-               data.command);
+               sData.command);
 
     if (bRealExec && m_eSkipReason == SkipReason::NONE && bIsPluginCommand) {
         if (!bRetVal) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("Command execution failed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.sData()); LOG_STRING("Command execution failed"));
         }
     }
 
@@ -3241,7 +3241,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &data, bool bRealExec, size_
     // notification above: only fire when something actually went wrong and
     // only during real execution (dry-run errors are reported by the validator).
     if (bRealExec && !bRetVal) {
-        gui_notify_error_main(data.iLineNumber);
+        gui_notify_error_main(sData.iLineNumber);
     }
 
     return bRetVal;
@@ -3326,7 +3326,7 @@ bool ScriptInterpreter::m_executeCommands(bool bRealExec) noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes &rep, ResolvedRepeatRange &out) noexcept
+bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes &sRep, ResolvedRepeatRange &sOut) noexcept
 {
     // Resolve one bound: literal values were already parsed/typed at
     // validation time; "$macroname" bounds are expanded and (re-)parsed now.
@@ -3340,7 +3340,7 @@ bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes &rep, ResolvedRep
         }
         std::string strExpanded = val.strExpr;
         if (!m_replaceVariableMacros(strExpanded)) {
-            return false; // fatal: constant array index out of range, already logged
+            return false; // fatal: constant array index sOut of range, already logged
         }
         if (!parseRepeatNumber(strExpanded, bIsInt, llOut, dOut)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -3355,32 +3355,32 @@ bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes &rep, ResolvedRep
     long long llBegin = 0, llEnd = 0, llStep = 1;
     double dBegin = 0.0, dEnd = 0.0, dStep = 1.0;
 
-    if (!resolveOne(rep.begin, bBeginInt, llBegin, dBegin)) {
+    if (!resolveOne(sRep.begin, bBeginInt, llBegin, dBegin)) {
         return false;
     }
-    if (!resolveOne(rep.end, bEndInt, llEnd, dEnd)) {
+    if (!resolveOne(sRep.end, bEndInt, llEnd, dEnd)) {
         return false;
     }
-    if (!resolveOne(rep.step, bStepInt, llStep, dStep)) {
+    if (!resolveOne(sRep.step, bStepInt, llStep, dStep)) {
         return false;
     }
 
-    out.bIsInteger         = bBeginInt && bEndInt && bStepInt;
+    sOut.bIsInteger         = bBeginInt && bEndInt && bStepInt;
 
     // Mirror both representations regardless of bIsInteger, using the exact
     // integer value where available so integer-only ranges keep full 64-bit
     // precision even though a double copy also exists.
-    out.llBegin            = llBegin;
-    out.llEnd              = llEnd;
-    out.llStep             = llStep;
-    out.dBegin             = bBeginInt ? static_cast<double>(llBegin) : dBegin;
-    out.dEnd               = bEndInt ? static_cast<double>(llEnd) : dEnd;
-    out.dStep              = bStepInt ? static_cast<double>(llStep) : dStep;
+    sOut.llBegin            = llBegin;
+    sOut.llEnd              = llEnd;
+    sOut.llStep             = llStep;
+    sOut.dBegin             = bBeginInt ? static_cast<double>(llBegin) : dBegin;
+    sOut.dEnd               = bEndInt ? static_cast<double>(llEnd) : dEnd;
+    sOut.dStep              = bStepInt ? static_cast<double>(llStep) : dStep;
 
-    const bool bStepIsZero = out.bIsInteger ? (out.llStep == 0) : (out.dStep == 0.0);
+    const bool bStepIsZero = sOut.bIsInteger ? (sOut.llStep == 0) : (sOut.dStep == 0.0);
     if (bStepIsZero) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("REPEAT: step must not be 0 for loop:"); LOG_STRING(rep.strLabel));
+                  LOG_STRING("REPEAT: step must not be 0 for loop:"); LOG_STRING(sRep.strLabel));
         return false;
     }
     return true;
@@ -3392,7 +3392,7 @@ bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes &rep, ResolvedRep
   doc comment (uScriptInterpreter.hpp) for exactly when this runs.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement &gen, ResolvedGeneratorRange &out) noexcept
+bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement &sGen, ResolvedGeneratorRange &sOut) noexcept
 {
     auto resolveOne = [&](const RepeatRangeValue &val, double &dOut) -> bool {
         if (!val.bIsMacro) {
@@ -3401,14 +3401,14 @@ bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement &gen, R
         }
         std::string strExpanded = val.strExpr;
         if (!m_replaceVariableMacros(strExpanded)) {
-            return false; // fatal: constant array index out of range, already logged
+            return false; // fatal: constant array index sOut of range, already logged
         }
         bool bIsInt     = true;
         long long llVal = 0;
         double dVal     = 0.0;
         if (!parseRepeatNumber(strExpanded, bIsInt, llVal, dVal)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("GENERATOR ["); LOG_STRING(gen.strName);
+                      LOG_STRING("GENERATOR ["); LOG_STRING(sGen.strName);
                       LOG_STRING("]: macro"); LOG_STRING(val.strExpr);
                       LOG_STRING("expanded to invalid number:"); LOG_STRING(strExpanded));
             return false;
@@ -3417,51 +3417,51 @@ bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement &gen, R
         return true;
     };
 
-    out.bIsArraySource = gen.bIsArraySource;
-    out.vArrayValues.clear();
+    sOut.bIsArraySource = sGen.bIsArraySource;
+    sOut.vArrayValues.clear();
 
-    if (gen.bIsArraySource) {
-        out.vArrayValues.reserve(gen.vArrayValues.size());
-        for (const auto &elem : gen.vArrayValues) {
+    if (sGen.bIsArraySource) {
+        sOut.vArrayValues.reserve(sGen.vArrayValues.size());
+        for (const auto &elem : sGen.vArrayValues) {
             double dVal = 0.0;
             if (!resolveOne(elem, dVal)) {
                 return false;
             }
-            out.vArrayValues.push_back(dVal);
+            sOut.vArrayValues.push_back(dVal);
         }
-        if (out.vArrayValues.empty()) {
+        if (sOut.vArrayValues.empty()) {
             // Unreachable in practice (the syntax/validator guarantee >= 1
             // element) — guarded anyway since nextGeneratorArraySample()
             // indexes vValues[0] unconditionally.
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("GENERATOR ["); LOG_STRING(gen.strName);
+                      LOG_STRING("GENERATOR ["); LOG_STRING(sGen.strName);
                       LOG_STRING("]: array data source resolved to zero elements"));
             return false;
         }
-        out.bHasK = false;
-        out.dK    = 0.0;
+        sOut.bHasK = false;
+        sOut.dK    = 0.0;
         return true;
     }
 
-    if (!resolveOne(gen.begin, out.dBegin)) {
+    if (!resolveOne(sGen.begin, sOut.dBegin)) {
         return false;
     }
-    if (!resolveOne(gen.end, out.dEnd)) {
+    if (!resolveOne(sGen.end, sOut.dEnd)) {
         return false;
     }
-    if (!resolveOne(gen.step, out.dStep)) {
-        return false;
-    }
-
-    out.bHasK = gen.bHasK;
-    out.dK    = 0.0;
-    if (gen.bHasK && !resolveOne(gen.k, out.dK)) {
+    if (!resolveOne(sGen.step, sOut.dStep)) {
         return false;
     }
 
-    if (out.dEnd == out.dBegin) {
+    sOut.bHasK = sGen.bHasK;
+    sOut.dK    = 0.0;
+    if (sGen.bHasK && !resolveOne(sGen.k, sOut.dK)) {
+        return false;
+    }
+
+    if (sOut.dEnd == sOut.dBegin) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("GENERATOR ["); LOG_STRING(gen.strName);
+                  LOG_STRING("GENERATOR ["); LOG_STRING(sGen.strName);
                   LOG_STRING("]: begin and end must not resolve to the same value"));
         return false;
     }
@@ -3471,16 +3471,16 @@ bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement &gen, R
     // "$macro" step is only known now, so re-check it here. Uses the
     // magnitude — SQUARE's direction is meaningless (it just toggles between
     // begin and end).
-    if (gen.eWaveform == GeneratorWaveform::SQUARE) {
-        const double dStepMag = std::fabs(out.dStep);
+    if (sGen.eWaveform == GeneratorWaveform::SQUARE) {
+        const double dStepMag = std::fabs(sOut.dStep);
         if (dStepMag < 1.0 || dStepMag != std::floor(dStepMag)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("GENERATOR ["); LOG_STRING(gen.strName);
+                      LOG_STRING("GENERATOR ["); LOG_STRING(sGen.strName);
                       LOG_STRING("]: SQUARE's step must resolve to a positive integer (ticks to hold each level), got"));
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(std::to_string(out.dStep)));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(std::to_string(sOut.dStep)));
             return false;
         }
-        out.dStep = dStepMag;
+        sOut.dStep = dStepMag;
     }
 
     return true;

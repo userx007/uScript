@@ -32,12 +32,12 @@ namespace ucanframe {
      * @param dlc  DLC nibble (0x00 – 0x0F)
      * @return Byte count (0–64)
      */
-    inline uint8_t dlc_to_len(uint8_t dlc)
+    inline uint8_t dlc_to_len(uint8_t u8Dlc)
     {
-        if (dlc >= DLC_TO_LEN_TABLE.size()) {
+        if (u8Dlc >= DLC_TO_LEN_TABLE.size()) {
             return 64;
         }
-        return DLC_TO_LEN_TABLE[dlc];
+        return DLC_TO_LEN_TABLE[u8Dlc];
     }
 
     /**
@@ -45,27 +45,27 @@ namespace ucanframe {
      * @param len  Byte count (0–64)
      * @return DLC nibble
      */
-    inline uint8_t len_to_dlc(uint8_t len)
+    inline uint8_t len_to_dlc(uint8_t u8Len)
     {
-        if (len <= 8) {
-            return len;
+        if (u8Len <= 8) {
+            return u8Len;
         }
-        if (len <= 12) {
+        if (u8Len <= 12) {
             return 9;
         }
-        if (len <= 16) {
+        if (u8Len <= 16) {
             return 10;
         }
-        if (len <= 20) {
+        if (u8Len <= 20) {
             return 11;
         }
-        if (len <= 24) {
+        if (u8Len <= 24) {
             return 12;
         }
-        if (len <= 32) {
+        if (u8Len <= 32) {
             return 13;
         }
-        if (len <= 48) {
+        if (u8Len <= 48) {
             return 14;
         }
         return 15;

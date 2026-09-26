@@ -110,7 +110,7 @@ class DdsTypedDriver : public ICommDriver {
                 bool reliable = false;
         };
 
-        explicit DdsTypedDriver(Config config);
+        explicit DdsTypedDriver(Config sConfig);
         ~DdsTypedDriver() override;
 
         bool open();
@@ -226,13 +226,13 @@ class DdsTypedDriver : public ICommDriver {
         mutable std::atomic<uint64_t> m_anyDataGeneration{0};
 
         std::string m_BuildDomainConfigXml() const; // identical field mapping to DdsDriver's — see that .cpp
-        bool m_LoadPlugin(const std::string &path) const;
-        DdsEntity m_EnsureLocalWriter(const std::string &topic) const;
-        std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;
+        bool m_LoadPlugin(const std::string &strPath) const;
+        DdsEntity m_EnsureLocalWriter(const std::string &strTopic) const;
+        std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &strTopic) const;
 
-        bool m_Publish(const std::string &topic, const std::string &text) const;
-        bool m_Subscribe(const std::string &topic) const;
-        bool m_Unsubscribe(const std::string &topic) const;
+        bool m_Publish(const std::string &strTopic, const std::string &strText) const;
+        bool m_Subscribe(const std::string &strTopic) const;
+        bool m_Unsubscribe(const std::string &strTopic) const;
         std::string m_BuildListText() const;
 
         /// Shared body of receive()'s multiplexed (xtra_params empty, 2+
@@ -243,10 +243,10 @@ class DdsTypedDriver : public ICommDriver {
         /// Blocks on one reader's queue; see the .cpp definition's doc
         /// comment. Static (not const, no `this`) since it only ever
         /// touches the LocalReader passed in.
-        static std::optional<std::string> m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
+        static std::optional<std::string> m_WaitPopOne(LocalReader &sReader, uint32_t u32ReadTimeout,
                                                         std::stop_token stop_tok);
 
-        static void m_OnReaderDataAvailable(DdsEntity reader, void *arg);
+        static void m_OnReaderDataAvailable(DdsEntity reader, void *pvArg);
 };
 
 #endif // DDS_TYPED_DRIVER_HPP

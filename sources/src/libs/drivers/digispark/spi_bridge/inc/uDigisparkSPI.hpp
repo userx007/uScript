@@ -199,7 +199,7 @@ class SPIBridge : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -278,7 +278,7 @@ class SPIBridge : public ICommDriver {
 
         // ── Private command implementations (called with m_mutex held) ───────────
         ReadResult priv_cmd_transfer(uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                     const SPIReadOptions &opts, std::stop_token stop_tok = {}) const;
+                                     const SPIReadOptions &sOpts, std::stop_token stop_tok = {}) const;
         ReadResult priv_cmd_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
                                  size_t szLen, std::stop_token stop_tok = {}) const;
         WriteResult priv_cmd_write(uint32_t u32Timeout,

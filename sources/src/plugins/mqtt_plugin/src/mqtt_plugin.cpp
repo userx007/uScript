@@ -23,10 +23,10 @@ extern "C" {
         return new MqttPlugin();
     }
 
-    EXPORTED void pluginExit(MqttPlugin *ptrPlugin)
+    EXPORTED void pluginExit(MqttPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -84,9 +84,9 @@ std::shared_ptr<MqttDriver> MqttPlugin::m_OpenDriver(void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool MqttPlugin::m_MQTT_INFO(const std::string &args, std::stop_token st) const
+bool MqttPlugin::m_MQTT_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    (void)args;
+    (void)strArgs;
     (void)st;
     resetData();
     std::ostringstream oss;
@@ -171,13 +171,13 @@ bool MqttPlugin::m_MQTT_INFO(const std::string &args, std::stop_token st) const
 // MQTT.CONFIG — see class doc comment (mqtt_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool MqttPlugin::m_MQTT_CONFIG(const std::string &args, std::stop_token st) const
+bool MqttPlugin::m_MQTT_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
-    return generic_mqtt_set_params(this, args);
+    return generic_mqtt_set_params(this, strArgs);
 
 } /* m_MQTT_CONFIG() */
 
@@ -185,12 +185,12 @@ bool MqttPlugin::m_MQTT_CONFIG(const std::string &args, std::stop_token st) cons
 // MQTT.CMD / MQTT.SCRIPT — see class doc comment (mqtt_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool MqttPlugin::m_MQTT_CMD(const std::string &args, std::stop_token st) const
+bool MqttPlugin::m_MQTT_CMD(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
@@ -206,12 +206,12 @@ bool MqttPlugin::m_MQTT_CMD(const std::string &args, std::stop_token st) const
         st);
 }
 
-bool MqttPlugin::m_MQTT_SCRIPT(const std::string &args, std::stop_token st) const
+bool MqttPlugin::m_MQTT_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
@@ -228,12 +228,12 @@ bool MqttPlugin::m_MQTT_SCRIPT(const std::string &args, std::stop_token st) cons
 // MQTT.CYCLIC — see class doc comment (mqtt_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool MqttPlugin::m_MQTT_CYCLIC(const std::string &args, std::stop_token st) const
+bool MqttPlugin::m_MQTT_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
         // Non-capturing: MqttDriver::send()/receive() are handed everything

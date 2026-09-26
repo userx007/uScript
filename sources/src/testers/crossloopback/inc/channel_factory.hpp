@@ -50,17 +50,17 @@ namespace loopback {
 
     namespace detail {
 
-        inline std::string toLower(std::string s)
+        inline std::string toLower(std::string strS)
         {
-            std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
-            return s;
+            std::transform(strS.begin(), strS.end(), strS.begin(), [](unsigned char c) { return std::tolower(c); });
+            return strS;
         }
 
-        inline std::vector<std::string> splitSlash(const std::string &s)
+        inline std::vector<std::string> splitSlash(const std::string &strS)
         {
             std::vector<std::string> tokens;
             std::string cur;
-            for (char c : s) {
+            for (char c : strS) {
                 if (c == '/') {
                     tokens.push_back(cur);
                     cur.clear();
@@ -72,47 +72,47 @@ namespace loopback {
             return tokens;
         }
 
-        inline bool isAllDigits(const std::string &s)
+        inline bool isAllDigits(const std::string &strS)
         {
-            if (s.empty()) {
+            if (strS.empty()) {
                 return false;
             }
-            return std::all_of(s.begin(), s.end(), [](unsigned char c) { return std::isdigit(c); });
+            return std::all_of(strS.begin(), strS.end(), [](unsigned char c) { return std::isdigit(c); });
         }
 
-        inline bool looksLikeMac(const std::string &s)
+        inline bool looksLikeMac(const std::string &strS)
         {
-            if (s.size() != 17) {
+            if (strS.size() != 17) {
                 return false;
             }
-            for (size_t i = 0; i < s.size(); i++) {
+            for (size_t i = 0; i < strS.size(); i++) {
                 if (i % 3 == 2) {
-                    if (s[i] != ':') {
+                    if (strS[i] != ':') {
                         return false;
                     }
-                } else if (!std::isxdigit(static_cast<unsigned char>(s[i]))) {
+                } else if (!std::isxdigit(static_cast<unsigned char>(strS[i]))) {
                     return false;
                 }
             }
             return true;
         }
 
-        inline uint32_t parseNumber(const std::string &s)
+        inline uint32_t parseNumber(const std::string &strS)
         {
-            return static_cast<uint32_t>(std::strtoul(s.c_str(), nullptr, 0)); // 0x prefix or decimal
+            return static_cast<uint32_t>(std::strtoul(strS.c_str(), nullptr, 0)); // 0x prefix or decimal
         }
 
         // Splits "TYPE<:|/>REST" on whichever of ':' or '/' occurs first.
-        inline bool splitTypeAndRest(const std::string &spec, std::string &type, std::string &rest)
+        inline bool splitTypeAndRest(const std::string &strSpec, std::string &strType, std::string &strRest)
         {
-            size_t colon = spec.find(':');
-            size_t slash = spec.find('/');
+            size_t colon = strSpec.find(':');
+            size_t slash = strSpec.find('/');
             size_t idx   = std::min(colon, slash);
             if (idx == std::string::npos) {
                 return false;
             }
-            type = toLower(spec.substr(0, idx));
-            rest = spec.substr(idx + 1);
+            strType = toLower(strSpec.substr(0, idx));
+            strRest = strSpec.substr(idx + 1);
             return true;
         }
 
@@ -121,22 +121,22 @@ namespace loopback {
     // Thrown on a malformed spec string; loopback.cpp catches this and prints
     // usage.
     struct SpecError : std::runtime_error {
-            explicit SpecError(const std::string &msg)
+            explicit SpecError(const std::string &strMsg)
                 : std::runtime_error(msg)
             {
             }
     };
 
-    inline ChannelPtr createChannel(const std::string &spec)
+    inline ChannelPtr createChannel(const std::string &strSpec)
     {
         std::string type, rest;
-        if (!detail::splitTypeAndRest(spec, type, rest)) {
-            throw SpecError("malformed spec '" + spec + "' (expected TYPE:PARAMS or TYPE/PARAMS)");
+        if (!detail::splitTypeAndRest(strSpec, type, rest)) {
+            throw SpecError("malformed strSpec '" + strSpec + "' (expected TYPE:PARAMS or TYPE/PARAMS)");
         }
 
         if (type == "uart") {
             if (rest.empty()) {
-                throw SpecError("uart spec requires a device, e.g. uart:/dev/tnt0/115200");
+                throw SpecError("uart strSpec requires a device, e.g. uart:/dev/tnt0/115200");
             }
 
             std::string device = rest;
@@ -151,7 +151,7 @@ namespace loopback {
                 }
             }
             if (device.empty()) {
-                throw SpecError("uart spec requires a device path, e.g. uart:/dev/tnt0/115200");
+                throw SpecError("uart strSpec requires a device path, e.g. uart:/dev/tnt0/115200");
             }
 
             return std::make_shared<UartChannel>(device, baud);
@@ -160,7 +160,7 @@ namespace loopback {
         if (type == "kvcan" || type == "can") {
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
-                throw SpecError("kvcan spec requires an interface, e.g. kvcan:vcan0/0x100");
+                throw SpecError("kvcan strSpec requires an interface, e.g. kvcan:vcan0/0x100");
             }
 
             std::optional<uint32_t> fixed_id;
@@ -174,12 +174,12 @@ namespace loopback {
         if (type == "tcpip" || type == "tcp") {
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
-                throw SpecError("tcpip spec requires at least a port, e.g. tcpip:5000");
+                throw SpecError("tcpip strSpec requires at least a port, e.g. tcpip:5000");
             }
 
             if (detail::toLower(tokens[0]) == "client") {
                 if (tokens.size() < 3) {
-                    throw SpecError("tcpip client spec needs a host and port, e.g. tcpip:client/10.0.0.5/5000");
+                    throw SpecError("tcpip client strSpec needs a host and port, e.g. tcpip:client/10.0.0.5/5000");
                 }
                 int port = static_cast<int>(detail::parseNumber(tokens[2]));
                 return std::make_shared<TcpChannel>(TcpChannel::ClientTag{}, tokens[1], port);
@@ -191,7 +191,7 @@ namespace loopback {
                 idx = 1;
             }
             if (idx >= tokens.size()) {
-                throw SpecError("tcpip server spec requires a port, e.g. tcpip:server/5000");
+                throw SpecError("tcpip server strSpec requires a port, e.g. tcpip:server/5000");
             }
 
             int port              = static_cast<int>(detail::parseNumber(tokens[idx]));
@@ -202,12 +202,12 @@ namespace loopback {
         if (type == "udp") {
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
-                throw SpecError("udp spec requires at least a port, e.g. udp:5000");
+                throw SpecError("udp strSpec requires at least a port, e.g. udp:5000");
             }
 
             if (detail::toLower(tokens[0]) == "client") {
                 if (tokens.size() < 3) {
-                    throw SpecError("udp client spec needs a host and port, e.g. udp:client/10.0.0.5/5000");
+                    throw SpecError("udp client strSpec needs a host and port, e.g. udp:client/10.0.0.5/5000");
                 }
                 int port = static_cast<int>(detail::parseNumber(tokens[2]));
                 return std::make_shared<UdpChannel>(UdpChannel::ClientTag{}, tokens[1], port);
@@ -218,7 +218,7 @@ namespace loopback {
                 idx = 1;
             }
             if (idx >= tokens.size()) {
-                throw SpecError("udp server spec requires a port, e.g. udp:server/5000");
+                throw SpecError("udp server strSpec requires a port, e.g. udp:server/5000");
             }
 
             int port              = static_cast<int>(detail::parseNumber(tokens[idx]));
@@ -229,7 +229,7 @@ namespace loopback {
         if (type == "raweth" || type == "eth") {
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
-                throw SpecError("raweth spec requires an interface, e.g. raweth:eth0");
+                throw SpecError("raweth strSpec requires an interface, e.g. raweth:eth0");
             }
 
             std::string ifname         = tokens[0];

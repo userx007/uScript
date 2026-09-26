@@ -173,15 +173,15 @@ class FT232HPlugin : public PluginInterface {
             return m_bIsEnabled;
         }
 
-        bool setParams(const PluginDataSet *ps)
+        bool setParams(const PluginDataSet *psPs)
         {
-            bool ok = generic_setparams<FT232HPlugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
-            return ok && m_LocalSetParams(ps);
+            bool ok = generic_setparams<FT232HPlugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
+            return ok && m_LocalSetParams(psPs);
         }
 
-        void getParams(PluginDataGet *pg) const
+        void getParams(PluginDataGet *psPg) const
         {
-            generic_getparams<FT232HPlugin>(this, pg);
+            generic_getparams<FT232HPlugin>(this, psPg);
         }
 
         const PluginCommandsMap<FT232HPlugin> *getMap() const
@@ -212,10 +212,10 @@ class FT232HPlugin : public PluginInterface {
             return true;
         }
 
-        bool doDispatch(const std::string &cmd, const std::string &params,
+        bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
-            return generic_dispatch<FT232HPlugin>(this, cmd, params, st);
+            return generic_dispatch<FT232HPlugin>(this, strCmd, strParams, st);
         }
 
         void doCleanup();
@@ -237,15 +237,15 @@ class FT232HPlugin : public PluginInterface {
 
         // Module-map accessors
 
-        ModuleCommandsMap<FT232HPlugin> *getModuleCmdsMap(const std::string &m) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
+        ModuleCommandsMap<FT232HPlugin> *getModuleCmdsMap(const std::string &strM) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
 
         /**
          * @brief Apply a speed (Hz) to an open module.
          *
          * Re-opens the driver at the new clock if currently open.
          */
-        bool setModuleSpeed(const std::string &module, size_t hz) const;
+        bool setModuleSpeed(const std::string &strModule, size_t hz) const;
 
         // INI accessor
 
@@ -344,7 +344,7 @@ class FT232HPlugin : public PluginInterface {
         // Top-level command handlers
 
 #define FT232H_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_FT232H_##a(const std::string &args, std::stop_token st) const;
+    bool m_FT232H_##a(const std::string &strArgs, std::stop_token st) const;
         FT232H_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef FT232H_PLUGIN_CMD_RECORD
 
@@ -408,14 +408,14 @@ class FT232HPlugin : public PluginInterface {
         ModuleSpeedMap m_mapSpeed_I2C;
         ModuleSpeedMap m_mapSpeed_UART;
 
-        bool m_LocalSetParams(const PluginDataSet *ps);
+        bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         // Parse helpers
-        static bool parseSpiParams(const std::string &args,
-                                   SpiPendingCfg &cfg,
-                                   uint8_t *pDeviceIndexOut = nullptr);
-        static bool parseUartParams(const std::string &args, UartPendingCfg &cfg,
-                                    uint8_t *pDeviceIndexOut = nullptr);
+        static bool parseSpiParams(const std::string &strArgs,
+                                   SpiPendingCfg &sCfg,
+                                   uint8_t *pu8DeviceIndexOut = nullptr);
+        static bool parseUartParams(const std::string &strArgs, UartPendingCfg &cfg,
+                                    uint8_t *pu8DeviceIndexOut = nullptr);
 };
 
 #endif // FT232H_PLUGIN_HPP

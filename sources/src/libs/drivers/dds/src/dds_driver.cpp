@@ -48,11 +48,11 @@ namespace {
     /// Minimal XML text escaping for the handful of Config strings (iface
     /// name/address, multicast group, ...) that end up as attribute/element
     /// text in m_BuildDomainConfigXml()'s generated config document.
-    std::string xmlEscape(const std::string &in)
+    std::string xmlEscape(const std::string &strIn)
     {
         std::string out;
-        out.reserve(in.size());
-        for (char c : in) {
+        out.reserve(strIn.size());
+        for (char c : strIn) {
             switch (c) {
             case '&':
                 out += "&amp;";
@@ -82,16 +82,16 @@ namespace {
     /// IPv4 quad or bracketed/colon IPv6 literal is an *address*; anything
     /// else (e.g. "eth0") is an interface *name*. Cyclone's NetworkInterface
     /// element accepts either, just as a different attribute.
-    bool looksLikeIpLiteral(const std::string &s)
+    bool looksLikeIpLiteral(const std::string &strS)
     {
-        return s.find(':') != std::string::npos || s.find('.') != std::string::npos;
+        return strS.find(':') != std::string::npos || strS.find('.') != std::string::npos;
     }
 } // namespace
 
 // ---------------------------------------------------------------------------
 // Construction / lifetime
 // ---------------------------------------------------------------------------
-DdsDriver::DdsDriver(Config config)
+DdsDriver::DdsDriver(Config sConfig)
     : m_config(std::move(config))
 {
     if (m_config.strInstanceName.empty()) {
@@ -292,18 +292,18 @@ ICommDriver::ReadResult DdsDriver::tout_read(uint32_t, std::span<uint8_t>, const
 // ---------------------------------------------------------------------------
 // Per-topic writer/reader lifecycle
 // ---------------------------------------------------------------------------
-DdsDriver::DdsEntity DdsDriver::m_EnsureLocalWriter(const std::string &topic) const
+DdsDriver::DdsEntity DdsDriver::m_EnsureLocalWriter(const std::string &strTopic) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    auto it = m_localWriters.find(topic);
+    auto it = m_localWriters.find(strTopic);
     if (it != m_localWriters.end()) {
         return it->second.writer;
     }
 
     const DdsEntity topicEnt = dds_create_topic(m_participant, &ucmdexec_dds_GenericSample_desc,
-                                                topic.c_str(), nullptr, nullptr);
+                                                strTopic.c_str(), nullptr, nullptr);
     if (topicEnt < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(topic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(strTopic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-topicEnt)));
         return kInvalidEntity;
     }
@@ -319,19 +319,19 @@ DdsDriver::DdsEntity DdsDriver::m_EnsureLocalWriter(const std::string &topic) co
     const DdsEntity writerEnt = dds_create_writer(m_participant, topicEnt, qos, nullptr);
     dds_delete_qos(qos);
     if (writerEnt < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_writer failed for '"); LOG_STRING(topic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_writer failed for '"); LOG_STRING(strTopic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-writerEnt)));
         dds_delete(topicEnt);
         return kInvalidEntity;
     }
 
-    m_localWriters.emplace(topic, LocalWriter{topicEnt, writerEnt});
+    m_localWriters.emplace(strTopic, LocalWriter{topicEnt, writerEnt});
     return writerEnt;
 }
 
-void DdsDriver::m_OnReaderDataAvailable(DdsEntity reader, void *arg)
+void DdsDriver::m_OnReaderDataAvailable(DdsEntity reader, void *pvArg)
 {
-    auto *localReader                = static_cast<LocalReader *>(arg);
+    auto *localReader                = static_cast<LocalReader *>(pvArg);
 
     void *samples[kBuiltinReadBatch] = {};
     dds_sample_info_t infos[kBuiltinReadBatch];
@@ -370,10 +370,10 @@ void DdsDriver::m_OnReaderDataAvailable(DdsEntity reader, void *arg)
     }
 }
 
-std::shared_ptr<DdsDriver::LocalReader> DdsDriver::m_EnsureLocalReader(const std::string &topic) const
+std::shared_ptr<DdsDriver::LocalReader> DdsDriver::m_EnsureLocalReader(const std::string &strTopic) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    auto it = m_localReaders.find(topic);
+    auto it = m_localReaders.find(strTopic);
     if (it != m_localReaders.end()) {
         return it->second;
     }
@@ -395,11 +395,11 @@ std::shared_ptr<DdsDriver::LocalReader> DdsDriver::m_EnsureLocalReader(const std
     localReader->owner       = const_cast<DdsDriver *>(this);
 
     const DdsEntity topicEnt = dds_create_topic(m_participant, &ucmdexec_dds_GenericSample_desc,
-                                                topic.c_str(), nullptr, nullptr);
+                                                strTopic.c_str(), nullptr, nullptr);
     if (topicEnt < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(topic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(strTopic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-topicEnt)));
-        m_localReaders.emplace(topic, localReader); // still register it — receive() needs a queue to wait on even if empty forever
+        m_localReaders.emplace(strTopic, localReader); // still register it — receive() needs a queue to wait on even if empty forever
         return localReader;
     }
 
@@ -421,59 +421,59 @@ std::shared_ptr<DdsDriver::LocalReader> DdsDriver::m_EnsureLocalReader(const std
     dds_delete_qos(qos);
 
     if (readerEnt < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_reader failed for '"); LOG_STRING(topic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_reader failed for '"); LOG_STRING(strTopic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-readerEnt)));
         dds_delete(topicEnt);
     } else {
-        localReader->topic  = topicEnt;
+        localReader->strTopic  = topicEnt;
         localReader->reader = readerEnt;
     }
 
-    m_localReaders.emplace(topic, localReader);
+    m_localReaders.emplace(strTopic, localReader);
     return localReader;
 }
 
-bool DdsDriver::m_Publish(const std::string &topic, const std::string &payload) const
+bool DdsDriver::m_Publish(const std::string &strTopic, const std::string &strPayload) const
 {
-    const DdsEntity writer = m_EnsureLocalWriter(topic);
+    const DdsEntity writer = m_EnsureLocalWriter(strTopic);
     if (writer < 0) {
         return false;
     }
 
     ucmdexec_dds_GenericSample sample;
-    sample.payload        = const_cast<char *>(payload.c_str()); // dds_write() serializes synchronously — no lifetime issue past this call
+    sample.strPayload        = const_cast<char *>(strPayload.c_str()); // dds_write() serializes synchronously — no lifetime issue past this call
 
     const dds_return_t rc = dds_write(writer, &sample);
     if (rc != DDS_RETCODE_OK) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_write failed for '"); LOG_STRING(topic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_write failed for '"); LOG_STRING(strTopic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-rc)));
         return false;
     }
 
     if (gui_mode_active()) {
-        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(topic), CommDir::Tx,
-                             reinterpret_cast<const uint8_t *>(payload.data()), static_cast<uint32_t>(payload.size()));
+        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(strTopic), CommDir::Tx,
+                             reinterpret_cast<const uint8_t *>(strPayload.data()), static_cast<uint32_t>(strPayload.size()));
     }
     return true;
 }
 
-bool DdsDriver::m_Subscribe(const std::string &topic) const
+bool DdsDriver::m_Subscribe(const std::string &strTopic) const
 {
-    return m_EnsureLocalReader(topic) != nullptr;
+    return m_EnsureLocalReader(strTopic) != nullptr;
 }
 
-bool DdsDriver::m_Unsubscribe(const std::string &topic) const
+bool DdsDriver::m_Unsubscribe(const std::string &strTopic) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    auto it = m_localReaders.find(topic);
+    auto it = m_localReaders.find(strTopic);
     if (it == m_localReaders.end()) {
         return false;
     }
     if (it->second->reader >= 0) {
         dds_delete(it->second->reader);
     }
-    if (it->second->topic >= 0) {
-        dds_delete(it->second->topic);
+    if (it->second->strTopic >= 0) {
+        dds_delete(it->second->strTopic);
     }
     m_localReaders.erase(it);
     return true;
@@ -635,9 +635,9 @@ std::string DdsDriver::m_BuildListText() const
 // Intermediary layer: DDS.CMD argument decomposition
 // ---------------------------------------------------------------------------
 namespace {
-    void tokenize(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens)
+    void tokenize(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens)
     {
-        outTokens.clear();
+        vOutTokens.clear();
         size_t len = dataSpan.size();
         while (len > 0 && dataSpan[len - 1] == 0) {
             --len; // strip trailing NUL, same convention as MqttDriver
@@ -658,7 +658,7 @@ namespace {
             while (i < n && !std::isspace(static_cast<unsigned char>(text[i]))) {
                 ++i;
             }
-            outTokens.push_back(text.substr(start, i - start));
+            vOutTokens.push_back(text.substr(start, i - start));
         }
     }
 } // namespace
@@ -671,7 +671,7 @@ namespace {
 /// sample on success; returns std::nullopt on timeout/cancellation,
 /// touching nothing. A private static member (not a free function) purely
 /// because LocalReader is a private nested type.
-std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
+std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &sReader, uint32_t u32ReadTimeout,
                                                     std::stop_token stop_tok)
 {
     // 0 == infinite timeout: condition_variable_any::wait(lock, stop_token, pred) is a
@@ -680,10 +680,10 @@ std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &reader, uint32_t
     // stop_token-aware timed wait on condition_variable_any, so it falls back to
     // a bounded 200ms-slice wait_for() retry loop — same shape used by the
     // poll()-based drivers (see e.g. uUartLinux.cpp's timeout_read()).
-    std::unique_lock<std::mutex> qlock(reader.queueMutex);
+    std::unique_lock<std::mutex> qlock(sReader.queueMutex);
     bool got;
     if (u32ReadTimeout == 0) {
-        got = reader.queueCv.wait(qlock, stop_tok, [&] { return !reader.queue.empty(); });
+        got = sReader.queueCv.wait(qlock, stop_tok, [&] { return !sReader.queue.empty(); });
     } else {
         constexpr auto kSliceMs = std::chrono::milliseconds(200);
         const auto tDeadline    = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
@@ -700,7 +700,7 @@ std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &reader, uint32_t
             }
             const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow);
             const auto sliceMs   = std::min(kSliceMs, remaining);
-            got                  = reader.queueCv.wait_for(qlock, sliceMs, [&] { return !reader.queue.empty(); });
+            got                  = sReader.queueCv.wait_for(qlock, sliceMs, [&] { return !sReader.queue.empty(); });
             if (got) {
                 break;
             }
@@ -709,8 +709,8 @@ std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &reader, uint32_t
     if (!got) {
         return std::nullopt;
     }
-    std::string payload = std::move(reader.queue.front());
-    reader.queue.pop_front();
+    std::string payload = std::move(sReader.queue.front());
+    sReader.queue.pop_front();
     return payload;
 }
 

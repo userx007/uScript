@@ -31,7 +31,7 @@
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-Enc28J60Net::Status Enc28J60Net::open(const std::string &ipAddr, uint16_t u16Port)
+Enc28J60Net::Status Enc28J60Net::open(const std::string &strIpAddr, uint16_t u16Port)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -39,7 +39,7 @@ Enc28J60Net::Status Enc28J60Net::open(const std::string &ipAddr, uint16_t u16Por
         ::close(m_iSocketFd);
     }
 
-    m_strServerIp = ipAddr;
+    m_strServerIp = strIpAddr;
     m_u16Port     = u16Port;
 
     m_iSocketFd   = ::socket(AF_INET, SOCK_STREAM, 0);
@@ -63,15 +63,15 @@ Enc28J60Net::Status Enc28J60Net::open(const std::string &ipAddr, uint16_t u16Por
     server_addr.sin_family = AF_INET;
     server_addr.sin_port   = htons(u16Port);
 
-    if (::inet_pton(AF_INET, ipAddr.c_str(), &server_addr.sin_addr) <= 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid IP address: "); LOG_STRING(ipAddr.c_str()));
+    if (::inet_pton(AF_INET, strIpAddr.c_str(), &server_addr.sin_addr) <= 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid IP address: "); LOG_STRING(strIpAddr.c_str()));
         ::close(m_iSocketFd);
         m_iSocketFd = -1;
         return Status::INVALID_PARAM;
     }
 
     if (::connect(m_iSocketFd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Connection failed to "); LOG_STRING(ipAddr.c_str()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Connection failed to "); LOG_STRING(strIpAddr.c_str()));
         ::close(m_iSocketFd);
         m_iSocketFd = -1;
         return Status::PORT_ACCESS;
@@ -81,7 +81,7 @@ Enc28J60Net::Status Enc28J60Net::open(const std::string &ipAddr, uint16_t u16Por
     tv.tv_usec = 0;
     ::setsockopt(m_iSocketFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Connected to ENC28J60 server at "); LOG_STRING(ipAddr.c_str()));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Connected to ENC28J60 server at "); LOG_STRING(strIpAddr.c_str()));
 
     return Status::SUCCESS;
 }

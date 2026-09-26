@@ -18,10 +18,10 @@
 #include <stdint.h>
 
 
-static bool P_LDM_Common_T_RAGType_from_string(const char* s, P_LDM_Common_T_RAGType* out) {
-    if (strcmp(s, "L_RAGType_RED") == 0) { *out = P_LDM_Common_L_RAGType_RED; return true; }
-    if (strcmp(s, "L_RAGType_AMBER") == 0) { *out = P_LDM_Common_L_RAGType_AMBER; return true; }
-    if (strcmp(s, "L_RAGType_GREEN") == 0) { *out = P_LDM_Common_L_RAGType_GREEN; return true; }
+static bool P_LDM_Common_T_RAGType_from_string(const char* pstrS, P_LDM_Common_T_RAGType* pOut) {
+    if (strcmp(pstrS, "L_RAGType_RED") == 0) { *pOut = P_LDM_Common_L_RAGType_RED; return true; }
+    if (strcmp(pstrS, "L_RAGType_AMBER") == 0) { *pOut = P_LDM_Common_L_RAGType_AMBER; return true; }
+    if (strcmp(pstrS, "L_RAGType_GREEN") == 0) { *pOut = P_LDM_Common_L_RAGType_GREEN; return true; }
     return false;
 }
 
@@ -35,10 +35,10 @@ static const char* P_LDM_Common_T_RAGType_to_string(P_LDM_Common_T_RAGType v) {
 }
 
 
-static bool P_LDM_Common_T_Axis3DType_from_string(const char* s, P_LDM_Common_T_Axis3DType* out) {
-    if (strcmp(s, "L_Axis3DType_X_AXIS") == 0) { *out = P_LDM_Common_L_Axis3DType_X_AXIS; return true; }
-    if (strcmp(s, "L_Axis3DType_Y_AXIS") == 0) { *out = P_LDM_Common_L_Axis3DType_Y_AXIS; return true; }
-    if (strcmp(s, "L_Axis3DType_Z_AXIS") == 0) { *out = P_LDM_Common_L_Axis3DType_Z_AXIS; return true; }
+static bool P_LDM_Common_T_Axis3DType_from_string(const char* pstrS, P_LDM_Common_T_Axis3DType* pOut) {
+    if (strcmp(pstrS, "L_Axis3DType_X_AXIS") == 0) { *pOut = P_LDM_Common_L_Axis3DType_X_AXIS; return true; }
+    if (strcmp(pstrS, "L_Axis3DType_Y_AXIS") == 0) { *pOut = P_LDM_Common_L_Axis3DType_Y_AXIS; return true; }
+    if (strcmp(pstrS, "L_Axis3DType_Z_AXIS") == 0) { *pOut = P_LDM_Common_L_Axis3DType_Z_AXIS; return true; }
     return false;
 }
 
@@ -52,11 +52,11 @@ static const char* P_LDM_Common_T_Axis3DType_to_string(P_LDM_Common_T_Axis3DType
 }
 
 
-static bool P_LDM_Common_T_CommandResponseType_from_string(const char* s, P_LDM_Common_T_CommandResponseType* out) {
-    if (strcmp(s, "L_CommandResponseType_Command_Failed") == 0) { *out = P_LDM_Common_L_CommandResponseType_Command_Failed; return true; }
-    if (strcmp(s, "L_CommandResponseType_Command_Not_Available") == 0) { *out = P_LDM_Common_L_CommandResponseType_Command_Not_Available; return true; }
-    if (strcmp(s, "L_CommandResponseType_Command_Not_Recognised") == 0) { *out = P_LDM_Common_L_CommandResponseType_Command_Not_Recognised; return true; }
-    if (strcmp(s, "L_CommandResponseType_Resource_Control_Failure") == 0) { *out = P_LDM_Common_L_CommandResponseType_Resource_Control_Failure; return true; }
+static bool P_LDM_Common_T_CommandResponseType_from_string(const char* pstrS, P_LDM_Common_T_CommandResponseType* pOut) {
+    if (strcmp(pstrS, "L_CommandResponseType_Command_Failed") == 0) { *pOut = P_LDM_Common_L_CommandResponseType_Command_Failed; return true; }
+    if (strcmp(pstrS, "L_CommandResponseType_Command_Not_Available") == 0) { *pOut = P_LDM_Common_L_CommandResponseType_Command_Not_Available; return true; }
+    if (strcmp(pstrS, "L_CommandResponseType_Command_Not_Recognised") == 0) { *pOut = P_LDM_Common_L_CommandResponseType_Command_Not_Recognised; return true; }
+    if (strcmp(pstrS, "L_CommandResponseType_Resource_Control_Failure") == 0) { *pOut = P_LDM_Common_L_CommandResponseType_Resource_Control_Failure; return true; }
     return false;
 }
 
@@ -71,12 +71,12 @@ static const char* P_LDM_Common_T_CommandResponseType_to_string(P_LDM_Common_T_C
 }
 
 
-static bool P_Alarms_PSM_T_Actual_Alarm_StateType_from_string(const char* s, P_Alarms_PSM_T_Actual_Alarm_StateType* out) {
-    if (strcmp(s, "L_Actual_Alarm_StateType_Unacknowledged") == 0) { *out = P_Alarms_PSM_L_Actual_Alarm_StateType_Unacknowledged; return true; }
-    if (strcmp(s, "L_Actual_Alarm_StateType_Acknowledged") == 0) { *out = P_Alarms_PSM_L_Actual_Alarm_StateType_Acknowledged; return true; }
-    if (strcmp(s, "L_Actual_Alarm_StateType_Resolved") == 0) { *out = P_Alarms_PSM_L_Actual_Alarm_StateType_Resolved; return true; }
-    if (strcmp(s, "L_Actual_Alarm_StateType_Destroyed") == 0) { *out = P_Alarms_PSM_L_Actual_Alarm_StateType_Destroyed; return true; }
-    if (strcmp(s, "L_Actual_Alarm_StateType_Cleared") == 0) { *out = P_Alarms_PSM_L_Actual_Alarm_StateType_Cleared; return true; }
+static bool P_Alarms_PSM_T_Actual_Alarm_StateType_from_string(const char* pstrS, P_Alarms_PSM_T_Actual_Alarm_StateType* pOut) {
+    if (strcmp(pstrS, "L_Actual_Alarm_StateType_Unacknowledged") == 0) { *pOut = P_Alarms_PSM_L_Actual_Alarm_StateType_Unacknowledged; return true; }
+    if (strcmp(pstrS, "L_Actual_Alarm_StateType_Acknowledged") == 0) { *pOut = P_Alarms_PSM_L_Actual_Alarm_StateType_Acknowledged; return true; }
+    if (strcmp(pstrS, "L_Actual_Alarm_StateType_Resolved") == 0) { *pOut = P_Alarms_PSM_L_Actual_Alarm_StateType_Resolved; return true; }
+    if (strcmp(pstrS, "L_Actual_Alarm_StateType_Destroyed") == 0) { *pOut = P_Alarms_PSM_L_Actual_Alarm_StateType_Destroyed; return true; }
+    if (strcmp(pstrS, "L_Actual_Alarm_StateType_Cleared") == 0) { *pOut = P_Alarms_PSM_L_Actual_Alarm_StateType_Cleared; return true; }
     return false;
 }
 
@@ -92,9 +92,9 @@ static const char* P_Alarms_PSM_T_Actual_Alarm_StateType_to_string(P_Alarms_PSM_
 }
 
 
-static bool P_Alarms_PSM_T_Alarm_Condition_Specification_StateType_from_string(const char* s, P_Alarms_PSM_T_Alarm_Condition_Specification_StateType* out) {
-    if (strcmp(s, "L_Alarm_Condition_Specification_StateType_condition_overridden") == 0) { *out = P_Alarms_PSM_L_Alarm_Condition_Specification_StateType_condition_overridden; return true; }
-    if (strcmp(s, "L_Alarm_Condition_Specification_StateType_condition_not_overridden") == 0) { *out = P_Alarms_PSM_L_Alarm_Condition_Specification_StateType_condition_not_overridden; return true; }
+static bool P_Alarms_PSM_T_Alarm_Condition_Specification_StateType_from_string(const char* pstrS, P_Alarms_PSM_T_Alarm_Condition_Specification_StateType* pOut) {
+    if (strcmp(pstrS, "L_Alarm_Condition_Specification_StateType_condition_overridden") == 0) { *pOut = P_Alarms_PSM_L_Alarm_Condition_Specification_StateType_condition_overridden; return true; }
+    if (strcmp(pstrS, "L_Alarm_Condition_Specification_StateType_condition_not_overridden") == 0) { *pOut = P_Alarms_PSM_L_Alarm_Condition_Specification_StateType_condition_not_overridden; return true; }
     return false;
 }
 
@@ -107,10 +107,10 @@ static const char* P_Alarms_PSM_T_Alarm_Condition_Specification_StateType_to_str
 }
 
 
-static bool P_Alarms_PSM_T_AlarmCategoryType_from_string(const char* s, P_Alarms_PSM_T_AlarmCategoryType* out) {
-    if (strcmp(s, "L_AlarmCategoryType_Warning") == 0) { *out = P_Alarms_PSM_L_AlarmCategoryType_Warning; return true; }
-    if (strcmp(s, "L_AlarmCategoryType_Caution") == 0) { *out = P_Alarms_PSM_L_AlarmCategoryType_Caution; return true; }
-    if (strcmp(s, "L_AlarmCategoryType_Advisory") == 0) { *out = P_Alarms_PSM_L_AlarmCategoryType_Advisory; return true; }
+static bool P_Alarms_PSM_T_AlarmCategoryType_from_string(const char* pstrS, P_Alarms_PSM_T_AlarmCategoryType* pOut) {
+    if (strcmp(pstrS, "L_AlarmCategoryType_Warning") == 0) { *pOut = P_Alarms_PSM_L_AlarmCategoryType_Warning; return true; }
+    if (strcmp(pstrS, "L_AlarmCategoryType_Caution") == 0) { *pOut = P_Alarms_PSM_L_AlarmCategoryType_Caution; return true; }
+    if (strcmp(pstrS, "L_AlarmCategoryType_Advisory") == 0) { *pOut = P_Alarms_PSM_L_AlarmCategoryType_Advisory; return true; }
     return false;
 }
 
@@ -124,10 +124,10 @@ static const char* P_Alarms_PSM_T_AlarmCategoryType_to_string(P_Alarms_PSM_T_Ala
 }
 
 
-static bool P_Alarms_PSM_T_MissionStateType_from_string(const char* s, P_Alarms_PSM_T_MissionStateType* out) {
-    if (strcmp(s, "L_MissionStateType_Driving") == 0) { *out = P_Alarms_PSM_L_MissionStateType_Driving; return true; }
-    if (strcmp(s, "L_MissionStateType_Engagement") == 0) { *out = P_Alarms_PSM_L_MissionStateType_Engagement; return true; }
-    if (strcmp(s, "L_MissionStateType_Reconnaissance") == 0) { *out = P_Alarms_PSM_L_MissionStateType_Reconnaissance; return true; }
+static bool P_Alarms_PSM_T_MissionStateType_from_string(const char* pstrS, P_Alarms_PSM_T_MissionStateType* pOut) {
+    if (strcmp(pstrS, "L_MissionStateType_Driving") == 0) { *pOut = P_Alarms_PSM_L_MissionStateType_Driving; return true; }
+    if (strcmp(pstrS, "L_MissionStateType_Engagement") == 0) { *pOut = P_Alarms_PSM_L_MissionStateType_Engagement; return true; }
+    if (strcmp(pstrS, "L_MissionStateType_Reconnaissance") == 0) { *pOut = P_Alarms_PSM_L_MissionStateType_Reconnaissance; return true; }
     return false;
 }
 
@@ -141,243 +141,243 @@ static const char* P_Alarms_PSM_T_MissionStateType_to_string(P_Alarms_PSM_T_Miss
 }
 
 
-static void P_LDM_Common_T_Position2DType_decode_fields(const KvNode* node, P_LDM_Common_T_Position2DType* out) {
-    { long long tmp; if (kv_as_i64(kv_get(node, "A_xPosition"), &tmp)) out->A_xPosition = (int32_t)tmp; }
-    { long long tmp; if (kv_as_i64(kv_get(node, "A_yPosition"), &tmp)) out->A_yPosition = (int32_t)tmp; }
+static void P_LDM_Common_T_Position2DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_Position2DType* pOut) {
+    { long long tmp; if (kv_as_i64(kv_get(psNode, "A_xPosition"), &tmp)) pOut->A_xPosition = (int32_t)tmp; }
+    { long long tmp; if (kv_as_i64(kv_get(psNode, "A_yPosition"), &tmp)) pOut->A_yPosition = (int32_t)tmp; }
 }
 
-static void P_LDM_Common_T_Position2DType_encode_fields(const P_LDM_Common_T_Position2DType* v, KvWriter* w) {
-    kv_write(w, "A_xPosition=%d;", v->A_xPosition);
-    kv_write(w, "A_yPosition=%d", v->A_yPosition);
-}
-
-
-static void P_LDM_Common_T_Size2DType_decode_fields(const KvNode* node, P_LDM_Common_T_Size2DType* out) {
-    { long long tmp; if (kv_as_i64(kv_get(node, "A_xSize"), &tmp)) out->A_xSize = (int32_t)tmp; }
-    { long long tmp; if (kv_as_i64(kv_get(node, "A_ySize"), &tmp)) out->A_ySize = (int32_t)tmp; }
-}
-
-static void P_LDM_Common_T_Size2DType_encode_fields(const P_LDM_Common_T_Size2DType* v, KvWriter* w) {
-    kv_write(w, "A_xSize=%d;", v->A_xSize);
-    kv_write(w, "A_ySize=%d", v->A_ySize);
+static void P_LDM_Common_T_Position2DType_encode_fields(const P_LDM_Common_T_Position2DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_xPosition=%d;", pV->A_xPosition);
+    kv_write(pW, "A_yPosition=%d", pV->A_yPosition);
 }
 
 
-static void P_LDM_Common_T_IdentifierType_decode_fields(const KvNode* node, P_LDM_Common_T_IdentifierType* out) {
-    { long long tmp; if (kv_as_i64(kv_get(node, "A_resourceId"), &tmp)) out->A_resourceId = (int32_t)tmp; }
-    { long long tmp; if (kv_as_i64(kv_get(node, "A_instanceId"), &tmp)) out->A_instanceId = (int32_t)tmp; }
+static void P_LDM_Common_T_Size2DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_Size2DType* pOut) {
+    { long long tmp; if (kv_as_i64(kv_get(psNode, "A_xSize"), &tmp)) pOut->A_xSize = (int32_t)tmp; }
+    { long long tmp; if (kv_as_i64(kv_get(psNode, "A_ySize"), &tmp)) pOut->A_ySize = (int32_t)tmp; }
 }
 
-static void P_LDM_Common_T_IdentifierType_encode_fields(const P_LDM_Common_T_IdentifierType* v, KvWriter* w) {
-    kv_write(w, "A_resourceId=%d;", v->A_resourceId);
-    kv_write(w, "A_instanceId=%d", v->A_instanceId);
-}
-
-
-static void P_LDM_Common_T_DurationType_decode_fields(const KvNode* node, P_LDM_Common_T_DurationType* out) {
-    { long long tmp; if (kv_as_i64(kv_get(node, "A_seconds"), &tmp)) out->A_seconds = (int32_t)tmp; }
-    { long long tmp; if (kv_as_i64(kv_get(node, "A_nanoseconds"), &tmp)) out->A_nanoseconds = (int32_t)tmp; }
-}
-
-static void P_LDM_Common_T_DurationType_encode_fields(const P_LDM_Common_T_DurationType* v, KvWriter* w) {
-    kv_write(w, "A_seconds=%d;", v->A_seconds);
-    kv_write(w, "A_nanoseconds=%d", v->A_nanoseconds);
+static void P_LDM_Common_T_Size2DType_encode_fields(const P_LDM_Common_T_Size2DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_xSize=%d;", pV->A_xSize);
+    kv_write(pW, "A_ySize=%d", pV->A_ySize);
 }
 
 
-static void P_LDM_Common_T_DateTimeType_decode_fields(const KvNode* node, P_LDM_Common_T_DateTimeType* out) {
-    { long long tmp; if (kv_as_i64(kv_get(node, "A_second"), &tmp)) out->A_second = (int64_t)tmp; }
-    { long long tmp; if (kv_as_i64(kv_get(node, "A_nanoseconds"), &tmp)) out->A_nanoseconds = (int32_t)tmp; }
+static void P_LDM_Common_T_IdentifierType_decode_fields(const KvNode* psNode, P_LDM_Common_T_IdentifierType* pOut) {
+    { long long tmp; if (kv_as_i64(kv_get(psNode, "A_resourceId"), &tmp)) pOut->A_resourceId = (int32_t)tmp; }
+    { long long tmp; if (kv_as_i64(kv_get(psNode, "A_instanceId"), &tmp)) pOut->A_instanceId = (int32_t)tmp; }
 }
 
-static void P_LDM_Common_T_DateTimeType_encode_fields(const P_LDM_Common_T_DateTimeType* v, KvWriter* w) {
-    kv_write(w, "A_second=%lld;", v->A_second);
-    kv_write(w, "A_nanoseconds=%d", v->A_nanoseconds);
-}
-
-
-static void P_LDM_Common_T_LinearAcceleration3DType_decode_fields(const KvNode* node, P_LDM_Common_T_LinearAcceleration3DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_xAcceleration"), &tmp)) out->A_xAcceleration = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_yAcceleration"), &tmp)) out->A_yAcceleration = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_zAcceleration"), &tmp)) out->A_zAcceleration = (double)tmp; }
-}
-
-static void P_LDM_Common_T_LinearAcceleration3DType_encode_fields(const P_LDM_Common_T_LinearAcceleration3DType* v, KvWriter* w) {
-    kv_write(w, "A_xAcceleration=%f;", (double)v->A_xAcceleration);
-    kv_write(w, "A_yAcceleration=%f;", (double)v->A_yAcceleration);
-    kv_write(w, "A_zAcceleration=%f", (double)v->A_zAcceleration);
+static void P_LDM_Common_T_IdentifierType_encode_fields(const P_LDM_Common_T_IdentifierType* pV, KvWriter* pW) {
+    kv_write(pW, "A_resourceId=%d;", pV->A_resourceId);
+    kv_write(pW, "A_instanceId=%d", pV->A_instanceId);
 }
 
 
-static void P_LDM_Common_T_AttitudeType_decode_fields(const KvNode* node, P_LDM_Common_T_AttitudeType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_pitch"), &tmp)) out->A_pitch = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_roll"), &tmp)) out->A_roll = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_yaw"), &tmp)) out->A_yaw = (double)tmp; }
+static void P_LDM_Common_T_DurationType_decode_fields(const KvNode* psNode, P_LDM_Common_T_DurationType* pOut) {
+    { long long tmp; if (kv_as_i64(kv_get(psNode, "A_seconds"), &tmp)) pOut->A_seconds = (int32_t)tmp; }
+    { long long tmp; if (kv_as_i64(kv_get(psNode, "A_nanoseconds"), &tmp)) pOut->A_nanoseconds = (int32_t)tmp; }
 }
 
-static void P_LDM_Common_T_AttitudeType_encode_fields(const P_LDM_Common_T_AttitudeType* v, KvWriter* w) {
-    kv_write(w, "A_pitch=%f;", (double)v->A_pitch);
-    kv_write(w, "A_roll=%f;", (double)v->A_roll);
-    kv_write(w, "A_yaw=%f", (double)v->A_yaw);
-}
-
-
-static void P_LDM_Common_T_PointPolar3DType_decode_fields(const KvNode* node, P_LDM_Common_T_PointPolar3DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_angle"), &tmp)) out->A_angle = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_elevation"), &tmp)) out->A_elevation = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_radius"), &tmp)) out->A_radius = (double)tmp; }
-}
-
-static void P_LDM_Common_T_PointPolar3DType_encode_fields(const P_LDM_Common_T_PointPolar3DType* v, KvWriter* w) {
-    kv_write(w, "A_angle=%f;", (double)v->A_angle);
-    kv_write(w, "A_elevation=%f;", (double)v->A_elevation);
-    kv_write(w, "A_radius=%f", (double)v->A_radius);
+static void P_LDM_Common_T_DurationType_encode_fields(const P_LDM_Common_T_DurationType* pV, KvWriter* pW) {
+    kv_write(pW, "A_seconds=%d;", pV->A_seconds);
+    kv_write(pW, "A_nanoseconds=%d", pV->A_nanoseconds);
 }
 
 
-static void P_LDM_Common_T_CoordinatePolar3DType_decode_fields(const KvNode* node, P_LDM_Common_T_CoordinatePolar3DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_angle"), &tmp)) out->A_angle = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_elevation"), &tmp)) out->A_elevation = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_range"), &tmp)) out->A_range = (double)tmp; }
+static void P_LDM_Common_T_DateTimeType_decode_fields(const KvNode* psNode, P_LDM_Common_T_DateTimeType* pOut) {
+    { long long tmp; if (kv_as_i64(kv_get(psNode, "A_second"), &tmp)) pOut->A_second = (int64_t)tmp; }
+    { long long tmp; if (kv_as_i64(kv_get(psNode, "A_nanoseconds"), &tmp)) pOut->A_nanoseconds = (int32_t)tmp; }
 }
 
-static void P_LDM_Common_T_CoordinatePolar3DType_encode_fields(const P_LDM_Common_T_CoordinatePolar3DType* v, KvWriter* w) {
-    kv_write(w, "A_angle=%f;", (double)v->A_angle);
-    kv_write(w, "A_elevation=%f;", (double)v->A_elevation);
-    kv_write(w, "A_range=%f", (double)v->A_range);
-}
-
-
-static void P_LDM_Common_T_CoordinatePolar2DType_decode_fields(const KvNode* node, P_LDM_Common_T_CoordinatePolar2DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_angle"), &tmp)) out->A_angle = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_range"), &tmp)) out->A_range = (double)tmp; }
-}
-
-static void P_LDM_Common_T_CoordinatePolar2DType_encode_fields(const P_LDM_Common_T_CoordinatePolar2DType* v, KvWriter* w) {
-    kv_write(w, "A_angle=%f;", (double)v->A_angle);
-    kv_write(w, "A_range=%f", (double)v->A_range);
+static void P_LDM_Common_T_DateTimeType_encode_fields(const P_LDM_Common_T_DateTimeType* pV, KvWriter* pW) {
+    kv_write(pW, "A_second=%lld;", pV->A_second);
+    kv_write(pW, "A_nanoseconds=%d", pV->A_nanoseconds);
 }
 
 
-static void P_LDM_Common_T_AngularAcceleration3DType_decode_fields(const KvNode* node, P_LDM_Common_T_AngularAcceleration3DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_pitch"), &tmp)) out->A_pitch = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_roll"), &tmp)) out->A_roll = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_yaw"), &tmp)) out->A_yaw = (double)tmp; }
+static void P_LDM_Common_T_LinearAcceleration3DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_LinearAcceleration3DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_xAcceleration"), &tmp)) pOut->A_xAcceleration = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_yAcceleration"), &tmp)) pOut->A_yAcceleration = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_zAcceleration"), &tmp)) pOut->A_zAcceleration = (double)tmp; }
 }
 
-static void P_LDM_Common_T_AngularAcceleration3DType_encode_fields(const P_LDM_Common_T_AngularAcceleration3DType* v, KvWriter* w) {
-    kv_write(w, "A_pitch=%f;", (double)v->A_pitch);
-    kv_write(w, "A_roll=%f;", (double)v->A_roll);
-    kv_write(w, "A_yaw=%f", (double)v->A_yaw);
-}
-
-
-static void P_LDM_Common_T_AngularVelocity3DType_decode_fields(const KvNode* node, P_LDM_Common_T_AngularVelocity3DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_pitch"), &tmp)) out->A_pitch = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_roll"), &tmp)) out->A_roll = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_yaw"), &tmp)) out->A_yaw = (double)tmp; }
-}
-
-static void P_LDM_Common_T_AngularVelocity3DType_encode_fields(const P_LDM_Common_T_AngularVelocity3DType* v, KvWriter* w) {
-    kv_write(w, "A_pitch=%f;", (double)v->A_pitch);
-    kv_write(w, "A_roll=%f;", (double)v->A_roll);
-    kv_write(w, "A_yaw=%f", (double)v->A_yaw);
+static void P_LDM_Common_T_LinearAcceleration3DType_encode_fields(const P_LDM_Common_T_LinearAcceleration3DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_xAcceleration=%f;", (double)pV->A_xAcceleration);
+    kv_write(pW, "A_yAcceleration=%f;", (double)pV->A_yAcceleration);
+    kv_write(pW, "A_zAcceleration=%f", (double)pV->A_zAcceleration);
 }
 
 
-static void P_LDM_Common_T_LinearVelocity3DType_decode_fields(const KvNode* node, P_LDM_Common_T_LinearVelocity3DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_heading"), &tmp)) out->A_heading = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_speed"), &tmp)) out->A_speed = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_vrate"), &tmp)) out->A_vrate = (double)tmp; }
+static void P_LDM_Common_T_AttitudeType_decode_fields(const KvNode* psNode, P_LDM_Common_T_AttitudeType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_pitch"), &tmp)) pOut->A_pitch = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_roll"), &tmp)) pOut->A_roll = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_yaw"), &tmp)) pOut->A_yaw = (double)tmp; }
 }
 
-static void P_LDM_Common_T_LinearVelocity3DType_encode_fields(const P_LDM_Common_T_LinearVelocity3DType* v, KvWriter* w) {
-    kv_write(w, "A_heading=%f;", (double)v->A_heading);
-    kv_write(w, "A_speed=%f;", (double)v->A_speed);
-    kv_write(w, "A_vrate=%f", (double)v->A_vrate);
-}
-
-
-static void P_LDM_Common_T_RotationalOffsetType_decode_fields(const KvNode* node, P_LDM_Common_T_RotationalOffsetType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_pitchOffset"), &tmp)) out->A_pitchOffset = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_rollOffset"), &tmp)) out->A_rollOffset = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_yawOffset"), &tmp)) out->A_yawOffset = (double)tmp; }
-}
-
-static void P_LDM_Common_T_RotationalOffsetType_encode_fields(const P_LDM_Common_T_RotationalOffsetType* v, KvWriter* w) {
-    kv_write(w, "A_pitchOffset=%f;", (double)v->A_pitchOffset);
-    kv_write(w, "A_rollOffset=%f;", (double)v->A_rollOffset);
-    kv_write(w, "A_yawOffset=%f", (double)v->A_yawOffset);
+static void P_LDM_Common_T_AttitudeType_encode_fields(const P_LDM_Common_T_AttitudeType* pV, KvWriter* pW) {
+    kv_write(pW, "A_pitch=%f;", (double)pV->A_pitch);
+    kv_write(pW, "A_roll=%f;", (double)pV->A_roll);
+    kv_write(pW, "A_yaw=%f", (double)pV->A_yaw);
 }
 
 
-static void P_LDM_Common_T_Coordinate2DType_decode_fields(const KvNode* node, P_LDM_Common_T_Coordinate2DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_latitude"), &tmp)) out->A_latitude = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_longitude"), &tmp)) out->A_longitude = (double)tmp; }
+static void P_LDM_Common_T_PointPolar3DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_PointPolar3DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_angle"), &tmp)) pOut->A_angle = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_elevation"), &tmp)) pOut->A_elevation = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_radius"), &tmp)) pOut->A_radius = (double)tmp; }
 }
 
-static void P_LDM_Common_T_Coordinate2DType_encode_fields(const P_LDM_Common_T_Coordinate2DType* v, KvWriter* w) {
-    kv_write(w, "A_latitude=%f;", (double)v->A_latitude);
-    kv_write(w, "A_longitude=%f", (double)v->A_longitude);
-}
-
-
-static void P_LDM_Common_T_LinearSpeed3DType_decode_fields(const KvNode* node, P_LDM_Common_T_LinearSpeed3DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_xSpeed"), &tmp)) out->A_xSpeed = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_ySpeed"), &tmp)) out->A_ySpeed = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_zSpeed"), &tmp)) out->A_zSpeed = (double)tmp; }
-}
-
-static void P_LDM_Common_T_LinearSpeed3DType_encode_fields(const P_LDM_Common_T_LinearSpeed3DType* v, KvWriter* w) {
-    kv_write(w, "A_xSpeed=%f;", (double)v->A_xSpeed);
-    kv_write(w, "A_ySpeed=%f;", (double)v->A_ySpeed);
-    kv_write(w, "A_zSpeed=%f", (double)v->A_zSpeed);
+static void P_LDM_Common_T_PointPolar3DType_encode_fields(const P_LDM_Common_T_PointPolar3DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_angle=%f;", (double)pV->A_angle);
+    kv_write(pW, "A_elevation=%f;", (double)pV->A_elevation);
+    kv_write(pW, "A_radius=%f", (double)pV->A_radius);
 }
 
 
-static void P_LDM_Common_T_LinearOffsetType_decode_fields(const KvNode* node, P_LDM_Common_T_LinearOffsetType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_xOffset"), &tmp)) out->A_xOffset = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_yOffset"), &tmp)) out->A_yOffset = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_zOffset"), &tmp)) out->A_zOffset = (double)tmp; }
+static void P_LDM_Common_T_CoordinatePolar3DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_CoordinatePolar3DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_angle"), &tmp)) pOut->A_angle = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_elevation"), &tmp)) pOut->A_elevation = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_range"), &tmp)) pOut->A_range = (double)tmp; }
 }
 
-static void P_LDM_Common_T_LinearOffsetType_encode_fields(const P_LDM_Common_T_LinearOffsetType* v, KvWriter* w) {
-    kv_write(w, "A_xOffset=%f;", (double)v->A_xOffset);
-    kv_write(w, "A_yOffset=%f;", (double)v->A_yOffset);
-    kv_write(w, "A_zOffset=%f", (double)v->A_zOffset);
-}
-
-
-static void P_LDM_Common_T_LinearVelocity2DType_decode_fields(const KvNode* node, P_LDM_Common_T_LinearVelocity2DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_heading"), &tmp)) out->A_heading = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_speed"), &tmp)) out->A_speed = (double)tmp; }
-}
-
-static void P_LDM_Common_T_LinearVelocity2DType_encode_fields(const P_LDM_Common_T_LinearVelocity2DType* v, KvWriter* w) {
-    kv_write(w, "A_heading=%f;", (double)v->A_heading);
-    kv_write(w, "A_speed=%f", (double)v->A_speed);
+static void P_LDM_Common_T_CoordinatePolar3DType_encode_fields(const P_LDM_Common_T_CoordinatePolar3DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_angle=%f;", (double)pV->A_angle);
+    kv_write(pW, "A_elevation=%f;", (double)pV->A_elevation);
+    kv_write(pW, "A_range=%f", (double)pV->A_range);
 }
 
 
-static void P_LDM_Common_T_Coordinate3DType_decode_fields(const KvNode* node, P_LDM_Common_T_Coordinate3DType* out) {
-    { double tmp; if (kv_as_double(kv_get(node, "A_altitude"), &tmp)) out->A_altitude = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_latitude"), &tmp)) out->A_latitude = (double)tmp; }
-    { double tmp; if (kv_as_double(kv_get(node, "A_longitude"), &tmp)) out->A_longitude = (double)tmp; }
+static void P_LDM_Common_T_CoordinatePolar2DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_CoordinatePolar2DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_angle"), &tmp)) pOut->A_angle = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_range"), &tmp)) pOut->A_range = (double)tmp; }
 }
 
-static void P_LDM_Common_T_Coordinate3DType_encode_fields(const P_LDM_Common_T_Coordinate3DType* v, KvWriter* w) {
-    kv_write(w, "A_altitude=%f;", (double)v->A_altitude);
-    kv_write(w, "A_latitude=%f;", (double)v->A_latitude);
-    kv_write(w, "A_longitude=%f", (double)v->A_longitude);
+static void P_LDM_Common_T_CoordinatePolar2DType_encode_fields(const P_LDM_Common_T_CoordinatePolar2DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_angle=%f;", (double)pV->A_angle);
+    kv_write(pW, "A_range=%f", (double)pV->A_range);
+}
+
+
+static void P_LDM_Common_T_AngularAcceleration3DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_AngularAcceleration3DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_pitch"), &tmp)) pOut->A_pitch = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_roll"), &tmp)) pOut->A_roll = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_yaw"), &tmp)) pOut->A_yaw = (double)tmp; }
+}
+
+static void P_LDM_Common_T_AngularAcceleration3DType_encode_fields(const P_LDM_Common_T_AngularAcceleration3DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_pitch=%f;", (double)pV->A_pitch);
+    kv_write(pW, "A_roll=%f;", (double)pV->A_roll);
+    kv_write(pW, "A_yaw=%f", (double)pV->A_yaw);
+}
+
+
+static void P_LDM_Common_T_AngularVelocity3DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_AngularVelocity3DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_pitch"), &tmp)) pOut->A_pitch = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_roll"), &tmp)) pOut->A_roll = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_yaw"), &tmp)) pOut->A_yaw = (double)tmp; }
+}
+
+static void P_LDM_Common_T_AngularVelocity3DType_encode_fields(const P_LDM_Common_T_AngularVelocity3DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_pitch=%f;", (double)pV->A_pitch);
+    kv_write(pW, "A_roll=%f;", (double)pV->A_roll);
+    kv_write(pW, "A_yaw=%f", (double)pV->A_yaw);
+}
+
+
+static void P_LDM_Common_T_LinearVelocity3DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_LinearVelocity3DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_heading"), &tmp)) pOut->A_heading = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_speed"), &tmp)) pOut->A_speed = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_vrate"), &tmp)) pOut->A_vrate = (double)tmp; }
+}
+
+static void P_LDM_Common_T_LinearVelocity3DType_encode_fields(const P_LDM_Common_T_LinearVelocity3DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_heading=%f;", (double)pV->A_heading);
+    kv_write(pW, "A_speed=%f;", (double)pV->A_speed);
+    kv_write(pW, "A_vrate=%f", (double)pV->A_vrate);
+}
+
+
+static void P_LDM_Common_T_RotationalOffsetType_decode_fields(const KvNode* psNode, P_LDM_Common_T_RotationalOffsetType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_pitchOffset"), &tmp)) pOut->A_pitchOffset = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_rollOffset"), &tmp)) pOut->A_rollOffset = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_yawOffset"), &tmp)) pOut->A_yawOffset = (double)tmp; }
+}
+
+static void P_LDM_Common_T_RotationalOffsetType_encode_fields(const P_LDM_Common_T_RotationalOffsetType* pV, KvWriter* pW) {
+    kv_write(pW, "A_pitchOffset=%f;", (double)pV->A_pitchOffset);
+    kv_write(pW, "A_rollOffset=%f;", (double)pV->A_rollOffset);
+    kv_write(pW, "A_yawOffset=%f", (double)pV->A_yawOffset);
+}
+
+
+static void P_LDM_Common_T_Coordinate2DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_Coordinate2DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_latitude"), &tmp)) pOut->A_latitude = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_longitude"), &tmp)) pOut->A_longitude = (double)tmp; }
+}
+
+static void P_LDM_Common_T_Coordinate2DType_encode_fields(const P_LDM_Common_T_Coordinate2DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_latitude=%f;", (double)pV->A_latitude);
+    kv_write(pW, "A_longitude=%f", (double)pV->A_longitude);
+}
+
+
+static void P_LDM_Common_T_LinearSpeed3DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_LinearSpeed3DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_xSpeed"), &tmp)) pOut->A_xSpeed = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_ySpeed"), &tmp)) pOut->A_ySpeed = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_zSpeed"), &tmp)) pOut->A_zSpeed = (double)tmp; }
+}
+
+static void P_LDM_Common_T_LinearSpeed3DType_encode_fields(const P_LDM_Common_T_LinearSpeed3DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_xSpeed=%f;", (double)pV->A_xSpeed);
+    kv_write(pW, "A_ySpeed=%f;", (double)pV->A_ySpeed);
+    kv_write(pW, "A_zSpeed=%f", (double)pV->A_zSpeed);
+}
+
+
+static void P_LDM_Common_T_LinearOffsetType_decode_fields(const KvNode* psNode, P_LDM_Common_T_LinearOffsetType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_xOffset"), &tmp)) pOut->A_xOffset = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_yOffset"), &tmp)) pOut->A_yOffset = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_zOffset"), &tmp)) pOut->A_zOffset = (double)tmp; }
+}
+
+static void P_LDM_Common_T_LinearOffsetType_encode_fields(const P_LDM_Common_T_LinearOffsetType* pV, KvWriter* pW) {
+    kv_write(pW, "A_xOffset=%f;", (double)pV->A_xOffset);
+    kv_write(pW, "A_yOffset=%f;", (double)pV->A_yOffset);
+    kv_write(pW, "A_zOffset=%f", (double)pV->A_zOffset);
+}
+
+
+static void P_LDM_Common_T_LinearVelocity2DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_LinearVelocity2DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_heading"), &tmp)) pOut->A_heading = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_speed"), &tmp)) pOut->A_speed = (double)tmp; }
+}
+
+static void P_LDM_Common_T_LinearVelocity2DType_encode_fields(const P_LDM_Common_T_LinearVelocity2DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_heading=%f;", (double)pV->A_heading);
+    kv_write(pW, "A_speed=%f", (double)pV->A_speed);
+}
+
+
+static void P_LDM_Common_T_Coordinate3DType_decode_fields(const KvNode* psNode, P_LDM_Common_T_Coordinate3DType* pOut) {
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_altitude"), &tmp)) pOut->A_altitude = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_latitude"), &tmp)) pOut->A_latitude = (double)tmp; }
+    { double tmp; if (kv_as_double(kv_get(psNode, "A_longitude"), &tmp)) pOut->A_longitude = (double)tmp; }
+}
+
+static void P_LDM_Common_T_Coordinate3DType_encode_fields(const P_LDM_Common_T_Coordinate3DType* pV, KvWriter* pW) {
+    kv_write(pW, "A_altitude=%f;", (double)pV->A_altitude);
+    kv_write(pW, "A_latitude=%f;", (double)pV->A_latitude);
+    kv_write(pW, "A_longitude=%f", (double)pV->A_longitude);
 }
 
 
 static void* P_Alarms_PSM_C_Crew_Role_In_Mission_State_sample_alloc(void) { return P_Alarms_PSM_C_Crew_Role_In_Mission_State__alloc(); }
-static void  P_Alarms_PSM_C_Crew_Role_In_Mission_State_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Crew_Role_In_Mission_State_free((P_Alarms_PSM_C_Crew_Role_In_Mission_State*)d, op); }
+static void  P_Alarms_PSM_C_Crew_Role_In_Mission_State_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Crew_Role_In_Mission_State_free((P_Alarms_PSM_C_Crew_Role_In_Mission_State*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Crew_Role_In_Mission_State_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Crew_Role_In_Mission_State* v = (P_Alarms_PSM_C_Crew_Role_In_Mission_State*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Crew_Role_In_Mission_State_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Crew_Role_In_Mission_State* v = (P_Alarms_PSM_C_Crew_Role_In_Mission_State*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
     P_LDM_Common_T_DateTimeType_decode_fields(kv_get(root, "A_timeOfDataGeneration"), &v->A_timeOfDataGeneration);
@@ -433,10 +433,10 @@ static bool P_Alarms_PSM_C_Crew_Role_In_Mission_State_decode(const char* text, v
     return true;
 }
 
-static bool P_Alarms_PSM_C_Crew_Role_In_Mission_State_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Crew_Role_In_Mission_State* v = (const P_Alarms_PSM_C_Crew_Role_In_Mission_State*)sample;
+static bool P_Alarms_PSM_C_Crew_Role_In_Mission_State_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Crew_Role_In_Mission_State* v = (const P_Alarms_PSM_C_Crew_Role_In_Mission_State*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_sourceID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_sourceID, w);
@@ -471,11 +471,11 @@ static bool P_Alarms_PSM_C_Crew_Role_In_Mission_State_encode(const void* sample,
 
 
 static void* P_Alarms_PSM_C_Alarm_Category_Specification_sample_alloc(void) { return P_Alarms_PSM_C_Alarm_Category_Specification__alloc(); }
-static void  P_Alarms_PSM_C_Alarm_Category_Specification_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Alarm_Category_Specification_free((P_Alarms_PSM_C_Alarm_Category_Specification*)d, op); }
+static void  P_Alarms_PSM_C_Alarm_Category_Specification_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Alarm_Category_Specification_free((P_Alarms_PSM_C_Alarm_Category_Specification*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Alarm_Category_Specification_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Alarm_Category_Specification* v = (P_Alarms_PSM_C_Alarm_Category_Specification*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Alarm_Category_Specification_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Alarm_Category_Specification* v = (P_Alarms_PSM_C_Alarm_Category_Specification*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
     P_LDM_Common_T_DateTimeType_decode_fields(kv_get(root, "A_timeOfDataGeneration"), &v->A_timeOfDataGeneration);
@@ -522,10 +522,10 @@ static bool P_Alarms_PSM_C_Alarm_Category_Specification_decode(const char* text,
     return true;
 }
 
-static bool P_Alarms_PSM_C_Alarm_Category_Specification_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Alarm_Category_Specification* v = (const P_Alarms_PSM_C_Alarm_Category_Specification*)sample;
+static bool P_Alarms_PSM_C_Alarm_Category_Specification_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Alarm_Category_Specification* v = (const P_Alarms_PSM_C_Alarm_Category_Specification*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_sourceID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_sourceID, w);
@@ -568,11 +568,11 @@ static bool P_Alarms_PSM_C_Alarm_Category_Specification_encode(const void* sampl
 
 
 static void* P_Alarms_PSM_C_Mission_State_setMissionState_sample_alloc(void) { return P_Alarms_PSM_C_Mission_State_setMissionState__alloc(); }
-static void  P_Alarms_PSM_C_Mission_State_setMissionState_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Mission_State_setMissionState_free((P_Alarms_PSM_C_Mission_State_setMissionState*)d, op); }
+static void  P_Alarms_PSM_C_Mission_State_setMissionState_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Mission_State_setMissionState_free((P_Alarms_PSM_C_Mission_State_setMissionState*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Mission_State_setMissionState_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Mission_State_setMissionState* v = (P_Alarms_PSM_C_Mission_State_setMissionState*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Mission_State_setMissionState_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Mission_State_setMissionState* v = (P_Alarms_PSM_C_Mission_State_setMissionState*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_recipientID"), &v->A_recipientID);
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
@@ -597,10 +597,10 @@ static bool P_Alarms_PSM_C_Mission_State_setMissionState_decode(const char* text
     return true;
 }
 
-static bool P_Alarms_PSM_C_Mission_State_setMissionState_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Mission_State_setMissionState* v = (const P_Alarms_PSM_C_Mission_State_setMissionState*)sample;
+static bool P_Alarms_PSM_C_Mission_State_setMissionState_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Mission_State_setMissionState* v = (const P_Alarms_PSM_C_Mission_State_setMissionState*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_recipientID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_recipientID, w);
@@ -624,11 +624,11 @@ static bool P_Alarms_PSM_C_Mission_State_setMissionState_encode(const void* samp
 
 
 static void* P_Alarms_PSM_C_Mission_State_sample_alloc(void) { return P_Alarms_PSM_C_Mission_State__alloc(); }
-static void  P_Alarms_PSM_C_Mission_State_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Mission_State_free((P_Alarms_PSM_C_Mission_State*)d, op); }
+static void  P_Alarms_PSM_C_Mission_State_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Mission_State_free((P_Alarms_PSM_C_Mission_State*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Mission_State_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Mission_State* v = (P_Alarms_PSM_C_Mission_State*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Mission_State_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Mission_State* v = (P_Alarms_PSM_C_Mission_State*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
     P_LDM_Common_T_DateTimeType_decode_fields(kv_get(root, "A_timeOfDataGeneration"), &v->A_timeOfDataGeneration);
@@ -669,10 +669,10 @@ static bool P_Alarms_PSM_C_Mission_State_decode(const char* text, void* out_samp
     return true;
 }
 
-static bool P_Alarms_PSM_C_Mission_State_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Mission_State* v = (const P_Alarms_PSM_C_Mission_State*)sample;
+static bool P_Alarms_PSM_C_Mission_State_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Mission_State* v = (const P_Alarms_PSM_C_Mission_State*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_sourceID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_sourceID, w);
@@ -703,11 +703,11 @@ static bool P_Alarms_PSM_C_Mission_State_encode(const void* sample, char* out_bu
 
 
 static void* P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_sample_alloc(void) { return P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm__alloc(); }
-static void  P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_free((P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm*)d, op); }
+static void  P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_free((P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm* v = (P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm* v = (P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_recipientID"), &v->A_recipientID);
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
@@ -773,10 +773,10 @@ static bool P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_decode(const char* text
     return true;
 }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm* v = (const P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm*)sample;
+static bool P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm* v = (const P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_recipientID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_recipientID, w);
@@ -817,11 +817,11 @@ static bool P_Alarms_PSM_C_Actual_Alarm_acknowledgeAlarm_encode(const void* samp
 
 
 static void* P_Alarms_PSM_C_Actual_Alarm_sample_alloc(void) { return P_Alarms_PSM_C_Actual_Alarm__alloc(); }
-static void  P_Alarms_PSM_C_Actual_Alarm_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_free((P_Alarms_PSM_C_Actual_Alarm*)d, op); }
+static void  P_Alarms_PSM_C_Actual_Alarm_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_free((P_Alarms_PSM_C_Actual_Alarm*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Actual_Alarm* v = (P_Alarms_PSM_C_Actual_Alarm*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Actual_Alarm_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Actual_Alarm* v = (P_Alarms_PSM_C_Actual_Alarm*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
     P_LDM_Common_T_DateTimeType_decode_fields(kv_get(root, "A_timeOfDataGeneration"), &v->A_timeOfDataGeneration);
@@ -889,10 +889,10 @@ static bool P_Alarms_PSM_C_Actual_Alarm_decode(const char* text, void* out_sampl
     return true;
 }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Actual_Alarm* v = (const P_Alarms_PSM_C_Actual_Alarm*)sample;
+static bool P_Alarms_PSM_C_Actual_Alarm_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Actual_Alarm* v = (const P_Alarms_PSM_C_Actual_Alarm*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_sourceID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_sourceID, w);
@@ -939,11 +939,11 @@ static bool P_Alarms_PSM_C_Actual_Alarm_encode(const void* sample, char* out_buf
 
 
 static void* P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_sample_alloc(void) { return P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition__alloc(); }
-static void  P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_free((P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition*)d, op); }
+static void  P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_free((P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition* v = (P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition* v = (P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_recipientID"), &v->A_recipientID);
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
@@ -1009,10 +1009,10 @@ static bool P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_dec
     return true;
 }
 
-static bool P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition* v = (const P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition*)sample;
+static bool P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition* v = (const P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_recipientID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_recipientID, w);
@@ -1053,11 +1053,11 @@ static bool P_Alarms_PSM_C_Alarm_Condition_Specification_raiseAlarmCondition_enc
 
 
 static void* P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_sample_alloc(void) { return P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole__alloc(); }
-static void  P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_free((P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole*)d, op); }
+static void  P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_free((P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole* v = (P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole* v = (P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_recipientID"), &v->A_recipientID);
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
@@ -1081,10 +1081,10 @@ static bool P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_
     return true;
 }
 
-static bool P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole* v = (const P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole*)sample;
+static bool P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole* v = (const P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_recipientID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_recipientID, w);
@@ -1107,11 +1107,11 @@ static bool P_Alarms_PSM_C_Alarm_Condition_Specification_isOfInterestToCrewRole_
 
 
 static void* P_Alarms_PSM_C_Alarm_Condition_Specification_sample_alloc(void) { return P_Alarms_PSM_C_Alarm_Condition_Specification__alloc(); }
-static void  P_Alarms_PSM_C_Alarm_Condition_Specification_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Alarm_Condition_Specification_free((P_Alarms_PSM_C_Alarm_Condition_Specification*)d, op); }
+static void  P_Alarms_PSM_C_Alarm_Condition_Specification_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Alarm_Condition_Specification_free((P_Alarms_PSM_C_Alarm_Condition_Specification*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Alarm_Condition_Specification_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Alarm_Condition_Specification* v = (P_Alarms_PSM_C_Alarm_Condition_Specification*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Alarm_Condition_Specification_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Alarm_Condition_Specification* v = (P_Alarms_PSM_C_Alarm_Condition_Specification*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
     P_LDM_Common_T_DateTimeType_decode_fields(kv_get(root, "A_timeOfDataGeneration"), &v->A_timeOfDataGeneration);
@@ -1240,10 +1240,10 @@ static bool P_Alarms_PSM_C_Alarm_Condition_Specification_decode(const char* text
     return true;
 }
 
-static bool P_Alarms_PSM_C_Alarm_Condition_Specification_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Alarm_Condition_Specification* v = (const P_Alarms_PSM_C_Alarm_Condition_Specification*)sample;
+static bool P_Alarms_PSM_C_Alarm_Condition_Specification_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Alarm_Condition_Specification* v = (const P_Alarms_PSM_C_Alarm_Condition_Specification*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_sourceID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_sourceID, w);
@@ -1313,11 +1313,11 @@ static bool P_Alarms_PSM_C_Alarm_Condition_Specification_encode(const void* samp
 
 
 static void* P_Alarms_PSM_C_Tone_Specification_sample_alloc(void) { return P_Alarms_PSM_C_Tone_Specification__alloc(); }
-static void  P_Alarms_PSM_C_Tone_Specification_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Tone_Specification_free((P_Alarms_PSM_C_Tone_Specification*)d, op); }
+static void  P_Alarms_PSM_C_Tone_Specification_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Tone_Specification_free((P_Alarms_PSM_C_Tone_Specification*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Tone_Specification_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Tone_Specification* v = (P_Alarms_PSM_C_Tone_Specification*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Tone_Specification_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Tone_Specification* v = (P_Alarms_PSM_C_Tone_Specification*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
     P_LDM_Common_T_DateTimeType_decode_fields(kv_get(root, "A_timeOfDataGeneration"), &v->A_timeOfDataGeneration);
@@ -1343,10 +1343,10 @@ static bool P_Alarms_PSM_C_Tone_Specification_decode(const char* text, void* out
     return true;
 }
 
-static bool P_Alarms_PSM_C_Tone_Specification_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Tone_Specification* v = (const P_Alarms_PSM_C_Tone_Specification*)sample;
+static bool P_Alarms_PSM_C_Tone_Specification_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Tone_Specification* v = (const P_Alarms_PSM_C_Tone_Specification*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_sourceID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_sourceID, w);
@@ -1371,11 +1371,11 @@ static bool P_Alarms_PSM_C_Tone_Specification_encode(const void* sample, char* o
 
 
 static void* P_Alarms_PSM_C_Own_Platform_sample_alloc(void) { return P_Alarms_PSM_C_Own_Platform__alloc(); }
-static void  P_Alarms_PSM_C_Own_Platform_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Own_Platform_free((P_Alarms_PSM_C_Own_Platform*)d, op); }
+static void  P_Alarms_PSM_C_Own_Platform_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Own_Platform_free((P_Alarms_PSM_C_Own_Platform*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Own_Platform_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Own_Platform* v = (P_Alarms_PSM_C_Own_Platform*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Own_Platform_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Own_Platform* v = (P_Alarms_PSM_C_Own_Platform*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
     P_LDM_Common_T_DateTimeType_decode_fields(kv_get(root, "A_timeOfDataGeneration"), &v->A_timeOfDataGeneration);
@@ -1401,10 +1401,10 @@ static bool P_Alarms_PSM_C_Own_Platform_decode(const char* text, void* out_sampl
     return true;
 }
 
-static bool P_Alarms_PSM_C_Own_Platform_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Own_Platform* v = (const P_Alarms_PSM_C_Own_Platform*)sample;
+static bool P_Alarms_PSM_C_Own_Platform_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Own_Platform* v = (const P_Alarms_PSM_C_Own_Platform*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_sourceID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_sourceID, w);
@@ -1426,11 +1426,11 @@ static bool P_Alarms_PSM_C_Own_Platform_encode(const void* sample, char* out_buf
 
 
 static void* P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_sample_alloc(void) { return P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition__alloc(); }
-static void  P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_free((P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition*)d, op); }
+static void  P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_free((P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition* v = (P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition* v = (P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_recipientID"), &v->A_recipientID);
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
@@ -1496,10 +1496,10 @@ static bool P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_decod
     return true;
 }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition* v = (const P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition*)sample;
+static bool P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition* v = (const P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_recipientID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_recipientID, w);
@@ -1540,11 +1540,11 @@ static bool P_Alarms_PSM_C_Actual_Alarm_Condition_unoverrideAlarmCondition_encod
 
 
 static void* P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_sample_alloc(void) { return P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition__alloc(); }
-static void  P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_free((P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition*)d, op); }
+static void  P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_free((P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition* v = (P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition* v = (P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_recipientID"), &v->A_recipientID);
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
@@ -1610,10 +1610,10 @@ static bool P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_decode(
     return true;
 }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition* v = (const P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition*)sample;
+static bool P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition* v = (const P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_recipientID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_recipientID, w);
@@ -1654,11 +1654,11 @@ static bool P_Alarms_PSM_C_Actual_Alarm_Condition_overrideAlarmCondition_encode(
 
 
 static void* P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_sample_alloc(void) { return P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition__alloc(); }
-static void  P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_free((P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition*)d, op); }
+static void  P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_free((P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition* v = (P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition* v = (P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_recipientID"), &v->A_recipientID);
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
@@ -1724,10 +1724,10 @@ static bool P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_decode(con
     return true;
 }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition* v = (const P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition*)sample;
+static bool P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition* v = (const P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_recipientID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_recipientID, w);
@@ -1768,11 +1768,11 @@ static bool P_Alarms_PSM_C_Actual_Alarm_Condition_clearAlarmCondition_encode(con
 
 
 static void* P_Alarms_PSM_C_Actual_Alarm_Condition_sample_alloc(void) { return P_Alarms_PSM_C_Actual_Alarm_Condition__alloc(); }
-static void  P_Alarms_PSM_C_Actual_Alarm_Condition_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_Condition_free((P_Alarms_PSM_C_Actual_Alarm_Condition*)d, op); }
+static void  P_Alarms_PSM_C_Actual_Alarm_Condition_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Actual_Alarm_Condition_free((P_Alarms_PSM_C_Actual_Alarm_Condition*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_Condition_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Actual_Alarm_Condition* v = (P_Alarms_PSM_C_Actual_Alarm_Condition*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Actual_Alarm_Condition_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Actual_Alarm_Condition* v = (P_Alarms_PSM_C_Actual_Alarm_Condition*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
     P_LDM_Common_T_DateTimeType_decode_fields(kv_get(root, "A_timeOfDataGeneration"), &v->A_timeOfDataGeneration);
@@ -1785,10 +1785,10 @@ static bool P_Alarms_PSM_C_Actual_Alarm_Condition_decode(const char* text, void*
     return true;
 }
 
-static bool P_Alarms_PSM_C_Actual_Alarm_Condition_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Actual_Alarm_Condition* v = (const P_Alarms_PSM_C_Actual_Alarm_Condition*)sample;
+static bool P_Alarms_PSM_C_Actual_Alarm_Condition_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Actual_Alarm_Condition* v = (const P_Alarms_PSM_C_Actual_Alarm_Condition*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_sourceID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_sourceID, w);
@@ -1814,11 +1814,11 @@ static bool P_Alarms_PSM_C_Actual_Alarm_Condition_encode(const void* sample, cha
 
 
 static void* P_Alarms_PSM_C_Alarm_Category_sample_alloc(void) { return P_Alarms_PSM_C_Alarm_Category__alloc(); }
-static void  P_Alarms_PSM_C_Alarm_Category_sample_free(void* d, dds_free_op_t op) { P_Alarms_PSM_C_Alarm_Category_free((P_Alarms_PSM_C_Alarm_Category*)d, op); }
+static void  P_Alarms_PSM_C_Alarm_Category_sample_free(void* pvD, dds_free_op_t op) { P_Alarms_PSM_C_Alarm_Category_free((P_Alarms_PSM_C_Alarm_Category*)pvD, op); }
 
-static bool P_Alarms_PSM_C_Alarm_Category_decode(const char* text, void* out_sample) {
-    P_Alarms_PSM_C_Alarm_Category* v = (P_Alarms_PSM_C_Alarm_Category*)out_sample;
-    KvNode* root = kv_parse(text);
+static bool P_Alarms_PSM_C_Alarm_Category_decode(const char* pstrText, void* pvOut_sample) {
+    P_Alarms_PSM_C_Alarm_Category* v = (P_Alarms_PSM_C_Alarm_Category*)pvOut_sample;
+    KvNode* root = kv_parse(pstrText);
     if (!root) return false;
     P_LDM_Common_T_IdentifierType_decode_fields(kv_get(root, "A_sourceID"), &v->A_sourceID);
     P_LDM_Common_T_DateTimeType_decode_fields(kv_get(root, "A_timeOfDataGeneration"), &v->A_timeOfDataGeneration);
@@ -1846,10 +1846,10 @@ static bool P_Alarms_PSM_C_Alarm_Category_decode(const char* text, void* out_sam
     return true;
 }
 
-static bool P_Alarms_PSM_C_Alarm_Category_encode(const void* sample, char* out_buf, size_t out_cap) {
-    const P_Alarms_PSM_C_Alarm_Category* v = (const P_Alarms_PSM_C_Alarm_Category*)sample;
+static bool P_Alarms_PSM_C_Alarm_Category_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap) {
+    const P_Alarms_PSM_C_Alarm_Category* v = (const P_Alarms_PSM_C_Alarm_Category*)pvSample;
     KvWriter writer;
-    kv_writer_init(&writer, out_buf, out_cap);
+    kv_writer_init(&writer, pstrOut_buf, out_cap);
     KvWriter* w = &writer;
     kv_write(w, "A_sourceID={");
     P_LDM_Common_T_IdentifierType_encode_fields(&v->A_sourceID, w);

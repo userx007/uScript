@@ -62,11 +62,11 @@
 //              Internal: parse SPI key=value pair               //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::parseSpiKV(const std::string &key, const std::string &val, SpiPendingCfg &cfg)
+bool FT2232Plugin::parseSpiKV(const std::string &strKey, const std::string &strVal, SpiPendingCfg &sCfg)
 {
-    (void)cfg;
-    (void)key;
-    (void)val;
+    (void)sCfg;
+    (void)strKey;
+    (void)strVal;
     return true;
 }
 
@@ -83,12 +83,12 @@ bool FT2232Plugin::m_handle_spi_help(const std::string &, std::stop_token /*st*/
 //             Internal: shared key=value parser for open/cfg    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::parseSpiParams(const std::string &args,
-                                  SpiPendingCfg &cfg,
-                                  uint8_t *pDeviceIndexOut)
+bool FT2232Plugin::parseSpiParams(const std::string &strArgs,
+                                  SpiPendingCfg &sCfg,
+                                  uint8_t *pu8DeviceIndexOut)
 {
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -99,39 +99,39 @@ bool FT2232Plugin::parseSpiParams(const std::string &args,
 
         bool ok = true;
         if (kv[0] == "variant") {
-            ok = parseVariant(kv[1], cfg.variant);
+            ok = parseVariant(kv[1], sCfg.variant);
         } else if (kv[0] == "clock") {
-            ok = numeric::str2uint32(kv[1], cfg.clockHz);
+            ok = numeric::str2uint32(kv[1], sCfg.clockHz);
         } else if (kv[0] == "mode") {
             uint8_t v = 0;
             ok        = numeric::str2uint8(kv[1], v);
             if (ok && v <= 3) {
-                cfg.mode = static_cast<FT2232SPI::SpiMode>(v);
+                sCfg.mode = static_cast<FT2232SPI::SpiMode>(v);
             } else {
                 ok = false;
             }
         } else if (kv[0] == "bitorder") {
             if (kv[1] == "msb") {
-                cfg.bitOrder = FT2232SPI::BitOrder::MsbFirst;
+                sCfg.bitOrder = FT2232SPI::BitOrder::MsbFirst;
             } else if (kv[1] == "lsb") {
-                cfg.bitOrder = FT2232SPI::BitOrder::LsbFirst;
+                sCfg.bitOrder = FT2232SPI::BitOrder::LsbFirst;
             } else {
                 ok = false;
             }
         } else if (kv[0] == "cspin") {
-            ok = numeric::str2uint8(kv[1], cfg.csPin);
+            ok = numeric::str2uint8(kv[1], sCfg.csPin);
         } else if (kv[0] == "cspol") {
             if (kv[1] == "low") {
-                cfg.csPolarity = FT2232SPI::CsPolarity::ActiveLow;
+                sCfg.csPolarity = FT2232SPI::CsPolarity::ActiveLow;
             } else if (kv[1] == "high") {
-                cfg.csPolarity = FT2232SPI::CsPolarity::ActiveHigh;
+                sCfg.csPolarity = FT2232SPI::CsPolarity::ActiveHigh;
             } else {
                 ok = false;
             }
         } else if (kv[0] == "channel") {
-            ok = parseChannel(kv[1], cfg.channel);
-        } else if (kv[0] == "device" && pDeviceIndexOut) {
-            ok = numeric::str2uint8(kv[1], *pDeviceIndexOut);
+            ok = parseChannel(kv[1], sCfg.channel);
+        } else if (kv[0] == "device" && pu8DeviceIndexOut) {
+            ok = numeric::str2uint8(kv[1], *pu8DeviceIndexOut);
         } else {
             LOG_PRINT(LOG_ERROR, LOG_STRING("FT2_SPI    |");
                       LOG_STRING("Unknown key:"); LOG_STRING(kv[0]));
@@ -151,9 +151,9 @@ bool FT2232Plugin::parseSpiParams(const std::string &args,
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_spi_open(const std::string &args, std::stop_token /*st*/) const
+bool FT2232Plugin::m_handle_spi_open(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [variant=H|D] [clock=N] [mode=0-3]"));
         LOG_PRINT(LOG_EMPTY,
@@ -166,7 +166,7 @@ bool FT2232Plugin::m_handle_spi_open(const std::string &args, std::stop_token /*
     }
 
     uint8_t devIdx = m_sIniValues.u8DeviceIndex;
-    if (!parseSpiParams(args, m_sSpiCfg, &devIdx)) {
+    if (!parseSpiParams(strArgs, m_sSpiCfg, &devIdx)) {
         return false;
     }
     const_cast<FT2232Plugin *>(this)->m_sIniValues.u8DeviceIndex = devIdx;
@@ -235,9 +235,9 @@ bool FT2232Plugin::m_handle_spi_close(const std::string &, std::stop_token /*st*
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_spi_cfg(const std::string &args, std::stop_token /*st*/) const
+bool FT2232Plugin::m_handle_spi_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         const char *varStr = (m_sSpiCfg.variant == FT2232Base::Variant::FT2232H) ? "H" : "D";
         LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI pending config:"));
         LOG_PRINT(LOG_EMPTY,
@@ -253,7 +253,7 @@ bool FT2232Plugin::m_handle_spi_cfg(const std::string &args, std::stop_token /*s
         return true;
     }
 
-    if (!parseSpiParams(args, m_sSpiCfg)) {
+    if (!parseSpiParams(strArgs, m_sSpiCfg)) {
         return false;
     }
 
@@ -279,9 +279,9 @@ bool FT2232Plugin::m_handle_spi_cs(const std::string & /*args*/, std::stop_token
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_spi_write(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_handle_spi_write(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex bytes, MOSI only)"));
         return true;
     }
@@ -291,7 +291,7 @@ bool FT2232Plugin::m_handle_spi_write(const std::string &args, std::stop_token s
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data) || data.empty()) {
+    if (!hexutils::stringUnhexlify(strArgs, data) || data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected at least 1 hex byte"));
         return false;
     }
@@ -311,9 +311,9 @@ bool FT2232Plugin::m_handle_spi_write(const std::string &args, std::stop_token s
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_spi_read(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_handle_spi_read(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (read N bytes, clocks 0x00)"));
         return true;
@@ -324,7 +324,7 @@ bool FT2232Plugin::m_handle_spi_read(const std::string &args, std::stop_token st
     }
 
     size_t n = 0;
-    if (!numeric::str2sizet(args, n) || n == 0) {
+    if (!numeric::str2sizet(strArgs, n) || n == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid byte count"));
         return false;
     }
@@ -397,16 +397,16 @@ bool FT2232Plugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
     return true;
 }
 
-bool FT2232Plugin::m_handle_spi_wrrd(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_handle_spi_wrrd(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_data<FT2232Plugin>(
-        this, args, &FT2232Plugin::m_spi_wrrd_cb, st);
+        this, strArgs, &FT2232Plugin::m_spi_wrrd_cb, st);
 }
 
-bool FT2232Plugin::m_handle_spi_wrrdf(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_handle_spi_wrrdf(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_file<FT2232Plugin>(
-        this, args, &FT2232Plugin::m_spi_wrrd_cb,
+        this, strArgs, &FT2232Plugin::m_spi_wrrd_cb,
         m_sIniValues.strArtefactsPath, st);
 }
 
@@ -414,9 +414,9 @@ bool FT2232Plugin::m_handle_spi_wrrdf(const std::string &args, std::stop_token s
 //                       XFER (full-duplex)                      //
 ///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_spi_xfer(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_handle_spi_xfer(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: xfer AABB..  (full-duplex: TX hex, MISO printed)"));
         return true;
@@ -427,7 +427,7 @@ bool FT2232Plugin::m_handle_spi_xfer(const std::string &args, std::stop_token st
     }
 
     std::vector<uint8_t> txBuf;
-    if (!hexutils::stringUnhexlify(args, txBuf) || txBuf.empty()) {
+    if (!hexutils::stringUnhexlify(strArgs, txBuf) || txBuf.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected at least 1 hex byte"));
         return false;
     }
@@ -454,9 +454,9 @@ bool FT2232Plugin::m_handle_spi_xfer(const std::string &args, std::stop_token st
    Usage:  FT2232.SPI script <filename>
            FT2232.SPI script help
 ============================================================ */
-bool FT2232Plugin::m_handle_spi_script(const std::string &args, std::stop_token st) const
+bool FT2232Plugin::m_handle_spi_script(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  SPI must be open first (FT2232.SPI open ...)"));
@@ -472,7 +472,7 @@ bool FT2232Plugin::m_handle_spi_script(const std::string &args, std::stop_token 
     return generic_execute_script(
         pSpi,
         m_strInstanceName,
-        args,
+        strArgs,
         ini->strArtefactsPath,
         FT_BULK_MAX_BYTES,
         ini->u32ReadTimeout,

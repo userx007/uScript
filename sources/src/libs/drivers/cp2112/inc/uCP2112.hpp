@@ -97,7 +97,7 @@ class CP2112 : public CP2112Base, public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -123,21 +123,21 @@ class CP2112 : public CP2112Base, public ICommDriver {
          * @param bytesWritten  Accumulates successfully written bytes across all chunks
          */
         Status i2c_write(std::span<const uint8_t> data,
-                         uint32_t timeoutMs,
+                         uint32_t u32TimeoutMs,
                          size_t &bytesWritten,
                          std::stop_token stop_tok = {}) const;
 
         /** Send a single ≤61-byte chunk as one HID Data Write report */
         Status i2c_write_chunk(std::span<const uint8_t> chunk,
-                               uint32_t timeoutMs,
+                               uint32_t u32TimeoutMs,
                                std::stop_token stop_tok = {}) const;
 
         Status i2c_read(std::span<uint8_t> data,
                         size_t &bytesRead,
-                        uint32_t timeoutMs,
+                        uint32_t u32TimeoutMs,
                         std::stop_token stop_tok = {}) const;
 
-        Status poll_transfer_done(uint32_t timeoutMs, std::stop_token stop_tok = {}) const;
+        Status poll_transfer_done(uint32_t u32TimeoutMs, std::stop_token stop_tok = {}) const;
         Status cancel_transfer() const;
 };
 

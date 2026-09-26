@@ -68,9 +68,9 @@
 
 static volatile int running = 1;
 
-static void sig_handler(int sig)
+static void sig_handler(int iSig)
 {
-    (void)sig;
+    (void)iSig;
     running = 0;
 }
 
@@ -80,33 +80,33 @@ static void sig_handler(int sig)
 /* Minimal SMBus helpers (no libi2c-dev dependency, kernel headers only) */
 /* ------------------------------------------------------------------ */
 
-static __s32 i2c_smbus_access(int fd, char read_write, __u8 command,
-                               int size, union i2c_smbus_data *data)
+static __s32 i2c_smbus_access(int iFd, char read_write, __u8 command,
+                               int iSize, union i2c_smbus_data *data)
 {
     struct i2c_smbus_ioctl_data args;
     args.read_write = read_write;
     args.command    = command;
-    args.size       = size;
+    args.iSize       = iSize;
     args.data       = data;
-    return ioctl(fd, I2C_SMBUS, &args);
+    return ioctl(iFd, I2C_SMBUS, &args);
 }
 
-static int smbus_write_byte(int fd, __u8 reg, __u8 value)
+static int smbus_write_byte(int iFd, __u8 reg, __u8 value)
 {
     union i2c_smbus_data data;
     data.byte = value;
-    return i2c_smbus_access(fd, I2C_SMBUS_WRITE, reg,
+    return i2c_smbus_access(iFd, I2C_SMBUS_WRITE, reg,
                              I2C_SMBUS_BYTE_DATA, &data);
 }
 
-static int smbus_read_byte(int fd, __u8 reg, __u8 *value)
+static int smbus_read_byte(int iFd, __u8 reg, __u8 *pValue)
 {
     union i2c_smbus_data data;
-    int res = i2c_smbus_access(fd, I2C_SMBUS_READ, reg,
+    int res = i2c_smbus_access(iFd, I2C_SMBUS_READ, reg,
                                 I2C_SMBUS_BYTE_DATA, &data);
     if (res < 0)
         return res;
-    *value = data.byte & 0xFF;
+    *pValue = data.byte & 0xFF;
     return 0;
 }
 
@@ -114,21 +114,21 @@ static int smbus_read_byte(int fd, __u8 reg, __u8 *value)
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-static void print_chunk(const char *prefix, const unsigned char *buf, int len)
+static void print_chunk(const char *pstrPrefix, const unsigned char *buf, int iLen)
 {
-    printf("%s  [%d] ", prefix, len);
-    for (int i = 0; i < len; i++)
+    printf("%s  [%d] ", pstrPrefix, iLen);
+    for (int i = 0; i < iLen; i++)
         printf("%02X ", buf[i]);
     printf("\n");
     fflush(stdout);
 }
 
 /** Parse whitespace-separated hex byte pairs from a line, e.g. "55 aa 01". */
-static int parse_hex_line(char *line, unsigned char *out, int max_out)
+static int parse_hex_line(char *pstrLine, unsigned char *out, int iMax_out)
 {
     int count = 0;
-    char *tok = strtok(line, " \t\r\n");
-    while (tok && count < max_out) {
+    char *tok = strtok(pstrLine, " \t\r\n");
+    while (tok && count < iMax_out) {
         char *endptr;
         long v = strtol(tok, &endptr, 16);
         if (*endptr != '\0' || v < 0 || v > 0xFF) {
@@ -141,10 +141,10 @@ static int parse_hex_line(char *line, unsigned char *out, int max_out)
     return count;
 }
 
-static int open_i2c_bus(int bus_num, int address)
+static int open_i2c_bus(int iBus_num, int iAddress)
 {
     char path[32];
-    snprintf(path, sizeof(path), "/dev/i2c-%d", bus_num);
+    snprintf(path, sizeof(path), "/dev/i2c-%d", iBus_num);
 
     int fd = open(path, O_RDWR);
     if (fd < 0) {
@@ -152,9 +152,9 @@ static int open_i2c_bus(int bus_num, int address)
         return -1;
     }
 
-    if (ioctl(fd, I2C_SLAVE, address) < 0) {
+    if (ioctl(fd, I2C_SLAVE, iAddress) < 0) {
         fprintf(stderr, "ioctl I2C_SLAVE (addr 0x%02x): %s\n",
-                address, strerror(errno));
+                iAddress, strerror(errno));
         close(fd);
         return -1;
     }
@@ -166,9 +166,9 @@ static int open_i2c_bus(int bus_num, int address)
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
-int main(int argc, char *argv[])
+int main(int iArgc, char *argv[])
 {
-    if (argc < 3) {
+    if (iArgc < 3) {
         fprintf(stderr, "usage: %s <bus-number> <i2c-address> [start-register]\n",
                 argv[0]);
         fprintf(stderr, "  e.g.: %s 3 0x50\n", argv[0]);
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
     }
 
     long start_reg = 0;
-    if (argc > 3) {
+    if (iArgc > 3) {
         start_reg = strtol(argv[3], &endptr, 0);
         if (*endptr != '\0' || start_reg < 0 || start_reg > 0xFF) {
             fprintf(stderr, "invalid start register '%s'\n", argv[3]);

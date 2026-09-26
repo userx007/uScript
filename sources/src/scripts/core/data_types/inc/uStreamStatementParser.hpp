@@ -53,7 +53,7 @@
 // ---------------------------------------------------------------------------
 inline bool parseStreamStatement(const std::string &strKeyword,
                                  const std::string &strLine,
-                                 StreamStatement &out,
+                                 StreamStatement &sOut,
                                  std::string &strError) noexcept
 {
     auto trim = [](std::string s) -> std::string {
@@ -70,8 +70,8 @@ inline bool parseStreamStatement(const std::string &strKeyword,
         return false;
     }
 
-    out.strName = trim(strLine.substr(0, assignPos));
-    if (out.strName.empty()) {
+    sOut.strName = trim(strLine.substr(0, assignPos));
+    if (sOut.strName.empty()) {
         strError = strKeyword + ": missing destination macro name";
         return false;
     }
@@ -98,14 +98,14 @@ inline bool parseStreamStatement(const std::string &strKeyword,
     // No field (offset/length/value, whether literal or $macro) can contain
     // '|', so the LAST '|' in the line unambiguously marks this suffix, if
     // one is present at all.
-    out.eReverse       = StreamReverseMode::NONE;
+    sOut.eReverse       = StreamReverseMode::NONE;
     const auto pipePos = strRhs.rfind('|');
     if (pipePos != std::string::npos) {
         const std::string strSuffix = trim(strRhs.substr(pipePos + 1));
         if (strSuffix == "REVERSE_BIT") {
-            out.eReverse = StreamReverseMode::REVERSE_BIT;
+            sOut.eReverse = StreamReverseMode::REVERSE_BIT;
         } else if (strSuffix == "REVERSE_BYTE") {
-            out.eReverse = StreamReverseMode::REVERSE_BYTE;
+            sOut.eReverse = StreamReverseMode::REVERSE_BYTE;
         } else {
             strError = strKeyword + ": unrecognised '| " + strSuffix +
                        "' — expected REVERSE_BIT or REVERSE_BYTE";
@@ -119,7 +119,7 @@ inline bool parseStreamStatement(const std::string &strKeyword,
     }
 
     // ── 4. Split the remainder on whitespace into "offset:length:value" fields ──
-    out.vFields.clear();
+    sOut.vFields.clear();
     {
         std::string::size_type pos = 0;
         while (pos < strRhs.size()) {
@@ -158,11 +158,11 @@ inline bool parseStreamStatement(const std::string &strKeyword,
                 return false;
             }
 
-            out.vFields.push_back(std::move(sField));
+            sOut.vFields.push_back(std::move(sField));
         }
     }
 
-    if (out.vFields.empty()) {
+    if (sOut.vFields.empty()) {
         strError = strKeyword + ": no offset:length:value fields given";
         return false;
     }
@@ -232,7 +232,7 @@ inline bool parseStreamStatement(const std::string &strKeyword,
 inline bool parseStreamValStatement(const std::string &strKeyword,
                                     bool bByteMode,
                                     const std::string &strLine,
-                                    StreamValStatement &out,
+                                    StreamValStatement &sOut,
                                     std::string &strError) noexcept
 {
     auto trim = [](std::string s) -> std::string {
@@ -249,8 +249,8 @@ inline bool parseStreamValStatement(const std::string &strKeyword,
         return false;
     }
 
-    out.strName = trim(strLine.substr(0, assignPos));
-    if (out.strName.empty()) {
+    sOut.strName = trim(strLine.substr(0, assignPos));
+    if (sOut.strName.empty()) {
         strError = strKeyword + ": missing destination macro name";
         return false;
     }
@@ -263,8 +263,8 @@ inline bool parseStreamValStatement(const std::string &strKeyword,
         return false;
     }
 
-    out.strSourceTpl = trim(strRhs.substr(0, pipePos));
-    if (out.strSourceTpl.empty()) {
+    sOut.strSourceTpl = trim(strRhs.substr(0, pipePos));
+    if (sOut.strSourceTpl.empty()) {
         strError = strKeyword + ": hex source is empty";
         return false;
     }
@@ -287,8 +287,8 @@ inline bool parseStreamValStatement(const std::string &strKeyword,
     }
 
     // ── 4. Parse the one field — shape depends on bByteMode ─────────────
-    out.bByteMode = bByteMode;
-    out.strByteOffsetTpl.clear();
+    sOut.bByteMode = bByteMode;
+    sOut.strByteOffsetTpl.clear();
 
     if (!bByteMode) {
         // BITSTREAMVAL: bit_offset:value_size
@@ -301,9 +301,9 @@ inline bool parseStreamValStatement(const std::string &strKeyword,
             strError = strKeyword + ": field [" + strField + "] has more than 2 ':'-separated parts";
             return false;
         }
-        out.strBitOffsetTpl = strField.substr(0, c1);
-        out.strValueSizeTpl = strField.substr(c1 + 1);
-        if (out.strBitOffsetTpl.empty() || out.strValueSizeTpl.empty()) {
+        sOut.strBitOffsetTpl = strField.substr(0, c1);
+        sOut.strValueSizeTpl = strField.substr(c1 + 1);
+        if (sOut.strBitOffsetTpl.empty() || sOut.strValueSizeTpl.empty()) {
             strError = strKeyword + ": field [" + strField + "] has an empty bit_offset/value_size part";
             return false;
         }
@@ -323,10 +323,10 @@ inline bool parseStreamValStatement(const std::string &strKeyword,
             strError = strKeyword + ": field [" + strField + "] has more than 3 ':'-separated parts";
             return false;
         }
-        out.strByteOffsetTpl = strField.substr(0, c1);
-        out.strBitOffsetTpl  = strField.substr(c1 + 1, c2 - c1 - 1);
-        out.strValueSizeTpl  = strField.substr(c2 + 1);
-        if (out.strByteOffsetTpl.empty() || out.strBitOffsetTpl.empty() || out.strValueSizeTpl.empty()) {
+        sOut.strByteOffsetTpl = strField.substr(0, c1);
+        sOut.strBitOffsetTpl  = strField.substr(c1 + 1, c2 - c1 - 1);
+        sOut.strValueSizeTpl  = strField.substr(c2 + 1);
+        if (sOut.strByteOffsetTpl.empty() || sOut.strBitOffsetTpl.empty() || sOut.strValueSizeTpl.empty()) {
             strError = strKeyword + ": field [" + strField + "] has an empty byte_offset/bit_offset/value_size part";
             return false;
         }
@@ -388,7 +388,7 @@ inline bool parseStreamValStatement(const std::string &strKeyword,
 inline bool parseStreamValArrayStatement(const std::string &strKeyword,
                                          bool bByteMode,
                                          const std::string &strLine,
-                                         StreamValArrayStatement &out,
+                                         StreamValArrayStatement &sOut,
                                          std::string &strError) noexcept
 {
     auto trim = [](std::string s) -> std::string {
@@ -405,8 +405,8 @@ inline bool parseStreamValArrayStatement(const std::string &strKeyword,
         return false;
     }
 
-    out.strName = trim(strLine.substr(0, assignPos));
-    if (out.strName.empty()) {
+    sOut.strName = trim(strLine.substr(0, assignPos));
+    if (sOut.strName.empty()) {
         strError = strKeyword + ": missing destination array macro name";
         return false;
     }
@@ -419,8 +419,8 @@ inline bool parseStreamValArrayStatement(const std::string &strKeyword,
         return false;
     }
 
-    out.strSourceTpl = trim(strRhs.substr(0, pipePos));
-    if (out.strSourceTpl.empty()) {
+    sOut.strSourceTpl = trim(strRhs.substr(0, pipePos));
+    if (sOut.strSourceTpl.empty()) {
         strError = strKeyword + ": hex source is empty";
         return false;
     }
@@ -443,8 +443,8 @@ inline bool parseStreamValArrayStatement(const std::string &strKeyword,
     }
 
     // ── 4. Split the field list on whitespace and parse each field ──────
-    out.bByteMode = bByteMode;
-    out.vFields.clear();
+    sOut.bByteMode = bByteMode;
+    sOut.vFields.clear();
     {
         std::string::size_type pos = 0;
         while (pos < strFieldList.size()) {
@@ -502,11 +502,11 @@ inline bool parseStreamValArrayStatement(const std::string &strKeyword,
                 }
             }
 
-            out.vFields.push_back(std::move(sField));
+            sOut.vFields.push_back(std::move(sField));
         }
     }
 
-    if (out.vFields.empty()) {
+    if (sOut.vFields.empty()) {
         strError = strKeyword + ": no fields given";
         return false;
     }

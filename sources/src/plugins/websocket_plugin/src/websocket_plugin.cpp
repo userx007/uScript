@@ -27,10 +27,10 @@ extern "C" {
         return new WEBSOCKETPlugin();
     }
 
-    EXPORTED void pluginExit(WEBSOCKETPlugin *ptrPlugin)
+    EXPORTED void pluginExit(WEBSOCKETPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -91,12 +91,12 @@ std::shared_ptr<WebSocket> WEBSOCKETPlugin::m_OpenDriver(void) const
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::m_WEBSOCKET_INFO(const std::string &args, std::stop_token st) const
+bool WEBSOCKETPlugin::m_WEBSOCKET_INFO(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -167,13 +167,13 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_INFO(const std::string &args, std::stop_token 
  *        c=connect_tout  r=read_tout  w=write_tout  s=recv_bufsize
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::m_WEBSOCKET_CONFIG(const std::string &args, std::stop_token st) const
+bool WEBSOCKETPlugin::m_WEBSOCKET_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
-    return generic_websocket_set_params(this, args);
+    return generic_websocket_set_params(this, strArgs);
 
 } /* m_WEBSOCKET_CONFIG() */
 
@@ -194,14 +194,14 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_CONFIG(const std::string &args, std::stop_toke
  *       WEBSOCKET.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::m_WEBSOCKET_CMD(const std::string &args, std::stop_token st) const
+bool WEBSOCKETPlugin::m_WEBSOCKET_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<WebSocket> {
             // open the WebSocket connection (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
@@ -220,14 +220,14 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_CMD(const std::string &args, std::stop_token s
  *       WEBSOCKET.SCRIPT scriptname [|delay]
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::m_WEBSOCKET_SCRIPT(const std::string &args, std::stop_token st) const
+bool WEBSOCKETPlugin::m_WEBSOCKET_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<WebSocket> {
             // open the WebSocket connection (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
@@ -256,12 +256,12 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_SCRIPT(const std::string &args, std::stop_toke
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::m_WEBSOCKET_CYCLIC(const std::string &args, std::stop_token st) const
+bool WEBSOCKETPlugin::m_WEBSOCKET_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<WebSocket> {
             // open the WebSocket connection (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();

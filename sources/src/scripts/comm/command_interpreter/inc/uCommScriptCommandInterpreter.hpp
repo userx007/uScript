@@ -86,10 +86,10 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          *                 token disables cancellation and preserves pre-existing behaviour.
          */
         explicit CommScriptCommandInterpreter(
-            std::shared_ptr<const TDriver> driver,
-            std::string pluginName,
+            std::shared_ptr<const TDriver> shpDriver,
+            std::string strPluginName,
             size_t maxRecvSize       = 4096,
-            uint32_t defaultTimeout  = 5000,
+            uint32_t u32DefaultTimeout  = 5000,
             SendFunc pfsend          = SendFunc{},
             RecvFunc pfrecv          = RecvFunc{},
             std::stop_token stop_tok = {})
@@ -128,14 +128,14 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          *                  hardware I/O. true for normal execution.
          * @return true if execution (or dry-run validation) successful, false otherwise
          */
-        bool interpretCommand(const CommCommand &command, bool bRealExec) override
+        bool interpretCommand(const CommCommand &sCommand, bool bRealExec) override
         {
             /* PRINT is a pure logging statement - it performs no driver I/O, so it
              * is handled before the driver-availability check and does not require
              * an open port. */
-            if (command.direction == CommCommandDirection::PRINT) {
-                auto lineNr = ustring::fmtLineNr(command.iLineNumber);
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(command.values.first));
+            if (sCommand.direction == CommCommandDirection::PRINT) {
+                auto lineNr = ustring::fmtLineNr(sCommand.iLineNumber);
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(sCommand.values.first));
                 return true;
             }
 
@@ -143,12 +143,12 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not available or port not open"));
                 return false;
             }
-            auto lineNr = ustring::fmtLineNr(command.iLineNumber);
+            auto lineNr = ustring::fmtLineNr(sCommand.iLineNumber);
 
-            if (!bRealExec && ((command.direction == CommCommandDirection::SEND_RECV) ||
-                               (command.direction == CommCommandDirection::RECV_SEND))) {
+            if (!bRealExec && ((sCommand.direction == CommCommandDirection::SEND_RECV) ||
+                               (sCommand.direction == CommCommandDirection::RECV_SEND))) {
                 // Dry-run: the caller (ucmdexec::generic_cmd) has already validated the
-                // command's grammar and successfully opened/configured the driver above -
+                // sCommand's grammar and successfully opened/configured the driver above -
                 // this is deliberately the one place left to stop, one step short of the
                 // actual send/receive interface, so a dry-run pass never puts a byte on
                 // the wire or blocks on a real read. DELAY has no hardware side effect so
@@ -160,42 +160,42 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
 
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                       LOG_STRING("Exec:");
-                      LOG_STRING(getDirectionName(command.direction));
-                      LOG_STRING("["); LOG_STRING(command.values.first);
-                      LOG_STRING(":"); LOG_STRING(command.values.second);
+                      LOG_STRING(getDirectionName(sCommand.direction));
+                      LOG_STRING("["); LOG_STRING(sCommand.values.first);
+                      LOG_STRING(":"); LOG_STRING(sCommand.values.second);
                       LOG_STRING("]=[");
-                      LOG_STRING(getTokenTypeName(command.tokens.first));
+                      LOG_STRING(getTokenTypeName(sCommand.tokens.first));
                       LOG_STRING(":");
-                      LOG_STRING(getTokenTypeName(command.tokens.second));
+                      LOG_STRING(getTokenTypeName(sCommand.tokens.second));
                       LOG_STRING("] xtra=[");
-                      LOG_STRING(command.xtra_params.first);
+                      LOG_STRING(sCommand.xtra_params.first);
                       LOG_STRING(":");
-                      LOG_STRING(command.xtra_params.second);
+                      LOG_STRING(sCommand.xtra_params.second);
                       LOG_STRING("]"));
 
             bool result = false;
 
             // Execute based on direction
-            if (command.direction == CommCommandDirection::SEND_RECV) {
+            if (sCommand.direction == CommCommandDirection::SEND_RECV) {
                 // Send first (first xtra_param), then receive (second xtra_param)
-                result = executeSend(command.values.first, command.tokens.first, command.xtra_params.first);
-                if (result && command.tokens.second != CommCommandTokenType::EMPTY) {
-                    result = executeReceive(command.values.second, command.tokens.second, command.xtra_params.second);
+                result = executeSend(sCommand.values.first, sCommand.tokens.first, sCommand.xtra_params.first);
+                if (result && sCommand.tokens.second != CommCommandTokenType::EMPTY) {
+                    result = executeReceive(sCommand.values.second, sCommand.tokens.second, sCommand.xtra_params.second);
                 }
-            } else if (command.direction == CommCommandDirection::RECV_SEND) {
+            } else if (sCommand.direction == CommCommandDirection::RECV_SEND) {
                 // Receive first (first xtra_param), then send (second xtra_param)
-                result = executeReceive(command.values.first, command.tokens.first, command.xtra_params.first);
-                if (result && command.tokens.second != CommCommandTokenType::EMPTY) {
-                    result = executeSend(command.values.second, command.tokens.second, command.xtra_params.second);
+                result = executeReceive(sCommand.values.first, sCommand.tokens.first, sCommand.xtra_params.first);
+                if (result && sCommand.tokens.second != CommCommandTokenType::EMPTY) {
+                    result = executeSend(sCommand.values.second, sCommand.tokens.second, sCommand.xtra_params.second);
                 }
-            } else if (command.direction == CommCommandDirection::DELAY) {
+            } else if (sCommand.direction == CommCommandDirection::DELAY) {
                 size_t szDelay = 0;
-                if (numeric::str2sizet(command.values.first, szDelay)) {
-                    if (command.values.second == TIME_MICROSECONDS) {
+                if (numeric::str2sizet(sCommand.values.first, szDelay)) {
+                    if (sCommand.values.second == TIME_MICROSECONDS) {
                         utime::delay_us(szDelay);
-                    } else if (command.values.second == TIME_MILISECONDS) {
+                    } else if (sCommand.values.second == TIME_MILISECONDS) {
                         utime::delay_ms(szDelay);
-                    } else if (command.values.second == TIME_SECONDS) {
+                    } else if (sCommand.values.second == TIME_SECONDS) {
                         utime::delay_seconds(szDelay);
                     } else {
                         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No delay execution (invalid unit)"));
@@ -203,12 +203,12 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                     result = true;
                 }
             } else {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command type"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid sCommand type"));
                 return false;
             }
 
             if (!result) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Comm command failed"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Comm sCommand failed"));
             }
 
             return result;
@@ -225,9 +225,9 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
         /**
          * @brief Set default timeout for operations
          */
-        void setDefaultTimeout(uint32_t timeout)
+        void setDefaultTimeout(uint32_t u32Timeout)
         {
-            m_defaultTimeout = timeout;
+            m_defaultTimeout = u32Timeout;
         }
 
         /**
@@ -311,10 +311,10 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * @brief Physical write primitive — pfsend override if one was injected,
          *        otherwise m_driver->tout_write() directly (today's behaviour).
          */
-        ICommDriver::WriteResult doWrite(std::span<const uint8_t> data, const std::string &xtra_params) const
+        ICommDriver::WriteResult doWrite(std::span<const uint8_t> data, const std::string &strXtra_params) const
         {
-            return m_pfsend ? m_pfsend(m_defaultTimeout, data, m_driver, xtra_params, m_stopTok)
-                            : m_driver->tout_write(m_defaultTimeout, data, xtra_params, m_stopTok);
+            return m_pfsend ? m_pfsend(m_defaultTimeout, data, m_driver, strXtra_params, m_stopTok)
+                            : m_driver->tout_write(m_defaultTimeout, data, strXtra_params, m_stopTok);
         }
 
         /**
@@ -322,10 +322,10 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          *        otherwise m_driver->tout_read() directly (today's behaviour).
          */
         ICommDriver::ReadResult doRead(std::span<uint8_t> buffer, const ICommDriver::ReadOptions &options,
-                                       const std::string &xtra_params) const
+                                       const std::string &strXtra_params) const
         {
-            return m_pfrecv ? m_pfrecv(m_defaultTimeout, buffer, options, m_driver, xtra_params, m_stopTok)
-                            : m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params, m_stopTok);
+            return m_pfrecv ? m_pfrecv(m_defaultTimeout, buffer, options, m_driver, strXtra_params, m_stopTok)
+                            : m_driver->tout_read(m_defaultTimeout, buffer, options, strXtra_params, m_stopTok);
         }
 
         /**
@@ -363,13 +363,13 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * that receiveUntilToken() already special-cased for its own zero-byte
          * result. This makes that guarantee hold for every receive path.
          */
-        ICommDriver::ReadResult doReceiveInto(const ICommDriver::ReadOptions &options, const std::string &xtra_params)
+        ICommDriver::ReadResult doReceiveInto(const ICommDriver::ReadOptions &options, const std::string &strXtra_params)
         {
             if (m_recvScratch.size() < m_maxRecvSize) {
                 m_recvScratch.resize(m_maxRecvSize);
             }
 
-            auto result = doRead(std::span<uint8_t>(m_recvScratch.data(), m_maxRecvSize), options, xtra_params);
+            auto result = doRead(std::span<uint8_t>(m_recvScratch.data(), m_maxRecvSize), options, strXtra_params);
 
             m_lastReceived.assign(m_recvScratch.begin(), m_recvScratch.begin() + result.bytes_read);
             return result;
@@ -386,21 +386,21 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * See m_regexCache's doc comment for why this cache lives here (per
          * interpreter instance) rather than on CommCommand.
          */
-        const CachedRegex &getCompiledRegex(const std::string &pattern)
+        const CachedRegex &getCompiledRegex(const std::string &strPattern)
         {
-            auto it = m_regexCache.find(pattern);
+            auto it = m_regexCache.find(strPattern);
             if (it != m_regexCache.end()) {
                 return it->second;
             }
 
             CachedRegex entry;
             try {
-                entry.compiled = std::make_shared<std::regex>(pattern);
+                entry.compiled = std::make_shared<std::regex>(strPattern);
             } catch (const std::regex_error &e) {
                 entry.error = e.what();
             }
 
-            return m_regexCache.emplace(pattern, std::move(entry)).first->second;
+            return m_regexCache.emplace(strPattern, std::move(entry)).first->second;
         }
 
         /**
@@ -422,16 +422,16 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * the same key - see receiveUntilDelimiter() for how to adjust a
          * comparison range instead of trimming the cached vector.
          */
-        const std::vector<uint8_t> *getConvertedData(const std::string &value, CommCommandTokenType type)
+        const std::vector<uint8_t> *getConvertedData(const std::string &strValue, CommCommandTokenType eType)
         {
-            DataCacheKey key{type, value};
+            DataCacheKey key{eType, strValue};
             auto it = m_dataCache.find(key);
             if (it != m_dataCache.end()) {
                 return &it->second;
             }
 
             std::vector<uint8_t> converted;
-            if (!convertToData(value, type, converted)) {
+            if (!convertToData(strValue, eType, converted)) {
                 return nullptr;
             }
 
@@ -455,15 +455,15 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * @param data        Pointer to the bytes actually transferred
          * @param len         Number of bytes actually transferred (bytes_read/bytes_written)
          */
-        void notifyCommDump(CommDir dir, std::string_view xtra_params,
-                            const uint8_t *data, size_t len) const
+        void notifyCommDump(CommDir eDir, std::string_view xtra_params,
+                            const uint8_t *pu8Data, size_t len) const
         {
             if (len == 0 || !gui_mode_active()) {
                 return;
             }
             gui_notify_comm_dump(m_pluginName,
                                  m_driver->describeConnection(xtra_params),
-                                 dir, data, static_cast<uint32_t>(len));
+                                 eDir, pu8Data, static_cast<uint32_t>(len));
         }
 
         /**
@@ -473,26 +473,26 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * @param xtra_params Optional channel/address identifier forwarded to tout_write
          * @return true if send successful, false otherwise
          */
-        bool executeSend(const std::string &value, CommCommandTokenType type,
-                         const std::string &xtra_params = {})
+        bool executeSend(const std::string &strValue, CommCommandTokenType eType,
+                         const std::string &strXtra_params = {})
         {
             // Empty token means no send operation
-            if (type == CommCommandTokenType::EMPTY) {
+            if (eType == CommCommandTokenType::EMPTY) {
                 return true;
             }
 
             LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                      LOG_STRING("Send:"); LOG_STRING(value);
-                      LOG_STRING("["); LOG_STRING(getTokenTypeName(type))
+                      LOG_STRING("Send:"); LOG_STRING(strValue);
+                      LOG_STRING("["); LOG_STRING(getTokenTypeName(eType))
                           LOG_STRING("]"));
 
             // Handle file send specially
-            if (type == CommCommandTokenType::FILENAME) {
-                return sendFile(value, xtra_params);
+            if (eType == CommCommandTokenType::FILENAME) {
+                return sendFile(strValue, strXtra_params);
             }
 
-            // Convert value to bytes based on type (cached - see getConvertedData())
-            const std::vector<uint8_t> *data = getConvertedData(value, type);
+            // Convert strValue to bytes based on eType (cached - see getConvertedData())
+            const std::vector<uint8_t> *data = getConvertedData(strValue, eType);
             if (!data) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("Failed to convert data for send"));
@@ -500,7 +500,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             }
 
             // Send the data
-            auto result = doWrite(std::span<const uint8_t>(*data), xtra_params);
+            auto result = doWrite(std::span<const uint8_t>(*data), strXtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -515,7 +515,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             // comm-dump row(s); this generic row would otherwise show the pre-
             // segmentation logical payload instead of the real physical frames.
             if (!m_pfsend) {
-                notifyCommDump(CommDir::Tx, xtra_params, data->data(), result.bytes_written);
+                notifyCommDump(CommDir::Tx, strXtra_params, data->data(), result.bytes_written);
             }
 
             LOG_PRINT(LOG_WERBOSE, LOG_HDR;
@@ -531,49 +531,49 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * @param xtra_params Optional channel/address identifier forwarded to tout_read
          * @return true if receive successful and data matches expectation, false otherwise
          */
-        bool executeReceive(const std::string &value, CommCommandTokenType type,
-                            const std::string &xtra_params = {})
+        bool executeReceive(const std::string &strValue, CommCommandTokenType eType,
+                            const std::string &strXtra_params = {})
         {
             // Empty token means no receive operation
-            if (type == CommCommandTokenType::EMPTY) {
+            if (eType == CommCommandTokenType::EMPTY) {
                 return true;
             }
 
             LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-                      LOG_STRING("Recv:"); LOG_STRING(value);
-                      LOG_STRING("["); LOG_STRING(getTokenTypeName(type));
+                      LOG_STRING("Recv:"); LOG_STRING(strValue);
+                      LOG_STRING("["); LOG_STRING(getTokenTypeName(eType));
                       LOG_STRING("]"));
 
-            switch (type) {
+            switch (eType) {
             case CommCommandTokenType::REGEX:
-                return receiveAndMatchRegex(value, xtra_params);
+                return receiveAndMatchRegex(strValue, strXtra_params);
 
             case CommCommandTokenType::TOKEN_STRING:
-                return receiveUntilToken(value, false, xtra_params);
+                return receiveUntilToken(strValue, false, strXtra_params);
 
             case CommCommandTokenType::TOKEN_HEXSTREAM:
-                return receiveUntilToken(value, true, xtra_params);
+                return receiveUntilToken(strValue, true, strXtra_params);
 
             case CommCommandTokenType::SIZEOF:
-                return receiveExactSize(value, xtra_params);
+                return receiveExactSize(strValue, strXtra_params);
 
             case CommCommandTokenType::LINE:
-                return receiveUntilDelimiter('\n', value, xtra_params);
+                return receiveUntilDelimiter('\n', strValue, strXtra_params);
 
             case CommCommandTokenType::FILENAME:
-                return receiveToFile(value, xtra_params);
+                return receiveToFile(strValue, strXtra_params);
 
             case CommCommandTokenType::HEXSTREAM:
             case CommCommandTokenType::STRING_DELIMITED:
             case CommCommandTokenType::STRING_DELIMITED_EMPTY:
             case CommCommandTokenType::STRING_RAW:
-                return receiveAndCompare(value, type, xtra_params);
+                return receiveAndCompare(strValue, eType, strXtra_params);
 
             case CommCommandTokenType::ANYTHING:
-                return receiveAndHexdump(value, xtra_params);
+                return receiveAndHexdump(strValue, strXtra_params);
 
             default:
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported receive token type"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported receive token eType"));
                 return false;
             }
         }
@@ -581,13 +581,13 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
         /**
          * @brief Receive data and match against regex pattern
          */
-        bool receiveAndMatchRegex(const std::string &pattern, const std::string &xtra_params = {})
+        bool receiveAndMatchRegex(const std::string &strPattern, const std::string &strXtra_params = {})
         {
             // Read exact bytes from driver
             ICommDriver::ReadOptions options;
             options.mode = ICommDriver::ReadMode::Exact;
 
-            auto result  = doReceiveInto(options, xtra_params);
+            auto result  = doReceiveInto(options, strXtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -597,10 +597,10 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             }
 
             if (!m_pfrecv) {
-                notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+                notifyCommDump(CommDir::Rx, strXtra_params, m_lastReceived.data(), m_lastReceived.size());
             }
 
-            // Match against pattern directly over the received bytes - uint8_t and
+            // Match against strPattern directly over the received bytes - uint8_t and
             // char share representation, so a reinterpret_cast pair of pointers is
             // a valid bidirectional char iterator range for std::regex_match,
             // avoiding a full copy of m_lastReceived into a temporary std::string
@@ -608,10 +608,10 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             const char *first         = reinterpret_cast<const char *>(m_lastReceived.data());
             const char *last          = first + m_lastReceived.size();
 
-            const CachedRegex &cached = getCompiledRegex(pattern);
+            const CachedRegex &cached = getCompiledRegex(strPattern);
             if (!cached.compiled) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Invalid regex pattern:");
+                          LOG_STRING("Invalid regex strPattern:");
                           LOG_STRING(cached.error));
                 return false;
             }
@@ -629,7 +629,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                 return matched;
             } catch (const std::regex_error &e) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Invalid regex pattern:");
+                          LOG_STRING("Invalid regex strPattern:");
                           LOG_STRING(e.what()));
                 return false;
             }
@@ -638,11 +638,11 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
         /**
          * @brief Receive data until a specific token is found
          */
-        bool receiveUntilToken(const std::string &tokenStr, bool isHexStream = false,
-                               const std::string &xtra_params = {})
+        bool receiveUntilToken(const std::string &strToken, bool bIsHexStream = false,
+                               const std::string &strXtra_params = {})
         {
             // Convert token string to bytes (cached - see getConvertedData())
-            const std::vector<uint8_t> *token = getConvertedData(tokenStr, (isHexStream ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::TOKEN_STRING));
+            const std::vector<uint8_t> *token = getConvertedData(strToken, (bIsHexStream ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::TOKEN_STRING));
             if (!token) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert token"));
                 return false;
@@ -654,7 +654,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             options.token      = std::span<const uint8_t>(*token);
             options.use_buffer = true;
 
-            auto result        = doReceiveInto(options, xtra_params);
+            auto result        = doReceiveInto(options, strXtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -683,11 +683,11 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
         /**
          * @brief Receive exact number of bytes specified as size
          */
-        bool receiveExactSize(const std::string &sizeStr, const std::string &xtra_params = {})
+        bool receiveExactSize(const std::string &strSize, const std::string &strXtra_params = {})
         {
             size_t expectedSize = 0;
-            if (!numeric::str2sizet(sizeStr, expectedSize)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid size value:"); LOG_STRING(sizeStr));
+            if (!numeric::str2sizet(strSize, expectedSize)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid size value:"); LOG_STRING(strSize));
                 return false;
             }
 
@@ -699,7 +699,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             ICommDriver::ReadOptions options;
             options.mode = ICommDriver::ReadMode::Exact;
 
-            auto result  = doReceiveInto(options, xtra_params);
+            auto result  = doReceiveInto(options, strXtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -709,7 +709,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             }
 
             if (!m_pfrecv) {
-                notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+                notifyCommDump(CommDir::Rx, strXtra_params, m_lastReceived.data(), m_lastReceived.size());
             }
 
             LOG_PRINT(LOG_WERBOSE, LOG_HDR;
@@ -721,28 +721,28 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
         /**
          * @brief Receive data until delimiter character
          */
-        bool receiveUntilDelimiter(uint8_t delimiter, const std::string &expectedStr,
-                                   const std::string &xtra_params = {})
+        bool receiveUntilDelimiter(uint8_t u8Delimiter, const std::string &strExpected,
+                                   const std::string &strXtra_params = {})
         {
             ICommDriver::ReadOptions options;
             options.mode      = ICommDriver::ReadMode::UntilDelimiter;
-            options.delimiter = delimiter;
+            options.u8Delimiter = u8Delimiter;
 
-            auto result       = doReceiveInto(options, xtra_params);
+            auto result       = doReceiveInto(options, strXtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Read until delimiter failed:");
+                          LOG_STRING("Read until u8Delimiter failed:");
                           LOG_STRING(ICommDriver::to_string(result.status)));
                 return false;
             }
 
             if (!m_pfrecv) {
-                notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+                notifyCommDump(CommDir::Rx, strXtra_params, m_lastReceived.data(), m_lastReceived.size());
             }
 
             // If no expected string provided, just return success
-            if (expectedStr.empty()) {
+            if (strExpected.empty()) {
                 LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                           LOG_STRING("Received line:"); LOG_SIZET(result.bytes_read);
                           LOG_STRING("bytes"));
@@ -750,15 +750,15 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             }
 
             // Compare with expected (add newline to expected for comparison) - cached, see getConvertedData()
-            const std::vector<uint8_t> *expected = getConvertedData(expectedStr, CommCommandTokenType::LINE);
+            const std::vector<uint8_t> *expected = getConvertedData(strExpected, CommCommandTokenType::LINE);
             if (!expected) {
                 return false;
             }
 
-            // Note: m_lastReceived won't have the delimiter, but expected will have '\0'
-            // appended by stringToVector() when the expected delimiter was encountered.
+            // Note: m_lastReceived won't have the u8Delimiter, but expected will have '\0'
+            // appended by stringToVector() when the expected u8Delimiter was encountered.
             // expected now comes from the per-interpreter cache and may be shared with
-            // future lookups of the same expectedStr, so we adjust the comparison
+            // future lookups of the same strExpected, so we adjust the comparison
             // length instead of mutating it in place with pop_back().
             size_t expectedLen = expected->size();
             if (expectedLen > 0 && (*expected)[expectedLen - 1] == '\0') {
@@ -778,14 +778,14 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
         /**
          * @brief Receive data and compare with expected value
          */
-        bool receiveAndCompare(const std::string &expectedStr, CommCommandTokenType type,
-                               const std::string &xtra_params = {})
+        bool receiveAndCompare(const std::string &strExpected, CommCommandTokenType eType,
+                               const std::string &strXtra_params = {})
         {
             // First receive the data
             ICommDriver::ReadOptions options;
             options.mode = ICommDriver::ReadMode::Exact;
 
-            auto result  = doReceiveInto(options, xtra_params);
+            auto result  = doReceiveInto(options, strXtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -795,11 +795,11 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             }
 
             if (!m_pfrecv) {
-                notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+                notifyCommDump(CommDir::Rx, strXtra_params, m_lastReceived.data(), m_lastReceived.size());
             }
 
             // Convert expected string to bytes (cached - see getConvertedData())
-            const std::vector<uint8_t> *expected = getConvertedData(expectedStr, type);
+            const std::vector<uint8_t> *expected = getConvertedData(strExpected, eType);
             if (!expected) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert expected data"));
                 return false;
@@ -822,13 +822,13 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
         /**
          * @brief Receive data and print is as hexdump
          */
-        bool receiveAndHexdump(const std::string &expectedStr, const std::string &xtra_params = {})
+        bool receiveAndHexdump(const std::string &strExpected, const std::string &strXtra_params = {})
         {
             // First receive the data
             ICommDriver::ReadOptions options;
             options.mode = ICommDriver::ReadMode::Exact;
 
-            auto result  = doReceiveInto(options, xtra_params);
+            auto result  = doReceiveInto(options, strXtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
                 // "Receive whatever is sent" is a best-effort read: the driver is
@@ -855,7 +855,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                 return false;
             }
             if (!m_pfrecv) {
-                notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+                notifyCommDump(CommDir::Rx, strXtra_params, m_lastReceived.data(), m_lastReceived.size());
             }
             hexutils::logHexdump(LOG_WERBOSE, "Recv:", "SAoC", m_lastReceived);
 
@@ -866,11 +866,11 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * @brief Send file in chunks
          * Format: "filename" or "filename,chunksize"
          */
-        bool sendFile(const std::string &fileSpec, const std::string &xtra_params = {})
+        bool sendFile(const std::string &strFileSpec, const std::string &strXtra_params = {})
         {
             // Parse filename and optional chunk size
             std::pair<std::string, std::string> parts;
-            ustring::splitAtFirst(fileSpec, CHAR_SEPARATOR_COMMA, parts);
+            ustring::splitAtFirst(strFileSpec, CHAR_SEPARATOR_COMMA, parts);
 
             std::string filepath = parts.first;
             size_t chunkSize     = 1024; // Default chunk size
@@ -914,7 +914,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
 
                 if (bytesRead > 0) {
                     std::span<const uint8_t> dataSpan(chunk.data(), bytesRead);
-                    auto result = doWrite(dataSpan, xtra_params);
+                    auto result = doWrite(dataSpan, strXtra_params);
 
                     if (result.status != ICommDriver::Status::SUCCESS) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -926,7 +926,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                     }
 
                     if (!m_pfsend) {
-                        notifyCommDump(CommDir::Tx, xtra_params, chunk.data(), result.bytes_written);
+                        notifyCommDump(CommDir::Tx, strXtra_params, chunk.data(), result.bytes_written);
                     }
                     totalSent += result.bytes_written;
                 }
@@ -942,11 +942,11 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * @brief Receive data to file
          * Format: "filename" or "filename,expected_size" or "filename,expected_size,chunksize"
          */
-        bool receiveToFile(const std::string &fileSpec, const std::string &xtra_params = {})
+        bool receiveToFile(const std::string &strFileSpec, const std::string &strXtra_params = {})
         {
             // Parse the file specification
             std::vector<std::string> parts;
-            ustring::tokenize(fileSpec, CHAR_SEPARATOR_COMMA, parts);
+            ustring::tokenize(strFileSpec, CHAR_SEPARATOR_COMMA, parts);
 
             if (parts.empty() || parts[0].empty()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid file specification"));
@@ -1003,7 +1003,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
 
                 // Read chunk
                 std::span<uint8_t> buffer(chunk.data(), bytesToRead);
-                auto result = doRead(buffer, options, xtra_params);
+                auto result = doRead(buffer, options, strXtra_params);
 
                 if (result.status != ICommDriver::Status::SUCCESS) {
                     // Check if we've received all expected data
@@ -1021,7 +1021,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                 }
 
                 if (!m_pfrecv) {
-                    notifyCommDump(CommDir::Rx, xtra_params, chunk.data(), result.bytes_read);
+                    notifyCommDump(CommDir::Rx, strXtra_params, chunk.data(), result.bytes_read);
                 }
 
                 // Write to file
@@ -1048,33 +1048,33 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
         /**
          * @brief Convert string value to data bytes based on token type
          */
-        bool convertToData(const std::string &value,
-                           CommCommandTokenType type,
-                           std::vector<uint8_t> &data) const
+        bool convertToData(const std::string &strValue,
+                           CommCommandTokenType eType,
+                           std::vector<uint8_t> &vData) const
         {
-            switch (type) {
+            switch (eType) {
             case CommCommandTokenType::HEXSTREAM:
-                return hexutils::hexstringToVector(value, data);
+                return hexutils::hexstringToVector(strValue, vData);
             case CommCommandTokenType::LINE:
             case CommCommandTokenType::STRING_RAW:
             case CommCommandTokenType::STRING_DELIMITED:
             case CommCommandTokenType::STRING_DELIMITED_EMPTY:
                 /* Skip the expandEscapes() allocation+copy entirely when there is
                  * no backslash to expand (the common case) - go straight from the
-                 * already-owned `value` into the byte vector, which needs exactly
+                 * already-owned `strValue` into the byte vector, which needs exactly
                  * one copy regardless (stringToVector always builds a fresh
                  * vector<uint8_t>), instead of string-copy-then-vector-copy. */
-                return (value.find('\\') == std::string::npos)
-                           ? ustring::stringToVector(value, data)
-                           : ustring::stringToVector(expandEscapes(value), data);
+                return (strValue.find('\\') == std::string::npos)
+                           ? ustring::stringToVector(strValue, vData)
+                           : ustring::stringToVector(expandEscapes(strValue), vData);
             case CommCommandTokenType::TOKEN_STRING:
-                return (value.find('\\') == std::string::npos)
-                           ? ustring::stringToVector(value, data, false)
-                           : ustring::stringToVector(expandEscapes(value), data, false);
+                return (strValue.find('\\') == std::string::npos)
+                           ? ustring::stringToVector(strValue, vData, false)
+                           : ustring::stringToVector(expandEscapes(strValue), vData, false);
             case CommCommandTokenType::TOKEN_HEXSTREAM:
-                return hexutils::stringUnhexlify(value, data);
+                return hexutils::stringUnhexlify(strValue, vData);
             default:
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported token type for data conversion"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported token eType for vData conversion"));
                 return false;
             }
         }
@@ -1090,14 +1090,14 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          *   \r\n      → 0x0D 0x0A
          *   \\r \\n   → left as-is (escaped backslash)
          */
-        std::string expandEscapes(const std::string &value) const
+        std::string expandEscapes(const std::string &strValue) const
         {
             std::string result;
-            result.reserve(value.size());
+            result.reserve(strValue.size());
 
-            for (size_t i = 0; i < value.size(); ++i) {
-                if (value[i] == '\\' && (i + 1) < value.size()) {
-                    switch (value[i + 1]) {
+            for (size_t i = 0; i < strValue.size(); ++i) {
+                if (strValue[i] == '\\' && (i + 1) < strValue.size()) {
+                    switch (strValue[i + 1]) {
                     case 'r':
                         result += '\r'; // 0x0D
                         ++i;
@@ -1114,7 +1114,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                         break;
                     }
                 }
-                result += value[i];
+                result += strValue[i];
             }
 
             return result;

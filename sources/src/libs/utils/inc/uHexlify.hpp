@@ -142,7 +142,7 @@ namespace hexutils {
     [[nodiscard]] inline std::string stringHexlify(std::span<const uint8_t> input,
                                                    size_t offset  = 0,
                                                    size_t count   = std::string::npos,
-                                                   bool uppercase = true)
+                                                   bool bUppercase = true)
     {
         if (offset >= input.size()) {
             return "";
@@ -152,7 +152,7 @@ namespace hexutils {
         std::string result;
         result.reserve(count * 2);
 
-        const char *hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
+        const char *hexDigits = bUppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
 
         for (size_t i = 0; i < count; ++i) {
             uint8_t byte = input[offset + i];
@@ -164,25 +164,25 @@ namespace hexutils {
     }
 
     // Overload for vector
-    [[nodiscard]] inline std::string stringHexlify(const std::vector<uint8_t> &input,
+    [[nodiscard]] inline std::string stringHexlify(const std::vector<uint8_t> &vInput,
                                                    size_t offset  = 0,
                                                    size_t count   = std::string::npos,
-                                                   bool uppercase = true)
+                                                   bool bUppercase = true)
     {
-        return stringHexlify(std::span<const uint8_t>(input), offset, count, uppercase);
+        return stringHexlify(std::span<const uint8_t>(vInput), offset, count, bUppercase);
     }
 
     // Legacy interface (backward compatible)
-    [[nodiscard]] inline bool stringHexlify(const std::vector<uint8_t> &InBuffer,
+    [[nodiscard]] inline bool stringHexlify(const std::vector<uint8_t> &vInBuffer,
                                             size_t szOffset,
                                             size_t szNrElems,
-                                            std::string &OutBuffer)
+                                            std::string &strOutBuffer)
     {
-        if (szOffset >= InBuffer.size()) {
+        if (szOffset >= vInBuffer.size()) {
             return false;
         }
 
-        OutBuffer = stringHexlify(InBuffer, szOffset, szNrElems);
+        strOutBuffer = stringHexlify(vInBuffer, szOffset, szNrElems);
         return true;
     }
 
@@ -225,11 +225,11 @@ namespace hexutils {
      * @return True if the conversion was successful, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool stringUnhexlify(std::string_view hex, std::vector<uint8_t> &result) noexcept
+    [[nodiscard]] inline bool stringUnhexlify(std::string_view hex, std::vector<uint8_t> &vResult) noexcept
     {
         auto opt = stringUnhexlifyOpt(hex);
         if (opt) {
-            result = std::move(*opt);
+            vResult = std::move(*opt);
             return true;
         }
         return false;
@@ -263,11 +263,11 @@ namespace hexutils {
      * @return True if the conversion was successful, false otherwise.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline bool hexstringToVector(std::string_view input, std::vector<uint8_t> &result) noexcept
+    [[nodiscard]] inline bool hexstringToVector(std::string_view input, std::vector<uint8_t> &vResult) noexcept
     {
         auto opt = hexstringToVectorOpt(input);
         if (opt) {
-            result = std::move(*opt);
+            vResult = std::move(*opt);
             return true;
         }
         return false;
@@ -286,8 +286,8 @@ namespace hexutils {
     template <typename T>
         requires std::is_trivially_copyable_v<T>
     [[nodiscard]] std::string stringHexlifyAny(std::span<const T> data,
-                                               Endianness endian = Endianness::Little,
-                                               bool uppercase    = true)
+                                               Endianness eEndian = Endianness::Little,
+                                               bool bUppercase    = true)
     {
         const uint8_t *bytePtr = reinterpret_cast<const uint8_t *>(data.data());
         size_t byteCount       = data.size() * sizeof(T);
@@ -295,17 +295,17 @@ namespace hexutils {
         std::string out;
         out.reserve(byteCount * 2 + 2);
 
-        const char *hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
+        const char *hexDigits = bUppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
 
         // Add endianness marker
-        uint8_t marker        = (endian == Endianness::Little) ? 0x4C : 0x42; // 'L' or 'B'
+        uint8_t marker        = (eEndian == Endianness::Little) ? 0x4C : 0x42; // 'L' or 'B'
         out.push_back(hexDigits[(marker >> 4) & 0xF]);
         out.push_back(hexDigits[marker & 0xF]);
 
         constexpr bool systemIsLE = internal::is_system_little_endian();
 
-        if ((endian == Endianness::Big && systemIsLE) ||
-            (endian == Endianness::Little && !systemIsLE)) {
+        if ((eEndian == Endianness::Big && systemIsLE) ||
+            (eEndian == Endianness::Little && !systemIsLE)) {
             // Reverse byte order of each element
             constexpr size_t elemSize = sizeof(T);
             for (size_t i = 0; i < data.size(); ++i) {
@@ -331,21 +331,21 @@ namespace hexutils {
     // Overload for vector
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    [[nodiscard]] inline std::string stringHexlifyAny(const std::vector<T> &data,
-                                                      Endianness endian = Endianness::Little,
-                                                      bool uppercase    = true)
+    [[nodiscard]] inline std::string stringHexlifyAny(const std::vector<T> &vData,
+                                                      Endianness eEndian = Endianness::Little,
+                                                      bool bUppercase    = true)
     {
-        return stringHexlifyAny(std::span<const T>(data), endian, uppercase);
+        return stringHexlifyAny(std::span<const T>(vData), eEndian, bUppercase);
     }
 
     // Legacy interface
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    [[nodiscard]] inline bool stringHexlifyAny(const std::vector<T> &data,
-                                               std::string &out,
-                                               Endianness endian = Endianness::Little)
+    [[nodiscard]] inline bool stringHexlifyAny(const std::vector<T> &vData,
+                                               std::string &strOut,
+                                               Endianness eEndian = Endianness::Little)
     {
-        out = stringHexlifyAny(data, endian);
+        strOut = stringHexlifyAny(vData, eEndian);
         return true;
     }
 
@@ -433,11 +433,11 @@ namespace hexutils {
     /*--------------------------------------------------------------------------------------------------------*/
     template <typename T>
         requires std::is_trivially_copyable_v<T>
-    [[nodiscard]] inline bool stringUnhexlifyAny(std::string_view hex, std::vector<T> &result) noexcept
+    [[nodiscard]] inline bool stringUnhexlifyAny(std::string_view hex, std::vector<T> &vResult) noexcept
     {
         auto opt = stringUnhexlifyAnyOpt<T>(hex);
         if (opt) {
-            result = std::move(*opt);
+            vResult = std::move(*opt);
             return true;
         }
         return false;
@@ -454,13 +454,13 @@ namespace hexutils {
     /*--------------------------------------------------------------------------------------------------------*/
     [[nodiscard]] inline std::string toHexString(std::span<const uint8_t> input,
                                                  std::string_view separator = "",
-                                                 bool uppercase             = true)
+                                                 bool bUppercase             = true)
     {
         if (input.empty()) {
             return "";
         }
 
-        const char *hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
+        const char *hexDigits = bUppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
 
         std::string result;
         result.reserve(input.size() * (2 + separator.size()) - separator.size());
@@ -478,11 +478,11 @@ namespace hexutils {
     }
 
     // Overload for vector
-    [[nodiscard]] inline std::string toHexString(const std::vector<uint8_t> &input,
+    [[nodiscard]] inline std::string toHexString(const std::vector<uint8_t> &vInput,
                                                  std::string_view separator = "",
-                                                 bool uppercase             = true)
+                                                 bool bUppercase             = true)
     {
-        return toHexString(std::span<const uint8_t>(input), separator, uppercase);
+        return toHexString(std::span<const uint8_t>(vInput), separator, bUppercase);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -493,10 +493,10 @@ namespace hexutils {
      * @return Two-character hex string
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] constexpr std::array<char, 2> byteToHex(uint8_t byte, bool uppercase = true) noexcept
+    [[nodiscard]] constexpr std::array<char, 2> byteToHex(uint8_t u8Byte, bool bUppercase = true) noexcept
     {
-        const char *hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
-        return {hexDigits[(byte >> 4) & 0xF], hexDigits[byte & 0xF]};
+        const char *hexDigits = bUppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
+        return {hexDigits[(u8Byte >> 4) & 0xF], hexDigits[u8Byte & 0xF]};
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -538,23 +538,23 @@ namespace hexutils {
      * @return Minimal hex string representation.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline std::string intToHexString(uint64_t value, bool uppercase = true) noexcept
+    [[nodiscard]] inline std::string intToHexString(uint64_t u64Value, bool bUppercase = true) noexcept
     {
-        if (value == 0) {
+        if (u64Value == 0) {
             return "00";
         }
 
         // Decompose into up to 8 bytes, big-endian, skipping leading zero bytes.
         uint8_t bytes[8];
         int start    = 8;
-        uint64_t tmp = value;
+        uint64_t tmp = u64Value;
         while (tmp > 0) {
             bytes[--start] = static_cast<uint8_t>(tmp & 0xFF);
             tmp >>= 8;
         }
 
         return stringHexlify(std::span<const uint8_t>(bytes + start, 8 - start), 0,
-                             static_cast<size_t>(8 - start), uppercase);
+                             static_cast<size_t>(8 - start), bUppercase);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -582,25 +582,25 @@ namespace hexutils {
      * @return Fixed-width hex string representation.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline std::string intToHexStringFixed(uint64_t value, size_t byteWidth,
-                                                         Endianness endian, bool uppercase = true) noexcept
+    [[nodiscard]] inline std::string intToHexStringFixed(uint64_t u64Value, size_t byteWidth,
+                                                         Endianness eEndian, bool bUppercase = true) noexcept
     {
         if (byteWidth == 0) {
             return "";
         }
 
         // Natural byte sequence, most-significant byte first, zero-padded to byteWidth.
-        // Any width beyond sizeof(value) is simply left as zero (high-order padding).
+        // Any width beyond sizeof(u64Value) is simply left as zero (high-order padding).
         std::vector<uint8_t> bytes(byteWidth, 0);
-        for (size_t i = 0; i < byteWidth && i < sizeof(value); ++i) {
-            bytes[byteWidth - 1 - i] = static_cast<uint8_t>((value >> (8 * i)) & 0xFF);
+        for (size_t i = 0; i < byteWidth && i < sizeof(u64Value); ++i) {
+            bytes[byteWidth - 1 - i] = static_cast<uint8_t>((u64Value >> (8 * i)) & 0xFF);
         }
 
-        if (endian == Endianness::Little) {
+        if (eEndian == Endianness::Little) {
             std::reverse(bytes.begin(), bytes.end());
         }
 
-        return stringHexlify(bytes, 0, bytes.size(), uppercase);
+        return stringHexlify(bytes, 0, bytes.size(), bUppercase);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -633,21 +633,21 @@ namespace hexutils {
      * @return 8-character (4-byte) hex string representation.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline std::string floatToHexStringFixed(float value, Endianness endian,
-                                                           bool uppercase = true) noexcept
+    [[nodiscard]] inline std::string floatToHexStringFixed(float fValue, Endianness eEndian,
+                                                           bool bUppercase = true) noexcept
     {
         static_assert(sizeof(float) == 4, "expects IEEE-754 binary32 (4-byte) float");
 
-        const auto raw = std::bit_cast<std::array<uint8_t, 4>>(value); // native byte order
+        const auto raw = std::bit_cast<std::array<uint8_t, 4>>(fValue); // native byte order
 
         std::vector<uint8_t> bytes(raw.begin(), raw.end());
         constexpr bool systemIsLE = internal::is_system_little_endian();
-        if ((endian == Endianness::Big && systemIsLE) ||
-            (endian == Endianness::Little && !systemIsLE)) {
+        if ((eEndian == Endianness::Big && systemIsLE) ||
+            (eEndian == Endianness::Little && !systemIsLE)) {
             std::reverse(bytes.begin(), bytes.end());
         }
 
-        return stringHexlify(bytes, 0, bytes.size(), uppercase);
+        return stringHexlify(bytes, 0, bytes.size(), bUppercase);
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -666,21 +666,21 @@ namespace hexutils {
      * @return 16-character (8-byte) hex string representation.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline std::string doubleToHexStringFixed(double value, Endianness endian,
-                                                            bool uppercase = true) noexcept
+    [[nodiscard]] inline std::string doubleToHexStringFixed(double dValue, Endianness eEndian,
+                                                            bool bUppercase = true) noexcept
     {
         static_assert(sizeof(double) == 8, "expects IEEE-754 binary64 (8-byte) double");
 
-        const auto raw = std::bit_cast<std::array<uint8_t, 8>>(value); // native byte order
+        const auto raw = std::bit_cast<std::array<uint8_t, 8>>(dValue); // native byte order
 
         std::vector<uint8_t> bytes(raw.begin(), raw.end());
         constexpr bool systemIsLE = internal::is_system_little_endian();
-        if ((endian == Endianness::Big && systemIsLE) ||
-            (endian == Endianness::Little && !systemIsLE)) {
+        if ((eEndian == Endianness::Big && systemIsLE) ||
+            (eEndian == Endianness::Little && !systemIsLE)) {
             std::reverse(bytes.begin(), bytes.end());
         }
 
-        return stringHexlify(bytes, 0, bytes.size(), uppercase);
+        return stringHexlify(bytes, 0, bytes.size(), bUppercase);
     }
 
 } // namespace hexutils

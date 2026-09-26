@@ -27,10 +27,10 @@ extern "C" {
         return new Enc28J60NetPlugin();
     }
 
-    EXPORTED void pluginExit(Enc28J60NetPlugin *ptrPlugin)
+    EXPORTED void pluginExit(Enc28J60NetPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -62,12 +62,12 @@ std::shared_ptr<Enc28J60Net> Enc28J60NetPlugin::m_OpenDriver(void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string &args, std::stop_token st) const
+bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -122,32 +122,32 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string &args, std::stop_to
     return true;
 }
 
-bool Enc28J60NetPlugin::m_ENC28J60NET_CONFIG(const std::string &args, std::stop_token st) const
+bool Enc28J60NetPlugin::m_ENC28J60NET_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
-    return generic_enc28j60net_set_params(this, args);
+    return generic_enc28j60net_set_params(this, strArgs);
 }
 
-bool Enc28J60NetPlugin::m_ENC28J60NET_CMD(const std::string &args, std::stop_token st) const
+bool Enc28J60NetPlugin::m_ENC28J60NET_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<Enc28J60Net> { return m_OpenDriver(); },
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string &args, std::stop_token st) const
+bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<Enc28J60Net> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
@@ -172,12 +172,12 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string &args, std::stop_
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool Enc28J60NetPlugin::m_ENC28J60NET_CYCLIC(const std::string &args, std::stop_token st) const
+bool Enc28J60NetPlugin::m_ENC28J60NET_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<Enc28J60Net> { return m_OpenDriver(); },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }

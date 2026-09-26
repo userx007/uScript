@@ -47,7 +47,7 @@ http://dangerousprototypes.com/docs/Raw-wire_(binary)
  List the subcommands of the protocol
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_help(const std::string &args, std::stop_token /*st*/) const
+bool BuspiratePlugin::m_handle_rawwire_help(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
 }
@@ -60,21 +60,21 @@ CS high is pin output at 3.3volts, or HiZ.
 CS low is pin output at ground. Bus Pirate responds 0×01.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal    = true;
     uint8_t request = 0;
 
-    if ("low" == args) {
+    if ("low" == strArgs) {
         request = 0x04;
     } // 000000100
-    else if ("high" == args) {
+    else if ("high" == strArgs) {
         request = 0x05;
     } // 000000101
-    else if ("help" == args) {
+    else if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: low high"));
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value:"); LOG_STRING(args));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value:"); LOG_STRING(strArgs));
         bRetVal = false;
     }
 
@@ -101,25 +101,25 @@ This is a PIC programming extension that only supports 2wire mode.
 All writes are most significant bit first, regardless of the mode set with the configuration command.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal   = true;
     bool bBulkBits = false;
 
     uint8_t cBit   = 0;
-    if ("start" == args) {
+    if ("start" == strArgs) {
         cBit = 0x02;
     } // 00000010
-    else if ("stop" == args) {
+    else if ("stop" == strArgs) {
         cBit = 0x03;
     } // 00000011
-    else if ("help" == args) {
+    else if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("start - send I2C start bit"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("stop  - send I2C stop bit"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("0kXY  - send k=[0..7] => 1..8 bits from byte XY"));
     } else {
         std::vector<uint8_t> data;
-        if (true == (bRetVal = hexutils::stringUnhexlify(args, data))) {
+        if (true == (bRetVal = hexutils::stringUnhexlify(strArgs, data))) {
             if (2 == data.size()) {
                 if (data[0] <= 7) {
                     uint8_t request[2];
@@ -158,26 +158,26 @@ Reads a byte from the bus, returns the byte. Writes 0xff to bus in 3-wire mode.
 Read a single bit from the bus, returns the bit value.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_read(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal    = true;
     uint8_t request = 0;
 
-    if ("bit" == args) {
+    if ("bit" == strArgs) {
         request = 0x07;
     } // 00000111
-    else if ("byte" == args) {
+    else if ("byte" == strArgs) {
         request = 0x06;
     } // 00000110
-    else if ("dpin" == args) {
+    else if ("dpin" == strArgs) {
         request = 0x08;
     } // 00001000
-    else if ("help" == args) {
+    else if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  bit -  read single bit from bus"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  byte - read byte from bus"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  dpin - read state of data input pin (no clock sent)"));
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value:"); LOG_STRING(args));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value:"); LOG_STRING(strArgs));
         bRetVal = false;
     }
 
@@ -193,9 +193,9 @@ bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args, std::stop_t
 
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_write(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_write(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data, st);
+    return generic_write_data(this, strArgs, &BuspiratePlugin::generic_wire_write_data, st);
 
 } /* m_handle_rawwire_write() */
 
@@ -207,29 +207,29 @@ Sends one clock tick (low->high->low). Responds 0x01.
 Set clock signal low or high. Responds 0x01.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal   = true;
     bool bTicks    = false;
     uint8_t cClock = 0;
 
-    if ("tick" == args) {
+    if ("tick" == strArgs) {
         cClock = 0x09;
     } // 00001001
-    else if ("lo" == args) {
+    else if ("lo" == strArgs) {
         cClock = 0x0A;
     } // 00001010
-    else if ("hi" == args) {
+    else if ("hi" == strArgs) {
         cClock = 0x0B;
     } // 00001011
-    else if ("help" == args) {
+    else if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  tick - sends one clock tick (low->high->low)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  lo -   set clock low "));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  hi -   set clock high"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  k  -   [k in 1..16] bulk clock ticks)"));
     } else { // generate a number of ticks
         uint8_t u8ticks = 0;
-        if (true == (bRetVal = numeric::str2uint8(args, u8ticks))) {
+        if (true == (bRetVal = numeric::str2uint8(strArgs, u8ticks))) {
             if (u8ticks >= 1 && u8ticks <= 16) {
                 // 0010xxxx – Bulk clock ticks, send 1-16 ticks (0=1tick!)
                 // Command base is 0x20, count encoded as (ticks - 1)
@@ -257,21 +257,21 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args, std::stop_
 Set data signal low or high. Responds 0x01.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_data(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal    = true;
     uint8_t request = 0;
 
-    if ("low" == args) {
+    if ("low" == strArgs) {
         request = 0x0C;
     } // 000001100
-    else if ("high" == args) {
+    else if ("high" == strArgs) {
         request = 0x0D;
     } // 000001101
-    else if ("help" == args) {
+    else if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: low high"));
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value:"); LOG_STRING(args));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value:"); LOG_STRING(strArgs));
         bRetVal = false;
     }
 
@@ -297,9 +297,9 @@ Note: CS pin always follows the current HiZ pin configuration.
 AUX is always a normal pin output (0=GND, 1=3.3volts).
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_per(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_per(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_set_peripheral(args, st);
+    return generic_set_peripheral(strArgs, st);
 
 } /* m_handle_rawwire_per() */
 
@@ -310,9 +310,9 @@ The last bit of the speed command determines the bus speed.
 Startup default is high-speed. Bus Pirate responds 0x01.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_speed(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_speed(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, args, st);
+    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, strArgs, st);
 
 } /* m_handle_rawwire_speed() */
 
@@ -329,37 +329,37 @@ Default raw startup condition is 000z. HiZ mode configuration applies to the dat
 and the CS pin, but not the AUX pin.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal    = true;
     uint8_t request = 0x80U;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Z/V - pin output: Z(HiZ/0) V(3.3V/1) "));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("2/3 - protocol wires: 2/0 3/1"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("M/L - bit order: MSB/0 LSB/1"));
-    } else if ("?" == args) {
+    } else if ("?" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("rawwire::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
-        if (ustring::containsChar(args, 'Z')) {
+        if (ustring::containsChar(strArgs, 'Z')) {
             BIT_CLEAR(request, 3);
         }
-        if (ustring::containsChar(args, 'V')) {
+        if (ustring::containsChar(strArgs, 'V')) {
             BIT_SET(request, 3);
         }
         // protocol wires
-        if (ustring::containsChar(args, '2')) {
+        if (ustring::containsChar(strArgs, '2')) {
             BIT_CLEAR(request, 2);
         }
-        if (ustring::containsChar(args, '3')) {
+        if (ustring::containsChar(strArgs, '3')) {
             BIT_SET(request, 2);
         }
         // bit order
-        if (ustring::containsChar(args, 'M')) {
+        if (ustring::containsChar(strArgs, 'M')) {
             BIT_CLEAR(request, 1);
         }
-        if (ustring::containsChar(args, 'L')) {
+        if (ustring::containsChar(strArgs, 'L')) {
             BIT_SET(request, 1);
         }
 
@@ -388,14 +388,14 @@ Enter 4 bit commands as 00YYYY, all commands are clocked in LSB first.
 The Bus Pirate send the 4/6bit command, then 8 '0' bits, then reads one byte. The read byte is returned.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal  = true;
     uint8_t u8pic = 0;
     std::vector<std::string> vectParams;
-    ustring::tokenize(args, CHAR_SEPARATOR_COLON, vectParams);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_COLON, vectParams);
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  read - TODO"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  write - TODO"));
     } else {
@@ -500,15 +500,15 @@ bool BuspiratePlugin::m_rawwire_bulk_write(std::span<const uint8_t> request, std
 /* ============================================================================================
     BuspiratePlugin::m_handle_rawwire_script
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_rawwire_script(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_rawwire_script(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
     } else {
-        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::RAWWIRE_CommDriver>(this, m_strInstanceName, args, st);
+        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::RAWWIRE_CommDriver>(this, m_strInstanceName, strArgs, st);
     }
 
     return bRetVal;

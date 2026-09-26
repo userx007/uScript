@@ -36,10 +36,10 @@ extern "C" {
         return new DSPKi2cPlugin();
     }
 
-    EXPORTED void pluginExit(DSPKi2cPlugin *ptrPlugin)
+    EXPORTED void pluginExit(DSPKi2cPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -63,10 +63,10 @@ extern "C" {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_DSPKI2C_INFO(const std::string &args, std::stop_token st) const
+bool DSPKi2cPlugin::m_DSPKI2C_INFO(const std::string &strArgs, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -143,9 +143,9 @@ bool DSPKi2cPlugin::m_DSPKI2C_INFO(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_DSPKI2C_CONFIG(const std::string &args, std::stop_token st) const
+bool DSPKi2cPlugin::m_DSPKI2C_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_i2c_set_params<DSPKi2cPlugin>(this, args);
+    return generic_i2c_set_params<DSPKi2cPlugin>(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -165,13 +165,13 @@ bool DSPKi2cPlugin::m_DSPKI2C_CONFIG(const std::string &args, std::stop_token st
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_DSPKI2C_SCAN(const std::string &args, std::stop_token st) const
+bool DSPKi2cPlugin::m_DSPKI2C_SCAN(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
 
-        if (!args.empty()) {
+        if (!strArgs.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
         }
@@ -241,12 +241,12 @@ bool DSPKi2cPlugin::m_DSPKI2C_SCAN(const std::string &args, std::stop_token st) 
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_DSPKI2C_CMD(const std::string &args, std::stop_token st) const
+bool DSPKi2cPlugin::m_DSPKI2C_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<I2CBridge> {
             // RAII: open the Digispark bridge; destructor calls close()
             auto shpBridge = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
@@ -276,12 +276,12 @@ bool DSPKi2cPlugin::m_DSPKI2C_CMD(const std::string &args, std::stop_token st) c
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT(const std::string &args, std::stop_token st) const
+bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<I2CBridge> {
             // RAII: open the Digispark bridge; destructor calls close()
             auto shpBridge = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
@@ -317,10 +317,10 @@ bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT(const std::string &args, std::stop_token st
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_DSPKI2C_CYCLIC(const std::string &args, std::stop_token st) const
+bool DSPKi2cPlugin::m_DSPKI2C_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<I2CBridge> {
             // RAII: open the Digispark bridge; destructor calls close()
             auto shpBridge = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
@@ -394,12 +394,12 @@ bool DSPKi2cPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool DSPKi2cPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+bool DSPKi2cPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t &szSize, CommCommandReadType eReadType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;
 
-    switch (readType) {
+    switch (eReadType) {
     case CommCommandReadType::LINE:
         options.mode      = ICommDriver::ReadMode::UntilDelimiter;
         options.delimiter = m_u8SlaveAddr; // slave addr carried in delimiter field

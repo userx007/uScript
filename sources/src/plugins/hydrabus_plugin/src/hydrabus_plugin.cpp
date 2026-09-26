@@ -43,10 +43,10 @@ extern "C" {
         return new HydrabusPlugin();
     }
 
-    EXPORTED void pluginExit(HydrabusPlugin *ptrPlugin)
+    EXPORTED void pluginExit(HydrabusPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -113,9 +113,9 @@ void HydrabusPlugin::doCleanup()
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_Hydrabus_INFO(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_Hydrabus_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
@@ -578,16 +578,16 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string &args, std::stop_token st
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool HydrabusPlugin::m_Hydrabus_CONFIG(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_Hydrabus_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    return generic_hydrabus_set_params(this, args);
+    return generic_hydrabus_set_params(this, strArgs);
 }
 
-bool HydrabusPlugin::m_Hydrabus_MODE(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_Hydrabus_MODE(const std::string &strArgs, std::stop_token st) const
 {
-    if (args.empty()) {
+    if (strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("MODE requires an argument"));
         return false;
     }
@@ -595,7 +595,7 @@ bool HydrabusPlugin::m_Hydrabus_MODE(const std::string &args, std::stop_token st
         return true;
     }
 
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Available modes:"));
         for (const auto &m : m_mapModes) {
             LOG_PRINT(LOG_EMPTY, LOG_STRING("  -"); LOG_STRING(m.first));
@@ -603,7 +603,7 @@ bool HydrabusPlugin::m_Hydrabus_MODE(const std::string &args, std::stop_token st
         return true;
     }
 
-    return const_cast<HydrabusPlugin *>(this)->m_enter_mode(args);
+    return const_cast<HydrabusPlugin *>(this)->m_enter_mode(strArgs);
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -650,7 +650,7 @@ void HydrabusPlugin::m_exit_mode() const
     m_eMode = Mode::None;
 }
 
-bool HydrabusPlugin::m_enter_mode(const std::string &modeName)
+bool HydrabusPlugin::m_enter_mode(const std::string &strModeName)
 {
     if (!m_pHydrabus) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Plugin not initialized"));
@@ -667,53 +667,53 @@ bool HydrabusPlugin::m_enter_mode(const std::string &modeName)
     }
 
     try {
-        if (modeName == "spi") {
+        if (strModeName == "spi") {
             m_pSPI  = std::make_unique<HydraHAL::SPI>(m_pHydrabus);
             m_eMode = Mode::SPI;
-        } else if (modeName == "i2c") {
+        } else if (strModeName == "i2c") {
             m_pI2C  = std::make_unique<HydraHAL::I2C>(m_pHydrabus);
             m_eMode = Mode::I2C;
-        } else if (modeName == "uart") {
+        } else if (strModeName == "uart") {
             m_pUART = std::make_unique<HydraHAL::UART>(m_pHydrabus);
             m_eMode = Mode::UART;
-        } else if (modeName == "onewire") {
+        } else if (strModeName == "onewire") {
             m_pOneWire = std::make_unique<HydraHAL::OneWire>(m_pHydrabus);
             m_eMode    = Mode::OneWire;
-        } else if (modeName == "rawwire") {
+        } else if (strModeName == "rawwire") {
             m_pRawWire = std::make_unique<HydraHAL::RawWire>(m_pHydrabus);
             m_eMode    = Mode::RawWire;
-        } else if (modeName == "swd") {
+        } else if (strModeName == "swd") {
             m_pSWD  = std::make_unique<HydraHAL::SWD>(m_pHydrabus);
             m_eMode = Mode::SWD;
-        } else if (modeName == "smartcard") {
+        } else if (strModeName == "smartcard") {
             m_pSmartcard = std::make_unique<HydraHAL::Smartcard>(m_pHydrabus);
             m_eMode      = Mode::Smartcard;
-        } else if (modeName == "nfc") {
+        } else if (strModeName == "nfc") {
             m_pNFC  = std::make_unique<HydraHAL::NFC>(m_pHydrabus);
             m_eMode = Mode::NFC;
-        } else if (modeName == "mmc") {
+        } else if (strModeName == "mmc") {
             m_pMMC  = std::make_unique<HydraHAL::MMC>(m_pHydrabus);
             m_eMode = Mode::MMC;
-        } else if (modeName == "sdio") {
+        } else if (strModeName == "sdio") {
             m_pSDIO = std::make_unique<HydraHAL::SDIO>(m_pHydrabus);
             m_eMode = Mode::SDIO;
-        } else if (modeName == "bbio") {
+        } else if (strModeName == "bbio") {
             m_eMode = Mode::None; // BBIO entry already done above
             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Returned to BBIO"));
             return true;
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown mode:"); LOG_STRING(modeName));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown mode:"); LOG_STRING(strModeName));
             return false;
         }
     } catch (const std::exception &e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("Failed to enter mode"); LOG_STRING(modeName);
+                  LOG_STRING("Failed to enter mode"); LOG_STRING(strModeName);
                   LOG_STRING(":"); LOG_STRING(e.what()));
         m_eMode = Mode::None;
         return false;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Mode active:"); LOG_STRING(modeName));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Mode active:"); LOG_STRING(strModeName));
     return true;
 }
 
@@ -750,16 +750,16 @@ PROTO_GETTER(SDIO, SDIO, sdio, SDIO)
 //-----------------------------------------------------------------------------//
 
 ModuleCommandsMap<HydrabusPlugin> *
-HydrabusPlugin::getModuleCmdsMap(const std::string &m) const
+HydrabusPlugin::getModuleCmdsMap(const std::string &strM) const
 {
-    auto it = m_mapCommandsMaps.find(m);
+    auto it = m_mapCommandsMaps.find(strM);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
 ModuleSpeedMap *
-HydrabusPlugin::getModuleSpeedsMap(const std::string &m) const
+HydrabusPlugin::getModuleSpeedsMap(const std::string &strM) const
 {
-    auto it = m_mapSpeedsMaps.find(m);
+    auto it = m_mapSpeedsMaps.find(strM);
     return (it != m_mapSpeedsMaps.end()) ? it->second : nullptr;
 }
 
@@ -767,23 +767,23 @@ HydrabusPlugin::getModuleSpeedsMap(const std::string &m) const
 //              setModuleSpeed                                                 //
 //-----------------------------------------------------------------------------//
 
-bool HydrabusPlugin::setModuleSpeed(const std::string &module, size_t index) const
+bool HydrabusPlugin::setModuleSpeed(const std::string &strModule, size_t index) const
 {
-    if (module == "SPI") {
+    if (strModule == "SPI") {
         auto *p = m_spi();
         if (!p) {
             return false;
         }
         return p->set_speed(static_cast<HydraHAL::SPI::Speed>(index));
     }
-    if (module == "I2C") {
+    if (strModule == "I2C") {
         auto *p = m_i2c();
         if (!p) {
             return false;
         }
         return p->set_speed(static_cast<HydraHAL::I2C::Speed>(index));
     }
-    if (module == "RAWWIRE") {
+    if (strModule == "RAWWIRE") {
         auto *p = m_rawwire();
         if (!p) {
             return false;
@@ -795,7 +795,7 @@ bool HydrabusPlugin::setModuleSpeed(const std::string &module, size_t index) con
         }
         return p->set_speed(hz[index]);
     }
-    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No speed map for module:"); LOG_STRING(module));
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No speed map for strModule:"); LOG_STRING(strModule));
     return false;
 }
 
@@ -803,22 +803,22 @@ bool HydrabusPlugin::setModuleSpeed(const std::string &module, size_t index) con
 //              AUX HELPER (shared)                                            //
 //-----------------------------------------------------------------------------//
 
-bool HydrabusPlugin::m_handle_aux_common(const std::string &args,
-                                         HydraHAL::Protocol *proto, std::stop_token /*st*/) const
+bool HydrabusPlugin::m_handle_aux_common(const std::string &strArgs,
+                                         HydraHAL::Protocol *pProto, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: aux [0-3] [in|out|pp] [0|1]"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  e.g.  aux 0 out 1   – set AUX0 high"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("        aux 1 in      – set AUX1 as input"));
         return true;
     }
-    if (!proto) {
+    if (!pProto) {
         return false;
     }
 
     // Parse: "N [in|out|pp] [0|1]"
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.empty()) {
         return false;
     }
@@ -830,7 +830,7 @@ bool HydrabusPlugin::m_handle_aux_common(const std::string &args,
     }
 
     try {
-        auto &pin = proto->aux(idx);
+        auto &pin = pProto->aux(idx);
 
         if (parts.size() >= 2) {
             if (parts[1] == "in") {

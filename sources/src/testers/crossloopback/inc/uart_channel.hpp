@@ -18,7 +18,7 @@ namespace loopback {
 
     class UartChannel : public IChannel {
         public:
-            UartChannel(std::string device, long baud)
+            UartChannel(std::string strDevice, long baud)
                 : device_(std::move(device))
                 , baud_(baud)
             {
@@ -94,7 +94,7 @@ namespace loopback {
                 }
             }
 
-            bool readMessage(Message &msg) override
+            bool readMessage(Message &sMsg) override
             {
                 unsigned char buf[4096];
                 while (!g_stop) {
@@ -110,18 +110,18 @@ namespace loopback {
                         continue; // nothing available yet, try again
                     }
 
-                    msg.data.assign(buf, buf + n);
-                    msg.has_can_id = false;
+                    sMsg.data.assign(buf, buf + n);
+                    sMsg.has_can_id = false;
                     return true;
                 }
                 return false;
             }
 
-            bool writeMessage(Message &msg) override
+            bool writeMessage(Message &sMsg) override
             {
                 size_t total = 0;
-                while (total < msg.data.size()) {
-                    ssize_t w = ::write(fd_, msg.data.data() + total, msg.data.size() - total);
+                while (total < sMsg.data.size()) {
+                    ssize_t w = ::write(fd_, sMsg.data.data() + total, sMsg.data.size() - total);
                     if (w < 0) {
                         if (errno == EINTR) {
                             continue;
@@ -144,9 +144,9 @@ namespace loopback {
                 return "uart:" + device_;
             }
 
-            void dump(const char *dir, const Message &msg) const override
+            void dump(const char *pstrDir, const Message &sMsg) const override
             {
-                dump_bytes(name(), dir, msg.data.data(), msg.data.size());
+                dump_bytes(name(), pstrDir, sMsg.data.data(), sMsg.data.size());
             }
 
         private:

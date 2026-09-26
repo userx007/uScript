@@ -64,7 +64,7 @@ namespace HydraHAL {
             /**
              * @param hydrabus Open, BBIO-enabled Hydrabus instance.
              */
-            explicit SPI(std::shared_ptr<Hydrabus> hydrabus);
+            explicit SPI(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // Chip-select
@@ -80,7 +80,7 @@ namespace HydraHAL {
              * @param level 0 to assert (pull low), 1 to deassert (pull high).
              * @return true on success.
              */
-            bool set_cs(int level);
+            bool set_cs(int iLevel);
 
             // -------------------------------------------------------------------------
             // Data transfer
@@ -113,14 +113,14 @@ namespace HydraHAL {
             std::optional<std::vector<uint8_t>> write_read(
                 std::span<const uint8_t> data,
                 size_t read_len,
-                bool manual_cs           = false,
+                bool bManual_cs           = false,
                 std::stop_token stop_tok = {});
 
             /**
              * @brief Write bytes (discards any MISO data).
              * @param manual_cs See write_read().
              */
-            bool write(std::span<const uint8_t> data, bool manual_cs = false, std::stop_token stop_tok = {});
+            bool write(std::span<const uint8_t> data, bool bManual_cs = false, std::stop_token stop_tok = {});
 
             /**
              * @brief Read bytes by clocking out 0xFF on MOSI.
@@ -131,7 +131,7 @@ namespace HydraHAL {
              * @param manual_cs See write_read().
              * @return Read bytes.
              */
-            std::vector<uint8_t> read(size_t read_len, bool manual_cs = false, std::stop_token stop_tok = {});
+            std::vector<uint8_t> read(size_t read_len, bool bManual_cs = false, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Configuration
@@ -142,7 +142,7 @@ namespace HydraHAL {
              * @param speed One of the Speed enum values.
              * @return true on success.
              */
-            bool set_speed(Speed speed);
+            bool set_speed(Speed eSpeed);
 
             // ---- Clock polarity (CPOL) -----------------------------------------------
 
@@ -150,7 +150,7 @@ namespace HydraHAL {
             int get_polarity() const;
 
             /** @param value 0 or 1. @return true on success. */
-            bool set_polarity(int value);
+            bool set_polarity(int iValue);
 
             // ---- Clock phase (CPHA) --------------------------------------------------
 
@@ -158,7 +158,7 @@ namespace HydraHAL {
             int get_phase() const;
 
             /** @param value 0 or 1. @return true on success. */
-            bool set_phase(int value);
+            bool set_phase(int iValue);
 
             // ---- SPI peripheral selector --------------------------------------------
 
@@ -166,7 +166,7 @@ namespace HydraHAL {
             int get_device() const;
 
             /** @param value 0 = SPI2, 1 = SPI1. @return true on success. */
-            bool set_device(int value);
+            bool set_device(int iValue);
 
         private:
             bool _configure_port();

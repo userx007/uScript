@@ -77,32 +77,32 @@ namespace {
 
     class LoopbackServiceImpl final : public loopback::LoopbackService::Service {
         public:
-            grpc::Status Echo(grpc::ServerContext *, const loopback::EchoRequest *request,
-                              loopback::EchoResponse *response) override
+            grpc::Status Echo(grpc::ServerContext *, const loopback::EchoRequest *pRequest,
+                              loopback::EchoResponse *pResponse) override
             {
                 const int32_t callNumber = ++m_echoCounter;
-                std::printf("[Echo] #%d text=\"%s\"\n", callNumber, request->text().c_str());
-                response->set_text(request->text());
-                response->set_call_number(callNumber);
+                std::printf("[Echo] #%d text=\"%s\"\n", callNumber, pRequest->text().c_str());
+                pResponse->set_text(pRequest->text());
+                pResponse->set_call_number(callNumber);
                 return grpc::Status::OK;
             }
 
             grpc::Status Ping(grpc::ServerContext *, const loopback::PingRequest *,
-                              loopback::PingResponse *response) override
+                              loopback::PingResponse *pResponse) override
             {
                 std::printf("[Ping]\n");
-                response->set_ok(true);
+                pResponse->set_ok(true);
                 return grpc::Status::OK;
             }
 
-            grpc::Status EchoStream(grpc::ServerContext *, const loopback::EchoStreamRequest *request,
+            grpc::Status EchoStream(grpc::ServerContext *, const loopback::EchoStreamRequest *pRequest,
                                     grpc::ServerWriter<loopback::EchoResponse> *writer) override
             {
-                const int32_t count = request->count() > 0 ? request->count() : 1;
-                std::printf("[EchoStream] text=\"%s\" count=%d\n", request->text().c_str(), count);
+                const int32_t count = pRequest->count() > 0 ? pRequest->count() : 1;
+                std::printf("[EchoStream] text=\"%s\" count=%d\n", pRequest->text().c_str(), count);
                 for (int32_t i = 1; i <= count; ++i) {
                     loopback::EchoResponse response;
-                    response.set_text(request->text());
+                    response.set_text(pRequest->text());
                     response.set_call_number(i);
                     writer->Write(response);
                 }
@@ -110,7 +110,7 @@ namespace {
             }
 
             grpc::Status EchoCollect(grpc::ServerContext *, grpc::ServerReader<loopback::EchoRequest> *reader,
-                                     loopback::EchoResponse *response) override
+                                     loopback::EchoResponse *pResponse) override
             {
                 loopback::EchoRequest request;
                 std::ostringstream joined;
@@ -125,8 +125,8 @@ namespace {
                     ++received;
                 }
                 std::printf("[EchoCollect] received=%d joined=\"%s\"\n", received, joined.str().c_str());
-                response->set_text(joined.str());
-                response->set_call_number(received);
+                pResponse->set_text(joined.str());
+                pResponse->set_call_number(received);
                 return grpc::Status::OK;
             }
 
@@ -152,13 +152,13 @@ namespace {
     };
 } // namespace
 
-int main(int argc, char **argv)
+int main(int iArgc, char **ppstrArgv)
 {
-    const int iPort             = (argc > 1) ? std::atoi(argv[1]) : DEFAULT_PORT;
-    const std::string strBindTo = (argc > 2) ? argv[2] : DEFAULT_BIND;
+    const int iPort             = (iArgc > 1) ? std::atoi(ppstrArgv[1]) : DEFAULT_PORT;
+    const std::string strBindTo = (iArgc > 2) ? ppstrArgv[2] : DEFAULT_BIND;
 
     if (iPort <= 0 || iPort > 65535) {
-        std::fprintf(stderr, "Invalid port: %s\n", (argc > 1) ? argv[1] : "");
+        std::fprintf(stderr, "Invalid port: %s\n", (iArgc > 1) ? ppstrArgv[1] : "");
         return 1;
     }
 

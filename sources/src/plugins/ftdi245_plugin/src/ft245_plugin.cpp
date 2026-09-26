@@ -29,10 +29,10 @@ extern "C" {
         return new FT245Plugin();
     }
 
-    EXPORTED void pluginExit(FT245Plugin *ptrPlugin)
+    EXPORTED void pluginExit(FT245Plugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -106,16 +106,16 @@ FT245GPIO *FT245Plugin::m_gpio() const
 ///////////////////////////////////////////////////////////////////
 
 ModuleCommandsMap<FT245Plugin> *
-FT245Plugin::getModuleCmdsMap(const std::string &m) const
+FT245Plugin::getModuleCmdsMap(const std::string &strM) const
 {
-    auto it = m_mapCommandsMaps.find(m);
+    auto it = m_mapCommandsMaps.find(strM);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
 ModuleSpeedMap *
-FT245Plugin::getModuleSpeedsMap(const std::string &m) const
+FT245Plugin::getModuleSpeedsMap(const std::string &strM) const
 {
-    auto it = m_mapSpeedsMaps.find(m);
+    auto it = m_mapSpeedsMaps.find(strM);
     if (it == m_mapSpeedsMaps.end()) {
         return nullptr;
     }
@@ -126,14 +126,14 @@ FT245Plugin::getModuleSpeedsMap(const std::string &m) const
 //              setModuleSpeed                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::setModuleSpeed(const std::string &module, size_t /*hz*/) const
+bool FT245Plugin::setModuleSpeed(const std::string &strModule, size_t /*hz*/) const
 {
     // The FT245 has no configurable clock divisor — transfer rate is
     // entirely governed by the USB bulk transfer engine.  Speed presets
     // are not applicable.
     LOG_PRINT(LOG_WARNING, LOG_HDR;
               LOG_STRING("setModuleSpeed: FT245 has no configurable clock;");
-              LOG_STRING("module:"); LOG_STRING(module);
+              LOG_STRING("strModule:"); LOG_STRING(strModule);
               LOG_STRING("— speed setting ignored"));
     return false;
 }
@@ -142,19 +142,19 @@ bool FT245Plugin::setModuleSpeed(const std::string &module, size_t /*hz*/) const
 //              TOP-LEVEL COMMAND HANDLERS                       //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_FT245_FIFO(const std::string &args, std::stop_token st) const
+bool FT245Plugin::m_FT245_FIFO(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<FT245Plugin>(this, "FIFO", args, st);
+    return generic_module_dispatch<FT245Plugin>(this, "FIFO", strArgs, st);
 }
 
-bool FT245Plugin::m_FT245_GPIO(const std::string &args, std::stop_token st) const
+bool FT245Plugin::m_FT245_GPIO(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_dispatch<FT245Plugin>(this, "GPIO", args, st);
+    return generic_module_dispatch<FT245Plugin>(this, "GPIO", strArgs, st);
 }
 
-bool FT245Plugin::m_FT245_INFO(const std::string &args, std::stop_token st) const
+bool FT245Plugin::m_FT245_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
@@ -308,9 +308,9 @@ bool FT245Plugin::m_FT245_INFO(const std::string &args, std::stop_token st) cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool FT245Plugin::m_FT245_CONFIG(const std::string &args, std::stop_token st) const
+bool FT245Plugin::m_FT245_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
-    return generic_ft245_set_params(this, args);
+    return generic_ft245_set_params(this, strArgs);
 }

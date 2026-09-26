@@ -85,11 +85,11 @@ class FT2232SPI : public FT2232Base, public ICommDriver {
          *                         describeConnection()), supplied separately —
          *                         e.g. "FT2232 #0" or the adapter's serial number.
          */
-        explicit FT2232SPI(const SpiConfig &config, uint8_t u8DeviceIndex = 0u,
+        explicit FT2232SPI(const SpiConfig &sConfig, uint8_t u8DeviceIndex = 0u,
                            const std::string &strIdentityLabel = {})
         {
             m_strIdentityLabel = strIdentityLabel;
-            this->open(config, u8DeviceIndex);
+            this->open(sConfig, u8DeviceIndex);
         }
 
         ~FT2232SPI() override
@@ -97,7 +97,7 @@ class FT2232SPI : public FT2232Base, public ICommDriver {
             close();
         }
 
-        Status open(const SpiConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const SpiConfig &sConfig, uint8_t u8DeviceIndex = 0u);
 
         /** @copydoc FT2232Base::close — deasserts CS before closing */
         Status close() override;
@@ -129,7 +129,7 @@ class FT2232SPI : public FT2232Base, public ICommDriver {
 
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -151,21 +151,21 @@ class FT2232SPI : public FT2232Base, public ICommDriver {
         uint8_t m_pinValue = 0x00u;
         uint8_t m_pinDir   = 0x0Bu;
 
-        Status configure_mpsse_spi(const SpiConfig &config);
+        Status configure_mpsse_spi(const SpiConfig &sConfig);
         Status cs_assert() const;
         Status cs_deassert() const;
-        Status apply_pin_state(bool csActive) const;
+        Status apply_pin_state(bool bCsActive) const;
 
         Status spi_write_raw(std::span<const uint8_t> data,
                              size_t &bytesWritten) const;
 
         Status spi_read_raw(std::span<uint8_t> data,
-                            size_t &bytesRead, uint32_t timeoutMs,
+                            size_t &bytesRead, uint32_t u32TimeoutMs,
                             std::stop_token stop_tok = {}) const;
 
         Status spi_xfer_raw(std::span<const uint8_t> txBuf,
                             std::span<uint8_t> rxBuf,
-                            size_t &bytesXferd, uint32_t timeoutMs,
+                            size_t &bytesXferd, uint32_t u32TimeoutMs,
                             std::stop_token stop_tok = {}) const;
 };
 

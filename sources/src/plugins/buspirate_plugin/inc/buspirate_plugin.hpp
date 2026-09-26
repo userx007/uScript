@@ -276,9 +276,9 @@ class BuspiratePlugin : public PluginInterface {
             return false;
         }
 
-        ModuleCommandsMap<BuspiratePlugin> *getModuleCmdsMap(const std::string &strModule) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strModule) const;
-        bool generic_uart_send_receive(std::span<const uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, std::span<const uint8_t> expected = std::span<const uint8_t>{}, bool strictCompare = true, std::stop_token st = {}) const;
+        ModuleCommandsMap<BuspiratePlugin> *getModuleCmdsMap(const std::string &strM) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
+        bool generic_uart_send_receive(std::span<const uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, std::span<const uint8_t> expected = std::span<const uint8_t>{}, bool bStrictCompare = true, std::stop_token st = {}) const;
 
         static constexpr uint8_t m_positive_response[]                  = {0x01};
         mutable uint8_t m_scratch_response[sizeof(m_positive_response)] = {};
@@ -318,9 +318,9 @@ class BuspiratePlugin : public PluginInterface {
         }
 
         /** \brief CONFIG-command setter for u32WriteTimeout (flag 'w') */
-        bool setWriteTimeout(const std::string &strVal) const
+        bool setWriteTimeout(const std::string &strWriteTimeout) const
         {
-            return numeric::str2uint32(strVal, m_sIniValues.u32WriteTimeout);
+            return numeric::str2uint32(strWriteTimeout, m_sIniValues.u32WriteTimeout);
         }
 
         /** \brief CONFIG-command setter for u32ReadBufferSize (flag 's') */
@@ -472,7 +472,7 @@ class BuspiratePlugin : public PluginInterface {
 #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
 #define BUSPIRATE_PLUGIN_CMD_RECORD(a)                                                    \
-    bool m_Buspirate_##a(const std::string &args, std::stop_token st) const               \
+    bool m_Buspirate_##a(const std::string &strArgs, std::stop_token st) const               \
     {                                                                                     \
         return generic_module_dispatch<BuspiratePlugin>(this, std::string(#a), args, st); \
     }
@@ -506,12 +506,12 @@ class BuspiratePlugin : public PluginInterface {
         // clang-format on
 
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
-        bool m_handle_mode(const std::string &args, std::stop_token st = {}) const;
+        bool m_handle_mode(const std::string &strArgs, std::stop_token st = {}) const;
 
         bool m_i2c_read(std::span<uint8_t> response, std::stop_token st = {}) const;
         bool m_i2c_bulk_write(std::span<const uint8_t> request, std::stop_token st = {}) const;
-        bool m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, std::stop_token st = {}) const;
-        bool m_i2c_send_bit(uint8_t bit, std::stop_token st = {}) const;
+        bool m_i2c_probe_address(const uint8_t u8Addr7bit, bool &bAcked, std::stop_token st = {}) const;
+        bool m_i2c_send_bit(uint8_t u8Bit, std::stop_token st = {}) const;
         bool m_i2c_write_transaction(std::span<const uint8_t> payload, std::stop_token st = {}) const;
         void m_i2c_flush_rx(std::stop_token st = {}) const;
 
@@ -535,10 +535,10 @@ class BuspiratePlugin : public PluginInterface {
         // through one of these — only the bulk-write side needs a helper here.
         bool m_uart_bulk_write(std::span<const uint8_t> request, std::stop_token st = {}) const;
 
-        bool generic_write_read_file(const uint8_t u8Cmd, const std::string &args, std::stop_token st = {}) const;
-        bool generic_write_read_data(const uint8_t u8Cmd, const std::string &args, std::stop_token st = {}) const;
-        bool generic_set_peripheral(const std::string &args, std::stop_token st = {}) const;
-        bool generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare = false, std::stop_token st = {}) const;
+        bool generic_write_read_file(const uint8_t u8Owner, const std::string &strArgs, std::stop_token st = {}) const;
+        bool generic_write_read_data(const uint8_t u8Owner, const std::string &strArgs, std::stop_token st = {}) const;
+        bool generic_set_peripheral(const std::string &strArgs, std::stop_token st = {}) const;
+        bool generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool bStrictCompare = false, std::stop_token st = {}) const;
         bool generic_internal_write_read_file(const uint8_t u8Cmd, const std::string &strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize, std::stop_token st = {}) const;
         bool generic_wire_write_data(std::span<const uint8_t> data, std::stop_token st = {}) const;
 
@@ -753,9 +753,9 @@ class BuspiratePlugin : public PluginInterface {
                  * enable it itself without also affecting the CMD-mode interactive use
                  * of the same connection.
                  */
-                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions &options, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override
+                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions &sOptions, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override
                 {
-                    return m_Buspirate.m_drvUart.tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
+                    return m_Buspirate.m_drvUart.tout_read(u32ReadTimeout, buffer, sOptions, xtra_params, stop_tok);
                 }
 
                 WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override

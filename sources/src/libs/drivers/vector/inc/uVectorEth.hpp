@@ -223,7 +223,7 @@ class VectorEth : public ICommDriver {
 
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -305,9 +305,9 @@ class VectorEth : public ICommDriver {
                 }
         };
 
-        void setPhyConfig(const PhyConfig &cfg)
+        void setPhyConfig(const PhyConfig &sCfg)
         {
-            m_phyConfig = cfg;
+            m_phyConfig = sCfg;
         }
 
     private:
@@ -362,7 +362,7 @@ class VectorEth : public ICommDriver {
          * Vector::resolveTxId() degrades on unparsable xtra_params) — this
          * function always succeeds.
          */
-        void resolveDest(std::string_view xtra_params, MacAddress &outMac, uint16_t &outEtherType) const;
+        void resolveDest(std::string_view xtra_params, MacAddress &outMac, uint16_t &u16OutEtherType) const;
 
         Status m_OpenWithMask_locked(XLaccess accessMask);
 
@@ -379,15 +379,15 @@ class VectorEth : public ICommDriver {
          *         something this driver can create.
          */
         Status m_ResolveMeasurementPoint(unsigned int channelIndex,
-                                         std::string &outMeasurementPointName,
-                                         std::string &outNetworkName) const;
+                                         std::string &strOutMeasurementPointName,
+                                         std::string &strOutNetworkName) const;
 #endif
 
-        Status recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame &out, std::stop_token stop_tok = {}) const;
+        Status recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame &sOut, std::stop_token stop_tok = {}) const;
         Status sendFrame(const MacAddress &destMac, uint16_t u16EtherType, std::span<const uint8_t> data) const;
 
-        bool frameMatchesFilter(const VectorEthRxFrame &frame) const;
-        void dumpFrame(CommDir dir, const MacAddress &peerMac, uint16_t u16EtherType, std::span<const uint8_t> data) const;
+        bool frameMatchesFilter(const VectorEthRxFrame &sFrame) const;
+        void dumpFrame(CommDir eDir, const MacAddress &peerMac, uint16_t u16EtherType, std::span<const uint8_t> data) const;
 
         static Status mapXlError(XLstatus sts);
 
@@ -395,13 +395,13 @@ class VectorEth : public ICommDriver {
                          size_t &szBytesRead, std::stop_token stop_tok = {}) const;
 
         Status readUntilDelimiter(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
-                                  uint8_t cDelimiter, size_t &szBytesRead,
+                                  uint8_t u8CDelimiter, size_t &szBytesRead,
                                   std::stop_token stop_tok = {}) const;
 
         Status readUntilToken(uint32_t u32TimeoutMs, std::span<const uint8_t> token,
                               std::stop_token stop_tok = {}) const;
 
-        static void buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &viLps);
+        static void buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &vViLps);
 };
 
 #endif // U_VECTOR_ETH_DRIVER_H

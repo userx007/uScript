@@ -38,7 +38,7 @@ namespace HydraHAL {
     class RawWire : public Protocol {
 
         public:
-            explicit RawWire(std::shared_ptr<Hydrabus> hydrabus);
+            explicit RawWire(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // Low-level pin / bit operations
@@ -113,7 +113,7 @@ namespace HydraHAL {
              * @brief Drive the CLK pin to `level` (0 or 1).
              * @return true on success.
              */
-            bool set_clk(int level);
+            bool set_clk(int iLevel);
 
             /**
              * @brief Read the current SDA line state from hardware.
@@ -125,32 +125,32 @@ namespace HydraHAL {
              * @brief Drive the SDA pin to `level` (0 or 1).
              * @return true on success.
              */
-            bool set_sda(int level);
+            bool set_sda(int iLevel);
 
             // -------------------------------------------------------------------------
             // Configuration
             // -------------------------------------------------------------------------
 
             /** @brief Set clock max speed in Hz. Valid values: 5000, 50000, 100000, 1000000. */
-            bool set_speed(uint32_t hz);
+            bool set_speed(uint32_t u32Speed);
 
             // ---- Clock polarity (CPOL) -----------------------------------------------
             /** @return 0 = idle low, 1 = idle high. */
             int get_polarity() const;
             /** @param value 0 or 1. @return true on success. */
-            bool set_polarity(int value);
+            bool set_polarity(int iValue);
 
             // ---- Wire count ----------------------------------------------------------
             /** @return 2 or 3. */
             int get_wires() const;
             /** @param value 2 or 3. @return true on success. */
-            bool set_wires(int value);
+            bool set_wires(int iValue);
 
             // ---- GPIO drive mode -----------------------------------------------------
             /** @return 0 = Push-Pull, 1 = Open-Drain. */
             int get_gpio_mode() const;
             /** @param value 0 = Push-Pull, 1 = Open-Drain. @return true on success. */
-            bool set_gpio_mode(int value);
+            bool set_gpio_mode(int iValue);
 
         protected:
             bool _configure_port();

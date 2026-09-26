@@ -57,25 +57,25 @@
 //             Internal: parse "low" | "high" → Bank enum                      //
 /////////////////////////////////////////////////////////////////////////////////
 
-static bool parseBank(const std::string &s, FT4232GPIO::Bank &out)
+static bool parseBank(const std::string &strS, FT4232GPIO::Bank &out)
 {
-    if (s == "low" || s == "LOW" || s == "l") {
+    if (strS == "low" || strS == "LOW" || strS == "l") {
         out = FT4232GPIO::Bank::Low;
         return true;
     }
-    if (s == "high" || s == "HIGH" || s == "h") {
+    if (strS == "high" || strS == "HIGH" || strS == "h") {
         out = FT4232GPIO::Bank::High;
         return true;
     }
     LOG_PRINT(LOG_ERROR, LOG_STRING("FT_GPIO    |");
-              LOG_STRING("Invalid bank (use 'low' or 'high'):"); LOG_STRING(s));
+              LOG_STRING("Invalid bank (use 'low' or 'high'):"); LOG_STRING(strS));
     return false;
 }
 
 // Parse a hex byte from a string — accepts "0xFF", "FF", "0xab" etc.
-static bool parseHexByte(const std::string &s, uint8_t &out)
+static bool parseHexByte(const std::string &strS, uint8_t &u8Out)
 {
-    return numeric::str2uint8(s, out);
+    return numeric::str2uint8(strS, u8Out);
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -91,9 +91,9 @@ bool FT4232Plugin::m_handle_gpio_help(const std::string &, std::stop_token /*st*
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_open(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_gpio_open(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [channel=A|B] [device=N]"));
         LOG_PRINT(LOG_EMPTY,
@@ -104,7 +104,7 @@ bool FT4232Plugin::m_handle_gpio_open(const std::string &args, std::stop_token /
     }
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -189,9 +189,9 @@ bool FT4232Plugin::m_handle_gpio_close(const std::string &, std::stop_token /*st
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_cfg(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_gpio_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  lowdir=");
@@ -206,7 +206,7 @@ bool FT4232Plugin::m_handle_gpio_cfg(const std::string &args, std::stop_token /*
 
     // Same key=value parsing as open — no hardware interaction
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -247,9 +247,9 @@ bool FT4232Plugin::m_handle_gpio_cfg(const std::string &args, std::stop_token /*
 //                       DIR                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_dir(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_gpio_dir(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: dir [low|high] MASK  (hex byte: 1=output 0=input)"));
         LOG_PRINT(LOG_EMPTY,
@@ -263,7 +263,7 @@ bool FT4232Plugin::m_handle_gpio_dir(const std::string &args, std::stop_token /*
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: dir [low|high] MASK"));
         return false;
@@ -295,9 +295,9 @@ bool FT4232Plugin::m_handle_gpio_dir(const std::string &args, std::stop_token /*
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_write(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_gpio_write(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write [low|high] VALUE  (hex byte)"));
         return true;
@@ -309,7 +309,7 @@ bool FT4232Plugin::m_handle_gpio_write(const std::string &args, std::stop_token 
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: write [low|high] VALUE"));
         return false;
@@ -341,9 +341,9 @@ bool FT4232Plugin::m_handle_gpio_write(const std::string &args, std::stop_token 
 //                       SET                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_gpio_set(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: set [low|high] MASK  (drive masked pins HIGH)"));
         return true;
@@ -355,7 +355,7 @@ bool FT4232Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: set [low|high] MASK"));
         return false;
@@ -387,9 +387,9 @@ bool FT4232Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*
 //                       CLEAR                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_gpio_clear(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: clear [low|high] MASK  (drive masked pins LOW)"));
         return true;
@@ -401,7 +401,7 @@ bool FT4232Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token 
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: clear [low|high] MASK"));
         return false;
@@ -433,9 +433,9 @@ bool FT4232Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token 
 //                       TOGGLE                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_toggle(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_gpio_toggle(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: toggle [low|high] MASK"));
         return true;
@@ -447,7 +447,7 @@ bool FT4232Plugin::m_handle_gpio_toggle(const std::string &args, std::stop_token
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: toggle [low|high] MASK"));
         return false;
@@ -479,9 +479,9 @@ bool FT4232Plugin::m_handle_gpio_toggle(const std::string &args, std::stop_token
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_read(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_gpio_read(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read [low|high]  (returns current pin levels)"));
         return true;
@@ -493,7 +493,7 @@ bool FT4232Plugin::m_handle_gpio_read(const std::string &args, std::stop_token /
     }
 
     FT4232GPIO::Bank bank;
-    if (!parseBank(args, bank)) {
+    if (!parseBank(strArgs, bank)) {
         return false;
     }
 
@@ -505,7 +505,7 @@ bool FT4232Plugin::m_handle_gpio_read(const std::string &args, std::stop_token /
     }
 
     std::ostringstream oss;
-    oss << "Bank " << args
+    oss << "Bank " << strArgs
         << ": 0x" << std::hex << std::uppercase
         << std::setw(2) << std::setfill('0') << static_cast<int>(value)
         << "  [";

@@ -211,7 +211,7 @@ extern "C" {
 #else
 EXPORTED uShellPluginInterface *uShellPluginEntry(void);
 #endif /*(1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)*/
-    EXPORTED void uShellPluginExit(uShellPluginInterface *ptrPlugin);
+    EXPORTED void uShellPluginExit(uShellPluginInterface *pPtrPlugin);
 
 #ifdef __cplusplus
 }

@@ -46,16 +46,16 @@ MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
-std::shared_ptr<Microshell> Microshell::getShellSharedPtr(uShellInst_s *psShellInst, const char *pstrPromptExt)
+std::shared_ptr<Microshell> Microshell::getShellSharedPtr(uShellInst_s *pShellInst, const char *pstrPromptExt)
 {
-    return std::shared_ptr<Microshell>(new Microshell(psShellInst, pstrPromptExt));
+    return std::shared_ptr<Microshell>(new Microshell(pShellInst, pstrPromptExt));
 } /* getShellSharedPtr() */
 #endif // (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 
 /*----------------------------------------------------------------------------*/
-Microshell *Microshell::getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt)
+Microshell *Microshell::getShellPtr(uShellInst_s *pShellInst, const char *pstrPromptExt)
 {
-    static Microshell uShellInstance(psShellInst, pstrPromptExt);
+    static Microshell uShellInstance(pShellInst, pstrPromptExt);
     return &uShellInstance;
 } /* getShell() */
 
@@ -109,13 +109,13 @@ bool Microshell::Execute(const char *pstrCommand)
 ==============================================================================*/
 
 /*----------------------------------------------------------------------------*/
-Microshell::Microshell(uShellInst_s *psShellInst, const char *pstrPromptExt)
+Microshell::Microshell(uShellInst_s *pShellInst, const char *pstrPromptExt)
 {
-    psShellInst->pstrPromptName = pstrPromptExt;
+    pShellInst->pstrPromptName = pstrPromptExt;
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     m_pInstBackup = m_pInst;
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
-    m_pInst = psShellInst;
+    m_pInst = pShellInst;
     m_Init(pstrPromptExt);
 } /* Microshell() */
 
@@ -436,30 +436,30 @@ void Microshell::m_CorePrintError(const int iError)
 #if defined(uSHELL_IMPLEMENTS_STRINGS)
 #if (1 == uSHELL_SUPPORTS_SPACED_STRINGS)
 /*----------------------------------------------------------------------------*/
-int Microshell::m_CoreHandleBorderedStrings(char **ppstrToken, char **ppstrRest, int *pIntArgCounter)
+int Microshell::m_CoreHandleBorderedStrings(char **ppstrPpstrToken, char **ppstrPpstrRest, int *pIntArgCounter)
 {
     int iRetVal = uSHELL_ERR_OK;
     bool bFound = false;
 
-    while ((nullptr != *ppstrRest) && (*m_pstrTokenSeparator == **ppstrRest)) {
-        (*ppstrRest)++; /* cleanup the leading separators */
+    while ((nullptr != *ppstrPpstrRest) && (*m_pstrTokenSeparator == **ppstrPpstrRest)) {
+        (*ppstrPpstrRest)++; /* cleanup the leading separators */
     }
-    while ((nullptr != *ppstrRest) && (m_cStringBorderSymbol == **ppstrRest)) {
-        *ppstrToken = *ppstrRest + 1;
-        while ('\0' != *((*ppstrRest)++)) {
-            if (m_cStringBorderSymbol == **ppstrRest) {
+    while ((nullptr != *ppstrPpstrRest) && (m_cStringBorderSymbol == **ppstrPpstrRest)) {
+        *ppstrPpstrToken = *ppstrPpstrRest + 1;
+        while ('\0' != *((*ppstrPpstrRest)++)) {
+            if (m_cStringBorderSymbol == **ppstrPpstrRest) {
                 bFound = true;
                 break;
             }
         }
         if (true == bFound) {
             bFound      = false;
-            **ppstrRest = '\0';
-            while (*m_pstrTokenSeparator == *(++(*ppstrRest)))
+            **ppstrPpstrRest = '\0';
+            while (*m_pstrTokenSeparator == *(++(*ppstrPpstrRest)))
                 ; /* cleanup the trailing separators */
             if ('s' == m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef[(m_sCommand.iTypIndex)++]) {
                 if (m_sCommand.iNrStrings < uSHELL_MAX_PARAMS_STRING) {
-                    m_sCommand.vs[m_sCommand.iNrStrings++] = *ppstrToken;
+                    m_sCommand.vs[m_sCommand.iNrStrings++] = *ppstrPpstrToken;
                     ++(*pIntArgCounter);
                 } else {
                     iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
@@ -1302,17 +1302,17 @@ inline void Microshell::m_CorePrintPrompt(void)
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryWriteLengthAt(char *pBuffer, size_t szCapacity, size_t szPos, uint16_t u16Len)
+void Microshell::m_HistoryWriteLengthAt(char *pstrBuffer, size_t szCapacity, size_t szPos, uint16_t u16Len)
 {
-    pBuffer[szPos % szCapacity]       = (u16Len >> 8) & 0xFF;
-    pBuffer[(szPos + 1) % szCapacity] = u16Len & 0xFF;
+    pstrBuffer[szPos % szCapacity]       = (u16Len >> 8) & 0xFF;
+    pstrBuffer[(szPos + 1) % szCapacity] = u16Len & 0xFF;
 }
 
 /*----------------------------------------------------------------------------*/
-uint16_t Microshell::m_HistoryReadLengthAt(const char *pBuffer, size_t szCapacity, size_t szPos)
+uint16_t Microshell::m_HistoryReadLengthAt(const char *pstrBuffer, size_t szCapacity, size_t szPos)
 {
-    uint8_t u8High = pBuffer[szPos % szCapacity];
-    uint8_t u8Low  = pBuffer[(szPos + 1) % szCapacity];
+    uint8_t u8High = pstrBuffer[szPos % szCapacity];
+    uint8_t u8Low  = pstrBuffer[(szPos + 1) % szCapacity];
     return (u8High << 8) | u8Low;
 }
 
@@ -1356,9 +1356,9 @@ void Microshell::m_HistoryRemoveOldestEntry(history_s *pHistory)
     pHistory->szEntryCount--;
 }
 
-void Microshell::m_HistoryInitCore(history_s *pHistory, char *pDataBuffer, size_t szCapacity)
+void Microshell::m_HistoryInitCore(history_s *pHistory, char *pstrDataBuffer, size_t szCapacity)
 {
-    pHistory->pDataBuffer      = pDataBuffer;
+    pHistory->pstrDataBuffer      = pstrDataBuffer;
     pHistory->szDataBufferSize = szCapacity;
     pHistory->szDataHeadPos    = 0;
     pHistory->szOldestEntryPos = 0;
@@ -1371,7 +1371,7 @@ void Microshell::m_HistoryInitCore(history_s *pHistory, char *pDataBuffer, size_
 #endif
 
     // Clear buffer
-    memset(pDataBuffer, 0, szCapacity);
+    memset(pstrDataBuffer, 0, szCapacity);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1469,7 +1469,7 @@ bool Microshell::m_HistoryPush(history_s *pHistory, bool bTriggerAutosave)
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryGetPrevEntry(history_s *pHistory, char *pBuffer, size_t szBufferSize)
+bool Microshell::m_HistoryGetPrevEntry(history_s *pHistory, char *pstrBuffer, size_t szBufferSize)
 {
     if (pHistory->szEntryCount == 0) {
         return false;
@@ -1481,11 +1481,11 @@ bool Microshell::m_HistoryGetPrevEntry(history_s *pHistory, char *pBuffer, size_
         pHistory->szCurrentIndex--;
     }
 
-    return m_HistoryGetEntryAtIndex(pHistory, pHistory->szCurrentIndex, pBuffer, szBufferSize);
+    return m_HistoryGetEntryAtIndex(pHistory, pHistory->szCurrentIndex, pstrBuffer, szBufferSize);
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryGetNextEntry(history_s *pHistory, char *pBuffer, size_t szBufferSize)
+bool Microshell::m_HistoryGetNextEntry(history_s *pHistory, char *pstrBuffer, size_t szBufferSize)
 {
     if (pHistory->szEntryCount == 0) {
         return false;
@@ -1493,22 +1493,22 @@ bool Microshell::m_HistoryGetNextEntry(history_s *pHistory, char *pBuffer, size_
 
     pHistory->szCurrentIndex = (pHistory->szCurrentIndex + 1) % pHistory->szEntryCount;
 
-    return m_HistoryGetEntryAtIndex(pHistory, pHistory->szCurrentIndex, pBuffer, szBufferSize);
+    return m_HistoryGetEntryAtIndex(pHistory, pHistory->szCurrentIndex, pstrBuffer, szBufferSize);
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryGetFirstEntry(const history_s *pHistory, char *pBuffer, size_t szBufferSize)
+bool Microshell::m_HistoryGetFirstEntry(const history_s *pHistory, char *pstrBuffer, size_t szBufferSize)
 {
-    return m_HistoryGetEntryAtIndex(pHistory, 0, pBuffer, szBufferSize);
+    return m_HistoryGetEntryAtIndex(pHistory, 0, pstrBuffer, szBufferSize);
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryGetLastEntry(const history_s *pHistory, char *pBuffer, size_t szBufferSize)
+bool Microshell::m_HistoryGetLastEntry(const history_s *pHistory, char *pstrBuffer, size_t szBufferSize)
 {
     if (pHistory->szEntryCount == 0) {
         return false;
     }
-    return m_HistoryGetEntryAtIndex(pHistory, pHistory->szEntryCount - 1, pBuffer, szBufferSize);
+    return m_HistoryGetEntryAtIndex(pHistory, pHistory->szEntryCount - 1, pstrBuffer, szBufferSize);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1526,7 +1526,7 @@ bool Microshell::m_HistoryIsEmpty(const history_s *pHistory)
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryGetEntryAtIndex(const history_s *pHistory, size_t szIndex, char *pBuffer, size_t szBufferSize)
+bool Microshell::m_HistoryGetEntryAtIndex(const history_s *pHistory, size_t szIndex, char *pstrBuffer, size_t szBufferSize)
 {
     if (szIndex >= pHistory->szEntryCount || szBufferSize == 0) {
         return false;
@@ -1545,9 +1545,9 @@ bool Microshell::m_HistoryGetEntryAtIndex(const history_s *pHistory, size_t szIn
     // Copy data (skip the 2-byte leading length)
     size_t data_pos = (szPos + 2) % pHistory->szDataBufferSize;
     for (size_t i = 0; i < copy_len; i++) {
-        pBuffer[i] = pHistory->pDataBuffer[(data_pos + i) % pHistory->szDataBufferSize];
+        pstrBuffer[i] = pHistory->pDataBuffer[(data_pos + i) % pHistory->szDataBufferSize];
     }
-    pBuffer[copy_len] = '\0';
+    pstrBuffer[copy_len] = '\0';
 
     return true;
 }
@@ -1565,10 +1565,10 @@ void Microshell::m_HistoryClear(history_s *pHistory)
 }
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryGetFreeSpace(const history_s *pHistory, size_t *pszFreeBytes)
+void Microshell::m_HistoryGetFreeSpace(const history_s *pHistory, size_t *pPszFreeBytes)
 {
     size_t szUsedBytes = m_HistoryCalculateUsedSpace(pHistory);
-    *pszFreeBytes      = pHistory->szDataBufferSize - szUsedBytes;
+    *pPszFreeBytes      = pHistory->szDataBufferSize - szUsedBytes;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -1616,13 +1616,13 @@ void Microshell::m_HistoryIteratorInit(historyIter_s *pIter, const history_s *pH
 }
 
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_HistoryIteratorNext(historyIter_s *pIter, char *pBuffer, size_t szBufferSize)
+bool Microshell::m_HistoryIteratorNext(historyIter_s *pIter, char *pstrBuffer, size_t szBufferSize)
 {
     if (pIter->szIndex >= pIter->pHistory->szEntryCount) {
         return false;
     }
 
-    bool result = m_HistoryGetEntryAtIndex(pIter->pHistory, pIter->szIndex, pBuffer, szBufferSize);
+    bool result = m_HistoryGetEntryAtIndex(pIter->pHistory, pIter->szIndex, pstrBuffer, szBufferSize);
     pIter->szIndex++;
 
     return result;

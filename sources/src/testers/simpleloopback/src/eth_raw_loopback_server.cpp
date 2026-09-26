@@ -84,17 +84,17 @@ namespace {
         g_stop = 1;
     }
 
-    std::string mac_to_string(const uint8_t *mac)
+    std::string mac_to_string(const uint8_t *pu8Mac)
     {
         char sz[18];
         std::snprintf(sz, sizeof(sz), "%02x:%02x:%02x:%02x:%02x:%02x",
-                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+                      pu8Mac[0], pu8Mac[1], pu8Mac[2], pu8Mac[3], pu8Mac[4], pu8Mac[5]);
         return std::string(sz);
     }
 
-    bool mac_equal(const uint8_t *a, const uint8_t *b)
+    bool mac_equal(const uint8_t *pu8A, const uint8_t *pu8B)
     {
-        return std::memcmp(a, b, MAC_LEN) == 0;
+        return std::memcmp(pu8A, pu8B, MAC_LEN) == 0;
     }
 
     /** Print one Ethernet frame in a candump-like table row: DIR, SRC MAC,
@@ -109,20 +109,20 @@ namespace {
      *  print_frame(prefix, &frame) being called before AND after the frame
      *  is reused for the echoed reply.
      */
-    void print_frame(const char *prefix, const uint8_t *frame, size_t frameLen)
+    void print_frame(const char *pstrPrefix, const uint8_t *pu8Frame, size_t frameLen)
     {
         if (frameLen < ETH_HDR_LEN) {
             return; // caller already rejects runts before this would be called
         }
 
-        const uint8_t *dst       = frame;
-        const uint8_t *src       = frame + MAC_LEN;
-        const uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t *>(frame + 2 * MAC_LEN));
-        const uint8_t *payload   = frame + ETH_HDR_LEN;
+        const uint8_t *dst       = pu8Frame;
+        const uint8_t *src       = pu8Frame + MAC_LEN;
+        const uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t *>(pu8Frame + 2 * MAC_LEN));
+        const uint8_t *payload   = pu8Frame + ETH_HDR_LEN;
         const size_t payloadLen  = frameLen - ETH_HDR_LEN;
 
         std::printf("%-4s  %-17s  %-17s  0x%04x  %-6zu ",
-                    prefix, mac_to_string(src).c_str(), mac_to_string(dst).c_str(),
+                    pstrPrefix, mac_to_string(src).c_str(), mac_to_string(dst).c_str(),
                     ethertype, payloadLen);
 
         const size_t shown = std::min(payloadLen, DUMP_MAX_BYTES);
@@ -138,36 +138,36 @@ namespace {
 
     // Look up an interface's index and MAC address via ioctl(). Returns
     // false on failure (e.g. unknown interface name, insufficient perms).
-    bool resolve_interface(int fd, const std::string &ifname, int &ifindex, uint8_t ownMac[MAC_LEN])
+    bool resolve_interface(int iFd, const std::string &strIfname, int &iIfindex, uint8_t ownMac[MAC_LEN])
     {
         struct ifreq sIfr = {};
-        std::strncpy(sIfr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
+        std::strncpy(sIfr.ifr_name, strIfname.c_str(), IFNAMSIZ - 1);
 
-        if (::ioctl(fd, SIOCGIFINDEX, &sIfr) < 0) {
+        if (::ioctl(iFd, SIOCGIFINDEX, &sIfr) < 0) {
             std::fprintf(stderr, "ioctl(SIOCGIFINDEX, %s) failed, errno=%d (%s)\n",
-                         ifname.c_str(), errno, std::strerror(errno));
+                         strIfname.c_str(), errno, std::strerror(errno));
             return false;
         }
-        ifindex = sIfr.ifr_ifindex;
+        iIfindex = sIfr.ifr_ifindex;
 
         std::memset(&sIfr, 0, sizeof(sIfr));
-        std::strncpy(sIfr.ifr_name, ifname.c_str(), IFNAMSIZ - 1);
-        if (::ioctl(fd, SIOCGIFHWADDR, &sIfr) < 0) {
+        std::strncpy(sIfr.ifr_name, strIfname.c_str(), IFNAMSIZ - 1);
+        if (::ioctl(iFd, SIOCGIFHWADDR, &sIfr) < 0) {
             std::fprintf(stderr, "ioctl(SIOCGIFHWADDR, %s) failed, errno=%d (%s)\n",
-                         ifname.c_str(), errno, std::strerror(errno));
+                         strIfname.c_str(), errno, std::strerror(errno));
             return false;
         }
         std::memcpy(ownMac, sIfr.ifr_hwaddr.sa_data, MAC_LEN);
         return true;
     }
 
-    bool enable_promiscuous(int fd, int ifindex)
+    bool enable_promiscuous(int iFd, int iIfindex)
     {
         struct packet_mreq sMreq = {};
-        sMreq.mr_ifindex         = ifindex;
+        sMreq.mr_ifindex         = iIfindex;
         sMreq.mr_type            = PACKET_MR_PROMISC;
 
-        if (::setsockopt(fd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &sMreq, sizeof(sMreq)) < 0) {
+        if (::setsockopt(iFd, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &sMreq, sizeof(sMreq)) < 0) {
             std::fprintf(stderr, "setsockopt(PACKET_ADD_MEMBERSHIP) failed, errno=%d (%s)\n",
                          errno, std::strerror(errno));
             return false;
@@ -176,19 +176,19 @@ namespace {
     }
 } // namespace
 
-int main(int argc, char **argv)
+int main(int iArgc, char **ppstrArgv)
 {
-    if (argc < 2) {
-        std::fprintf(stderr, "Usage: %s <ifname> [ethertype_hex] [--promisc]\n", argv[0]);
+    if (iArgc < 2) {
+        std::fprintf(stderr, "Usage: %s <ifname> [ethertype_hex] [--promisc]\n", ppstrArgv[0]);
         return 1;
     }
 
-    const std::string strIfName = argv[1];
+    const std::string strIfName = ppstrArgv[1];
     uint16_t u16EtherTypeFilter = ETH_P_ALL; // capture everything by default
     bool bPromisc               = false;
 
-    for (int i = 2; i < argc; ++i) {
-        const std::string strArg = argv[i];
+    for (int i = 2; i < iArgc; ++i) {
+        const std::string strArg = ppstrArgv[i];
         if (strArg == "--promisc") {
             bPromisc = true;
         } else {
@@ -214,7 +214,7 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "socket(AF_PACKET, SOCK_RAW) failed, errno=%d (%s)\n"
                              "(this usually means missing CAP_NET_RAW — try running as root, or:\n"
                              " sudo setcap cap_net_raw+ep %s)\n",
-                     errno, std::strerror(errno), argv[0]);
+                     errno, std::strerror(errno), ppstrArgv[0]);
         return 1;
     }
 

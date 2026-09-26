@@ -231,9 +231,9 @@ class DdsPlugin : public PluginInterface {
             return m_u32DomainId;
         }
 
-        bool setDomainId(const std::string &v) const
+        bool setDomainId(const std::string &strV) const
         {
-            return numeric::str2uint32(v, m_u32DomainId);
+            return numeric::str2uint32(strV, m_u32DomainId);
         }
 
         uint32_t getParticipantId(void) const
@@ -241,9 +241,9 @@ class DdsPlugin : public PluginInterface {
             return m_u32ParticipantId;
         }
 
-        bool setParticipantId(const std::string &v) const
+        bool setParticipantId(const std::string &strV) const
         {
-            return numeric::str2uint32(v, m_u32ParticipantId);
+            return numeric::str2uint32(strV, m_u32ParticipantId);
         }
 
         bool getUseIpv6(void) const
@@ -251,10 +251,10 @@ class DdsPlugin : public PluginInterface {
             return m_bUseIpv6;
         }
 
-        bool setUseIpv6(const std::string &v) const
+        bool setUseIpv6(const std::string &strV) const
         {
             BoolExprEvaluator e;
-            return e.evaluate(v, m_bUseIpv6);
+            return e.evaluate(strV, m_bUseIpv6);
         }
 
         const std::string &getIface(void) const
@@ -262,9 +262,9 @@ class DdsPlugin : public PluginInterface {
             return m_strIface;
         }
 
-        void setIface(const std::string &v) const
+        void setIface(const std::string &strV) const
         {
-            m_strIface = v;
+            m_strIface = strV;
         }
 
         const std::string &getMcastIface(void) const
@@ -272,9 +272,9 @@ class DdsPlugin : public PluginInterface {
             return m_strMcastIface;
         }
 
-        void setMcastIface(const std::string &v) const
+        void setMcastIface(const std::string &strV) const
         {
-            m_strMcastIface = v;
+            m_strMcastIface = strV;
         }
 
         const std::string &getSpdpMcastGroup(void) const
@@ -282,9 +282,9 @@ class DdsPlugin : public PluginInterface {
             return m_strSpdpMcastGroup;
         }
 
-        void setSpdpMcastGroup(const std::string &v) const
+        void setSpdpMcastGroup(const std::string &strV) const
         {
-            m_strSpdpMcastGroup = v;
+            m_strSpdpMcastGroup = strV;
         }
 
         const std::string &getParticipantName(void) const
@@ -292,9 +292,9 @@ class DdsPlugin : public PluginInterface {
             return m_strParticipantName;
         }
 
-        void setParticipantName(const std::string &v) const
+        void setParticipantName(const std::string &strV) const
         {
-            m_strParticipantName = v;
+            m_strParticipantName = strV;
         }
 
         uint8_t getTtl(void) const
@@ -302,10 +302,10 @@ class DdsPlugin : public PluginInterface {
             return m_u8Ttl;
         }
 
-        bool setTtl(const std::string &v) const
+        bool setTtl(const std::string &strV) const
         {
             uint32_t ttl = 0;
-            if (!numeric::str2uint32(v, ttl) || ttl > 255) {
+            if (!numeric::str2uint32(strV, ttl) || ttl > 255) {
                 return false;
             }
             m_u8Ttl = static_cast<uint8_t>(ttl);
@@ -317,9 +317,9 @@ class DdsPlugin : public PluginInterface {
             return m_u32SpdpPeriodMs;
         }
 
-        bool setSpdpPeriodMs(const std::string &v) const
+        bool setSpdpPeriodMs(const std::string &strV) const
         {
-            return numeric::str2uint32(v, m_u32SpdpPeriodMs);
+            return numeric::str2uint32(strV, m_u32SpdpPeriodMs);
         }
 
         uint32_t getLeaseDurationSec(void) const
@@ -327,9 +327,9 @@ class DdsPlugin : public PluginInterface {
             return m_u32LeaseDurationSec;
         }
 
-        bool setLeaseDurationSec(const std::string &v) const
+        bool setLeaseDurationSec(const std::string &strV) const
         {
-            return numeric::str2uint32(v, m_u32LeaseDurationSec);
+            return numeric::str2uint32(strV, m_u32LeaseDurationSec);
         }
 
         bool getReliable(void) const
@@ -337,10 +337,10 @@ class DdsPlugin : public PluginInterface {
             return m_bReliable;
         }
 
-        bool setReliable(const std::string &v) const
+        bool setReliable(const std::string &strV) const
         {
             BoolExprEvaluator e;
-            return e.evaluate(v, m_bReliable);
+            return e.evaluate(strV, m_bReliable);
         }
 
         uint32_t getHeartbeatPeriodMs(void) const
@@ -348,9 +348,9 @@ class DdsPlugin : public PluginInterface {
             return m_u32HeartbeatPeriodMs;
         }
 
-        bool setHeartbeatPeriodMs(const std::string &v) const
+        bool setHeartbeatPeriodMs(const std::string &strV) const
         {
-            return numeric::str2uint32(v, m_u32HeartbeatPeriodMs);
+            return numeric::str2uint32(strV, m_u32HeartbeatPeriodMs);
         }
 
         uint32_t getHistoryDepth(void) const
@@ -358,9 +358,9 @@ class DdsPlugin : public PluginInterface {
             return m_u32HistoryDepth;
         }
 
-        bool setHistoryDepth(const std::string &v) const
+        bool setHistoryDepth(const std::string &strV) const
         {
-            return numeric::str2uint32(v, m_u32HistoryDepth);
+            return numeric::str2uint32(strV, m_u32HistoryDepth);
         }
 
         uint32_t getFragmentThresholdBytes(void) const
@@ -368,9 +368,9 @@ class DdsPlugin : public PluginInterface {
             return m_u32FragmentThresholdBytes;
         }
 
-        bool setFragmentThresholdBytes(const std::string &v) const
+        bool setFragmentThresholdBytes(const std::string &strV) const
         {
-            return numeric::str2uint32(v, m_u32FragmentThresholdBytes);
+            return numeric::str2uint32(strV, m_u32FragmentThresholdBytes);
         }
 
         uint32_t getReadTimeout(void) const
@@ -378,9 +378,9 @@ class DdsPlugin : public PluginInterface {
             return m_u32ReadTimeout;
         }
 
-        bool setReadTimeout(const std::string &v) const
+        bool setReadTimeout(const std::string &strV) const
         {
-            return numeric::str2uint32(v, m_u32ReadTimeout);
+            return numeric::str2uint32(strV, m_u32ReadTimeout);
         }
 
         uint32_t getReadBufferSize(void) const
@@ -388,10 +388,10 @@ class DdsPlugin : public PluginInterface {
             return m_u32ReadBufferSize;
         }
 
-        bool setReadBufferSize(const std::string &v) const
+        bool setReadBufferSize(const std::string &strV) const
         {
             uint32_t sz = 0;
-            if (!numeric::str2uint32(v, sz) || sz == 0) {
+            if (!numeric::str2uint32(strV, sz) || sz == 0) {
                 return false;
             }
             m_u32ReadBufferSize = sz;
@@ -406,9 +406,9 @@ class DdsPlugin : public PluginInterface {
             return m_u32MaxSubscriptions;
         }
 
-        bool setMaxSubscriptions(const std::string &v) const
+        bool setMaxSubscriptions(const std::string &strV) const
         {
-            return numeric::str2uint32(v, m_u32MaxSubscriptions);
+            return numeric::str2uint32(strV, m_u32MaxSubscriptions);
         }
 
     private:

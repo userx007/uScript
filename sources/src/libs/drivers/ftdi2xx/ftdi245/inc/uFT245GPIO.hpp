@@ -49,9 +49,9 @@ class FT245GPIO : public FT245Base {
 
         FT245GPIO() = default;
 
-        explicit FT245GPIO(const GpioConfig &config, uint8_t u8DeviceIndex = 0u)
+        explicit FT245GPIO(const GpioConfig &sConfig, uint8_t u8DeviceIndex = 0u)
         {
-            this->open(config, u8DeviceIndex);
+            this->open(sConfig, u8DeviceIndex);
         }
 
         ~FT245GPIO() override
@@ -65,7 +65,7 @@ class FT245GPIO : public FT245Base {
          * @param config        Direction and initial value for D0–D7
          * @param u8DeviceIndex Physical device index (0 = first chip found)
          */
-        Status open(const GpioConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const GpioConfig &sConfig, uint8_t u8DeviceIndex = 0u);
 
         /** @copydoc FT245Base::close — drives all output pins low before closing */
         Status close() override;
@@ -82,17 +82,17 @@ class FT245GPIO : public FT245Base {
          * @param dirMask      1 = output, 0 = input (per-pin)
          * @param initialValue Output level for pins newly becoming outputs
          */
-        Status set_direction(uint8_t dirMask, uint8_t initialValue = 0x00u);
+        Status set_direction(uint8_t u8DirMask, uint8_t u8DirMask = 0x00u);
 
         // ── Output control ────────────────────────────────────────────────────
         /** Write a full byte to the output pins (masked by direction) */
-        Status write(uint8_t value);
+        Status write(uint8_t u8Value);
         /** Assert (set high) selected output pins */
-        Status set_pins(uint8_t pinMask);
+        Status set_pins(uint8_t u8Bank);
         /** Deassert (set low) selected output pins */
-        Status clear_pins(uint8_t pinMask);
+        Status clear_pins(uint8_t u8Bank);
         /** Toggle selected output pins */
-        Status toggle_pins(uint8_t pinMask);
+        Status toggle_pins(uint8_t u8Bank);
 
         // ── Input reading ─────────────────────────────────────────────────────
         /**
@@ -102,15 +102,15 @@ class FT245GPIO : public FT245Base {
          * Input pins reflect the external signal; output pins reflect the
          * last written value.
          */
-        Status read(uint8_t &value);
+        Status read(uint8_t &u8Value);
         /** Read (rawValue & pinMask) into value */
-        Status read_pins(uint8_t pinMask, uint8_t &value);
+        Status read_pins(uint8_t u8Bank, uint8_t &u8PinMask);
 
     private:
         uint8_t m_value   = 0x00u; ///< Last written output byte
         uint8_t m_dirMask = 0x00u; ///< Current direction mask
 
-        Status apply(uint8_t value, uint8_t dir) const;
+        Status apply(uint8_t u8Value, uint8_t u8Dir) const;
 };
 
 #endif // U_FT245_GPIO_DRIVER_H

@@ -36,15 +36,15 @@ class QTextDocument;
 class IniHighlighter : public QSyntaxHighlighter {
         Q_OBJECT
     public:
-        explicit IniHighlighter(QTextDocument *parent = nullptr);
+        explicit IniHighlighter(QTextDocument *pParent = nullptr);
 
     protected:
         void highlightBlock(const QString &text) override;
 
     private:
         static QTextCharFormat fmt(const QString &hex,
-                                   bool bold   = false,
-                                   bool italic = false);
+                                   bool bBold   = false,
+                                   bool bItalic = false);
 
         // Section header:  [name]
         QRegularExpression m_reSection;

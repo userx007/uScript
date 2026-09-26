@@ -136,7 +136,7 @@ class DdsDriver : public ICommDriver {
                 bool reliable = false;
         };
 
-        explicit DdsDriver(Config config);
+        explicit DdsDriver(Config sConfig);
         ~DdsDriver() override;
 
         /// Applies Config to a Cyclone domain (creating it — or attaching to
@@ -284,12 +284,12 @@ class DdsDriver : public ICommDriver {
 
         // ---- helpers (implemented in dds_driver.cpp) ----
         std::string m_BuildDomainConfigXml() const;
-        DdsEntity m_EnsureLocalWriter(const std::string &topic) const;
-        std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;
+        DdsEntity m_EnsureLocalWriter(const std::string &strTopic) const;
+        std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &strTopic) const;
 
-        bool m_Publish(const std::string &topic, const std::string &payload) const;
-        bool m_Subscribe(const std::string &topic) const;
-        bool m_Unsubscribe(const std::string &topic) const;
+        bool m_Publish(const std::string &strTopic, const std::string &strPayload) const;
+        bool m_Subscribe(const std::string &strTopic) const;
+        bool m_Unsubscribe(const std::string &strTopic) const;
         std::string m_BuildListText() const;
 
         /// Shared body of receive()'s multiplexed (xtra_params empty, 2+
@@ -300,14 +300,14 @@ class DdsDriver : public ICommDriver {
         /// Blocks on one reader's queue; see the .cpp definition's doc
         /// comment. Static (not const, no `this`) since it only ever
         /// touches the LocalReader passed in.
-        static std::optional<std::string> m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
+        static std::optional<std::string> m_WaitPopOne(LocalReader &sReader, uint32_t u32ReadTimeout,
                                                         std::stop_token stop_tok);
 
         /// dds_on_data_available_fn callback (see <dds/ddsc/dds_public_listener.h>)
         /// registered on every local reader: drains whatever Cyclone just made
         /// available via dds_take() straight into that LocalReader's queue and
         /// wakes receive(). `arg` is the LocalReader* passed to dds_create_listener().
-        static void m_OnReaderDataAvailable(DdsEntity reader, void *arg);
+        static void m_OnReaderDataAvailable(DdsEntity reader, void *pvArg);
 };
 
 #endif // DDS_DRIVER_HPP

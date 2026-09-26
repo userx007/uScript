@@ -92,13 +92,13 @@ template <typename T>
 bool generic_module_dispatch(const T *pOwner,
                              const std::string &strModule,
                              const std::string &strCmd,
-                             const std::string &args,
+                             const std::string &strArgs,
                              std::stop_token st = {})
 {
     ModuleCommandsMap<T> *pMap = pOwner->getModuleCmdsMap(strModule);
     auto it                    = pMap->find(strCmd);
     if (it != pMap->end()) {
-        return (pOwner->*it->second)(args, st);
+        return (pOwner->*it->second)(strArgs, st);
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": command not supported:"); LOG_STRING(strCmd));
     return false;
@@ -110,14 +110,14 @@ bool generic_module_dispatch(const T *pOwner,
 template <typename T>
 bool generic_module_dispatch(const T *pOwner,
                              const std::string &strModule,
-                             const std::string &args,
+                             const std::string &strArgs,
                              std::stop_token st = {})
 {
     std::vector<std::string> parts;
-    ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::splitAtFirst(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     if (parts.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd args]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd strArgs]"));
         return false;
     }
 
@@ -134,7 +134,7 @@ bool generic_module_dispatch(const T *pOwner,
     }
 
     if (parts.size() < 2) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd args]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd strArgs]"));
         return false;
     }
 
@@ -146,18 +146,18 @@ bool generic_module_dispatch(const T *pOwner,
 ============================================================================================ */
 
 template <typename T>
-bool generic_module_set_speed(const T *pOwner, const std::string &strModule, const std::string &args, std::stop_token st = {})
+bool generic_module_set_speed(const T *pOwner, const std::string &strModule, const std::string &strArgs, std::stop_token st = {})
 {
     bool bRetVal                       = false;
     bool bShowHelp                     = false;
     const ModuleSpeedMap *pModSpeedMap = pOwner->getModuleSpeedsMap(strModule);
 
     if (nullptr != pModSpeedMap) {
-        if ("help" == args) {
+        if ("help" == strArgs) {
             bShowHelp = true;
             bRetVal   = true;
         } else {
-            auto itSpeed = pModSpeedMap->find(args);
+            auto itSpeed = pModSpeedMap->find(strArgs);
             if (itSpeed != pModSpeedMap->end()) {
                 // dry validation ends here
                 if (!pOwner->isEnabled()) {
@@ -193,15 +193,15 @@ bool generic_module_set_speed(const T *pOwner, const std::string &strModule, con
 ============================================================================================ */
 
 template <typename T>
-bool generic_write_data(const T *pOwner, const std::string &args, WRITE_DATA_CB<T> pFctWriteCbk, std::stop_token st = {})
+bool generic_write_data(const T *pOwner, const std::string &strArgs, WRITE_DATA_CB<T> pFctWriteCbk, std::stop_token st = {})
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write 1122BBEFAA.."));
     } else {
         std::vector<uint8_t> data;
-        if (true == (bRetVal = hexutils::stringUnhexlify(args, data))) {
+        if (true == (bRetVal = hexutils::stringUnhexlify(strArgs, data))) {
             size_t szWriteSize = data.size();
 
             if ((szWriteSize > 16) || (0 == szWriteSize)) {
@@ -211,7 +211,7 @@ bool generic_write_data(const T *pOwner, const std::string &args, WRITE_DATA_CB<
                 bRetVal = (pOwner->*pFctWriteCbk)(data, st);
             }
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to unhexlify input:"); LOG_STRING(args));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to unhexlify input:"); LOG_STRING(strArgs));
         }
     }
 
@@ -224,18 +224,18 @@ bool generic_write_data(const T *pOwner, const std::string &args, WRITE_DATA_CB<
 ============================================================================================ */
 
 template <typename T, typename TCommDriver>
-bool generic_execute_script(const T *pOwner, const std::string &pluginName, const std::string &args, std::stop_token st = {})
+bool generic_execute_script(const T *pDriver, const std::string &strPluginName, const std::string &strScriptName, std::stop_token st = {})
 {
     bool bRetVal = false;
     std::string strScriptPathName;
 
-    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("generic_execute_script:"); LOG_STRING(args));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("generic_execute_script:"); LOG_STRING(strScriptName));
 
     // get the values from the configuration file
-    auto *pIniValues = getAccessIniValues(*pOwner);
+    auto *pIniValues = getAccessIniValues(*pDriver);
 
     // build the artefacts path
-    ufile::buildFilePath(pIniValues->strArtefactsPath, args, strScriptPathName);
+    ufile::buildFilePath(pIniValues->strArtefactsPath, strScriptName, strScriptPathName);
 
     // Check file existence and size
     if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
@@ -243,10 +243,10 @@ bool generic_execute_script(const T *pOwner, const std::string &pluginName, cons
     } else {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Script:"); LOG_STRING(strScriptPathName));
         try {
-            bool bEnabled  = getEnabledStatus(*pOwner);
+            bool bEnabled  = getEnabledStatus(*pDriver);
 
             // construct the driver with the outer reference fulfilled
-            auto shpDriver = bEnabled ? std::make_shared<TCommDriver>(*pOwner) : nullptr;
+            auto shpDriver = bEnabled ? std::make_shared<TCommDriver>(*pDriver) : nullptr;
 
             // check if the driver opened successfully only if the plugin is enabled
             if (bEnabled && shpDriver && !shpDriver->is_open()) {
@@ -256,7 +256,7 @@ bool generic_execute_script(const T *pOwner, const std::string &pluginName, cons
             CommScriptClient<TCommDriver> client(
                 strScriptPathName,
                 shpDriver,
-                pluginName,
+                strPluginName,
                 pIniValues->u32ReadBufferSize, // szMaxRecvSize
                 pIniValues->u32ReadTimeout,    // u32DefaultTimeout
                 pIniValues->u32ScriptDelay,    // szDelay

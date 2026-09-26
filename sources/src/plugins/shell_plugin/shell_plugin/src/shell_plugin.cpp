@@ -19,10 +19,10 @@ extern "C" {
         return new ShellPlugin();
     }
 
-    EXPORTED void pluginExit(ShellPlugin *ptrPlugin)
+    EXPORTED void pluginExit(ShellPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -43,13 +43,13 @@ extern "C" {
  * \return true if succeeded, false otherwise
  */
 
-bool ShellPlugin::m_Shell_RUN(const std::string &args, std::stop_token st) const
+bool ShellPlugin::m_Shell_RUN(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
 
-        if (!args.empty()) {
+        if (!strArgs.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
         }
@@ -106,14 +106,14 @@ bool ShellPlugin::m_Shell_RUN(const std::string &args, std::stop_token st) const
  * \return true on success, false otherwise
  */
 
-bool ShellPlugin::m_Shell_INFO(const std::string &args, std::stop_token st) const
+bool ShellPlugin::m_Shell_INFO(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
 
         // expected no arguments
-        if (!args.empty()) {
+        if (!strArgs.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
         }

@@ -209,34 +209,34 @@ class MqttPlugin : public PluginInterface {
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
-        bool setPort(const std::string &portStr) const
+        bool setPort(const std::string &strPort) const
         {
-            return numeric::str2uint16(portStr, m_u16Port);
+            return numeric::str2uint16(strPort, m_u16Port);
         }
 
-        bool setQos(const std::string &qosStr) const
+        bool setQos(const std::string &strQos) const
         {
-            if (!numeric::str2uint8(qosStr, m_u8Qos) || m_u8Qos > 2) {
+            if (!numeric::str2uint8(strQos, m_u8Qos) || m_u8Qos > 2) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid QoS (expected 0-2):"); LOG_STRING(m_u8Qos));
                 return false;
             }
             return true;
         }
 
-        bool setReadTimeout(const std::string &timeoutStr) const
+        bool setReadTimeout(const std::string &strTimeout) const
         {
-            return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
+            return numeric::str2uint32(strTimeout, m_u32ReadTimeout);
         }
 
-        bool setKeepAliveSeconds(const std::string &timeoutStr) const
+        bool setKeepAliveSeconds(const std::string &strTimeout) const
         {
-            return numeric::str2uint16(timeoutStr, m_u16KeepAliveSeconds);
+            return numeric::str2uint16(strTimeout, m_u16KeepAliveSeconds);
         }
 
-        bool setWillQos(const std::string &qosStr) const
+        bool setWillQos(const std::string &strQos) const
         {
-            if (!numeric::str2uint8(qosStr, m_u8WillQos) || m_u8WillQos > 2) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid will QoS (expected 0-2):"); LOG_STRING(qosStr));
+            if (!numeric::str2uint8(strQos, m_u8WillQos) || m_u8WillQos > 2) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid will QoS (expected 0-2):"); LOG_STRING(strQos));
                 return false;
             }
             return true;
@@ -248,9 +248,9 @@ class MqttPlugin : public PluginInterface {
             return m_strHost;
         }
 
-        void setHost(const std::string &host) const
+        void setHost(const std::string &strHost) const
         {
-            m_strHost = host;
+            m_strHost = strHost;
         }
 
         uint16_t getPort(void) const
@@ -290,9 +290,9 @@ class MqttPlugin : public PluginInterface {
             return m_strTlsCertPath;
         }
 
-        void setTlsCertPath(const std::string &path) const
+        void setTlsCertPath(const std::string &strPath) const
         {
-            m_strTlsCertPath = path;
+            m_strTlsCertPath = strPath;
         }
 
         const std::string &getTlsKeyPath(void) const
@@ -300,9 +300,9 @@ class MqttPlugin : public PluginInterface {
             return m_strTlsKeyPath;
         }
 
-        void setTlsKeyPath(const std::string &path) const
+        void setTlsKeyPath(const std::string &strPath) const
         {
-            m_strTlsKeyPath = path;
+            m_strTlsKeyPath = strPath;
         }
 
         const std::string &getTlsCaPath(void) const
@@ -310,9 +310,9 @@ class MqttPlugin : public PluginInterface {
             return m_strTlsCaPath;
         }
 
-        void setTlsCaPath(const std::string &path) const
+        void setTlsCaPath(const std::string &strPath) const
         {
-            m_strTlsCaPath = path;
+            m_strTlsCaPath = strPath;
         }
 
         uint32_t getReadTimeout(void) const
@@ -341,9 +341,9 @@ class MqttPlugin : public PluginInterface {
             return m_strUsername;
         }
 
-        void setUsername(const std::string &val) const
+        void setUsername(const std::string &strVal) const
         {
-            m_strUsername = val;
+            m_strUsername = strVal;
         }
 
         const std::string &getPassword(void) const
@@ -351,9 +351,9 @@ class MqttPlugin : public PluginInterface {
             return m_strPassword;
         }
 
-        void setPassword(const std::string &val) const
+        void setPassword(const std::string &strVal) const
         {
-            m_strPassword = val;
+            m_strPassword = strVal;
         }
 
         const std::string &getWillTopic(void) const
@@ -361,9 +361,9 @@ class MqttPlugin : public PluginInterface {
             return m_strWillTopic;
         }
 
-        void setWillTopic(const std::string &val) const
+        void setWillTopic(const std::string &strVal) const
         {
-            m_strWillTopic = val;
+            m_strWillTopic = strVal;
         }
 
         const std::string &getWillPayload(void) const
@@ -371,9 +371,9 @@ class MqttPlugin : public PluginInterface {
             return m_strWillPayload;
         }
 
-        void setWillPayload(const std::string &val) const
+        void setWillPayload(const std::string &strVal) const
         {
-            m_strWillPayload = val;
+            m_strWillPayload = strVal;
         }
 
         uint8_t getWillQos(void) const
@@ -408,14 +408,14 @@ class MqttPlugin : public PluginInterface {
             return m_strClientId;
         }
 
-        void setClientId(const std::string &val) const
+        void setClientId(const std::string &strVal) const
         {
-            m_strClientId = val;
+            m_strClientId = strVal;
         }
 
-        bool setReadBufferSize(const std::string &bufSizeStr) const
+        bool setReadBufferSize(const std::string &strBufSize) const
         {
-            return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize, /*bFailOnZero=*/true);
+            return numeric::str2uint32(strBufSize, m_u32ReadBufferSize, /*bFailOnZero=*/true);
         }
 
     private:

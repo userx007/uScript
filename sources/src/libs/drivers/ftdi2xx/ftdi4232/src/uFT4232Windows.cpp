@@ -50,21 +50,21 @@ FT4232Base::~FT4232Base()
 // open_device
 // ============================================================================
 
-FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceIndex)
+FT4232Base::Status FT4232Base::open_device(Channel eChannel, uint8_t u8DeviceIndex)
 {
-    if (channel != Channel::A && channel != Channel::B) {
+    if (eChannel != Channel::A && eChannel != Channel::B) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("open_device: FT4232H MPSSE only available on channels A and B"));
         return Status::INVALID_PARAM;
     }
 
-    // ── Map (physical device index, channel) → FTD2XX device list index ──────
+    // ── Map (physical device index, eChannel) → FTD2XX device list index ──────
     //
     // FT4232H presents 4 USB interfaces. They appear sequentially in the
     // FTD2XX device list: the n-th chip occupies indices [n*4, n*4+3].
     // Channels A and B are indices 0 and 1 of that chip's block.
     //
-    DWORD ftIndex = static_cast<DWORD>(u8DeviceIndex) * 4u + static_cast<DWORD>(channel); // Channel::A=0, Channel::B=1
+    DWORD ftIndex = static_cast<DWORD>(u8DeviceIndex) * 4u + static_cast<DWORD>(eChannel); // Channel::A=0, Channel::B=1
 
     // Verify the device at that index actually has the expected VID/PID.
     {
@@ -151,7 +151,7 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
     m_hDevice = static_cast<void *>(handle);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("FT4232H opened: channel="); LOG_UINT32(static_cast<uint8_t>(channel));
+              LOG_STRING("FT4232H opened: eChannel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
               LOG_STRING("ftIndex="); LOG_UINT32(ftIndex);
               LOG_STRING("device index="); LOG_UINT32(u8DeviceIndex));
 
@@ -188,15 +188,15 @@ bool FT4232Base::is_open() const
 /**
  * @brief Write raw MPSSE command bytes via FT_Write
  */
-FT4232Base::Status FT4232Base::mpsse_write(const uint8_t *buf, size_t len) const
+FT4232Base::Status FT4232Base::mpsse_write(const uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
     DWORD written    = 0;
     FT_STATUS ftStat = FT_Write(FT_HDL,
-                                const_cast<LPVOID>(static_cast<const void *>(buf)),
+                                const_cast<LPVOID>(static_cast<const void *>(pu8Buf)),
                                 static_cast<DWORD>(len),
                                 &written);
 
@@ -221,20 +221,20 @@ FT4232Base::Status FT4232Base::mpsse_write(const uint8_t *buf, size_t len) const
  * FT_GetQueueStatus is polled until enough bytes are available or the
  * timeout expires, then FT_Read fetches them all in one call.
  */
-FT4232Base::Status FT4232Base::mpsse_read(uint8_t *buf, size_t len,
-                                          uint32_t timeoutMs,
+FT4232Base::Status FT4232Base::mpsse_read(uint8_t *pu8Buf, size_t len,
+                                          uint32_t u32TimeoutMs,
                                           size_t &bytesRead,
                                           std::stop_token stop_tok) const
 {
-    if (!buf || len == 0) {
+    if (!pu8Buf || len == 0) {
         return Status::INVALID_PARAM;
     }
 
     bytesRead            = 0;
 
     // 0 == infinite timeout: never expire this poll loop.
-    const bool bInfinite = (timeoutMs == 0);
-    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    const bool bInfinite = (u32TimeoutMs == 0);
+    auto deadline        = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
 
     while (bytesRead < len) {
         DWORD queued     = 0;
@@ -248,7 +248,7 @@ FT4232Base::Status FT4232Base::mpsse_read(uint8_t *buf, size_t len,
         if (queued > 0) {
             DWORD toRead = std::min(static_cast<DWORD>(len - bytesRead), queued);
             DWORD got    = 0;
-            ftStat       = FT_Read(FT_HDL, buf + bytesRead, toRead, &got);
+            ftStat       = FT_Read(FT_HDL, pu8Buf + bytesRead, toRead, &got);
             if (ftStat != FT_OK) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("FT_Read() failed, status="); LOG_UINT32(ftStat));

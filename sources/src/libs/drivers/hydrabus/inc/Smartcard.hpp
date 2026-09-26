@@ -37,7 +37,7 @@ namespace HydraHAL {
     class Smartcard : public Protocol {
 
         public:
-            explicit Smartcard(std::shared_ptr<Hydrabus> hydrabus);
+            explicit Smartcard(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // Data transfer
@@ -76,23 +76,23 @@ namespace HydraHAL {
             int get_rst() const;
 
             /** @param level 0 or 1. @return true on success. */
-            bool set_rst(int level);
+            bool set_rst(int iLevel);
 
             // -------------------------------------------------------------------------
             // Configuration
             // -------------------------------------------------------------------------
 
             uint32_t get_baud() const;
-            bool set_baud(uint32_t baud);
+            bool set_baud(uint32_t u32Baud);
 
             uint8_t get_prescaler() const;
-            bool set_prescaler(uint8_t value);
+            bool set_prescaler(uint8_t u8Value);
 
             uint8_t get_guardtime() const;
-            bool set_guardtime(uint8_t value);
+            bool set_guardtime(uint8_t u8Value);
 
             bool get_pullup() const;
-            bool set_pullup(bool enable);
+            bool set_pullup(bool bEnable);
 
         private:
             bool _configure_port();

@@ -555,98 +555,98 @@ bool ScriptValidator::m_validatePlugins() noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_preprocessScriptStatements(const ScriptRawLine &rawLine, const Token token) noexcept
+bool ScriptValidator::m_preprocessScriptStatements(const ScriptRawLine &sRawLine, const Token eToken) noexcept
 {
     bool bRetVal = false;
 
-    switch (token) {
+    switch (eToken) {
     case Token::LOAD_PLUGIN: {
-        bRetVal = m_HandleLoadPlugin(rawLine);
+        bRetVal = m_HandleLoadPlugin(sRawLine);
     } break;
     case Token::CONSTANT_MACRO: {
-        bRetVal = m_HandleConstantMacro(rawLine);
+        bRetVal = m_HandleConstantMacro(sRawLine);
     } break;
     case Token::ARRAY_MACRO: {
-        bRetVal = m_HandleArrayMacro(rawLine);
+        bRetVal = m_HandleArrayMacro(sRawLine);
     } break;
     case Token::VARIABLE_MACRO: {
-        bRetVal = m_HandleVariableMacro(rawLine);
+        bRetVal = m_HandleVariableMacro(sRawLine);
     } break;
     case Token::VAR_MACRO_INIT: {
-        bRetVal = m_HandleVarMacroInit(rawLine);
+        bRetVal = m_HandleVarMacroInit(sRawLine);
     } break;
     case Token::FORMAT_STMT: {
-        bRetVal = m_HandleFormatStmt(rawLine);
+        bRetVal = m_HandleFormatStmt(sRawLine);
     } break;
     case Token::MATH_STMT: {
-        bRetVal = m_HandleMathStmt(rawLine);
+        bRetVal = m_HandleMathStmt(sRawLine);
     } break;
     case Token::BITSTREAM_STMT: {
-        bRetVal = m_HandleBitstreamStmt(rawLine);
+        bRetVal = m_HandleBitstreamStmt(sRawLine);
     } break;
     case Token::BYTESTREAM_STMT: {
-        bRetVal = m_HandleBytestreamStmt(rawLine);
+        bRetVal = m_HandleBytestreamStmt(sRawLine);
     } break;
     case Token::BITSTREAMVAL_STMT: {
-        bRetVal = m_HandleBitstreamValStmt(rawLine);
+        bRetVal = m_HandleBitstreamValStmt(sRawLine);
     } break;
     case Token::BYTESTREAMVAL_STMT: {
-        bRetVal = m_HandleBytestreamValStmt(rawLine);
+        bRetVal = m_HandleBytestreamValStmt(sRawLine);
     } break;
     case Token::BITSTREAMVAL_ARRAY_STMT: {
-        bRetVal = m_HandleBitstreamValArrayStmt(rawLine);
+        bRetVal = m_HandleBitstreamValArrayStmt(sRawLine);
     } break;
     case Token::BYTESTREAMVAL_ARRAY_STMT: {
-        bRetVal = m_HandleBytestreamValArrayStmt(rawLine);
+        bRetVal = m_HandleBytestreamValArrayStmt(sRawLine);
     } break;
     case Token::COMMAND: {
-        bRetVal = m_HandleCommand(rawLine);
+        bRetVal = m_HandleCommand(sRawLine);
     } break;
     case Token::IF_GOTO_LABEL: {
-        bRetVal = m_HandleCondition(rawLine);
+        bRetVal = m_HandleCondition(sRawLine);
     } break;
     case Token::LABEL: {
-        bRetVal = m_HandleLabel(rawLine);
+        bRetVal = m_HandleLabel(sRawLine);
     } break;
     case Token::REPEAT: {
-        bRetVal = m_HandleRepeat(rawLine);
+        bRetVal = m_HandleRepeat(sRawLine);
     } break;
     case Token::END_REPEAT: {
-        bRetVal = m_HandleEndRepeat(rawLine);
+        bRetVal = m_HandleEndRepeat(sRawLine);
     } break;
     case Token::BREAK_LOOP: {
-        bRetVal = m_HandleBreak(rawLine);
+        bRetVal = m_HandleBreak(sRawLine);
     } break;
     case Token::CONTINUE_LOOP: {
-        bRetVal = m_HandleContinue(rawLine);
+        bRetVal = m_HandleContinue(sRawLine);
     } break;
     case Token::PRINT_STMT: {
-        bRetVal = m_HandlePrint(rawLine);
+        bRetVal = m_HandlePrint(sRawLine);
     } break;
     case Token::DELAY_STMT: {
-        bRetVal = m_HandleDelay(rawLine);
+        bRetVal = m_HandleDelay(sRawLine);
     } break;
     case Token::BREAKPOINT_STMT: {
-        bRetVal = m_HandleBreakpoint(rawLine);
+        bRetVal = m_HandleBreakpoint(sRawLine);
     } break;
     case Token::GENERATOR_STMT: {
-        bRetVal = m_HandleGeneratorStmt(rawLine);
+        bRetVal = m_HandleGeneratorStmt(sRawLine);
     } break;
     case Token::GENERATOR_STOP_ALL_STMT: {
-        bRetVal = m_HandleGeneratorStopAll(rawLine);
+        bRetVal = m_HandleGeneratorStopAll(sRawLine);
     } break;
     default: {
-        auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+        auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("Unknown command token received!"));
+                  LOG_STRING("Unknown command eToken received!"));
     } break;
     }
 
     if (false == bRetVal) {
-        auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+        auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("Failed to validate:"); LOG_STRING(rawLine.strContent));
-        gui_notify_error_main(rawLine.iLineNumber);
+                  LOG_STRING("Failed to validate:"); LOG_STRING(sRawLine.strContent));
+        gui_notify_error_main(sRawLine.iLineNumber);
     }
 
     return bRetVal;
@@ -657,12 +657,12 @@ bool ScriptValidator::m_preprocessScriptStatements(const ScriptRawLine &rawLine,
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleLoadPlugin(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleLoadPlugin(const ScriptRawLine &sRawLine) noexcept
 {
     bool bRetVal = false;
 
     std::vector<std::string> vstrTokens;
-    ustring::tokenize(rawLine.strContent, vstrTokens);
+    ustring::tokenize(sRawLine.strContent, vstrTokens);
     size_t szSize = vstrTokens.size();
 
     do {
@@ -675,7 +675,7 @@ bool ScriptValidator::m_HandleLoadPlugin(const ScriptRawLine &rawLine) noexcept
                          [&vstrTokens](const auto &item) {
                              return item.strPluginName == vstrTokens[1];
                          }) != m_sScriptEntries->vPlugins.end()) {
-            auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+            auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                       LOG_STRING("Plugin already exists:");
                       LOG_STRING(vstrTokens[1]));
@@ -697,10 +697,10 @@ bool ScriptValidator::m_HandleLoadPlugin(const ScriptRawLine &rawLine) noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleConstantMacro(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleConstantMacro(const ScriptRawLine &sRawLine) noexcept
 {
     std::vector<std::string> vstrTokens;
-    ustring::tokenize(rawLine.strContent, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
+    ustring::tokenize(sRawLine.strContent, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
 
     if (vstrTokens.size() < 2) {
         return false;
@@ -710,7 +710,7 @@ bool ScriptValidator::m_HandleConstantMacro(const ScriptRawLine &rawLine) noexce
     auto aRetVal = m_sScriptEntries->mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
 
     if (false == aRetVal.second) {
-        auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+        auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("Macro already exists:"); LOG_STRING(vstrTokens[0]));
     }
@@ -789,17 +789,17 @@ bool ScriptValidator::m_parseArrayElements(const std::string &strList,
     declaration, not a runtime command.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleArrayMacro(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleArrayMacro(const ScriptRawLine &sRawLine) noexcept
 {
     // Split at [= to get name and element list
     static const std::string kSep = "[=";
-    auto sepPos                   = rawLine.strContent.find(kSep);
+    auto sepPos                   = sRawLine.strContent.find(kSep);
     if (sepPos == std::string::npos) {
         return false;
     }
 
-    std::string strName = rawLine.strContent.substr(0, sepPos);
-    std::string strList = rawLine.strContent.substr(sepPos + kSep.size());
+    std::string strName = sRawLine.strContent.substr(0, sepPos);
+    std::string strList = sRawLine.strContent.substr(sepPos + kSep.size());
 
     // trim name
     size_t ns           = strName.find_first_not_of(" \t");
@@ -816,7 +816,7 @@ bool ScriptValidator::m_HandleArrayMacro(const ScriptRawLine &rawLine) noexcept
     }
     strList     = strList.substr(ls);
 
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
     // Name must not collide with an existing constant macro
     if (m_sScriptEntries->mapMacros.count(strName)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
@@ -867,13 +867,13 @@ bool ScriptValidator::m_HandleArrayMacro(const ScriptRawLine &rawLine) noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleVariableMacro(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleVariableMacro(const ScriptRawLine &sRawLine) noexcept
 {
     std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR,
                                             SCRIPT_PLUGIN_COMMAND_SEPARATOR,
                                             SCRIPT_COMMAND_PARAMS_SEPARATOR};
     std::vector<std::string> vstrTokens;
-    ustring::tokenizeEx(rawLine.strContent, vstrDelimiters, vstrTokens);
+    ustring::tokenizeEx(sRawLine.strContent, vstrDelimiters, vstrTokens);
     size_t szSize = vstrTokens.size();
 
     if ((szSize != 3) && (szSize != 4)) {
@@ -921,19 +921,19 @@ bool ScriptValidator::m_HandleVariableMacro(const ScriptRawLine &rawLine) noexce
   time m_executeCommand can write the expanded value into m_RuntimeVarMacros.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleVarMacroInit(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleVarMacroInit(const ScriptRawLine &sRawLine) noexcept
 {
     // Split at first '?=' to get name and value template.
     static const std::string kSep = "?=";
-    auto sepPos                   = rawLine.strContent.find(kSep);
+    auto sepPos                   = sRawLine.strContent.find(kSep);
     if (sepPos == std::string::npos) {
         return false;
     }
 
-    auto lineNr         = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr         = ustring::fmtLineNr(sRawLine.iLineNumber);
 
     // Extract and trim the macro name.
-    std::string strName = rawLine.strContent.substr(0, sepPos);
+    std::string strName = sRawLine.strContent.substr(0, sepPos);
     size_t ns           = strName.find_first_not_of(" \t");
     size_t ne           = strName.find_last_not_of(" \t");
     if (ns == std::string::npos) {
@@ -946,8 +946,8 @@ bool ScriptValidator::m_HandleVarMacroInit(const ScriptRawLine &rawLine) noexcep
     // Extract and trim the value template (may be empty).
     std::string strValue;
     const size_t valStart = sepPos + kSep.size();
-    if (valStart < rawLine.strContent.size()) {
-        strValue  = rawLine.strContent.substr(valStart);
+    if (valStart < sRawLine.strContent.size()) {
+        strValue  = sRawLine.strContent.substr(valStart);
         size_t vs = strValue.find_first_not_of(" \t");
         strValue  = (vs == std::string::npos) ? "" : strValue.substr(vs);
     }
@@ -991,13 +991,13 @@ bool ScriptValidator::m_HandleVarMacroInit(const ScriptRawLine &rawLine) noexcep
     the input word count is only known after $macro expansion.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleFormatStmt(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleFormatStmt(const ScriptRawLine &sRawLine) noexcept
 {
-    auto lineNr                      = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr                      = ustring::fmtLineNr(sRawLine.iLineNumber);
 
     // ── 1.  Split at first '?=' ────────────────────────────────────────────
     static const std::string kAssign = "?=";
-    const auto assignPos             = rawLine.strContent.find(kAssign);
+    const auto assignPos             = sRawLine.strContent.find(kAssign);
     if (assignPos == std::string::npos) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("FORMAT: missing '?='"));
@@ -1005,7 +1005,7 @@ bool ScriptValidator::m_HandleFormatStmt(const ScriptRawLine &rawLine) noexcept
     }
 
     // Extract and trim destination name
-    std::string strName = rawLine.strContent.substr(0, assignPos);
+    std::string strName = sRawLine.strContent.substr(0, assignPos);
     {
         const size_t ns = strName.find_first_not_of(" \t");
         const size_t ne = strName.find_last_not_of(" \t");
@@ -1019,7 +1019,7 @@ bool ScriptValidator::m_HandleFormatStmt(const ScriptRawLine &rawLine) noexcept
 
     // ── 2.  Strip "FORMAT" keyword from the RHS ────────────────────────────
     const size_t rhsStart = assignPos + kAssign.size();
-    std::string strRhs    = rawLine.strContent.substr(rhsStart);
+    std::string strRhs    = sRawLine.strContent.substr(rhsStart);
     {
         // trim leading whitespace
         const size_t rs = strRhs.find_first_not_of(" \t");
@@ -1159,13 +1159,13 @@ bool ScriptValidator::m_HandleFormatStmt(const ScriptRawLine &rawLine) noexcept
   std::runtime_error, which is caught and logged as a command failure.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleMathStmt(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleMathStmt(const ScriptRawLine &sRawLine) noexcept
 {
-    auto lineNr                      = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr                      = ustring::fmtLineNr(sRawLine.iLineNumber);
 
     // ── 1. Split at first '?=' ─────────────────────────────────────────────
     static const std::string kAssign = "?=";
-    const auto assignPos             = rawLine.strContent.find(kAssign);
+    const auto assignPos             = sRawLine.strContent.find(kAssign);
     if (assignPos == std::string::npos) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("MATH: missing '?='"));
@@ -1173,7 +1173,7 @@ bool ScriptValidator::m_HandleMathStmt(const ScriptRawLine &rawLine) noexcept
     }
 
     // Extract and trim destination name
-    std::string strName = rawLine.strContent.substr(0, assignPos);
+    std::string strName = sRawLine.strContent.substr(0, assignPos);
     {
         const size_t ns = strName.find_first_not_of(" \t");
         const size_t ne = strName.find_last_not_of(" \t");
@@ -1186,7 +1186,7 @@ bool ScriptValidator::m_HandleMathStmt(const ScriptRawLine &rawLine) noexcept
     }
 
     // ── 2. Strip "MATH" keyword from the RHS ──────────────────────────────
-    std::string strRhs = rawLine.strContent.substr(assignPos + kAssign.size());
+    std::string strRhs = sRawLine.strContent.substr(assignPos + kAssign.size());
     {
         const size_t rs = strRhs.find_first_not_of(" \t");
         strRhs          = (rs == std::string::npos) ? "" : strRhs.substr(rs);
@@ -1340,24 +1340,24 @@ bool ScriptValidator::m_HandleMathStmt(const ScriptRawLine &rawLine) noexcept
     grammar only allows one "| ..." suffix at all).
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleBitstreamStmt(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleBitstreamStmt(const ScriptRawLine &sRawLine) noexcept
 {
-    return m_HandleStreamStmt(rawLine, "BITSTREAM", false);
+    return m_HandleStreamStmt(sRawLine, "BITSTREAM", false);
 } // m_HandleBitstreamStmt()
 
-bool ScriptValidator::m_HandleBytestreamStmt(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleBytestreamStmt(const ScriptRawLine &sRawLine) noexcept
 {
-    return m_HandleStreamStmt(rawLine, "BYTESTREAM", true);
+    return m_HandleStreamStmt(sRawLine, "BYTESTREAM", true);
 } // m_HandleBytestreamStmt()
 
-bool ScriptValidator::m_HandleStreamStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept
+bool ScriptValidator::m_HandleStreamStmt(const ScriptRawLine &sRawLine, const std::string &strKeyword, bool bByteMode) noexcept
 {
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
 
     StreamStatement sStmt;
     std::string strError;
 
-    if (!parseStreamStatement(strKeyword, rawLine.strContent, sStmt, strError)) {
+    if (!parseStreamStatement(strKeyword, sRawLine.strContent, sStmt, strError)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(strError));
         return false;
     }
@@ -1406,24 +1406,24 @@ bool ScriptValidator::m_HandleStreamStmt(const ScriptRawLine &rawLine, const std
     keyword, and exactly one well-formed field.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleBitstreamValStmt(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleBitstreamValStmt(const ScriptRawLine &sRawLine) noexcept
 {
-    return m_HandleStreamValStmt(rawLine, "BITSTREAMVAL", false);
+    return m_HandleStreamValStmt(sRawLine, "BITSTREAMVAL", false);
 } // m_HandleBitstreamValStmt()
 
-bool ScriptValidator::m_HandleBytestreamValStmt(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleBytestreamValStmt(const ScriptRawLine &sRawLine) noexcept
 {
-    return m_HandleStreamValStmt(rawLine, "BYTESTREAMVAL", true);
+    return m_HandleStreamValStmt(sRawLine, "BYTESTREAMVAL", true);
 } // m_HandleBytestreamValStmt()
 
-bool ScriptValidator::m_HandleStreamValStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept
+bool ScriptValidator::m_HandleStreamValStmt(const ScriptRawLine &sRawLine, const std::string &strKeyword, bool bByteMode) noexcept
 {
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
 
     StreamValStatement sStmt;
     std::string strError;
 
-    if (!parseStreamValStatement(strKeyword, bByteMode, rawLine.strContent, sStmt, strError)) {
+    if (!parseStreamValStatement(strKeyword, bByteMode, sRawLine.strContent, sStmt, strError)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(strError));
         return false;
     }
@@ -1487,24 +1487,24 @@ bool ScriptValidator::m_HandleStreamValStmt(const ScriptRawLine &rawLine, const 
   ScriptInterpreter's BITSTREAMVAL_ARRAY/BYTESTREAMVAL_ARRAY execution).
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleBitstreamValArrayStmt(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleBitstreamValArrayStmt(const ScriptRawLine &sRawLine) noexcept
 {
-    return m_HandleStreamValArrayStmt(rawLine, "BITSTREAMVAL", false);
+    return m_HandleStreamValArrayStmt(sRawLine, "BITSTREAMVAL", false);
 } // m_HandleBitstreamValArrayStmt()
 
-bool ScriptValidator::m_HandleBytestreamValArrayStmt(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleBytestreamValArrayStmt(const ScriptRawLine &sRawLine) noexcept
 {
-    return m_HandleStreamValArrayStmt(rawLine, "BYTESTREAMVAL", true);
+    return m_HandleStreamValArrayStmt(sRawLine, "BYTESTREAMVAL", true);
 } // m_HandleBytestreamValArrayStmt()
 
-bool ScriptValidator::m_HandleStreamValArrayStmt(const ScriptRawLine &rawLine, const std::string &strKeyword, bool bByteMode) noexcept
+bool ScriptValidator::m_HandleStreamValArrayStmt(const ScriptRawLine &sRawLine, const std::string &strKeyword, bool bByteMode) noexcept
 {
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
 
     StreamValArrayStatement sStmt;
     std::string strError;
 
-    if (!parseStreamValArrayStatement(strKeyword, bByteMode, rawLine.strContent, sStmt, strError)) {
+    if (!parseStreamValArrayStatement(strKeyword, bByteMode, sRawLine.strContent, sStmt, strError)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(strError));
         return false;
     }
@@ -1548,11 +1548,11 @@ bool ScriptValidator::m_HandleStreamValArrayStmt(const ScriptRawLine &rawLine, c
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleCommand(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleCommand(const ScriptRawLine &sRawLine) noexcept
 {
     std::vector<std::string> vstrDelimiters{SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
     std::vector<std::string> vstrTokens;
-    ustring::tokenizeEx(rawLine.strContent, vstrDelimiters, vstrTokens);
+    ustring::tokenizeEx(sRawLine.strContent, vstrDelimiters, vstrTokens);
 
     if (vstrTokens.size() < 2) {
         return false;
@@ -1570,11 +1570,11 @@ bool ScriptValidator::m_HandleCommand(const ScriptRawLine &rawLine) noexcept
         if (plugin.strPluginName == vstrTokens[0]) {
             const auto &mapBlocking = plugin.sGetParams.mapBlockingCommands;
             if (!bThreaded && mapBlocking.count(vstrTokens[1])) {
-                auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+                auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING("Command"); LOG_STRING(vstrTokens[0] + "." + vstrTokens[1]);
                           LOG_STRING("is a blocking command and must be launched with '&'"));
-                gui_notify_error_main(rawLine.iLineNumber);
+                gui_notify_error_main(sRawLine.iLineNumber);
                 return false;
             }
             break;
@@ -1591,7 +1591,7 @@ bool ScriptValidator::m_HandleCommand(const ScriptRawLine &rawLine) noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleCondition(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleCondition(const ScriptRawLine &sRawLine) noexcept
 {
     auto tokenize = [](const std::string &expression, std::string &outCondition, std::string &outLabel) -> bool {
         static const std::regex pattern(R"(^(?:IF\s+(.*?)\s+)?GOTO\s+([A-Za-z_][A-Za-z0-9_]*)$)");
@@ -1606,7 +1606,7 @@ bool ScriptValidator::m_HandleCondition(const ScriptRawLine &rawLine) noexcept
     };
 
     std::string condition, label;
-    if (tokenize(rawLine.strContent, condition, label)) {
+    if (tokenize(sRawLine.strContent, condition, label)) {
         m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, Condition{condition, label}});
         return true;
     }
@@ -1619,10 +1619,10 @@ bool ScriptValidator::m_HandleCondition(const ScriptRawLine &rawLine) noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleLabel(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleLabel(const ScriptRawLine &sRawLine) noexcept
 {
     std::vector<std::string> vstrTokens;
-    ustring::tokenize(rawLine.strContent, vstrTokens);
+    ustring::tokenize(sRawLine.strContent, vstrTokens);
 
     if (vstrTokens.size() != 2) {
         return false;
@@ -1659,7 +1659,7 @@ bool ScriptValidator::m_HandleLabel(const ScriptRawLine &rawLine) noexcept
   Structural/nesting validation is deferred to m_validateLoops().
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleRepeat(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleRepeat(const ScriptRawLine &sRawLine) noexcept
 {
     // Parse the optional capture prefix and the mandatory REPEAT body.
     // Group 1 (optional): varname before "?="
@@ -1669,7 +1669,7 @@ bool ScriptValidator::m_HandleRepeat(const ScriptRawLine &rawLine) noexcept
         R"(^(?:([A-Za-z_][A-Za-z0-9_]*)\s*\?=\s*)?REPEAT\s+([A-Za-z_][A-Za-z0-9_]*)\s+(\S+(?:\s+\S.*)?)$)");
     std::smatch match;
 
-    if (!std::regex_match(rawLine.strContent, match, pattern)) {
+    if (!std::regex_match(sRawLine.strContent, match, pattern)) {
         return false;
     }
 
@@ -1677,7 +1677,7 @@ bool ScriptValidator::m_HandleRepeat(const ScriptRawLine &rawLine) noexcept
     const std::string strLabel        = match[2].str();
     const std::string strRemainder    = match[3].str(); // either "<params>" or "UNTIL <cond>"
 
-    auto lineNr                       = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr                       = ustring::fmtLineNr(sRawLine.iLineNumber);
 
     // --- Conditional form: [varname ?=] REPEAT label UNTIL <condition> ---
     static const std::regex untilPattern(R"(^UNTIL\s+(\S.*)$)");
@@ -1790,10 +1790,10 @@ bool ScriptValidator::m_HandleRepeat(const ScriptRawLine &rawLine) noexcept
   END_REPEAT <label>
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleEndRepeat(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleEndRepeat(const ScriptRawLine &sRawLine) noexcept
 {
     std::vector<std::string> vstrTokens;
-    ustring::tokenize(rawLine.strContent, vstrTokens);
+    ustring::tokenize(sRawLine.strContent, vstrTokens);
 
     if (vstrTokens.size() != 2) {
         return false;
@@ -1810,10 +1810,10 @@ bool ScriptValidator::m_HandleEndRepeat(const ScriptRawLine &rawLine) noexcept
   Both share the same parse shape — one keyword, one identifier.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleBreak(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleBreak(const ScriptRawLine &sRawLine) noexcept
 {
     std::vector<std::string> vstrTokens;
-    ustring::tokenize(rawLine.strContent, vstrTokens);
+    ustring::tokenize(sRawLine.strContent, vstrTokens);
 
     if (vstrTokens.size() != 2) {
         return false;
@@ -1824,10 +1824,10 @@ bool ScriptValidator::m_HandleBreak(const ScriptRawLine &rawLine) noexcept
 
 } // m_HandleBreak()
 
-bool ScriptValidator::m_HandleContinue(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleContinue(const ScriptRawLine &sRawLine) noexcept
 {
     std::vector<std::string> vstrTokens;
-    ustring::tokenize(rawLine.strContent, vstrTokens);
+    ustring::tokenize(sRawLine.strContent, vstrTokens);
 
     if (vstrTokens.size() != 2) {
         return false;
@@ -1849,15 +1849,15 @@ bool ScriptValidator::m_HandleContinue(const ScriptRawLine &rawLine) noexcept
   A bare "PRINT" with no text is valid and will output a blank line at runtime.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandlePrint(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandlePrint(const ScriptRawLine &sRawLine) noexcept
 {
     // Strip the "PRINT" keyword and the single separating space (if present).
     // Everything that remains is the raw text template.
     std::string strText;
     const std::string kKeyword = "PRINT";
-    if (rawLine.strContent.size() > kKeyword.size()) {
+    if (sRawLine.strContent.size() > kKeyword.size()) {
         // skip keyword + one space
-        strText = rawLine.strContent.substr(kKeyword.size() + 1);
+        strText = sRawLine.strContent.substr(kKeyword.size() + 1);
     }
     // else: bare "PRINT" — strText stays empty → blank line at runtime
 
@@ -1883,13 +1883,13 @@ bool ScriptValidator::m_HandlePrint(const ScriptRawLine &rawLine) noexcept
   the appropriate utime::delay_* function directly.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleDelay(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleDelay(const ScriptRawLine &sRawLine) noexcept
 {
     // Tokenise: expect exactly ["DELAY", "<value>", "<unit>"]
     std::vector<std::string> vstrTokens;
-    ustring::tokenize(rawLine.strContent, vstrTokens);
+    ustring::tokenize(sRawLine.strContent, vstrTokens);
 
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
 
     if (vstrTokens.size() != 3) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
@@ -1955,20 +1955,20 @@ bool ScriptValidator::m_HandleDelay(const ScriptRawLine &rawLine) noexcept
   No validation of the label content is performed — it is purely cosmetic.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleBreakpoint(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleBreakpoint(const ScriptRawLine &sRawLine) noexcept
 {
     // Strip the "BREAKPOINT" keyword; everything after the separating space
     // (if present) is the raw label template.
     std::string strLabel;
     const std::string kKeyword = "BREAKPOINT";
-    if (rawLine.strContent.size() > kKeyword.size()) {
-        strLabel = rawLine.strContent.substr(kKeyword.size() + 1); // skip keyword + one space
+    if (sRawLine.strContent.size() > kKeyword.size()) {
+        strLabel = sRawLine.strContent.substr(kKeyword.size() + 1); // skip keyword + one space
     }
 
     m_sScriptEntries->vCommands.emplace_back(
         ScriptLine{m_iCurrentSourceLine, BreakpointStatement{strLabel}});
 
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("BREAKPOINT label=[");
               LOG_STRING(strLabel.empty() ? "<none>" : strLabel);
@@ -1998,20 +1998,20 @@ bool ScriptValidator::m_HandleBreakpoint(const ScriptRawLine &rawLine) noexcept
   REPEAT/BITSTREAM/MATH each keeping their own small field-building helper.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexcept
 {
-    auto lineNr                      = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr                      = ustring::fmtLineNr(sRawLine.iLineNumber);
 
     // ── 1. Split at first '?=' ─────────────────────────────────────────────
     static const std::string kAssign = "?=";
-    const auto assignPos             = rawLine.strContent.find(kAssign);
+    const auto assignPos             = sRawLine.strContent.find(kAssign);
     if (assignPos == std::string::npos) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("GENERATOR: missing '?='"));
         return false;
     }
 
-    std::string strName = rawLine.strContent.substr(0, assignPos);
+    std::string strName = sRawLine.strContent.substr(0, assignPos);
     {
         const size_t ns = strName.find_first_not_of(" \t");
         const size_t ne = strName.find_last_not_of(" \t");
@@ -2024,7 +2024,7 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &rawLine) noexce
     }
 
     // ── 2. Strip "GENERATOR" keyword from the RHS ──────────────────────────
-    std::string strRhs = rawLine.strContent.substr(assignPos + kAssign.size());
+    std::string strRhs = sRawLine.strContent.substr(assignPos + kAssign.size());
     {
         const size_t rs = strRhs.find_first_not_of(" \t");
         strRhs          = (rs == std::string::npos) ? "" : strRhs.substr(rs);
@@ -2361,12 +2361,12 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &rawLine) noexce
   m_isGeneratorStopAll() has already confirmed the exact literal shape.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleGeneratorStopAll(const ScriptRawLine &rawLine) noexcept
+bool ScriptValidator::m_HandleGeneratorStopAll(const ScriptRawLine &sRawLine) noexcept
 {
     m_sScriptEntries->vCommands.emplace_back(
         ScriptLine{m_iCurrentSourceLine, GeneratorStopAllStatement{}});
 
-    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("GENERATOR STOP ALL"));
 

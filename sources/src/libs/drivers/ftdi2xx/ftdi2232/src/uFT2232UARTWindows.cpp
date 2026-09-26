@@ -103,29 +103,29 @@ FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant, uint8_t 
 // apply_config
 // ============================================================================
 
-FT2232UART::Status FT2232UART::apply_config(const UartConfig &config) const
+FT2232UART::Status FT2232UART::apply_config(const UartConfig &sConfig) const
 {
     // Baud rate
-    if (FT_SetBaudRate(FT_HDL, static_cast<DWORD>(config.baudRate)) != FT_OK) {
+    if (FT_SetBaudRate(FT_HDL, static_cast<DWORD>(sConfig.baudRate)) != FT_OK) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("FT_SetBaudRate() failed, baud=");
-                  LOG_UINT32(config.baudRate));
+                  LOG_UINT32(sConfig.baudRate));
         return Status::PORT_ACCESS;
     }
 
     // Data characteristics
     // UartConfig stopBits/parity encodings match D2XX FT_STOP_BITS_* / FT_PARITY_* values
     if (FT_SetDataCharacteristics(FT_HDL,
-                                  static_cast<UCHAR>(config.dataBits),
-                                  static_cast<UCHAR>(config.stopBits),
-                                  static_cast<UCHAR>(config.parity)) != FT_OK) {
+                                  static_cast<UCHAR>(sConfig.dataBits),
+                                  static_cast<UCHAR>(sConfig.stopBits),
+                                  static_cast<UCHAR>(sConfig.parity)) != FT_OK) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("FT_SetDataCharacteristics() failed"));
         return Status::PORT_ACCESS;
     }
 
     // Flow control
-    const USHORT flow = config.hwFlowCtrl ? FT_FLOW_RTS_CTS : FT_FLOW_NONE;
+    const USHORT flow = sConfig.hwFlowCtrl ? FT_FLOW_RTS_CTS : FT_FLOW_NONE;
     if (FT_SetFlowControl(FT_HDL, flow, 0x11u, 0x13u) != FT_OK) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("FT_SetFlowControl() failed"));
@@ -138,11 +138,11 @@ FT2232UART::Status FT2232UART::apply_config(const UartConfig &config) const
                    FT2232UART::FT2232_UART_WRITE_DEFAULT_TIMEOUT);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("UART cfg: baud="); LOG_UINT32(config.baudRate);
-              LOG_STRING(" data="); LOG_UINT32(config.dataBits);
-              LOG_STRING(" stop="); LOG_UINT32(config.stopBits);
-              LOG_STRING(" par="); LOG_UINT32(config.parity);
-              LOG_STRING(" flow="); LOG_UINT32(config.hwFlowCtrl ? 1u : 0u));
+              LOG_STRING("UART cfg: baud="); LOG_UINT32(sConfig.baudRate);
+              LOG_STRING(" data="); LOG_UINT32(sConfig.dataBits);
+              LOG_STRING(" stop="); LOG_UINT32(sConfig.stopBits);
+              LOG_STRING(" par="); LOG_UINT32(sConfig.parity);
+              LOG_STRING(" flow="); LOG_UINT32(sConfig.hwFlowCtrl ? 1u : 0u));
 
     return Status::SUCCESS;
 }
@@ -226,7 +226,7 @@ FT2232UART::WriteResult FT2232UART::tout_write(uint32_t u32WriteTimeout,
 
 FT2232UART::ReadResult FT2232UART::tout_read(uint32_t u32ReadTimeout,
                                              std::span<uint8_t> buffer,
-                                             const ReadOptions &options,
+                                             const ReadOptions &sOptions,
                                              std::string_view /*xtra_params*/,
                                              std::stop_token stop_tok) const
 {
@@ -284,7 +284,7 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t u32ReadTimeout,
         }
     };
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
 
     // ── Exact: fill the entire buffer ─────────────────────────────────────
     case ReadMode::Exact:
@@ -334,7 +334,7 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t u32ReadTimeout,
                 return result;
             }
             buffer[result.bytes_read++] = byte;
-            if (byte == options.delimiter) {
+            if (byte == sOptions.delimiter) {
                 result.status = Status::SUCCESS;
                 return result;
             }
@@ -346,7 +346,7 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t u32ReadTimeout,
 
     // ── UntilToken: KMP search for byte sequence ───────────────────────────
     case ReadMode::UntilToken: {
-        const auto &token = options.token;
+        const auto &token = sOptions.token;
         if (token.empty()) {
             result.status = Status::INVALID_PARAM;
             return result;

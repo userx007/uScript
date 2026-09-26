@@ -64,9 +64,9 @@ bool CH347Plugin::m_handle_spi_help(const std::string &, std::stop_token /*st*/)
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_open(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_spi_open(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [clock=N] [mode=0-3] [order=msb|lsb]"));
         LOG_PRINT(LOG_EMPTY,
@@ -77,7 +77,7 @@ bool CH347Plugin::m_handle_spi_open(const std::string &args, std::stop_token /*s
     }
 
     std::string devPath = m_sIniValues.strDevicePath;
-    if (!parseSpiParams(args, m_sSpiCfg, &devPath)) {
+    if (!parseSpiParams(strArgs, m_sSpiCfg, &devPath)) {
         return false;
     }
     const_cast<CH347Plugin *>(this)->m_sIniValues.strDevicePath = devPath;
@@ -122,9 +122,9 @@ bool CH347Plugin::m_handle_spi_close(const std::string &, std::stop_token /*st*/
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_cfg(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_spi_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI pending config:"));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  clock=");
@@ -136,7 +136,7 @@ bool CH347Plugin::m_handle_spi_cfg(const std::string &args, std::stop_token /*st
         return true;
     }
 
-    if (!parseSpiParams(args, m_sSpiCfg)) {
+    if (!parseSpiParams(strArgs, m_sSpiCfg)) {
         return false;
     }
 
@@ -154,9 +154,9 @@ bool CH347Plugin::m_handle_spi_cfg(const std::string &args, std::stop_token /*st
 //                       CS                                      //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_cs(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_spi_cs(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cs [en|dis]"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  CS is asserted/deasserted automatically per transfer."));
         return true;
@@ -166,10 +166,10 @@ bool CH347Plugin::m_handle_spi_cs(const std::string &args, std::stop_token /*st*
         return false;
     }
 
-    if (args == "en" || args == "1") {
+    if (strArgs == "en" || strArgs == "1") {
         p->change_cs(1);
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CS asserted"));
-    } else if (args == "dis" || args == "0") {
+    } else if (strArgs == "dis" || strArgs == "0") {
         p->change_cs(0);
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CS deasserted"));
     } else {
@@ -182,9 +182,9 @@ bool CH347Plugin::m_handle_spi_cs(const std::string &args, std::stop_token /*st*
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_write(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_spi_write(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex bytes, MOSI only)"));
         return true;
     }
@@ -194,7 +194,7 @@ bool CH347Plugin::m_handle_spi_write(const std::string &args, std::stop_token /*
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data) || data.empty()) {
+    if (!hexutils::stringUnhexlify(strArgs, data) || data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected at least 1 hex byte"));
         return false;
     }
@@ -214,9 +214,9 @@ bool CH347Plugin::m_handle_spi_write(const std::string &args, std::stop_token /*
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_read(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_spi_read(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (full-duplex, clocks 0x00 N times, prints MISO)"));
         return true;
@@ -227,7 +227,7 @@ bool CH347Plugin::m_handle_spi_read(const std::string &args, std::stop_token /*s
     }
 
     size_t n = 0;
-    if (!numeric::str2sizet(args, n) || n == 0) {
+    if (!numeric::str2sizet(strArgs, n) || n == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid byte count"));
         return false;
     }
@@ -299,16 +299,16 @@ bool CH347Plugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) cons
     return true;
 }
 
-bool CH347Plugin::m_handle_spi_wrrd(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_spi_wrrd(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return generic_write_read_data<CH347Plugin>(
-        this, args, &CH347Plugin::m_spi_wrrd_cb);
+        this, strArgs, &CH347Plugin::m_spi_wrrd_cb);
 }
 
-bool CH347Plugin::m_handle_spi_wrrdf(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_spi_wrrdf(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return generic_write_read_file<CH347Plugin>(
-        this, args, &CH347Plugin::m_spi_wrrd_cb,
+        this, strArgs, &CH347Plugin::m_spi_wrrd_cb,
         m_sIniValues.strArtefactsPath);
 }
 
@@ -316,9 +316,9 @@ bool CH347Plugin::m_handle_spi_wrrdf(const std::string &args, std::stop_token /*
 //                       XFER (full-duplex)                      //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_xfer(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_spi_xfer(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: xfer AABB..  (full-duplex WriteRead, MISO printed)"));
         return true;
@@ -329,7 +329,7 @@ bool CH347Plugin::m_handle_spi_xfer(const std::string &args, std::stop_token /*s
     }
 
     std::vector<uint8_t> buf;
-    if (!hexutils::stringUnhexlify(args, buf) || buf.empty()) {
+    if (!hexutils::stringUnhexlify(strArgs, buf) || buf.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected at least 1 hex byte"));
         return false;
     }
@@ -350,9 +350,9 @@ bool CH347Plugin::m_handle_spi_xfer(const std::string &args, std::stop_token /*s
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_script(const std::string &args, std::stop_token st) const
+bool CH347Plugin::m_handle_spi_script(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  SPI must be open first"));
@@ -368,7 +368,7 @@ bool CH347Plugin::m_handle_spi_script(const std::string &args, std::stop_token s
     return generic_execute_script(
         pSpi,
         CH347_PLUGIN_NAME,
-        args,
+        strArgs,
         ini->strArtefactsPath,
         CH347_BULK_MAX_BYTES,
         ini->u32ReadTimeout,

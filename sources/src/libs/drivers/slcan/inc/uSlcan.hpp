@@ -183,7 +183,7 @@ class SLCAN : public ICommDriver {
          *                         UART instance as well, so its own describeConnection()
          *                         (composed into ours) reflects it too.
          */
-        explicit SLCAN(const std::string &device, uint32_t speed,
+        explicit SLCAN(const std::string &strDevice, uint32_t u32Speed,
                        const std::string &strIdentityLabel = {});
 
         virtual ~SLCAN();
@@ -198,7 +198,7 @@ class SLCAN : public ICommDriver {
          * @param speed   UART baud rate
          * @return SUCCESS or error code
          */
-        Status open(const std::string &device, uint32_t speed);
+        Status open(const std::string &strDevice, uint32_t u32Speed);
 
         /**
          * @brief Close the serial port.
@@ -232,7 +232,7 @@ class SLCAN : public ICommDriver {
          * @param rate  Preset bit rate
          * @param timeout_ms  Command timeout in ms
          */
-        Status set_bitrate(CanBitrate rate, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status set_bitrate(CanBitrate eRate, uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Set nominal CAN bit rate using explicit timing registers
@@ -247,14 +247,14 @@ class SLCAN : public ICommDriver {
          * @param seg2       Bit time segment 2 (time quanta after the sample point)
          * @param sjw        Synchronization Jump Width; recommended sjw = min(seg1, seg2)
          */
-        Status set_bitrate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
-                                  uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status set_bitrate_custom(uint16_t u16Prescaler, uint16_t u16Seg1, uint16_t u16Seg2, uint8_t u8Sjw,
+                                  uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Set CAN-FD data segment bit rate using preset (Y command).
          * @param rate  Preset data bit rate
          */
-        Status set_fd_data_rate(CanFdDataRate rate, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status set_fd_data_rate(CanFdDataRate eRate, uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Set CAN-FD data segment bit rate using explicit timing
@@ -266,18 +266,18 @@ class SLCAN : public ICommDriver {
          * @param seg2       Data-phase bit time segment 2
          * @param sjw        Data-phase Synchronization Jump Width
          */
-        Status set_fd_data_rate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
-                                       uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status set_fd_data_rate_custom(uint16_t u16Prescaler, uint16_t u16Seg1, uint16_t u16Seg2, uint8_t u8Sjw,
+                                       uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Set bus mode (M command).  Channel must be closed.
          */
-        Status set_mode(CanMode mode, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status set_mode(CanMode eMode, uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Enable/disable auto-retransmission (A command).  Channel must be closed.
          */
-        Status set_auto_retx(CanAutoRetx retx, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status set_auto_retx(CanAutoRetx eRetx, uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Set SLCAN enhance mode (H command).  Channel must be closed.
@@ -291,7 +291,7 @@ class SLCAN : public ICommDriver {
          *          nack). Do not call unless the target adapter is confirmed to
          *          support it.
          */
-        Status set_enhance_mode(SlcanEnhance mode, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status set_enhance_mode(SlcanEnhance eMode, uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Set standard ID filter (F command, comma-separated hex —
@@ -300,8 +300,8 @@ class SLCAN : public ICommDriver {
          * @param id    11-bit filter ID  (0–0x7FF)
          * @param mask  11-bit filter mask (0 = accept all)
          */
-        Status set_std_filter(uint16_t id, uint16_t mask,
-                              uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status set_std_filter(uint16_t u16Id, uint16_t u16Mask,
+                              uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Set extended ID filter (F command, same wire format as
@@ -310,8 +310,8 @@ class SLCAN : public ICommDriver {
          * @param id    29-bit filter ID  (0–0x1FFFFFFF)
          * @param mask  29-bit filter mask (0 = accept all)
          */
-        Status set_ext_filter(uint32_t id, uint32_t mask,
-                              uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status set_ext_filter(uint32_t u32Id, uint32_t u32Mask,
+                              uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Clear every configured filter (both standard and extended),
@@ -323,7 +323,7 @@ class SLCAN : public ICommDriver {
          *        explicitly whenever no filter is configured removes any
          *        dependence on that side effect.
          */
-        Status clear_filters(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status clear_filters(uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         // ------------------------------------------------------------------
         // Channel open / close
@@ -332,7 +332,7 @@ class SLCAN : public ICommDriver {
         /**
          * @brief Open the CAN channel (O command).
          */
-        Status open_channel(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status open_channel(uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Close the CAN channel (C command).
@@ -343,7 +343,7 @@ class SLCAN : public ICommDriver {
          *       reasoning. Also resets the adapter's bit rate, mode and filter
          *       configuration back to defaults as a side effect.
          */
-        Status close_channel(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status close_channel(uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         // ------------------------------------------------------------------
         // Diagnostic queries
@@ -353,7 +353,7 @@ class SLCAN : public ICommDriver {
          * @brief Read adapter firmware version (V command).
          * @param[out] version  Version string returned by the adapter
          */
-        Status get_version(std::string &version, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status get_version(std::string &strVersion, uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         /**
          * @brief Read failure state (E command).
@@ -370,7 +370,7 @@ class SLCAN : public ICommDriver {
          *          will never come). Not currently called anywhere in
          *          slcan_plugin/ for exactly this reason.
          */
-        Status get_error_state(std::string &error_str, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+        Status get_error_state(std::string &strError_str, uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
         // ------------------------------------------------------------------
         // Frame TX / RX  (typed, preferred API)
@@ -388,7 +388,7 @@ class SLCAN : public ICommDriver {
          * @param stop_tok    Allows cancelling the wait for the ACK/NAK early
          * @return SUCCESS, WRITE_ERROR, or WRITE_TIMEOUT
          */
-        Status send_frame(const CanFrame &frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
+        Status send_frame(const CanFrame &sFrame, uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT,
                           std::stop_token stop_tok = {});
 
         /**
@@ -401,7 +401,7 @@ class SLCAN : public ICommDriver {
          * @param      stop_tok   Allows cancelling the wait early
          * @return SUCCESS, READ_TIMEOUT, or READ_ERROR
          */
-        Status receive_frame(CanFrame &frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
+        Status receive_frame(CanFrame &sFrame, uint32_t u32Timeout_ms = SLCAN_DEFAULT_TIMEOUT,
                              std::stop_token stop_tok = {});
 
         // ------------------------------------------------------------------
@@ -416,7 +416,7 @@ class SLCAN : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -439,7 +439,7 @@ class SLCAN : public ICommDriver {
          * @param[out] out  Output buffer; must be at least SLCAN_MAX_FRAME_LEN bytes
          * @return Number of bytes written (including trailing CR), or 0 on error
          */
-        static size_t encode_frame(const CanFrame &frame, std::span<uint8_t> out);
+        static size_t encode_frame(const CanFrame &sFrame, std::span<uint8_t> out);
 
         /**
          * @brief Decode an SLCAN ASCII receive line into a CanFrame.
@@ -448,7 +448,7 @@ class SLCAN : public ICommDriver {
          * @param[out] frame  Decoded frame
          * @return true on success
          */
-        static bool decode_rx_frame(const uint8_t *line, size_t len, CanFrame &frame);
+        static bool decode_rx_frame(const uint8_t *pu8Line, size_t len, CanFrame &sFrame);
 
     private:
         // ------------------------------------------------------------------
@@ -460,20 +460,20 @@ class SLCAN : public ICommDriver {
          * @param cmd         Command string (without CR; CR is appended internally)
          * @param timeout_ms  Timeout in ms
          */
-        Status send_command(std::string_view cmd, uint32_t timeout_ms);
+        Status send_command(std::string_view cmd, uint32_t u32Payload);
 
         /**
          * @brief Send a command and read back the text response terminated by CR.
          * @param cmd         Command string (without CR)
          * @param[out] resp   Response text (excluding CR)
          */
-        Status send_command_get_response(std::string_view cmd, std::string &resp,
-                                         uint32_t timeout_ms);
+        Status send_command_get_response(std::string_view cmd, std::string &strResp,
+                                         uint32_t u32Timeout_ms);
 
         /**
          * @brief Write raw bytes to the UART.
          */
-        Status uart_write(const uint8_t *data, size_t len, uint32_t timeout_ms,
+        Status uart_write(const uint8_t *pu8Data, size_t len, uint32_t u32Timeout_ms,
                           std::stop_token stop_tok = {}) const;
 
         /**
@@ -481,8 +481,8 @@ class SLCAN : public ICommDriver {
          * @param[out] buf     Destination buffer (including CR)
          * @param[out] out_len Number of bytes written into buf
          */
-        Status uart_read_line(uint8_t *buf, size_t buf_size,
-                              size_t &out_len, uint32_t timeout_ms,
+        Status uart_read_line(uint8_t *pu8Buf, size_t buf_size,
+                              size_t &out_len, uint32_t u32Timeout_ms,
                               std::stop_token stop_tok = {}) const;
 
         // ------------------------------------------------------------------

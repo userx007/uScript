@@ -84,9 +84,9 @@ class FT4232Base {
                                         ///< sibling's constructor (I2C/SPI), see describeConnection()
 
         /** @copydoc FT2232Base::describeBase — FT4232 has no stored per-instance variant. */
-        CommDetails describeBase(CommFamily family) const
+        CommDetails describeBase(CommFamily eFamily) const
         {
-            return commdump_details(family, m_strIdentityLabel.empty() ? "FT4232H" : m_strIdentityLabel);
+            return commdump_details(eFamily, m_strIdentityLabel.empty() ? "FT4232H" : m_strIdentityLabel);
         }
 
         // ── MPSSE command bytes ──────────────────────────────────────────────
@@ -163,7 +163,7 @@ class FT4232Base {
          * @param channel       MPSSE channel to open (A or B)
          * @param u8DeviceIndex Zero-based index among connected FT4232H chips
          */
-        Status open_device(Channel channel, uint8_t u8DeviceIndex);
+        Status open_device(Channel eChannel, uint8_t u8DeviceIndex);
 
         // ── MPSSE transport primitives ───────────────────────────────────────
         //   Implemented in uFT4232Linux.cpp / uFT4232Windows.cpp
@@ -177,7 +177,7 @@ class FT4232Base {
          * @param buf  Pointer to command buffer
          * @param len  Number of bytes to write
          */
-        Status mpsse_write(const uint8_t *buf, size_t len) const;
+        Status mpsse_write(const uint8_t *pu8Buf, size_t len) const;
 
         /**
          * @brief Read response bytes produced by GET_BITS / read commands
@@ -190,8 +190,8 @@ class FT4232Base {
          * @param timeoutMs  Give up after this many milliseconds
          * @param bytesRead  Actual bytes received
          */
-        Status mpsse_read(uint8_t *buf, size_t len,
-                          uint32_t timeoutMs, size_t &bytesRead,
+        Status mpsse_read(uint8_t *pu8Buf, size_t len,
+                          uint32_t u32TimeoutMs, size_t &bytesRead,
                           std::stop_token stop_tok = {}) const;
 
         /**

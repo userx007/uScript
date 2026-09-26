@@ -157,7 +157,7 @@ KVCAN::Status KVCAN::close()
 // FILTER CONFIGURATION
 // ============================================================================
 
-KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter> &filters)
+KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter> &vFilters)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -166,7 +166,7 @@ KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter> &filters)
         return Status::PORT_ACCESS;
     }
 
-    if (filters.empty()) {
+    if (vFilters.empty()) {
         // Accept everything.
         //
         // A 0-length CAN_RAW_FILTER list does NOT mean "no filtering" in
@@ -199,8 +199,8 @@ KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter> &filters)
 
     // Convert to kernel struct can_filter array.
     std::vector<struct can_filter> kFilters;
-    kFilters.reserve(filters.size());
-    for (const auto &f : filters) {
+    kFilters.reserve(vFilters.size());
+    for (const auto &f : vFilters) {
         struct can_filter kf = {};
         kf.can_id            = f.can_id;
         kf.can_mask          = f.can_mask;
@@ -216,11 +216,11 @@ KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter> &filters)
         return Status::PORT_ACCESS;
     }
 
-    m_vFilters = filters; // mirror applied kernel state so tout_read()'s
+    m_vFilters = vFilters; // mirror applied kernel state so tout_read()'s
                           // transient-filter snapshot/restore stays accurate
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("KVCAN filters set, count:"); LOG_UINT32(static_cast<uint32_t>(filters.size())));
+              LOG_STRING("KVCAN vFilters set, count:"); LOG_UINT32(static_cast<uint32_t>(vFilters.size())));
 
     return Status::SUCCESS;
 }

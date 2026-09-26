@@ -55,9 +55,9 @@ bool HydrabusPlugin::m_handle_swd_help(const std::string &, std::stop_token /*st
 //                       INIT                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_swd_init(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_swd_init(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Send JTAG-to-SWD sequence and sync clocks"));
         return true;
@@ -81,9 +81,9 @@ bool HydrabusPlugin::m_handle_swd_init(const std::string &args, std::stop_token 
 //                       MULTIDROP                               //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_swd_multidrop(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_swd_multidrop(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: multidrop [addr]  (hex 32-bit DP address, default 0)"));
         return true;
@@ -94,11 +94,11 @@ bool HydrabusPlugin::m_handle_swd_multidrop(const std::string &args, std::stop_t
     }
 
     uint32_t addr = 0;
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         std::vector<uint8_t> buf;
-        if (!hexutils::stringUnhexlify(args, buf) || buf.size() != 4) {
+        if (!hexutils::stringUnhexlify(strArgs, buf) || buf.size() != 4) {
             // Try decimal
-            if (!numeric::str2uint32(args, addr)) {
+            if (!numeric::str2uint32(strArgs, addr)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid addr"));
                 return false;
             }
@@ -121,39 +121,39 @@ bool HydrabusPlugin::m_handle_swd_multidrop(const std::string &args, std::stop_t
 //              HELPER: parse hex/decimal u32                    //
 ///////////////////////////////////////////////////////////////////
 
-static bool parseU32(const std::string &s, uint32_t &out)
+static bool parseU32(const std::string &strS, uint32_t &u32Out)
 {
-    if (s.size() > 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+    if (strS.size() > 2 && strS[0] == '0' && (strS[1] == 'x' || strS[1] == 'X')) {
         // hex with prefix
         std::vector<uint8_t> buf;
-        if (!hexutils::stringUnhexlify(s.substr(2), buf)) {
+        if (!hexutils::stringUnhexlify(strS.substr(2), buf)) {
             return false;
         }
-        out = 0;
+        u32Out = 0;
         for (uint8_t b : buf) {
-            out = (out << 8) | b;
+            u32Out = (u32Out << 8) | b;
         }
         return true;
     }
     // Try as plain hex bytes first, then decimal
     std::vector<uint8_t> buf;
-    if (hexutils::stringUnhexlify(s, buf)) {
-        out = 0;
+    if (hexutils::stringUnhexlify(strS, buf)) {
+        u32Out = 0;
         for (uint8_t b : buf) {
-            out = (out << 8) | b;
+            u32Out = (u32Out << 8) | b;
         }
         return true;
     }
-    return numeric::str2uint32(s, out);
+    return numeric::str2uint32(strS, u32Out);
 }
 
-static bool parseU8(const std::string &s, uint8_t &out)
+static bool parseU8(const std::string &strS, uint8_t &u8Out)
 {
     uint32_t v = 0;
-    if (!parseU32(s, v)) {
+    if (!parseU32(strS, v)) {
         return false;
     }
-    out = static_cast<uint8_t>(v);
+    u8Out = static_cast<uint8_t>(v);
     return true;
 }
 
@@ -161,9 +161,9 @@ static bool parseU8(const std::string &s, uint8_t &out)
 //                       READ_DP                                 //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_swd_read_dp(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_swd_read_dp(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read_dp addr  (e.g. read_dp 00)"));
         return true;
     }
@@ -173,7 +173,7 @@ bool HydrabusPlugin::m_handle_swd_read_dp(const std::string &args, std::stop_tok
     }
 
     uint8_t addr = 0;
-    if (!parseU8(args, addr)) {
+    if (!parseU8(strArgs, addr)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid DP address"));
         return false;
     }
@@ -195,9 +195,9 @@ bool HydrabusPlugin::m_handle_swd_read_dp(const std::string &args, std::stop_tok
 //                       WRITE_DP                                //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_swd_write_dp(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_swd_write_dp(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write_dp addr value  (e.g. write_dp 04 50000000)"));
         return true;
@@ -208,7 +208,7 @@ bool HydrabusPlugin::m_handle_swd_write_dp(const std::string &args, std::stop_to
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() != 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: write_dp addr value"));
         return false;
@@ -234,9 +234,9 @@ bool HydrabusPlugin::m_handle_swd_write_dp(const std::string &args, std::stop_to
 //                       READ_AP                                 //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_swd_read_ap(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_swd_read_ap(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read_ap ap_addr bank  (e.g. read_ap 00 FC)"));
         return true;
@@ -247,7 +247,7 @@ bool HydrabusPlugin::m_handle_swd_read_ap(const std::string &args, std::stop_tok
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() != 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: read_ap ap_addr bank"));
         return false;
@@ -275,9 +275,9 @@ bool HydrabusPlugin::m_handle_swd_read_ap(const std::string &args, std::stop_tok
 //                       WRITE_AP                                //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_swd_write_ap(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_swd_write_ap(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write_ap ap_addr bank value"));
         return true;
@@ -288,7 +288,7 @@ bool HydrabusPlugin::m_handle_swd_write_ap(const std::string &args, std::stop_to
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() != 3) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: write_ap ap_addr bank value"));
         return false;
@@ -313,9 +313,9 @@ bool HydrabusPlugin::m_handle_swd_write_ap(const std::string &args, std::stop_to
 //                       SCAN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_swd_scan(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_swd_scan(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Scan all 256 AP slots for valid IDR"));
         return true;
     }
@@ -338,9 +338,9 @@ bool HydrabusPlugin::m_handle_swd_scan(const std::string &args, std::stop_token 
 //                       ABORT                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_swd_abort(const std::string &args, std::stop_token st) const
+bool HydrabusPlugin::m_handle_swd_abort(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: abort [flags]  (hex byte, default 1F)"));
         return true;
@@ -351,8 +351,8 @@ bool HydrabusPlugin::m_handle_swd_abort(const std::string &args, std::stop_token
     }
 
     uint8_t flags = 0x1F;
-    if (!args.empty()) {
-        if (!parseU8(args, flags)) {
+    if (!strArgs.empty()) {
+        if (!parseU8(strArgs, flags)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid flags"));
             return false;
         }

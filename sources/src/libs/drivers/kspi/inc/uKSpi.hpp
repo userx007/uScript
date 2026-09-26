@@ -77,11 +77,11 @@ class KSPI : public ICommDriver {
          *                         describeConnection()), supplied separately from
          *                         strDevice — e.g. "/dev/spidev0.0".
          */
-        explicit KSPI(const std::string &strDevice, const SpiConfig &config = SpiConfig{},
+        explicit KSPI(const std::string &strDevice, const SpiConfig &sConfig = SpiConfig{},
                       const std::string &strIdentityLabel = {})
             : m_strIdentityLabel(strIdentityLabel)
         {
-            open(strDevice, config);
+            open(strDevice, sConfig);
         }
 
         virtual ~KSPI()
@@ -95,7 +95,7 @@ class KSPI : public ICommDriver {
          * @param config     Bus configuration.
          * @return Status::SUCCESS or an error code.
          */
-        Status open(const std::string &strDevice, const SpiConfig &config = SpiConfig{});
+        Status open(const std::string &strDevice, const SpiConfig &sConfig = SpiConfig{});
 
         /**
          * @brief Close the KSPI device file descriptor.
@@ -140,7 +140,7 @@ class KSPI : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -177,8 +177,8 @@ class KSPI : public ICommDriver {
          * @param length Number of bytes to transfer.
          * @return Status::SUCCESS, Status::READ_ERROR, or Status::WRITE_ERROR.
          */
-        Status spi_transfer(const uint8_t *txBuf,
-                            uint8_t *rxBuf,
+        Status spi_transfer(const uint8_t *pu8TxBuf,
+                            uint8_t *pu8RxBuf,
                             size_t length) const;
 
         /**
@@ -196,7 +196,7 @@ class KSPI : public ICommDriver {
          */
         Status timeout_read_until(uint32_t u32ReadTimeout,
                                   std::span<uint8_t> buffer,
-                                  uint8_t cDelimiter,
+                                  uint8_t u8CDelimiter,
                                   size_t &szBytesRead,
                                   std::stop_token stop_tok = {}) const;
 
@@ -206,7 +206,7 @@ class KSPI : public ICommDriver {
          */
         Status timeout_wait_for_token(uint32_t u32ReadTimeout,
                                       std::span<const uint8_t> token,
-                                      bool useBuffer,
+                                      bool bUseBuffer,
                                       std::stop_token stop_tok = {}) const;
 
         /**
@@ -223,22 +223,22 @@ class KSPI : public ICommDriver {
 
         /** @brief Run KMP stream matching over single-byte KSPI reads. */
         Status kmp_stream_match(std::span<const uint8_t> token,
-                                const std::vector<int> &viLps,
+                                const std::vector<int> &vViLps,
                                 uint32_t u32Timeout,
                                 bool bReturnOnTimeout,
-                                bool useBuffer,
+                                bool bUseBuffer,
                                 std::stop_token stop_tok = {}) const;
 
         /** @brief Build the KMP failure-function table for @p pattern. */
         void build_kmp_table(std::span<const uint8_t> pattern,
                              size_t szLength,
-                             std::vector<int> &viLps) const;
+                             std::vector<int> &vViLps) const;
 
         /**
          * @brief Apply SpiConfig to the open file descriptor via ioctl.
          * @return Status::SUCCESS or Status::PORT_ACCESS on failure.
          */
-        Status setup(const SpiConfig &config) const;
+        Status setup(const SpiConfig &sConfig) const;
 };
 
 #endif // UKSPI_DRIVER_HPP

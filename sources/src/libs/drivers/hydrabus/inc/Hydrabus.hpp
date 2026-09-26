@@ -46,7 +46,7 @@ namespace HydraHAL {
              * @param driver Non-null shared pointer to a driver instance.
              * @throws std::invalid_argument if driver is null.
              */
-            explicit Hydrabus(std::shared_ptr<const ICommDriver> driver);
+            explicit Hydrabus(std::shared_ptr<const ICommDriver> shpDriver);
 
             Hydrabus(const Hydrabus &)            = delete;
             Hydrabus &operator=(const Hydrabus &) = delete;
@@ -64,7 +64,7 @@ namespace HydraHAL {
             bool write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
             /** @brief Write a single byte. Convenience wrapper. */
-            bool write_byte(uint8_t byte, std::stop_token stop_tok = {});
+            bool write_byte(uint8_t u8Byte, std::stop_token stop_tok = {});
 
             /**
              * @brief Read exactly `length` bytes using the current default timeout.
@@ -74,7 +74,7 @@ namespace HydraHAL {
             /**
              * @brief Read exactly `length` bytes with an explicit timeout override.
              */
-            std::vector<uint8_t> read(size_t length, uint32_t timeout_ms, std::stop_token stop_tok = {});
+            std::vector<uint8_t> read(size_t length, uint32_t u32Timeout_ms, std::stop_token stop_tok = {});
 
             /**
              * @brief Drain any bytes waiting in the receive buffer.
@@ -126,7 +126,7 @@ namespace HydraHAL {
              * @brief Set the default timeout applied to all read()/write() calls
              *        that do not specify an explicit timeout.
              */
-            void set_timeout(uint32_t timeout_ms);
+            void set_timeout(uint32_t u32Timeout_ms);
             uint32_t get_timeout() const;
 
             /**

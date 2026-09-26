@@ -81,13 +81,13 @@ template <typename T>
 bool generic_module_dispatch(const T *pOwner,
                              const std::string &strModule,
                              const std::string &strCmd,
-                             const std::string &args,
+                             const std::string &strArgs,
                              std::stop_token st = {})
 {
     ModuleCommandsMap<T> *pMap = pOwner->getModuleCmdsMap(strModule);
     auto it                    = pMap->find(strCmd);
     if (it != pMap->end()) {
-        return (pOwner->*it->second)(args, st);
+        return (pOwner->*it->second)(strArgs, st);
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule);
               LOG_STRING(": command not supported:"); LOG_STRING(strCmd));
@@ -100,14 +100,14 @@ bool generic_module_dispatch(const T *pOwner,
 template <typename T>
 bool generic_module_dispatch(const T *pOwner,
                              const std::string &strModule,
-                             const std::string &args,
+                             const std::string &strArgs,
                              std::stop_token st = {})
 {
     std::vector<std::string> parts;
-    ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::splitAtFirst(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     if (parts.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd args]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd strArgs]"));
         return false;
     }
 
@@ -117,7 +117,7 @@ bool generic_module_dispatch(const T *pOwner,
     }
 
     if (parts.size() < 2) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd args]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd strArgs]"));
         return false;
     }
 
@@ -130,14 +130,14 @@ bool generic_module_dispatch(const T *pOwner,
 template <typename T>
 bool generic_module_set_speed(const T *pOwner,
                               const std::string &strModule,
-                              const std::string &args)
+                              const std::string &strArgs)
 {
     const ModuleSpeedMap *pSpeedMap = pOwner->getModuleSpeedsMap(strModule);
     if (!pSpeedMap) {
         return false;
     }
 
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING(strModule); LOG_STRING(": available speeds:"));
         for (const auto &s : *pSpeedMap) {
             std::string line = s.first + " -> index " + std::to_string(s.second);
@@ -146,10 +146,10 @@ bool generic_module_set_speed(const T *pOwner,
         return true;
     }
 
-    auto it = pSpeedMap->find(args);
+    auto it = pSpeedMap->find(strArgs);
     if (it == pSpeedMap->end()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule);
-                  LOG_STRING(": unknown speed:"); LOG_STRING(args));
+                  LOG_STRING(": unknown speed:"); LOG_STRING(strArgs));
         return false;
     }
 
@@ -163,15 +163,15 @@ template <typename T>
 using WriteCbk = bool (T::*)(std::span<const uint8_t>) const;
 
 template <typename T>
-bool generic_write_data(const T *pOwner, const std::string &args, WriteCbk<T> cbk)
+bool generic_write_data(const T *pOwner, const std::string &strArgs, WriteCbk<T> cbk)
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABBCC..  (hex, 1-16 bytes)"));
         return true;
     }
 
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data)) {
+    if (!hexutils::stringUnhexlify(strArgs, data)) {
         return false;
     }
 
@@ -191,9 +191,9 @@ template <typename T>
 using WrRdCbk = bool (T::*)(std::span<const uint8_t>, size_t, std::stop_token) const;
 
 template <typename T>
-bool generic_write_read_data(const T *pOwner, const std::string &args, WrRdCbk<T> cbk, std::stop_token st = {})
+bool generic_write_read_data(const T *pOwner, const std::string &strArgs, WrRdCbk<T> cbk, std::stop_token st = {})
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: [hexdata][:rdlen]  e.g. DEADBEEF:4 | :4 | DEADBEEF"));
         return true;
     }
@@ -201,13 +201,13 @@ bool generic_write_read_data(const T *pOwner, const std::string &args, WrRdCbk<T
     std::vector<uint8_t> request;
     size_t readLen = 0;
 
-    if (args[0] == ':') {
-        if (!numeric::str2sizet(args.substr(1), readLen)) {
+    if (strArgs[0] == ':') {
+        if (!numeric::str2sizet(strArgs.substr(1), readLen)) {
             return false;
         }
     } else {
         std::vector<std::string> parts;
-        ustring::tokenize(args, CHAR_SEPARATOR_COLON, parts);
+        ustring::tokenize(strArgs, CHAR_SEPARATOR_COLON, parts);
         if (parts.empty()) {
             return false;
         }
@@ -229,24 +229,24 @@ bool generic_write_read_data(const T *pOwner, const std::string &args, WrRdCbk<T
 ============================================================================================ */
 template <typename T>
 bool generic_write_read_file(const T *pOwner,
-                             const std::string &args,
+                             const std::string &strArgs,
                              WrRdCbk<T> cbk,
-                             const std::string &artefactsPath,
+                             const std::string &strArtefactsPath,
                              std::stop_token st = {})
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: filename[:wrchunk][:rdchunk]"));
         return true;
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_COLON, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_COLON, parts);
     if (parts.empty()) {
         return false;
     }
 
     std::string path;
-    ufile::buildFilePath(artefactsPath, parts[0], path);
+    ufile::buildFilePath(strArtefactsPath, parts[0], path);
 
     if (!ufile::fileExistsAndNotEmpty(path)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File not found or empty:"); LOG_STRING(path));
@@ -305,35 +305,35 @@ bool generic_write_read_file(const T *pOwner,
      friend const IniValues* getAccessIniValues(const T&)
 ============================================================================================ */
 template <typename T>
-bool generic_execute_script(const T *pOwner, const std::string &pluginName, const std::string &args, std::stop_token st = {})
+bool generic_execute_script(const T *pDriver, const std::string &strPluginName, const std::string &strScriptName, std::stop_token st = {})
 {
-    const auto *ini = getAccessIniValues(*pOwner);
+    const auto *ini = getAccessIniValues(*pDriver);
 
-    if (args == "help") {
+    if (strScriptName == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
 
     std::string strPath;
-    ufile::buildFilePath(ini->strArtefactsPath, args, strPath);
+    ufile::buildFilePath(ini->strArtefactsPath, strScriptName, strPath);
     if (!ufile::fileExistsAndNotEmpty(strPath)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found:"); LOG_STRING(strPath));
         return false;
     }
 
     // Build a non-owning shared_ptr alias around the raw UART driver
-    auto spUart = std::shared_ptr<::UART>(std::shared_ptr<::UART>{}, &pOwner->drvUart);
+    auto spUart = std::shared_ptr<::UART>(std::shared_ptr<::UART>{}, &pDriver->drvUart);
     try {
         CommScriptClient<::UART> client(strPath, spUart,
-                                        pluginName,
+                                        strPluginName,
                                         HB_BULK_MAX_BYTES,
                                         ini->u32ReadTimeout,
                                         ini->u32ScriptDelay,
                                         typename CommScriptClient<::UART>::SendFunc{},
                                         typename CommScriptClient<::UART>::RecvFunc{},
                                         st);
-        bool bEnabled = getEnabledStatus(*pOwner);
+        bool bEnabled = getEnabledStatus(*pDriver);
         return client.execute(bEnabled);
     } catch (const std::exception &e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script failed:"); LOG_STRING(e.what()));

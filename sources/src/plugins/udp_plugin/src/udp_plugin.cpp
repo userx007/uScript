@@ -27,10 +27,10 @@ extern "C" {
         return new UDPPlugin();
     }
 
-    EXPORTED void pluginExit(UDPPlugin *ptrPlugin)
+    EXPORTED void pluginExit(UDPPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -91,12 +91,12 @@ std::shared_ptr<UDP> UDPPlugin::m_OpenDriver(void) const
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool UDPPlugin::m_UDP_INFO(const std::string &args, std::stop_token st) const
+bool UDPPlugin::m_UDP_INFO(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -164,13 +164,13 @@ bool UDPPlugin::m_UDP_INFO(const std::string &args, std::stop_token st) const
  *        w=write_tout  s=recv_bufsize
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool UDPPlugin::m_UDP_CONFIG(const std::string &args, std::stop_token st) const
+bool UDPPlugin::m_UDP_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
-    return generic_udp_set_params(this, args);
+    return generic_udp_set_params(this, strArgs);
 
 } /* m_UDP_CONFIG() */
 
@@ -191,14 +191,14 @@ bool UDPPlugin::m_UDP_CONFIG(const std::string &args, std::stop_token st) const
  *       UDP.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool UDPPlugin::m_UDP_CMD(const std::string &args, std::stop_token st) const
+bool UDPPlugin::m_UDP_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<UDP> {
             // open the UDP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
@@ -217,14 +217,14 @@ bool UDPPlugin::m_UDP_CMD(const std::string &args, std::stop_token st) const
  *       UDP.SCRIPT scriptname [|delay]
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool UDPPlugin::m_UDP_SCRIPT(const std::string &args, std::stop_token st) const
+bool UDPPlugin::m_UDP_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<UDP> {
             // open the UDP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
@@ -254,12 +254,12 @@ bool UDPPlugin::m_UDP_SCRIPT(const std::string &args, std::stop_token st) const
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool UDPPlugin::m_UDP_CYCLIC(const std::string &args, std::stop_token st) const
+bool UDPPlugin::m_UDP_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<UDP> {
             // open the UDP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();

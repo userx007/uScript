@@ -64,7 +64,7 @@ namespace {
      * HidD_GetAttributes, and returns the device path string for the
      * requested zero-based index.
      */
-    static bool find_cp2112_path(uint8_t deviceIndex, std::wstring &pathOut)
+    static bool find_cp2112_path(uint8_t u8DeviceIndex, std::wstring &pathOut)
     {
         GUID hidGuid;
         HidD_GetHidGuid(&hidGuid);
@@ -123,7 +123,7 @@ namespace {
                 continue;
             }
 
-            if (matchCount == deviceIndex) {
+            if (matchCount == u8DeviceIndex) {
                 pathOut = detail->DevicePath;
                 found   = true;
                 break;
@@ -214,18 +214,18 @@ bool CP2112Base::is_open() const
 // HID primitives
 // ============================================================================
 
-CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t *buf, size_t len) const
+CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len != HID_REPORT_SIZE) {
+    if (!pu8Buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
     }
 
     if (!HidD_SetFeature(m_hDevice,
-                         const_cast<PVOID>(reinterpret_cast<const void *>(buf)),
+                         const_cast<PVOID>(reinterpret_cast<const void *>(pu8Buf)),
                          static_cast<ULONG>(len))) {
         DWORD err = GetLastError();
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("HidD_SetFeature failed, report="); LOG_HEX8(buf[0]);
+                  LOG_STRING("HidD_SetFeature failed, report="); LOG_HEX8(pu8Buf[0]);
                   LOG_STRING("error:"); LOG_UINT32(err));
         return Status::WRITE_ERROR;
     }
@@ -233,18 +233,18 @@ CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t *buf, size_t len) c
     return Status::SUCCESS;
 }
 
-CP2112Base::Status CP2112Base::hid_get_feature(uint8_t *buf, size_t len) const
+CP2112Base::Status CP2112Base::hid_get_feature(uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len != HID_REPORT_SIZE) {
+    if (!pu8Buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
     }
 
     if (!HidD_GetFeature(m_hDevice,
-                         reinterpret_cast<PVOID>(buf),
+                         reinterpret_cast<PVOID>(pu8Buf),
                          static_cast<ULONG>(len))) {
         DWORD err = GetLastError();
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("HidD_GetFeature failed, report="); LOG_HEX8(buf[0]);
+                  LOG_STRING("HidD_GetFeature failed, report="); LOG_HEX8(pu8Buf[0]);
                   LOG_STRING("error:"); LOG_UINT32(err));
         return Status::READ_ERROR;
     }
@@ -252,9 +252,9 @@ CP2112Base::Status CP2112Base::hid_get_feature(uint8_t *buf, size_t len) const
     return Status::SUCCESS;
 }
 
-CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t *buf, size_t len) const
+CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t *pu8Buf, size_t len) const
 {
-    if (!buf || len != HID_REPORT_SIZE) {
+    if (!pu8Buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
     }
 
@@ -266,7 +266,7 @@ CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t *buf, size_t le
     }
 
     DWORD written = 0;
-    BOOL ok       = WriteFile(m_hDevice, buf, static_cast<DWORD>(len), &written, &ov);
+    BOOL ok       = WriteFile(m_hDevice, pu8Buf, static_cast<DWORD>(len), &written, &ov);
 
     if (!ok && GetLastError() != ERROR_IO_PENDING) {
         DWORD err = GetLastError();
@@ -295,12 +295,12 @@ CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t *buf, size_t le
     return Status::SUCCESS;
 }
 
-CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t *buf, size_t len,
-                                                  uint32_t timeoutMs,
+CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t *pu8Buf, size_t len,
+                                                  uint32_t u32TimeoutMs,
                                                   size_t &bytesRead,
                                                   std::stop_token stop_tok) const
 {
-    if (!buf || len != HID_REPORT_SIZE) {
+    if (!pu8Buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
     }
 
@@ -314,7 +314,7 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t *buf, size_t len,
     }
 
     DWORD dwRead = 0;
-    BOOL ok      = ReadFile(m_hDevice, buf, static_cast<DWORD>(len), &dwRead, &ov);
+    BOOL ok      = ReadFile(m_hDevice, pu8Buf, static_cast<DWORD>(len), &dwRead, &ov);
 
     if (!ok && GetLastError() != ERROR_IO_PENDING) {
         DWORD err = GetLastError();
@@ -334,7 +334,7 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t *buf, size_t len,
 
     // 0 == infinite timeout: block until an interrupt-in report arrives (or
     // the stop_callback above cancels it).
-    const DWORD dwWaitTimeout = (timeoutMs == 0) ? INFINITE : static_cast<DWORD>(timeoutMs);
+    const DWORD dwWaitTimeout = (u32TimeoutMs == 0) ? INFINITE : static_cast<DWORD>(u32TimeoutMs);
     DWORD waitResult          = WaitForSingleObject(ov.hEvent, dwWaitTimeout);
 
     if (waitResult == WAIT_TIMEOUT) {

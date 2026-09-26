@@ -36,7 +36,7 @@ namespace HydraHAL {
             static constexpr size_t REG_SIZE_STD = 16;  ///< CID / CSD
             static constexpr size_t REG_SIZE_EXT = 512; ///< EXT_CSD
 
-            explicit MMC(std::shared_ptr<Hydrabus> hydrabus);
+            explicit MMC(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // Register access
@@ -60,7 +60,7 @@ namespace HydraHAL {
              * @param block_num Block address (0-based).
              * @return 512 bytes, or empty on error.
              */
-            std::vector<uint8_t> read(uint32_t block_num, std::stop_token stop_tok = {});
+            std::vector<uint8_t> read(uint32_t u32Block_num, std::stop_token stop_tok = {});
 
             /**
              * @brief Write a 512-byte block.
@@ -68,7 +68,7 @@ namespace HydraHAL {
              * @param block_num Block address (0-based).
              * @return true on success.
              */
-            bool write(std::span<const uint8_t> data, uint32_t block_num, std::stop_token stop_tok = {});
+            bool write(std::span<const uint8_t> data, uint32_t u32Block_num, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Configuration
@@ -81,7 +81,7 @@ namespace HydraHAL {
              * @brief Set bus width.
              * @param width 1 or 4.
              */
-            bool set_bus_width(int width);
+            bool set_bus_width(int iWidth);
 
         private:
             bool _configure_port();

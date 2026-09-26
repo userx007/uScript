@@ -55,7 +55,7 @@ class IGpioDriver {
          * @brief Configure pin directions and modes
          * @param config  See GpioConfig above
          */
-        virtual Status gpio_configure(const GpioConfig &config) const         = 0;
+        virtual Status gpio_configure(const GpioConfig &sConfig) const         = 0;
 
         /**
          * @brief Set logic levels on output pins
@@ -68,13 +68,13 @@ class IGpioDriver {
          *   gpio_write(PIN_2, PIN_2 | PIN_3);
          * @endcode
          */
-        virtual Status gpio_write(uint8_t valueMask, uint8_t applyMask) const = 0;
+        virtual Status gpio_write(uint8_t u8ValueMask, uint8_t u8ApplyMask) const = 0;
 
         /**
          * @brief Read the current logic level of all 8 pins
          * @param valueMask  Output — bit = 1 → high, 0 → low
          */
-        virtual Status gpio_read(uint8_t &valueMask) const                    = 0;
+        virtual Status gpio_read(uint8_t &u8ValueMask) const                    = 0;
 };
 
 #endif // I_GPIO_DRIVER_HPP

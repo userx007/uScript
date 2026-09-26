@@ -27,7 +27,7 @@
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-W5500Net::Status W5500Net::open(const std::string &ipAddr, uint16_t u16Port)
+W5500Net::Status W5500Net::open(const std::string &strIpAddr, uint16_t u16Port)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -35,7 +35,7 @@ W5500Net::Status W5500Net::open(const std::string &ipAddr, uint16_t u16Port)
         ::close(m_iSocketFd);
     }
 
-    m_strServerIp = ipAddr;
+    m_strServerIp = strIpAddr;
     m_u16Port     = u16Port;
 
     // 1. Create Socket (IPv4, TCP)
@@ -64,15 +64,15 @@ W5500Net::Status W5500Net::open(const std::string &ipAddr, uint16_t u16Port)
     server_addr.sin_port   = htons(u16Port);
 
     // Resolve IP
-    if (::inet_pton(AF_INET, ipAddr.c_str(), &server_addr.sin_addr) <= 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid IP address: "); LOG_STRING(ipAddr.c_str()));
+    if (::inet_pton(AF_INET, strIpAddr.c_str(), &server_addr.sin_addr) <= 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid IP address: "); LOG_STRING(strIpAddr.c_str()));
         ::close(m_iSocketFd);
         m_iSocketFd = -1;
         return Status::INVALID_PARAM;
     }
 
     if (::connect(m_iSocketFd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Connection failed to "); LOG_STRING(ipAddr.c_str()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Connection failed to "); LOG_STRING(strIpAddr.c_str()));
         ::close(m_iSocketFd);
         m_iSocketFd = -1;
         return Status::PORT_ACCESS;
@@ -83,7 +83,7 @@ W5500Net::Status W5500Net::open(const std::string &ipAddr, uint16_t u16Port)
     tv.tv_usec = 0;
     ::setsockopt(m_iSocketFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Connected to W5500 server at "); LOG_STRING(ipAddr.c_str()));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Connected to W5500 server at "); LOG_STRING(strIpAddr.c_str()));
 
     return Status::SUCCESS;
 }

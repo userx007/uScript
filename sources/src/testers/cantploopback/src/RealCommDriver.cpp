@@ -20,10 +20,10 @@ namespace {
     constexpr uint32_t kIdB2A_CAN = 0x200;
 } // namespace
 
-RealCommDriver::RealCommDriver(const std::string &interfaceName)
+RealCommDriver::RealCommDriver(const std::string &strInterfaceName)
     : m_interface(interfaceName)
 {
-    init(interfaceName);
+    init(strInterfaceName);
 }
 
 RealCommDriver::~RealCommDriver()
@@ -34,7 +34,7 @@ RealCommDriver::~RealCommDriver()
     }
 }
 
-bool RealCommDriver::init(const std::string &iface)
+bool RealCommDriver::init(const std::string &strIface)
 {
     m_socket = ::socket(PF_CAN, SOCK_RAW, CAN_RAW);
     if (m_socket < 0) {
@@ -43,8 +43,8 @@ bool RealCommDriver::init(const std::string &iface)
     }
 
     ::memset(&ifr, 0, sizeof(ifr));
-    std::strncpy(ifr.ifr_name, iface.c_str(), IFNAMSIZ - 1);
-    ifr.ifr_ifindex = ::if_nametoindex(iface.c_str());
+    std::strncpy(ifr.ifr_name, strIface.c_str(), IFNAMSIZ - 1);
+    ifr.ifr_ifindex = ::if_nametoindex(strIface.c_str());
 
     if (!ifr.ifr_ifindex) {
         std::perror("if_nametoindex");
@@ -240,7 +240,7 @@ ICommDriver::WriteResult RealCommDriver::tout_write(
 ICommDriver::ReadResult RealCommDriver::tout_read(
     uint32_t u32ReadTimeout,
     std::span<uint8_t> buffer,
-    const ReadOptions &opts,
+    const ReadOptions &sOpts,
     std::string_view xtra_params,
     std::stop_token stop_tok) const
 {

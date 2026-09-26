@@ -61,9 +61,9 @@
 //                   Internal helper                                           //
 /////////////////////////////////////////////////////////////////////////////////
 
-static bool parseHexByte(const std::string &s, uint8_t &out)
+static bool parseHexByte(const std::string &strS, uint8_t &u8Out)
 {
-    return numeric::str2uint8(s, out);
+    return numeric::str2uint8(strS, u8Out);
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -79,30 +79,30 @@ bool CP2112Plugin::m_handle_gpio_help(const std::string &, std::stop_token /*st*
 //              parseGpioKv — shared key/value parser            //
 ///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::parseGpioKv(const std::string &key,
-                               const std::string &val,
-                               GpioPendingCfg &cfg)
+bool CP2112Plugin::parseGpioKv(const std::string &strKey,
+                               const std::string &strVal,
+                               GpioPendingCfg &sCfg)
 {
     // We access GpioPendingCfg fields directly; the struct is publicly
     // accessible through the plugin header's private section.  Since this
     // static helper is only called from within this translation unit (which
     // is part of CP2112Plugin's implementation), direct field access is fine.
     bool ok = true;
-    if (key == "dir" || key == "direction") {
-        ok = parseHexByte(val, cfg.directionMask);
-    } else if (key == "pp" || key == "pushpull") {
-        ok = parseHexByte(val, cfg.pushPullMask);
-    } else if (key == "special" || key == "sf") {
-        ok = parseHexByte(val, cfg.specialFuncMask);
-    } else if (key == "clkdiv" || key == "divider") {
-        ok = parseHexByte(val, cfg.clockDivider);
+    if (strKey == "dir" || strKey == "direction") {
+        ok = parseHexByte(strVal, sCfg.directionMask);
+    } else if (strKey == "pp" || strKey == "pushpull") {
+        ok = parseHexByte(strVal, sCfg.pushPullMask);
+    } else if (strKey == "special" || strKey == "sf") {
+        ok = parseHexByte(strVal, sCfg.specialFuncMask);
+    } else if (strKey == "clkdiv" || strKey == "divider") {
+        ok = parseHexByte(strVal, sCfg.clockDivider);
     } else {
         // Unknown — caller must handle
         return false;
     }
     if (!ok) {
         LOG_PRINT(LOG_ERROR, LOG_STRING("CP2112_GPIO|");
-                  LOG_STRING("Invalid value for:"); LOG_STRING(key));
+                  LOG_STRING("Invalid value for:"); LOG_STRING(strKey));
     }
     return ok;
 }
@@ -111,9 +111,9 @@ bool CP2112Plugin::parseGpioKv(const std::string &key,
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_open(const std::string &args, std::stop_token /*st*/) const
+bool CP2112Plugin::m_handle_gpio_open(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: open [device=N] [dir=0xNN] [pp=0xNN] [special=0xNN] [clkdiv=N]"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  dir     : direction mask  — 1=output, 0=input (default 0x00 = all inputs)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  pp      : drive mode mask — 1=push-pull, 0=open-drain"));
@@ -123,7 +123,7 @@ bool CP2112Plugin::m_handle_gpio_open(const std::string &args, std::stop_token /
     }
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -211,9 +211,9 @@ bool CP2112Plugin::m_handle_gpio_close(const std::string &, std::stop_token /*st
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_cfg(const std::string &args, std::stop_token /*st*/) const
+bool CP2112Plugin::m_handle_gpio_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help" || args == "?") {
+    if (strArgs == "help" || strArgs == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("dir=");
@@ -229,7 +229,7 @@ bool CP2112Plugin::m_handle_gpio_cfg(const std::string &args, std::stop_token /*
     }
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
 
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -273,9 +273,9 @@ bool CP2112Plugin::m_handle_gpio_cfg(const std::string &args, std::stop_token /*
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_write(const std::string &args, std::stop_token /*st*/) const
+bool CP2112Plugin::m_handle_gpio_write(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write VALUE MASK"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  VALUE : desired pin levels  — 0x00..0xFF (1=high, 0=low)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  MASK  : which pins to touch — 0x00..0xFF (1=update, 0=leave unchanged)"));
@@ -284,7 +284,7 @@ bool CP2112Plugin::m_handle_gpio_write(const std::string &args, std::stop_token 
     }
 
     std::vector<std::string> parts;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, parts);
     if (parts.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: write VALUE MASK"));
         return false;
@@ -324,17 +324,17 @@ bool CP2112Plugin::m_handle_gpio_write(const std::string &args, std::stop_token 
 //                       SET                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*st*/) const
+bool CP2112Plugin::m_handle_gpio_set(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: set MASK  (drive all masked pins HIGH, leave others unchanged)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Example: set 0x05  (GPIO.0 and GPIO.2 HIGH)"));
         return true;
     }
 
     uint8_t mask = 0;
-    if (!parseHexByte(args, mask)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mask value:"); LOG_STRING(args));
+    if (!parseHexByte(strArgs, mask)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mask value:"); LOG_STRING(strArgs));
         return false;
     }
 
@@ -363,17 +363,17 @@ bool CP2112Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*
 //                       CLEAR                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token /*st*/) const
+bool CP2112Plugin::m_handle_gpio_clear(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: clear MASK  (drive all masked pins LOW, leave others unchanged)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Example: clear 0x05  (GPIO.0 and GPIO.2 LOW)"));
         return true;
     }
 
     uint8_t mask = 0;
-    if (!parseHexByte(args, mask)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mask value:"); LOG_STRING(args));
+    if (!parseHexByte(strArgs, mask)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mask value:"); LOG_STRING(strArgs));
         return false;
     }
 
@@ -402,9 +402,9 @@ bool CP2112Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token 
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_read(const std::string &args, std::stop_token /*st*/) const
+bool CP2112Plugin::m_handle_gpio_read(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read  (reads current logic levels of all 8 GPIO pins)"));
         return true;
     }

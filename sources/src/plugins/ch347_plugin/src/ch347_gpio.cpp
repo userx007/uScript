@@ -54,16 +54,16 @@
 //             Internal parse helper                                           //
 /////////////////////////////////////////////////////////////////////////////////
 
-static bool parseHexByte(const std::string &s, uint8_t &out)
+static bool parseHexByte(const std::string &strS, uint8_t &u8Out)
 {
-    return numeric::str2uint8(s, out);
+    return numeric::str2uint8(strS, u8Out);
 }
 
-static std::string fmtBinary8(uint8_t v)
+static std::string fmtBinary8(uint8_t u8V)
 {
     std::string s;
     for (int bit = 7; bit >= 0; --bit) {
-        s += ((v >> bit) & 1) ? '1' : '0';
+        s += ((u8V >> bit) & 1) ? '1' : '0';
     }
     return s;
 }
@@ -81,9 +81,9 @@ bool CH347Plugin::m_handle_gpio_help(const std::string &, std::stop_token /*st*/
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_open(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_open(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [device=/dev/... (Linux) or 0 (Windows)]"));
         LOG_PRINT(LOG_EMPTY,
@@ -95,7 +95,7 @@ bool CH347Plugin::m_handle_gpio_open(const std::string &args, std::stop_token /*
 
     // Accept optional device=path override
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
@@ -143,9 +143,9 @@ bool CH347Plugin::m_handle_gpio_close(const std::string &, std::stop_token /*st*
 //                       DIR                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_dir(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_dir(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: dir output=0xNN [input=0xNN]"));
         LOG_PRINT(LOG_EMPTY,
@@ -162,7 +162,7 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string &args, std::stop_token /*s
 
     uint8_t outMask = 0x00u;
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     bool parsed = false;
 
     for (const auto &pair : pairs) {
@@ -182,7 +182,7 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string &args, std::stop_token /*s
 
     if (!parsed) {
         // Also accept bare hex: dir 0x0F
-        if (!parseHexByte(args, outMask)) {
+        if (!parseHexByte(strArgs, outMask)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: dir output=0xNN"));
             return false;
         }
@@ -218,9 +218,9 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string &args, std::stop_token /*s
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_write(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_write(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write pins=0xNN levels=0xNN"));
         LOG_PRINT(LOG_EMPTY,
@@ -240,7 +240,7 @@ bool CH347Plugin::m_handle_gpio_write(const std::string &args, std::stop_token /
     bool hasPins = false, hasLevels = false;
 
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
@@ -263,7 +263,7 @@ bool CH347Plugin::m_handle_gpio_write(const std::string &args, std::stop_token /
 
     if (!hasLevels) {
         // Accept bare form: write 0xNN  (apply to all pins)
-        if (!parseHexByte(args, levelMask)) {
+        if (!parseHexByte(strArgs, levelMask)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: write pins=0xNN levels=0xNN"));
             return false;
         }
@@ -289,9 +289,9 @@ bool CH347Plugin::m_handle_gpio_write(const std::string &args, std::stop_token /
 //                       SET                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_set(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: set pins=0xNN  (drive masked pins HIGH)"));
         return true;
@@ -305,7 +305,7 @@ bool CH347Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*s
     uint8_t mask = 0;
     // Accept "pins=0xNN" or bare "0xNN"
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     bool parsed = false;
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -317,7 +317,7 @@ bool CH347Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*s
             parsed = true;
         }
     }
-    if (!parsed && !parseHexByte(args, mask)) {
+    if (!parsed && !parseHexByte(strArgs, mask)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: set pins=0xNN"));
         return false;
     }
@@ -338,9 +338,9 @@ bool CH347Plugin::m_handle_gpio_set(const std::string &args, std::stop_token /*s
 //                       CLEAR                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_clear(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: clear pins=0xNN  (drive masked pins LOW)"));
         return true;
@@ -353,7 +353,7 @@ bool CH347Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token /
 
     uint8_t mask = 0;
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     bool parsed = false;
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -365,7 +365,7 @@ bool CH347Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token /
             parsed = true;
         }
     }
-    if (!parsed && !parseHexByte(args, mask)) {
+    if (!parsed && !parseHexByte(strArgs, mask)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: clear pins=0xNN"));
         return false;
     }
@@ -386,9 +386,9 @@ bool CH347Plugin::m_handle_gpio_clear(const std::string &args, std::stop_token /
 //                       TOGGLE                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_toggle(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_toggle(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: toggle pins=0xNN  (invert masked output pins)"));
         return true;
@@ -401,7 +401,7 @@ bool CH347Plugin::m_handle_gpio_toggle(const std::string &args, std::stop_token 
 
     uint8_t mask = 0;
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     bool parsed = false;
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -413,7 +413,7 @@ bool CH347Plugin::m_handle_gpio_toggle(const std::string &args, std::stop_token 
             parsed = true;
         }
     }
-    if (!parsed && !parseHexByte(args, mask)) {
+    if (!parsed && !parseHexByte(strArgs, mask)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Use: toggle pins=0xNN"));
         return false;
     }
@@ -436,9 +436,9 @@ bool CH347Plugin::m_handle_gpio_toggle(const std::string &args, std::stop_token 
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_read(const std::string &args, std::stop_token /*st*/) const
+bool CH347Plugin::m_handle_gpio_read(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read  (snapshots all GPIO pins, prints hex + binary)"));
         return true;

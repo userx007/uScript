@@ -495,7 +495,7 @@ class VectorEthPlugin : public PluginInterface {
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         /** case-insensitive string compare helper (avoids pulling in a whole locale-aware comparator for this) */
-        static int ustring_icompare(const std::string &a, const char *b);
+        static int ustring_icompare(const std::string &strA, const char *pstrB);
 
         /**
          * \brief helper: parse FILTER's "src=<mac> type=<ethertype>" argument string

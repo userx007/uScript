@@ -91,11 +91,11 @@ class FT4232UART : public ICommDriver {
          * @param strIdentityLabel Display text for the GUI comm-dump panel (see
          *                         describeConnection()), supplied separately.
          */
-        explicit FT4232UART(const UartConfig &config, uint8_t u8DeviceIndex = 0u,
+        explicit FT4232UART(const UartConfig &sConfig, uint8_t u8DeviceIndex = 0u,
                             const std::string &strIdentityLabel = {})
             : m_strIdentityLabel(strIdentityLabel)
         {
-            this->open(config, u8DeviceIndex);
+            this->open(sConfig, u8DeviceIndex);
         }
 
         ~FT4232UART() override
@@ -116,7 +116,7 @@ class FT4232UART : public ICommDriver {
          * @param u8DeviceIndex Physical device index (0 = first FT4232H found)
          * @return Status::SUCCESS on success, or an error code
          */
-        Status open(const UartConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const UartConfig &sConfig, uint8_t u8DeviceIndex = 0u);
 
         /**
          * @brief Close the channel handle
@@ -150,7 +150,7 @@ class FT4232UART : public ICommDriver {
          * @param config  New UART parameters (channel field ignored)
          * @return Status::SUCCESS on success, or an error code
          */
-        Status configure(const UartConfig &config);
+        Status configure(const UartConfig &sConfig);
 
         /**
          * @brief Change baud rate on an already-open channel
@@ -161,7 +161,7 @@ class FT4232UART : public ICommDriver {
          * @param baudRate  New baud rate in bps
          * @return Status::SUCCESS on success, or an error code
          */
-        Status set_baud(uint32_t baudRate);
+        Status set_baud(uint32_t u32BaudRate);
 
         /**
          * @brief Unified write interface  (implements ICommDriver)
@@ -192,7 +192,7 @@ class FT4232UART : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -227,7 +227,7 @@ class FT4232UART : public ICommDriver {
          *
          * @param config  Parameters to apply (channel field ignored)
          */
-        Status apply_config(const UartConfig &config) const;
+        Status apply_config(const UartConfig &sConfig) const;
 };
 
 #endif // U_FT4232_UART_DRIVER_H

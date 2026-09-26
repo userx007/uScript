@@ -47,7 +47,7 @@ class QTextDocument;
 class ScriptHighlighterBase : public QSyntaxHighlighter {
         Q_OBJECT
     public:
-        explicit ScriptHighlighterBase(QTextDocument *parent = nullptr);
+        explicit ScriptHighlighterBase(QTextDocument *pParent = nullptr);
 
     protected:
         // ── Shared separator colour ──────────────────────────────────────────
@@ -89,11 +89,11 @@ class ScriptHighlighterBase : public QSyntaxHighlighter {
 
         // ── Helpers ───────────────────────────────────────────────────────────
         static QTextCharFormat fmt(const QString &hex,
-                                   bool bold   = false,
-                                   bool italic = false);
+                                   bool bBold   = false,
+                                   bool bItalic = false);
 
         /** Appends a whole-match (captureGroup=0) rule. */
-        void addRule(const QString &pattern, const QTextCharFormat &f, int cap = 0);
+        void addRule(const QString &pattern, const QTextCharFormat &f, int iCap = 0);
 
         /**
          * Adds the  NAME :=  macro-definition rule pair.

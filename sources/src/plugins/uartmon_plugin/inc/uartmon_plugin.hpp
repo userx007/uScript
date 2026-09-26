@@ -194,7 +194,7 @@ class UartmonPlugin : public PluginInterface {
         mutable std::vector<std::thread> m_vThreads;
         mutable bool m_isRunning = false;
 
-        bool m_GenericWaitFor(const std::string &args, bool bInsert, std::stop_token st) const;
+        bool m_GenericWaitFor(const std::string &strArgs, bool bInsert, std::stop_token st) const;
 
 #define UARTMON_PLUGIN_CMD_RECORD(a, ...) bool m_Uartmon_##a(const std::string &args, std::stop_token st) const;
         UARTMON_PLUGIN_COMMANDS_CONFIG_TABLE

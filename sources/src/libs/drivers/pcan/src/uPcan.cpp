@@ -40,7 +40,7 @@
 // STATIC HELPERS
 // ============================================================================
 
-bool PCAN::parseUint32(std::string_view sv, uint32_t &out)
+bool PCAN::parseUint32(std::string_view sv, uint32_t &u32Out)
 {
     if (sv.empty()) {
         return false;
@@ -52,7 +52,7 @@ bool PCAN::parseUint32(std::string_view sv, uint32_t &out)
         base = 16;
     }
 
-    auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), out, base);
+    auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), u32Out, base);
     return (ec == std::errc{} && ptr == sv.data() + sv.size());
 }
 
@@ -102,7 +102,7 @@ uint32_t PCAN::resolveTpRxId(std::string_view xtra_params) const
     return m_bTpRxIdSet ? m_u32TpRxId : m_u32DefaultTxId;
 }
 
-void PCAN::dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
+void PCAN::dumpFrame(CommDir eDir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
 {
     if (!gui_mode_active()) {
         return;
@@ -112,7 +112,7 @@ void PCAN::dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<cons
                   m_strIdentityLabel.empty() ? "PCAN" : m_strIdentityLabel.c_str(),
                   u32Id, bExtended ? " (ext)" : "");
     gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::CAN, label),
-                         dir, data.data(), static_cast<uint32_t>(data.size()));
+                         eDir, data.data(), static_cast<uint32_t>(data.size()));
 }
 
 bool PCAN::frameMatchesFilter(const TPCANMsg &msg, uint32_t u32RxFilterId) const
@@ -436,19 +436,19 @@ ICommDriver::Status PCAN::sendFrame(uint32_t u32Id,
 // READ-MODE IMPLEMENTATIONS
 // ============================================================================
 
-void PCAN::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &viLps)
+void PCAN::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int> &vViLps)
 {
     const size_t n = pattern.size();
-    viLps.assign(n, 0);
+    vViLps.assign(n, 0);
     int len = 0;
 
     for (size_t i = 1; i < n;) {
         if (pattern[i] == pattern[len]) {
-            viLps[i++] = ++len;
+            vViLps[i++] = ++len;
         } else if (len != 0) {
-            len = viLps[len - 1];
+            len = vViLps[len - 1];
         } else {
-            viLps[i++] = 0;
+            vViLps[i++] = 0;
         }
     }
 }
@@ -492,7 +492,7 @@ ICommDriver::Status PCAN::readExact(uint32_t u32TimeoutMs,
 
 ICommDriver::Status PCAN::readUntilDelimiter(uint32_t u32TimeoutMs,
                                              std::span<uint8_t> buffer,
-                                             uint8_t cDelimiter,
+                                             uint8_t u8CDelimiter,
                                              size_t &szBytesRead,
                                              uint32_t u32RxFilterId,
                                              std::stop_token stop_tok) const
@@ -524,7 +524,7 @@ ICommDriver::Status PCAN::readUntilDelimiter(uint32_t u32TimeoutMs,
 
         for (size_t i = 0; i < msg.LEN; ++i) {
             uint8_t ch = msg.DATA[i];
-            if (ch == cDelimiter) {
+            if (ch == u8CDelimiter) {
                 if (szBytesRead < buffer.size()) {
                     buffer[szBytesRead] = '\0';
                 }
@@ -641,7 +641,7 @@ ICommDriver::ReadResult PCAN::readOneFrame_locked(uint32_t u32TimeoutMs,
 
 ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t u32ReadTimeout,
                                                   std::span<uint8_t> buffer,
-                                                  const ReadOptions &options,
+                                                  const ReadOptions &sOptions,
                                                   std::string_view xtra_params,
                                                   std::stop_token stop_tok) const
 {
@@ -654,7 +654,7 @@ ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t u32ReadTimeout,
     const uint32_t timeout    = u32ReadTimeout;
     const uint32_t rxFilterId = resolveRxId(xtra_params);
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
 
     case ReadMode::Exact: {
         size_t bytesRead        = 0;
@@ -667,7 +667,7 @@ ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t u32ReadTimeout,
     case ReadMode::UntilDelimiter: {
         size_t bytesRead        = 0;
         result.status           = readUntilDelimiter(timeout, buffer,
-                                                     options.delimiter,
+                                                     sOptions.delimiter,
                                                      bytesRead, rxFilterId, stop_tok);
         result.bytes_read       = bytesRead;
         result.found_terminator = (result.status == Status::SUCCESS);
@@ -675,7 +675,7 @@ ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t u32ReadTimeout,
     }
 
     case ReadMode::UntilToken: {
-        result.status           = readUntilToken(timeout, options.token, rxFilterId, stop_tok);
+        result.status           = readUntilToken(timeout, sOptions.token, rxFilterId, stop_tok);
         result.bytes_read       = 0;
         result.found_terminator = (result.status == Status::SUCCESS);
         break;
@@ -692,7 +692,7 @@ ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t u32ReadTimeout,
 
 ICommDriver::ReadResult PCAN::tout_read(uint32_t u32ReadTimeout,
                                         std::span<uint8_t> buffer,
-                                        const ReadOptions &options,
+                                        const ReadOptions &sOptions,
                                         std::string_view xtra_params,
                                         std::stop_token stop_tok) const
 {
@@ -708,8 +708,8 @@ ICommDriver::ReadResult PCAN::tout_read(uint32_t u32ReadTimeout,
     // Delimiter/token reads are an ASCII-stream concept that a segmented
     // binary transport has no notion of, so they always take the legacy
     // path regardless of m_eTpProtocol — same rule KVCAN/SLCAN apply.
-    if (m_eTpProtocol == TpProtocol::NONE || options.mode != ReadMode::Exact) {
-        return readDispatch_locked(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
+    if (m_eTpProtocol == TpProtocol::NONE || sOptions.mode != ReadMode::Exact) {
+        return readDispatch_locked(u32ReadTimeout, buffer, sOptions, xtra_params, stop_tok);
     }
 
     auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);

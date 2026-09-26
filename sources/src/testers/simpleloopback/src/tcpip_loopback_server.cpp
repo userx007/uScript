@@ -92,13 +92,13 @@ namespace {
      *  chunk as it's echoed back, same as kvcan's print_frame(prefix, &frame)
      *  being called on both sides of the loopback.
      */
-    void print_chunk(const char *prefix, const std::string &peer, const uint8_t *data, size_t len)
+    void print_chunk(const char *pstrPrefix, const std::string &strPeer, const uint8_t *pu8Data, size_t len)
     {
-        std::printf("%-4s  %-24s  %-6zu ", prefix, peer.c_str(), len);
+        std::printf("%-4s  %-24s  %-6zu ", pstrPrefix, strPeer.c_str(), len);
 
         const size_t shown = std::min(len, DUMP_MAX_BYTES);
         for (size_t i = 0; i < shown; ++i) {
-            std::printf("%02X ", data[i]);
+            std::printf("%02X ", pu8Data[i]);
         }
         if (len > shown) {
             std::printf("... (+%zu more bytes)", len - shown);
@@ -109,11 +109,11 @@ namespace {
 
     // Send the whole buffer, looping over short writes. Returns false on
     // error or if the peer went away mid-send.
-    bool send_all(int fd, const uint8_t *data, size_t len)
+    bool send_all(int iFd, const uint8_t *pu8Data, size_t len)
     {
         size_t sent = 0;
         while (sent < len) {
-            const ssize_t n = ::send(fd, data + sent, len - sent, MSG_NOSIGNAL);
+            const ssize_t n = ::send(iFd, pu8Data + sent, len - sent, MSG_NOSIGNAL);
             if (n < 0) {
                 if (errno == EINTR) {
                     continue;
@@ -128,13 +128,13 @@ namespace {
 
     // Serve one client connection: echo bytes until it disconnects or an
     // error occurs. Returns when the connection ends.
-    void serve_client(int clientFd, const std::string &strPeer)
+    void serve_client(int iClientFd, const std::string &strPeer)
     {
         uint8_t buffer[RECV_CHUNK_SIZE];
         size_t totalBytes = 0;
 
         while (!g_stop) {
-            const ssize_t n = ::recv(clientFd, buffer, sizeof(buffer), 0);
+            const ssize_t n = ::recv(iClientFd, buffer, sizeof(buffer), 0);
             if (n < 0) {
                 if (errno == EINTR) {
                     continue;
@@ -155,7 +155,7 @@ namespace {
 
             print_chunk("RX", strPeer, buffer, szReceived);
 
-            if (!send_all(clientFd, buffer, szReceived)) {
+            if (!send_all(iClientFd, buffer, szReceived)) {
                 std::fprintf(stderr, "[%s] failed to echo bytes back, dropping connection\n",
                              strPeer.c_str());
                 break;
@@ -166,13 +166,13 @@ namespace {
     }
 } // namespace
 
-int main(int argc, char **argv)
+int main(int iArgc, char **ppstrArgv)
 {
-    const int iPort             = (argc > 1) ? std::atoi(argv[1]) : DEFAULT_PORT;
-    const std::string strBindTo = (argc > 2) ? argv[2] : DEFAULT_BIND;
+    const int iPort             = (iArgc > 1) ? std::atoi(ppstrArgv[1]) : DEFAULT_PORT;
+    const std::string strBindTo = (iArgc > 2) ? ppstrArgv[2] : DEFAULT_BIND;
 
     if (iPort <= 0 || iPort > 65535) {
-        std::fprintf(stderr, "Invalid port: %s\n", (argc > 1) ? argv[1] : "");
+        std::fprintf(stderr, "Invalid port: %s\n", (iArgc > 1) ? ppstrArgv[1] : "");
         return 1;
     }
 

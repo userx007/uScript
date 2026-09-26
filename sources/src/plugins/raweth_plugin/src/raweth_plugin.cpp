@@ -28,10 +28,10 @@ extern "C" {
         return new RawEthPlugin();
     }
 
-    EXPORTED void pluginExit(RawEthPlugin *ptrPlugin)
+    EXPORTED void pluginExit(RawEthPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -109,12 +109,12 @@ std::shared_ptr<RawEth> RawEthPlugin::m_OpenDriver(void) const
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::m_RAWETH_INFO(const std::string &args, std::stop_token st) const
+bool RawEthPlugin::m_RAWETH_INFO(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -185,13 +185,13 @@ bool RawEthPlugin::m_RAWETH_INFO(const std::string &args, std::stop_token st) co
  *        r=read_tout  w=write_tout  s=recv_bufsize
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::m_RAWETH_CONFIG(const std::string &args, std::stop_token st) const
+bool RawEthPlugin::m_RAWETH_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
-    return generic_raweth_set_params(this, args);
+    return generic_raweth_set_params(this, strArgs);
 
 } /* m_RAWETH_CONFIG() */
 
@@ -216,14 +216,14 @@ bool RawEthPlugin::m_RAWETH_CONFIG(const std::string &args, std::stop_token st) 
  *       xtra_params being used for that purpose at the driver level.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::m_RAWETH_CMD(const std::string &args, std::stop_token st) const
+bool RawEthPlugin::m_RAWETH_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<RawEth> {
             // open the RawEth socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
@@ -242,14 +242,14 @@ bool RawEthPlugin::m_RAWETH_CMD(const std::string &args, std::stop_token st) con
  *       RAWETH.SCRIPT scriptname [|delay]
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::m_RAWETH_SCRIPT(const std::string &args, std::stop_token st) const
+bool RawEthPlugin::m_RAWETH_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<RawEth> {
             // open the RawEth socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
@@ -280,12 +280,12 @@ bool RawEthPlugin::m_RAWETH_SCRIPT(const std::string &args, std::stop_token st) 
  * \return true on success, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::m_RAWETH_CYCLIC(const std::string &args, std::stop_token st) const
+bool RawEthPlugin::m_RAWETH_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<RawEth> {
             // open the RawEth socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();

@@ -55,9 +55,9 @@
 
 static volatile int running = 1;
 
-static void sig_handler(int sig)
+static void sig_handler(int iSig)
 {
-    (void)sig;
+    (void)iSig;
     running = 0;
 }
 
@@ -87,11 +87,11 @@ static const struct baud_entry BAUD_TABLE[] = {
 #endif
 };
 
-static int baud_to_flag(long baud, speed_t *out)
+static int baud_to_flag(long baud, speed_t *pOut)
 {
     for (size_t i = 0; i < sizeof(BAUD_TABLE) / sizeof(BAUD_TABLE[0]); i++) {
         if (BAUD_TABLE[i].value == baud) {
-            *out = BAUD_TABLE[i].flag;
+            *pOut = BAUD_TABLE[i].flag;
             return 0;
         }
     }
@@ -103,16 +103,16 @@ static int baud_to_flag(long baud, speed_t *out)
 /* ------------------------------------------------------------------ */
 
 /** Print a chunk of bytes in candump-like hex format. */
-static void print_chunk(const char *prefix, const unsigned char *buf, ssize_t len)
+static void print_chunk(const char *pstrPrefix, const unsigned char *buf, ssize_t len)
 {
-    printf("%s  [%zd] ", prefix, len);
+    printf("%s  [%zd] ", pstrPrefix, len);
     for (ssize_t i = 0; i < len; i++)
         printf("%02X ", buf[i]);
     printf("\n");
     fflush(stdout);
 }
 
-static int open_serial_port(const char *path, long baud)
+static int open_serial_port(const char *pstrPath, long baud)
 {
     speed_t speed;
     if (baud_to_flag(baud, &speed) < 0) {
@@ -125,9 +125,9 @@ static int open_serial_port(const char *path, long baud)
 
     /* O_NDELAY/O_NONBLOCK at open time avoids blocking on DCD for modem
      * lines; we clear it again right after so read() blocks normally. */
-    int fd = open(path, O_RDWR | O_NOCTTY | O_NDELAY);
+    int fd = open(pstrPath, O_RDWR | O_NOCTTY | O_NDELAY);
     if (fd < 0) {
-        fprintf(stderr, "open '%s': %s\n", path, strerror(errno));
+        fprintf(stderr, "open '%s': %s\n", pstrPath, strerror(errno));
         return -1;
     }
 
@@ -173,9 +173,9 @@ static int open_serial_port(const char *path, long baud)
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
-int main(int argc, char *argv[])
+int main(int iArgc, char *argv[])
 {
-    if (argc < 2) {
+    if (iArgc < 2) {
         fprintf(stderr, "usage: %s <port> [baudrate]\n", argv[0]);
         fprintf(stderr, "  e.g.: %s /dev/tnt0 115200\n", argv[0]);
         return EXIT_FAILURE;
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 
     const char *port = argv[1];
     long baud = 115200;
-    if (argc > 2) {
+    if (iArgc > 2) {
         char *endptr;
         baud = strtol(argv[2], &endptr, 10);
         if (*endptr != '\0' || baud <= 0) {

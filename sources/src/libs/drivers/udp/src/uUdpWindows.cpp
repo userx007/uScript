@@ -313,7 +313,7 @@ UDP::Status UDP::timeout_read(uint32_t u32ReadTimeout,
 UDP::Status UDP::timeout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
                                size_t &szBytesWritten,
-                               const void *pDestAddr,
+                               const void *pvDestAddr,
                                size_t szDestAddrLen,
                                std::stop_token stop_tok) const
 {
@@ -372,14 +372,14 @@ UDP::Status UDP::timeout_write(uint32_t u32WriteTimeout,
         return Status::WRITE_ERROR;
     }
 
-    const int nbytes = (pDestAddr == nullptr)
+    const int nbytes = (pvDestAddr == nullptr)
                            ? ::send(static_cast<SOCKET>(m_iHandle),
                                     reinterpret_cast<const char *>(buffer.data()),
                                     static_cast<int>(buffer.size()), 0)
                            : ::sendto(static_cast<SOCKET>(m_iHandle),
                                       reinterpret_cast<const char *>(buffer.data()),
                                       static_cast<int>(buffer.size()), 0,
-                                      reinterpret_cast<const struct sockaddr *>(pDestAddr),
+                                      reinterpret_cast<const struct sockaddr *>(pvDestAddr),
                                       static_cast<int>(szDestAddrLen));
 
     if (nbytes < 0 || static_cast<size_t>(nbytes) != buffer.size()) {

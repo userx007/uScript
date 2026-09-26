@@ -31,10 +31,10 @@ namespace HydraHAL {
     // Construction
     // ---------------------------------------------------------------------------
 
-    Protocol::Protocol(std::shared_ptr<Hydrabus> hydrabus,
-                       std::string name,
-                       std::string fname,
-                       uint8_t mode_byte)
+    Protocol::Protocol(std::shared_ptr<Hydrabus> shpHydrabus,
+                       std::string strName,
+                       std::string strFname,
+                       uint8_t u8Mode_byte)
         : _hydrabus(std::move(hydrabus))
         , _name(std::move(name))
         , _fname(std::move(fname))
@@ -104,26 +104,26 @@ namespace HydraHAL {
         return _hydrabus->write(data, stop_tok);
     }
 
-    bool Protocol::_write_byte(uint8_t b, std::stop_token stop_tok)
+    bool Protocol::_write_byte(uint8_t u8B, std::stop_token stop_tok)
     {
-        return _hydrabus->write_byte(b, stop_tok);
+        return _hydrabus->write_byte(u8B, stop_tok);
     }
 
-    bool Protocol::_write_u16_be(uint16_t v, std::stop_token stop_tok)
+    bool Protocol::_write_u16_be(uint16_t u16V, std::stop_token stop_tok)
     {
-        auto arr = u16_be(v);
+        auto arr = u16_be(u16V);
         return _hydrabus->write(arr, stop_tok);
     }
 
-    bool Protocol::_write_u32_be(uint32_t v, std::stop_token stop_tok)
+    bool Protocol::_write_u32_be(uint32_t u32V, std::stop_token stop_tok)
     {
-        auto arr = u32_be(v);
+        auto arr = u32_be(u32V);
         return _hydrabus->write(arr, stop_tok);
     }
 
-    bool Protocol::_write_u32_le(uint32_t v, std::stop_token stop_tok)
+    bool Protocol::_write_u32_le(uint32_t u32V, std::stop_token stop_tok)
     {
-        auto arr = u32_le(v);
+        auto arr = u32_le(u32V);
         return _hydrabus->write(arr, stop_tok);
     }
 
@@ -132,9 +132,9 @@ namespace HydraHAL {
         return _hydrabus->read(n, stop_tok);
     }
 
-    std::vector<uint8_t> Protocol::_read_with_timeout(size_t n, uint32_t timeout_ms, std::stop_token stop_tok)
+    std::vector<uint8_t> Protocol::_read_with_timeout(size_t n, uint32_t u32Timeout_ms, std::stop_token stop_tok)
     {
-        return _hydrabus->read(n, timeout_ms, stop_tok);
+        return _hydrabus->read(n, u32Timeout_ms, stop_tok);
     }
 
     uint8_t Protocol::_read_byte(std::stop_token stop_tok)
@@ -143,19 +143,19 @@ namespace HydraHAL {
         return resp.empty() ? 0u : resp[0];
     }
 
-    bool Protocol::_expect_byte(uint8_t expected, const char *context, std::stop_token stop_tok)
+    bool Protocol::_expect_byte(uint8_t u8Expected, const char *pstrContext, std::stop_token stop_tok)
     {
         uint8_t got = _read_byte(stop_tok);
-        if (got != expected) {
-            LOG_PRINT(LOG_ERROR, LOG_STRING(_fname.c_str()); if (context) { LOG_STRING(context); LOG_STRING(":"); } LOG_STRING("expected"); LOG_HEX8(expected); LOG_STRING("got"); LOG_HEX8(got));
+        if (got != u8Expected) {
+            LOG_PRINT(LOG_ERROR, LOG_STRING(_fname.c_str()); if (pstrContext) { LOG_STRING(pstrContext); LOG_STRING(":"); } LOG_STRING("u8Expected"); LOG_HEX8(u8Expected); LOG_STRING("got"); LOG_HEX8(got));
             return false;
         }
         return true;
     }
 
-    bool Protocol::_ack(const char *context, std::stop_token stop_tok)
+    bool Protocol::_ack(const char *pstrContext, std::stop_token stop_tok)
     {
-        return _expect_byte(0x01, context, stop_tok);
+        return _expect_byte(0x01, pstrContext, stop_tok);
     }
 
     // ---------------------------------------------------------------------------

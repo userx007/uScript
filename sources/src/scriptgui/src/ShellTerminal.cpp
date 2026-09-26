@@ -30,7 +30,7 @@
 //  TermView
 // ═════════════════════════════════════════════════════════════════════════════
 
-TermView::TermView(QWidget *parent)
+TermView::TermView(QWidget *pParent)
     : QAbstractScrollArea(parent)
 {
     // Default monospace font
@@ -74,20 +74,20 @@ void TermView::setTermFont(const QFont &font)
 
 // ── grid helpers ──────────────────────────────────────────────────────────────
 
-void TermView::ensureLine(int row)
+void TermView::ensureLine(int iRow)
 {
-    if (m_grid.size() <= row) {
-        m_grid.resize(row + 1);
+    if (m_grid.size() <= iRow) {
+        m_grid.resize(iRow + 1);
     }
 }
 
-TermCell &TermView::cell(int row, int col)
+TermCell &TermView::cell(int iRow, int iCol)
 {
-    ensureLine(row);
-    if (m_grid[row].size() <= col) {
-        m_grid[row].resize(col + 1);
+    ensureLine(iRow);
+    if (m_grid[iRow].size() <= iCol) {
+        m_grid[iRow].resize(iCol + 1);
     }
-    return m_grid[row][col];
+    return m_grid[iRow][iCol];
 }
 
 void TermView::putChar(QChar c)
@@ -154,10 +154,10 @@ void TermView::eraseToEndOfLine()
 
 // ── SGR ───────────────────────────────────────────────────────────────────────
 
-QColor TermView::sgrColor(int code)
+QColor TermView::sgrColor(int iCode)
 {
     // Dracula palette, matching the SGR codes uShell actually emits.
-    switch (code) {
+    switch (iCode) {
     case 30:
         return QColor(0x40, 0x48, 0x55);
     case 31:
@@ -570,22 +570,22 @@ void TermView::scrollToBottom()
     verticalScrollBar()->setValue(verticalScrollBar()->maximum());
 }
 
-void TermView::resizeEvent(QResizeEvent *ev)
+void TermView::resizeEvent(QResizeEvent *pEv)
 {
-    QAbstractScrollArea::resizeEvent(ev);
+    QAbstractScrollArea::resizeEvent(pEv);
     updateScrollbar();
 }
 
 // ── key events ────────────────────────────────────────────────────────────────
 
-void TermView::keyPressEvent(QKeyEvent *ev)
+void TermView::keyPressEvent(QKeyEvent *pEv)
 {
-    const Qt::KeyboardModifiers mod = ev->modifiers();
+    const Qt::KeyboardModifiers mod = pEv->modifiers();
     QByteArray bytes;
 
     // Ctrl+Shift+C — copy selection (must not conflict with Ctrl+C = SIGINT)
     if ((mod & Qt::ControlModifier) && (mod & Qt::ShiftModifier) &&
-        ev->key() == Qt::Key_C) {
+        pEv->key() == Qt::Key_C) {
         copySelectionToClipboard();
         return;
     }
@@ -593,14 +593,14 @@ void TermView::keyPressEvent(QKeyEvent *ev)
     // Paste: Ctrl+V (Ctrl+Shift+V too — the ShiftModifier bit is simply
     // ignored here) and the X11 terminal convention Shift+Insert.
     // Ctrl+V isn't otherwise bound below, so repurposing it is safe.
-    if ((ev->key() == Qt::Key_V && (mod & Qt::ControlModifier)) ||
-        (ev->key() == Qt::Key_Insert && (mod & Qt::ShiftModifier))) {
+    if ((pEv->key() == Qt::Key_V && (mod & Qt::ControlModifier)) ||
+        (pEv->key() == Qt::Key_Insert && (mod & Qt::ShiftModifier))) {
         pasteFromClipboard();
         return;
     }
 
     if (mod & Qt::ControlModifier) {
-        switch (ev->key()) {
+        switch (pEv->key()) {
         case Qt::Key_U:
             bytes = "\x15";
             break;
@@ -616,7 +616,7 @@ void TermView::keyPressEvent(QKeyEvent *ev)
     }
 
     if (bytes.isEmpty()) {
-        switch (ev->key()) {
+        switch (pEv->key()) {
         case Qt::Key_Return:
         case Qt::Key_Enter:
             bytes = "\x0A";
@@ -661,8 +661,8 @@ void TermView::keyPressEvent(QKeyEvent *ev)
             bytes = "\x1B[6~";
             break;
         default:
-            if (!ev->text().isEmpty() && ev->text().at(0).isPrint()) {
-                bytes = ev->text().toUtf8();
+            if (!pEv->text().isEmpty() && pEv->text().at(0).isPrint()) {
+                bytes = pEv->text().toUtf8();
             }
             break;
         }
@@ -675,42 +675,42 @@ void TermView::keyPressEvent(QKeyEvent *ev)
 
 // ── mouse events (selection) ──────────────────────────────────────────────────
 
-void TermView::mousePressEvent(QMouseEvent *ev)
+void TermView::mousePressEvent(QMouseEvent *pEv)
 {
-    if (ev->button() == Qt::LeftButton) {
+    if (pEv->button() == Qt::LeftButton) {
         clearSelection();
-        m_selAnchor = pixToCell(ev->pos());
+        m_selAnchor = pixToCell(pEv->pos());
         m_selEnd    = m_selAnchor;
         m_selecting = true;
         viewport()->update();
-    } else if (ev->button() == Qt::MiddleButton) {
+    } else if (pEv->button() == Qt::MiddleButton) {
         // Common X11 terminal convention: middle-click pastes.
         pasteFromClipboard();
     }
-    QAbstractScrollArea::mousePressEvent(ev);
+    QAbstractScrollArea::mousePressEvent(pEv);
 }
 
-void TermView::mouseMoveEvent(QMouseEvent *ev)
+void TermView::mouseMoveEvent(QMouseEvent *pEv)
 {
-    if (m_selecting && (ev->buttons() & Qt::LeftButton)) {
-        m_selEnd = pixToCell(ev->pos());
+    if (m_selecting && (pEv->buttons() & Qt::LeftButton)) {
+        m_selEnd = pixToCell(pEv->pos());
         viewport()->update();
     }
-    QAbstractScrollArea::mouseMoveEvent(ev);
+    QAbstractScrollArea::mouseMoveEvent(pEv);
 }
 
-void TermView::mouseReleaseEvent(QMouseEvent *ev)
+void TermView::mouseReleaseEvent(QMouseEvent *pEv)
 {
-    if (ev->button() == Qt::LeftButton) {
+    if (pEv->button() == Qt::LeftButton) {
         m_selecting = false;
-        m_selEnd    = pixToCell(ev->pos());
+        m_selEnd    = pixToCell(pEv->pos());
         // Auto-copy on release (like a real terminal)
         if (hasSelection()) {
             copySelectionToClipboard();
         }
         viewport()->update();
     }
-    QAbstractScrollArea::mouseReleaseEvent(ev);
+    QAbstractScrollArea::mouseReleaseEvent(pEv);
 }
 
 // ── selection helpers ─────────────────────────────────────────────────────────
@@ -801,7 +801,7 @@ void TermView::pasteFromClipboard()
 
 // ── context menu (Copy / Paste) ────────────────────────────────────────────────
 
-void TermView::contextMenuEvent(QContextMenuEvent *ev)
+void TermView::contextMenuEvent(QContextMenuEvent *pEv)
 {
     QMenu menu(this);
     QAction *copyAct  = menu.addAction("Copy");
@@ -809,7 +809,7 @@ void TermView::contextMenuEvent(QContextMenuEvent *ev)
     copyAct->setEnabled(hasSelection());
     pasteAct->setEnabled(!QApplication::clipboard()->text().isEmpty());
 
-    QAction *chosen = menu.exec(ev->globalPos());
+    QAction *chosen = menu.exec(pEv->globalPos());
     if (chosen == copyAct) {
         copySelectionToClipboard();
     } else if (chosen == pasteAct) {
@@ -875,7 +875,7 @@ void TermView::clearKeepPrompt()
 //  ShellTerminal  —  header wrapper
 // ═════════════════════════════════════════════════════════════════════════════
 
-ShellTerminal::ShellTerminal(QWidget *parent)
+ShellTerminal::ShellTerminal(QWidget *pParent)
     : QFrame(parent)
 {
     setObjectName("panelFrame");
@@ -930,11 +930,11 @@ ShellTerminal::ShellTerminal(QWidget *parent)
     updateHeaderState();
 }
 
-void ShellTerminal::setActive(bool active)
+void ShellTerminal::setActive(bool bActive)
 {
     const bool wasActive = m_active;
-    m_active             = active;
-    if (active) {
+    m_active             = bActive;
+    if (bActive) {
         // Clear on every new session (re-activation), but NOT on the very
         // first call — bytes may already have arrived in the same chunk as
         // GUI:SHELL_RUN and been forwarded before setActive() was called.

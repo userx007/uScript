@@ -61,7 +61,7 @@ namespace {
     thread_local uint16_t tl_pendingQuantity    = 0; // ReadBits only — see ModbusProtocol::decodeReadBitsResponse()
 } // namespace
 
-ModbusDriver::ModbusDriver(Config config)
+ModbusDriver::ModbusDriver(Config sConfig)
     : m_config(std::move(config))
 {
     if (m_config.strInstanceName.empty()) {
@@ -140,32 +140,32 @@ ICommDriver::ReadResult ModbusDriver::tout_read(uint32_t u32ReadTimeout, std::sp
 // comm-dump panel by hand (see class doc comment for why).
 // -----------------------------------------------------------------------
 
-ICommDriver::Status ModbusDriver::m_SendAdu(const std::vector<uint8_t> &adu, std::string_view xtra_params) const
+ICommDriver::Status ModbusDriver::m_SendAdu(const std::vector<uint8_t> &vAdu, std::string_view xtra_params) const
 {
-    auto res = m_pTcpip->tout_write(5000, std::span<const uint8_t>(adu.data(), adu.size()));
+    auto res = m_pTcpip->tout_write(5000, std::span<const uint8_t>(vAdu.data(), vAdu.size()));
     if (res.status == ICommDriver::Status::SUCCESS && gui_mode_active()) {
         gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
-                             CommDir::Tx, adu.data(), static_cast<uint32_t>(adu.size()));
+                             CommDir::Tx, vAdu.data(), static_cast<uint32_t>(vAdu.size()));
     }
     return res.status;
 }
 
-ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t> &aduOut, uint32_t timeoutMs, std::string_view xtra_params,
+ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t> &vAduOut, uint32_t u32TimeoutMs, std::string_view xtra_params,
                                             std::stop_token stop_tok) const
 {
-    aduOut.clear();
-    aduOut.resize(ModbusProtocol::kMbapPrefixSize);
+    vAduOut.clear();
+    vAduOut.resize(ModbusProtocol::kMbapPrefixSize);
 
     // 1. Fixed 6-byte MBAP prefix (Transaction Id + Protocol Id + Length) —
     // the only part of an ADU that can legitimately take a while to arrive
-    // (nothing new to receive yet), so the only part bounded by timeoutMs.
+    // (nothing new to receive yet), so the only part bounded by u32TimeoutMs.
     {
         size_t totalRead     = 0;
         // 0 == infinite timeout: never expire this wait, and forward 0
         // straight through to tout_read() on each attempt (the underlying
         // TCP driver now blocks indefinitely on 0).
-        const bool bInfinite = (timeoutMs == 0);
-        const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+        const bool bInfinite = (u32TimeoutMs == 0);
+        const auto deadline  = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
         while (totalRead < ModbusProtocol::kMbapPrefixSize) {
             if (stop_tok.stop_requested()) {
                 return ICommDriver::Status::READ_TIMEOUT;
@@ -181,7 +181,7 @@ ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t> &aduOut, uint32
                 }
             }
             auto res = m_pTcpip->tout_read((!bInfinite && remainingMs == 0) ? 1 : remainingMs,
-                                           std::span<uint8_t>(aduOut.data() + totalRead, ModbusProtocol::kMbapPrefixSize - totalRead),
+                                           std::span<uint8_t>(vAduOut.data() + totalRead, ModbusProtocol::kMbapPrefixSize - totalRead),
                                            ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact}, {}, stop_tok);
             if (res.status != ICommDriver::Status::SUCCESS || res.bytes_read == 0) {
                 return ICommDriver::Status::READ_TIMEOUT;
@@ -193,19 +193,19 @@ ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t> &aduOut, uint32
     // 2. Exactly "Length" more bytes (Unit Id + PDU) — a short, fixed
     // continuation timeout, since a response that starts arriving but then
     // stalls is a broken-connection problem, not a "nothing yet" one.
-    const uint16_t followingLength = ModbusProtocol::decodeFollowingLength(aduOut.data());
+    const uint16_t followingLength = ModbusProtocol::decodeFollowingLength(vAduOut.data());
     if (followingLength == 0) {
         return ICommDriver::Status::PROTOCOL_ERROR; // Unit Id is always present — Length is never 0
     }
-    const size_t prefixSize = aduOut.size();
-    aduOut.resize(prefixSize + followingLength);
+    const size_t prefixSize = vAduOut.size();
+    vAduOut.resize(prefixSize + followingLength);
     size_t totalRead = 0;
     while (totalRead < followingLength) {
         if (stop_tok.stop_requested()) {
             return ICommDriver::Status::READ_TIMEOUT;
         }
         auto res = m_pTcpip->tout_read(3000,
-                                       std::span<uint8_t>(aduOut.data() + prefixSize + totalRead, followingLength - totalRead),
+                                       std::span<uint8_t>(vAduOut.data() + prefixSize + totalRead, followingLength - totalRead),
                                        ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact}, {}, stop_tok);
         if (res.status != ICommDriver::Status::SUCCESS || res.bytes_read == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
@@ -215,7 +215,7 @@ ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t> &aduOut, uint32
 
     if (gui_mode_active()) {
         gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
-                             CommDir::Rx, aduOut.data(), static_cast<uint32_t>(aduOut.size()));
+                             CommDir::Rx, vAduOut.data(), static_cast<uint32_t>(vAduOut.size()));
     }
 
     return ICommDriver::Status::SUCCESS;
@@ -230,9 +230,9 @@ ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t> &aduOut, uint32
 // interpreter's STRING_RAW conversion (ustring::stringToVector()) appends
 // one by default, and it would otherwise land inside — and corrupt the
 // length of — this driver's last argument token.
-void ModbusDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens)
+void ModbusDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens)
 {
-    outTokens.clear();
+    vOutTokens.clear();
 
     size_t len = dataSpan.size();
     while (len > 0 && dataSpan[len - 1] == 0) {
@@ -254,7 +254,7 @@ void ModbusDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector
         while (i < n && !std::isspace(static_cast<unsigned char>(text[i]))) {
             ++i;
         }
-        outTokens.push_back(text.substr(start, i - start));
+        vOutTokens.push_back(text.substr(start, i - start));
     }
 }
 
@@ -434,37 +434,37 @@ ICommDriver::ReadResult ModbusDriver::receive(uint32_t u32ReadTimeout, std::span
 // Modbus function handlers
 // -----------------------------------------------------------------------
 
-bool ModbusDriver::m_ParseReadArgs(const std::vector<std::string> &args, uint16_t maxQuantity,
-                                   uint8_t &outUnitId, uint16_t &outAddr, uint16_t &outQuantity) const
+bool ModbusDriver::m_ParseReadArgs(const std::vector<std::string> &vArgs, uint16_t u16MaxQuantity,
+                                   uint8_t &u8OutUnitId, uint16_t &u16OutAddr, uint16_t &u16OutQuantity) const
 {
-    if (args.size() != 3) {
+    if (vArgs.size() != 3) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: <unit_id> <start_addr> <quantity>"));
         return false;
     }
     uint32_t unitId = 0, addr = 0, quantity = 0;
-    if (!numeric::str2uint32(args[0], unitId) || unitId > 255) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid unit id (0-255):"); LOG_STRING(args[0]));
+    if (!numeric::str2uint32(vArgs[0], unitId) || unitId > 255) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid unit id (0-255):"); LOG_STRING(vArgs[0]));
         return false;
     }
-    if (!numeric::str2uint32(args[1], addr) || addr > 0xFFFF) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid address (0-65535):"); LOG_STRING(args[1]));
+    if (!numeric::str2uint32(vArgs[1], addr) || addr > 0xFFFF) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid address (0-65535):"); LOG_STRING(vArgs[1]));
         return false;
     }
-    if (!numeric::str2uint32(args[2], quantity) || quantity == 0 || quantity > maxQuantity) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid quantity (1-"); LOG_UINT32(maxQuantity); LOG_STRING("):"); LOG_STRING(args[2]));
+    if (!numeric::str2uint32(vArgs[2], quantity) || quantity == 0 || quantity > u16MaxQuantity) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid quantity (1-"); LOG_UINT32(u16MaxQuantity); LOG_STRING("):"); LOG_STRING(vArgs[2]));
         return false;
     }
-    outUnitId   = static_cast<uint8_t>(unitId);
-    outAddr     = static_cast<uint16_t>(addr);
-    outQuantity = static_cast<uint16_t>(quantity);
+    u8OutUnitId   = static_cast<uint8_t>(unitId);
+    u16OutAddr     = static_cast<uint16_t>(addr);
+    u16OutQuantity = static_cast<uint16_t>(quantity);
     return true;
 }
 
-bool ModbusDriver::m_HandleReadCoils(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ModbusDriver::m_HandleReadCoils(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     uint8_t unitId;
     uint16_t addr, quantity;
-    if (!m_ParseReadArgs(args, ModbusProtocol::kMaxReadBits, unitId, addr, quantity)) {
+    if (!m_ParseReadArgs(vArgs, ModbusProtocol::kMaxReadBits, unitId, addr, quantity)) {
         return false;
     }
 
@@ -481,11 +481,11 @@ bool ModbusDriver::m_HandleReadCoils(const std::vector<std::string> &args, std::
     return true;
 }
 
-bool ModbusDriver::m_HandleReadDiscreteInputs(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ModbusDriver::m_HandleReadDiscreteInputs(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     uint8_t unitId;
     uint16_t addr, quantity;
-    if (!m_ParseReadArgs(args, ModbusProtocol::kMaxReadBits, unitId, addr, quantity)) {
+    if (!m_ParseReadArgs(vArgs, ModbusProtocol::kMaxReadBits, unitId, addr, quantity)) {
         return false;
     }
 
@@ -502,11 +502,11 @@ bool ModbusDriver::m_HandleReadDiscreteInputs(const std::vector<std::string> &ar
     return true;
 }
 
-bool ModbusDriver::m_HandleReadHoldingRegisters(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ModbusDriver::m_HandleReadHoldingRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     uint8_t unitId;
     uint16_t addr, quantity;
-    if (!m_ParseReadArgs(args, ModbusProtocol::kMaxReadRegisters, unitId, addr, quantity)) {
+    if (!m_ParseReadArgs(vArgs, ModbusProtocol::kMaxReadRegisters, unitId, addr, quantity)) {
         return false;
     }
 
@@ -522,11 +522,11 @@ bool ModbusDriver::m_HandleReadHoldingRegisters(const std::vector<std::string> &
     return true;
 }
 
-bool ModbusDriver::m_HandleReadInputRegisters(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ModbusDriver::m_HandleReadInputRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     uint8_t unitId;
     uint16_t addr, quantity;
-    if (!m_ParseReadArgs(args, ModbusProtocol::kMaxReadRegisters, unitId, addr, quantity)) {
+    if (!m_ParseReadArgs(vArgs, ModbusProtocol::kMaxReadRegisters, unitId, addr, quantity)) {
         return false;
     }
 
@@ -542,26 +542,26 @@ bool ModbusDriver::m_HandleReadInputRegisters(const std::vector<std::string> &ar
     return true;
 }
 
-bool ModbusDriver::m_HandleWriteSingleCoil(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ModbusDriver::m_HandleWriteSingleCoil(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (args.size() != 3) {
+    if (vArgs.size() != 3) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: WRITE_SINGLE_COIL <unit_id> <addr> <0|1>"));
         return false;
     }
     uint32_t unitId = 0, addr = 0;
-    if (!numeric::str2uint32(args[0], unitId) || unitId > 255) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid unit id (0-255):"); LOG_STRING(args[0]));
+    if (!numeric::str2uint32(vArgs[0], unitId) || unitId > 255) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid unit id (0-255):"); LOG_STRING(vArgs[0]));
         return false;
     }
-    if (!numeric::str2uint32(args[1], addr) || addr > 0xFFFF) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid address (0-65535):"); LOG_STRING(args[1]));
+    if (!numeric::str2uint32(vArgs[1], addr) || addr > 0xFFFF) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid address (0-65535):"); LOG_STRING(vArgs[1]));
         return false;
     }
-    if (args[2] != "0" && args[2] != "1") {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid coil value (must be 0 or 1):"); LOG_STRING(args[2]));
+    if (vArgs[2] != "0" && vArgs[2] != "1") {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid coil value (must be 0 or 1):"); LOG_STRING(vArgs[2]));
         return false;
     }
-    const bool value = (args[2] == "1");
+    const bool value = (vArgs[2] == "1");
 
     uint16_t txnId   = 0;
     auto adu         = m_protocol.buildWriteSingleCoil(static_cast<uint8_t>(unitId), static_cast<uint16_t>(addr), value, &txnId);
@@ -575,23 +575,23 @@ bool ModbusDriver::m_HandleWriteSingleCoil(const std::vector<std::string> &args,
     return true;
 }
 
-bool ModbusDriver::m_HandleWriteSingleRegister(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ModbusDriver::m_HandleWriteSingleRegister(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (args.size() != 3) {
+    if (vArgs.size() != 3) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: WRITE_SINGLE_REGISTER <unit_id> <addr> <value 0-65535>"));
         return false;
     }
     uint32_t unitId = 0, addr = 0, value = 0;
-    if (!numeric::str2uint32(args[0], unitId) || unitId > 255) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid unit id (0-255):"); LOG_STRING(args[0]));
+    if (!numeric::str2uint32(vArgs[0], unitId) || unitId > 255) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid unit id (0-255):"); LOG_STRING(vArgs[0]));
         return false;
     }
-    if (!numeric::str2uint32(args[1], addr) || addr > 0xFFFF) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid address (0-65535):"); LOG_STRING(args[1]));
+    if (!numeric::str2uint32(vArgs[1], addr) || addr > 0xFFFF) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid address (0-65535):"); LOG_STRING(vArgs[1]));
         return false;
     }
-    if (!numeric::str2uint32(args[2], value) || value > 0xFFFF) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid register value (0-65535):"); LOG_STRING(args[2]));
+    if (!numeric::str2uint32(vArgs[2], value) || value > 0xFFFF) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid register value (0-65535):"); LOG_STRING(vArgs[2]));
         return false;
     }
 
@@ -607,34 +607,34 @@ bool ModbusDriver::m_HandleWriteSingleRegister(const std::vector<std::string> &a
     return true;
 }
 
-bool ModbusDriver::m_HandleWriteMultipleCoils(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ModbusDriver::m_HandleWriteMultipleCoils(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (args.size() < 3) {
+    if (vArgs.size() < 3) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: WRITE_MULTIPLE_COILS <unit_id> <start_addr> <v1> [v2] ..."));
         return false;
     }
     uint32_t unitId = 0, addr = 0;
-    if (!numeric::str2uint32(args[0], unitId) || unitId > 255) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid unit id (0-255):"); LOG_STRING(args[0]));
+    if (!numeric::str2uint32(vArgs[0], unitId) || unitId > 255) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid unit id (0-255):"); LOG_STRING(vArgs[0]));
         return false;
     }
-    if (!numeric::str2uint32(args[1], addr) || addr > 0xFFFF) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid address (0-65535):"); LOG_STRING(args[1]));
+    if (!numeric::str2uint32(vArgs[1], addr) || addr > 0xFFFF) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid address (0-65535):"); LOG_STRING(vArgs[1]));
         return false;
     }
-    const size_t count = args.size() - 2;
+    const size_t count = vArgs.size() - 2;
     if (count > ModbusProtocol::kMaxWriteBits) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Too many coil values, max"); LOG_UINT32(ModbusProtocol::kMaxWriteBits));
         return false;
     }
     std::vector<bool> values;
     values.reserve(count);
-    for (size_t i = 2; i < args.size(); ++i) {
-        if (args[i] != "0" && args[i] != "1") {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid coil value (must be 0 or 1):"); LOG_STRING(args[i]));
+    for (size_t i = 2; i < vArgs.size(); ++i) {
+        if (vArgs[i] != "0" && vArgs[i] != "1") {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid coil value (must be 0 or 1):"); LOG_STRING(vArgs[i]));
             return false;
         }
-        values.push_back(args[i] == "1");
+        values.push_back(vArgs[i] == "1");
     }
 
     uint16_t txnId = 0;
@@ -649,32 +649,32 @@ bool ModbusDriver::m_HandleWriteMultipleCoils(const std::vector<std::string> &ar
     return true;
 }
 
-bool ModbusDriver::m_HandleWriteMultipleRegisters(const std::vector<std::string> &args, std::string_view xtra_params) const
+bool ModbusDriver::m_HandleWriteMultipleRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
-    if (args.size() < 3) {
+    if (vArgs.size() < 3) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: WRITE_MULTIPLE_REGISTERS <unit_id> <start_addr> <v1> [v2] ..."));
         return false;
     }
     uint32_t unitId = 0, addr = 0;
-    if (!numeric::str2uint32(args[0], unitId) || unitId > 255) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid unit id (0-255):"); LOG_STRING(args[0]));
+    if (!numeric::str2uint32(vArgs[0], unitId) || unitId > 255) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid unit id (0-255):"); LOG_STRING(vArgs[0]));
         return false;
     }
-    if (!numeric::str2uint32(args[1], addr) || addr > 0xFFFF) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid address (0-65535):"); LOG_STRING(args[1]));
+    if (!numeric::str2uint32(vArgs[1], addr) || addr > 0xFFFF) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid address (0-65535):"); LOG_STRING(vArgs[1]));
         return false;
     }
-    const size_t count = args.size() - 2;
+    const size_t count = vArgs.size() - 2;
     if (count > ModbusProtocol::kMaxWriteRegisters) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Too many register values, max"); LOG_UINT32(ModbusProtocol::kMaxWriteRegisters));
         return false;
     }
     std::vector<uint16_t> values;
     values.reserve(count);
-    for (size_t i = 2; i < args.size(); ++i) {
+    for (size_t i = 2; i < vArgs.size(); ++i) {
         uint32_t v = 0;
-        if (!numeric::str2uint32(args[i], v) || v > 0xFFFF) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid register value (0-65535):"); LOG_STRING(args[i]));
+        if (!numeric::str2uint32(vArgs[i], v) || v > 0xFFFF) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid register value (0-65535):"); LOG_STRING(vArgs[i]));
             return false;
         }
         values.push_back(static_cast<uint16_t>(v));

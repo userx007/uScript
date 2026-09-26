@@ -78,9 +78,9 @@ class FT232HBase {
                                         ///< sibling's constructor (I2C/SPI), see describeConnection()
 
         /** @copydoc FT2232Base::describeBase — single-channel, so no variant suffix. */
-        CommDetails describeBase(CommFamily family) const
+        CommDetails describeBase(CommFamily eFamily) const
         {
-            return commdump_details(family, m_strIdentityLabel.empty() ? "FT232H" : m_strIdentityLabel);
+            return commdump_details(eFamily, m_strIdentityLabel.empty() ? "FT232H" : m_strIdentityLabel);
         }
 
         // ── MPSSE command opcodes ────────────────────────────────────────────
@@ -133,15 +133,15 @@ class FT232HBase {
         // ── MPSSE transport primitives — implemented in platform .cpp files ──
 
         /** Write raw MPSSE command bytes to the device */
-        Status mpsse_write(const uint8_t *buf, size_t len) const;
+        Status mpsse_write(const uint8_t *pu8Buf, size_t len) const;
 
         /**
          * Read response bytes queued by GET_BITS / shift-in commands
          * @param timeoutMs  ms before returning READ_TIMEOUT
          * @param bytesRead  actual bytes received
          */
-        Status mpsse_read(uint8_t *buf, size_t len,
-                          uint32_t timeoutMs, size_t &bytesRead,
+        Status mpsse_read(uint8_t *pu8Buf, size_t len,
+                          uint32_t u32TimeoutMs, size_t &bytesRead,
                           std::stop_token stop_tok = {}) const;
 
         /** Discard any pending bytes in the device RX/TX FIFOs */

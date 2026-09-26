@@ -138,7 +138,7 @@ class WebSocket : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -175,7 +175,7 @@ class WebSocket : public ICommDriver {
          * @brief Read exactly szLen bytes (draining m_recvLeftover first, then the
          * socket), bounded by an overall deadline derived from u32Timeout.
          */
-        Status recv_exact(uint32_t u32Timeout, uint8_t *pBuffer, size_t szLen, std::stop_token stop_tok = {}) const;
+        Status recv_exact(uint32_t u32Timeout, uint8_t *pu8Buffer, size_t szLen, std::stop_token stop_tok = {}) const;
 
         /** @brief Send the whole buffer as one masked WebSocket frame of the given opcode. */
         Status ws_send_frame(uint32_t u32Timeout, uint8_t u8Opcode, std::span<const uint8_t> payload, std::stop_token stop_tok = {}) const;
@@ -185,7 +185,7 @@ class WebSocket : public ICommDriver {
          * transparently answering Ping with Pong and consuming Pong frames.
          * A Close frame from the peer closes the connection and returns Status::READ_ERROR.
          */
-        Status ws_recv_message(uint32_t u32Timeout, std::vector<uint8_t> &payload, std::stop_token stop_tok = {}) const;
+        Status ws_recv_message(uint32_t u32Timeout, std::vector<uint8_t> &vPayload, std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Receive one complete WS message (see ws_recv_message()) and copy up to
@@ -199,10 +199,10 @@ class WebSocket : public ICommDriver {
          * cDelimiter is found or the buffer is full. Null-terminates on Status::SUCCESS.
          */
         Status timeout_read_until(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                                  uint8_t cDelimiter, size_t &szBytesRead, std::stop_token stop_tok = {}) const;
+                                  uint8_t u8CDelimiter, size_t &szBytesRead, std::stop_token stop_tok = {}) const;
 
         /** @brief Stream WS-message payload bytes, applying the KMP algorithm to detect the token sequence. */
-        Status timeout_wait_for_token(uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool useBuffer, std::stop_token stop_tok = {}) const;
+        Status timeout_wait_for_token(uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool bUseBuffer, std::stop_token stop_tok = {}) const;
 
         // -----------------------------------------------------------------------
         // KMP helpers (identical strategy to the UART / I2C / SPI / CAN / TCPIP / UDP drivers)
@@ -210,16 +210,16 @@ class WebSocket : public ICommDriver {
 
         /** @brief Run KMP stream matching over WS-message payload bytes. */
         Status kmp_stream_match(std::span<const uint8_t> token,
-                                const std::vector<int> &viLps,
+                                const std::vector<int> &vViLps,
                                 uint32_t u32Timeout,
                                 bool bReturnOnTimeout,
-                                bool useBuffer,
+                                bool bUseBuffer,
                                 std::stop_token stop_tok = {}) const;
 
         /** @brief Build the KMP failure-function table for @p pattern. */
         void build_kmp_table(std::span<const uint8_t> pattern,
                              size_t szLength,
-                             std::vector<int> &viLps) const;
+                             std::vector<int> &vViLps) const;
 };
 
 #endif // U_WEBSOCKET_DRIVER_H

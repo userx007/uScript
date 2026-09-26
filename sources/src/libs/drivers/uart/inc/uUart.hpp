@@ -60,13 +60,13 @@ class UART : public ICommDriver {
          */
         explicit UART(const std::string &strDevice, uint32_t u32Speed,
                       const std::string &strIdentityLabel = {},
-                      Parity parity                       = Parity::None,
+                      Parity eParity                       = Parity::None,
                       uint8_t u8DataBits                  = 8,
                       uint8_t u8StopBits                  = 1)
             : m_strDevice(strDevice)
             , m_strIdentityLabel(strIdentityLabel)
         {
-            open(strDevice, u32Speed, parity, u8DataBits, u8StopBits);
+            open(strDevice, u32Speed, eParity, u8DataBits, u8StopBits);
         }
 
         virtual ~UART()
@@ -85,7 +85,7 @@ class UART : public ICommDriver {
          * unaffected by their addition — this is purely additive.
          */
         Status open(const std::string &strDevice, uint32_t u32Speed,
-                    Parity parity      = Parity::None,
+                    Parity eParity      = Parity::None,
                     uint8_t u8DataBits = 8,
                     uint8_t u8StopBits = 1);
         Status close();
@@ -121,7 +121,7 @@ class UART : public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -169,14 +169,14 @@ class UART : public ICommDriver {
 
         // Legacy internal methods (kept for implementation compatibility)
         Status timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t &szBytesRead, std::stop_token stop_tok = {}) const;
-        Status timeout_read_until(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, uint8_t cDelimiter, size_t &szBytesRead, std::stop_token stop_tok = {}) const;
-        Status timeout_wait_for_token(uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool useBuffer, std::stop_token stop_tok = {}) const;
-        Status timeout_write(uint32_t u32WriteTimeouts, std::span<const uint8_t> buffer, size_t &szBytesWritten, std::stop_token stop_tok = {}) const;
+        Status timeout_read_until(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, uint8_t u8CDelimiter, size_t &szBytesRead, std::stop_token stop_tok = {}) const;
+        Status timeout_wait_for_token(uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool bUseBuffer, std::stop_token stop_tok = {}) const;
+        Status timeout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, size_t &szBytesWritten, std::stop_token stop_tok = {}) const;
 
         Status purge(bool bInput, bool bOutput) const;
-        Status setup(uint32_t u32Speed, Parity parity, uint8_t u8DataBits, uint8_t u8StopBits) const;
-        Status kmp_stream_match(std::span<const uint8_t> token, const std::vector<int> &viLps, uint32_t u32Timeout, bool bReturnOnTimeout, bool useBuffer, std::stop_token stop_tok = {}) const;
-        void build_kmp_table(std::span<const uint8_t> pattern, size_t szLength, std::vector<int> &viLps) const;
+        Status setup(uint32_t u32Speed, Parity eParity, uint8_t u8DataBits, uint8_t u8StopBits) const;
+        Status kmp_stream_match(std::span<const uint8_t> token, const std::vector<int> &vViLps, uint32_t u32Timeout, bool bReturnOnTimeout, bool bUseBuffer, std::stop_token stop_tok = {}) const;
+        void build_kmp_table(std::span<const uint8_t> pattern, size_t szLength, std::vector<int> &vViLps) const;
 
 #ifndef _WIN32
         speed_t getBaud(uint32_t u32Speed) const;

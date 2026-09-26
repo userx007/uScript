@@ -34,10 +34,10 @@ extern "C" {
         return new SLCANPlugin();
     }
 
-    EXPORTED void pluginExit(SLCANPlugin *ptrPlugin)
+    EXPORTED void pluginExit(SLCANPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -61,10 +61,10 @@ extern "C" {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_INFO(const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_INFO(const std::string &strArgs, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -194,9 +194,9 @@ bool SLCANPlugin::m_SLCAN_INFO(const std::string &args, std::stop_token st) cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_CONFIG(const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_can_set_params<SLCANPlugin>(this, args);
+    return generic_can_set_params<SLCANPlugin>(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -219,15 +219,15 @@ bool SLCANPlugin::m_SLCAN_CONFIG(const std::string &args, std::stop_token st) co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_FILTER(const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_FILTER(const std::string &strArgs, std::stop_token st) const
 {
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
     if (!m_bIsEnabled) {
         return true;
     }
 
-    if (false == m_ParseFilters(args)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(args));
+    if (false == m_ParseFilters(strArgs)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(strArgs));
         return false;
     }
 
@@ -256,10 +256,10 @@ bool SLCANPlugin::m_SLCAN_FILTER(const std::string &args, std::stop_token st) co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_CMD(const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_CMD(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<SLCANFrameDriver> {
             // Open + configure the SLCAN channel (RAII — closed automatically by destructor)
             return m_OpenAndConfigure();
@@ -300,10 +300,10 @@ bool SLCANPlugin::m_SLCAN_CMD(const std::string &args, std::stop_token st) const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_SCRIPT(const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<SLCANFrameDriver> {
             // Open + configure the SLCAN channel (RAII — closed automatically by destructor)
             return m_OpenAndConfigure();
@@ -344,10 +344,10 @@ bool SLCANPlugin::m_SLCAN_SCRIPT(const std::string &args, std::stop_token st) co
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SLCANPlugin::m_SLCAN_CYCLIC(const std::string &args, std::stop_token st) const
+bool SLCANPlugin::m_SLCAN_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<SLCANFrameDriver> {
             // Open + configure the SLCAN channel (RAII — closed automatically by destructor)
             return m_OpenAndConfigure();

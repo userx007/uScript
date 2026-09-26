@@ -119,7 +119,7 @@ class ProfibusDriver : public ICommDriver {
                 std::string strInstanceName;
         };
 
-        explicit ProfibusDriver(Config config);
+        explicit ProfibusDriver(Config sConfig);
         ~ProfibusDriver();
 
         /**
@@ -192,8 +192,8 @@ class ProfibusDriver : public ICommDriver {
         // through one place (mirrors MqttDriver's m_PhysicalSend/m_PhysicalRecv,
         // even though there is no TLS layer here to make the indirection
         // otherwise necessary).
-        ICommDriver::Status m_PhysicalSend(std::span<const uint8_t> data, uint32_t timeoutMs) const;
-        ICommDriver::Status m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t &outBytesRead, std::stop_token stop_tok = {}) const;
+        ICommDriver::Status m_PhysicalSend(std::span<const uint8_t> data, uint32_t u32TimeoutMs) const;
+        ICommDriver::Status m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t u32TimeoutMs, size_t &outBytesRead, std::stop_token stop_tok = {}) const;
 
         // Blocks until at least (33 bit-times at m_config.baud) have elapsed
         // since the last byte this driver put on the wire — the FDL "SYN
@@ -206,7 +206,7 @@ class ProfibusDriver : public ICommDriver {
         // Sends one complete FDL telegram (built by ProfibusProtocol) via
         // m_EnsureSynPause() + m_PhysicalSend(), and reports it to the GUI
         // comm-dump panel on success.
-        ICommDriver::Status m_SendTelegram(const std::vector<uint8_t> &telegram, std::string_view xtra_params) const;
+        ICommDriver::Status m_SendTelegram(const std::vector<uint8_t> &vTelegram, std::string_view xtra_params) const;
 
         // Reads one complete FDL telegram (start delimiter first, then however
         // many more bytes that delimiter's format requires) via
@@ -217,7 +217,7 @@ class ProfibusDriver : public ICommDriver {
         // started arriving, the rest is read with its own short fixed timeout
         // (a stall mid-telegram is a broken-link problem, not a "nothing to
         // receive yet" one) — same convention as MqttDriver::m_ReadPacket().
-        ICommDriver::Status m_ReadTelegram(ProfibusProtocol::DecodedTelegram &telegramOut, uint32_t timeoutMs,
+        ICommDriver::Status m_ReadTelegram(ProfibusProtocol::DecodedTelegram &telegramOut, uint32_t u32TimeoutMs,
                                            std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
         // Reads telegrams (via m_ReadTelegram()) until one whose SA/DA match
@@ -225,7 +225,7 @@ class ProfibusDriver : public ICommDriver {
         // else read meanwhile (another station's traffic, a stray token, a
         // malformed/parity-glitched byte sequence) is logged and discarded.
         // Mirrors MqttDriver::m_WaitForAckPacket().
-        bool m_WaitForResponse(uint8_t expectedFromSa, uint32_t timeoutMs,
+        bool m_WaitForResponse(uint8_t u8ExpectedFromSa, uint32_t u32TimeoutMs,
                                ProfibusProtocol::DecodedTelegram &outTelegram, std::string_view xtra_params,
                                std::stop_token stop_tok = {}) const;
 
@@ -234,12 +234,12 @@ class ProfibusDriver : public ICommDriver {
         // strip — see MqttDriver::m_TokenizeArgs()'s doc comment in
         // mqtt_driver.cpp for why) as every other CMD-parsing driver in this
         // codebase.
-        static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens);
+        static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens);
 
         // Parses a hex-digit string ("AABBCC") into raw bytes. Returns false
         // (and logs) on an odd-length string or a non-hex-digit character.
-        static bool m_ParseHexBytes(const std::string &hex, std::vector<uint8_t> &outBytes);
-        static std::string m_BytesToHex(const std::vector<uint8_t> &bytes);
+        static bool m_ParseHexBytes(const std::string &strHex, std::vector<uint8_t> &vOutBytes);
+        static std::string m_BytesToHex(const std::vector<uint8_t> &vBytes);
 
         // FDL sub-command handlers (the "specific callback associated to that
         // command"). Each builds and sends its telegram via m_protocol/
@@ -247,10 +247,10 @@ class ProfibusDriver : public ICommDriver {
         // by a response (SDA/SRD/STATUS) — records what receive() should wait
         // for next (see receive()'s doc comment). Returns false on bad
         // arguments or a send failure.
-        bool m_HandleSdn(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleSda(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleSrd(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleStatus(const std::vector<std::string> &args, std::string_view xtra_params) const;
+        bool m_HandleSdn(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleSda(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleSrd(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleStatus(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
 
         using ProfibusSubCmdHandler = bool (ProfibusDriver::*)(const std::vector<std::string> &, std::string_view) const;
         std::unordered_map<std::string, ProfibusSubCmdHandler> m_mapProfibusCmds;
@@ -260,14 +260,14 @@ class ProfibusDriver : public ICommDriver {
         // read, not an exchange this driver itself initiated) and writes a
         // one-line human-readable summary into buffer. Called from receive()
         // — see its doc comment.
-        ICommDriver::ReadResult m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+        ICommDriver::ReadResult m_DoStandaloneReceive(uint32_t u32TimeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
         // Formats a DecodedTelegram (a response to our own SDA/SRD/STATUS, or
         // whatever the bus monitor saw) as the short human-readable text this
         // driver returns through receive()'s buffer — e.g. "AABBCC" for a data
         // reply, "ACK" for a bare SC, "SLAVE:DATA_LOW" for an FDL-Status reply.
-        static std::string m_FormatTelegramResult(const ProfibusProtocol::DecodedTelegram &t, bool wasStatusQuery);
-        static const char *m_StationTypeName(uint8_t stationType);
+        static std::string m_FormatTelegramResult(const ProfibusProtocol::DecodedTelegram &t, bool bWasStatusQuery);
+        static const char *m_StationTypeName(uint8_t u8StationType);
 };
 
 #endif // PROFIBUS_DRIVER_HPP

@@ -78,7 +78,7 @@ static constexpr auto C_BOOL_FALSE   = "#CB2C2A"; // red       — FALSE (matche
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
-ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
+ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
     : ScriptHighlighterBase(parent)
 {
     using RE = QRegularExpression;

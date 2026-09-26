@@ -49,10 +49,10 @@ bool RawEth::is_open() const
 
 void RawEth::resolve_destination(std::string_view xtra_params,
                                  MacAddr &outDestMac,
-                                 uint16_t &outEtherType) const
+                                 uint16_t &u16OutEtherType) const
 {
     outDestMac   = m_defaultDestMac;
-    outEtherType = m_u16EtherType;
+    u16OutEtherType = m_u16EtherType;
 
     if (xtra_params.empty()) {
         return;
@@ -106,7 +106,7 @@ void RawEth::resolve_destination(std::string_view xtra_params,
                   LOG_STRING("resolve_destination: unparsable EtherType in xtra_params, using default"));
         return;
     }
-    outEtherType = static_cast<uint16_t>(uiEtherType);
+    u16OutEtherType = static_cast<uint16_t>(uiEtherType);
 }
 
 // ============================================================================
@@ -115,7 +115,7 @@ void RawEth::resolve_destination(std::string_view xtra_params,
 
 RawEth::ReadResult RawEth::tout_read(uint32_t u32ReadTimeout,
                                      std::span<uint8_t> buffer,
-                                     const ReadOptions &options,
+                                     const ReadOptions &sOptions,
                                      std::string_view xtra_params,
                                      std::stop_token stop_tok) const
 {
@@ -134,7 +134,7 @@ RawEth::ReadResult RawEth::tout_read(uint32_t u32ReadTimeout,
     // below, which block indefinitely rather than substituting a default.
     const uint32_t u32Timeout = u32ReadTimeout;
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
     case ReadMode::Exact: {
         size_t bytes_read       = 0;
         result.status           = timeout_read(u32Timeout, buffer, bytes_read, stop_tok);
@@ -146,7 +146,7 @@ RawEth::ReadResult RawEth::tout_read(uint32_t u32ReadTimeout,
     case ReadMode::UntilDelimiter: {
         size_t bytes_read       = 0;
         result.status           = timeout_read_until(u32Timeout, buffer,
-                                                     options.delimiter, bytes_read, stop_tok);
+                                                     sOptions.delimiter, bytes_read, stop_tok);
         result.bytes_read       = bytes_read;
         result.found_terminator = (result.status == Status::SUCCESS);
         break;
@@ -154,8 +154,8 @@ RawEth::ReadResult RawEth::tout_read(uint32_t u32ReadTimeout,
 
     case ReadMode::UntilToken: {
         result.status           = timeout_wait_for_token(u32Timeout,
-                                                         options.token,
-                                                         options.use_buffer,
+                                                         sOptions.token,
+                                                         sOptions.use_buffer,
                                                          stop_tok);
         result.bytes_read       = 0; // Token search does not fill the caller's buffer
         result.found_terminator = (result.status == Status::SUCCESS);
@@ -203,7 +203,7 @@ RawEth::WriteResult RawEth::tout_write(uint32_t u32WriteTimeout,
 
 RawEth::Status RawEth::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                               std::span<const uint8_t> token,
-                                              bool useBuffer,
+                                              bool bUseBuffer,
                                               std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
@@ -217,38 +217,38 @@ RawEth::Status RawEth::timeout_wait_for_token(uint32_t u32ReadTimeout,
 
     // u32ReadTimeout has already been resolved from 0 by tout_read(), so a
     // timeout here always reflects a real, caller-meaningful deadline.
-    return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, useBuffer, stop_tok);
+    return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, bUseBuffer, stop_tok);
 }
 
 void RawEth::build_kmp_table(std::span<const uint8_t> pattern,
                              size_t szLength,
-                             std::vector<int> &viLps) const
+                             std::vector<int> &vViLps) const
 {
-    ukmp::build_kmp_table(pattern, szLength, viLps);
+    ukmp::build_kmp_table(pattern, szLength, vViLps);
 }
 
 RawEth::Status RawEth::kmp_stream_match(std::span<const uint8_t> token,
-                                        const std::vector<int> &viLps,
+                                        const std::vector<int> &vViLps,
                                         uint32_t u32Timeout,
                                         bool bReturnOnTimeout,
-                                        bool useBuffer,
+                                        bool bUseBuffer,
                                         std::stop_token stop_tok) const
 {
     // Receive one frame's payload at a time and feed it byte-by-byte into
     // KMP. A frame boundary may (and usually will) split the token; the KMP
     // state machine handles that transparently since it only cares about
     // the byte sequence, not frame boundaries. The ring buffer (used only
-    // when useBuffer) is sized independently, to the driver's overall max
+    // when bUseBuffer) is sized independently, to the driver's overall max
     // buffer length rather than a single frame's payload.
     return ukmp::kmp_stream_match(
         [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t &bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
-        token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
+        token, vViLps, u32Timeout, bReturnOnTimeout, bUseBuffer,
         /*szChunkBufferSize=*/RAWETH_MAX_PAYLOAD, /*szRingBufferSize=*/RAWETH_MAX_BUFLENGTH);
 }
 
 RawEth::Status RawEth::timeout_read_until(uint32_t u32ReadTimeout,
                                           std::span<uint8_t> buffer,
-                                          uint8_t cDelimiter,
+                                          uint8_t u8CDelimiter,
                                           size_t &szBytesRead,
                                           std::stop_token stop_tok) const
 {
@@ -287,7 +287,7 @@ RawEth::Status RawEth::timeout_read_until(uint32_t u32ReadTimeout,
             for (size_t i = 0; i < payloadBytes && szBytesRead < buffer.size() - 1; ++i) {
                 const uint8_t ch = frame_payload[i];
 
-                if (ch == cDelimiter) {
+                if (ch == u8CDelimiter) {
                     buffer[szBytesRead] = '\0';
                     return Status::SUCCESS;
                 }

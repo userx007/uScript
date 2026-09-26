@@ -6,9 +6,9 @@
 #include <utility>
 
 namespace {
-    void print_frame(const char *dir, const std::string &id, std::span<const uint8_t> bytes)
+    void print_frame(const char *pstrDir, const std::string &strId, std::span<const uint8_t> bytes)
     {
-        std::fprintf(stderr, "  [bus] %s id=%-12s len=%2zu  ", dir, id.c_str(), bytes.size());
+        std::fprintf(stderr, "  [bus] %s strId=%-12s len=%2zu  ", pstrDir, strId.c_str(), bytes.size());
         for (uint8_t b : bytes) {
             std::fprintf(stderr, "%02X ", b);
         }
@@ -42,7 +42,7 @@ ICommDriver::WriteResult LoopbackCommDriver::tout_write(
 ICommDriver::ReadResult LoopbackCommDriver::tout_read(
     uint32_t u32ReadTimeout,
     std::span<uint8_t> buffer,
-    const ReadOptions &opts,
+    const ReadOptions &sOpts,
     std::string_view xtra_params,
     std::stop_token stop_tok) const
 {

@@ -46,7 +46,7 @@ namespace HydraHAL {
                 Odd  = 0b10,
             };
 
-            explicit UART(std::shared_ptr<Hydrabus> hydrabus);
+            explicit UART(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // Data transfer
@@ -85,7 +85,7 @@ namespace HydraHAL {
              * @brief Set the UART baud rate.
              * @return true on success.
              */
-            bool set_baud(uint32_t baud);
+            bool set_baud(uint32_t u32Baud);
 
             /** @return Current parity setting. */
             Parity get_parity() const;
@@ -94,7 +94,7 @@ namespace HydraHAL {
              * @brief Set the UART parity.
              * @return true on success.
              */
-            bool set_parity(Parity parity);
+            bool set_parity(Parity eParity);
 
             // ---- Local echo ---------------------------------------------------------
 
@@ -108,7 +108,7 @@ namespace HydraHAL {
              * @brief Enable or disable local echo.
              * @return true on success.
              */
-            bool set_echo(bool enable);
+            bool set_echo(bool bEnable);
 
             // ---- Bridge mode --------------------------------------------------------
 

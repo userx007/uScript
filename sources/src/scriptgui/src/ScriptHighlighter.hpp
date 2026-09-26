@@ -99,5 +99,5 @@ class QTextDocument;
 class ScriptHighlighter : public ScriptHighlighterBase {
         Q_OBJECT
     public:
-        explicit ScriptHighlighter(QTextDocument *parent = nullptr);
+        explicit ScriptHighlighter(QTextDocument *pParent = nullptr);
 };

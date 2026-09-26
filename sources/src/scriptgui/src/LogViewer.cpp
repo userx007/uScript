@@ -68,9 +68,9 @@ static constexpr auto k_savedErrStyle =
 //  ANSI SGR escape sequence → QTextCharFormat converter
 // ─────────────────────────────────────────────────────────────────────────────
 
-static QColor sgrCodeToColor(int code)
+static QColor sgrCodeToColor(int iCode)
 {
-    switch (code) {
+    switch (iCode) {
     case 30:
         return QColor(0x40, 0x48, 0x55);
     case 31:
@@ -171,7 +171,7 @@ static QList<Segment> ansiToSegments(const QString &input,
 // ─────────────────────────────────────────────────────────────────────────────
 class LogLineNumberArea : public QWidget {
     public:
-        explicit LogLineNumberArea(LogEdit *editor)
+        explicit LogLineNumberArea(LogEdit *pEditor)
             : QWidget(editor)
             , m_editor(editor)
         {
@@ -183,9 +183,9 @@ class LogLineNumberArea : public QWidget {
         }
 
     protected:
-        void paintEvent(QPaintEvent *ev) override
+        void paintEvent(QPaintEvent *pEv) override
         {
-            m_editor->lineNumberAreaPaintEvent(ev);
+            m_editor->lineNumberAreaPaintEvent(pEv);
         }
 
     private:
@@ -195,7 +195,7 @@ class LogLineNumberArea : public QWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 //  LogEdit
 // ─────────────────────────────────────────────────────────────────────────────
-LogEdit::LogEdit(QWidget *parent)
+LogEdit::LogEdit(QWidget *pParent)
     : QPlainTextEdit(parent)
 {
     setObjectName("logView");
@@ -230,10 +230,10 @@ void LogEdit::updateLineNumberAreaWidth(int)
     setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
 }
 
-void LogEdit::updateLineNumberArea(const QRect &rect, int dy)
+void LogEdit::updateLineNumberArea(const QRect &rect, int iDy)
 {
-    if (dy) {
-        m_lineNumberArea->scroll(0, dy);
+    if (iDy) {
+        m_lineNumberArea->scroll(0, iDy);
     } else {
         m_lineNumberArea->update(0, rect.y(),
                                  m_lineNumberArea->width(), rect.height());
@@ -243,23 +243,23 @@ void LogEdit::updateLineNumberArea(const QRect &rect, int dy)
     }
 }
 
-void LogEdit::resizeEvent(QResizeEvent *ev)
+void LogEdit::resizeEvent(QResizeEvent *pEv)
 {
-    QPlainTextEdit::resizeEvent(ev);
+    QPlainTextEdit::resizeEvent(pEv);
     const QRect cr = contentsRect();
     m_lineNumberArea->setGeometry(cr.left(), cr.top(),
                                   lineNumberAreaWidth(), cr.height());
 }
 
-void LogEdit::lineNumberAreaPaintEvent(QPaintEvent *ev)
+void LogEdit::lineNumberAreaPaintEvent(QPaintEvent *pEv)
 {
     QPainter p(m_lineNumberArea);
-    p.fillRect(ev->rect(), C_GUTTER_BG);
+    p.fillRect(pEv->rect(), C_GUTTER_BG);
 
     // Right border / separator line
     const int bx = m_lineNumberArea->width() - 1;
     p.setPen(C_GUTTER_BORDER);
-    p.drawLine(bx, ev->rect().top(), bx, ev->rect().bottom());
+    p.drawLine(bx, pEv->rect().top(), bx, pEv->rect().bottom());
 
     // Iterate over visible blocks and draw their 1-based line number
     QTextBlock block = firstVisibleBlock();
@@ -279,8 +279,8 @@ void LogEdit::lineNumberAreaPaintEvent(QPaintEvent *ev)
 
     const int lh = fontMetrics().height();
 
-    while (block.isValid() && top <= ev->rect().bottom()) {
-        if (block.isVisible() && bottom >= ev->rect().top()) {
+    while (block.isValid() && top <= pEv->rect().bottom()) {
+        if (block.isVisible() && bottom >= pEv->rect().top()) {
             const QString num = QString::number(blockNum + 1);
             // Right-align, 4 px padding before separator
             p.drawText(0, top,
@@ -333,10 +333,10 @@ void LogEdit::clearWordHighlights()
     }
 }
 
-void LogEdit::mouseDoubleClickEvent(QMouseEvent *ev)
+void LogEdit::mouseDoubleClickEvent(QMouseEvent *pEv)
 {
     // Let the base class select the word first, then read it back.
-    QPlainTextEdit::mouseDoubleClickEvent(ev);
+    QPlainTextEdit::mouseDoubleClickEvent(pEv);
 
     const QString word = textCursor().selectedText().trimmed();
     if (word.isEmpty() || word == m_highlightedWord) {
@@ -347,18 +347,18 @@ void LogEdit::mouseDoubleClickEvent(QMouseEvent *ev)
     applyWordHighlights(word);
 }
 
-void LogEdit::mousePressEvent(QMouseEvent *ev)
+void LogEdit::mousePressEvent(QMouseEvent *pEv)
 {
     // A plain single-click clears highlights; if this becomes a double-click,
     // mouseDoubleClickEvent() will run immediately after and re-apply them.
     clearWordHighlights();
-    QPlainTextEdit::mousePressEvent(ev);
+    QPlainTextEdit::mousePressEvent(pEv);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  LogViewer
 // ─────────────────────────────────────────────────────────────────────────────
-LogViewer::LogViewer(QWidget *parent)
+LogViewer::LogViewer(QWidget *pParent)
     : QFrame(parent)
 {
     setObjectName("panelFrame");
@@ -465,11 +465,11 @@ void LogViewer::markDirty()
 // ── helpers ───────────────────────────────────────────────────────────────────
 // Returns a cursor positioned at the end of the document, with a new block
 // inserted unless the document is currently empty.
-static QTextCursor cursorAtNewLine(QTextDocument *doc)
+static QTextCursor cursorAtNewLine(QTextDocument *pDoc)
 {
-    QTextCursor cursor(doc);
+    QTextCursor cursor(pDoc);
     cursor.movePosition(QTextCursor::End);
-    if (!doc->isEmpty()) {
+    if (!pDoc->isEmpty()) {
         cursor.insertBlock();
     }
     return cursor;

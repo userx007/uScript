@@ -94,7 +94,7 @@ class MqttDriver : public ICommDriver {
                 std::string strInstanceName;
         };
 
-        explicit MqttDriver(Config config);
+        explicit MqttDriver(Config sConfig);
         ~MqttDriver();
 
         /**
@@ -167,13 +167,13 @@ class MqttDriver : public ICommDriver {
 
         // Physical I/O: routes through SSL if set up, otherwise straight to
         // m_pTcpip->tout_write()/tout_read().
-        ICommDriver::Status m_PhysicalSend(std::span<const uint8_t> data, uint32_t timeoutMs) const;
-        ICommDriver::Status m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t &outBytesRead, std::stop_token stop_tok = {}) const;
+        ICommDriver::Status m_PhysicalSend(std::span<const uint8_t> data, uint32_t u32TimeoutMs) const;
+        ICommDriver::Status m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t u32TimeoutMs, size_t &outBytesRead, std::stop_token stop_tok = {}) const;
 
         // Sends one complete MQTT packet (built by MqttProtocol) via
         // m_PhysicalSend(), reports it to the GUI comm-dump panel on success,
         // and refreshes m_lastActivity (see m_EnsureKeepAlive()).
-        ICommDriver::Status m_SendPacket(const std::vector<uint8_t> &packet, std::string_view xtra_params) const;
+        ICommDriver::Status m_SendPacket(const std::vector<uint8_t> &vPacket, std::string_view xtra_params) const;
 
         // Reads one complete MQTT packet (fixed header, Remaining Length,
         // payload) via m_PhysicalRecv() and reports it to the GUI comm-dump
@@ -184,13 +184,13 @@ class MqttDriver : public ICommDriver {
         // arriving, the rest is read with its own short fixed timeout (a stall
         // mid-packet is a broken-connection problem, not a "nothing to receive
         // yet" one).
-        ICommDriver::Status m_ReadPacket(std::vector<uint8_t> &packetOut, uint32_t timeoutMs, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+        ICommDriver::Status m_ReadPacket(std::vector<uint8_t> &vPacketOut, uint32_t u32TimeoutMs, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
         // Reads packets (via m_ReadPacket()) until one of type expectedType
         // carrying packet id expectedPacketId turns up, or timeoutMs elapses —
         // anything else read meanwhile is logged and discarded.
-        bool m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacketId,
-                                uint32_t timeoutMs, std::vector<uint8_t> &outPacket, std::string_view xtra_params,
+        bool m_WaitForAckPacket(uint8_t u8ExpectedType, uint16_t u16ExpectedPacketId,
+                                uint32_t u32TimeoutMs, std::vector<uint8_t> &vOutPacket, std::string_view xtra_params,
                                 std::stop_token stop_tok = {}) const;
 
         // If at least (Config::keepAlive * 0.8) seconds have passed since the
@@ -212,7 +212,7 @@ class MqttDriver : public ICommDriver {
         // MQTT topic/payload string must not contain an embedded NUL (MQTT
         // 3.1.1 §1.5.3) — Mosquitto (and any spec-compliant broker) rejects a
         // packet containing one as malformed and drops the connection.
-        static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens);
+        static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens);
 
         // MQTT sub-command handlers (the "specific callback associated to that
         // command"). Each builds and sends its packet via m_protocol/
@@ -220,10 +220,10 @@ class MqttDriver : public ICommDriver {
         // acknowledgement — records what receive() should wait for next (see
         // receive()'s doc comment). Returns false on bad arguments or a send
         // failure.
-        bool m_HandleSubscribe(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleUnsubscribe(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandlePing(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandlePublish(const std::vector<std::string> &args, std::string_view xtra_params) const;
+        bool m_HandleSubscribe(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleUnsubscribe(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandlePing(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandlePublish(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
 
         using MqttSubCmdHandler = bool (MqttDriver::*)(const std::vector<std::string> &, std::string_view) const;
         std::unordered_map<std::string, MqttSubCmdHandler> m_mapMqttCmds;
@@ -232,7 +232,7 @@ class MqttDriver : public ICommDriver {
         // per its QoS, and writes "topic value" (space separated) or just
         // "payload" (per Config::receiveIncludeTopic) into buffer. Called from
         // receive() when no ack is pending — see its doc comment.
-        ICommDriver::ReadResult m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+        ICommDriver::ReadResult m_DoStandaloneReceive(uint32_t u32TimeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 };
 
 #endif // MQTT_DRIVER_HPP

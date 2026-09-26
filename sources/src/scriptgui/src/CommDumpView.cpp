@@ -47,7 +47,7 @@
 #include <algorithm>
 #include <utility>
 
-CommDumpView::CommDumpView(QWidget *parent)
+CommDumpView::CommDumpView(QWidget *pParent)
     : QFrame(parent)
 {
     setObjectName("panelFrame");
@@ -310,11 +310,11 @@ CommDumpView::CommDumpView(QWidget *parent)
 //  Filtering — direction (combo box) AND plugin (menu of checkable actions)
 //  are combined; a row is visible only if it passes both.
 // ─────────────────────────────────────────────────────────────────────────────
-bool CommDumpView::rowPassesFilters(int row) const
+bool CommDumpView::rowPassesFilters(int iRow) const
 {
-    const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
+    const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(iRow, 0));
     if (!rec) {
-        return true; // shouldn't happen — don't hide a row we can't classify
+        return true; // shouldn't happen — don't hide a iRow we can't classify
     }
     return recordPassesFilters(*rec);
 }
@@ -558,13 +558,13 @@ void CommDumpView::rebuildPluginMenuFromModel()
     }
 }
 
-void CommDumpView::addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
+void CommDumpView::addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool bIsTx,
                              const QByteArray &data)
 {
     // Does NOT touch the model/tree directly — see the class comment on why
     // ingestion is coalesced. Just stage the record and make sure a flush is
     // scheduled.
-    m_pendingQueue.append({timestampUs, plugin, details, isTx, data});
+    m_pendingQueue.append({timestampUs, plugin, details, bIsTx, data});
 
     if (m_pendingQueue.size() >= kForceFlushThreshold) {
         // Pathological burst: don't let the pending queue itself grow
@@ -737,7 +737,7 @@ void CommDumpView::onSaveFilteredOnly()
     saveToFile(true);
 }
 
-void CommDumpView::saveToFile(bool filteredOnly)
+void CommDumpView::saveToFile(bool bFilteredOnly)
 {
     // A record can be sitting in m_pendingQueue (arrived within the last
     // kFlushIntervalMs, not yet in the model) at the moment Save is
@@ -753,7 +753,7 @@ void CommDumpView::saveToFile(bool filteredOnly)
     }
 
     QList<int> rows;
-    if (filteredOnly) {
+    if (bFilteredOnly) {
         // Always filters the RAW record log, regardless of whether
         // Collapsed view is currently on — "Save filtered" means "every
         // raw record matching the current direction/plugin filters," not
@@ -892,10 +892,10 @@ void CommDumpView::onLoadTriggered()
     }
 }
 
-bool CommDumpView::eventFilter(QObject *watched, QEvent *event)
+bool CommDumpView::eventFilter(QObject *pWatched, QEvent *pEvent)
 {
-    if (watched == m_tree && event->type() == QEvent::FontChange) {
+    if (pWatched == m_tree && pEvent->type() == QEvent::FontChange) {
         updateFullDumpFontSize();
     }
-    return QFrame::eventFilter(watched, event);
+    return QFrame::eventFilter(pWatched, pEvent);
 }

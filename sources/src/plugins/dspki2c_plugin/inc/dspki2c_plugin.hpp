@@ -291,9 +291,9 @@ class DSPKi2cPlugin : public PluginInterface {
         /**
          * \brief set I2C write timeout [ms]
          */
-        bool setWriteTimeout(const std::string &strTimeout) const
+        bool setWriteTimeout(const std::string &strWriteTimeout) const
         {
-            return numeric::str2uint32(strTimeout, m_u32WriteTimeout);
+            return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
         }
 
         /**
@@ -337,7 +337,7 @@ class DSPKi2cPlugin : public PluginInterface {
         /**
          * \brief message receiver
          */
-        bool m_Receive(std::span<uint8_t> data, size_t &szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const;
+        bool m_Receive(std::span<uint8_t> data, size_t &szSize, CommCommandReadType eReadType, std::shared_ptr<const ICommDriver> shpDriver) const;
 
         /**
          * \brief processing of the plugin specific settings

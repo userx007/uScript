@@ -39,10 +39,10 @@ namespace loopback {
             // different input transport). promisc puts the interface into
             // promiscuous mode so frames not addressed to our own MAC are
             // captured too.
-            RawEthChannel(std::string ifname, uint16_t capture_ethertype,
+            RawEthChannel(std::string strIfname, uint16_t u16Capture_ethertype,
                           std::optional<uint16_t> tx_ethertype,
                           std::optional<std::array<uint8_t, MAC_LEN>> dst_mac,
-                          bool promisc)
+                          bool bPromisc)
                 : ifname_(std::move(ifname))
                 , capture_ethertype_(capture_ethertype)
                 , tx_ethertype_(tx_ethertype)
@@ -108,7 +108,7 @@ namespace loopback {
                 }
             }
 
-            bool readMessage(Message &msg) override
+            bool readMessage(Message &sMsg) override
             {
                 uint8_t buf[65536];
                 while (!g_stop) {
@@ -148,14 +148,14 @@ namespace loopback {
                     last_ethertype_    = ethertype;
                     has_last_context_  = true;
 
-                    msg.data.assign(buf + kEthHdrLen, buf + n);
-                    msg.has_can_id = false;
+                    sMsg.data.assign(buf + kEthHdrLen, buf + n);
+                    sMsg.has_can_id = false;
                     return true;
                 }
                 return false;
             }
 
-            bool writeMessage(Message &msg) override
+            bool writeMessage(Message &sMsg) override
             {
                 std::array<uint8_t, MAC_LEN> dst_mac;
                 uint16_t ethertype;
@@ -175,12 +175,12 @@ namespace loopback {
                                                                                        : capture_ethertype_);
                 }
 
-                std::vector<uint8_t> frame(kEthHdrLen + msg.data.size());
+                std::vector<uint8_t> frame(kEthHdrLen + sMsg.data.size());
                 std::memcpy(frame.data(), dst_mac.data(), MAC_LEN);
                 std::memcpy(frame.data() + MAC_LEN, own_mac_.data(), MAC_LEN);
                 uint16_t net_ethertype = htons(ethertype);
                 std::memcpy(frame.data() + 2 * MAC_LEN, &net_ethertype, sizeof(net_ethertype));
-                std::memcpy(frame.data() + kEthHdrLen, msg.data.data(), msg.data.size());
+                std::memcpy(frame.data() + kEthHdrLen, sMsg.data.data(), sMsg.data.size());
 
                 struct sockaddr_ll dst_addr;
                 std::memset(&dst_addr, 0, sizeof(dst_addr));
@@ -215,10 +215,10 @@ namespace loopback {
                 return "raweth:" + ifname_;
             }
 
-            void dump(const char *dir, const Message &msg) const override
+            void dump(const char *pstrDir, const Message &sMsg) const override
             {
-                std::printf("%-10s %-8s [%zu] ", name().c_str(), dir, msg.data.size());
-                for (uint8_t b : msg.data) {
+                std::printf("%-10s %-8s [%zu] ", name().c_str(), pstrDir, sMsg.data.size());
+                for (uint8_t b : sMsg.data) {
                     std::printf("%02X ", b);
                 }
                 std::printf("\n");
@@ -252,11 +252,11 @@ namespace loopback {
                 return true;
             }
 
-            static std::string macToString(const uint8_t *mac)
+            static std::string macToString(const uint8_t *pu8Mac)
             {
                 char sz[18];
                 std::snprintf(sz, sizeof(sz), "%02x:%02x:%02x:%02x:%02x:%02x",
-                              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+                              pu8Mac[0], pu8Mac[1], pu8Mac[2], pu8Mac[3], pu8Mac[4], pu8Mac[5]);
                 return std::string(sz);
             }
 

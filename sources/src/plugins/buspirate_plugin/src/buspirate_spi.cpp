@@ -69,7 +69,7 @@ static const char *pstrInvalidSubcommand = "Invalid subcommand:";
  List the subcommands of the protocol
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_help(const std::string &args, std::stop_token /*st*/) const
+bool BuspiratePlugin::m_handle_spi_help(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
 }
@@ -83,21 +83,21 @@ CS high is pin output at 3.3volts, or HiZ.
 CS low is pin output at ground. Bus Pirate responds 0x01.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_cs(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_spi_cs(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: en[GND] dis[3.3V/HiZ]"));
     } else {
-        if ("en" == args) {
+        if ("en" == strArgs) {
             m_spi_cs_enable(true, st);
         } // 00000010
-        else if ("dis" == args) {
+        else if ("dis" == strArgs) {
             m_spi_cs_enable(false, st);
         } // 00000011
         else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(strArgs));
             bRetVal = false;
         }
     }
@@ -122,22 +122,22 @@ The sniffer follows the output clock edge and output polarity settings of the SP
 but not the input sample phase.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_sniff(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_spi_sniff(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use | on | off"));
     } else {
         uint8_t request = 0;
         bool bStop      = false;
 
-        if ("all" == args) {
+        if ("all" == strArgs) {
             request = SPI_SNIFF_ALL;
-        } else if ("cslo" == args) {
+        } else if ("cslo" == strArgs) {
             request = SPI_SNIFF_CS_LOW;
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(strArgs));
             bRetVal = false;
         }
 
@@ -162,9 +162,9 @@ SPI speed command handler
 This command sets the SPI bus speed according to the values shown. Default startup speed is 000 (30kHz).
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_speed(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_spi_speed(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, args, st);
+    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, strArgs, st);
 
 } /* m_handle_spi_speed() */
 
@@ -186,45 +186,45 @@ See the PIC24FJ64GA002 datasheet and the SPI section[PDF] of the PIC24 family ma
 for more about the SPI configuration settings.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_spi_cfg(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal           = true;
     static uint8_t request = SPI_CONFIG_BASE;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("z/V - pin output: z(HiZ/0)! V(3.3V/1)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("l/H - CKP clock idle phase: l(low/0)! H(high/1)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("i/A - CKE clock edge i(Idle2Active/0) A(Active2Idle/1)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("m/E - SMP sample time m(middle/0)! E(end/1)"));
-    } else if ("?" == args) {
+    } else if ("?" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("spi::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
-        if (ustring::containsChar(args, 'z')) {
+        if (ustring::containsChar(strArgs, 'z')) {
             BIT_CLEAR(request, 3);
         }
-        if (ustring::containsChar(args, 'V')) {
+        if (ustring::containsChar(strArgs, 'V')) {
             BIT_SET(request, 3);
         }
         // clock idle phase
-        if (ustring::containsChar(args, 'l')) {
+        if (ustring::containsChar(strArgs, 'l')) {
             BIT_CLEAR(request, 2);
         }
-        if (ustring::containsChar(args, 'H')) {
+        if (ustring::containsChar(strArgs, 'H')) {
             BIT_SET(request, 2);
         }
         // clock edge
-        if (ustring::containsChar(args, 'i')) {
+        if (ustring::containsChar(strArgs, 'i')) {
             BIT_CLEAR(request, 1);
         }
-        if (ustring::containsChar(args, 'A')) {
+        if (ustring::containsChar(strArgs, 'A')) {
             BIT_SET(request, 1);
         }
         // sample time
-        if (ustring::containsChar(args, 'm')) {
+        if (ustring::containsChar(strArgs, 'm')) {
             BIT_CLEAR(request, 0);
         }
-        if (ustring::containsChar(args, 'E')) {
+        if (ustring::containsChar(strArgs, 'E')) {
             BIT_SET(request, 0);
         }
 
@@ -255,9 +255,9 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args, std::stop_token 
      *             +-----------------------------------> Command  : 4xh - Configure peripherals.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_per(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_spi_per(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_set_peripheral(args, st);
+    return generic_set_peripheral(strArgs, st);
 
 } /* m_handle_spi_per() */
 
@@ -278,15 +278,15 @@ bool BuspiratePlugin::m_handle_spi_per(const std::string &args, std::stop_token 
      *             +-------------------------------------------------------> Command      : 1xh
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_read(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_spi_read(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: 1 .. 16"));
     } else {
         size_t szReadSize = 0;
-        if ((true == (bRetVal = numeric::str2sizet(args, szReadSize)))) {
+        if ((true == (bRetVal = numeric::str2sizet(strArgs, szReadSize)))) {
             if ((szReadSize >= 1) && (szReadSize <= 16)) {
                 std::vector<uint8_t> response(szReadSize);
                 if (true == (bRetVal = m_spi_read(response, st))) {
@@ -320,9 +320,9 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string &args, std::stop_token
      *             +-------------------------------------------------------> Command      : 1xh
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_write(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_spi_write(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_write_data(this, args, &BuspiratePlugin::m_spi_bulk_write, st);
+    return generic_write_data(this, strArgs, &BuspiratePlugin::m_spi_bulk_write, st);
 
 } /* m_handle_spi_write() */
 
@@ -355,18 +355,18 @@ bool BuspiratePlugin::m_handle_spi_write(const std::string &args, std::stop_toke
 
      Except as described above, there is no acknowledgment that a byte is received.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_spi_wrrd(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_spi_wrrd(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_write_read_data(m_CMD_SPI_WRRD, args, st);
+    return generic_write_read_data(m_CMD_SPI_WRRD, strArgs, st);
 
 } /* m_handle_spi_wrrd() */
 
 /* ============================================================================================
      BuspiratePlugin::m_handle_spi_wrrdf
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_write_read_file(m_CMD_SPI_WRRD, args, st);
+    return generic_write_read_file(m_CMD_SPI_WRRD, strArgs, st);
 
 } /* m_handle_spi_wrrdf */
 
@@ -465,14 +465,14 @@ bool BuspiratePlugin::m_spi_read(std::span<uint8_t> response, std::stop_token st
 /* ============================================================================================
     BuspiratePlugin::m_handle_spi_script
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_spi_script(const std::string &args, std::stop_token st) const
+bool BuspiratePlugin::m_handle_spi_script(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: scriptname"));
     } else {
-        return generic_execute_script<BuspiratePlugin, BuspiratePlugin::SPI_CommDriver>(this, m_strInstanceName, args, st);
+        return generic_execute_script<BuspiratePlugin, BuspiratePlugin::SPI_CommDriver>(this, m_strInstanceName, strArgs, st);
     }
 
     return bRetVal;

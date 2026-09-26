@@ -117,11 +117,11 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
          * @param strIdentityLabel Display text for the GUI comm-dump panel (see
          *                         describeConnection()), supplied separately.
          */
-        explicit FT4232SPI(const SpiConfig &config, uint8_t u8DeviceIndex = 0u,
+        explicit FT4232SPI(const SpiConfig &sConfig, uint8_t u8DeviceIndex = 0u,
                            const std::string &strIdentityLabel = {})
         {
             m_strIdentityLabel = strIdentityLabel;
-            this->open(config, u8DeviceIndex);
+            this->open(sConfig, u8DeviceIndex);
         }
 
         ~FT4232SPI() override
@@ -135,7 +135,7 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
          * @param config        SPI bus parameters
          * @param u8DeviceIndex Physical device index
          */
-        Status open(const SpiConfig &config, uint8_t u8DeviceIndex = 0u);
+        Status open(const SpiConfig &sConfig, uint8_t u8DeviceIndex = 0u);
 
         /** @copydoc FT4232Base::close — deasserts CS before closing */
         Status close() override;
@@ -186,7 +186,7 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -222,7 +222,7 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
         // ── Configuration and helpers (uFT4232SPICommon.cpp) ─────────────────
 
         /** Push MPSSE init sequence and resolve command bytes from config */
-        Status configure_mpsse_spi(const SpiConfig &config);
+        Status configure_mpsse_spi(const SpiConfig &sConfig);
 
         /** Assert CS (drive to active level) */
         Status cs_assert() const;
@@ -234,7 +234,7 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
          * @brief Apply a SET_BITS_LOW command with current pin state
          * @param csActive  true = CS at active level, false = CS at idle level
          */
-        Status apply_pin_state(bool csActive) const;
+        Status apply_pin_state(bool bCsActive) const;
 
         /**
          * @brief Core write: build and send MPSSE shift-out command
@@ -256,7 +256,7 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
          */
         Status spi_read_raw(std::span<uint8_t> data,
                             size_t &bytesRead,
-                            uint32_t timeoutMs,
+                            uint32_t u32TimeoutMs,
                             std::stop_token stop_tok = {}) const;
 
         /**
@@ -271,7 +271,7 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
         Status spi_xfer_raw(std::span<const uint8_t> txBuf,
                             std::span<uint8_t> rxBuf,
                             size_t &bytesXferd,
-                            uint32_t timeoutMs,
+                            uint32_t u32TimeoutMs,
                             std::stop_token stop_tok = {}) const;
 };
 

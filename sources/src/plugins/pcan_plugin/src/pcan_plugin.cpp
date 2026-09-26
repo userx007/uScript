@@ -34,10 +34,10 @@ extern "C" {
         return new PCANPlugin();
     }
 
-    EXPORTED void pluginExit(PCANPlugin *ptrPlugin)
+    EXPORTED void pluginExit(PCANPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -61,10 +61,10 @@ extern "C" {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool PCANPlugin::m_PCAN_INFO(const std::string &args, std::stop_token st) const
+bool PCANPlugin::m_PCAN_INFO(const std::string &strArgs, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -196,9 +196,9 @@ bool PCANPlugin::m_PCAN_INFO(const std::string &args, std::stop_token st) const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool PCANPlugin::m_PCAN_CONFIG(const std::string &args, std::stop_token st) const
+bool PCANPlugin::m_PCAN_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_can_set_params<PCANPlugin>(this, args);
+    return generic_can_set_params<PCANPlugin>(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -220,7 +220,7 @@ bool PCANPlugin::m_PCAN_CONFIG(const std::string &args, std::stop_token st) cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool PCANPlugin::m_PCAN_FILTER(const std::string &args, std::stop_token st) const
+bool PCANPlugin::m_PCAN_FILTER(const std::string &strArgs, std::stop_token st) const
 {
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
     if (!m_bIsEnabled) {
@@ -229,9 +229,9 @@ bool PCANPlugin::m_PCAN_FILTER(const std::string &args, std::stop_token st) cons
 
     std::vector<std::pair<uint32_t, uint32_t>> vFilters;
 
-    if (!args.empty()) {
-        if (false == m_ParseFilters(args, vFilters)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(args));
+    if (!strArgs.empty()) {
+        if (false == m_ParseFilters(strArgs, vFilters)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FILTER: invalid filter string:"); LOG_STRING(strArgs));
             return false;
         }
     }
@@ -262,10 +262,10 @@ bool PCANPlugin::m_PCAN_FILTER(const std::string &args, std::stop_token st) cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool PCANPlugin::m_PCAN_CMD(const std::string &args, std::stop_token st) const
+bool PCANPlugin::m_PCAN_CMD(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<PCAN> {
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
@@ -305,10 +305,10 @@ bool PCANPlugin::m_PCAN_CMD(const std::string &args, std::stop_token st) const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool PCANPlugin::m_PCAN_SCRIPT(const std::string &args, std::stop_token st) const
+bool PCANPlugin::m_PCAN_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<PCAN> {
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
@@ -349,10 +349,10 @@ bool PCANPlugin::m_PCAN_SCRIPT(const std::string &args, std::stop_token st) cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool PCANPlugin::m_PCAN_CYCLIC(const std::string &args, std::stop_token st) const
+bool PCANPlugin::m_PCAN_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<PCAN> {
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;

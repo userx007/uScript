@@ -293,7 +293,7 @@ class Candlelight : public ICommDriver {
          *                      gs_usb-compatible adapter is plugged in (0 = first)
          * @param strIdentityLabel  Display text for the GUI comm-dump panel
          */
-        Candlelight(uint16_t vendor_id, uint16_t product_id, unsigned device_index,
+        Candlelight(uint16_t u16Vendor_id, uint16_t u16Product_id, unsigned device_index,
                     const std::string &strIdentityLabel = {});
 
         virtual ~Candlelight();
@@ -304,7 +304,7 @@ class Candlelight : public ICommDriver {
 
         /// Opens the USB device and runs the probe() sequence (HOST_FORMAT →
         /// DEVICE_CONFIG → BT_CONST [→ BT_CONST_EXT if FD-capable]).
-        Status open(uint16_t vendor_id, uint16_t product_id, unsigned device_index);
+        Status open(uint16_t u16Vendor_id, uint16_t u16Product_id, unsigned device_index);
         Status close();
         bool is_open() const override;
 
@@ -350,10 +350,10 @@ class Candlelight : public ICommDriver {
         // Channel configuration  (must be called before open_channel)
         // ------------------------------------------------------------------
 
-        Status set_bittiming(uint32_t prop_seg, uint32_t phase_seg1, uint32_t phase_seg2,
-                             uint32_t sjw, uint32_t brp, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
-        Status set_data_bittiming(uint32_t prop_seg, uint32_t phase_seg1, uint32_t phase_seg2,
-                                  uint32_t sjw, uint32_t brp, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        Status set_bittiming(uint32_t u32Prop_seg, uint32_t u32Phase_seg1, uint32_t u32Phase_seg2,
+                             uint32_t u32Sjw, uint32_t u32Brp, uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        Status set_data_bittiming(uint32_t u32Prop_seg, uint32_t u32Phase_seg1, uint32_t u32Phase_seg2,
+                                  uint32_t u32Sjw, uint32_t u32Brp, uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
         /**
          * @brief Convenience wrapper: derive prop_seg/phase_seg1/phase_seg2/brp
@@ -366,12 +366,12 @@ class Candlelight : public ICommDriver {
          * @return false if no (brp, tseg1, tseg2) combination within this
          *         device's limits reproduces bitrate_bps exactly
          */
-        Status set_bitrate(uint32_t bitrate_bps, double sample_point = 0.875,
-                           uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        Status set_bitrate(uint32_t u32Bitrate_bps, double dSample_point = 0.875,
+                           uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
         /// Same as set_bitrate(), but for the CAN-FD data phase via bt_const_ext().
-        Status set_fd_data_bitrate(uint32_t bitrate_bps, double sample_point = 0.75,
-                                   uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        Status set_fd_data_bitrate(uint32_t u32Bitrate_bps, double dSample_point = 0.75,
+                                   uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
         // ------------------------------------------------------------------
         // Channel open / close
@@ -379,16 +379,16 @@ class Candlelight : public ICommDriver {
 
         /// @param mode_flags  GS_CAN_MODE_* bitmask (listen-only, loopback,
         ///                    triple-sample, one-shot, FD, pad-to-max, berr-reporting)
-        Status open_channel(uint32_t mode_flags = GS_CAN_MODE_NORMAL,
-                            uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
-        Status close_channel(uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        Status open_channel(uint32_t u32Mode_flags = GS_CAN_MODE_NORMAL,
+                            uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        Status close_channel(uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
         // ------------------------------------------------------------------
         // Diagnostic queries
         // ------------------------------------------------------------------
 
         /// Requires is_get_state_supported(); Status::OPERATION_FAILED otherwise.
-        Status get_state(GsDeviceState &state, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        Status get_state(GsDeviceState &sState, uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
         // ------------------------------------------------------------------
         // Frame TX / RX  (typed, preferred API)
@@ -406,7 +406,7 @@ class Candlelight : public ICommDriver {
          * why the naive version could block far longer than @p timeout_ms on
          * a busy bus. @p stop_tok allows cancelling the wait early.
          */
-        Status send_frame(const CanFrame &frame, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT,
+        Status send_frame(const CanFrame &sFrame, uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT,
                           std::stop_token stop_tok = {});
 
         /**
@@ -419,7 +419,7 @@ class Candlelight : public ICommDriver {
          * channel could otherwise starve the deadline while its echoes are
          * being absorbed here).
          */
-        Status receive_frame(CanFrame &frame, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT,
+        Status receive_frame(CanFrame &sFrame, uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT,
                              std::stop_token stop_tok = {});
 
         // ------------------------------------------------------------------
@@ -431,7 +431,7 @@ class Candlelight : public ICommDriver {
         /// see receive_frame() for the typed, echo-filtering version).
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &options,
+                             const ReadOptions &sOptions,
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
@@ -459,7 +459,7 @@ class Candlelight : public ICommDriver {
          * @return Number of bytes written, or 0 on error (payload too long for
          *         the negotiated mode, or channel not open)
          */
-        size_t encode_frame(uint32_t echo_id, const CanFrame &frame, std::span<uint8_t> out) const;
+        size_t encode_frame(uint32_t u32Echo_id, const CanFrame &sFrame, std::span<uint8_t> out) const;
 
         /**
          * @brief Decode a gs_host_frame packet (either a TX-complete echo or an
@@ -470,7 +470,7 @@ class Candlelight : public ICommDriver {
          * @param[out] frame    Decoded frame
          * @return true on success
          */
-        bool decode_frame(const uint8_t *pkt, size_t len, uint32_t &echo_id, CanFrame &frame) const;
+        bool decode_frame(const uint8_t *pu8Pkt, size_t len, uint32_t &u32Echo_id, CanFrame &sFrame) const;
 
         /// Fixed header size common to every gs_host_frame, any tail shape.
         static constexpr size_t GS_HOST_FRAME_HDR_LEN = 12; // echo_id(4)+can_id(4)+can_dlc(1)+channel(1)+flags(1)+reserved(1)
@@ -490,10 +490,10 @@ class Candlelight : public ICommDriver {
 
         Status probe();
 
-        Status ctrl_out(GsUsbBreq req, uint16_t value, const void *data, uint16_t len, uint32_t timeout_ms);
-        Status ctrl_in(GsUsbBreq req, uint16_t value, void *data, uint16_t len, uint32_t timeout_ms);
+        Status ctrl_out(GsUsbBreq eReq, uint16_t u16Value, const void *pvData, uint16_t u16Len, uint32_t u32Timeout_ms);
+        Status ctrl_in(GsUsbBreq eReq, uint16_t u16Value, void *pvData, uint16_t u16Len, uint32_t u32Timeout_ms);
 
-        Status bulk_write_frame(uint32_t echo_id, const CanFrame &frame, uint32_t timeout_ms);
+        Status bulk_write_frame(uint32_t u32Echo_id, const CanFrame &sFrame, uint32_t u32Timeout_ms);
         /// Reads exactly one bulk-IN packet, decodes it, and reports whether it
         /// was an RX frame or a TX-complete echo — the shared core of both
         /// send_frame()'s echo-wait loop and receive_frame()'s RX-wait loop.
@@ -501,7 +501,7 @@ class Candlelight : public ICommDriver {
         /// synchronous API has no cross-thread cancel), checking stop_tok
         /// between slices so a single call can itself be interrupted early,
         /// not just the outer send_frame()/receive_frame() retry loop.
-        Status bulk_read_one(uint32_t &echo_id, CanFrame &frame, uint32_t timeout_ms, std::stop_token stop_tok = {});
+        Status bulk_read_one(uint32_t &u32Echo_id, CanFrame &sFrame, uint32_t u32Timeout_ms, std::stop_token stop_tok = {});
 
         // ------------------------------------------------------------------
         // Members

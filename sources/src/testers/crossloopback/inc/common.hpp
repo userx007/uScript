@@ -44,21 +44,21 @@ namespace loopback {
 
     // ---- logging -------------------------------------------------------
 
-    inline void log_info(const std::string &tag, const std::string &msg)
+    inline void log_info(const std::string &strTag, const std::string &strMsg)
     {
-        std::printf("[%s] %s\n", tag.c_str(), msg.c_str());
+        std::printf("[%s] %s\n", strTag.c_str(), strMsg.c_str());
         std::fflush(stdout);
     }
 
-    inline void log_warn(const std::string &tag, const std::string &msg)
+    inline void log_warn(const std::string &strTag, const std::string &strMsg)
     {
-        std::fprintf(stderr, "[%s] WARNING: %s\n", tag.c_str(), msg.c_str());
+        std::fprintf(stderr, "[%s] WARNING: %s\n", strTag.c_str(), strMsg.c_str());
         std::fflush(stderr);
     }
 
-    inline void log_err(const std::string &tag, const std::string &msg)
+    inline void log_err(const std::string &strTag, const std::string &strMsg)
     {
-        std::fprintf(stderr, "[%s] ERROR: %s\n", tag.c_str(), msg.c_str());
+        std::fprintf(stderr, "[%s] ERROR: %s\n", strTag.c_str(), strMsg.c_str());
         std::fflush(stderr);
     }
 
@@ -67,24 +67,24 @@ namespace loopback {
     // Generic "DIR  [len] XX XX XX ..." hex dump used by every non-CAN
     // channel, matching the format the original uart/tcp/udp/raw-eth tools
     // already printed.
-    inline void dump_bytes(const std::string &chan_tag, const char *dir,
-                           const uint8_t *buf, size_t len)
+    inline void dump_bytes(const std::string &strChan_tag, const char *pstrDir,
+                           const uint8_t *pu8Buf, size_t len)
     {
-        std::printf("%-10s %-8s [%zu] ", chan_tag.c_str(), dir, len);
+        std::printf("%-10s %-8s [%zu] ", strChan_tag.c_str(), pstrDir, len);
         for (size_t i = 0; i < len; i++) {
-            std::printf("%02X ", buf[i]);
+            std::printf("%02X ", pu8Buf[i]);
         }
         std::printf("\n");
         std::fflush(stdout);
     }
 
     // candump-style "DIR  ID  [DLC] XX XX ..." dump used by the CAN channel.
-    inline void dump_can(const std::string &chan_tag, const char *dir,
-                         uint32_t can_id, const uint8_t *buf, size_t len)
+    inline void dump_can(const std::string &strChan_tag, const char *pstrDir,
+                         uint32_t u32Can_id, const uint8_t *pu8Buf, size_t len)
     {
-        std::printf("%-10s %-8s %03X  [%zu] ", chan_tag.c_str(), dir, can_id, len);
+        std::printf("%-10s %-8s %03X  [%zu] ", strChan_tag.c_str(), pstrDir, u32Can_id, len);
         for (size_t i = 0; i < len; i++) {
-            std::printf("%02X ", buf[i]);
+            std::printf("%02X ", pu8Buf[i]);
         }
         std::printf("\n");
         std::fflush(stdout);

@@ -24,18 +24,18 @@
 #include <stdbool.h>
 
 static void* VehicleState_alloc(void) { return simple_VehicleState__alloc(); }
-static void  VehicleState_free(void* d, dds_free_op_t op) { simple_VehicleState_free((simple_VehicleState*)d, op); }
+static void  VehicleState_free(void* pvD, dds_free_op_t op) { simple_VehicleState_free((simple_VehicleState*)pvD, op); }
 
 /* "id=1,label=truck-07,speed=27.5" -> simple_VehicleState */
-static bool VehicleState_decode(const char* text, void* out_sample)
+static bool VehicleState_decode(const char* pstrText, void* pvOut_sample)
 {
-    simple_VehicleState* v = (simple_VehicleState*)out_sample;
+    simple_VehicleState* v = (simple_VehicleState*)pvOut_sample;
     v->id = 0;
     v->label = strdup("");
     v->speed = 0.0f;
 
     bool sawAnyField = false;
-    char* copy = strdup(text);
+    char* copy = strdup(pstrText);
     if (!copy) return false;
 
     char* saveptr = NULL;
@@ -66,10 +66,10 @@ static bool VehicleState_decode(const char* text, void* out_sample)
 }
 
 /* simple_VehicleState -> "id=1,label=truck-07,speed=27.500000" */
-static bool VehicleState_encode(const void* sample, char* out_buf, size_t out_cap)
+static bool VehicleState_encode(const void* pvSample, char* pstrOut_buf, size_t out_cap)
 {
-    const simple_VehicleState* v = (const simple_VehicleState*)sample;
-    const int n = snprintf(out_buf, out_cap, "id=%d,label=%s,speed=%f",
+    const simple_VehicleState* v = (const simple_VehicleState*)pvSample;
+    const int n = snprintf(pstrOut_buf, out_cap, "id=%d,label=%s,speed=%f",
                             v->id, v->label ? v->label : "", (double)v->speed);
     return n > 0 && (size_t)n < out_cap;
 }

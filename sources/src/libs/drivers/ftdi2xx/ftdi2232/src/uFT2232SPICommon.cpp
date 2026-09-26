@@ -28,33 +28,33 @@
 // open / close
 // ============================================================================
 
-FT2232SPI::Status FT2232SPI::open(const SpiConfig &config, uint8_t u8DeviceIndex)
+FT2232SPI::Status FT2232SPI::open(const SpiConfig &sConfig, uint8_t u8DeviceIndex)
 {
-    if (config.clockHz == 0) {
+    if (sConfig.clockHz == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("open: clockHz must be > 0"));
         return Status::INVALID_PARAM;
     }
 
-    Status s = open_device(config.variant, config.channel, u8DeviceIndex);
+    Status s = open_device(sConfig.variant, sConfig.channel, u8DeviceIndex);
     if (s != Status::SUCCESS) {
         return s;
     }
 
-    s = configure_mpsse_spi(config);
+    s = configure_mpsse_spi(sConfig);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("MPSSE SPI init failed, clock="); LOG_UINT32(config.clockHz));
+                  LOG_STRING("MPSSE SPI init failed, clock="); LOG_UINT32(sConfig.clockHz));
         FT2232Base::close();
         return s;
     }
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT2232 SPI opened: variant=");
-              LOG_UINT32(static_cast<uint8_t>(config.variant));
-              LOG_STRING("ch="); LOG_UINT32(static_cast<uint8_t>(config.channel));
+              LOG_UINT32(static_cast<uint8_t>(sConfig.variant));
+              LOG_STRING("ch="); LOG_UINT32(static_cast<uint8_t>(sConfig.channel));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex);
-              LOG_STRING("clock="); LOG_UINT32(config.clockHz);
-              LOG_STRING("mode="); LOG_UINT32(static_cast<uint8_t>(config.mode)));
+              LOG_STRING("clock="); LOG_UINT32(sConfig.clockHz);
+              LOG_STRING("mode="); LOG_UINT32(static_cast<uint8_t>(sConfig.mode)));
 
     return Status::SUCCESS;
 }
@@ -107,7 +107,7 @@ FT2232SPI::WriteResult FT2232SPI::tout_write(uint32_t u32WriteTimeout,
 
 FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
                                            std::span<uint8_t> buffer,
-                                           const ReadOptions &options,
+                                           const ReadOptions &sOptions,
                                            std::string_view /*xtra_params*/,
                                            std::stop_token stop_tok) const
 {
@@ -121,7 +121,7 @@ FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
     // 0 == infinite timeout: forwarded through unchanged.
     uint32_t timeout = u32ReadTimeout;
 
-    switch (options.mode) {
+    switch (sOptions.mode) {
     case ReadMode::Exact: {
         result.status = cs_assert();
         if (result.status != Status::SUCCESS) {
@@ -162,7 +162,7 @@ FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
                 result.status = s;
                 break;
             }
-            if (byte == options.delimiter) {
+            if (byte == sOptions.delimiter) {
                 buffer[pos]             = '\0';
                 result.found_terminator = true;
                 result.status           = Status::SUCCESS;
@@ -186,7 +186,7 @@ FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
     }
 
     case ReadMode::UntilToken: {
-        if (options.token.empty()) {
+        if (sOptions.token.empty()) {
             result.status = Status::INVALID_PARAM;
             break;
         }
@@ -196,7 +196,7 @@ FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
             return result;
         }
 
-        const auto &token = options.token;
+        const auto &token = sOptions.token;
         std::vector<int> lps(token.size(), 0);
         for (size_t i = 1, len = 0; i < token.size();) {
             if (token[i] == token[len]) {
@@ -290,39 +290,39 @@ FT2232SPI::TransferResult FT2232SPI::spi_transfer(std::span<const uint8_t> txBuf
 // MPSSE CONFIGURATION
 // ============================================================================
 
-FT2232SPI::Status FT2232SPI::configure_mpsse_spi(const SpiConfig &config)
+FT2232SPI::Status FT2232SPI::configure_mpsse_spi(const SpiConfig &sConfig)
 {
-    m_config                   = config;
+    m_config                   = sConfig;
 
     // Resolve shift commands from CPHA
-    const bool firstEdgeActive = (config.mode == SpiMode::Mode0 ||
-                                  config.mode == SpiMode::Mode3);
+    const bool firstEdgeActive = (sConfig.mode == SpiMode::Mode0 ||
+                                  sConfig.mode == SpiMode::Mode3);
     m_cmdWrite                 = firstEdgeActive ? MPSSE_SPI_WRITE_NRE : MPSSE_SPI_WRITE_PRE;
     m_cmdRead                  = firstEdgeActive ? MPSSE_SPI_READ_PRE : MPSSE_SPI_READ_NRE;
     m_cmdXfer                  = firstEdgeActive ? MPSSE_SPI_XFER_NRE : MPSSE_SPI_XFER_PRE;
 
-    if (config.bitOrder == BitOrder::LsbFirst) {
+    if (sConfig.bitOrder == BitOrder::LsbFirst) {
         m_cmdWrite = static_cast<uint8_t>(m_cmdWrite | 0x02u);
         m_cmdRead  = static_cast<uint8_t>(m_cmdRead | 0x02u);
         m_cmdXfer  = static_cast<uint8_t>(m_cmdXfer | 0x02u);
     }
 
     // Idle pin state: CPOL determines CLK level, csPolarity determines CS level
-    const bool cpolHigh = (config.mode == SpiMode::Mode2 || config.mode == SpiMode::Mode3);
+    const bool cpolHigh = (sConfig.mode == SpiMode::Mode2 || sConfig.mode == SpiMode::Mode3);
     m_pinValue          = 0x00u;
     if (cpolHigh) {
         m_pinValue |= 0x01u;
     }
-    if (config.csPolarity == CsPolarity::ActiveLow) {
-        m_pinValue |= config.csPin;
+    if (sConfig.csPolarity == CsPolarity::ActiveLow) {
+        m_pinValue |= sConfig.csPin;
     }
 
-    m_pinDir              = static_cast<uint8_t>(0x03u | config.csPin); // SCK+MOSI+CS = outputs
+    m_pinDir              = static_cast<uint8_t>(0x03u | sConfig.csPin); // SCK+MOSI+CS = outputs
 
     // Clock divisor:  SCK = clock_base_hz() / ((1 + divisor) * 2)
     const uint32_t half   = clock_base_hz() / 2u;
-    uint32_t divisor      = (config.clockHz > 0 && config.clockHz < half)
-                                ? (half / config.clockHz) - 1u
+    uint32_t divisor      = (sConfig.clockHz > 0 && sConfig.clockHz < half)
+                                ? (half / sConfig.clockHz) - 1u
                                 : 0u;
     divisor               = std::min(divisor, static_cast<uint32_t>(0xFFFFu));
 
@@ -367,11 +367,11 @@ FT2232SPI::Status FT2232SPI::configure_mpsse_spi(const SpiConfig &config)
 // CS MANAGEMENT
 // ============================================================================
 
-FT2232SPI::Status FT2232SPI::apply_pin_state(bool csActive) const
+FT2232SPI::Status FT2232SPI::apply_pin_state(bool bCsActive) const
 {
     uint8_t val = m_pinValue;
 
-    if (csActive) {
+    if (bCsActive) {
         if (m_config.csPolarity == CsPolarity::ActiveLow) {
             val &= static_cast<uint8_t>(~m_config.csPin);
         } else {
@@ -443,7 +443,7 @@ FT2232SPI::Status FT2232SPI::spi_write_raw(std::span<const uint8_t> data,
 
 FT2232SPI::Status FT2232SPI::spi_read_raw(std::span<uint8_t> data,
                                           size_t &bytesRead,
-                                          uint32_t timeoutMs,
+                                          uint32_t u32TimeoutMs,
                                           std::stop_token stop_tok) const
 {
     bytesRead = 0;
@@ -474,7 +474,7 @@ FT2232SPI::Status FT2232SPI::spi_read_raw(std::span<uint8_t> data,
         }
 
         size_t got = 0;
-        s          = mpsse_read(data.data() + offset, chunk, timeoutMs, got, stop_tok);
+        s          = mpsse_read(data.data() + offset, chunk, u32TimeoutMs, got, stop_tok);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("spi_read_raw failed, got="); LOG_UINT32(got));
@@ -492,7 +492,7 @@ FT2232SPI::Status FT2232SPI::spi_read_raw(std::span<uint8_t> data,
 FT2232SPI::Status FT2232SPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
                                           std::span<uint8_t> rxBuf,
                                           size_t &bytesXferd,
-                                          uint32_t timeoutMs,
+                                          uint32_t u32TimeoutMs,
                                           std::stop_token stop_tok) const
 {
     bytesXferd = 0;
@@ -528,7 +528,7 @@ FT2232SPI::Status FT2232SPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
         }
 
         size_t got = 0;
-        s          = mpsse_read(rxBuf.data() + offset, chunk, timeoutMs, got, stop_tok);
+        s          = mpsse_read(rxBuf.data() + offset, chunk, u32TimeoutMs, got, stop_tok);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("spi_xfer_raw failed, got="); LOG_UINT32(got));

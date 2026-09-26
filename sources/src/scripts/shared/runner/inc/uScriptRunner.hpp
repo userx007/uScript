@@ -48,8 +48,8 @@ class ScriptRunner : public IScriptRunner {
          * @param shvScriptInterpreter Script interpreter component (Level 1)
          */
         explicit ScriptRunner(std::shared_ptr<IScriptReader> shpScriptReader,
-                              std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
-                              std::shared_ptr<IScriptInterpreter<TScriptEntries>> shvScriptInterpreter)
+                              std::shared_ptr<IScriptValidator<TScriptEntries>> shpShvScriptValidator,
+                              std::shared_ptr<IScriptInterpreter<TScriptEntries>> shpShvScriptInterpreter)
             : m_shpScriptReader(std::move(shpScriptReader))
             , m_shpScriptValidator(std::move(shvScriptValidator))
             , m_shpScriptInterpreter(std::move(shvScriptInterpreter))

@@ -18,9 +18,9 @@ MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
 
 class Microshell {
     public:
-        static Microshell *getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt);
+        static Microshell *getShellPtr(uShellInst_s *pShellInst, const char *pstrPromptExt);
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
-        static std::shared_ptr<Microshell> getShellSharedPtr(uShellInst_s *psShellInst, const char *pstrPromptExt);
+        static std::shared_ptr<Microshell> getShellSharedPtr(uShellInst_s *pShellInst, const char *pstrPromptExt);
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
         void Run(void);
 #if (1 == uSHELL_SUPPORTS_COMMAND_AS_PARAMETER)
@@ -28,7 +28,7 @@ class Microshell {
 #endif /* (1 == uSHELL_SUPPORTS_COMMAND_AS_PARAMETER) */
 
     private:
-        Microshell(uShellInst_s *psShellInst, const char *pstrPromptExt);
+        Microshell(uShellInst_s *pShellInst, const char *pstrPromptExt);
         /* shell core private functions */
         static void m_Init(const char *pstrPromptExt);
         static bool m_Execute(void);
@@ -61,7 +61,7 @@ class Microshell {
 
 #if defined(uSHELL_IMPLEMENTS_STRINGS)
 #if (1 == uSHELL_SUPPORTS_SPACED_STRINGS)
-        static int m_CoreHandleBorderedStrings(char **ppstrToken, char **ppstrRest, int *pIntArgCounter);
+        static int m_CoreHandleBorderedStrings(char **ppstrPpstrToken, char **ppstrPpstrRest, int *pIntArgCounter);
         static void m_CoreSetStringBorder(const char *pstrStringBorder);
 #endif /*(1 == uSHELL_SUPPORTS_SPACED_STRINGS)*/
 #endif /*defined(uSHELL_IMPLEMENTS_STRINGS)*/
@@ -116,25 +116,25 @@ class Microshell {
         static void m_HistoryEnable(const bool bEnable);
 
         /* Embedded history implementation functions */
-        static void m_HistoryInitCore(history_s *pHistory, char *pDataBuffer, size_t szCapacity);
+        static void m_HistoryInitCore(history_s *pHistory, char *pstrDataBuffer, size_t szCapacity);
         static bool m_HistoryPush(history_s *pHistory, bool bTriggerAutosave);
-        static bool m_HistoryGetPrevEntry(history_s *pHistory, char *pBuffer, size_t szBufferSize);
-        static bool m_HistoryGetNextEntry(history_s *pHistory, char *pBuffer, size_t szBufferSize);
-        static bool m_HistoryGetFirstEntry(const history_s *pHistory, char *pBuffer, size_t szBufferSize);
-        static bool m_HistoryGetLastEntry(const history_s *pHistory, char *pBuffer, size_t szBufferSize);
+        static bool m_HistoryGetPrevEntry(history_s *pHistory, char *pstrBuffer, size_t szBufferSize);
+        static bool m_HistoryGetNextEntry(history_s *pHistory, char *pstrBuffer, size_t szBufferSize);
+        static bool m_HistoryGetFirstEntry(const history_s *pHistory, char *pstrBuffer, size_t szBufferSize);
+        static bool m_HistoryGetLastEntry(const history_s *pHistory, char *pstrBuffer, size_t szBufferSize);
         static void m_HistorySetIndex(history_s *pHistory, size_t szIndex);
         static bool m_HistoryIsEmpty(const history_s *pHistory);
-        static bool m_HistoryGetEntryAtIndex(const history_s *pHistory, size_t szIndex, char *pBuffer, size_t szBufferSize);
+        static bool m_HistoryGetEntryAtIndex(const history_s *pHistory, size_t szIndex, char *pstrBuffer, size_t szBufferSize);
         static void m_HistoryClear(history_s *pHistory);
-        static void m_HistoryGetFreeSpace(const history_s *pHistory, size_t *pszFreeBytes);
+        static void m_HistoryGetFreeSpace(const history_s *pHistory, size_t *pPszFreeBytes);
         static size_t m_HistoryGetEntrySize(const history_s *pHistory);
         static void m_HistoryIteratorInit(historyIter_s *pIter, const history_s *pHistory);
-        static bool m_HistoryIteratorNext(historyIter_s *pIter, char *pBuffer, size_t szBufferSize);
+        static bool m_HistoryIteratorNext(historyIter_s *pIter, char *pstrBuffer, size_t szBufferSize);
         static void m_HistoryShow(const history_s *pHistory);
 
         /* Helpers */
-        static void m_HistoryWriteLengthAt(char *pBuffer, size_t szCapacity, size_t szPos, uint16_t u16Len);
-        static uint16_t m_HistoryReadLengthAt(const char *pBuffer, size_t szCapacity, size_t szPos);
+        static void m_HistoryWriteLengthAt(char *pstrBuffer, size_t szCapacity, size_t szPos, uint16_t u16Len);
+        static uint16_t m_HistoryReadLengthAt(const char *pstrBuffer, size_t szCapacity, size_t szPos);
         static inline size_t m_HistoryEntryTotalSize(uint16_t u16DataLen);
         static size_t m_HistoryFindNextEntryPos(const history_s *pHistory, size_t szPos);
         static size_t m_HistoryCalculateUsedSpace(const history_s *pHistory);

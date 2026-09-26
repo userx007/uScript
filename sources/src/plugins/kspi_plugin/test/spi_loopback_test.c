@@ -48,11 +48,11 @@
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-static void print_buf(const char *label, const uint8_t *buf, size_t len)
+static void print_buf(const char *pstrLabel, const uint8_t *pu8Buf, size_t len)
 {
-    printf("  %-6s: ", label);
+    printf("  %-6s: ", pstrLabel);
     for (size_t i = 0; i < len; i++)
-        printf("%02X ", buf[i]);
+        printf("%02X ", pu8Buf[i]);
     printf("\n");
 }
 
@@ -64,23 +64,23 @@ static void print_buf(const char *label, const uint8_t *buf, size_t len)
  * Full-duplex SPI transfer: transmit tx_buf, receive into rx_buf.
  * Returns 0 on success, -1 on error.
  */
-static int spi_transfer(int fd,
-                        const uint8_t *tx_buf,
-                        uint8_t       *rx_buf,
+static int spi_transfer(int iFd,
+                        const uint8_t *pu8Tx_buf,
+                        uint8_t       *pu8TimeoutMs,
                         size_t         len,
-                        uint32_t       speed_hz)
+                        uint32_t       u32Speed_hz)
 {
     struct spi_ioc_transfer tr = {
-        .tx_buf        = (unsigned long)tx_buf,
-        .rx_buf        = (unsigned long)rx_buf,
+        .pu8Tx_buf        = (unsigned long)pu8Tx_buf,
+        .pu8TimeoutMs        = (unsigned long)pu8TimeoutMs,
         .len           = (uint32_t)len,
-        .speed_hz      = speed_hz,
+        .u32Speed_hz      = u32Speed_hz,
         .delay_usecs   = 0,
         .bits_per_word = BITS_PER_WORD,
         .cs_change     = 0,
     };
 
-    if (ioctl(fd, SPI_IOC_MESSAGE(1), &tr) < 0) {
+    if (ioctl(iFd, SPI_IOC_MESSAGE(1), &tr) < 0) {
         perror("SPI_IOC_MESSAGE");
         return -1;
     }
@@ -115,11 +115,11 @@ static const TestPattern patterns[] = {
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
-int main(int argc, char *argv[])
+int main(int iArgc, char *argv[])
 {
-    const char *device   = (argc > 1) ? argv[1] : "/dev/spidev0.0";
-    uint32_t    speed_hz = (argc > 2) ? (uint32_t)atol(argv[2]) : 500000;
-    uint8_t     mode     = (argc > 3) ? (uint8_t)atoi(argv[3])  : 0;
+    const char *device   = (iArgc > 1) ? argv[1] : "/dev/spidev0.0";
+    uint32_t    speed_hz = (iArgc > 2) ? (uint32_t)atol(argv[2]) : 500000;
+    uint8_t     mode     = (iArgc > 3) ? (uint8_t)atoi(argv[3])  : 0;
 
     /* ---- open device ---- */
     int fd = open(device, O_RDWR);

@@ -122,13 +122,13 @@ class FT2232Base {
          * so the "which FT2232 chip variant/channel is this" formatting lives
          * in exactly one place.
          */
-        CommDetails describeBase(CommFamily family) const
+        CommDetails describeBase(CommFamily eFamily) const
         {
             char label[k_labelSize];
             std::snprintf(label, sizeof(label), "%s (%s)",
                           m_strIdentityLabel.empty() ? "FT2232" : m_strIdentityLabel.c_str(),
                           m_variant == Variant::FT2232H ? "FT2232H" : "FT2232D");
-            return commdump_details(family, label);
+            return commdump_details(eFamily, label);
         }
 
         // ── MPSSE command opcodes ────────────────────────────────────────────
@@ -203,10 +203,10 @@ class FT2232Base {
          *   FT2232D → appends nothing (6 MHz base is fixed; the command
          *             is not supported and must not be sent)
          */
-        void push_clock_init(std::vector<uint8_t> &buf) const
+        void push_clock_init(std::vector<uint8_t> &vBuf) const
         {
             if (m_variant == Variant::FT2232H) {
-                buf.push_back(MPSSE_DIS_DIV5);
+                vBuf.push_back(MPSSE_DIS_DIV5);
             }
             // FT2232D: no command needed — 6 MHz is the hardware default
         }
@@ -220,20 +220,20 @@ class FT2232Base {
          * @param channel       MPSSE channel (A or B; FT2232D accepts A only)
          * @param u8DeviceIndex Zero-based index among connected chips of this variant
          */
-        Status open_device(Variant variant, Channel channel, uint8_t u8DeviceIndex);
+        Status open_device(Variant eVariant, Channel eChannel, uint8_t u8DeviceIndex);
 
         // ── MPSSE transport primitives — implemented in platform .cpp files ──
 
         /** Write raw MPSSE command bytes to the device */
-        Status mpsse_write(const uint8_t *buf, size_t len) const;
+        Status mpsse_write(const uint8_t *pu8Buf, size_t len) const;
 
         /**
          * Read response bytes queued by GET_BITS / shift-in commands
          * @param timeoutMs  ms before returning READ_TIMEOUT
          * @param bytesRead  actual bytes received
          */
-        Status mpsse_read(uint8_t *buf, size_t len,
-                          uint32_t timeoutMs, size_t &bytesRead,
+        Status mpsse_read(uint8_t *pu8Buf, size_t len,
+                          uint32_t u32TimeoutMs, size_t &bytesRead,
                           std::stop_token stop_tok = {}) const;
 
         /** Discard any pending bytes in the device RX/TX FIFOs */

@@ -113,10 +113,10 @@ class EvalExprEvaluator {
         // Returns true and sets result on success.
         // Returns false (and logs) on any parse / type / evaluation error.
         // -----------------------------------------------------------------------
-        bool evaluate(const std::string &expr, bool &result) const
+        bool evaluate(const std::string &strExpr, bool &bResult) const
         {
             try {
-                return m_parseCompound(expr, result);
+                return m_parseCompound(strExpr, bResult);
             } catch (const std::exception &ex) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL exception:"); LOG_STRING(ex.what()));
                 return false;
@@ -250,21 +250,21 @@ class EvalExprEvaluator {
             return eValidateType::STRING;
         }
 
-        static eValidateType m_typeFromSuffix(const std::string &suffix)
+        static eValidateType m_typeFromSuffix(const std::string &strSuffix)
         {
-            if (suffix == "STR") {
+            if (strSuffix == "STR") {
                 return eValidateType::STRING;
             }
-            if (suffix == "NUM") {
+            if (strSuffix == "NUM") {
                 return eValidateType::NUMBER;
             }
-            if (suffix == "VER") {
+            if (strSuffix == "VER") {
                 return eValidateType::VERSION;
             }
-            if (suffix == "BOOL") {
+            if (strSuffix == "BOOL") {
                 return eValidateType::BOOLEAN;
             }
-            throw std::invalid_argument("Unknown type suffix: " + suffix);
+            throw std::invalid_argument("Unknown type strSuffix: " + strSuffix);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -343,16 +343,16 @@ class EvalExprEvaluator {
 
         // Parse a single comparison atom from sv, advancing sv past the atom.
         // Returns false on parse error.
-        bool m_parseAtom(std::string_view &sv, Atom &atom) const
+        bool m_parseAtom(std::string_view &sv, Atom &sAtom) const
         {
             // word1
             std::string_view word1 = m_nextWord(sv);
             if (word1.empty()) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL: empty atom"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL: empty sAtom"));
                 return false;
             }
 
-            atom.lhs                      = m_stripQuotes(word1);
+            sAtom.lhs                      = m_stripQuotes(word1);
 
             // Save position so we can test if this is a lone boolean literal
             std::string_view svAfterWord1 = sv;
@@ -363,10 +363,10 @@ class EvalExprEvaluator {
             // If word2 is a logical connector or empty → word1 is a lone boolean
             if (word2.empty() || word2 == "&&" || word2 == "||") {
                 sv                     = svAfterWord1;
-                atom.isBoolLiteralOnly = true;
-                if (!m_isBoolLiteral(atom.lhs)) {
+                sAtom.isBoolLiteralOnly = true;
+                if (!m_isBoolLiteral(sAtom.lhs)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
-                              LOG_STRING("EVAL: expected operator after"); LOG_STRING(atom.lhs));
+                              LOG_STRING("EVAL: expected operator after"); LOG_STRING(sAtom.lhs));
                     return false;
                 }
                 return true;
@@ -390,16 +390,16 @@ class EvalExprEvaluator {
                     opRaw           = (fs == std::string::npos) ? "" : opRaw.substr(fs, ls - fs + 1);
                 }
 
-                atom.op                = opRaw;
+                sAtom.op                = opRaw;
 
                 // word3 — right-hand side
                 std::string_view word3 = m_nextWord(sv);
                 if (word3.empty()) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
-                              LOG_STRING("EVAL: missing RHS after operator"); LOG_STRING(atom.op));
+                              LOG_STRING("EVAL: missing RHS after operator"); LOG_STRING(sAtom.op));
                     return false;
                 }
-                atom.rhs = m_stripQuotes(word3);
+                sAtom.rhs = m_stripQuotes(word3);
 
                 // ── Postfix type hint ─────────────────────────────────────────
                 // After the RHS, an optional type token may follow in one of two
@@ -450,9 +450,9 @@ class EvalExprEvaluator {
 
                 // Resolve type: explicit suffix wins over inference
                 if (!typeSuffix.empty()) {
-                    atom.type = m_typeFromSuffix(typeSuffix);
+                    sAtom.type = m_typeFromSuffix(typeSuffix);
                 } else {
-                    atom.type = m_inferType(atom.lhs, atom.rhs);
+                    sAtom.type = m_inferType(sAtom.lhs, sAtom.rhs);
                 }
             }
 
@@ -466,15 +466,15 @@ class EvalExprEvaluator {
         // BoolExprEvaluator for lone boolean literals.
         // ─────────────────────────────────────────────────────────────────────
 
-        bool m_evaluateAtom(const Atom &atom, bool &result) const
+        bool m_evaluateAtom(const Atom &sAtom, bool &bResult) const
         {
-            if (atom.isBoolLiteralOnly) {
-                return BoolExprEvaluator{}.evaluate(atom.lhs, result);
+            if (sAtom.isBoolLiteralOnly) {
+                return BoolExprEvaluator{}.evaluate(sAtom.lhs, bResult);
             }
 
-            const std::string slhs(atom.lhs);
-            const std::string srhs(atom.rhs);
-            result = VectorValidator{}.validate({slhs}, {srhs}, atom.op, atom.type);
+            const std::string slhs(sAtom.lhs);
+            const std::string srhs(sAtom.rhs);
+            bResult = VectorValidator{}.validate({slhs}, {srhs}, sAtom.op, sAtom.type);
 
             return true;
         }
@@ -488,9 +488,9 @@ class EvalExprEvaluator {
         // Implements short-circuit evaluation to match C semantics.
         // ─────────────────────────────────────────────────────────────────────
 
-        bool m_parseCompound(const std::string &exprStr, bool &result) const
+        bool m_parseCompound(const std::string &strExpr, bool &bResult) const
         {
-            std::string_view sv(exprStr);
+            std::string_view sv(strExpr);
 
             // Skip leading "EVAL" keyword if caller did not strip it
             {
@@ -501,7 +501,7 @@ class EvalExprEvaluator {
                 }
             }
 
-            if (!m_parseOr(sv, result)) {
+            if (!m_parseOr(sv, bResult)) {
                 return false;
             }
 
@@ -521,7 +521,7 @@ class EvalExprEvaluator {
             return true;
         }
 
-        bool m_parseOr(std::string_view &sv, bool &result) const
+        bool m_parseOr(std::string_view &sv, bool &bResult) const
         {
             bool lhs;
             if (!m_parseAnd(sv, lhs)) {
@@ -544,11 +544,11 @@ class EvalExprEvaluator {
                     break;
                 }
             }
-            result = lhs;
+            bResult = lhs;
             return true;
         }
 
-        bool m_parseAnd(std::string_view &sv, bool &result) const
+        bool m_parseAnd(std::string_view &sv, bool &bResult) const
         {
             Atom atom;
             if (!m_parseAtom(sv, atom)) {
@@ -580,7 +580,7 @@ class EvalExprEvaluator {
                     break;
                 }
             }
-            result = lhs;
+            bResult = lhs;
             return true;
         }
 };

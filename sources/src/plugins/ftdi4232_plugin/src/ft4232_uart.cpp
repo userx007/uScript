@@ -54,38 +54,38 @@
 //                    STATIC PARSE HELPERS                                     //
 /////////////////////////////////////////////////////////////////////////////////
 
-static bool parseParity(const std::string &s, uint8_t &out)
+static bool parseParity(const std::string &strS, uint8_t &u8Out)
 {
-    if (s == "none" || s == "NONE") {
-        out = 0;
+    if (strS == "none" || strS == "NONE") {
+        u8Out = 0;
         return true;
     }
-    if (s == "odd" || s == "ODD") {
-        out = 1;
+    if (strS == "odd" || strS == "ODD") {
+        u8Out = 1;
         return true;
     }
-    if (s == "even" || s == "EVEN") {
-        out = 2;
+    if (strS == "even" || strS == "EVEN") {
+        u8Out = 2;
         return true;
     }
-    if (s == "mark" || s == "MARK") {
-        out = 3;
+    if (strS == "mark" || strS == "MARK") {
+        u8Out = 3;
         return true;
     }
-    if (s == "space" || s == "SPACE") {
-        out = 4;
+    if (strS == "space" || strS == "SPACE") {
+        u8Out = 4;
         return true;
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR;
-              LOG_STRING("Invalid parity (none|odd|even|mark|space):"); LOG_STRING(s));
+              LOG_STRING("Invalid parity (none|odd|even|mark|space):"); LOG_STRING(strS));
     return false;
 }
 
-bool FT4232Plugin::parseUartParams(const std::string &args, UartPendingCfg &cfg,
-                                   uint8_t *pDeviceIndexOut)
+bool FT4232Plugin::parseUartParams(const std::string &strArgs, UartPendingCfg &cfg,
+                                   uint8_t *pu8DeviceIndexOut)
 {
     std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    ustring::tokenize(strArgs, CHAR_SEPARATOR_SPACE, pairs);
     bool ok = true;
     for (const auto &pair : pairs) {
         std::vector<std::string> kv;
@@ -107,8 +107,8 @@ bool FT4232Plugin::parseUartParams(const std::string &args, UartPendingCfg &cfg,
             cfg.hwFlowCtrl = (v == "hw" || v == "HW" || v == "rtscts");
         } else if (k == "channel") {
             ok &= parseChannel(v, cfg.channel);
-        } else if (k == "device" && pDeviceIndexOut) {
-            ok &= numeric::str2uint8(v, *pDeviceIndexOut);
+        } else if (k == "device" && pu8DeviceIndexOut) {
+            ok &= numeric::str2uint8(v, *pu8DeviceIndexOut);
         }
         if (!ok) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value for:"); LOG_STRING(k);
@@ -132,7 +132,7 @@ bool FT4232Plugin::m_handle_uart_help(const std::string &, std::stop_token /*st*
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_uart_open(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_uart_open(const std::string &strArgs, std::stop_token /*st*/) const
 {
     if (m_pUART && m_pUART->is_open()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("UART already open — close first"));
@@ -140,7 +140,7 @@ bool FT4232Plugin::m_handle_uart_open(const std::string &args, std::stop_token /
     }
 
     uint8_t devIdx = m_sIniValues.u8DeviceIndex;
-    if (!parseUartParams(args, m_sUartCfg, &devIdx)) {
+    if (!parseUartParams(strArgs, m_sUartCfg, &devIdx)) {
         return false;
     }
 
@@ -185,15 +185,15 @@ bool FT4232Plugin::m_handle_uart_close(const std::string &, std::stop_token /*st
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_uart_cfg(const std::string &args, std::stop_token /*st*/) const
+bool FT4232Plugin::m_handle_uart_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: [baud=N] [data=8] [stop=1] [parity=none|odd|even|mark|space]"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("     [flow=none|hw] [channel=C|D]"));
         return true;
     }
-    if (!parseUartParams(args, m_sUartCfg, nullptr)) {
+    if (!parseUartParams(strArgs, m_sUartCfg, nullptr)) {
         return false;
     }
     if (m_pUART && m_pUART->is_open()) {
@@ -210,9 +210,9 @@ bool FT4232Plugin::m_handle_uart_cfg(const std::string &args, std::stop_token /*
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_uart_write(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_handle_uart_write(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABBCC…"));
         return true;
     }
@@ -221,7 +221,7 @@ bool FT4232Plugin::m_handle_uart_write(const std::string &args, std::stop_token 
         return false;
     }
     std::vector<uint8_t> data;
-    if (!hexutils::stringUnhexlify(args, data) || data.empty()) {
+    if (!hexutils::stringUnhexlify(strArgs, data) || data.empty()) {
         return false;
     }
     auto r = pDrv->tout_write(pDrv->FT4232_UART_WRITE_DEFAULT_TIMEOUT, data, std::string_view{}, st);
@@ -232,9 +232,9 @@ bool FT4232Plugin::m_handle_uart_write(const std::string &args, std::stop_token 
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_uart_read(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_handle_uart_read(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
         return true;
     }
@@ -243,7 +243,7 @@ bool FT4232Plugin::m_handle_uart_read(const std::string &args, std::stop_token s
         return false;
     }
     size_t n = 0;
-    if (!numeric::str2sizet(args, n) || n == 0) {
+    if (!numeric::str2sizet(strArgs, n) || n == 0) {
         return false;
     }
     std::vector<uint8_t> buf(n);
@@ -259,9 +259,9 @@ bool FT4232Plugin::m_handle_uart_read(const std::string &args, std::stop_token s
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_uart_script(const std::string &args, std::stop_token st) const
+bool FT4232Plugin::m_handle_uart_script(const std::string &strArgs, std::stop_token st) const
 {
-    if (args == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
@@ -274,7 +274,7 @@ bool FT4232Plugin::m_handle_uart_script(const std::string &args, std::stop_token
     return generic_execute_script(
         pDrv,
         m_strInstanceName,
-        args,
+        strArgs,
         ini->strArtefactsPath,
         FT_BULK_MAX_BYTES,
         ini->u32ReadTimeout,

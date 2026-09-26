@@ -41,9 +41,9 @@ class IniParser {
          * @note On failure the object is left in the empty/default state; check load()'s return
          *       value or call empty() afterwards — no exception is thrown.
          */
-        explicit IniParser(const std::string &filename)
+        explicit IniParser(const std::string &strFilename)
         {
-            (void)load(filename); // return value intentionally ignored; caller must use isLoaded / empty()
+            (void)load(strFilename); // return value intentionally ignored; caller must use isLoaded / empty()
         }
 
         /**
@@ -51,9 +51,9 @@ class IniParser {
          * @param filename Path to INI file
          * @return true if successful, false otherwise
          */
-        [[nodiscard]] bool load(const std::string &filename)
+        [[nodiscard]] bool load(const std::string &strFilename)
         {
-            std::ifstream file(filename, std::ios::in);
+            std::ifstream file(strFilename, std::ios::in);
             if (!file.is_open()) {
                 return false;
             }
@@ -114,9 +114,9 @@ class IniParser {
          * @param content String containing INI data
          * @return true if successful, false otherwise
          */
-        [[nodiscard]] bool loadFromString(const std::string &content)
+        [[nodiscard]] bool loadFromString(const std::string &strContent)
         {
-            std::istringstream stream(content);
+            std::istringstream stream(strContent);
             return loadFromStream(stream);
         }
 
@@ -125,9 +125,9 @@ class IniParser {
          * @param filename Path to output file
          * @return true if successful, false otherwise
          */
-        [[nodiscard]] bool save(const std::string &filename) const
+        [[nodiscard]] bool save(const std::string &strFilename) const
         {
-            std::ofstream file(filename, std::ios::out | std::ios::trunc);
+            std::ofstream file(strFilename, std::ios::out | std::ios::trunc);
             if (!file.is_open()) {
                 return false;
             }
@@ -164,17 +164,17 @@ class IniParser {
          * @param defaultValue Default value if key not found
          * @return Value or default
          */
-        [[nodiscard]] std::string getValue(const std::string &section, const std::string &key,
-                                           const std::string &defaultValue = "") const
+        [[nodiscard]] std::string getValue(const std::string &strSection, const std::string &strKey,
+                                           const std::string &strDefaultValue = "") const
         {
-            auto secIt = iniData.find(section);
+            auto secIt = iniData.find(strSection);
             if (secIt != iniData.end()) {
-                auto keyIt = secIt->second.find(key);
+                auto keyIt = secIt->second.find(strKey);
                 if (keyIt != secIt->second.end()) {
                     return keyIt->second;
                 }
             }
-            return defaultValue;
+            return strDefaultValue;
         }
 
         /**
@@ -183,12 +183,12 @@ class IniParser {
          * @param key Key name
          * @return Optional containing value if found
          */
-        [[nodiscard]] std::optional<std::string> getValueOpt(const std::string &section,
-                                                             const std::string &key) const noexcept
+        [[nodiscard]] std::optional<std::string> getValueOpt(const std::string &strSection,
+                                                             const std::string &strKey) const noexcept
         {
-            auto secIt = iniData.find(section);
+            auto secIt = iniData.find(strSection);
             if (secIt != iniData.end()) {
-                auto keyIt = secIt->second.find(key);
+                auto keyIt = secIt->second.find(strKey);
                 if (keyIt != secIt->second.end()) {
                     return keyIt->second;
                 }
@@ -202,9 +202,9 @@ class IniParser {
          * @param key Key name
          * @param value Value to set
          */
-        void setValue(const std::string &section, const std::string &key, const std::string &value)
+        void setValue(const std::string &strSection, const std::string &strKey, const std::string &strValue)
         {
-            iniData[section][key] = value;
+            iniData[strSection][strKey] = strValue;
         }
 
         /**
@@ -213,9 +213,9 @@ class IniParser {
          * @param outMap Output map to populate
          * @return true if section exists, false otherwise
          */
-        [[nodiscard]] bool getSection(const std::string &section, KeyValueMap &outMap) const
+        [[nodiscard]] bool getSection(const std::string &strSection, KeyValueMap &outMap) const
         {
-            auto secIt = iniData.find(section);
+            auto secIt = iniData.find(strSection);
             if (secIt != iniData.end()) {
                 outMap = secIt->second;
                 return true;
@@ -229,9 +229,9 @@ class IniParser {
          * @param section Section name
          * @return Optional containing key-value map if section exists
          */
-        [[nodiscard]] std::optional<KeyValueMap> getSectionOpt(const std::string &section) const
+        [[nodiscard]] std::optional<KeyValueMap> getSectionOpt(const std::string &strSection) const
         {
-            auto secIt = iniData.find(section);
+            auto secIt = iniData.find(strSection);
             if (secIt != iniData.end()) {
                 return secIt->second;
             }
@@ -243,9 +243,9 @@ class IniParser {
          * @param section Section name
          * @return true if section exists
          */
-        [[nodiscard]] bool sectionExists(const std::string &section) const noexcept
+        [[nodiscard]] bool sectionExists(const std::string &strSection) const noexcept
         {
-            return iniData.find(section) != iniData.end();
+            return iniData.find(strSection) != iniData.end();
         }
 
         /**
@@ -254,13 +254,13 @@ class IniParser {
          * @param key Key name
          * @return true if key exists
          */
-        [[nodiscard]] bool keyExists(const std::string &section, const std::string &key) const noexcept
+        [[nodiscard]] bool keyExists(const std::string &strSection, const std::string &strKey) const noexcept
         {
-            auto secIt = iniData.find(section);
+            auto secIt = iniData.find(strSection);
             if (secIt == iniData.end()) {
                 return false;
             }
-            return secIt->second.find(key) != secIt->second.end();
+            return secIt->second.find(strKey) != secIt->second.end();
         }
 
         /**
@@ -284,11 +284,11 @@ class IniParser {
          * @param section Section name
          * @return Vector of key names
          */
-        [[nodiscard]] std::vector<std::string> getKeys(const std::string &section) const
+        [[nodiscard]] std::vector<std::string> getKeys(const std::string &strSection) const
         {
             std::vector<std::string> keys;
 
-            auto it = iniData.find(section);
+            auto it = iniData.find(strSection);
             if (it != iniData.end()) {
                 keys.reserve(it->second.size());
                 for (const auto &[key, _] : it->second) {
@@ -304,9 +304,9 @@ class IniParser {
          * @param section Section name
          * @return true if section was removed
          */
-        bool removeSection(const std::string &section)
+        bool removeSection(const std::string &strSection)
         {
-            return iniData.erase(section) > 0;
+            return iniData.erase(strSection) > 0;
         }
 
         /**
@@ -315,11 +315,11 @@ class IniParser {
          * @param key Key name
          * @return true if key was removed
          */
-        bool removeKey(const std::string &section, const std::string &key)
+        bool removeKey(const std::string &strSection, const std::string &strKey)
         {
-            auto it = iniData.find(section);
+            auto it = iniData.find(strSection);
             if (it != iniData.end()) {
-                return it->second.erase(key) > 0;
+                return it->second.erase(strKey) > 0;
             }
             return false;
         }
@@ -346,9 +346,9 @@ class IniParser {
          * @param section Section name
          * @return Key count
          */
-        [[nodiscard]] size_t keyCount(const std::string &section) const noexcept
+        [[nodiscard]] size_t keyCount(const std::string &strSection) const noexcept
         {
-            auto it = iniData.find(section);
+            auto it = iniData.find(strSection);
             return (it != iniData.end()) ? it->second.size() : 0;
         }
 
@@ -377,17 +377,17 @@ class IniParser {
          * @param defaultValue Default value if key not found or conversion fails
          * @return Integer value
          */
-        [[nodiscard]] int getInt(const std::string &section, const std::string &key, int defaultValue = 0) const noexcept
+        [[nodiscard]] int getInt(const std::string &strSection, const std::string &strKey, int iDefaultValue = 0) const noexcept
         {
-            auto value = getValueOpt(section, key);
+            auto value = getValueOpt(strSection, strKey);
             if (!value) {
-                return defaultValue;
+                return iDefaultValue;
             }
 
             try {
                 return std::stoi(*value);
             } catch (...) {
-                return defaultValue;
+                return iDefaultValue;
             }
         }
 
@@ -398,9 +398,9 @@ class IniParser {
          * @param defaultValue Default value if key not found or conversion fails
          * @return Long value
          */
-        [[nodiscard]] long getLong(const std::string &section, const std::string &key, long defaultValue = 0) const noexcept
+        [[nodiscard]] long getLong(const std::string &strSection, const std::string &strKey, long defaultValue = 0) const noexcept
         {
-            auto value = getValueOpt(section, key);
+            auto value = getValueOpt(strSection, strKey);
             if (!value) {
                 return defaultValue;
             }
@@ -419,17 +419,17 @@ class IniParser {
          * @param defaultValue Default value if key not found or conversion fails
          * @return Double value
          */
-        [[nodiscard]] double getDouble(const std::string &section, const std::string &key, double defaultValue = 0.0) const noexcept
+        [[nodiscard]] double getDouble(const std::string &strSection, const std::string &strKey, double dDefaultValue = 0.0) const noexcept
         {
-            auto value = getValueOpt(section, key);
+            auto value = getValueOpt(strSection, strKey);
             if (!value) {
-                return defaultValue;
+                return dDefaultValue;
             }
 
             try {
                 return std::stod(*value);
             } catch (...) {
-                return defaultValue;
+                return dDefaultValue;
             }
         }
 
@@ -440,11 +440,11 @@ class IniParser {
          * @param defaultValue Default value if key not found
          * @return Boolean value (true for "true", "1", "yes", "on" - case insensitive)
          */
-        [[nodiscard]] bool getBool(const std::string &section, const std::string &key, bool defaultValue = false) const noexcept
+        [[nodiscard]] bool getBool(const std::string &strSection, const std::string &strKey, bool bDefaultValue = false) const noexcept
         {
-            auto value = getValueOpt(section, key);
+            auto value = getValueOpt(strSection, strKey);
             if (!value) {
-                return defaultValue;
+                return bDefaultValue;
             }
 
             std::string lower = *value;
@@ -459,11 +459,11 @@ class IniParser {
          * @param other INI parser to merge from
          * @param overwrite Whether to overwrite existing values
          */
-        void merge(const IniParser &other, bool overwrite = true)
+        void merge(const IniParser &other, bool bOverwrite = true)
         {
             for (const auto &[section, kvMap] : other.iniData) {
                 for (const auto &[key, value] : kvMap) {
-                    if (overwrite || !keyExists(section, key)) {
+                    if (bOverwrite || !keyExists(section, key)) {
                         iniData[section][key] = value;
                     }
                 }
@@ -535,10 +535,10 @@ class IniParser {
  * @param filename Path to INI file
  * @return std::optional<IniParser> — nullopt if the file could not be loaded
  */
-[[nodiscard]] inline std::optional<IniParser> loadIniFile(const std::string &filename)
+[[nodiscard]] inline std::optional<IniParser> loadIniFile(const std::string &strFilename)
 {
     IniParser parser;
-    if (!parser.load(filename)) {
+    if (!parser.load(strFilename)) {
         return std::nullopt;
     }
     return parser;
@@ -549,10 +549,10 @@ class IniParser {
  * @param content INI content as string
  * @return std::optional<IniParser> — nullopt if parsing fails
  */
-[[nodiscard]] inline std::optional<IniParser> parseIniString(const std::string &content)
+[[nodiscard]] inline std::optional<IniParser> parseIniString(const std::string &strContent)
 {
     IniParser parser;
-    if (!parser.loadFromString(content)) {
+    if (!parser.loadFromString(strContent)) {
         return std::nullopt;
     }
     return parser;

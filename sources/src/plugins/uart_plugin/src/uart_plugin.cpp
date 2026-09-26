@@ -28,10 +28,10 @@ extern "C" {
         return new UARTPlugin();
     }
 
-    EXPORTED void pluginExit(UARTPlugin *ptrPlugin)
+    EXPORTED void pluginExit(UARTPlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -55,10 +55,10 @@ extern "C" {
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_UART_INFO(const std::string &args, std::stop_token st) const
+bool UARTPlugin::m_UART_INFO(const std::string &strArgs, std::stop_token st) const
 {
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
@@ -132,9 +132,9 @@ bool UARTPlugin::m_UART_INFO(const std::string &args, std::stop_token st) const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_UART_CONFIG(const std::string &args, std::stop_token st) const
+bool UARTPlugin::m_UART_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
-    return generic_uart_set_params<UARTPlugin>(this, args);
+    return generic_uart_set_params<UARTPlugin>(this, strArgs);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -152,12 +152,12 @@ bool UARTPlugin::m_UART_CONFIG(const std::string &args, std::stop_token st) cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_UART_CMD(const std::string &args, std::stop_token st) const
+bool UARTPlugin::m_UART_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<UART> {
             // open the UART port (RAII implementation, the close is done by destructor)
             auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate, m_strUartPort);
@@ -180,12 +180,12 @@ bool UARTPlugin::m_UART_CMD(const std::string &args, std::stop_token st) const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_UART_SCRIPT(const std::string &args, std::stop_token st) const
+bool UARTPlugin::m_UART_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<UART> {
             // open the UART port (RAII implementation, the close is done by destructor)
             auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate, m_strUartPort);
@@ -215,10 +215,10 @@ bool UARTPlugin::m_UART_SCRIPT(const std::string &args, std::stop_token st) cons
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_UART_CYCLIC(const std::string &args, std::stop_token st) const
+bool UARTPlugin::m_UART_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<UART> {
             // open the UART port (RAII implementation, the close is done by destructor)
             auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate, m_strUartPort);

@@ -28,9 +28,9 @@ extern "C" {
         return new ProfibusPlugin();
     }
 
-    EXPORTED void pluginExit(ProfibusPlugin *ptrPlugin)
+    EXPORTED void pluginExit(ProfibusPlugin *pPtrPlugin)
     {
-        delete ptrPlugin;
+        delete pPtrPlugin;
     }
 }
 
@@ -107,9 +107,9 @@ std::shared_ptr<ProfibusDriver> ProfibusPlugin::m_OpenDriver(void) const
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string &args, std::stop_token st) const
+bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    (void)args;
+    (void)strArgs;
     (void)st;
     resetData();
     std::ostringstream oss;
@@ -173,13 +173,13 @@ bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string &args, std::stop_token st
 // PROFIBUS.CONFIG — see class doc comment (profibus_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string &args, std::stop_token st) const
+bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
 
     resetData();
 
-    return generic_profibus_set_params(this, args);
+    return generic_profibus_set_params(this, strArgs);
 
 } /* m_PROFIBUS_CONFIG() */
 
@@ -187,12 +187,12 @@ bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string &args, std::stop_token 
 // PROFIBUS.CMD / PROFIBUS.SCRIPT — see class doc comment (profibus_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string &args, std::stop_token st) const
+bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_cmd(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<ProfibusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ResponseTimeout, LT_HDR, &m_strResultData, m_bRawResult,
@@ -208,12 +208,12 @@ bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string &args, std::stop_token st)
         st);
 }
 
-bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string &args, std::stop_token st) const
+bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_script(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<ProfibusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ResponseTimeout, LT_HDR,
@@ -230,12 +230,12 @@ bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string &args, std::stop_token 
 // PROFIBUS.CYCLIC — see class doc comment (profibus_plugin.hpp)
 // -----------------------------------------------------------------------
 
-bool ProfibusPlugin::m_PROFIBUS_CYCLIC(const std::string &args, std::stop_token st) const
+bool ProfibusPlugin::m_PROFIBUS_CYCLIC(const std::string &strArgs, std::stop_token st) const
 {
     resetData();
 
     return ucmdexec::generic_send_cyclic(
-        args, m_bIsEnabled,
+        strArgs, m_bIsEnabled,
         [this]() -> std::shared_ptr<ProfibusDriver> { return m_OpenDriver(); },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ResponseTimeout, LT_HDR, st, m_bCyclicCached,
         // Non-capturing: ProfibusDriver::send()/receive() are handed

@@ -30,7 +30,7 @@
 // open / close
 // ============================================================================
 
-FT232HGPIO::Status FT232HGPIO::open(const GpioConfig &config, uint8_t u8DeviceIndex)
+FT232HGPIO::Status FT232HGPIO::open(const GpioConfig &sConfig, uint8_t u8DeviceIndex)
 {
     if (is_open()) {
         close();
@@ -43,7 +43,7 @@ FT232HGPIO::Status FT232HGPIO::open(const GpioConfig &config, uint8_t u8DeviceIn
 
     mpsse_purge();
 
-    s = configure_mpsse_gpio(config);
+    s = configure_mpsse_gpio(sConfig);
     if (s != Status::SUCCESS) {
         FT232HBase::close();
         return s;
@@ -65,12 +65,12 @@ FT232HGPIO::Status FT232HGPIO::close()
 // MPSSE configuration
 // ============================================================================
 
-FT232HGPIO::Status FT232HGPIO::configure_mpsse_gpio(const GpioConfig &config)
+FT232HGPIO::Status FT232HGPIO::configure_mpsse_gpio(const GpioConfig &sConfig)
 {
-    m_lowValue  = config.lowValue;
-    m_lowDir    = config.lowDirMask;
-    m_highValue = config.highValue;
-    m_highDir   = config.highDirMask;
+    m_lowValue  = sConfig.lowValue;
+    m_lowDir    = sConfig.lowDirMask;
+    m_highValue = sConfig.highValue;
+    m_highDir   = sConfig.highDirMask;
 
     std::vector<uint8_t> init;
     init.reserve(16);
@@ -80,11 +80,11 @@ FT232HGPIO::Status FT232HGPIO::configure_mpsse_gpio(const GpioConfig &config)
     init.push_back(MPSSE_LOOPBACK_OFF);
     // Apply initial pin states
     init.push_back(MPSSE_SET_BITS_LOW);
-    init.push_back(config.lowValue);
-    init.push_back(config.lowDirMask);
+    init.push_back(sConfig.lowValue);
+    init.push_back(sConfig.lowDirMask);
     init.push_back(MPSSE_SET_BITS_HIGH);
-    init.push_back(config.highValue);
-    init.push_back(config.highDirMask);
+    init.push_back(sConfig.highValue);
+    init.push_back(sConfig.highDirMask);
 
     return mpsse_write(init.data(), init.size());
 }
@@ -93,15 +93,15 @@ FT232HGPIO::Status FT232HGPIO::configure_mpsse_gpio(const GpioConfig &config)
 // Internal apply helpers
 // ============================================================================
 
-FT232HGPIO::Status FT232HGPIO::apply_low(uint8_t value, uint8_t dir) const
+FT232HGPIO::Status FT232HGPIO::apply_low(uint8_t u8Value, uint8_t u8Dir) const
 {
-    uint8_t cmd[3] = {MPSSE_SET_BITS_LOW, value, dir};
+    uint8_t cmd[3] = {MPSSE_SET_BITS_LOW, u8Value, u8Dir};
     return mpsse_write(cmd, 3);
 }
 
-FT232HGPIO::Status FT232HGPIO::apply_high(uint8_t value, uint8_t dir) const
+FT232HGPIO::Status FT232HGPIO::apply_high(uint8_t u8Value, uint8_t u8Dir) const
 {
-    uint8_t cmd[3] = {MPSSE_SET_BITS_HIGH, value, dir};
+    uint8_t cmd[3] = {MPSSE_SET_BITS_HIGH, u8Value, u8Dir};
     return mpsse_write(cmd, 3);
 }
 
@@ -109,16 +109,16 @@ FT232HGPIO::Status FT232HGPIO::apply_high(uint8_t value, uint8_t dir) const
 // Direction control
 // ============================================================================
 
-FT232HGPIO::Status FT232HGPIO::set_direction(Bank bank, uint8_t dirMask,
-                                             uint8_t initialValue)
+FT232HGPIO::Status FT232HGPIO::set_direction(Bank eBank, uint8_t u8DirMask,
+                                             uint8_t u8InitialValue)
 {
-    if (bank == Bank::Low) {
-        m_lowDir   = dirMask;
-        m_lowValue = (m_lowValue & ~dirMask) | (initialValue & dirMask);
+    if (eBank == Bank::Low) {
+        m_lowDir   = u8DirMask;
+        m_lowValue = (m_lowValue & ~u8DirMask) | (u8InitialValue & u8DirMask);
         return apply_low(m_lowValue, m_lowDir);
     } else {
-        m_highDir   = dirMask;
-        m_highValue = (m_highValue & ~dirMask) | (initialValue & dirMask);
+        m_highDir   = u8DirMask;
+        m_highValue = (m_highValue & ~u8DirMask) | (u8InitialValue & u8DirMask);
         return apply_high(m_highValue, m_highDir);
     }
 }
@@ -127,46 +127,46 @@ FT232HGPIO::Status FT232HGPIO::set_direction(Bank bank, uint8_t dirMask,
 // Output control
 // ============================================================================
 
-FT232HGPIO::Status FT232HGPIO::write(Bank bank, uint8_t value)
+FT232HGPIO::Status FT232HGPIO::write(Bank eBank, uint8_t u8Value)
 {
-    if (bank == Bank::Low) {
-        m_lowValue = value;
+    if (eBank == Bank::Low) {
+        m_lowValue = u8Value;
         return apply_low(m_lowValue, m_lowDir);
     } else {
-        m_highValue = value;
+        m_highValue = u8Value;
         return apply_high(m_highValue, m_highDir);
     }
 }
 
-FT232HGPIO::Status FT232HGPIO::set_pins(Bank bank, uint8_t pinMask)
+FT232HGPIO::Status FT232HGPIO::set_pins(Bank eBank, uint8_t u8PinMask)
 {
-    if (bank == Bank::Low) {
-        m_lowValue |= pinMask;
+    if (eBank == Bank::Low) {
+        m_lowValue |= u8PinMask;
         return apply_low(m_lowValue, m_lowDir);
     } else {
-        m_highValue |= pinMask;
+        m_highValue |= u8PinMask;
         return apply_high(m_highValue, m_highDir);
     }
 }
 
-FT232HGPIO::Status FT232HGPIO::clear_pins(Bank bank, uint8_t pinMask)
+FT232HGPIO::Status FT232HGPIO::clear_pins(Bank eBank, uint8_t u8PinMask)
 {
-    if (bank == Bank::Low) {
-        m_lowValue &= static_cast<uint8_t>(~pinMask);
+    if (eBank == Bank::Low) {
+        m_lowValue &= static_cast<uint8_t>(~u8PinMask);
         return apply_low(m_lowValue, m_lowDir);
     } else {
-        m_highValue &= static_cast<uint8_t>(~pinMask);
+        m_highValue &= static_cast<uint8_t>(~u8PinMask);
         return apply_high(m_highValue, m_highDir);
     }
 }
 
-FT232HGPIO::Status FT232HGPIO::toggle_pins(Bank bank, uint8_t pinMask)
+FT232HGPIO::Status FT232HGPIO::toggle_pins(Bank eBank, uint8_t u8PinMask)
 {
-    if (bank == Bank::Low) {
-        m_lowValue ^= pinMask;
+    if (eBank == Bank::Low) {
+        m_lowValue ^= u8PinMask;
         return apply_low(m_lowValue, m_lowDir);
     } else {
-        m_highValue ^= pinMask;
+        m_highValue ^= u8PinMask;
         return apply_high(m_highValue, m_highDir);
     }
 }
@@ -175,10 +175,10 @@ FT232HGPIO::Status FT232HGPIO::toggle_pins(Bank bank, uint8_t pinMask)
 // Input reading
 // ============================================================================
 
-FT232HGPIO::Status FT232HGPIO::read(Bank bank, uint8_t &value)
+FT232HGPIO::Status FT232HGPIO::read(Bank eBank, uint8_t &u8Value)
 {
     uint8_t cmd[2];
-    cmd[0] = (bank == Bank::Low) ? MPSSE_GET_BITS_LOW : MPSSE_GET_BITS_HIGH;
+    cmd[0] = (eBank == Bank::Low) ? MPSSE_GET_BITS_LOW : MPSSE_GET_BITS_HIGH;
     cmd[1] = MPSSE_SEND_IMMEDIATE;
 
     auto s = mpsse_write(cmd, 2);
@@ -187,13 +187,13 @@ FT232HGPIO::Status FT232HGPIO::read(Bank bank, uint8_t &value)
     }
 
     size_t got = 0;
-    return mpsse_read(&value, 1, FT232H_READ_DEFAULT_TIMEOUT, got);
+    return mpsse_read(&u8Value, 1, FT232H_READ_DEFAULT_TIMEOUT, got);
 }
 
-FT232HGPIO::Status FT232HGPIO::read_pins(Bank bank, uint8_t pinMask, uint8_t &value)
+FT232HGPIO::Status FT232HGPIO::read_pins(Bank eBank, uint8_t u8PinMask, uint8_t &u8Value)
 {
     uint8_t raw = 0;
-    auto s      = read(bank, raw);
-    value       = raw & pinMask;
+    auto s      = read(eBank, raw);
+    u8Value       = raw & u8PinMask;
     return s;
 }

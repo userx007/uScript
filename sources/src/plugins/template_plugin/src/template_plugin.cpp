@@ -17,10 +17,10 @@ extern "C" {
         return new TemplatePlugin();
     }
 
-    EXPORTED void pluginExit(TemplatePlugin *ptrPlugin)
+    EXPORTED void pluginExit(TemplatePlugin *pPtrPlugin)
     {
-        if (nullptr != ptrPlugin) {
-            delete ptrPlugin;
+        if (nullptr != pPtrPlugin) {
+            delete pPtrPlugin;
         }
     }
 }
@@ -68,13 +68,13 @@ void TemplatePlugin::doCleanup(void)
  * \return true if succeeded, false otherwise
  */
 
-bool TemplatePlugin::m_Template_DUMMY1(const std::string &args, std::stop_token st) const
+bool TemplatePlugin::m_Template_DUMMY1(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
         // expected arguments
-        if (false == args.empty()) {
+        if (false == strArgs.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
         }
@@ -85,7 +85,7 @@ bool TemplatePlugin::m_Template_DUMMY1(const std::string &args, std::stop_token 
             break;
         }
 
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY1 (no-args, no-return)"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY1 (no-strArgs, no-return)"));
 
         // implementation here..
         bRetVal = true;
@@ -95,14 +95,14 @@ bool TemplatePlugin::m_Template_DUMMY1(const std::string &args, std::stop_token 
     return bRetVal;
 }
 
-bool TemplatePlugin::m_Template_DUMMY2(const std::string &args, std::stop_token st) const
+bool TemplatePlugin::m_Template_DUMMY2(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
 
         // expected no arguments
-        if (true == args.empty()) {
+        if (true == strArgs.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected argument(s)"));
             break;
         }
@@ -113,8 +113,8 @@ bool TemplatePlugin::m_Template_DUMMY2(const std::string &args, std::stop_token 
             break;
         }
 
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY2 (args, return)"); LOG_STRING("Arg:"); LOG_STRING(args));
-        m_strResultData = args;
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY2 (strArgs, return)"); LOG_STRING("Arg:"); LOG_STRING(strArgs));
+        m_strResultData = strArgs;
 
         // implementation here..
         bRetVal         = true;
@@ -124,14 +124,14 @@ bool TemplatePlugin::m_Template_DUMMY2(const std::string &args, std::stop_token 
     return bRetVal;
 }
 
-bool TemplatePlugin::m_Template_DUMMY3(const std::string &args, std::stop_token st) const
+bool TemplatePlugin::m_Template_DUMMY3(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
 
     do {
 
         // expected arguments
-        if (true == args.empty()) {
+        if (true == strArgs.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected argument(s)"));
             break;
         }
@@ -142,7 +142,7 @@ bool TemplatePlugin::m_Template_DUMMY3(const std::string &args, std::stop_token 
             break;
         }
 
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY3 (blocking, args, no-return)"); LOG_STRING("Arg:"); LOG_STRING(args));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY3 (blocking, strArgs, no-return)"); LOG_STRING("Arg:"); LOG_STRING(strArgs));
 
         // DUMMY3 is declared blocking (bBlocking=true) in the command table.
         // It must be launched with '&' — the interpreter enforces this at
@@ -173,11 +173,11 @@ bool TemplatePlugin::m_Template_DUMMY3(const std::string &args, std::stop_token 
  * \return true on success, false otherwise
  */
 
-bool TemplatePlugin::m_Template_INFO(const std::string &args, std::stop_token st) const
+bool TemplatePlugin::m_Template_INFO(const std::string &strArgs, std::stop_token st) const
 {
 
     // expected no arguments
-    if (!args.empty()) {
+    if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }

@@ -69,7 +69,7 @@ class ModbusDriver : public ICommDriver {
                 std::string strInstanceName;
         };
 
-        explicit ModbusDriver(Config config);
+        explicit ModbusDriver(Config sConfig);
         ~ModbusDriver();
 
         /// Opens the real TCPIP connection. No session handshake beyond that —
@@ -126,7 +126,7 @@ class ModbusDriver : public ICommDriver {
 
         // Sends one complete Modbus ADU (built by ModbusProtocol) and reports
         // it to the GUI comm-dump panel on success.
-        ICommDriver::Status m_SendAdu(const std::vector<uint8_t> &adu, std::string_view xtra_params) const;
+        ICommDriver::Status m_SendAdu(const std::vector<uint8_t> &vAdu, std::string_view xtra_params) const;
 
         // Reads one complete Modbus ADU: exactly 6 bytes (the MBAP prefix up
         // to and including Length), then exactly Length more bytes (Unit Id +
@@ -136,7 +136,7 @@ class ModbusDriver : public ICommDriver {
         // has started arriving, the rest is read with its own short fixed
         // timeout (a stall mid-response is a broken-connection problem, not a
         // "nothing to receive yet" one).
-        ICommDriver::Status m_ReadAdu(std::vector<uint8_t> &aduOut, uint32_t timeoutMs, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+        ICommDriver::Status m_ReadAdu(std::vector<uint8_t> &vAduOut, uint32_t u32TimeoutMs, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
         // ---- Intermediary layer: MODBUS.CMD argument decomposition ----
         // Tokenizes on whitespace only, after stripping a trailing NUL byte —
@@ -145,7 +145,7 @@ class ModbusDriver : public ICommDriver {
         // restriction to violate the way MQTT topics do, an extra empty
         // trailing token would still misparse a command's argument count, so
         // it's stripped here for the same reason.
-        static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &outTokens);
+        static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens);
 
         // MODBUS sub-command handlers (the "specific callback associated to
         // that command"). Each parses its own arguments — every command's
@@ -155,20 +155,20 @@ class ModbusDriver : public ICommDriver {
         // request via m_protocol/m_SendAdu(), and records what receive()
         // should wait for and how to decode it. Returns false on bad arguments
         // or a send failure.
-        bool m_HandleReadCoils(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleReadDiscreteInputs(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleReadHoldingRegisters(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleReadInputRegisters(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleWriteSingleCoil(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleWriteSingleRegister(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleWriteMultipleCoils(const std::vector<std::string> &args, std::string_view xtra_params) const;
-        bool m_HandleWriteMultipleRegisters(const std::vector<std::string> &args, std::string_view xtra_params) const;
+        bool m_HandleReadCoils(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleReadDiscreteInputs(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleReadHoldingRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleReadInputRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleWriteSingleCoil(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleWriteSingleRegister(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleWriteMultipleCoils(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        bool m_HandleWriteMultipleRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
 
         // Shared by the four read handlers: parses "<unit_id> <start_addr>
         // <quantity>" (exactly 3 tokens) and validates quantity against
         // maxQuantity.
-        bool m_ParseReadArgs(const std::vector<std::string> &args, uint16_t maxQuantity,
-                             uint8_t &outUnitId, uint16_t &outAddr, uint16_t &outQuantity) const;
+        bool m_ParseReadArgs(const std::vector<std::string> &vArgs, uint16_t u16MaxQuantity,
+                             uint8_t &u8OutUnitId, uint16_t &u16OutAddr, uint16_t &u16OutQuantity) const;
 
         using ModbusSubCmdHandler = bool (ModbusDriver::*)(const std::vector<std::string> &, std::string_view) const;
         std::unordered_map<std::string, ModbusSubCmdHandler> m_mapCmds;

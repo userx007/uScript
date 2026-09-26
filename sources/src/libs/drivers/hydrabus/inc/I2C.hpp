@@ -46,7 +46,7 @@ namespace HydraHAL {
                 I2C_1M   = 0b11,
             };
 
-            explicit I2C(std::shared_ptr<Hydrabus> hydrabus);
+            explicit I2C(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // Bus conditions
@@ -120,7 +120,7 @@ namespace HydraHAL {
             // -------------------------------------------------------------------------
 
             /** @brief Set the I2C bus speed. @return true on success. */
-            bool set_speed(Speed speed);
+            bool set_speed(Speed eSpeed);
 
             /**
              * @brief Set the clock-stretching timeout in clock cycles.
@@ -128,7 +128,7 @@ namespace HydraHAL {
              * Pass 0 to disable clock stretching.
              * @return true on success.
              */
-            bool set_clock_stretch(uint32_t clocks);
+            bool set_clock_stretch(uint32_t u32Clocks);
 
             // ---- Pull-up resistors --------------------------------------------------
 
@@ -136,7 +136,7 @@ namespace HydraHAL {
             bool get_pullup() const;
 
             /** @param enable true to enable, false to disable. @return true on success. */
-            bool set_pullup(bool enable);
+            bool set_pullup(bool bEnable);
 
             // ---- Bus scanner --------------------------------------------------------
 

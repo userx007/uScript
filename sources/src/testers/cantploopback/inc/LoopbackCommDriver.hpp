@@ -39,7 +39,7 @@
 class LoopbackCommDriver final : public ICommDriver {
     public:
         /** @param verbose  If true, prints every frame (id, direction, hex bytes) as it crosses the bus. */
-        explicit LoopbackCommDriver(bool verbose = false)
+        explicit LoopbackCommDriver(bool bVerbose = false)
             : m_verbose(verbose)
         {
         }
@@ -51,7 +51,7 @@ class LoopbackCommDriver final : public ICommDriver {
 
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions &opts,
+                             const ReadOptions &sOpts,
                              std::string_view xtra_params,
                              std::stop_token stop_tok = {}) const override;
 

@@ -22,11 +22,11 @@ class DeviceHandling {
         std::vector<DeviceEntry> deviceList;
         static constexpr std::size_t MaxListSize = 100;
 
-        int findItemIndex(const std::string &item) const
+        int findItemIndex(const std::string &strItem) const
         {
             auto it = std::find_if(deviceList.begin(), deviceList.end(),
-                                   [&item](const DeviceEntry &entry) {
-                                       return entry.name == item;
+                                   [&strItem](const DeviceEntry &entry) {
+                                       return entry.name == strItem;
                                    });
 
             if (it != deviceList.end()) {
@@ -35,10 +35,10 @@ class DeviceHandling {
             return -1;
         }
 
-        bool insertItem(const std::string &item)
+        bool insertItem(const std::string &strItem)
         {
-            if (findItemIndex(item) == -1 && deviceList.size() < MaxListSize) {
-                deviceList.push_back({item, false});
+            if (findItemIndex(strItem) == -1 && deviceList.size() < MaxListSize) {
+                deviceList.push_back({strItem, false});
                 return true;
             }
             return false;
@@ -50,17 +50,17 @@ class DeviceHandling {
             deviceList.clear();
         }
 
-        bool process(const std::string &input, std::string &output, OperationType opType)
+        bool process(const std::string &strInput, std::string &strOutput, OperationType eOpType)
         {
             bool updated = false;
 
-            if (opType == OperationType::Insert) {
-                if (insertItem(input)) {
-                    output  = input;
+            if (eOpType == OperationType::Insert) {
+                if (insertItem(strInput)) {
+                    strOutput  = strInput;
                     updated = true;
                 }
             } else {
-                int idx = findItemIndex(input);
+                int idx = findItemIndex(strInput);
                 if (idx != -1) {
                     deviceList[idx].isRemoved = true;
                 }
@@ -69,7 +69,7 @@ class DeviceHandling {
             return updated;
         }
 
-        bool getRemoved(std::string &output)
+        bool getRemoved(std::string &strOutput)
         {
             auto it = std::find_if(deviceList.begin(), deviceList.end(),
                                    [](const DeviceEntry &entry) {
@@ -77,7 +77,7 @@ class DeviceHandling {
                                    });
 
             if (it != deviceList.end()) {
-                output = it->name;
+                strOutput = it->name;
                 it->name.clear(); // Clear name to mark as processed
                 return true;
             }
@@ -85,7 +85,7 @@ class DeviceHandling {
             return false;
         }
 
-        bool getAdded(std::string &output)
+        bool getAdded(std::string &strOutput)
         {
             auto it = std::find_if(deviceList.begin(), deviceList.end(),
                                    [](const DeviceEntry &entry) {
@@ -93,7 +93,7 @@ class DeviceHandling {
                                    });
 
             if (it != deviceList.end()) {
-                output = it->name;
+                strOutput = it->name;
                 it->name.clear(); // Clear name to mark as processed
                 return true;
             }

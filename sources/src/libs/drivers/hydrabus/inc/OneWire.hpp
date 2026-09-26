@@ -34,7 +34,7 @@ namespace HydraHAL {
      */
     class OneWire : public Protocol {
         public:
-            explicit OneWire(std::shared_ptr<Hydrabus> hydrabus);
+            explicit OneWire(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
             // Bus operations
@@ -83,7 +83,7 @@ namespace HydraHAL {
              * @brief Enable or disable the internal pull-up resistor.
              * @return true on success.
              */
-            bool set_pullup(bool enable);
+            bool set_pullup(bool bEnable);
 
             // -------------------------------------------------------------------------
             // SWIO (Serial Wire debug over 1-Wire physical layer)
@@ -103,7 +103,7 @@ namespace HydraHAL {
              * @param address Register address (1 byte).
              * @return Register value (32-bit, little-endian).
              */
-            uint32_t swio_read_reg(uint8_t address, std::stop_token stop_tok = {});
+            uint32_t swio_read_reg(uint8_t u8Address, std::stop_token stop_tok = {});
 
             /**
              * @brief Write a 32-bit SWIO/SWD debug register.
@@ -112,7 +112,7 @@ namespace HydraHAL {
              * @param value   32-bit value to write (little-endian).
              * @return true on success.
              */
-            bool swio_write_reg(uint8_t address, uint32_t value, std::stop_token stop_tok = {});
+            bool swio_write_reg(uint8_t u8Address, uint32_t u32Value, std::stop_token stop_tok = {});
 
         private:
             bool _configure_port();
