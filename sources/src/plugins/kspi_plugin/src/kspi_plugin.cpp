@@ -33,10 +33,10 @@ extern "C" {
         return new KSPIPlugin();
     }
 
-    EXPORTED void pluginExit(KSPIPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(KSPIPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

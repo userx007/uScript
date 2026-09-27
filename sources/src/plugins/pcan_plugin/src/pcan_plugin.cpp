@@ -34,10 +34,10 @@ extern "C" {
         return new PCANPlugin();
     }
 
-    EXPORTED void pluginExit(PCANPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(PCANPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

@@ -27,10 +27,10 @@ extern "C" {
         return new WEBSOCKETPlugin();
     }
 
-    EXPORTED void pluginExit(WEBSOCKETPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(WEBSOCKETPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

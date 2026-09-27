@@ -28,10 +28,10 @@ extern "C" {
         return new UARTPlugin();
     }
 
-    EXPORTED void pluginExit(UARTPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(UARTPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

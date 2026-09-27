@@ -39,10 +39,10 @@ extern "C" {
         return new FT4232Plugin();
     }
 
-    EXPORTED void pluginExit(FT4232Plugin *pPtrPlugin)
+    EXPORTED void pluginExit(FT4232Plugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

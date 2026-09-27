@@ -33,10 +33,10 @@ extern "C" {
         return new KI2CPlugin();
     }
 
-    EXPORTED void pluginExit(KI2CPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(KI2CPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

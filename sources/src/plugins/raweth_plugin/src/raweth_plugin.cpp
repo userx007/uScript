@@ -28,10 +28,10 @@ extern "C" {
         return new RawEthPlugin();
     }
 
-    EXPORTED void pluginExit(RawEthPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(RawEthPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

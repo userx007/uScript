@@ -22,10 +22,10 @@ extern "C" {
         return new ModbusPlugin();
     }
 
-    EXPORTED void pluginExit(ModbusPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(ModbusPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

@@ -33,10 +33,10 @@ extern "C" {
         return new CandlelightPlugin();
     }
 
-    EXPORTED void pluginExit(CandlelightPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(CandlelightPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

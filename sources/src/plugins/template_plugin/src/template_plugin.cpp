@@ -17,10 +17,10 @@ extern "C" {
         return new TemplatePlugin();
     }
 
-    EXPORTED void pluginExit(TemplatePlugin *pPtrPlugin)
+    EXPORTED void pluginExit(TemplatePlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

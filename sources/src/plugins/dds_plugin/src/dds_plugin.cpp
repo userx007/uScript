@@ -20,10 +20,10 @@ extern "C" {
         return new DdsPlugin();
     }
 
-    EXPORTED void pluginExit(DdsPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(DdsPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

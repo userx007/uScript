@@ -29,10 +29,10 @@ extern "C" {
         return new FT245Plugin();
     }
 
-    EXPORTED void pluginExit(FT245Plugin *pPtrPlugin)
+    EXPORTED void pluginExit(FT245Plugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

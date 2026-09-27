@@ -44,10 +44,10 @@ extern "C" {
         return new SYSTECPlugin();
     }
 
-    EXPORTED void pluginExit(SYSTECPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(SYSTECPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

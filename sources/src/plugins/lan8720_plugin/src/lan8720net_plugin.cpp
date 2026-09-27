@@ -27,10 +27,10 @@ extern "C" {
         return new Lan8720NetPlugin();
     }
 
-    EXPORTED void pluginExit(Lan8720NetPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(Lan8720NetPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

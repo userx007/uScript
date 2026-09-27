@@ -19,10 +19,10 @@ extern "C" {
         return new ShellPlugin();
     }
 
-    EXPORTED void pluginExit(ShellPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(ShellPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

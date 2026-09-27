@@ -21,10 +21,10 @@ extern "C" {
         return new UartmonPlugin();
     }
 
-    EXPORTED void pluginExit(UartmonPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(UartmonPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

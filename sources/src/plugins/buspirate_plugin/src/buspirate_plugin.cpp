@@ -22,10 +22,10 @@ extern "C" {
         return new BuspiratePlugin();
     }
 
-    EXPORTED void pluginExit(BuspiratePlugin *pPtrPlugin)
+    EXPORTED void pluginExit(BuspiratePlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

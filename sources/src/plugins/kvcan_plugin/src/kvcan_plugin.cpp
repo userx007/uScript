@@ -42,10 +42,10 @@ extern "C" {
         return new KVCANPlugin();
     }
 
-    EXPORTED void pluginExit(KVCANPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(KVCANPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

@@ -27,10 +27,10 @@ extern "C" {
         return new TCPIPPlugin();
     }
 
-    EXPORTED void pluginExit(TCPIPPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(TCPIPPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

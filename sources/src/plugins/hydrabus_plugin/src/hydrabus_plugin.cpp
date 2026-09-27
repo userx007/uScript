@@ -43,10 +43,10 @@ extern "C" {
         return new HydrabusPlugin();
     }
 
-    EXPORTED void pluginExit(HydrabusPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(HydrabusPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

@@ -27,10 +27,10 @@ extern "C" {
         return new UDPPlugin();
     }
 
-    EXPORTED void pluginExit(UDPPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(UDPPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

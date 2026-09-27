@@ -22,10 +22,10 @@ extern "C" {
         return new VectorPlugin();
     }
 
-    EXPORTED void pluginExit(VectorPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(VectorPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

@@ -33,10 +33,10 @@ extern "C" {
         return new DSPKSPIPlugin();
     }
 
-    EXPORTED void pluginExit(DSPKSPIPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(DSPKSPIPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

@@ -26,10 +26,10 @@ extern "C" {
         return new CP2112Plugin();
     }
 
-    EXPORTED void pluginExit(CP2112Plugin *pPtrPlugin)
+    EXPORTED void pluginExit(CP2112Plugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

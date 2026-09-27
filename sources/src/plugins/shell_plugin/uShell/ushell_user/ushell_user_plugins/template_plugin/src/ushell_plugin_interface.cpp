@@ -179,30 +179,30 @@ extern "C" {
      * This function is called when a plugin is being unloaded or when the shell
      * instance is being destroyed. It provides a hook for resource cleanup.
      */
-    EXPORTED void uShellPluginExit(uShellPluginInterface *pPtrPlugin)
+    EXPORTED void uShellPluginExit(uShellPluginInterface *pPlugin)
     {
-        if (!pPtrPlugin) {
+        if (!pPlugin) {
             return;
         }
 
         /* Reset the bKeepRunning flag to ensure clean shutdown */
 #if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
-        pPtrPlugin->bKeepRuning = false;
+        pPlugin->bKeepRuning = false;
 #endif
 
         /* Clear autocomplete index array if present */
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-        if (pPtrPlugin->piAutocompleteIndexArray) {
-            for (int i = 0; i < pPtrPlugin->iNrFunctions; i++) {
-                pPtrPlugin->piAutocompleteIndexArray[i] = 0;
+        if (pPlugin->piAutocompleteIndexArray) {
+            for (int i = 0; i < pPlugin->iNrFunctions; i++) {
+                pPlugin->piAutocompleteIndexArray[i] = 0;
             }
         }
 #endif
 
         /* Clear prompt */
-        if (pPtrPlugin->vstrPrompt[0] != '\0') {
-            pPtrPlugin->vstrPrompt[0] = '\0';
-            pPtrPlugin->iPromptLength = 0;
+        if (pPlugin->vstrPrompt[0] != '\0') {
+            pPlugin->vstrPrompt[0] = '\0';
+            pPlugin->iPromptLength = 0;
         }
 
         /* Note: We don't free the static arrays (g_vsFuncDefArray, etc.) as they

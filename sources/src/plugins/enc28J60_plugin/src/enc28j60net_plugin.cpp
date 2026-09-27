@@ -27,10 +27,10 @@ extern "C" {
         return new Enc28J60NetPlugin();
     }
 
-    EXPORTED void pluginExit(Enc28J60NetPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(Enc28J60NetPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

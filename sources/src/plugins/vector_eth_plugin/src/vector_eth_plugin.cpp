@@ -25,10 +25,10 @@ extern "C" {
         return new VectorEthPlugin();
     }
 
-    EXPORTED void pluginExit(VectorEthPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(VectorEthPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

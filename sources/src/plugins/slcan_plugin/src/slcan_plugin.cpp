@@ -34,10 +34,10 @@ extern "C" {
         return new SLCANPlugin();
     }
 
-    EXPORTED void pluginExit(SLCANPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(SLCANPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

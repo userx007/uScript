@@ -36,10 +36,10 @@ extern "C" {
         return new DSPKi2cPlugin();
     }
 
-    EXPORTED void pluginExit(DSPKi2cPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(DSPKi2cPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

@@ -28,9 +28,9 @@ extern "C" {
         return new ProfibusPlugin();
     }
 
-    EXPORTED void pluginExit(ProfibusPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(ProfibusPlugin *pPlugin)
     {
-        delete pPtrPlugin;
+        delete pPlugin;
     }
 }
 

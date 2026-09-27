@@ -33,10 +33,10 @@ extern "C" {
         return new CH341Plugin();
     }
 
-    EXPORTED void pluginExit(CH341Plugin *pPtrPlugin)
+    EXPORTED void pluginExit(CH341Plugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

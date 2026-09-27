@@ -23,10 +23,10 @@ extern "C" {
         return new MqttPlugin();
     }
 
-    EXPORTED void pluginExit(MqttPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(MqttPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

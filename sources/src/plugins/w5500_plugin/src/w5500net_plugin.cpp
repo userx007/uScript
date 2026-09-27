@@ -27,10 +27,10 @@ extern "C" {
         return new W5500NetPlugin();
     }
 
-    EXPORTED void pluginExit(W5500NetPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(W5500NetPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

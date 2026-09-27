@@ -23,10 +23,10 @@ extern "C" {
         return new DdsTypedPlugin();
     }
 
-    EXPORTED void pluginExit(DdsTypedPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(DdsTypedPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }

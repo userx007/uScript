@@ -26,10 +26,10 @@ extern "C" {
         return new GrpcPlugin();
     }
 
-    EXPORTED void pluginExit(GrpcPlugin *pPtrPlugin)
+    EXPORTED void pluginExit(GrpcPlugin *pPlugin)
     {
-        if (nullptr != pPtrPlugin) {
-            delete pPtrPlugin;
+        if (nullptr != pPlugin) {
+            delete pPlugin;
         }
     }
 }
