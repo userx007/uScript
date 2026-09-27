@@ -47,7 +47,7 @@
 #include <algorithm>
 #include <utility>
 
-CommDumpView::CommDumpView(QWidget *pParent)
+CommDumpView::CommDumpView(QWidget *parent)
     : QFrame(parent)
 {
     setObjectName("panelFrame");
@@ -314,7 +314,7 @@ bool CommDumpView::rowPassesFilters(int iRow) const
 {
     const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(iRow, 0));
     if (!rec) {
-        return true; // shouldn't happen — don't hide a iRow we can't classify
+        return true; // shouldn't happen — don't hide a row we can't classify
     }
     return recordPassesFilters(*rec);
 }

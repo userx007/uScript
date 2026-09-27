@@ -750,16 +750,16 @@ PROTO_GETTER(SDIO, SDIO, sdio, SDIO)
 //-----------------------------------------------------------------------------//
 
 ModuleCommandsMap<HydrabusPlugin> *
-HydrabusPlugin::getModuleCmdsMap(const std::string &strM) const
+HydrabusPlugin::getModuleCmdsMap(const std::string &m) const
 {
-    auto it = m_mapCommandsMaps.find(strM);
+    auto it = m_mapCommandsMaps.find(m);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
 ModuleSpeedMap *
-HydrabusPlugin::getModuleSpeedsMap(const std::string &strM) const
+HydrabusPlugin::getModuleSpeedsMap(const std::string &m) const
 {
-    auto it = m_mapSpeedsMaps.find(strM);
+    auto it = m_mapSpeedsMaps.find(m);
     return (it != m_mapSpeedsMaps.end()) ? it->second : nullptr;
 }
 
@@ -795,7 +795,7 @@ bool HydrabusPlugin::setModuleSpeed(const std::string &strModule, size_t index) 
         }
         return p->set_speed(hz[index]);
     }
-    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No speed map for strModule:"); LOG_STRING(strModule));
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No speed map for module:"); LOG_STRING(strModule));
     return false;
 }
 

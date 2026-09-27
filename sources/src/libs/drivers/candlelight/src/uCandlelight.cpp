@@ -302,7 +302,7 @@ ICommDriver::Status Candlelight::ctrl_in(GsUsbBreq eReq, uint16_t u16Value, void
     // in practice: some gs_usb-compatible firmwares reply to DEVICE_CONFIG
     // with only 8 of its 12 defined bytes (omitting hw_version) — see
     // probe()'s DEVICE_CONFIG handling. Only rc < 0 (a genuine transfer
-    // failure) is treated as an error here; any 0 <= rc <= u16Len is accepted
+    // failure) is treated as an error here; any 0 <= rc <= len is accepted
     // and the caller is responsible for validating/defaulting whatever
     // trailing bytes it didn't actually receive.
     if (rc < 0) {
@@ -596,7 +596,7 @@ ICommDriver::Status Candlelight::get_state(GsDeviceState &sState, uint32_t u32Ti
 
     uint32_t fields[3];
     deserialize_u32_struct(buf, fields, 3);
-    sState.sState = fields[0];
+    sState.state = fields[0];
     sState.rxerr = fields[1];
     sState.txerr = fields[2];
     return Status::SUCCESS;
@@ -665,7 +665,7 @@ bool Candlelight::decode_frame(const uint8_t *pu8Pkt, size_t len, uint32_t &u32E
     u32Echo_id                   = get_u32le(pu8Pkt + 0);
     const uint32_t can_id_raw = get_u32le(pu8Pkt + 4);
     const uint8_t can_dlc     = pu8Pkt[8];
-    // pu8Pkt[9] is channel — ignored (single-channel adapters only, see class doc comment)
+    // pkt[9] is channel — ignored (single-channel adapters only, see class doc comment)
     const uint8_t flags       = pu8Pkt[10];
 
     const bool is_fd          = (flags & GS_CAN_FLAG_FD) != 0;
@@ -795,10 +795,10 @@ ICommDriver::Status Candlelight::send_frame(const CanFrame &sFrame, uint32_t u32
     //
     // tDeadline tracks the OVERALL wait budget across every retry: on a bus
     // with any concurrent RX traffic, an earlier version of this loop
-    // re-armed the full u32Timeout_ms on every absorbed sFrame, so it could run
+    // re-armed the full timeout_ms on every absorbed frame, so it could run
     // far longer than the caller asked for (in principle indefinitely, if
     // traffic never let up). Each bulk_read_one() call below instead gets
-    // only however much of u32Timeout_ms is left.
+    // only however much of timeout_ms is left.
     const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32Timeout_ms);
 
     for (;;) {
@@ -824,7 +824,7 @@ ICommDriver::Status Candlelight::send_frame(const CanFrame &sFrame, uint32_t u32
         if (gotEcho == echoId) {
             return Status::SUCCESS;
         }
-        // else: an RX sFrame, or (in principle) another in-flight TX's echo —
+        // else: an RX frame, or (in principle) another in-flight TX's echo —
         // keep waiting for ours, bounded by the shrinking deadline above.
     }
 }

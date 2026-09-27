@@ -183,12 +183,12 @@ class IniParser {
          * @param key Key name
          * @return Optional containing value if found
          */
-        [[nodiscard]] std::optional<std::string> getValueOpt(const std::string &strSection,
-                                                             const std::string &strKey) const noexcept
+        [[nodiscard]] std::optional<std::string> getValueOpt(const std::string &section,
+                                                             const std::string &key) const noexcept
         {
-            auto secIt = iniData.find(strSection);
+            auto secIt = iniData.find(section);
             if (secIt != iniData.end()) {
-                auto keyIt = secIt->second.find(strKey);
+                auto keyIt = secIt->second.find(key);
                 if (keyIt != secIt->second.end()) {
                     return keyIt->second;
                 }
@@ -229,9 +229,9 @@ class IniParser {
          * @param section Section name
          * @return Optional containing key-value map if section exists
          */
-        [[nodiscard]] std::optional<KeyValueMap> getSectionOpt(const std::string &strSection) const
+        [[nodiscard]] std::optional<KeyValueMap> getSectionOpt(const std::string &section) const
         {
-            auto secIt = iniData.find(strSection);
+            auto secIt = iniData.find(section);
             if (secIt != iniData.end()) {
                 return secIt->second;
             }
@@ -284,11 +284,11 @@ class IniParser {
          * @param section Section name
          * @return Vector of key names
          */
-        [[nodiscard]] std::vector<std::string> getKeys(const std::string &strSection) const
+        [[nodiscard]] std::vector<std::string> getKeys(const std::string &section) const
         {
             std::vector<std::string> keys;
 
-            auto it = iniData.find(strSection);
+            auto it = iniData.find(section);
             if (it != iniData.end()) {
                 keys.reserve(it->second.size());
                 for (const auto &[key, _] : it->second) {
@@ -535,10 +535,10 @@ class IniParser {
  * @param filename Path to INI file
  * @return std::optional<IniParser> — nullopt if the file could not be loaded
  */
-[[nodiscard]] inline std::optional<IniParser> loadIniFile(const std::string &strFilename)
+[[nodiscard]] inline std::optional<IniParser> loadIniFile(const std::string &filename)
 {
     IniParser parser;
-    if (!parser.load(strFilename)) {
+    if (!parser.load(filename)) {
         return std::nullopt;
     }
     return parser;
@@ -549,10 +549,10 @@ class IniParser {
  * @param content INI content as string
  * @return std::optional<IniParser> — nullopt if parsing fails
  */
-[[nodiscard]] inline std::optional<IniParser> parseIniString(const std::string &strContent)
+[[nodiscard]] inline std::optional<IniParser> parseIniString(const std::string &content)
 {
     IniParser parser;
-    if (!parser.loadFromString(strContent)) {
+    if (!parser.loadFromString(content)) {
         return std::nullopt;
     }
     return parser;

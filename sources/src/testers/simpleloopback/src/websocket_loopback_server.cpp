@@ -280,10 +280,10 @@ namespace {
     // ------------------------------------------------------------------
     // Frame echo loop
     // ------------------------------------------------------------------
-    void send_frame(int iFrame, uint8_t u8Timeout_ms, const uint8_t *pu8Payload, size_t len)
+    void send_frame(int iFd, uint8_t u8Opcode, const uint8_t *pu8Payload, size_t len)
     {
         std::vector<uint8_t> frame;
-        frame.push_back(uint8_t(0x80 | (u8Timeout_ms & 0x0F))); // FIN=1, server frames are never masked
+        frame.push_back(uint8_t(0x80 | (u8Opcode & 0x0F))); // FIN=1, server frames are never masked
         if (len <= 125) {
             frame.push_back(uint8_t(len));
         } else if (len <= 0xFFFF) {
@@ -297,7 +297,7 @@ namespace {
             }
         }
         frame.insert(frame.end(), pu8Payload, pu8Payload + len);
-        send_all(iFrame, frame.data(), frame.size());
+        send_all(iFd, frame.data(), frame.size());
     }
 
     void serve_client(int iFd, const std::string &strPeer)

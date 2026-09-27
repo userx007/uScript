@@ -8,7 +8,7 @@
 namespace {
     void print_frame(const char *pstrDir, const std::string &strId, std::span<const uint8_t> bytes)
     {
-        std::fprintf(stderr, "  [bus] %s strId=%-12s len=%2zu  ", pstrDir, strId.c_str(), bytes.size());
+        std::fprintf(stderr, "  [bus] %s id=%-12s len=%2zu  ", pstrDir, strId.c_str(), bytes.size());
         for (uint8_t b : bytes) {
             std::fprintf(stderr, "%02X ", b);
         }

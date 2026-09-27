@@ -555,14 +555,14 @@ namespace ustring {
     /**
      * @brief Extract condition (output parameter version)
      */
-    inline bool extractCondition(std::string_view input, std::string &conditionOut)
+    inline bool extractCondition(std::string_view input, std::string &strConditionOut)
     {
         auto result = extractCondition(input);
         if (result) {
-            conditionOut = std::move(*result);
+            strConditionOut = std::move(*result);
             return true;
         }
-        conditionOut.clear();
+        strConditionOut.clear();
         return false;
     }
 
@@ -604,9 +604,9 @@ namespace ustring {
     /**
      * @brief Tokenize using whitespace (output parameter)
      */
-    inline void tokenize(std::string_view input, std::vector<std::string> &tokens)
+    inline void tokenize(std::string_view input, std::vector<std::string> &vTokens)
     {
-        tokens = tokenize(input);
+        vTokens = tokenize(input);
     }
 
     /**
@@ -634,9 +634,9 @@ namespace ustring {
      * @brief Tokenize using character delimiter (output parameter)
      */
     inline void tokenize(std::string_view input, char delimiter,
-                         std::vector<std::string> &tokens)
+                         std::vector<std::string> &vTokens)
     {
-        tokens = tokenize(input, delimiter);
+        vTokens = tokenize(input, delimiter);
     }
 
     /**
@@ -732,16 +732,16 @@ namespace ustring {
      * @brief Tokenize using multiple delimiters (closest match priority)
      */
     inline std::vector<std::string> tokenize(std::string_view input,
-                                             const std::vector<std::string> &vDelimiters)
+                                             const std::vector<std::string> &delimiters)
     {
         std::vector<std::string> tokens;
-        if (vDelimiters.empty()) {
+        if (delimiters.empty()) {
             tokens.push_back(trim(input));
             return tokens;
         }
 
-        // Sort vDelimiters by length (longest first) to prioritize longer matches
-        std::vector<std::string> sortedDelims = vDelimiters;
+        // Sort delimiters by length (longest first) to prioritize longer matches
+        std::vector<std::string> sortedDelims = delimiters;
         std::sort(sortedDelims.begin(), sortedDelims.end(),
                   [](const auto &a, const auto &b) { return a.length() > b.length(); });
 
@@ -791,13 +791,13 @@ namespace ustring {
      * @brief Tokenize using ordered sequence of delimiters
      */
     inline std::vector<std::string> tokenizeEx(std::string_view input,
-                                               const std::vector<std::string> &vDelimiters)
+                                               const std::vector<std::string> &delimiters)
     {
         std::vector<std::string> tokens;
-        tokens.reserve(vDelimiters.size() + 1);
+        tokens.reserve(delimiters.size() + 1);
 
         size_t start = 0;
-        for (const auto &delimiter : vDelimiters) {
+        for (const auto &delimiter : delimiters) {
             size_t pos = input.find(delimiter, start);
             if (pos != std::string_view::npos) {
                 tokens.push_back(trim(input.substr(start, pos - start)));

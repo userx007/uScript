@@ -35,10 +35,10 @@ namespace HydraHAL {
                        std::string strName,
                        std::string strFname,
                        uint8_t u8Mode_byte)
-        : _hydrabus(std::move(hydrabus))
-        , _name(std::move(name))
-        , _fname(std::move(fname))
-        , _mode_byte(mode_byte)
+        : _hydrabus(std::move(shpHydrabus))
+        , _name(std::move(strName))
+        , _fname(std::move(strFname))
+        , _mode_byte(u8Mode_byte)
         // Initialise all 4 AUX pins with their index and a reference to Hydrabus
         , _aux_pins{AUXPin{0, _hydrabus},
                     AUXPin{1, _hydrabus},
@@ -132,9 +132,9 @@ namespace HydraHAL {
         return _hydrabus->read(n, stop_tok);
     }
 
-    std::vector<uint8_t> Protocol::_read_with_timeout(size_t n, uint32_t u32Timeout_ms, std::stop_token stop_tok)
+    std::vector<uint8_t> Protocol::_read_with_timeout(size_t n, uint32_t timeout_ms, std::stop_token stop_tok)
     {
-        return _hydrabus->read(n, u32Timeout_ms, stop_tok);
+        return _hydrabus->read(n, timeout_ms, stop_tok);
     }
 
     uint8_t Protocol::_read_byte(std::stop_token stop_tok)
@@ -147,7 +147,7 @@ namespace HydraHAL {
     {
         uint8_t got = _read_byte(stop_tok);
         if (got != u8Expected) {
-            LOG_PRINT(LOG_ERROR, LOG_STRING(_fname.c_str()); if (pstrContext) { LOG_STRING(pstrContext); LOG_STRING(":"); } LOG_STRING("u8Expected"); LOG_HEX8(u8Expected); LOG_STRING("got"); LOG_HEX8(got));
+            LOG_PRINT(LOG_ERROR, LOG_STRING(_fname.c_str()); if (pstrContext) { LOG_STRING(pstrContext); LOG_STRING(":"); } LOG_STRING("expected"); LOG_HEX8(u8Expected); LOG_STRING("got"); LOG_HEX8(got));
             return false;
         }
         return true;

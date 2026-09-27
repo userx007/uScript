@@ -40,13 +40,13 @@ namespace {
     // deliberately local/one-off rather than pulling in a shared split
     // utility, same convention as DdsTypedDriver's own local tokenize()
     // helper (dds_typed_driver.cpp).
-    std::vector<std::string> splitPreloadPaths(const std::string &strCsv)
+    std::vector<std::string> splitPreloadPaths(const std::string &csv)
     {
         std::vector<std::string> out;
         size_t start = 0;
-        while (start <= strCsv.size()) {
-            const size_t sep        = strCsv.find(';', start);
-            const std::string token = ustring::trim(strCsv.substr(start, sep == std::string::npos ? std::string::npos : sep - start));
+        while (start <= csv.size()) {
+            const size_t sep        = csv.find(';', start);
+            const std::string token = ustring::trim(csv.substr(start, sep == std::string::npos ? std::string::npos : sep - start));
             if (!token.empty()) {
                 out.push_back(token);
             }

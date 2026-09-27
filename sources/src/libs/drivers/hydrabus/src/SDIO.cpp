@@ -30,7 +30,7 @@ namespace HydraHAL {
 namespace HydraHAL {
 
     SDIO::SDIO(std::shared_ptr<Hydrabus> shpHydrabus)
-        : Protocol(std::move(hydrabus), "SDI1", "SDIO", 0x0E)
+        : Protocol(std::move(shpHydrabus), "SDI1", "SDIO", 0x0E)
     {
     }
 
@@ -46,11 +46,11 @@ namespace HydraHAL {
         return _read_byte(stop_tok) == 0x01;
     }
 
-    std::optional<std::vector<uint8_t>> SDIO::send_short(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::stop_token stop_tok)
+    std::optional<std::vector<uint8_t>> SDIO::send_short(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok)
     {
         _write_byte(0b00000101, stop_tok);
-        _write_byte(u8Cmd_id, stop_tok);
-        _write_u32_le(u32Cmd_arg, stop_tok);
+        _write_byte(cmd_id, stop_tok);
+        _write_u32_le(cmd_arg, stop_tok);
 
         if (_read_byte(stop_tok) != 0x01) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("send_short: error response"));
@@ -59,11 +59,11 @@ namespace HydraHAL {
         return _read(4, stop_tok);
     }
 
-    std::optional<std::vector<uint8_t>> SDIO::send_long(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::stop_token stop_tok)
+    std::optional<std::vector<uint8_t>> SDIO::send_long(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok)
     {
         _write_byte(0b00000110, stop_tok);
-        _write_byte(u8Cmd_id, stop_tok);
-        _write_u32_le(u32Cmd_arg, stop_tok);
+        _write_byte(cmd_id, stop_tok);
+        _write_u32_le(cmd_arg, stop_tok);
 
         if (_read_byte(stop_tok) != 0x01) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("send_long: error response"));
@@ -91,11 +91,11 @@ namespace HydraHAL {
         return _read_byte(stop_tok) == 0x01;
     }
 
-    std::vector<uint8_t> SDIO::read(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::stop_token stop_tok)
+    std::vector<uint8_t> SDIO::read(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok)
     {
         _write_byte(0b00001101, stop_tok);
-        _write_byte(u8Cmd_id, stop_tok);
-        _write_u32_le(u32Cmd_arg, stop_tok);
+        _write_byte(cmd_id, stop_tok);
+        _write_u32_le(cmd_arg, stop_tok);
 
         if (_read_byte(stop_tok) != 0x01) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read: error response"));

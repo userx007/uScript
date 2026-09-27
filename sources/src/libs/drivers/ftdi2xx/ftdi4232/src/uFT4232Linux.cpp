@@ -66,7 +66,7 @@ FT4232Base::Status FT4232Base::open_device(Channel eChannel, uint8_t u8DeviceInd
         return Status::OUT_OF_MEMORY;
     }
 
-    // Select the interface (eChannel) before opening.
+    // Select the interface (channel) before opening.
     // INTERFACE_A = 1, INTERFACE_B = 2 in libftdi1's enum.
     ftdi_interface iface = (eChannel == Channel::A) ? INTERFACE_A : INTERFACE_B;
     if (ftdi_set_interface(ctx, iface) < 0) {
@@ -128,7 +128,7 @@ FT4232Base::Status FT4232Base::open_device(Channel eChannel, uint8_t u8DeviceInd
     m_hDevice = ctx;
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("FT4232H opened: eChannel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
+              LOG_STRING("FT4232H opened: channel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
               LOG_STRING("device index="); LOG_UINT32(u8DeviceIndex));
 
     return Status::SUCCESS;

@@ -18,9 +18,9 @@ MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
 
 class Microshell {
     public:
-        static Microshell *getShellPtr(uShellInst_s *pShellInst, const char *pstrPromptExt);
+        static Microshell *getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt);
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
-        static std::shared_ptr<Microshell> getShellSharedPtr(uShellInst_s *pShellInst, const char *pstrPromptExt);
+        static std::shared_ptr<Microshell> getShellSharedPtr(uShellInst_s *psShellInst, const char *pstrPromptExt);
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
         void Run(void);
 #if (1 == uSHELL_SUPPORTS_COMMAND_AS_PARAMETER)

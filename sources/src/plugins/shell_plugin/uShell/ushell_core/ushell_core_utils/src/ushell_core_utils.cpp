@@ -8,51 +8,51 @@
 #include <string.h>
 
 /*----------------------------------------------------------------------------*/
-char *strtok_ex(char *pstrStr, const char *pstrDelim, char **ppstrSaveptr)
+char *strtok_ex(char *str, const char *delim, char **saveptr)
 {
-    if (!pstrDelim || (!pstrStr && !*ppstrSaveptr) || !*pstrDelim) {
+    if (!delim || (!str && !*saveptr) || !*delim) {
         return nullptr;
     }
 
-    if (!pstrStr) {
-        pstrStr = *ppstrSaveptr;
+    if (!str) {
+        str = *saveptr;
     }
 
     // Skip leading delimiters
-    while (*pstrStr) {
-        const char *d = pstrDelim;
-        while (*d && *pstrStr != *d) {
+    while (*str) {
+        const char *d = delim;
+        while (*d && *str != *d) {
             ++d;
         }
         if (!*d) {
             break; // Not a delimiter
         }
-        ++pstrStr;
+        ++str;
     }
 
-    if (!*pstrStr) {
+    if (!*str) {
         return nullptr;
     }
 
-    char *ppstrToken = pstrStr;
+    char *ppstrToken = str;
 
     // Find end of ppstrToken
-    while (*pstrStr) {
-        const char *d = pstrDelim;
-        while (*d && *pstrStr != *d) {
+    while (*str) {
+        const char *d = delim;
+        while (*d && *str != *d) {
             ++d;
         }
         if (*d) {
             break; // Found delimiter
         }
-        ++pstrStr;
+        ++str;
     }
 
-    if (*pstrStr) {
-        *pstrStr     = '\0';
-        *ppstrSaveptr = pstrStr + 1;
+    if (*str) {
+        *str     = '\0';
+        *saveptr = str + 1;
     } else {
-        *ppstrSaveptr = nullptr;
+        *saveptr = nullptr;
     }
 
     return ppstrToken;
@@ -250,25 +250,25 @@ bool unhexlify(const char *pstrHexstr, uint8_t *pu8Output, size_t *pOut_len)
 #endif /* (1 == uSHELL_IMPLEMENTS_HEXLIFY) */
 
 /*----------------------------------------------------------------------------*/
-char *trim_whitespace_inplace(char *pstrStr)
+char *trim_whitespace_inplace(char *str)
 {
-    if (!pstrStr) {
-        return pstrStr;
+    if (!str) {
+        return str;
     }
 
     // Trim leading whitespace
-    while (*pstrStr && isspace((unsigned char)*pstrStr)) {
-        pstrStr++;
+    while (*str && isspace((unsigned char)*str)) {
+        str++;
     }
 
     // Trim trailing whitespace (null terminate)
-    char *end = pstrStr + strlen(pstrStr) - 1;
-    while (end > pstrStr && isspace((unsigned char)*end)) {
+    char *end = str + strlen(str) - 1;
+    while (end > str && isspace((unsigned char)*end)) {
         *end = '\0';
         end--;
     }
 
-    return pstrStr;
+    return str;
 }
 
 /*----------------------------------------------------------------------------*/

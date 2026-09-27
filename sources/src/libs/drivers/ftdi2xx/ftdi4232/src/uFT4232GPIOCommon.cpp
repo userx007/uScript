@@ -181,7 +181,7 @@ FT4232GPIO::Status FT4232GPIO::set_direction(Bank eBank,
     }
 
     if (eBank == Bank::Low) {
-        // Pins switching from input to output are driven to u8InitialValue.
+        // Pins switching from input to output are driven to initialValue.
         // Pins already output keep their current cached value.
         const uint8_t newOutputPins = static_cast<uint8_t>(u8DirMask & ~m_lowDir);
         m_lowValue                  = static_cast<uint8_t>(
@@ -224,7 +224,7 @@ FT4232GPIO::Status FT4232GPIO::write(Bank eBank, uint8_t u8Value)
         Status s   = apply_low(m_lowValue, m_lowDir);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("write Low failed, u8Value="); LOG_HEX8(u8Value));
+                      LOG_STRING("write Low failed, value="); LOG_HEX8(u8Value));
         }
         return s;
     } else {
@@ -232,7 +232,7 @@ FT4232GPIO::Status FT4232GPIO::write(Bank eBank, uint8_t u8Value)
         Status s    = apply_high(m_highValue, m_highDir);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("write High failed, u8Value="); LOG_HEX8(u8Value));
+                      LOG_STRING("write High failed, value="); LOG_HEX8(u8Value));
         }
         return s;
     }
@@ -296,7 +296,7 @@ FT4232GPIO::Status FT4232GPIO::read(Bank eBank, uint8_t &u8Value)
     Status s             = mpsse_write(cmd, sizeof(cmd));
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("read: GET_BITS cmd failed, eBank=");
+                  LOG_STRING("read: GET_BITS cmd failed, bank=");
                   LOG_UINT32(static_cast<uint8_t>(eBank)));
         return s;
     }
@@ -305,14 +305,14 @@ FT4232GPIO::Status FT4232GPIO::read(Bank eBank, uint8_t &u8Value)
     s          = mpsse_read(&u8Value, 1, 200, got);
     if (s != Status::SUCCESS || got == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("read: mpsse_read failed, eBank=");
+                  LOG_STRING("read: mpsse_read failed, bank=");
                   LOG_UINT32(static_cast<uint8_t>(eBank)));
         return Status::READ_ERROR;
     }
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR;
-              LOG_STRING("read: eBank="); LOG_UINT32(static_cast<uint8_t>(eBank));
-              LOG_STRING("u8Value="); LOG_HEX8(u8Value));
+              LOG_STRING("read: bank="); LOG_UINT32(static_cast<uint8_t>(eBank));
+              LOG_STRING("value="); LOG_HEX8(u8Value));
 
     return Status::SUCCESS;
 }

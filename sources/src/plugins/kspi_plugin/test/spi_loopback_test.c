@@ -66,15 +66,15 @@ static void print_buf(const char *pstrLabel, const uint8_t *pu8Buf, size_t len)
  */
 static int spi_transfer(int iFd,
                         const uint8_t *pu8Tx_buf,
-                        uint8_t       *pu8TimeoutMs,
+                        uint8_t       *pu8Rx_buf,
                         size_t         len,
                         uint32_t       u32Speed_hz)
 {
     struct spi_ioc_transfer tr = {
-        .pu8Tx_buf        = (unsigned long)pu8Tx_buf,
-        .pu8TimeoutMs        = (unsigned long)pu8TimeoutMs,
+        .tx_buf        = (unsigned long)pu8Tx_buf,
+        .rx_buf        = (unsigned long)pu8Rx_buf,
         .len           = (uint32_t)len,
-        .u32Speed_hz      = u32Speed_hz,
+        .speed_hz      = u32Speed_hz,
         .delay_usecs   = 0,
         .bits_per_word = BITS_PER_WORD,
         .cs_change     = 0,

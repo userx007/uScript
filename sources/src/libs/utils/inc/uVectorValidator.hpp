@@ -68,10 +68,10 @@ class VectorValidator {
                 return false;
             }
 
-            // Validate strRule upfront
+            // Validate rule upfront
             ComparisonOp op = parseRule(strRule, eType);
             if (op == ComparisonOp::UNKNOWN) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid strRule: "); LOG_STRING(strRule));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid rule: "); LOG_STRING(strRule));
                 return false;
             }
 
@@ -156,7 +156,7 @@ class VectorValidator {
                 case eValidateType::BOOLEAN:
                     return compareBooleans(strA, strB, eOp);
                 default:
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown validation eType"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown validation type"));
                     return false;
                 }
             } catch (const std::exception &ex) {
@@ -179,7 +179,7 @@ class VectorValidator {
                 return (strA != strB);
             default:
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("compareStrings: unexpected eOp for string type"));
+                          LOG_STRING("compareStrings: unexpected op for string type"));
                 return false;
             }
         }
@@ -275,17 +275,17 @@ class VectorValidator {
             }
         }
 
-        std::vector<int> parseVersion(const std::string &strV) const
+        std::vector<int> parseVersion(const std::string &v) const
         {
-            if (strV.empty()) {
+            if (v.empty()) {
                 return {0};
             }
 
             std::vector<int> result;
             result.reserve(4);
 
-            const char *p   = strV.data();
-            const char *end = p + strV.size();
+            const char *p   = v.data();
+            const char *end = p + v.size();
 
             while (p <= end) {
                 const char *dot = p;
@@ -368,7 +368,7 @@ class VectorValidator {
             }
 
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Unsupported strRule on empty vectors: ");
+                      LOG_STRING("Unsupported rule on empty vectors: ");
                       LOG_STRING(strRule));
             return false;
         }

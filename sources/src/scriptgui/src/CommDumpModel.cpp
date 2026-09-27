@@ -86,7 +86,7 @@ QColor CommDumpModel::colorForPlugin(const QString &plugin) const
 }
 
 CommDumpModel::CommDumpModel(QObject *pParent)
-    : QAbstractItemModel(parent)
+    : QAbstractItemModel(pParent)
 {
     // Matches the default m_fullDumpFontSize (10.0) — see the
     // m_fullDumpFont member comment. Normally overwritten immediately by
@@ -470,7 +470,7 @@ int CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &p
         AggregateEntry &e     = m_aggregateRows[row];
         e.previousTimestampUs = e.timestampUs; // shift before overwriting — see TimeDeltaPrevious in data()
         e.timestampUs         = timestampUs;
-        e.bIsTx                = bIsTx;
+        e.isTx                = bIsTx;
         e.data                = data;
         e.fullDumpCache.clear(); // stale — the latest payload just changed
         e.count += 1;
@@ -487,7 +487,7 @@ int CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &p
     e.timestampUs          = timestampUs;
     e.plugin               = plugin;
     e.details              = details;
-    e.bIsTx                 = bIsTx;
+    e.isTx                 = bIsTx;
     e.data                 = data;
     e.count                = 1;
     e.firstSeenTimestampUs = timestampUs;
@@ -588,12 +588,12 @@ void CommDumpModel::setCollapsedMode(bool bOn)
     endResetModel();
 }
 
-const CommDumpModel::Record *CommDumpModel::rawRecordAt(int iRow) const
+const CommDumpModel::Record *CommDumpModel::rawRecordAt(int row) const
 {
-    if (iRow < 0 || iRow >= m_records.size()) {
+    if (row < 0 || row >= m_records.size()) {
         return nullptr;
     }
-    return &m_records[iRow];
+    return &m_records[row];
 }
 
 void CommDumpModel::setShowAscii(bool bOn)
@@ -763,9 +763,9 @@ QModelIndex CommDumpModel::index(int iRow, int iColumn, const QModelIndex &paren
         return createIndex(iRow, iColumn, kTopLevelSentinel);
     }
 
-    // Only top-level rows (records) have a child, and only exactly one (iRow 0).
+    // Only top-level rows (records) have a child, and only exactly one (row 0).
     if (parent.internalId() == kTopLevelSentinel && iRow == 0) {
-        return createIndex(iRow, iColumn, static_cast<quintptr>(parent.iRow()));
+        return createIndex(iRow, iColumn, static_cast<quintptr>(parent.row()));
     }
 
     return {};
@@ -816,9 +816,9 @@ bool CommDumpModel::isChildRow(const QModelIndex &index) const
 
 QString CommDumpModel::fullDumpForRow(int iRow) const
 {
-    // Mode-aware: `iRow` is always a CURRENTLY ACTIVE display-iRow index (raw
+    // Mode-aware: `row` is always a CURRENTLY ACTIVE display-row index (raw
     // or aggregate — matches what recordCount()/index() mean right now),
-    // since callers (CommDumpView's copy-to-clipboard) get `iRow` from
+    // since callers (CommDumpView's copy-to-clipboard) get `row` from
     // selection/iteration over the currently displayed tree.
     if (m_collapsedMode) {
         if (iRow < 0 || iRow >= m_aggregateRows.size()) {
@@ -843,7 +843,7 @@ QString CommDumpModel::fullDumpForRow(int iRow) const
         return {};
     }
 
-    // Same lazily-built cache the expanded child iRow's data() uses — a iRow
+    // Same lazily-built cache the expanded child row's data() uses — a row
     // that's already been expanded on screen doesn't pay to reformat here.
     if (rec.fullDumpCache.isEmpty()) {
         rec.fullDumpCache = hexAsciiFull(rec.data, m_showAscii, m_fullDumpFontSize, m_dumpBytesPerLine);

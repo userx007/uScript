@@ -43,16 +43,16 @@ namespace loopback {
             // Server: listen on bind_addr:port.
             TcpChannel(ServerTag, std::string strBind_addr, int iPort)
                 : is_server_(true)
-                , host_(std::move(bind_addr))
-                , port_(port)
+                , host_(std::move(strBind_addr))
+                , port_(iPort)
             {
             }
 
             // Client: connect out to host:port.
             TcpChannel(ClientTag, std::string strHost, int iPort)
                 : is_server_(false)
-                , host_(std::move(host))
-                , port_(port)
+                , host_(std::move(strHost))
+                , port_(iPort)
             {
             }
 

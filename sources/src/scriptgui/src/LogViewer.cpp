@@ -172,8 +172,8 @@ static QList<Segment> ansiToSegments(const QString &input,
 class LogLineNumberArea : public QWidget {
     public:
         explicit LogLineNumberArea(LogEdit *pEditor)
-            : QWidget(editor)
-            , m_editor(editor)
+            : QWidget(pEditor)
+            , m_editor(pEditor)
         {
         }
 
@@ -196,7 +196,7 @@ class LogLineNumberArea : public QWidget {
 //  LogEdit
 // ─────────────────────────────────────────────────────────────────────────────
 LogEdit::LogEdit(QWidget *pParent)
-    : QPlainTextEdit(parent)
+    : QPlainTextEdit(pParent)
 {
     setObjectName("logView");
     setReadOnly(true);
@@ -359,7 +359,7 @@ void LogEdit::mousePressEvent(QMouseEvent *pEv)
 //  LogViewer
 // ─────────────────────────────────────────────────────────────────────────────
 LogViewer::LogViewer(QWidget *pParent)
-    : QFrame(parent)
+    : QFrame(pParent)
 {
     setObjectName("panelFrame");
     setFrameShape(QFrame::NoFrame);

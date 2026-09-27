@@ -70,7 +70,7 @@ namespace {
 } // namespace
 
 MqttDriver::MqttDriver(Config sConfig)
-    : m_config(std::move(config))
+    : m_config(std::move(sConfig))
 {
     if (m_config.strInstanceName.empty()) {
         m_config.strInstanceName = kPluginNameForDump;

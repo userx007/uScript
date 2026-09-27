@@ -85,7 +85,7 @@ bool TemplatePlugin::m_Template_DUMMY1(const std::string &strArgs, std::stop_tok
             break;
         }
 
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY1 (no-strArgs, no-return)"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY1 (no-args, no-return)"));
 
         // implementation here..
         bRetVal = true;
@@ -113,7 +113,7 @@ bool TemplatePlugin::m_Template_DUMMY2(const std::string &strArgs, std::stop_tok
             break;
         }
 
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY2 (strArgs, return)"); LOG_STRING("Arg:"); LOG_STRING(strArgs));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY2 (args, return)"); LOG_STRING("Arg:"); LOG_STRING(strArgs));
         m_strResultData = strArgs;
 
         // implementation here..
@@ -142,7 +142,7 @@ bool TemplatePlugin::m_Template_DUMMY3(const std::string &strArgs, std::stop_tok
             break;
         }
 
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY3 (blocking, strArgs, no-return)"); LOG_STRING("Arg:"); LOG_STRING(strArgs));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY3 (blocking, args, no-return)"); LOG_STRING("Arg:"); LOG_STRING(strArgs));
 
         // DUMMY3 is declared blocking (bBlocking=true) in the command table.
         // It must be launched with '&' — the interpreter enforces this at

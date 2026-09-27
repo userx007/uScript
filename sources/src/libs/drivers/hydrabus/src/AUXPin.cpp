@@ -28,8 +28,8 @@
 namespace HydraHAL {
 
     AUXPin::AUXPin(int iNumber, std::shared_ptr<Hydrabus> shpHydrabus)
-        : _number(number)
-        , _hydrabus(std::move(hydrabus))
+        : _number(iNumber)
+        , _hydrabus(std::move(shpHydrabus))
     {
     }
 
@@ -76,7 +76,7 @@ namespace HydraHAL {
         _hydrabus->write_byte(cmd);
         auto resp = _hydrabus->read(1);
         if (resp.empty() || resp[0] != 0x01) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting auxiliary pin iValue"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting auxiliary pin value"));
             return false;
         }
         return true;

@@ -93,7 +93,7 @@ class CH347SPI : public ICommDriver {
                           const SpiXferOptions &sXferOpts      = {},
                           const std::string &strIdentityLabel = {})
             : m_iHandle(CH347_INVALID_HANDLE)
-            , m_xferOpts(xferOpts)
+            , m_xferOpts(sXferOpts)
             , m_strIdentityLabel(strIdentityLabel)
         {
             open(strDevice, cfg);
@@ -223,7 +223,7 @@ class CH347SPI : public ICommDriver {
         std::string m_strIdentityLabel; ///< GUI comm-dump display label, see describeConnection()
 
         /** Resolve effective CS value for CH347SPI_* calls. */
-        std::pair<bool, uint8_t> resolve_cs(const SpiXferOptions &sOpts) const;
+        std::pair<bool, uint8_t> resolve_cs(const SpiXferOptions &opts) const;
 };
 
 #endif // U_CH347_SPI_DRIVER_H

@@ -136,15 +136,15 @@ bool CH347Plugin::m_CH347_CONFIG(const std::string &strArgs, std::stop_token st)
 //                   MODULE MAP ACCESSORS                        //
 ///////////////////////////////////////////////////////////////////
 
-ModuleCommandsMap<CH347Plugin> *CH347Plugin::getModuleCmdsMap(const std::string &strM) const
+ModuleCommandsMap<CH347Plugin> *CH347Plugin::getModuleCmdsMap(const std::string &m) const
 {
-    auto it = m_mapCommandsMaps.find(strM);
+    auto it = m_mapCommandsMaps.find(m);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
-ModuleSpeedMap *CH347Plugin::getModuleSpeedsMap(const std::string &strM) const
+ModuleSpeedMap *CH347Plugin::getModuleSpeedsMap(const std::string &m) const
 {
-    auto it = m_mapSpeedsMaps.find(strM);
+    auto it = m_mapSpeedsMaps.find(m);
     return (it != m_mapSpeedsMaps.end()) ? it->second : nullptr;
 }
 
@@ -184,7 +184,7 @@ bool CH347Plugin::setModuleSpeed(const std::string &strModule, size_t hz) const
         return true;
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR;
-              LOG_STRING("setModuleSpeed: unsupported strModule:"); LOG_STRING(strModule));
+              LOG_STRING("setModuleSpeed: unsupported module:"); LOG_STRING(strModule));
     return false;
 }
 

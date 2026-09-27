@@ -57,13 +57,13 @@ namespace HydraHAL {
              * @brief Send a command and receive a short (4-byte) response.
              * @return 4 response bytes, or nullopt on error.
              */
-            std::optional<std::vector<uint8_t>> send_short(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::stop_token stop_tok = {});
+            std::optional<std::vector<uint8_t>> send_short(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
 
             /**
              * @brief Send a command and receive a long (16-byte) response.
              * @return 16 response bytes, or nullopt on error.
              */
-            std::optional<std::vector<uint8_t>> send_long(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::stop_token stop_tok = {});
+            std::optional<std::vector<uint8_t>> send_long(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Data transfer (single block)
@@ -84,7 +84,7 @@ namespace HydraHAL {
              * @param cmd_arg Block address.
              * @return 512 bytes, or empty on error.
              */
-            std::vector<uint8_t> read(uint8_t u8Cmd_id, uint32_t u32Cmd_arg, std::stop_token stop_tok = {});
+            std::vector<uint8_t> read(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Configuration

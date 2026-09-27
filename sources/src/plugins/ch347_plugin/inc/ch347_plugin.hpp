@@ -248,8 +248,8 @@ class CH347Plugin : public PluginInterface {
 
         // Module-map accessors
 
-        ModuleCommandsMap<CH347Plugin> *getModuleCmdsMap(const std::string &strM) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
+        ModuleCommandsMap<CH347Plugin> *getModuleCmdsMap(const std::string &m) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
         bool setModuleSpeed(const std::string &strModule, size_t hz) const;
 
@@ -356,7 +356,7 @@ class CH347Plugin : public PluginInterface {
         // Top-level command handlers
 
 #define CH347_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_CH347_##a(const std::string &strArgs, std::stop_token st) const;
+    bool m_CH347_##a(const std::string &args, std::stop_token st) const;
         CH347_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef CH347_PLUGIN_CMD_RECORD
 

@@ -59,10 +59,10 @@
     BuspiratePlugin::getModuleCmdsMap
 ============================================================================================ */
 
-ModuleCommandsMap<BuspiratePlugin> *BuspiratePlugin::getModuleCmdsMap(const std::string &strM) const
+ModuleCommandsMap<BuspiratePlugin> *BuspiratePlugin::getModuleCmdsMap(const std::string &strModule) const
 {
     ModuleCommandsMap<BuspiratePlugin> *pCmdMap                  = nullptr;
-    typename CommandsMapsMap<BuspiratePlugin>::const_iterator it = m_mapCommandsMaps.find(strM);
+    typename CommandsMapsMap<BuspiratePlugin>::const_iterator it = m_mapCommandsMaps.find(strModule);
 
     if (it != m_mapCommandsMaps.end()) {
         pCmdMap = it->second;
@@ -76,12 +76,12 @@ ModuleCommandsMap<BuspiratePlugin> *BuspiratePlugin::getModuleCmdsMap(const std:
     BuspiratePlugin::getModuleSpeedsMap
 ============================================================================================ */
 
-ModuleSpeedMap *BuspiratePlugin::getModuleSpeedsMap(const std::string &strM) const
+ModuleSpeedMap *BuspiratePlugin::getModuleSpeedsMap(const std::string &strModule) const
 {
     ModuleSpeedMap *pSpeedMap = nullptr;
 
     for (auto it1 : m_mapSpeedsMaps) {
-        if (it1.first == strM) {
+        if (it1.first == strModule) {
             pSpeedMap = it1.second;
         }
     }
@@ -161,12 +161,12 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &strArgs, std::st
     BuspiratePlugin::generic_write_read_data
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Owner, const std::string &strArgs, std::stop_token st) const
+bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
     if (strArgs.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Invalid strArgs"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Invalid args"));
         bRetVal = false;
     } else if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: [data][:rdsize]. Example: DEADCODE | BAADFOOD:7 | :7"));
@@ -192,7 +192,7 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Owner, const std::
             if (true == m_bIsEnabled) {
                 response.resize(szReadSize); // allocate response buffer
                 bRetVal = generic_internal_write_read_data(
-                    u8Owner,
+                    u8Cmd,
                     std::span<const uint8_t>{request},
                     std::span<uint8_t>{response},
                     false,
@@ -209,12 +209,12 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Owner, const std::
     BuspiratePlugin::generic_write_read_file
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_write_read_file(const uint8_t u8Owner, const std::string &strArgs, std::stop_token st) const
+bool BuspiratePlugin::generic_write_read_file(const uint8_t u8Cmd, const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = true;
 
     if (strArgs.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Invalid strArgs"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Invalid args"));
         bRetVal = false;
     } else if ("help" == strArgs) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: filename[:wrsize][:rdsize]. Example: file | file:100 | file:100:100"));
@@ -254,7 +254,7 @@ bool BuspiratePlugin::generic_write_read_file(const uint8_t u8Owner, const std::
             }
             if (true == bRetVal) {
                 if (true == m_bIsEnabled) {
-                    bRetVal = generic_internal_write_read_file(u8Owner, vectParams[0], szWriteChunkSize, szReadChunkSize, st);
+                    bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0], szWriteChunkSize, szReadChunkSize, st);
                 }
             }
         }

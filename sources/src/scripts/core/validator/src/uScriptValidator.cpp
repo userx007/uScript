@@ -638,7 +638,7 @@ bool ScriptValidator::m_preprocessScriptStatements(const ScriptRawLine &sRawLine
     default: {
         auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("Unknown command eToken received!"));
+                  LOG_STRING("Unknown command token received!"));
     } break;
     }
 

@@ -559,7 +559,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
         }
 
         if (u64Len > WS_MAX_MESSAGE_LENGTH) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Frame vPayload exceeds sanity limit"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Frame payload exceeds sanity limit"));
             return Status::BUFFER_OVERFLOW;
         }
 
@@ -631,7 +631,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
             }
             return Status::READ_ERROR;
 
-        case 0x9: // Ping -> answer with Pong carrying the same vPayload, keep waiting
+        case 0x9: // Ping -> answer with Pong carrying the same payload, keep waiting
             if (remainingMsOrTimeout(remainingMs)) {
                 const Status pongStatus = ws_send_frame(remainingMs, 0xA,
                                                         std::span<const uint8_t>(framePayload.data(), framePayload.size()), stop_tok);

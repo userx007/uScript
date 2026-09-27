@@ -172,9 +172,9 @@ Status CH347SPI::get_config(mSpiCfgS &cfg) const
     return accessStatus(CH347SPI_GetCfg(m_iHandle, &cfg), "CH347SPI_GetCfg");
 }
 
-std::pair<bool, uint8_t> CH347SPI::resolve_cs(const SpiXferOptions &sOpts) const
+std::pair<bool, uint8_t> CH347SPI::resolve_cs(const SpiXferOptions &opts) const
 {
-    return {sOpts.ignoreCS, static_cast<uint8_t>(sOpts.chipSelect)};
+    return {opts.ignoreCS, static_cast<uint8_t>(opts.chipSelect)};
 }
 
 ReadResult CH347SPI::tout_read(uint32_t /*u32ReadTimeout*/,
@@ -188,7 +188,7 @@ ReadResult CH347SPI::tout_read(uint32_t /*u32ReadTimeout*/,
         return {Status::INVALID_PARAM, 0, false};
     }
 
-    /* If the caller embedded a CS selector in sOptions.token, use it;
+    /* If the caller embedded a CS selector in options.token, use it;
      * otherwise fall back to the instance default. */
     SpiXferOptions opts = m_xferOpts;
     if (!sOptions.token.empty()) {
@@ -494,7 +494,7 @@ Status CH347GPIO::pins_write(uint8_t u8PinMask, uint8_t u8LevelMask) const
 Status CH347GPIO::irq_set(uint8_t u8PinIndex, GpioIrqEdge eEdge, void *pvHandler) const
 {
     // On Windows this is routed to CH347SetIntRoutine() via the compat shim;
-    // pvHandler must carry the Windows CALLBACK calling convention.
+    // handler must carry the Windows CALLBACK calling convention.
     return accessStatus(CH347GPIO_IRQ_Set(m_iHandle,
                                           u8PinIndex,
                                           eEdge != GpioIrqEdge::None,
@@ -664,7 +664,7 @@ Status CH347JTAG::io_scan(std::span<uint8_t> dataBuffer,
                           bool bIsRead,
                           bool bIsLastPacket) const
 {
-    // On Windows bIsLastPacket is ignored by the CH347Jtag_IoScanT shim;
+    // On Windows isLastPacket is ignored by the CH347Jtag_IoScanT shim;
     // see ch347_compat.h and header docs for details.
     bool ok = CH347Jtag_IoScanT(m_iHandle,
                                 dataBuffer.data(), u32DataBitsNb,

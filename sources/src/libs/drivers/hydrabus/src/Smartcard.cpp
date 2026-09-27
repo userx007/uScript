@@ -27,7 +27,7 @@
 namespace HydraHAL {
 
     Smartcard::Smartcard(std::shared_ptr<Hydrabus> shpHydrabus)
-        : Protocol(std::move(hydrabus), "CRD1", "Smartcard", 0x0B)
+        : Protocol(std::move(shpHydrabus), "CRD1", "Smartcard", 0x0B)
     {
         _configure_port();
     }
@@ -137,7 +137,7 @@ namespace HydraHAL {
         _write_byte(0b01100000);
         _write_u32_be(u32Baud);
         if (!_ack("set_baud")) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting u32Baud"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting baud"));
             return false;
         }
         _baud = u32Baud;

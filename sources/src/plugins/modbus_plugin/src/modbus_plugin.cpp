@@ -91,7 +91,7 @@ bool ModbusPlugin::m_MODBUS_INFO(const std::string &strArgs, std::stop_token st)
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MODBUS.CONFIG h=plc.local p=502"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : one Modbus request/response, on the plugin's single persistent connection (opened on first use)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : > <FUNCTION> <unit_id> <address> <strArgs...> [| expected]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : > <FUNCTION> <unit_id> <address> <args...> [| expected]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MODBUS.CMD > READ_HOLDING_REGISTERS 1 100 4 | 12,34,56,78"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         MODBUS.CMD > READ_COILS 1 0 8 | 1,0,1,1,0,0,0,1"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         MODBUS.CMD > WRITE_SINGLE_COIL 1 5 1 | OK"));

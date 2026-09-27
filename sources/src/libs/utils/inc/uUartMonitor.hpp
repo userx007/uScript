@@ -54,8 +54,8 @@ namespace uart {
             std::chrono::system_clock::time_point timestamp;
 
             PortEvent(std::string strName, OperationType eOp)
-                : port_name(std::move(name))
-                , operation(op)
+                : port_name(std::move(strName))
+                , operation(eOp)
                 , timestamp(std::chrono::system_clock::now())
             {
             }
@@ -237,11 +237,11 @@ namespace uart {
          * @param patterns List of glob patterns to match
          * @return Vector of available TTY device paths
          */
-        inline std::vector<std::string> scan_linux_ports(const std::vector<std::string> &vPatterns)
+        inline std::vector<std::string> scan_linux_ports(const std::vector<std::string> &patterns)
         {
             std::vector<std::string> ports;
 
-            for (const auto &pattern : vPatterns) {
+            for (const auto &pattern : patterns) {
                 auto matches = glob_pattern(pattern);
                 ports.insert(ports.end(),
                              std::make_move_iterator(matches.begin()),
@@ -287,7 +287,7 @@ namespace uart {
             SimplePortHandler() = default;
 
             explicit SimplePortHandler(ScanConfig sConfig) noexcept
-                : config_(std::move(config))
+                : config_(std::move(sConfig))
             {
             }
 
@@ -684,13 +684,13 @@ namespace uart {
      * @return Port name if detected, std::nullopt on timeout
      */
     [[nodiscard]] inline std::optional<std::string> wait_for_insertion(
-        uint32_t u32Timeout_ms          = 0,
-        uint32_t u32Polling_interval_ms = 100)
+        uint32_t timeout_ms          = 0,
+        uint32_t polling_interval_ms = 100)
     {
 
         ScanConfig config{
-            std::chrono::milliseconds{u32Polling_interval_ms},
-            std::chrono::milliseconds{u32Timeout_ms}};
+            std::chrono::milliseconds{polling_interval_ms},
+            std::chrono::milliseconds{timeout_ms}};
 
         SimplePortHandler handler{config};
         return handler.wait_for_insertion();
@@ -703,13 +703,13 @@ namespace uart {
      * @return Port name if detected, std::nullopt on timeout
      */
     [[nodiscard]] inline std::optional<std::string> wait_for_removal(
-        uint32_t u32Timeout_ms          = 0,
-        uint32_t u32Polling_interval_ms = 100)
+        uint32_t timeout_ms          = 0,
+        uint32_t polling_interval_ms = 100)
     {
 
         ScanConfig config{
-            std::chrono::milliseconds{u32Polling_interval_ms},
-            std::chrono::milliseconds{u32Timeout_ms}};
+            std::chrono::milliseconds{polling_interval_ms},
+            std::chrono::milliseconds{timeout_ms}};
 
         SimplePortHandler handler{config};
         return handler.wait_for_removal();

@@ -228,7 +228,7 @@ class DdsTypedDriver : public ICommDriver {
         std::string m_BuildDomainConfigXml() const; // identical field mapping to DdsDriver's — see that .cpp
         bool m_LoadPlugin(const std::string &strPath) const;
         DdsEntity m_EnsureLocalWriter(const std::string &strTopic) const;
-        std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &strTopic) const;
+        std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;
 
         bool m_Publish(const std::string &strTopic, const std::string &strText) const;
         bool m_Subscribe(const std::string &strTopic) const;
@@ -243,7 +243,7 @@ class DdsTypedDriver : public ICommDriver {
         /// Blocks on one reader's queue; see the .cpp definition's doc
         /// comment. Static (not const, no `this`) since it only ever
         /// touches the LocalReader passed in.
-        static std::optional<std::string> m_WaitPopOne(LocalReader &sReader, uint32_t u32ReadTimeout,
+        static std::optional<std::string> m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
                                                         std::stop_token stop_tok);
 
         static void m_OnReaderDataAvailable(DdsEntity reader, void *pvArg);

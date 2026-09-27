@@ -46,11 +46,11 @@ bool GrpcProtocol::loadDescriptorSet(const std::string &strProtosetPath, std::st
     return true;
 }
 
-const google::protobuf::MethodDescriptor *GrpcProtocol::resolveMethod(const std::string &strMethodPath,
-                                                                      std::string &strOutError) const
+const google::protobuf::MethodDescriptor *GrpcProtocol::resolveMethod(const std::string &methodPath,
+                                                                      std::string &outError) const
 {
     if (!m_bLoaded) {
-        strOutError = "no descriptor set loaded — set GRPC.CONFIG d=<path.protoset> first";
+        outError = "no descriptor set loaded — set GRPC.CONFIG d=<path.protoset> first";
         return nullptr;
     }
 
@@ -59,28 +59,28 @@ const google::protobuf::MethodDescriptor *GrpcProtocol::resolveMethod(const std:
     // case a script author copies it straight out of a .proto file).
     std::string serviceName;
     std::string methodName;
-    auto slashPos = strMethodPath.find('/');
+    auto slashPos = methodPath.find('/');
     if (slashPos != std::string::npos) {
-        serviceName = strMethodPath.substr(0, slashPos);
-        methodName  = strMethodPath.substr(slashPos + 1);
+        serviceName = methodPath.substr(0, slashPos);
+        methodName  = methodPath.substr(slashPos + 1);
     } else {
-        auto dotPos = strMethodPath.rfind('.');
+        auto dotPos = methodPath.rfind('.');
         if (dotPos == std::string::npos) {
-            strOutError = "malformed method path '" + strMethodPath + "' — expected package.Service/Method";
+            outError = "malformed method path '" + methodPath + "' — expected package.Service/Method";
             return nullptr;
         }
-        serviceName = strMethodPath.substr(0, dotPos);
-        methodName  = strMethodPath.substr(dotPos + 1);
+        serviceName = methodPath.substr(0, dotPos);
+        methodName  = methodPath.substr(dotPos + 1);
     }
 
     const auto *serviceDesc = m_pool.FindServiceByName(serviceName);
     if (!serviceDesc) {
-        strOutError = "unknown service '" + serviceName + "' (not present in the loaded descriptor set)";
+        outError = "unknown service '" + serviceName + "' (not present in the loaded descriptor set)";
         return nullptr;
     }
     const auto *methodDesc = serviceDesc->FindMethodByName(methodName);
     if (!methodDesc) {
-        strOutError = "unknown method '" + methodName + "' on service '" + serviceName + "'";
+        outError = "unknown method '" + methodName + "' on service '" + serviceName + "'";
         return nullptr;
     }
     // Every RPC shape is accepted here — grpc_driver.hpp's send() dispatches
@@ -90,16 +90,16 @@ const google::protobuf::MethodDescriptor *GrpcProtocol::resolveMethod(const std:
 }
 
 std::unique_ptr<google::protobuf::Message> GrpcProtocol::newRequestMessage(
-    const google::protobuf::MethodDescriptor *pMethod) const
+    const google::protobuf::MethodDescriptor *method) const
 {
-    const google::protobuf::Message *prototype = m_factory.GetPrototype(pMethod->input_type());
+    const google::protobuf::Message *prototype = m_factory.GetPrototype(method->input_type());
     return std::unique_ptr<google::protobuf::Message>(prototype->New());
 }
 
 std::unique_ptr<google::protobuf::Message> GrpcProtocol::newResponseMessage(
-    const google::protobuf::MethodDescriptor *pMethod) const
+    const google::protobuf::MethodDescriptor *method) const
 {
-    const google::protobuf::Message *prototype = m_factory.GetPrototype(pMethod->output_type());
+    const google::protobuf::Message *prototype = m_factory.GetPrototype(method->output_type());
     return std::unique_ptr<google::protobuf::Message>(prototype->New());
 }
 

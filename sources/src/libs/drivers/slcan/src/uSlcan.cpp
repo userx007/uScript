@@ -211,7 +211,7 @@ ICommDriver::Status SLCAN::uart_read_line(uint8_t *pu8Buf, size_t buf_size,
 // send_command  — write cmd+CR and wait for ACK byte
 // ============================================================================
 
-ICommDriver::Status SLCAN::send_command(std::string_view cmd, uint32_t u32Payload)
+ICommDriver::Status SLCAN::send_command(std::string_view cmd, uint32_t u32Timeout_ms)
 {
     // Build command: cmd bytes + CR
     std::array<uint8_t, 64> tx{};
@@ -224,7 +224,7 @@ ICommDriver::Status SLCAN::send_command(std::string_view cmd, uint32_t u32Payloa
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CMD >> "); LOG_STRING(std::string(cmd).c_str()));
 
-    Status s = uart_write(tx.data(), cmd.size() + 1, u32Payload);
+    Status s = uart_write(tx.data(), cmd.size() + 1, u32Timeout_ms);
     if (s != Status::SUCCESS) {
         return s;
     }
@@ -237,7 +237,7 @@ ICommDriver::Status SLCAN::send_command(std::string_view cmd, uint32_t u32Payloa
     ReadOptions ro;
     ro.mode      = ReadMode::Exact;
     ro.delimiter = SLCAN_CR;
-    auto res     = m_uart->tout_read(u32Payload, std::span<uint8_t>(&ack, 1), ro);
+    auto res     = m_uart->tout_read(u32Timeout_ms, std::span<uint8_t>(&ack, 1), ro);
     got          = res.bytes_read;
 
     if (res.status != Status::SUCCESS || got == 0) {
@@ -381,8 +381,8 @@ ICommDriver::Status SLCAN::set_std_filter(uint16_t u16Id, uint16_t u16Mask, uint
         return Status::INVALID_PARAM;
     }
     char cmd[16];
-    // F<u16Id>,<u16Mask> — uppercase F for both standard and extended filters (the
-    // adapter tells them apart by the u16Id's magnitude/digit count, not by
+    // F<id>,<mask> — uppercase F for both standard and extended filters (the
+    // adapter tells them apart by the id's magnitude/digit count, not by
     // command letter case); comma-separated hex, no fixed width, no leading
     // zeros — e.g. "F7E8,7FF" (see e.g. Elmue's CANable 2.5 firmware manual's
     // Host Filter examples). NOT "f<3-hex><3-hex>" — that fixed-width,
@@ -399,8 +399,8 @@ ICommDriver::Status SLCAN::set_ext_filter(uint32_t u32Id, uint32_t u32Mask, uint
         return Status::INVALID_PARAM;
     }
     char cmd[24];
-    // Same F<u32Id>,<u32Mask> format as set_std_filter() — see that function's
-    // comment. A 29-bit u32Id naturally needs more hex digits than an 11-bit
+    // Same F<id>,<mask> format as set_std_filter() — see that function's
+    // comment. A 29-bit id naturally needs more hex digits than an 11-bit
     // one, which is how the adapter distinguishes std from ext.
     std::snprintf(cmd, sizeof(cmd), "F%X,%X", u32Id & 0x1FFFFFFFu, u32Mask & 0x1FFFFFFFu);
     return send_command(cmd, u32Timeout_ms);
@@ -699,7 +699,7 @@ ICommDriver::Status SLCAN::send_frame(const CanFrame &sFrame, uint32_t u32Timeou
               LOG_STRING(sFrame.is_canfd ? " CANFD" : " CAN");
               LOG_STRING(sFrame.brs ? " BRS" : ""));
 
-    // Write the encoded ASCII sFrame
+    // Write the encoded ASCII frame
     Status ws = uart_write(tx.data(), n, u32Timeout_ms, stop_tok);
     if (ws != Status::SUCCESS) {
         return ws;

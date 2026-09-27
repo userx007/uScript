@@ -220,7 +220,7 @@ KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter> &vFilters)
                           // transient-filter snapshot/restore stays accurate
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("KVCAN vFilters set, count:"); LOG_UINT32(static_cast<uint32_t>(vFilters.size())));
+              LOG_STRING("KVCAN filters set, count:"); LOG_UINT32(static_cast<uint32_t>(vFilters.size())));
 
     return Status::SUCCESS;
 }

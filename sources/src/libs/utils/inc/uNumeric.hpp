@@ -869,33 +869,33 @@ namespace numeric {
      * @return std::optional<std::span<uint8_t>> — nullopt if length exceeds bufferSize
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] inline std::optional<std::span<uint8_t>> buflen2span(uint8_t *pu8Buffer, size_t bufferSize, size_t length) noexcept
+    [[nodiscard]] inline std::optional<std::span<uint8_t>> buflen2span(uint8_t *buffer, size_t bufferSize, size_t length) noexcept
     {
         if (length > bufferSize) {
             return std::nullopt;
         }
-        return std::span<uint8_t>{pu8Buffer, length};
+        return std::span<uint8_t>{buffer, length};
     }
 
-    [[nodiscard]] inline std::optional<std::span<const uint8_t>> buflen2span(const uint8_t *pu8Buffer, size_t bufferSize, size_t length) noexcept
+    [[nodiscard]] inline std::optional<std::span<const uint8_t>> buflen2span(const uint8_t *buffer, size_t bufferSize, size_t length) noexcept
     {
         if (length > bufferSize) {
             return std::nullopt;
         }
-        return std::span<const uint8_t>{pu8Buffer, length};
+        return std::span<const uint8_t>{buffer, length};
     }
 
     // Non-throwing version
-    [[nodiscard]] inline std::span<uint8_t> buflen2span_safe(uint8_t *pu8Buffer, size_t bufferSize, size_t length) noexcept
+    [[nodiscard]] inline std::span<uint8_t> buflen2span_safe(uint8_t *buffer, size_t bufferSize, size_t length) noexcept
     {
         length = std::min(length, bufferSize);
-        return std::span<uint8_t>{pu8Buffer, length};
+        return std::span<uint8_t>{buffer, length};
     }
 
-    [[nodiscard]] inline std::span<const uint8_t> buflen2span_safe(const uint8_t *pu8Buffer, size_t bufferSize, size_t length) noexcept
+    [[nodiscard]] inline std::span<const uint8_t> buflen2span_safe(const uint8_t *buffer, size_t bufferSize, size_t length) noexcept
     {
         length = std::min(length, bufferSize);
-        return std::span<const uint8_t>{pu8Buffer, length};
+        return std::span<const uint8_t>{buffer, length};
     }
 
     template <size_t N>

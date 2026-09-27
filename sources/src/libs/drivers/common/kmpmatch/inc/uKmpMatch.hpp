@@ -95,9 +95,9 @@ namespace ukmp {
     template <typename ReaderFn>
     auto kmp_stream_match(ReaderFn &&readFn,
                           std::span<const uint8_t> token,
-                          const std::vector<int> &vTimeout,
-                          uint32_t u32ReturnOnTimeout,
-                          bool bUseBuffer,
+                          const std::vector<int> &vViLps,
+                          uint32_t u32Timeout,
+                          bool bReturnOnTimeout,
                           bool bUseBuffer,
                           size_t szChunkBufferSize,
                           size_t szRingBufferSize)
@@ -106,7 +106,7 @@ namespace ukmp {
         using Status = std::invoke_result_t<ReaderFn, uint32_t, std::span<uint8_t>, size_t &>;
 
         std::vector<uint8_t> chunk(szChunkBufferSize > 0 ? szChunkBufferSize : 1);
-        std::vector<uint8_t> ring(useBuffer ? szRingBufferSize : 0);
+        std::vector<uint8_t> ring(bUseBuffer ? szRingBufferSize : 0);
         uint32_t u32Matched   = 0;
         uint32_t u32BufferPos = 0;
 
@@ -123,12 +123,12 @@ namespace ukmp {
             for (size_t byteIdx = 0; byteIdx < szBytesRead; ++byteIdx) {
                 const uint8_t cByte = chunk[byteIdx];
 
-                if (useBuffer) {
+                if (bUseBuffer) {
                     ring[u32BufferPos++ % szRingBufferSize] = cByte;
                 }
 
                 while (u32Matched > 0 && cByte != token[u32Matched]) {
-                    u32Matched = static_cast<uint32_t>(viLps[u32Matched - 1]);
+                    u32Matched = static_cast<uint32_t>(vViLps[u32Matched - 1]);
                 }
 
                 if (cByte == token[u32Matched]) {

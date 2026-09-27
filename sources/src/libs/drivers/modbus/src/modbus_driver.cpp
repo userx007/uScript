@@ -62,7 +62,7 @@ namespace {
 } // namespace
 
 ModbusDriver::ModbusDriver(Config sConfig)
-    : m_config(std::move(config))
+    : m_config(std::move(sConfig))
 {
     if (m_config.strInstanceName.empty()) {
         m_config.strInstanceName = kPluginNameForDump;
@@ -158,7 +158,7 @@ ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t> &vAduOut, uint3
 
     // 1. Fixed 6-byte MBAP prefix (Transaction Id + Protocol Id + Length) —
     // the only part of an ADU that can legitimately take a while to arrive
-    // (nothing new to receive yet), so the only part bounded by u32TimeoutMs.
+    // (nothing new to receive yet), so the only part bounded by timeoutMs.
     {
         size_t totalRead     = 0;
         // 0 == infinite timeout: never expire this wait, and forward 0

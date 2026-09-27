@@ -58,7 +58,7 @@ FT4232Base::Status FT4232Base::open_device(Channel eChannel, uint8_t u8DeviceInd
         return Status::INVALID_PARAM;
     }
 
-    // ── Map (physical device index, eChannel) → FTD2XX device list index ──────
+    // ── Map (physical device index, channel) → FTD2XX device list index ──────
     //
     // FT4232H presents 4 USB interfaces. They appear sequentially in the
     // FTD2XX device list: the n-th chip occupies indices [n*4, n*4+3].
@@ -151,7 +151,7 @@ FT4232Base::Status FT4232Base::open_device(Channel eChannel, uint8_t u8DeviceInd
     m_hDevice = static_cast<void *>(handle);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("FT4232H opened: eChannel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
+              LOG_STRING("FT4232H opened: channel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
               LOG_STRING("ftIndex="); LOG_UINT32(ftIndex);
               LOG_STRING("device index="); LOG_UINT32(u8DeviceIndex));
 

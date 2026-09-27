@@ -32,7 +32,7 @@ namespace HydraHAL {
     // ---------------------------------------------------------------------------
 
     I2C::I2C(std::shared_ptr<Hydrabus> shpHydrabus)
-        : Protocol(std::move(hydrabus), "I2C1", "I2C", 0x02)
+        : Protocol(std::move(shpHydrabus), "I2C1", "I2C", 0x02)
     {
         _configure_port();
     }
@@ -193,7 +193,7 @@ namespace HydraHAL {
     {
         auto s = static_cast<uint8_t>(eSpeed);
         if (s > 0b11) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: invalid eSpeed value"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: invalid speed value"));
             return false;
         }
 
@@ -201,7 +201,7 @@ namespace HydraHAL {
         _write_byte(cmd);
 
         if (!_ack("set_speed")) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting eSpeed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting speed"));
             return false;
         }
         return true;

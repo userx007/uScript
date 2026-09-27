@@ -133,7 +133,7 @@ struct CommDetails {
 inline CommDetails commdump_details(CommFamily eFamily, std::string_view label)
 {
     CommDetails d;
-    d.eFamily            = eFamily;
+    d.family            = eFamily;
     const size_t maxLen = sizeof(d.label) - 1;
     if (label.size() <= maxLen) {
         std::memcpy(d.label, label.data(), label.size());
@@ -163,40 +163,40 @@ inline int64_t commdump_now_us() noexcept
 // ---------------------------------------------------------------------------
 // commdump_pack — serialize one record into a flat byte buffer
 // ---------------------------------------------------------------------------
-inline std::vector<uint8_t> commdump_pack(int64_t i64TimestampUs,
-                                          const std::string &strPluginName,
-                                          const CommDetails &sDetails,
-                                          CommDir eDir,
-                                          const uint8_t *pu8Data,
-                                          uint32_t u32DataLen)
+inline std::vector<uint8_t> commdump_pack(int64_t timestampUs,
+                                          const std::string &pluginName,
+                                          const CommDetails &details,
+                                          CommDir dir,
+                                          const uint8_t *data,
+                                          uint32_t dataLen)
 {
     std::vector<uint8_t> buf;
     const uint8_t nameLen = static_cast<uint8_t>(
-        strPluginName.size() > 255 ? 255 : strPluginName.size());
+        pluginName.size() > 255 ? 255 : pluginName.size());
 
-    buf.reserve(8 + 1 + nameLen + 1 + k_labelSize + 1 + 4 + u32DataLen);
+    buf.reserve(8 + 1 + nameLen + 1 + k_labelSize + 1 + 4 + dataLen);
 
-    const uint64_t tsBits = static_cast<uint64_t>(i64TimestampUs);
+    const uint64_t tsBits = static_cast<uint64_t>(timestampUs);
     for (int i = 0; i < 8; ++i) {
         buf.push_back(static_cast<uint8_t>((tsBits >> (8 * i)) & 0xFF));
     }
 
     buf.push_back(nameLen);
-    buf.insert(buf.end(), strPluginName.begin(), strPluginName.begin() + nameLen);
+    buf.insert(buf.end(), pluginName.begin(), pluginName.begin() + nameLen);
 
-    buf.push_back(static_cast<uint8_t>(sDetails.family));
+    buf.push_back(static_cast<uint8_t>(details.family));
     buf.insert(buf.end(),
-               reinterpret_cast<const uint8_t *>(sDetails.label),
-               reinterpret_cast<const uint8_t *>(sDetails.label) + k_labelSize);
+               reinterpret_cast<const uint8_t *>(details.label),
+               reinterpret_cast<const uint8_t *>(details.label) + k_labelSize);
 
-    buf.push_back(static_cast<uint8_t>(eDir));
+    buf.push_back(static_cast<uint8_t>(dir));
 
     for (int i = 0; i < 4; ++i) {
-        buf.push_back(static_cast<uint8_t>((u32DataLen >> (8 * i)) & 0xFF));
+        buf.push_back(static_cast<uint8_t>((dataLen >> (8 * i)) & 0xFF));
     }
 
-    if (u32DataLen && pu8Data) {
-        buf.insert(buf.end(), pu8Data, pu8Data + u32DataLen);
+    if (dataLen && data) {
+        buf.insert(buf.end(), data, data + dataLen);
     }
 
     return buf;

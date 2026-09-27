@@ -44,8 +44,8 @@
 template <typename T>
 struct KVSetterEntry {
         const char *key;
-        bool (T::*pBoolSetter)(const std::string &) const = nullptr;
-        void (T::*pVoidSetter)(const std::string &) const = nullptr;
+        bool (T::*boolSetter)(const std::string &) const = nullptr;
+        void (T::*voidSetter)(const std::string &) const = nullptr;
 };
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -145,7 +145,7 @@ bool generic_setup_params(const T *pOwner, const std::string &strArgs,
                           const KVSetterEntry<T> (&table)[N], const char *pstrPszLogHdr)
 {
     if (strArgs.empty()) {
-        LOG_PRINT(LOG_DEBUG, LOG_STRING(pstrPszLogHdr); LOG_STRING("Missing strArgs"));
+        LOG_PRINT(LOG_DEBUG, LOG_STRING(pstrPszLogHdr); LOG_STRING("Missing args"));
         return false;
     }
 

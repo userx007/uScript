@@ -267,7 +267,7 @@ class ProfibusDriver : public ICommDriver {
         // driver returns through receive()'s buffer — e.g. "AABBCC" for a data
         // reply, "ACK" for a bare SC, "SLAVE:DATA_LOW" for an FDL-Status reply.
         static std::string m_FormatTelegramResult(const ProfibusProtocol::DecodedTelegram &t, bool bWasStatusQuery);
-        static const char *m_StationTypeName(uint8_t u8StationType);
+        static const char *m_StationTypeName(uint8_t stationType);
 };
 
 #endif // PROFIBUS_DRIVER_HPP

@@ -285,11 +285,11 @@ extern "C" {
     typedef struct DIR DIR;
 
     /* Dirent functions */
-    static DIR *opendir(const char *pstrDirname);
-    static _WDIR *_wopendir(const wchar_t *pDirname);
+    static DIR *opendir(const char *dirname);
+    static _WDIR *_wopendir(const wchar_t *dirname);
 
-    static struct dirent *readdir(DIR *psDirp);
-    static struct _wdirent *_wreaddir(_WDIR *psDirp);
+    static struct dirent *readdir(DIR *dirp);
+    static struct _wdirent *_wreaddir(_WDIR *dirp);
 
     static int readdir_r(
         DIR *psDirp, struct dirent *entry, struct dirent **result);
@@ -332,8 +332,8 @@ extern "C" {
 #endif
 
     /* Internal utility functions */
-    static WIN32_FIND_DATAW *dirent_first(_WDIR *psDirp);
-    static WIN32_FIND_DATAW *dirent_next(_WDIR *psDirp);
+    static WIN32_FIND_DATAW *dirent_first(_WDIR *dirp);
+    static WIN32_FIND_DATAW *dirent_next(_WDIR *dirp);
 
 #if !defined(_MSC_VER) || _MSC_VER < 1400
     static int dirent_mbstowcs_s(
@@ -356,12 +356,12 @@ extern "C" {
      * internal working area that is used to retrieve individual directory
      * entries.
      */
-    static _WDIR *_wopendir(const wchar_t *pDirname)
+    static _WDIR *_wopendir(const wchar_t *dirname)
     {
         wchar_t *p;
 
         /* Must have directory name */
-        if (pDirname == NULL || pDirname[0] == '\0') {
+        if (dirname == NULL || dirname[0] == '\0') {
             dirent_set_errno(ENOENT);
             return NULL;
         }
@@ -385,10 +385,10 @@ extern "C" {
          */
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
         /* Desktop */
-        DWORD n = GetFullPathNameW(pDirname, 0, NULL, NULL);
+        DWORD n = GetFullPathNameW(dirname, 0, NULL, NULL);
 #else
     /* WinRT */
-    size_t n = wcslen(pDirname);
+    size_t n = wcslen(dirname);
 #endif
 
         /* Allocate room for absolute directory name and search pattern */
@@ -407,13 +407,13 @@ extern "C" {
          */
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
         /* Desktop */
-        n = GetFullPathNameW(pDirname, n, dirp->patt, NULL);
+        n = GetFullPathNameW(dirname, n, dirp->patt, NULL);
         if (n <= 0) {
             goto exit_closedir;
         }
 #else
     /* WinRT */
-    wcsncpy_s(dirp->patt, n + 1, pDirname, n);
+    wcsncpy_s(dirp->patt, n + 1, dirname, n);
 #endif
 
         /* Append search pattern \* to the directory name */
@@ -453,14 +453,14 @@ extern "C" {
      * Returns pointer to static directory entry which may be overwritten by
      * subsequent calls to _wreaddir().
      */
-    static struct _wdirent *_wreaddir(_WDIR *psDirp)
+    static struct _wdirent *_wreaddir(_WDIR *dirp)
     {
         /*
          * Read directory entry to buffer.  We can safely ignore the return
          * value as entry will be set to NULL in case of error.
          */
         struct _wdirent *entry;
-        (void)_wreaddir_r(psDirp, &psDirp->ent, &entry);
+        (void)_wreaddir_r(dirp, &dirp->ent, &entry);
 
         /* Return pointer to statically allocated directory entry */
         return entry;
@@ -563,27 +563,27 @@ extern "C" {
     }
 
     /* Get first directory entry */
-    static WIN32_FIND_DATAW *dirent_first(_WDIR *psDirp)
+    static WIN32_FIND_DATAW *dirent_first(_WDIR *dirp)
     {
-        if (!psDirp) {
+        if (!dirp) {
             return NULL;
         }
 
         /* Open directory and retrieve the first entry */
-        psDirp->handle = FindFirstFileExW(
-            psDirp->patt, FindExInfoStandard, &psDirp->data,
+        dirp->handle = FindFirstFileExW(
+            dirp->patt, FindExInfoStandard, &dirp->data,
             FindExSearchNameMatch, NULL, 0);
-        if (psDirp->handle == INVALID_HANDLE_VALUE) {
+        if (dirp->handle == INVALID_HANDLE_VALUE) {
             goto error;
         }
 
         /* A directory entry is now waiting in memory */
-        psDirp->cached = 1;
-        return &psDirp->data;
+        dirp->cached = 1;
+        return &dirp->data;
 
     error:
         /* Failed to open directory: no directory entry in memory */
-        psDirp->cached    = 0;
+        dirp->cached    = 0;
 
         /* Set error code */
         DWORD errorcode = GetLastError();
@@ -607,40 +607,40 @@ extern "C" {
     }
 
     /* Get next directory entry */
-    static WIN32_FIND_DATAW *dirent_next(_WDIR *psDirp)
+    static WIN32_FIND_DATAW *dirent_next(_WDIR *dirp)
     {
         /* Is the next directory entry already in cache? */
-        if (psDirp->cached) {
+        if (dirp->cached) {
             /* Yes, a valid directory entry found in memory */
-            psDirp->cached = 0;
-            return &psDirp->data;
+            dirp->cached = 0;
+            return &dirp->data;
         }
 
         /* No directory entry in cache */
-        if (psDirp->handle == INVALID_HANDLE_VALUE) {
+        if (dirp->handle == INVALID_HANDLE_VALUE) {
             return NULL;
         }
 
         /* Read the next directory entry from stream */
-        if (FindNextFileW(psDirp->handle, &psDirp->data) == FALSE) {
+        if (FindNextFileW(dirp->handle, &dirp->data) == FALSE) {
             goto exit_close;
         }
 
         /* Success */
-        return &psDirp->data;
+        return &dirp->data;
 
         /* Failure */
     exit_close:
-        FindClose(psDirp->handle);
-        psDirp->handle = INVALID_HANDLE_VALUE;
+        FindClose(dirp->handle);
+        dirp->handle = INVALID_HANDLE_VALUE;
         return NULL;
     }
 
     /* Open directory stream using plain old C-string */
-    static DIR *opendir(const char *pstrDirname)
+    static DIR *opendir(const char *dirname)
     {
         /* Must have directory name */
-        if (pstrDirname == NULL || pstrDirname[0] == '\0') {
+        if (dirname == NULL || dirname[0] == '\0') {
             dirent_set_errno(ENOENT);
             return NULL;
         }
@@ -654,7 +654,7 @@ extern "C" {
         /* Convert directory name to wide-character string */
         wchar_t wname[PATH_MAX + 1];
         size_t n;
-        int error = mbstowcs_s(&n, wname, PATH_MAX + 1, pstrDirname, PATH_MAX + 1);
+        int error = mbstowcs_s(&n, wname, PATH_MAX + 1, dirname, PATH_MAX + 1);
         if (error) {
             goto exit_failure;
         }
@@ -675,14 +675,14 @@ extern "C" {
     }
 
     /* Read next directory entry */
-    static struct dirent *readdir(DIR *psDirp)
+    static struct dirent *readdir(DIR *dirp)
     {
         /*
          * Read directory entry to buffer.  We can safely ignore the return
          * value as entry will be set to NULL in case of error.
          */
         struct dirent *entry;
-        (void)readdir_r(psDirp, &psDirp->ent, &entry);
+        (void)readdir_r(dirp, &dirp->ent, &entry);
 
         /* Return pointer to statically allocated directory entry */
         return entry;

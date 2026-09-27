@@ -116,9 +116,9 @@ class IniCfgLoader {
             if ((m_mapSettings.count(strKey) == 0) ||
                 (false == m_beEvaluator.evaluate(m_mapSettings.at(strKey), bValue))) {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
-                          LOG_STRING("Missing/wrong ini bValue for:");
+                          LOG_STRING("Missing/wrong ini value for:");
                           LOG_STRING(key);
-                          LOG_STRING(": using default bValue"));
+                          LOG_STRING(": using default value"));
                 return false;
             }
 

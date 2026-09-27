@@ -112,8 +112,8 @@ ICommDriver::ReadResult SPIBridge::tout_read(uint32_t u32ReadTimeout,
     }
 
     // ── ReadMode::UntilToken ───────────────────────────────────────────────
-    // Full-duplex: use sOptions.token as the MOSI payload, fill buffer with MISO.
-    // sOptions.token.size() must equal buffer.size().
+    // Full-duplex: use options.token as the MOSI payload, fill buffer with MISO.
+    // options.token.size() must equal buffer.size().
     case ReadMode::UntilToken: {
         if (sOptions.token.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;

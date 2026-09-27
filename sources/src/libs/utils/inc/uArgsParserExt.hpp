@@ -30,7 +30,7 @@ class CommandLineParser {
         };
 
         CommandLineParser(std::string strDescription = "")
-            : description_(std::move(description))
+            : description_(std::move(strDescription))
         {
         }
 
@@ -43,9 +43,9 @@ class CommandLineParser {
             OptionConfig config{std::move(strLong_flag), std::move(strShort_flag),
                                 std::move(strHelp), std::move(strDefault_value),
                                 bRequired, eType};
-            options_[config.strLong_flag] = config;
-            if (!config.strShort_flag.empty()) {
-                short_to_long_[config.strShort_flag] = config.strLong_flag;
+            options_[config.long_flag] = config;
+            if (!config.short_flag.empty()) {
+                short_to_long_[config.short_flag] = config.long_flag;
             }
         }
 
@@ -163,9 +163,9 @@ class CommandLineParser {
         }
 
         // Get string value
-        std::optional<std::string> get(const std::string &strKey) const
+        std::optional<std::string> get(const std::string &key) const
         {
-            auto it = parsed_options_.find(strKey);
+            auto it = parsed_options_.find(key);
             return (it != parsed_options_.end()) ? std::optional(it->second) : std::nullopt;
         }
 
@@ -188,9 +188,9 @@ class CommandLineParser {
         }
 
         // Get integer value (TYPE-SAFE)
-        std::optional<int> get_int(const std::string &strKey) const
+        std::optional<int> get_int(const std::string &key) const
         {
-            auto it = parsed_options_.find(strKey);
+            auto it = parsed_options_.find(key);
             if (it != parsed_options_.end()) {
                 try {
                     return std::stoi(it->second);
@@ -202,9 +202,9 @@ class CommandLineParser {
         }
 
         // Get float value (TYPE-SAFE)
-        std::optional<float> get_float(const std::string &strKey) const
+        std::optional<float> get_float(const std::string &key) const
         {
-            auto it = parsed_options_.find(strKey);
+            auto it = parsed_options_.find(key);
             if (it != parsed_options_.end()) {
                 try {
                     return std::stof(it->second);

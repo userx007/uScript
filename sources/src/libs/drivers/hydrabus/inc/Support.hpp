@@ -13,15 +13,15 @@ namespace HydraHAL {
      *
      * Mirrors Python's common.split() used throughout the protocol layer.
      */
-    inline std::vector<std::vector<uint8_t>> split(const std::vector<uint8_t> &vSeq,
+    inline std::vector<std::vector<uint8_t>> split(const std::vector<uint8_t> &seq,
                                                    size_t chunk_size)
     {
         std::vector<std::vector<uint8_t>> result;
-        result.reserve((vSeq.size() + chunk_size - 1) / chunk_size);
-        for (size_t i = 0; i < vSeq.size(); i += chunk_size) {
-            result.emplace_back(vSeq.begin() + static_cast<ptrdiff_t>(i),
-                                vSeq.begin() + static_cast<ptrdiff_t>(
-                                                  std::min(i + chunk_size, vSeq.size())));
+        result.reserve((seq.size() + chunk_size - 1) / chunk_size);
+        for (size_t i = 0; i < seq.size(); i += chunk_size) {
+            result.emplace_back(seq.begin() + static_cast<ptrdiff_t>(i),
+                                seq.begin() + static_cast<ptrdiff_t>(
+                                                  std::min(i + chunk_size, seq.size())));
         }
         return result;
     }
@@ -42,39 +42,39 @@ namespace HydraHAL {
         } else if (iBit == 0) {
             return static_cast<uint8_t>(u8Byte_val & ~(1u << iPosition));
         }
-        throw std::invalid_argument("set_bit: iBit must be 0 or 1");
+        throw std::invalid_argument("set_bit: bit must be 0 or 1");
     }
 
     /**
      * @brief Pack a uint16_t into a 2-byte big-endian array.
      */
-    inline std::array<uint8_t, 2> u16_be(uint16_t u16V)
+    inline std::array<uint8_t, 2> u16_be(uint16_t v)
     {
-        return {static_cast<uint8_t>(u16V >> 8), static_cast<uint8_t>(u16V & 0xFF)};
+        return {static_cast<uint8_t>(v >> 8), static_cast<uint8_t>(v & 0xFF)};
     }
 
     /**
      * @brief Pack a uint32_t into a 4-byte big-endian array.
      */
-    inline std::array<uint8_t, 4> u32_be(uint32_t u32V)
+    inline std::array<uint8_t, 4> u32_be(uint32_t v)
     {
         return {
-            static_cast<uint8_t>((u32V >> 24) & 0xFF),
-            static_cast<uint8_t>((u32V >> 16) & 0xFF),
-            static_cast<uint8_t>((u32V >> 8) & 0xFF),
-            static_cast<uint8_t>(u32V & 0xFF)};
+            static_cast<uint8_t>((v >> 24) & 0xFF),
+            static_cast<uint8_t>((v >> 16) & 0xFF),
+            static_cast<uint8_t>((v >> 8) & 0xFF),
+            static_cast<uint8_t>(v & 0xFF)};
     }
 
     /**
      * @brief Pack a uint32_t into a 4-byte little-endian array.
      */
-    inline std::array<uint8_t, 4> u32_le(uint32_t u32V)
+    inline std::array<uint8_t, 4> u32_le(uint32_t v)
     {
         return {
-            static_cast<uint8_t>(u32V & 0xFF),
-            static_cast<uint8_t>((u32V >> 8) & 0xFF),
-            static_cast<uint8_t>((u32V >> 16) & 0xFF),
-            static_cast<uint8_t>((u32V >> 24) & 0xFF)};
+            static_cast<uint8_t>(v & 0xFF),
+            static_cast<uint8_t>((v >> 8) & 0xFF),
+            static_cast<uint8_t>((v >> 16) & 0xFF),
+            static_cast<uint8_t>((v >> 24) & 0xFF)};
     }
 
     /**

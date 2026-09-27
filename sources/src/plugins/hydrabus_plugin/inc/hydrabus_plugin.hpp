@@ -300,8 +300,8 @@ class HydrabusPlugin : public PluginInterface {
 
         // Module-map accessors (used by generic helpers)
 
-        ModuleCommandsMap<HydrabusPlugin> *getModuleCmdsMap(const std::string &strM) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
+        ModuleCommandsMap<HydrabusPlugin> *getModuleCmdsMap(const std::string &m) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
         /**
          * @brief Called by generic_module_set_speed to apply a speed index.
@@ -432,12 +432,12 @@ class HydrabusPlugin : public PluginInterface {
         // Protocols dispatch through the generic macro-generated inline
 
 #define HB_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_Hydrabus_##a(const std::string &strArgs, std::stop_token st) const;
+    bool m_Hydrabus_##a(const std::string &args, std::stop_token st) const;
         HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_STD
 #undef HB_PLUGIN_CMD_RECORD
 
 #define HB_PLUGIN_CMD_RECORD(a)                                             \
-    bool m_Hydrabus_##a(const std::string &strArgs, std::stop_token st) const  \
+    bool m_Hydrabus_##a(const std::string &args, std::stop_token st) const  \
     {                                                                       \
         return generic_module_dispatch<HydrabusPlugin>(this, #a, args, st); \
     }

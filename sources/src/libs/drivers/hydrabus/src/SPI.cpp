@@ -32,7 +32,7 @@ namespace HydraHAL {
     // ---------------------------------------------------------------------------
 
     SPI::SPI(std::shared_ptr<Hydrabus> shpHydrabus)
-        : Protocol(std::move(hydrabus), "SPI1", "SPI", 0x01)
+        : Protocol(std::move(shpHydrabus), "SPI1", "SPI", 0x01)
     {
         _configure_port();
     }
@@ -48,7 +48,7 @@ namespace HydraHAL {
 
     bool SPI::set_cs(int iLevel)
     {
-        // CMD 0b0000001x  (x = iLevel)
+        // CMD 0b0000001x  (x = level)
         uint8_t cmd = static_cast<uint8_t>(0b00000010 | (iLevel & 0x01));
         _write_byte(cmd);
 
@@ -94,13 +94,13 @@ namespace HydraHAL {
     std::optional<std::vector<uint8_t>> SPI::write_read(
         std::span<const uint8_t> data,
         size_t read_len,
-        bool bManual_cs,
+        bool manual_cs,
         std::stop_token stop_tok)
     {
         // CMD 0b00000100 | drive_cs_bit
         //   drive_cs_bit = 0 → firmware drives CS
         //   drive_cs_bit = 1 → caller drives CS
-        uint8_t cmd = static_cast<uint8_t>(0b00000100 | (bManual_cs ? 1 : 0));
+        uint8_t cmd = static_cast<uint8_t>(0b00000100 | (manual_cs ? 1 : 0));
         _write_byte(cmd, stop_tok);
         _write_u16_be(static_cast<uint16_t>(data.size()), stop_tok);
         _write_u16_be(static_cast<uint16_t>(read_len), stop_tok);
@@ -144,12 +144,12 @@ namespace HydraHAL {
         return result.has_value();
     }
 
-    std::vector<uint8_t> SPI::read(size_t read_len, bool bManual_cs, std::stop_token stop_tok)
+    std::vector<uint8_t> SPI::read(size_t read_len, bool manual_cs, std::stop_token stop_tok)
     {
         std::vector<uint8_t> result;
         result.reserve(read_len);
 
-        if (!bManual_cs) {
+        if (!manual_cs) {
             set_cs(0);
         }
 
@@ -166,7 +166,7 @@ namespace HydraHAL {
             }
         }
 
-        if (!bManual_cs) {
+        if (!manual_cs) {
             set_cs(1);
         }
         return result;
@@ -180,7 +180,7 @@ namespace HydraHAL {
     {
         auto s = static_cast<uint8_t>(eSpeed);
         if (s > 0b111) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: invalid eSpeed value"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: invalid speed value"));
             return false;
         }
         uint8_t cmd = static_cast<uint8_t>(0b01100000 | s);

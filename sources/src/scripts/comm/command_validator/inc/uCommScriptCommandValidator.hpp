@@ -160,7 +160,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                         return false;
                     }
 
-                    /* Classify + extract directly into sResult.values - exactly one
+                    /* Classify + extract directly into result.values - exactly one
                      * allocation per field (see classify()'s doc comment), instead
                      * of building an intermediate owned field1/field2 first and
                      * reclassifying/moving it afterward. */

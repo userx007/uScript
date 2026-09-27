@@ -616,7 +616,7 @@ std::vector<Vector::ChannelInfo> Vector::enumerateChannels()
     return vResult;
 }
 
-std::vector<Vector::ChannelInfo> Vector::matchChannels(const DeviceSelector &sSel)
+std::vector<Vector::ChannelInfo> Vector::matchChannels(const DeviceSelector &sel)
 {
     std::vector<ChannelInfo> vResult;
 
@@ -624,19 +624,19 @@ std::vector<Vector::ChannelInfo> Vector::matchChannels(const DeviceSelector &sSe
         if (!info.bSupportsCan) {
             continue;
         }
-        if (sSel.i32HwType >= 0 && info.u32HwType != static_cast<uint32_t>(sSel.i32HwType)) {
+        if (sel.i32HwType >= 0 && info.u32HwType != static_cast<uint32_t>(sel.i32HwType)) {
             continue;
         }
-        if (sSel.u32SerialNumber != 0 && info.u32SerialNumber != sSel.u32SerialNumber) {
+        if (sel.u32SerialNumber != 0 && info.u32SerialNumber != sel.u32SerialNumber) {
             continue;
         }
-        if (!sSel.strChannelName.empty() && info.strName != sSel.strChannelName) {
+        if (!sel.strChannelName.empty() && info.strName != sel.strChannelName) {
             continue;
         }
-        if (sSel.i32HwIndex >= 0 && info.u32HwIndex != static_cast<uint32_t>(sSel.i32HwIndex)) {
+        if (sel.i32HwIndex >= 0 && info.u32HwIndex != static_cast<uint32_t>(sel.i32HwIndex)) {
             continue;
         }
-        if (sSel.i32HwChannel >= 0 && info.u32HwChannel != static_cast<uint32_t>(sSel.i32HwChannel)) {
+        if (sel.i32HwChannel >= 0 && info.u32HwChannel != static_cast<uint32_t>(sel.i32HwChannel)) {
             continue;
         }
 

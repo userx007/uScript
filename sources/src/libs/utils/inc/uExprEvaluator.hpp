@@ -264,7 +264,7 @@ class EvalExprEvaluator {
             if (strSuffix == "BOOL") {
                 return eValidateType::BOOLEAN;
             }
-            throw std::invalid_argument("Unknown type strSuffix: " + strSuffix);
+            throw std::invalid_argument("Unknown type suffix: " + strSuffix);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -348,7 +348,7 @@ class EvalExprEvaluator {
             // word1
             std::string_view word1 = m_nextWord(sv);
             if (word1.empty()) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL: empty sAtom"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EVAL: empty atom"));
                 return false;
             }
 

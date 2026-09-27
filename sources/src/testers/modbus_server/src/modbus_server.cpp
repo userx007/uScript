@@ -107,21 +107,21 @@ namespace {
 
     // Builds a complete response ADU (MBAP header + PDU) given the
     // request's transaction id and unit id, echoed back as required.
-    std::vector<uint8_t> buildResponseAdu(uint16_t u16TxnId, uint8_t u8UnitId, const std::vector<uint8_t> &vPdu)
+    std::vector<uint8_t> buildResponseAdu(uint16_t txnId, uint8_t unitId, const std::vector<uint8_t> &pdu)
     {
         std::vector<uint8_t> adu;
-        const uint16_t followingLength = static_cast<uint16_t>(1 + vPdu.size());
-        putBe16(adu, u16TxnId);
+        const uint16_t followingLength = static_cast<uint16_t>(1 + pdu.size());
+        putBe16(adu, txnId);
         putBe16(adu, 0x0000); // Protocol Identifier — always 0 for Modbus
         putBe16(adu, followingLength);
-        adu.push_back(u8UnitId);
-        adu.insert(adu.end(), vPdu.begin(), vPdu.end());
+        adu.push_back(unitId);
+        adu.insert(adu.end(), pdu.begin(), pdu.end());
         return adu;
     }
 
-    std::vector<uint8_t> buildExceptionPdu(uint8_t u8FunctionCode, uint8_t u8ExceptionCode)
+    std::vector<uint8_t> buildExceptionPdu(uint8_t functionCode, uint8_t exceptionCode)
     {
-        return {static_cast<uint8_t>(u8FunctionCode | kExceptionFlag), u8ExceptionCode};
+        return {static_cast<uint8_t>(functionCode | kExceptionFlag), exceptionCode};
     }
 
     /**
@@ -130,21 +130,21 @@ namespace {
      * the caller doesn't need to special-case that, it's just bytes to
      * wrap in an MBAP header and send back).
      */
-    std::vector<uint8_t> handlePdu(ModbusDataStore &store, const std::vector<uint8_t> &vPdu)
+    std::vector<uint8_t> handlePdu(ModbusDataStore &store, const std::vector<uint8_t> &pdu)
     {
-        if (vPdu.empty()) {
+        if (pdu.empty()) {
             return buildExceptionPdu(0, kExceptionIllegalFunction);
         }
-        const uint8_t fc = vPdu[0];
+        const uint8_t fc = pdu[0];
 
         switch (fc) {
         case kReadCoils:
         case kReadDiscreteInputs: {
-            if (vPdu.size() != 5) {
+            if (pdu.size() != 5) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr = be16(&vPdu[1]);
-            const uint16_t qty  = be16(&vPdu[3]);
+            const uint16_t addr = be16(&pdu[1]);
+            const uint16_t qty  = be16(&pdu[3]);
             if (qty == 0 || qty > 2000) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
@@ -169,11 +169,11 @@ namespace {
 
         case kReadHoldingRegisters:
         case kReadInputRegisters: {
-            if (vPdu.size() != 5) {
+            if (pdu.size() != 5) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr = be16(&vPdu[1]);
-            const uint16_t qty  = be16(&vPdu[3]);
+            const uint16_t addr = be16(&pdu[1]);
+            const uint16_t qty  = be16(&pdu[3]);
             if (qty == 0 || qty > 125) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
@@ -193,11 +193,11 @@ namespace {
         }
 
         case kWriteSingleCoil: {
-            if (vPdu.size() != 5) {
+            if (pdu.size() != 5) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr = be16(&vPdu[1]);
-            const uint16_t wire = be16(&vPdu[3]);
+            const uint16_t addr = be16(&pdu[1]);
+            const uint16_t wire = be16(&pdu[3]);
             if (wire != 0xFF00 && wire != 0x0000) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
@@ -207,37 +207,37 @@ namespace {
                 return buildExceptionPdu(fc, exc);
             }
 
-            return std::vector<uint8_t>(vPdu); // echo the request verbatim, per spec
+            return std::vector<uint8_t>(pdu); // echo the request verbatim, per spec
         }
 
         case kWriteSingleRegister: {
-            if (vPdu.size() != 5) {
+            if (pdu.size() != 5) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr  = be16(&vPdu[1]);
-            const uint16_t value = be16(&vPdu[3]);
+            const uint16_t addr  = be16(&pdu[1]);
+            const uint16_t value = be16(&pdu[3]);
 
             const uint8_t exc    = store.writeSingleRegister(addr, value);
             if (exc != ModbusDataStore::kExceptionNone) {
                 return buildExceptionPdu(fc, exc);
             }
 
-            return std::vector<uint8_t>(vPdu); // echo the request verbatim, per spec
+            return std::vector<uint8_t>(pdu); // echo the request verbatim, per spec
         }
 
         case kWriteMultipleCoils: {
-            if (vPdu.size() < 6) {
+            if (pdu.size() < 6) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr     = be16(&vPdu[1]);
-            const uint16_t qty      = be16(&vPdu[3]);
-            const uint8_t byteCount = vPdu[5];
-            if (qty == 0 || qty > 1968 || byteCount != (qty + 7) / 8 || vPdu.size() != static_cast<size_t>(6 + byteCount)) {
+            const uint16_t addr     = be16(&pdu[1]);
+            const uint16_t qty      = be16(&pdu[3]);
+            const uint8_t byteCount = pdu[5];
+            if (qty == 0 || qty > 1968 || byteCount != (qty + 7) / 8 || pdu.size() != static_cast<size_t>(6 + byteCount)) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
             std::vector<bool> values(qty);
             for (uint16_t i = 0; i < qty; ++i) {
-                values[i] = (vPdu[6 + i / 8] & (1u << (i % 8))) != 0;
+                values[i] = (pdu[6 + i / 8] & (1u << (i % 8))) != 0;
             }
             const uint8_t exc = store.writeMultipleCoils(addr, values);
             if (exc != ModbusDataStore::kExceptionNone) {
@@ -251,18 +251,18 @@ namespace {
         }
 
         case kWriteMultipleRegisters: {
-            if (vPdu.size() < 6) {
+            if (pdu.size() < 6) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
-            const uint16_t addr     = be16(&vPdu[1]);
-            const uint16_t qty      = be16(&vPdu[3]);
-            const uint8_t byteCount = vPdu[5];
-            if (qty == 0 || qty > 123 || byteCount != qty * 2 || vPdu.size() != static_cast<size_t>(6 + byteCount)) {
+            const uint16_t addr     = be16(&pdu[1]);
+            const uint16_t qty      = be16(&pdu[3]);
+            const uint8_t byteCount = pdu[5];
+            if (qty == 0 || qty > 123 || byteCount != qty * 2 || pdu.size() != static_cast<size_t>(6 + byteCount)) {
                 return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
             }
             std::vector<uint16_t> values(qty);
             for (uint16_t i = 0; i < qty; ++i) {
-                values[i] = be16(&vPdu[6 + i * 2]);
+                values[i] = be16(&pdu[6 + i * 2]);
             }
             const uint8_t exc = store.writeMultipleRegisters(addr, values);
             if (exc != ModbusDataStore::kExceptionNone) {

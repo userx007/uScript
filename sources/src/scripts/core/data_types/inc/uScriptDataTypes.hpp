@@ -778,9 +778,9 @@ using ScriptEntriesType = ScriptEntries;
 //                 DATATYPES LOGGING SUPPORT (type to string)                  //
 /////////////////////////////////////////////////////////////////////////////////
 
-inline const std::string &getTokenTypeName(Token eType)
+inline const std::string &getTokenTypeName(Token type)
 {
-    switch (eType) {
+    switch (type) {
     case Token::LOAD_PLUGIN: {
         static const std::string name = "LOAD_PLUGIN";
         return name;

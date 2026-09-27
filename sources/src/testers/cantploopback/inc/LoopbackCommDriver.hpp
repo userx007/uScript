@@ -40,7 +40,7 @@ class LoopbackCommDriver final : public ICommDriver {
     public:
         /** @param verbose  If true, prints every frame (id, direction, hex bytes) as it crosses the bus. */
         explicit LoopbackCommDriver(bool bVerbose = false)
-            : m_verbose(verbose)
+            : m_verbose(bVerbose)
         {
         }
 

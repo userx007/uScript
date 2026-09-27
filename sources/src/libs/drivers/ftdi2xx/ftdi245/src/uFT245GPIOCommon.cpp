@@ -75,11 +75,11 @@ FT245GPIO::Status FT245GPIO::apply(uint8_t u8Value, uint8_t u8Dir) const
 {
     // In bit-bang mode, a single byte written via fifo_write sets the output
     // register.  The direction mask is baked into the bitmode configuration
-    // (BITMODE_BITBANG with the u8Dir byte).  However, libftdi1 and FTD2XX
+    // (BITMODE_BITBANG with the dir byte).  However, libftdi1 and FTD2XX
     // require the direction to be re-submitted via set_bitmode each time
-    // it changes.  For pure output changes we just write the u8Value byte.
+    // it changes.  For pure output changes we just write the value byte.
     //
-    // We write the u8Value into the FIFO; the device latches it to D0–D7.
+    // We write the value into the FIFO; the device latches it to D0–D7.
     (void)u8Dir; // direction is applied at open/set_direction time via set_bitmode
     return fifo_write(&u8Value, 1u);
 }
@@ -88,7 +88,7 @@ FT245GPIO::Status FT245GPIO::apply(uint8_t u8Value, uint8_t u8Dir) const
 // DIRECTION CONTROL
 // ============================================================================
 
-FT245GPIO::Status FT245GPIO::set_direction(uint8_t u8DirMask, uint8_t u8DirMask)
+FT245GPIO::Status FT245GPIO::set_direction(uint8_t u8DirMask, uint8_t u8InitialValue)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
@@ -96,7 +96,7 @@ FT245GPIO::Status FT245GPIO::set_direction(uint8_t u8DirMask, uint8_t u8DirMask)
 
     // Identify newly-enabled output pins; drive them to the requested level.
     const uint8_t newOut = static_cast<uint8_t>(u8DirMask & ~m_dirMask);
-    m_value              = static_cast<uint8_t>((m_value & ~newOut) | (u8DirMask & newOut));
+    m_value              = static_cast<uint8_t>((m_value & ~newOut) | (u8InitialValue & newOut));
     m_dirMask            = u8DirMask;
 
     // The direction change must be committed via a platform-level
@@ -124,28 +124,28 @@ FT245GPIO::Status FT245GPIO::write(uint8_t u8Value)
     return apply(m_value, m_dirMask);
 }
 
-FT245GPIO::Status FT245GPIO::set_pins(uint8_t u8Bank)
+FT245GPIO::Status FT245GPIO::set_pins(uint8_t u8PinMask)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
     }
-    return write(static_cast<uint8_t>(m_value | u8Bank));
+    return write(static_cast<uint8_t>(m_value | u8PinMask));
 }
 
-FT245GPIO::Status FT245GPIO::clear_pins(uint8_t u8Bank)
+FT245GPIO::Status FT245GPIO::clear_pins(uint8_t u8PinMask)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
     }
-    return write(static_cast<uint8_t>(m_value & ~u8Bank));
+    return write(static_cast<uint8_t>(m_value & ~u8PinMask));
 }
 
-FT245GPIO::Status FT245GPIO::toggle_pins(uint8_t u8Bank)
+FT245GPIO::Status FT245GPIO::toggle_pins(uint8_t u8PinMask)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
     }
-    return write(static_cast<uint8_t>(m_value ^ u8Bank));
+    return write(static_cast<uint8_t>(m_value ^ u8PinMask));
 }
 
 // ============================================================================
@@ -171,7 +171,7 @@ FT245GPIO::Status FT245GPIO::read(uint8_t &u8Value)
     return Status::SUCCESS;
 }
 
-FT245GPIO::Status FT245GPIO::read_pins(uint8_t u8Bank, uint8_t &u8PinMask)
+FT245GPIO::Status FT245GPIO::read_pins(uint8_t u8PinMask, uint8_t &u8Value)
 {
     if (!is_open()) {
         return Status::PORT_ACCESS;
@@ -180,7 +180,7 @@ FT245GPIO::Status FT245GPIO::read_pins(uint8_t u8Bank, uint8_t &u8PinMask)
     uint8_t raw = 0;
     Status s    = read(raw);
     if (s == Status::SUCCESS) {
-        u8PinMask = static_cast<uint8_t>(raw & u8Bank);
+        u8Value = static_cast<uint8_t>(raw & u8PinMask);
     }
     return s;
 }

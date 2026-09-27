@@ -21,7 +21,7 @@ namespace {
 } // namespace
 
 RealCommDriver::RealCommDriver(const std::string &strInterfaceName)
-    : m_interface(interfaceName)
+    : m_interface(strInterfaceName)
 {
     init(strInterfaceName);
 }

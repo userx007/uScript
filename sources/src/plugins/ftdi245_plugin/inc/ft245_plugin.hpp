@@ -224,8 +224,8 @@ class FT245Plugin : public PluginInterface {
 
         // Module-map accessors
 
-        ModuleCommandsMap<FT245Plugin> *getModuleCmdsMap(const std::string &strM) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
+        ModuleCommandsMap<FT245Plugin> *getModuleCmdsMap(const std::string &m) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
         /**
          * @brief Not applicable for FT245 (no configurable clock divisor).
@@ -304,7 +304,7 @@ class FT245Plugin : public PluginInterface {
         // Top-level command handlers
 
 #define FT245_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_FT245_##a(const std::string &strArgs, std::stop_token st) const;
+    bool m_FT245_##a(const std::string &args, std::stop_token st) const;
         FT245_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef FT245_PLUGIN_CMD_RECORD
 

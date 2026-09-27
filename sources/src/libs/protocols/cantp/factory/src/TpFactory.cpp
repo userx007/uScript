@@ -17,23 +17,23 @@ struct TpConfig;
 #define LT_HDR  "CAN_TP      |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
-std::unique_ptr<ITransportProtocol> make_transport_protocol(TpProtocol eProto, const TpConfig &sCfg)
+std::unique_ptr<ITransportProtocol> make_transport_protocol(TpProtocol proto, const TpConfig &cfg)
 {
-    switch (eProto) {
+    switch (proto) {
     case TpProtocol::NONE:
         return nullptr;
 
     case TpProtocol::ISO_TP:
-        return std::make_unique<IsoTpProtocol>(sCfg);
+        return std::make_unique<IsoTpProtocol>(cfg);
 
     case TpProtocol::J1939_TP:
-        return std::make_unique<J1939TpProtocol>(sCfg);
+        return std::make_unique<J1939TpProtocol>(cfg);
 
     case TpProtocol::CANOPEN_SDO:
-        return std::make_unique<CanOpenSdoProtocol>(sCfg);
+        return std::make_unique<CanOpenSdoProtocol>(cfg);
 
     case TpProtocol::NMEA2000_FAST_PACKET:
-        return std::make_unique<Nmea2000FastPacketProtocol>(sCfg);
+        return std::make_unique<Nmea2000FastPacketProtocol>(cfg);
 
     default:
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown TpProtocol value"));

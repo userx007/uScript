@@ -92,7 +92,7 @@ namespace {
 // Construction / lifetime
 // ---------------------------------------------------------------------------
 DdsDriver::DdsDriver(Config sConfig)
-    : m_config(std::move(config))
+    : m_config(std::move(sConfig))
 {
     if (m_config.strInstanceName.empty()) {
         m_config.strInstanceName = kPluginNameForDump;
@@ -370,10 +370,10 @@ void DdsDriver::m_OnReaderDataAvailable(DdsEntity reader, void *pvArg)
     }
 }
 
-std::shared_ptr<DdsDriver::LocalReader> DdsDriver::m_EnsureLocalReader(const std::string &strTopic) const
+std::shared_ptr<DdsDriver::LocalReader> DdsDriver::m_EnsureLocalReader(const std::string &topic) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    auto it = m_localReaders.find(strTopic);
+    auto it = m_localReaders.find(topic);
     if (it != m_localReaders.end()) {
         return it->second;
     }
@@ -395,11 +395,11 @@ std::shared_ptr<DdsDriver::LocalReader> DdsDriver::m_EnsureLocalReader(const std
     localReader->owner       = const_cast<DdsDriver *>(this);
 
     const DdsEntity topicEnt = dds_create_topic(m_participant, &ucmdexec_dds_GenericSample_desc,
-                                                strTopic.c_str(), nullptr, nullptr);
+                                                topic.c_str(), nullptr, nullptr);
     if (topicEnt < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(strTopic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(topic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-topicEnt)));
-        m_localReaders.emplace(strTopic, localReader); // still register it — receive() needs a queue to wait on even if empty forever
+        m_localReaders.emplace(topic, localReader); // still register it — receive() needs a queue to wait on even if empty forever
         return localReader;
     }
 
@@ -421,15 +421,15 @@ std::shared_ptr<DdsDriver::LocalReader> DdsDriver::m_EnsureLocalReader(const std
     dds_delete_qos(qos);
 
     if (readerEnt < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_reader failed for '"); LOG_STRING(strTopic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_reader failed for '"); LOG_STRING(topic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-readerEnt)));
         dds_delete(topicEnt);
     } else {
-        localReader->strTopic  = topicEnt;
+        localReader->topic  = topicEnt;
         localReader->reader = readerEnt;
     }
 
-    m_localReaders.emplace(strTopic, localReader);
+    m_localReaders.emplace(topic, localReader);
     return localReader;
 }
 
@@ -441,7 +441,7 @@ bool DdsDriver::m_Publish(const std::string &strTopic, const std::string &strPay
     }
 
     ucmdexec_dds_GenericSample sample;
-    sample.strPayload        = const_cast<char *>(strPayload.c_str()); // dds_write() serializes synchronously — no lifetime issue past this call
+    sample.payload        = const_cast<char *>(strPayload.c_str()); // dds_write() serializes synchronously — no lifetime issue past this call
 
     const dds_return_t rc = dds_write(writer, &sample);
     if (rc != DDS_RETCODE_OK) {
@@ -472,8 +472,8 @@ bool DdsDriver::m_Unsubscribe(const std::string &strTopic) const
     if (it->second->reader >= 0) {
         dds_delete(it->second->reader);
     }
-    if (it->second->strTopic >= 0) {
-        dds_delete(it->second->strTopic);
+    if (it->second->topic >= 0) {
+        dds_delete(it->second->topic);
     }
     m_localReaders.erase(it);
     return true;
@@ -671,7 +671,7 @@ namespace {
 /// sample on success; returns std::nullopt on timeout/cancellation,
 /// touching nothing. A private static member (not a free function) purely
 /// because LocalReader is a private nested type.
-std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &sReader, uint32_t u32ReadTimeout,
+std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
                                                     std::stop_token stop_tok)
 {
     // 0 == infinite timeout: condition_variable_any::wait(lock, stop_token, pred) is a
@@ -680,10 +680,10 @@ std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &sReader, uint32_
     // stop_token-aware timed wait on condition_variable_any, so it falls back to
     // a bounded 200ms-slice wait_for() retry loop — same shape used by the
     // poll()-based drivers (see e.g. uUartLinux.cpp's timeout_read()).
-    std::unique_lock<std::mutex> qlock(sReader.queueMutex);
+    std::unique_lock<std::mutex> qlock(reader.queueMutex);
     bool got;
     if (u32ReadTimeout == 0) {
-        got = sReader.queueCv.wait(qlock, stop_tok, [&] { return !sReader.queue.empty(); });
+        got = reader.queueCv.wait(qlock, stop_tok, [&] { return !reader.queue.empty(); });
     } else {
         constexpr auto kSliceMs = std::chrono::milliseconds(200);
         const auto tDeadline    = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
@@ -700,7 +700,7 @@ std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &sReader, uint32_
             }
             const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow);
             const auto sliceMs   = std::min(kSliceMs, remaining);
-            got                  = sReader.queueCv.wait_for(qlock, sliceMs, [&] { return !sReader.queue.empty(); });
+            got                  = reader.queueCv.wait_for(qlock, sliceMs, [&] { return !reader.queue.empty(); });
             if (got) {
                 break;
             }
@@ -709,8 +709,8 @@ std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &sReader, uint32_
     if (!got) {
         return std::nullopt;
     }
-    std::string payload = std::move(sReader.queue.front());
-    sReader.queue.pop_front();
+    std::string payload = std::move(reader.queue.front());
+    reader.queue.pop_front();
     return payload;
 }
 

@@ -107,7 +107,7 @@ bool generic_module_dispatch(const T *pOwner,
     ustring::splitAtFirst(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     if (parts.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd strArgs]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd args]"));
         return false;
     }
 
@@ -117,7 +117,7 @@ bool generic_module_dispatch(const T *pOwner,
     }
 
     if (parts.size() < 2) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd strArgs]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd args]"));
         return false;
     }
 
@@ -305,25 +305,25 @@ bool generic_write_read_file(const T *pOwner,
      friend const IniValues* getAccessIniValues(const T&)
 ============================================================================================ */
 template <typename T>
-bool generic_execute_script(const T *pDriver, const std::string &strPluginName, const std::string &strScriptName, std::stop_token st = {})
+bool generic_execute_script(const T *pOwner, const std::string &strPluginName, const std::string &strArgs, std::stop_token st = {})
 {
-    const auto *ini = getAccessIniValues(*pDriver);
+    const auto *ini = getAccessIniValues(*pOwner);
 
-    if (strScriptName == "help") {
+    if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
 
     std::string strPath;
-    ufile::buildFilePath(ini->strArtefactsPath, strScriptName, strPath);
+    ufile::buildFilePath(ini->strArtefactsPath, strArgs, strPath);
     if (!ufile::fileExistsAndNotEmpty(strPath)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found:"); LOG_STRING(strPath));
         return false;
     }
 
     // Build a non-owning shared_ptr alias around the raw UART driver
-    auto spUart = std::shared_ptr<::UART>(std::shared_ptr<::UART>{}, &pDriver->drvUart);
+    auto spUart = std::shared_ptr<::UART>(std::shared_ptr<::UART>{}, &pOwner->drvUart);
     try {
         CommScriptClient<::UART> client(strPath, spUart,
                                         strPluginName,
@@ -333,7 +333,7 @@ bool generic_execute_script(const T *pDriver, const std::string &strPluginName, 
                                         typename CommScriptClient<::UART>::SendFunc{},
                                         typename CommScriptClient<::UART>::RecvFunc{},
                                         st);
-        bool bEnabled = getEnabledStatus(*pDriver);
+        bool bEnabled = getEnabledStatus(*pOwner);
         return client.execute(bEnabled);
     } catch (const std::exception &e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script failed:"); LOG_STRING(e.what()));

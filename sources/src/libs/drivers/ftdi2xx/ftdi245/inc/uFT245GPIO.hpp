@@ -82,17 +82,17 @@ class FT245GPIO : public FT245Base {
          * @param dirMask      1 = output, 0 = input (per-pin)
          * @param initialValue Output level for pins newly becoming outputs
          */
-        Status set_direction(uint8_t u8DirMask, uint8_t u8DirMask = 0x00u);
+        Status set_direction(uint8_t u8DirMask, uint8_t u8InitialValue = 0x00u);
 
         // ── Output control ────────────────────────────────────────────────────
         /** Write a full byte to the output pins (masked by direction) */
         Status write(uint8_t u8Value);
         /** Assert (set high) selected output pins */
-        Status set_pins(uint8_t u8Bank);
+        Status set_pins(uint8_t u8PinMask);
         /** Deassert (set low) selected output pins */
-        Status clear_pins(uint8_t u8Bank);
+        Status clear_pins(uint8_t u8PinMask);
         /** Toggle selected output pins */
-        Status toggle_pins(uint8_t u8Bank);
+        Status toggle_pins(uint8_t u8PinMask);
 
         // ── Input reading ─────────────────────────────────────────────────────
         /**
@@ -104,7 +104,7 @@ class FT245GPIO : public FT245Base {
          */
         Status read(uint8_t &u8Value);
         /** Read (rawValue & pinMask) into value */
-        Status read_pins(uint8_t u8Bank, uint8_t &u8PinMask);
+        Status read_pins(uint8_t u8PinMask, uint8_t &u8Value);
 
     private:
         uint8_t m_value   = 0x00u; ///< Last written output byte

@@ -56,11 +56,11 @@ namespace loopback {
             return strS;
         }
 
-        inline std::vector<std::string> splitSlash(const std::string &strS)
+        inline std::vector<std::string> splitSlash(const std::string &s)
         {
             std::vector<std::string> tokens;
             std::string cur;
-            for (char c : strS) {
+            for (char c : s) {
                 if (c == '/') {
                     tokens.push_back(cur);
                     cur.clear();
@@ -122,7 +122,7 @@ namespace loopback {
     // usage.
     struct SpecError : std::runtime_error {
             explicit SpecError(const std::string &strMsg)
-                : std::runtime_error(msg)
+                : std::runtime_error(strMsg)
             {
             }
     };
@@ -131,12 +131,12 @@ namespace loopback {
     {
         std::string type, rest;
         if (!detail::splitTypeAndRest(strSpec, type, rest)) {
-            throw SpecError("malformed strSpec '" + strSpec + "' (expected TYPE:PARAMS or TYPE/PARAMS)");
+            throw SpecError("malformed spec '" + strSpec + "' (expected TYPE:PARAMS or TYPE/PARAMS)");
         }
 
         if (type == "uart") {
             if (rest.empty()) {
-                throw SpecError("uart strSpec requires a device, e.g. uart:/dev/tnt0/115200");
+                throw SpecError("uart spec requires a device, e.g. uart:/dev/tnt0/115200");
             }
 
             std::string device = rest;
@@ -151,7 +151,7 @@ namespace loopback {
                 }
             }
             if (device.empty()) {
-                throw SpecError("uart strSpec requires a device path, e.g. uart:/dev/tnt0/115200");
+                throw SpecError("uart spec requires a device path, e.g. uart:/dev/tnt0/115200");
             }
 
             return std::make_shared<UartChannel>(device, baud);
@@ -160,7 +160,7 @@ namespace loopback {
         if (type == "kvcan" || type == "can") {
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
-                throw SpecError("kvcan strSpec requires an interface, e.g. kvcan:vcan0/0x100");
+                throw SpecError("kvcan spec requires an interface, e.g. kvcan:vcan0/0x100");
             }
 
             std::optional<uint32_t> fixed_id;
@@ -174,12 +174,12 @@ namespace loopback {
         if (type == "tcpip" || type == "tcp") {
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
-                throw SpecError("tcpip strSpec requires at least a port, e.g. tcpip:5000");
+                throw SpecError("tcpip spec requires at least a port, e.g. tcpip:5000");
             }
 
             if (detail::toLower(tokens[0]) == "client") {
                 if (tokens.size() < 3) {
-                    throw SpecError("tcpip client strSpec needs a host and port, e.g. tcpip:client/10.0.0.5/5000");
+                    throw SpecError("tcpip client spec needs a host and port, e.g. tcpip:client/10.0.0.5/5000");
                 }
                 int port = static_cast<int>(detail::parseNumber(tokens[2]));
                 return std::make_shared<TcpChannel>(TcpChannel::ClientTag{}, tokens[1], port);
@@ -191,7 +191,7 @@ namespace loopback {
                 idx = 1;
             }
             if (idx >= tokens.size()) {
-                throw SpecError("tcpip server strSpec requires a port, e.g. tcpip:server/5000");
+                throw SpecError("tcpip server spec requires a port, e.g. tcpip:server/5000");
             }
 
             int port              = static_cast<int>(detail::parseNumber(tokens[idx]));
@@ -202,12 +202,12 @@ namespace loopback {
         if (type == "udp") {
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
-                throw SpecError("udp strSpec requires at least a port, e.g. udp:5000");
+                throw SpecError("udp spec requires at least a port, e.g. udp:5000");
             }
 
             if (detail::toLower(tokens[0]) == "client") {
                 if (tokens.size() < 3) {
-                    throw SpecError("udp client strSpec needs a host and port, e.g. udp:client/10.0.0.5/5000");
+                    throw SpecError("udp client spec needs a host and port, e.g. udp:client/10.0.0.5/5000");
                 }
                 int port = static_cast<int>(detail::parseNumber(tokens[2]));
                 return std::make_shared<UdpChannel>(UdpChannel::ClientTag{}, tokens[1], port);
@@ -218,7 +218,7 @@ namespace loopback {
                 idx = 1;
             }
             if (idx >= tokens.size()) {
-                throw SpecError("udp server strSpec requires a port, e.g. udp:server/5000");
+                throw SpecError("udp server spec requires a port, e.g. udp:server/5000");
             }
 
             int port              = static_cast<int>(detail::parseNumber(tokens[idx]));
@@ -229,7 +229,7 @@ namespace loopback {
         if (type == "raweth" || type == "eth") {
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
-                throw SpecError("raweth strSpec requires an interface, e.g. raweth:eth0");
+                throw SpecError("raweth spec requires an interface, e.g. raweth:eth0");
             }
 
             std::string ifname         = tokens[0];

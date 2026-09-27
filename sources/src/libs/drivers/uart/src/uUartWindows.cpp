@@ -278,9 +278,9 @@ UART::Status UART::setup(uint32_t u32Speed, Parity eParity, uint8_t u8DataBits, 
         dcb.Parity = NOPARITY;
         break;
     }
-    // fParity enables the UART hardware's own eParity check; deliberately not
+    // fParity enables the UART hardware's own parity check; deliberately not
     // paired with fErrorChar/fAbortOnError — see the Parity enum's doc
-    // comment (uUart.hpp) for why a eParity error is not turned into a
+    // comment (uUart.hpp) for why a parity error is not turned into a
     // dropped/substituted byte or a read failure by this driver.
     dcb.fParity       = (eParity != Parity::None) ? TRUE : FALSE;
     dcb.StopBits      = (u8StopBits >= 2) ? TWOSTOPBITS : ONESTOPBIT;

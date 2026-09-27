@@ -67,14 +67,14 @@ class ModbusProtocol {
         // Each assigns and returns the transaction id used (echoed back by the
         // slave in its response's MBAP header, and how ModbusDriver matches a
         // response to the request that caused it).
-        std::vector<uint8_t> buildReadCoils(uint8_t u8UnitId, uint16_t u16StartAddr, uint16_t u16Quantity, uint16_t *pu16OutTxnId);
-        std::vector<uint8_t> buildReadDiscreteInputs(uint8_t u8UnitId, uint16_t u16StartAddr, uint16_t u16Quantity, uint16_t *pu16OutTxnId);
-        std::vector<uint8_t> buildReadHoldingRegisters(uint8_t u8UnitId, uint16_t u16StartAddr, uint16_t u16Quantity, uint16_t *pu16OutTxnId);
-        std::vector<uint8_t> buildReadInputRegisters(uint8_t u8UnitId, uint16_t u16StartAddr, uint16_t u16Quantity, uint16_t *pu16OutTxnId);
-        std::vector<uint8_t> buildWriteSingleCoil(uint8_t u8UnitId, uint16_t u16Addr, bool bValue, uint16_t *pu16OutTxnId);
-        std::vector<uint8_t> buildWriteSingleRegister(uint8_t u8UnitId, uint16_t u16Addr, uint16_t u16Value, uint16_t *pu16OutTxnId);
-        std::vector<uint8_t> buildWriteMultipleCoils(uint8_t u8UnitId, uint16_t u16StartAddr, const std::vector<bool> &vValues, uint16_t *pu16OutTxnId);
-        std::vector<uint8_t> buildWriteMultipleRegisters(uint8_t u8UnitId, uint16_t u16StartAddr, const std::vector<uint16_t> &vValues, uint16_t *pu16OutTxnId);
+        std::vector<uint8_t> buildReadCoils(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId);
+        std::vector<uint8_t> buildReadDiscreteInputs(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId);
+        std::vector<uint8_t> buildReadHoldingRegisters(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId);
+        std::vector<uint8_t> buildReadInputRegisters(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId);
+        std::vector<uint8_t> buildWriteSingleCoil(uint8_t unitId, uint16_t addr, bool value, uint16_t *pOutTxnId);
+        std::vector<uint8_t> buildWriteSingleRegister(uint8_t unitId, uint16_t addr, uint16_t value, uint16_t *pOutTxnId);
+        std::vector<uint8_t> buildWriteMultipleCoils(uint8_t unitId, uint16_t startAddr, const std::vector<bool> &values, uint16_t *pOutTxnId);
+        std::vector<uint8_t> buildWriteMultipleRegisters(uint8_t unitId, uint16_t startAddr, const std::vector<uint16_t> &values, uint16_t *pOutTxnId);
 
         // ---- ADU framing helpers, used by ModbusDriver's read loop ----
         // MBAP header is exactly 7 bytes: Transaction Id(2) + Protocol Id(2) +
@@ -126,7 +126,7 @@ class ModbusProtocol {
             return m_nextTransactionId++;
         }
 
-        std::vector<uint8_t> m_buildRequest(uint8_t u8UnitId, const std::vector<uint8_t> &vPdu, uint16_t *pu16OutTxnId);
+        std::vector<uint8_t> m_buildRequest(uint8_t unitId, const std::vector<uint8_t> &pdu, uint16_t *pOutTxnId);
 };
 
 #endif // MODBUS_PROTOCOL_HPP

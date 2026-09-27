@@ -38,7 +38,7 @@ namespace loopback {
             // the Message (i.e. whatever a CAN *input* channel last received),
             // and finally to kDefaultId.
             CanChannel(std::string strIfname, std::optional<uint32_t> fixed_id)
-                : ifname_(std::move(ifname))
+                : ifname_(std::move(strIfname))
                 , fixed_id_(fixed_id)
             {
             }
@@ -156,7 +156,7 @@ namespace loopback {
                 frame.can_dlc = static_cast<uint8_t>(sMsg.data.size());
                 std::memcpy(frame.data, sMsg.data.data(), sMsg.data.size());
 
-                // Reflect the ID actually transmitted back into sMsg so the TX
+                // Reflect the ID actually transmitted back into msg so the TX
                 // dump line (printed by the caller after writeMessage returns)
                 // shows what really went on the bus.
                 sMsg.has_can_id = true;

@@ -74,7 +74,7 @@ namespace HydraHAL {
             /**
              * @brief Read exactly `length` bytes with an explicit timeout override.
              */
-            std::vector<uint8_t> read(size_t length, uint32_t u32Timeout_ms, std::stop_token stop_tok = {});
+            std::vector<uint8_t> read(size_t length, uint32_t timeout_ms, std::stop_token stop_tok = {});
 
             /**
              * @brief Drain any bytes waiting in the receive buffer.

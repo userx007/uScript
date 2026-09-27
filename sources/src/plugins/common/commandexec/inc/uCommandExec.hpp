@@ -527,7 +527,7 @@ namespace ucmdexec {
      */
     /*--------------------------------------------------------------------------------------------------------*/
     template <typename OpenFn>
-    bool generic_send_cyclic(const std::string &strArgs,
+    bool generic_send_cyclic(const std::string &strArgsIn,
                              bool bIsEnabled,
                              OpenFn &&openFn,
                              const std::string &strPluginName,
@@ -544,7 +544,7 @@ namespace ucmdexec {
         bool bRetVal  = false;
 
         do {
-            if (strArgs.empty()) {
+            if (strArgsIn.empty()) {
                 LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr);
                           LOG_STRING("Missing arg(s): time1:val1, time2:val2, ..."));
                 break;
@@ -567,7 +567,7 @@ namespace ucmdexec {
             // array structure itself (entry count, each entry's time_i) never depends on a
             // volatile macro's value, so it is safe to do exactly once here regardless of
             // bCached.
-            std::string strArgs = strArgs;
+            std::string strArgs = strArgsIn;
             if (bCached) {
                 uvolatile::resolveVolatileMacros(strArgs);
             }
@@ -727,7 +727,7 @@ namespace ucmdexec {
                         // re-validate/re-parse it into a fresh, throwaway CommCommand - on
                         // every single due tick, deliberately not reusing anything from a
                         // previous tick. This is what lets an entry track a background
-                        // thread's latest "VAL ?= PLUGIN.CMD strArgs &" result for as long as
+                        // thread's latest "VAL ?= PLUGIN.CMD args &" result for as long as
                         // the CYCLIC session runs; see bCached's doc comment above for the
                         // cost/benefit trade-off against the cached (default) branch.
                         for (const auto &sEntry : vEntries) {

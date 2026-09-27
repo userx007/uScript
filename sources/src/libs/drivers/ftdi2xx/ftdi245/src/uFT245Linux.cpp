@@ -54,7 +54,7 @@ FT245Base::Status FT245Base::open_device(Variant eVariant,
                                          FifoMode eFifoMode,
                                          uint8_t u8DeviceIndex)
 {
-    // ── Validate mode vs eVariant ──────────────────────────────────────────────
+    // ── Validate mode vs variant ──────────────────────────────────────────────
     // FT245R does not support synchronous FIFO mode.
     if (eVariant == Variant::FT245R && eFifoMode == FifoMode::Sync) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -144,9 +144,9 @@ FT245Base::Status FT245Base::open_device(Variant eVariant,
     m_hDevice  = ctx;
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("FT245 opened: eVariant=");
+              LOG_STRING("FT245 opened: variant=");
               LOG_UINT32(static_cast<uint8_t>(eVariant));
-              LOG_STRING("eFifoMode="); LOG_UINT32(static_cast<uint8_t>(eFifoMode));
+              LOG_STRING("fifoMode="); LOG_UINT32(static_cast<uint8_t>(eFifoMode));
               LOG_STRING("index="); LOG_UINT32(u8DeviceIndex));
 
     return Status::SUCCESS;

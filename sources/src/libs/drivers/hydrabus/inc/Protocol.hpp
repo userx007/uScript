@@ -102,7 +102,7 @@ namespace HydraHAL {
             bool _write_u32_le(uint32_t u32V, std::stop_token stop_tok = {});
 
             std::vector<uint8_t> _read(size_t n, std::stop_token stop_tok = {});
-            std::vector<uint8_t> _read_with_timeout(size_t n, uint32_t u32Timeout_ms, std::stop_token stop_tok = {});
+            std::vector<uint8_t> _read_with_timeout(size_t n, uint32_t timeout_ms, std::stop_token stop_tok = {});
             uint8_t _read_byte(std::stop_token stop_tok = {});
 
             /**

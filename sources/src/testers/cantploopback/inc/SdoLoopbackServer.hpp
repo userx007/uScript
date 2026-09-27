@@ -88,7 +88,7 @@ class SdoLoopbackServer {
          */
         static bool serve_one(const ICommDriver &bus, std::string_view rxId, std::string_view txId,
                               uint32_t u32TimeoutMs, std::vector<uint8_t> &vStored,
-                              const std::function<void(bool bIsDownload)> &onDirectionKnown = {});
+                              const std::function<void(bool isDownload)> &onDirectionKnown = {});
 };
 
 #endif // CAN_TP_SDO_LOOPBACK_SERVER_HPP

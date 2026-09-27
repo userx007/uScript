@@ -400,7 +400,7 @@ bool SYSTECPlugin::m_SYSTEC_HWCTRL(const std::string &strArgs, std::stop_token s
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
     // (key recognition above still ran, matching the CMD/FILTER validation-only convention)
     // NOTE: intentionally NOT `static` — strKey is a fresh local computed
-    // from this call's strArgs every time; a `static const` here would only
+    // from this call's args every time; a `static const` here would only
     // ever evaluate against whichever key happened to be passed on the
     // very first call to this function and then serve that stale cached
     // true/false for every subsequent call regardless of the actual key.

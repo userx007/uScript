@@ -30,7 +30,7 @@
 //  TermView
 // ═════════════════════════════════════════════════════════════════════════════
 
-TermView::TermView(QWidget *pParent)
+TermView::TermView(QWidget *parent)
     : QAbstractScrollArea(parent)
 {
     // Default monospace font
@@ -81,13 +81,13 @@ void TermView::ensureLine(int iRow)
     }
 }
 
-TermCell &TermView::cell(int iRow, int iCol)
+TermCell &TermView::cell(int row, int col)
 {
-    ensureLine(iRow);
-    if (m_grid[iRow].size() <= iCol) {
-        m_grid[iRow].resize(iCol + 1);
+    ensureLine(row);
+    if (m_grid[row].size() <= col) {
+        m_grid[row].resize(col + 1);
     }
-    return m_grid[iRow][iCol];
+    return m_grid[row][col];
 }
 
 void TermView::putChar(QChar c)
@@ -876,7 +876,7 @@ void TermView::clearKeepPrompt()
 // ═════════════════════════════════════════════════════════════════════════════
 
 ShellTerminal::ShellTerminal(QWidget *pParent)
-    : QFrame(parent)
+    : QFrame(pParent)
 {
     setObjectName("panelFrame");
     setFrameShape(QFrame::NoFrame);

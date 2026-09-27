@@ -106,7 +106,7 @@ static QFont buildEditorFont(int iPointSize)
 //  Construction
 // ─────────────────────────────────────────────────────────────────────────────
 MainWindow::MainWindow(QWidget *pParent)
-    : QMainWindow(parent)
+    : QMainWindow(pParent)
     , m_process(new QProcess(this))
 {
     setWindowTitle("µScript Front-End");
@@ -866,7 +866,7 @@ void MainWindow::onTabCloseRequested(int iIndex)
         viewer->deleteLater();
     }
 
-    // Adjust running tab iIndex if needed
+    // Adjust running tab index if needed
     if (m_runningTab > iIndex) {
         --m_runningTab;
     }
@@ -2455,7 +2455,7 @@ void MainWindow::saveAllTabs()
 // ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::updateTabModifiedState(ScriptViewer *pViewer)
 {
-    // Find which tab owns this pViewer
+    // Find which tab owns this viewer
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         if (m_tabWidget->widget(i) != pViewer) {
             continue;

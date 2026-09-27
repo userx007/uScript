@@ -366,7 +366,7 @@ SYSTECCAN::Status SYSTECCAN::kmp_stream_match(std::span<const uint8_t> token,
     // A scratch buffer sized to one max classic-CAN payload (8 bytes) is
     // sufficient because timeout_read() fills it with exactly one frame's
     // DLC bytes at a time (systec_can.ko is classic CAN only — see class docs).
-    // The ring buffer (used only when bUseBuffer) is sized independently, to
+    // The ring buffer (used only when useBuffer) is sized independently, to
     // the driver's overall max buffer length rather than a single frame.
     return ukmp::kmp_stream_match(
         [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t &bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },

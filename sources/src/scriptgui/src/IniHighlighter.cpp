@@ -29,7 +29,7 @@ QTextCharFormat IniHighlighter::fmt(const QString &hex, bool bBold, bool bItalic
 // ─────────────────────────────────────────────────────────────────────────────
 
 IniHighlighter::IniHighlighter(QTextDocument *pParent)
-    : QSyntaxHighlighter(parent)
+    : QSyntaxHighlighter(pParent)
 {
     // [section header]
     // Group 1 = opening '[',  group 2 = name,  group 3 = closing ']'

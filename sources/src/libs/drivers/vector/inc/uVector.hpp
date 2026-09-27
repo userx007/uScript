@@ -284,7 +284,7 @@ class Vector : public ICommDriver {
          * @return Zero, one, or many matches — callers needing exactly one (openDirect())
          *         must check size() themselves and report ambiguity/absence distinctly.
          */
-        static std::vector<ChannelInfo> matchChannels(const DeviceSelector &sSel);
+        static std::vector<ChannelInfo> matchChannels(const DeviceSelector &sel);
 
         /** Map an XL_HWTYPE_* value to a short human-readable name, e.g. 55 -> "VN1610". */
         static std::string hwTypeToString(uint32_t u32HwType);

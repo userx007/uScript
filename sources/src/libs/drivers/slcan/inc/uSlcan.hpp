@@ -460,7 +460,7 @@ class SLCAN : public ICommDriver {
          * @param cmd         Command string (without CR; CR is appended internally)
          * @param timeout_ms  Timeout in ms
          */
-        Status send_command(std::string_view cmd, uint32_t u32Payload);
+        Status send_command(std::string_view cmd, uint32_t u32Timeout_ms);
 
         /**
          * @brief Send a command and read back the text response terminated by CR.

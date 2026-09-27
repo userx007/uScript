@@ -46,16 +46,16 @@ MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
-std::shared_ptr<Microshell> Microshell::getShellSharedPtr(uShellInst_s *pShellInst, const char *pstrPromptExt)
+std::shared_ptr<Microshell> Microshell::getShellSharedPtr(uShellInst_s *psShellInst, const char *pstrPromptExt)
 {
-    return std::shared_ptr<Microshell>(new Microshell(pShellInst, pstrPromptExt));
+    return std::shared_ptr<Microshell>(new Microshell(psShellInst, pstrPromptExt));
 } /* getShellSharedPtr() */
 #endif // (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 
 /*----------------------------------------------------------------------------*/
-Microshell *Microshell::getShellPtr(uShellInst_s *pShellInst, const char *pstrPromptExt)
+Microshell *Microshell::getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt)
 {
-    static Microshell uShellInstance(pShellInst, pstrPromptExt);
+    static Microshell uShellInstance(psShellInst, pstrPromptExt);
     return &uShellInstance;
 } /* getShell() */
 
@@ -1358,7 +1358,7 @@ void Microshell::m_HistoryRemoveOldestEntry(history_s *pHistory)
 
 void Microshell::m_HistoryInitCore(history_s *pHistory, char *pstrDataBuffer, size_t szCapacity)
 {
-    pHistory->pstrDataBuffer      = pstrDataBuffer;
+    pHistory->pDataBuffer      = pstrDataBuffer;
     pHistory->szDataBufferSize = szCapacity;
     pHistory->szDataHeadPos    = 0;
     pHistory->szOldestEntryPos = 0;

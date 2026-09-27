@@ -14,7 +14,7 @@
 class QPaintEvent;
 
 StatusLed::StatusLed(QWidget *pParent)
-    : QWidget(parent)
+    : QWidget(pParent)
 {
     setFixedSize(14, 14);
 }

@@ -86,7 +86,7 @@ static __s32 i2c_smbus_access(int iFd, char read_write, __u8 command,
     struct i2c_smbus_ioctl_data args;
     args.read_write = read_write;
     args.command    = command;
-    args.iSize       = iSize;
+    args.size       = iSize;
     args.data       = data;
     return ioctl(iFd, I2C_SMBUS, &args);
 }

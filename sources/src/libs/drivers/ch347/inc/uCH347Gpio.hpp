@@ -78,7 +78,7 @@ enum class GpioIrqEdge : uint8_t {
 };
 
 /** Callback type invoked from the CH347 ISR thread. */
-using GpioIrqHandler = std::function<void(uint8_t u8PinIndex)>;
+using GpioIrqHandler = std::function<void(uint8_t pinIndex)>;
 
 // ---------------------------------------------------------------------------
 

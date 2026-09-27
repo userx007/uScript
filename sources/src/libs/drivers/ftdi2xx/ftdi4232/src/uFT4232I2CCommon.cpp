@@ -508,7 +508,7 @@ FT4232I2C::Status FT4232I2C::i2c_write_byte(uint8_t u8Byte, bool &bAck) const
         return s;
     }
 
-    // ── Fetch 1-u8Byte ACK response ─────────────────────────────────────────
+    // ── Fetch 1-byte ACK response ─────────────────────────────────────────
     uint8_t response = 0xFF;
     size_t got       = 0;
     s                = mpsse_read(&response, 1, 200, got);
@@ -569,7 +569,7 @@ FT4232I2C::Status FT4232I2C::i2c_read_byte(uint8_t &u8Byte, bool bSendAck, std::
         return Status::READ_ERROR;
     }
 
-    // Reconstruct u8Byte — each response's bit 2 (SDA_I) is the data bit.
+    // Reconstruct byte — each response's bit 2 (SDA_I) is the data bit.
     // First iteration = MSB (bit 7).
     for (int i = 0; i < 8; ++i) {
         u8Byte = static_cast<uint8_t>((u8Byte << 1) | ((responses[i] >> 2) & 0x01u));

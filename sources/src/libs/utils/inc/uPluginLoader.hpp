@@ -120,9 +120,9 @@ struct PluginLoadError {
         std::string pluginName;
 
         PluginLoadError(ErrorType eT, std::string strMsg, std::string strName = "")
-            : type(t)
-            , message(std::move(msg))
-            , pluginName(std::move(name))
+            : type(eT)
+            , message(std::move(strMsg))
+            , pluginName(std::move(strName))
         {
         }
 };
@@ -141,9 +141,9 @@ using PluginResult = std::pair<T, std::optional<PluginLoadError>>;
 class PluginPathGenerator {
     public:
         PluginPathGenerator(std::string strDirectory, std::string strPrefix, std::string strExtension)
-            : pluginDirectory_(ensureTrailingSeparator(std::move(directory)))
-            , pluginPrefix_(std::move(prefix))
-            , pluginExtension_(ensureLeadingDot(std::move(extension)))
+            : pluginDirectory_(ensureTrailingSeparator(std::move(strDirectory)))
+            , pluginPrefix_(std::move(strPrefix))
+            , pluginExtension_(ensureLeadingDot(std::move(strExtension)))
         {
         }
 
@@ -206,8 +206,8 @@ class PluginPathGenerator {
 class PluginEntryPointResolver {
     public:
         PluginEntryPointResolver(std::string strEntryName, std::string strExitName)
-            : entryName_(std::move(entryName))
-            , exitName_(std::move(exitName))
+            : entryName_(std::move(strEntryName))
+            , exitName_(std::move(strExitName))
         {
         }
 
@@ -311,17 +311,17 @@ class PluginLoaderFunctor {
         {
         }
 
-        PluginResult<PluginHandle> loadWithError(const std::string &strPluginName) const
+        PluginResult<PluginHandle> loadWithError(const std::string &pluginName) const
         {
             PluginHandle resultHandle{nullptr, nullptr};
-            std::filesystem::path pluginPath = m_pathGen(strPluginName);
+            std::filesystem::path pluginPath = m_pathGen(pluginName);
 
             // Check if file exists
             if (!std::filesystem::exists(pluginPath)) {
                 return {resultHandle, PluginLoadError{
                                           PluginLoadError::ErrorType::FileNotFound,
                                           "Plugin file not found: " + pluginPath.string(),
-                                          strPluginName}};
+                                          pluginName}};
             }
 
             // Load the library
@@ -330,7 +330,7 @@ class PluginLoaderFunctor {
                 return {resultHandle, PluginLoadError{
                                           PluginLoadError::ErrorType::LibraryLoadFailed,
                                           "Failed to load library: " + detail::getLastLoadError(),
-                                          strPluginName}};
+                                          pluginName}};
             }
 
             // Resolve entry points
@@ -340,14 +340,14 @@ class PluginLoaderFunctor {
                 return {resultHandle, PluginLoadError{
                                           PluginLoadError::ErrorType::EntryPointNotFound,
                                           "Entry point '" + m_resolver.getEntryName() + "' not found",
-                                          strPluginName}};
+                                          pluginName}};
             }
 
             if (!pluginExit) {
                 return {resultHandle, PluginLoadError{
                                           PluginLoadError::ErrorType::ExitPointNotFound,
                                           "Exit point '" + m_resolver.getExitName() + "' not found",
-                                          strPluginName}};
+                                          pluginName}};
             }
 
             // Initialize the plugin
@@ -362,7 +362,7 @@ class PluginLoaderFunctor {
                 return {resultHandle, PluginLoadError{
                                           PluginLoadError::ErrorType::InitializationFailed,
                                           "Plugin initialization returned null",
-                                          strPluginName}};
+                                          pluginName}};
             }
 
             // Create a custom deleter that properly manages the library handle lifetime

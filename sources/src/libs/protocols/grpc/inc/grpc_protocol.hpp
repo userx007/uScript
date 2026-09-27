@@ -95,16 +95,16 @@ class GrpcProtocol {
          *         dispatches on method->client_streaming()/server_streaming()
          *         to decide which of the four it's doing.
          */
-        const google::protobuf::MethodDescriptor *resolveMethod(const std::string &strMethodPath,
-                                                                std::string &strOutError) const;
+        const google::protobuf::MethodDescriptor *resolveMethod(const std::string &methodPath,
+                                                                std::string &outError) const;
 
         /** @brief Build a fresh, empty, writable request message for a method. */
         std::unique_ptr<google::protobuf::Message> newRequestMessage(
-            const google::protobuf::MethodDescriptor *pMethod) const;
+            const google::protobuf::MethodDescriptor *method) const;
 
         /** @brief Build a fresh, empty, writable response message for a method. */
         std::unique_ptr<google::protobuf::Message> newResponseMessage(
-            const google::protobuf::MethodDescriptor *pMethod) const;
+            const google::protobuf::MethodDescriptor *method) const;
 
         /**
          * @brief Parse real JSON text (see class doc comment) into an

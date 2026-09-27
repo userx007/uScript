@@ -37,7 +37,7 @@ static int i2c_open(const char *pstrDev, uint8_t u8Addr)
 {
     int fd = open(pstrDev, O_RDWR);
     if (fd < 0) {
-        perror("open i2c-pstrDev");
+        perror("open i2c-dev");
         return -1;
     }
     if (ioctl(fd, I2C_SLAVE, u8Addr) < 0) {
@@ -64,7 +64,7 @@ static int i2c_read_reg(int iFd, uint8_t u8Reg, uint8_t *pu8Out)
 {
     /* write the register address */
     if (write(iFd, &u8Reg, 1) != 1) {
-        perror("i2c write u8Reg pointer");
+        perror("i2c write reg pointer");
         return -1;
     }
     /* read the value */

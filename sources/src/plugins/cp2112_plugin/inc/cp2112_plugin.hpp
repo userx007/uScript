@@ -208,8 +208,8 @@ class CP2112Plugin : public PluginInterface {
             m_bIsFaultTolerant = true;
         }
 
-        ModuleCommandsMap<CP2112Plugin> *getModuleCmdsMap(const std::string &strM) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
+        ModuleCommandsMap<CP2112Plugin> *getModuleCmdsMap(const std::string &m) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
         // Re-open I2C at a new clock frequency while keeping the same address
 
@@ -287,7 +287,7 @@ class CP2112Plugin : public PluginInterface {
         // Top-level command handlers
 
 #define CP2112_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_CP2112_##a(const std::string &strArgs, std::stop_token st) const;
+    bool m_CP2112_##a(const std::string &args, std::stop_token st) const;
         CP2112_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef CP2112_PLUGIN_CMD_RECORD
 

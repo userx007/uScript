@@ -493,10 +493,10 @@ namespace hexutils {
      * @return Two-character hex string
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    [[nodiscard]] constexpr std::array<char, 2> byteToHex(uint8_t u8Byte, bool bUppercase = true) noexcept
+    [[nodiscard]] constexpr std::array<char, 2> byteToHex(uint8_t byte, bool uppercase = true) noexcept
     {
-        const char *hexDigits = bUppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
-        return {hexDigits[(u8Byte >> 4) & 0xF], hexDigits[u8Byte & 0xF]};
+        const char *hexDigits = uppercase ? internal::g_hexDigitsUpper : internal::g_hexDigitsLower;
+        return {hexDigits[(byte >> 4) & 0xF], hexDigits[byte & 0xF]};
     }
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -590,7 +590,7 @@ namespace hexutils {
         }
 
         // Natural byte sequence, most-significant byte first, zero-padded to byteWidth.
-        // Any width beyond sizeof(u64Value) is simply left as zero (high-order padding).
+        // Any width beyond sizeof(value) is simply left as zero (high-order padding).
         std::vector<uint8_t> bytes(byteWidth, 0);
         for (size_t i = 0; i < byteWidth && i < sizeof(u64Value); ++i) {
             bytes[byteWidth - 1 - i] = static_cast<uint8_t>((u64Value >> (8 * i)) & 0xFF);

@@ -78,7 +78,7 @@ class TermView : public QAbstractScrollArea {
 
     private:
         void ensureLine(int iRow);
-        TermCell &cell(int iRow, int iCol);
+        TermCell &cell(int row, int col);
         void putChar(QChar c);
         void newline();
         void eraseToEndOfLine();

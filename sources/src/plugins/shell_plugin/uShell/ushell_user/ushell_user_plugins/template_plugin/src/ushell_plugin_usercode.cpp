@@ -58,7 +58,7 @@ int vhexlify(void)
 int itest(uint32_t u32I)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> itest()");
-    uSHELL_LOG(ULOG_INFO, "u32I = %u", u32I);
+    uSHELL_LOG(ULOG_INFO, "i = %u", u32I);
 
     return 0;
 }
@@ -67,7 +67,7 @@ int itest(uint32_t u32I)
 int stest(char *pstrS)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> stest()");
-    uSHELL_LOG(ULOG_INFO, "pstrS = %pstrS", pstrS);
+    uSHELL_LOG(ULOG_INFO, "s = %s", pstrS);
 
     return 0;
 }
@@ -109,8 +109,8 @@ int sunhexlify(char *pstrS)
 int iitest(uint32_t u32I1, uint32_t u32I2)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> iitest()");
-    uSHELL_LOG(ULOG_INFO, "u32I1 = %d", u32I1);
-    uSHELL_LOG(ULOG_INFO, "u32I2 = %d", u32I2);
+    uSHELL_LOG(ULOG_INFO, "i1 = %d", u32I1);
+    uSHELL_LOG(ULOG_INFO, "i2 = %d", u32I2);
 
     return 0;
 }
@@ -119,8 +119,8 @@ int iitest(uint32_t u32I1, uint32_t u32I2)
 int istest(uint32_t u32I, char *pstrS)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> istest()");
-    uSHELL_LOG(ULOG_INFO, "u32I = %d", u32I);
-    uSHELL_LOG(ULOG_INFO, "pstrS = %pstrS", pstrS);
+    uSHELL_LOG(ULOG_INFO, "i = %d", u32I);
+    uSHELL_LOG(ULOG_INFO, "s = %s", pstrS);
 
     return 0;
 }
@@ -129,8 +129,8 @@ int istest(uint32_t u32I, char *pstrS)
 int sstest(char *pstrS1, char *pstrS2)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> sstest()");
-    uSHELL_LOG(ULOG_INFO, "pstrS1 = %s", pstrS1);
-    uSHELL_LOG(ULOG_INFO, "pstrS2 = %s", pstrS2);
+    uSHELL_LOG(ULOG_INFO, "s1 = %s", pstrS1);
+    uSHELL_LOG(ULOG_INFO, "s2 = %s", pstrS2);
 
     return 0;
 }
@@ -140,12 +140,12 @@ int liotest(uint64_t u64L, uint32_t u32I, bool bO)
 {
     uSHELL_PRINTF("--> liotest()\n");
 #if (defined(__MINGW32__) || defined(_MSC_VER))
-    uSHELL_PRINTF("u64L = %lld\n", u64L);
+    uSHELL_PRINTF("l = %lld\n", u64L);
 #else
-    uSHELL_PRINTF("u64L = %ld\n", u64L);
+    uSHELL_PRINTF("l = %ld\n", u64L);
 #endif
-    uSHELL_PRINTF("u32I = %d\n", u32I);
-    uSHELL_PRINTF("bO = %d\n", bO);
+    uSHELL_PRINTF("i = %d\n", u32I);
+    uSHELL_PRINTF("o = %d\n", bO);
 
     return 0;
 }

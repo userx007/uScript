@@ -106,16 +106,16 @@ FT245GPIO *FT245Plugin::m_gpio() const
 ///////////////////////////////////////////////////////////////////
 
 ModuleCommandsMap<FT245Plugin> *
-FT245Plugin::getModuleCmdsMap(const std::string &strM) const
+FT245Plugin::getModuleCmdsMap(const std::string &m) const
 {
-    auto it = m_mapCommandsMaps.find(strM);
+    auto it = m_mapCommandsMaps.find(m);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
 ModuleSpeedMap *
-FT245Plugin::getModuleSpeedsMap(const std::string &strM) const
+FT245Plugin::getModuleSpeedsMap(const std::string &m) const
 {
-    auto it = m_mapSpeedsMaps.find(strM);
+    auto it = m_mapSpeedsMaps.find(m);
     if (it == m_mapSpeedsMaps.end()) {
         return nullptr;
     }
@@ -133,7 +133,7 @@ bool FT245Plugin::setModuleSpeed(const std::string &strModule, size_t /*hz*/) co
     // are not applicable.
     LOG_PRINT(LOG_WARNING, LOG_HDR;
               LOG_STRING("setModuleSpeed: FT245 has no configurable clock;");
-              LOG_STRING("strModule:"); LOG_STRING(strModule);
+              LOG_STRING("module:"); LOG_STRING(strModule);
               LOG_STRING("— speed setting ignored"));
     return false;
 }

@@ -47,11 +47,11 @@ typedef struct KvNode {
 
 /* Parse `text` into a tree of implicit top-level KV_OBJECT. Returns NULL
  * on malformed input. Caller must kv_free() the result. */
-KvNode *kv_parse(const char *pstrText);
+KvNode *kv_parse(const char *text);
 
 /* Look up a direct child of an object node by key. NULL if absent or
  * `node` is not a KV_OBJECT. */
-const KvNode *kv_get(const KvNode *psNode, const char *pstrKey);
+const KvNode *kv_get(const KvNode *node, const char *key);
 
 /* Convenience scalar readers. Return false (leaving *out untouched) if
  * `node` is NULL or not a KV_SCALAR, or the text doesn't parse as that
@@ -59,7 +59,7 @@ const KvNode *kv_get(const KvNode *psNode, const char *pstrKey);
 bool kv_as_i64(const KvNode *psNode, long long *out);
 bool kv_as_double(const KvNode *psNode, double *pOut);
 bool kv_as_bool(const KvNode *psNode, bool *pbOut);
-const char *kv_as_str(const KvNode *psNode); /* NULL if not KV_SCALAR */
+const char *kv_as_str(const KvNode *node); /* NULL if not KV_SCALAR */
 
 void kv_free(KvNode *psNode);
 

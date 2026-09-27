@@ -121,9 +121,9 @@ class Calculator {
         // so that assigned variables survive between calls.
         Calculator(const std::string &strExpr,
                    std::unordered_map<std::string, double> &mapVars)
-            : m_expr(expr)
+            : m_expr(strExpr)
             , m_pos(0)
-            , m_vars(vars)
+            , m_vars(mapVars)
         {
             // Built-in constants (only set if not already defined by the user)
             m_vars.try_emplace("pi", M_PI);

@@ -495,7 +495,7 @@ static inline bool CH347GPIO_IRQ_Set(CH347_HANDLE idx,
     const UCHAR Int0Pin  = bEnable
                                ? static_cast<UCHAR>(u8PinIndex)
                                : static_cast<UCHAR>(0xFF);
-    // u8IrqType: 0=none,1=rising,2=falling,3=both  (same encoding on both OSes)
+    // irqType: 0=none,1=rising,2=falling,3=both  (same encoding on both OSes)
     const UCHAR Int0Mode = static_cast<UCHAR>(u8IrqType & 0x03u);
 
     return ::CH347SetIntRoutine(

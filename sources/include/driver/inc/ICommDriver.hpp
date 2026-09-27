@@ -231,9 +231,9 @@ class ICommDriver {
  */
 template <typename TDriver>
 using PFSEND = std::function<typename ICommDriver::WriteResult(
-    uint32_t u32Timeout,
+    uint32_t timeout,
     std::span<const uint8_t> buffer,
-    std::shared_ptr<const TDriver> shpDriver,
+    std::shared_ptr<const TDriver> driver,
     std::string_view xtra_params,
     std::stop_token stop_tok)>;
 
@@ -251,10 +251,10 @@ using PFSEND = std::function<typename ICommDriver::WriteResult(
  */
 template <typename TDriver>
 using PFRECV = std::function<typename ICommDriver::ReadResult(
-    uint32_t u32Timeout,
+    uint32_t timeout,
     std::span<uint8_t> buffer,
     const typename ICommDriver::ReadOptions &options,
-    std::shared_ptr<const TDriver> shpDriver,
+    std::shared_ptr<const TDriver> driver,
     std::string_view xtra_params,
     std::stop_token stop_tok)>;
 

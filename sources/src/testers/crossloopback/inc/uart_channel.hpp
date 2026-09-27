@@ -19,7 +19,7 @@ namespace loopback {
     class UartChannel : public IChannel {
         public:
             UartChannel(std::string strDevice, long baud)
-                : device_(std::move(device))
+                : device_(std::move(strDevice))
                 , baud_(baud)
             {
             }

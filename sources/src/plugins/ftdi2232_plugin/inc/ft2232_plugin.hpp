@@ -241,8 +241,8 @@ class FT2232Plugin : public PluginInterface {
 
         // Module-map accessors
 
-        ModuleCommandsMap<FT2232Plugin> *getModuleCmdsMap(const std::string &strM) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
+        ModuleCommandsMap<FT2232Plugin> *getModuleCmdsMap(const std::string &m) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
         /**
          * @brief Apply a speed (Hz) to an open module.
@@ -384,7 +384,7 @@ class FT2232Plugin : public PluginInterface {
         // Top-level command handlers
 
 #define FT2_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_FT2232_##a(const std::string &strArgs, std::stop_token st) const;
+    bool m_FT2232_##a(const std::string &args, std::stop_token st) const;
         FT2232_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef FT2_PLUGIN_CMD_RECORD
 

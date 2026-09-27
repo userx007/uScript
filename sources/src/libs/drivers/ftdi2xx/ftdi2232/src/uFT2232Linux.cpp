@@ -55,10 +55,10 @@ FT2232Base::Status FT2232Base::open_device(Variant eVariant,
                                            uint8_t u8DeviceIndex)
 {
     // ── Channel validation ────────────────────────────────────────────────────
-    // FT2232D only has MPSSE on eChannel A.  FT2232H supports both A and B.
+    // FT2232D only has MPSSE on channel A.  FT2232H supports both A and B.
     if (eVariant == Variant::FT2232D && eChannel != Channel::A) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("open_device: FT2232D MPSSE is only available on eChannel A"));
+                  LOG_STRING("open_device: FT2232D MPSSE is only available on channel A"));
         return Status::INVALID_PARAM;
     }
 
@@ -70,7 +70,7 @@ FT2232Base::Status FT2232Base::open_device(Variant eVariant,
         return Status::OUT_OF_MEMORY;
     }
 
-    // ── Select the interface (eChannel) before opening ─────────────────────────
+    // ── Select the interface (channel) before opening ─────────────────────────
     // INTERFACE_A = 1, INTERFACE_B = 2 in libftdi1.
     ftdi_interface iface = (eChannel == Channel::A) ? INTERFACE_A : INTERFACE_B;
     if (ftdi_set_interface(ctx, iface) < 0) {
@@ -135,9 +135,9 @@ FT2232Base::Status FT2232Base::open_device(Variant eVariant,
     m_hDevice = ctx;
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("FT2232 opened: eVariant=");
+              LOG_STRING("FT2232 opened: variant=");
               LOG_UINT32(static_cast<uint8_t>(eVariant));
-              LOG_STRING("eChannel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
+              LOG_STRING("channel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
               LOG_STRING("index="); LOG_UINT32(u8DeviceIndex));
 
     return Status::SUCCESS;

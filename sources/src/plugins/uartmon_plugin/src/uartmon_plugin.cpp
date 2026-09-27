@@ -239,7 +239,7 @@ bool UartmonPlugin::m_GenericWaitFor(const std::string &strArgs, bool bInsert, s
             size_t szNrArgs = vstrArgs.size();
 
             if (szNrArgs > 1) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid strArgs, expected [delay]"); LOG_STRING(strArgs));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid args, expected [delay]"); LOG_STRING(strArgs));
                 break;
             }
 

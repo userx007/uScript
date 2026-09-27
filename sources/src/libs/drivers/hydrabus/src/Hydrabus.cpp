@@ -36,10 +36,10 @@ namespace HydraHAL {
     // ---------------------------------------------------------------------------
 
     Hydrabus::Hydrabus(std::shared_ptr<const ICommDriver> shpDriver)
-        : _driver(std::move(driver))
+        : _driver(std::move(shpDriver))
     {
         if (!_driver) {
-            throw std::invalid_argument("Hydrabus: shpDriver pointer must not be null");
+            throw std::invalid_argument("Hydrabus: driver pointer must not be null");
         }
     }
 
@@ -77,7 +77,7 @@ namespace HydraHAL {
         return read(length, _timeout_ms, stop_tok);
     }
 
-    std::vector<uint8_t> Hydrabus::read(size_t length, uint32_t u32Timeout_ms, std::stop_token stop_tok)
+    std::vector<uint8_t> Hydrabus::read(size_t length, uint32_t timeout_ms, std::stop_token stop_tok)
     {
         if (!_driver->is_open()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read: port is not open"));
@@ -96,7 +96,7 @@ namespace HydraHAL {
 
         // [ADAPTED] tout_read now returns ReadResult{status, bytes_read,
         // found_terminator} instead of a plain size_t / bool.
-        ICommDriver::ReadResult result = _driver->tout_read(u32Timeout_ms, buf, opts, std::string_view{}, stop_tok);
+        ICommDriver::ReadResult result = _driver->tout_read(timeout_ms, buf, opts, std::string_view{}, stop_tok);
 
         // Shrink the vector to the number of bytes actually received so callers
         // always see a correctly-sized container even on a short read / timeout.

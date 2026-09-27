@@ -64,6 +64,6 @@ FT232HUART::Status FT232HUART::configure(const UartConfig &sConfig)
 FT232HUART::Status FT232HUART::set_baud(uint32_t u32BaudRate)
 {
     UartConfig updated = m_config;
-    updated.u32BaudRate   = u32BaudRate;
+    updated.baudRate   = u32BaudRate;
     return configure(updated);
 }

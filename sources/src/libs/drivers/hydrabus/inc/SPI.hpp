@@ -113,7 +113,7 @@ namespace HydraHAL {
             std::optional<std::vector<uint8_t>> write_read(
                 std::span<const uint8_t> data,
                 size_t read_len,
-                bool bManual_cs           = false,
+                bool manual_cs           = false,
                 std::stop_token stop_tok = {});
 
             /**
@@ -131,7 +131,7 @@ namespace HydraHAL {
              * @param manual_cs See write_read().
              * @return Read bytes.
              */
-            std::vector<uint8_t> read(size_t read_len, bool bManual_cs = false, std::stop_token stop_tok = {});
+            std::vector<uint8_t> read(size_t read_len, bool manual_cs = false, std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------
             // Configuration

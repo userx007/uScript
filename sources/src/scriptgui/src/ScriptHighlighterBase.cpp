@@ -43,7 +43,7 @@ static constexpr auto C_XTRA_PARAM = "#ff79c6"; // pink   — param values (same
 
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptHighlighterBase::ScriptHighlighterBase(QTextDocument *pParent)
-    : QSyntaxHighlighter(parent)
+    : QSyntaxHighlighter(pParent)
 {
     m_blockStart = QRegularExpression("^---");
     m_blockEnd   = QRegularExpression("^!--");

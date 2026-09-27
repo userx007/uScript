@@ -37,8 +37,8 @@ namespace utime {
 
             // Constructor - optionally auto-start
             explicit Timer(const std::string &strContext = "", bool bAuto_start = true, bool bAuto_log = true)
-                : context_(context)
-                , auto_log_(auto_log)
+                : context_(strContext)
+                , auto_log_(bAuto_log)
                 , is_running_(false)
                 , accumulated_time_(0.0)
             {
@@ -279,7 +279,7 @@ namespace utime {
     class ScopedTimer : public Timer {
         public:
             explicit ScopedTimer(const std::string &strContext = "")
-                : Timer(context, true, true) // auto-start, auto-log
+                : Timer(strContext, true, true) // auto-start, auto-log
             {
             }
     };

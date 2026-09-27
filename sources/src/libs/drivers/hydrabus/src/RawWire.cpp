@@ -36,7 +36,7 @@ namespace HydraHAL {
     // ---------------------------------------------------------------------------
 
     RawWire::RawWire(std::shared_ptr<Hydrabus> shpHydrabus)
-        : Protocol(std::move(hydrabus), "RAW1", "Raw-Wire", 0x05)
+        : Protocol(std::move(shpHydrabus), "RAW1", "Raw-Wire", 0x05)
     {
         _configure_port();
     }
@@ -243,7 +243,7 @@ namespace HydraHAL {
             {1'000'000, 0b11},
         };
 
-        auto it = kSpeedMap.find(hz);
+        auto it = kSpeedMap.find(u32Speed);
         if (it == kSpeedMap.end()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: valid values are 5000, 50000, 100000, 1000000"));
             return false;
@@ -264,11 +264,11 @@ namespace HydraHAL {
         return (_config & 0b0001) ? 1 : 0;
     }
 
-    bool RawWire::set_polarity(int value)
+    bool RawWire::set_polarity(int iValue)
     {
-        if (value == 0) {
+        if (iValue == 0) {
             _config = static_cast<uint8_t>(_config & ~0b0001);
-        } else if (value == 1) {
+        } else if (iValue == 1) {
             _config = static_cast<uint8_t>(_config | 0b0001);
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_polarity: value must be 0 or 1"));
@@ -282,11 +282,11 @@ namespace HydraHAL {
         return (_config & 0b0100) ? 3 : 2;
     }
 
-    bool RawWire::set_wires(int value)
+    bool RawWire::set_wires(int iValue)
     {
-        if (value == 2) {
+        if (iValue == 2) {
             _config = static_cast<uint8_t>(_config & ~(1 << 2));
-        } else if (value == 3) {
+        } else if (iValue == 3) {
             _config = static_cast<uint8_t>(_config | (1 << 2));
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_wires: value must be 2 or 3"));
@@ -300,11 +300,11 @@ namespace HydraHAL {
         return (_config & 0b1000) ? 1 : 0;
     }
 
-    bool RawWire::set_gpio_mode(int value)
+    bool RawWire::set_gpio_mode(int iValue)
     {
-        if (value == 0) {
+        if (iValue == 0) {
             _config = static_cast<uint8_t>(_config & ~(1 << 3));
-        } else if (value == 1) {
+        } else if (iValue == 1) {
             _config = static_cast<uint8_t>(_config | (1 << 3));
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_gpio_mode: value must be 0 (Push-Pull) or 1 (Open-Drain)"));

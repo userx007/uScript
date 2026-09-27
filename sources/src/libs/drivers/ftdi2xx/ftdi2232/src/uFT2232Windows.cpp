@@ -56,11 +56,11 @@ FT2232Base::Status FT2232Base::open_device(Variant eVariant,
     // ── Channel validation ────────────────────────────────────────────────────
     if (eVariant == Variant::FT2232D && eChannel != Channel::A) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("open_device: FT2232D MPSSE is only available on eChannel A"));
+                  LOG_STRING("open_device: FT2232D MPSSE is only available on channel A"));
         return Status::INVALID_PARAM;
     }
 
-    // ── Map (physical device index, eChannel) → FTD2XX device list index ──────
+    // ── Map (physical device index, channel) → FTD2XX device list index ──────
     //
     // FT2232H/D presents 2 USB interfaces (A=0, B=1) to the OS.
     // In the FTD2XX device list the n-th chip occupies indices [n*2, n*2+1].
@@ -141,8 +141,8 @@ FT2232Base::Status FT2232Base::open_device(Variant eVariant,
     m_hDevice = static_cast<void *>(handle);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("FT2232 opened: eVariant="); LOG_UINT32(static_cast<uint8_t>(eVariant));
-              LOG_STRING("eChannel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
+              LOG_STRING("FT2232 opened: variant="); LOG_UINT32(static_cast<uint8_t>(eVariant));
+              LOG_STRING("channel="); LOG_UINT32(static_cast<uint8_t>(eChannel));
               LOG_STRING("ftIndex="); LOG_UINT32(ftIndex);
               LOG_STRING("device index="); LOG_UINT32(u8DeviceIndex));
 

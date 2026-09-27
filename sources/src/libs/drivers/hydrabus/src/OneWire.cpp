@@ -35,7 +35,7 @@ namespace HydraHAL {
     // ---------------------------------------------------------------------------
 
     OneWire::OneWire(std::shared_ptr<Hydrabus> shpHydrabus)
-        : Protocol(std::move(hydrabus), "1W01", "1-Wire", 0x04)
+        : Protocol(std::move(shpHydrabus), "1W01", "1-Wire", 0x04)
     {
         _configure_port();
     }
@@ -154,7 +154,7 @@ namespace HydraHAL {
     uint32_t OneWire::swio_read_reg(uint8_t u8Address, std::stop_token stop_tok)
     {
         _write_byte(0b00100000, stop_tok);
-        _write_byte(u8Address, stop_tok); // little-endian 1-byte u8Address
+        _write_byte(u8Address, stop_tok); // little-endian 1-byte address
 
         auto resp = _read(4, stop_tok);
         if (resp.size() < 4) {
@@ -166,8 +166,8 @@ namespace HydraHAL {
     bool OneWire::swio_write_reg(uint8_t u8Address, uint32_t u32Value, std::stop_token stop_tok)
     {
         _write_byte(0b00110000, stop_tok);
-        _write_byte(u8Address, stop_tok); // little-endian 1-byte u8Address
-        _write_u32_le(u32Value, stop_tok); // 4-byte LE u32Value
+        _write_byte(u8Address, stop_tok); // little-endian 1-byte address
+        _write_u32_le(u32Value, stop_tok); // 4-byte LE value
 
         if (!_ack("swio_write_reg", stop_tok)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SWIO write register: unknown error"));

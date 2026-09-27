@@ -61,7 +61,7 @@ namespace {
 } // namespace
 
 ProfibusDriver::ProfibusDriver(Config sConfig)
-    : m_config(std::move(config))
+    : m_config(std::move(sConfig))
 {
     if (m_config.strInstanceName.empty()) {
         m_config.strInstanceName = kPluginNameForDump;
@@ -415,7 +415,7 @@ bool ProfibusDriver::m_ParseHexBytes(const std::string &strHex, std::vector<uint
         const int hi = nibble(strHex[i]);
         const int lo = nibble(strHex[i + 1]);
         if (hi < 0 || lo < 0) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid strHex digit in:"); LOG_STRING(strHex));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid hex digit in:"); LOG_STRING(strHex));
             vOutBytes.clear();
             return false;
         }
@@ -436,9 +436,9 @@ std::string ProfibusDriver::m_BytesToHex(const std::vector<uint8_t> &vBytes)
     return out;
 }
 
-const char *ProfibusDriver::m_StationTypeName(uint8_t u8StationType)
+const char *ProfibusDriver::m_StationTypeName(uint8_t stationType)
 {
-    switch (u8StationType) {
+    switch (stationType) {
     case 0:
         return "SLAVE";
     case 1:

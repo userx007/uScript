@@ -60,7 +60,7 @@ namespace HydraHAL {
              * @param block_num Block address (0-based).
              * @return 512 bytes, or empty on error.
              */
-            std::vector<uint8_t> read(uint32_t u32Block_num, std::stop_token stop_tok = {});
+            std::vector<uint8_t> read(uint32_t block_num, std::stop_token stop_tok = {});
 
             /**
              * @brief Write a 512-byte block.

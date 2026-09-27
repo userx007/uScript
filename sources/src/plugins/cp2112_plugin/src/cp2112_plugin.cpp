@@ -282,16 +282,16 @@ CP2112Gpio *CP2112Plugin::m_gpio() const
 //-------------------------------------------------------------------------------
 
 ModuleCommandsMap<CP2112Plugin> *
-CP2112Plugin::getModuleCmdsMap(const std::string &strM) const
+CP2112Plugin::getModuleCmdsMap(const std::string &m) const
 {
-    auto it = m_mapCommandsMaps.find(strM);
+    auto it = m_mapCommandsMaps.find(m);
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
 ModuleSpeedMap *
-CP2112Plugin::getModuleSpeedsMap(const std::string &strM) const
+CP2112Plugin::getModuleSpeedsMap(const std::string &m) const
 {
-    auto it = m_mapSpeedsMaps.find(strM);
+    auto it = m_mapSpeedsMaps.find(m);
     if (it == m_mapSpeedsMaps.end()) {
         return nullptr;
     }
@@ -337,6 +337,6 @@ bool CP2112Plugin::setModuleSpeed(const std::string &strModule, size_t hz) const
     }
 
     LOG_PRINT(LOG_ERROR, LOG_HDR;
-              LOG_STRING("setModuleSpeed: unknown strModule:"); LOG_STRING(strModule));
+              LOG_STRING("setModuleSpeed: unknown module:"); LOG_STRING(strModule));
     return false;
 }

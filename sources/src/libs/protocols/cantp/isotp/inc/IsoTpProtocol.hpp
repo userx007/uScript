@@ -39,7 +39,7 @@
 class IsoTpProtocol final : public ITransportProtocol {
     public:
         explicit IsoTpProtocol(const TpConfig &sCfg = {})
-            : m_cfg(cfg)
+            : m_cfg(sCfg)
         {
         }
 

@@ -43,11 +43,11 @@ namespace loopback {
                           std::optional<uint16_t> tx_ethertype,
                           std::optional<std::array<uint8_t, MAC_LEN>> dst_mac,
                           bool bPromisc)
-                : ifname_(std::move(ifname))
-                , capture_ethertype_(capture_ethertype)
+                : ifname_(std::move(strIfname))
+                , capture_ethertype_(u16Capture_ethertype)
                 , tx_ethertype_(tx_ethertype)
                 , fixed_dst_mac_(dst_mac)
-                , promisc_(promisc)
+                , promisc_(bPromisc)
             {
             }
 

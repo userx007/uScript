@@ -191,7 +191,7 @@ bool SdoLoopbackServer::serve_upload(const ICommDriver &bus, std::string_view rx
 
 bool SdoLoopbackServer::serve_one(const ICommDriver &bus, std::string_view rxId, std::string_view txId,
                                   uint32_t u32TimeoutMs, std::vector<uint8_t> &vStored,
-                                  const std::function<void(bool bIsDownload)> &onDirectionKnown)
+                                  const std::function<void(bool isDownload)> &onDirectionKnown)
 {
     Frame req{};
     if (!read_frame(bus, u32TimeoutMs, rxId, req)) {

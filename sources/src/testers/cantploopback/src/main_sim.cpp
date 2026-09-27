@@ -18,11 +18,11 @@ namespace {
 
     // Deterministic test payload — byte i = (i*31 + seed) & 0xFF — so a
     // mismatch is trivially reproducible and diffable, not random noise.
-    std::vector<uint8_t> make_payload(size_t len, uint8_t u8Seed)
+    std::vector<uint8_t> make_payload(size_t len, uint8_t seed)
     {
         std::vector<uint8_t> data(len);
         for (size_t i = 0; i < len; ++i) {
-            data[i] = static_cast<uint8_t>((i * 31 + u8Seed) & 0xFF);
+            data[i] = static_cast<uint8_t>((i * 31 + seed) & 0xFF);
         }
         return data;
     }
@@ -117,7 +117,7 @@ namespace {
     bool run_none_case(LoopbackCommDriver &bus, uint32_t u32TimeoutMs, const std::vector<uint8_t> &vPayload)
     {
         if (vPayload.size() > 8) {
-            std::fprintf(stderr, "    'none' has no segmentation; vPayload must be <= 8 bytes\n");
+            std::fprintf(stderr, "    'none' has no segmentation; payload must be <= 8 bytes\n");
             return false;
         }
         std::vector<uint8_t> rxBuf(8, 0);
@@ -140,7 +140,7 @@ namespace {
     bool run_canopen_case(ITransportProtocol *pProto, LoopbackCommDriver &bus,
                           uint32_t u32TimeoutMs, const std::vector<uint8_t> &vPayload)
     {
-        // Download: client send()s vPayload to our server; verify the server
+        // Download: client send()s payload to our server; verify the server
         // reconstructed it byte-for-byte.
         std::vector<uint8_t> serverReceived;
         bool downloadServerOk = false;
@@ -156,7 +156,7 @@ namespace {
                          static_cast<int>(wr.status), downloadServerOk, serverReceived.size(), vPayload.size());
         }
 
-        // Upload: our server serves `vPayload` back; client receive()s it.
+        // Upload: our server serves `payload` back; client receive()s it.
         std::vector<uint8_t> rxBuf(vPayload.size() + 64, 0);
         ICommDriver::ReadResult rr;
         bool uploadServerOk = false;

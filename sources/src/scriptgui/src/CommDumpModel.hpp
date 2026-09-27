@@ -257,7 +257,7 @@ class CommDumpModel : public QAbstractItemModel {
             return m_records.size();
         }
 
-        const Record *rawRecordAt(int iRow) const;
+        const Record *rawRecordAt(int row) const;
 
         // Number of distinct (plugin, details) keys ever observed — monotonic,
         // not reduced by the aggregate's own defensive cap (see

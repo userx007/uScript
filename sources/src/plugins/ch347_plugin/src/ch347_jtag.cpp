@@ -202,7 +202,7 @@ bool CH347Plugin::m_handle_jtag_reset(const std::string &strArgs, std::stop_toke
 {
     if (strArgs == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: reset [trst]"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  (no strArgs) = TAP logic reset via TMS"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  (no args) = TAP logic reset via TMS"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  trst      = assert TRST pin"));
         return true;
     }

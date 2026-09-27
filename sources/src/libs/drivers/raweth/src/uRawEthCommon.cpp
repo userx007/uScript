@@ -238,7 +238,7 @@ RawEth::Status RawEth::kmp_stream_match(std::span<const uint8_t> token,
     // KMP. A frame boundary may (and usually will) split the token; the KMP
     // state machine handles that transparently since it only cares about
     // the byte sequence, not frame boundaries. The ring buffer (used only
-    // when bUseBuffer) is sized independently, to the driver's overall max
+    // when useBuffer) is sized independently, to the driver's overall max
     // buffer length rather than a single frame's payload.
     return ukmp::kmp_stream_match(
         [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t &bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },

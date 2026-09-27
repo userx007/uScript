@@ -12,13 +12,13 @@ typedef struct {
 
 static void skip_ws(Cursor* pC) { while (*pC->p == ' ' || *pC->p == '\t') pC->p++; }
 
-static char* dup_trimmed(const char* pstrStart, const char* pstrEnd) {
-    while (pstrStart < pstrEnd && (*pstrStart == ' ' || *pstrStart == '\t')) pstrStart++;
-    while (pstrEnd > pstrStart && (pstrEnd[-1] == ' ' || pstrEnd[-1] == '\t')) pstrEnd--;
-    size_t n = (size_t)(pstrEnd - pstrStart);
+static char* dup_trimmed(const char* start, const char* end) {
+    while (start < end && (*start == ' ' || *start == '\t')) start++;
+    while (end > start && (end[-1] == ' ' || end[-1] == '\t')) end--;
+    size_t n = (size_t)(end - start);
     char* s = (char*)malloc(n + 1);
     if (!s) return NULL;
-    memcpy(s, pstrStart, n);
+    memcpy(s, start, n);
     s[n] = '\0';
     return s;
 }
@@ -37,70 +37,70 @@ static bool push_child(KvNode* psParent, KvNode* psChild) {
     return true;
 }
 
-static KvNode* parse_value(Cursor* pC);
+static KvNode* parse_value(Cursor* c);
 
-static KvNode* parse_pairs(Cursor* pC, char terminator) {
+static KvNode* parse_pairs(Cursor* c, char terminator) {
     KvNode* obj = new_node(KV_OBJECT);
     if (!obj) return NULL;
-    skip_ws(pC);
-    if (*pC->p == terminator || *pC->p == '\0') return obj; /* empty object */
+    skip_ws(c);
+    if (*c->p == terminator || *c->p == '\0') return obj; /* empty object */
 
     for (;;) {
-        skip_ws(pC);
-        const char* key_start = pC->p;
-        while (*pC->p && *pC->p != '=' && *pC->p != ';' && *pC->p != terminator) pC->p++;
-        if (*pC->p != '=') { kv_free(obj); return NULL; } /* malformed: no '=' */
-        char* key = dup_trimmed(key_start, pC->p);
-        pC->p++; /* consume '=' */
+        skip_ws(c);
+        const char* key_start = c->p;
+        while (*c->p && *c->p != '=' && *c->p != ';' && *c->p != terminator) c->p++;
+        if (*c->p != '=') { kv_free(obj); return NULL; } /* malformed: no '=' */
+        char* key = dup_trimmed(key_start, c->p);
+        c->p++; /* consume '=' */
 
-        KvNode* val = parse_value(pC);
+        KvNode* val = parse_value(c);
         if (!key || !val) { free(key); kv_free(val); kv_free(obj); return NULL; }
         val->key = key;
         if (!push_child(obj, val)) { kv_free(val); kv_free(obj); return NULL; }
 
-        skip_ws(pC);
-        if (*pC->p == ';') { pC->p++; continue; }
+        skip_ws(c);
+        if (*c->p == ';') { c->p++; continue; }
         break;
     }
     return obj;
 }
 
-static KvNode* parse_array(Cursor* pC) {
+static KvNode* parse_array(Cursor* c) {
     KvNode* arr = new_node(KV_ARRAY);
     if (!arr) return NULL;
-    skip_ws(pC);
-    if (*pC->p == ']') { pC->p++; return arr; }
+    skip_ws(c);
+    if (*c->p == ']') { c->p++; return arr; }
     for (;;) {
-        KvNode* val = parse_value(pC);
+        KvNode* val = parse_value(c);
         if (!val) { kv_free(arr); return NULL; }
         if (!push_child(arr, val)) { kv_free(val); kv_free(arr); return NULL; }
-        skip_ws(pC);
-        if (*pC->p == ',') { pC->p++; continue; }
-        if (*pC->p == ']') { pC->p++; break; }
+        skip_ws(c);
+        if (*c->p == ',') { c->p++; continue; }
+        if (*c->p == ']') { c->p++; break; }
         kv_free(arr);
         return NULL; /* malformed */
     }
     return arr;
 }
 
-static KvNode* parse_value(Cursor* pC) {
-    skip_ws(pC);
-    if (*pC->p == '{') {
-        pC->p++;
-        KvNode* obj = parse_pairs(pC, '}');
+static KvNode* parse_value(Cursor* c) {
+    skip_ws(c);
+    if (*c->p == '{') {
+        c->p++;
+        KvNode* obj = parse_pairs(c, '}');
         if (!obj) return NULL;
-        skip_ws(pC);
-        if (*pC->p != '}') { kv_free(obj); return NULL; }
-        pC->p++;
+        skip_ws(c);
+        if (*c->p != '}') { kv_free(obj); return NULL; }
+        c->p++;
         return obj;
     }
-    if (*pC->p == '[') {
-        pC->p++;
-        return parse_array(pC);
+    if (*c->p == '[') {
+        c->p++;
+        return parse_array(c);
     }
-    const char* start = pC->p;
-    while (*pC->p && *pC->p != ';' && *pC->p != ',' && *pC->p != '}' && *pC->p != ']') pC->p++;
-    char* s = dup_trimmed(start, pC->p);
+    const char* start = c->p;
+    while (*c->p && *c->p != ';' && *c->p != ',' && *c->p != '}' && *c->p != ']') c->p++;
+    char* s = dup_trimmed(start, c->p);
     if (!s) return NULL;
     KvNode* n = new_node(KV_SCALAR);
     if (!n) { free(s); return NULL; }
@@ -108,9 +108,9 @@ static KvNode* parse_value(Cursor* pC) {
     return n;
 }
 
-KvNode* kv_parse(const char* pstrText) {
-    if (!pstrText) return NULL;
-    Cursor c = { .p = pstrText };
+KvNode* kv_parse(const char* text) {
+    if (!text) return NULL;
+    Cursor c = { .p = text };
     KvNode* obj = parse_pairs(&c, '\0');
     if (!obj) return NULL;
     skip_ws(&c);
@@ -118,18 +118,18 @@ KvNode* kv_parse(const char* pstrText) {
     return obj;
 }
 
-const KvNode* kv_get(const KvNode* psNode, const char* pstrKey) {
-    if (!psNode || psNode->kind != KV_OBJECT) return NULL;
-    for (size_t i = 0; i < psNode->n_children; i++) {
-        if (psNode->children[i]->pstrKey && strcmp(psNode->children[i]->pstrKey, pstrKey) == 0) {
-            return psNode->children[i];
+const KvNode* kv_get(const KvNode* node, const char* key) {
+    if (!node || node->kind != KV_OBJECT) return NULL;
+    for (size_t i = 0; i < node->n_children; i++) {
+        if (node->children[i]->key && strcmp(node->children[i]->key, key) == 0) {
+            return node->children[i];
         }
     }
     return NULL;
 }
 
-const char* kv_as_str(const KvNode* psNode) {
-    return (psNode && psNode->kind == KV_SCALAR) ? psNode->scalar : NULL;
+const char* kv_as_str(const KvNode* node) {
+    return (node && node->kind == KV_SCALAR) ? node->scalar : NULL;
 }
 
 bool kv_as_i64(const KvNode* psNode, long long* out) {
@@ -172,7 +172,7 @@ void kv_free(KvNode* psNode) {
 /* --- Writer ------------------------------------------------------------ */
 
 void kv_writer_init(KvWriter* pW, char* pstrBuf, size_t cap) {
-    pW->pstrBuf = pstrBuf;
+    pW->buf = pstrBuf;
     pW->cap = cap;
     pW->len = 0;
     pW->overflow = false;

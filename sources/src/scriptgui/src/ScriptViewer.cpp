@@ -51,8 +51,8 @@
 class LineNumberArea : public QWidget {
     public:
         explicit LineNumberArea(CodeEditor *pEditor)
-            : QWidget(editor)
-            , m_editor(editor)
+            : QWidget(pEditor)
+            , m_editor(pEditor)
         {
         }
 
@@ -75,7 +75,7 @@ class LineNumberArea : public QWidget {
 //  CodeEditor
 // ─────────────────────────────────────────────────────────────────────────────
 CodeEditor::CodeEditor(QWidget *pParent)
-    : QPlainTextEdit(parent)
+    : QPlainTextEdit(pParent)
 {
     setObjectName("scriptView");
     setReadOnly(false); // editable by default for main script tabs
@@ -546,7 +546,7 @@ void CodeEditor::checkCurrentLineForCommScript()
     }
 }
 
-void CodeEditor::setHighlighting(bool on)
+void CodeEditor::setHighlighting(bool bOn)
 {
     // Tear down the other two highlighter types defensively, same as
     // setIniHighlighting() already does — only one highlighter may be
@@ -565,15 +565,15 @@ void CodeEditor::setHighlighting(bool on)
         m_iniHighlighter = nullptr;
     }
 
-    if (on && !m_highlighter) {
+    if (bOn && !m_highlighter) {
         m_highlighter = new ScriptHighlighter(document());
-    } else if (!on && m_highlighter) {
+    } else if (!bOn && m_highlighter) {
         delete m_highlighter;
         m_highlighter = nullptr;
     }
 }
 
-void CodeEditor::setCommHighlighting(bool on)
+void CodeEditor::setCommHighlighting(bool bOn)
 {
     // Tear down the other two highlighter types defensively — see the
     // comment in setHighlighting() above; the same reasoning applies here.
@@ -586,15 +586,15 @@ void CodeEditor::setCommHighlighting(bool on)
         m_iniHighlighter = nullptr;
     }
 
-    if (on && !m_commHighlighter) {
+    if (bOn && !m_commHighlighter) {
         m_commHighlighter = new CommScriptHighlighter(document());
-    } else if (!on && m_commHighlighter) {
+    } else if (!bOn && m_commHighlighter) {
         delete m_commHighlighter;
         m_commHighlighter = nullptr;
     }
 }
 
-void CodeEditor::setIniHighlighting(bool on)
+void CodeEditor::setIniHighlighting(bool bOn)
 {
     // Remove all other highlighters — only one may be active at a time
     if (m_highlighter) {
@@ -605,29 +605,29 @@ void CodeEditor::setIniHighlighting(bool on)
         delete m_commHighlighter;
         m_commHighlighter = nullptr;
     }
-    if (on && !m_iniHighlighter) {
+    if (bOn && !m_iniHighlighter) {
         m_iniHighlighter = new IniHighlighter(document());
-    } else if (!on && m_iniHighlighter) {
+    } else if (!bOn && m_iniHighlighter) {
         delete m_iniHighlighter;
         m_iniHighlighter = nullptr;
     }
 }
 
 // ── Keyboard handling ──────────────────────────────────────────────────────
-void CodeEditor::keyPressEvent(QKeyEvent *ev)
+void CodeEditor::keyPressEvent(QKeyEvent *pEv)
 {
-    if (ev->key() == Qt::Key_Escape) {
+    if (pEv->key() == Qt::Key_Escape) {
         clearWordHighlights();
         // fall through — QPlainTextEdit/CodeEditor have no other Escape
         // behaviour, so let the base class see it too rather than swallow it.
     }
 
     if (isReadOnly()) {
-        QPlainTextEdit::keyPressEvent(ev);
+        QPlainTextEdit::keyPressEvent(pEv);
         return;
     }
 
-    if (ev->key() == Qt::Key_Tab) {
+    if (pEv->key() == Qt::Key_Tab) {
         // Insert TAB_WIDTH spaces instead of a tab character
         QTextCursor cursor = textCursor();
         const int col      = cursor.positionInBlock();
@@ -636,7 +636,7 @@ void CodeEditor::keyPressEvent(QKeyEvent *ev)
         return;
     }
 
-    if (ev->key() == Qt::Key_Backtab) {
+    if (pEv->key() == Qt::Key_Backtab) {
         // Shift+Tab: remove up to TAB_WIDTH leading spaces from selection / line
         QTextCursor cursor = textCursor();
         cursor.beginEditBlock();
@@ -662,7 +662,7 @@ void CodeEditor::keyPressEvent(QKeyEvent *ev)
         return;
     }
 
-    if (ev->key() == Qt::Key_Backspace && !ev->modifiers()) {
+    if (pEv->key() == Qt::Key_Backspace && !pEv->modifiers()) {
         // Smart backspace: if we're at a space-indent boundary, delete a full
         // indent level worth of spaces in one stroke.
         QTextCursor cursor = textCursor();
@@ -686,14 +686,14 @@ void CodeEditor::keyPressEvent(QKeyEvent *ev)
         }
     }
 
-    QPlainTextEdit::keyPressEvent(ev);
+    QPlainTextEdit::keyPressEvent(pEv);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ScriptViewer
 // ─────────────────────────────────────────────────────────────────────────────
-ScriptViewer::ScriptViewer(QWidget *parent)
-    : QFrame(parent)
+ScriptViewer::ScriptViewer(QWidget *pParent)
+    : QFrame(pParent)
 {
     setObjectName("panelFrame");
     setFrameShape(QFrame::NoFrame);
@@ -790,10 +790,10 @@ void ScriptViewer::clear()
 }
 
 // ── Execution marker ───────────────────────────────────────────────────────
-QString ScriptViewer::lineText(int lineNo) const
+QString ScriptViewer::lineText(int iLineNo) const
 {
     // lineNo is 1-based
-    QTextBlock block = m_editor->document()->findBlockByLineNumber(lineNo - 1);
+    QTextBlock block = m_editor->document()->findBlockByLineNumber(iLineNo - 1);
     return block.isValid() ? block.text() : QString{};
 }
 
@@ -802,10 +802,10 @@ int ScriptViewer::lineCount() const
     return m_editor->document()->blockCount();
 }
 
-void ScriptViewer::setCurrentLine(int lineNo)
+void ScriptViewer::setCurrentLine(int iLineNo)
 {
-    m_currentLine = lineNo;
-    m_editor->highlightLine(lineNo);
+    m_currentLine = iLineNo;
+    m_editor->highlightLine(iLineNo);
     updateInfo();
 }
 
@@ -816,9 +816,9 @@ void ScriptViewer::clearHighlight()
     updateInfo();
 }
 
-void ScriptViewer::setErrorLine(int lineNo)
+void ScriptViewer::setErrorLine(int iLineNo)
 {
-    m_editor->setErrorLine(lineNo);
+    m_editor->setErrorLine(iLineNo);
 }
 
 void ScriptViewer::clearErrorLines()
@@ -832,14 +832,14 @@ bool ScriptViewer::hasErrorLines() const
 }
 
 // ── Thread-active markers ──────────────────────────────────────────────────
-void ScriptViewer::addThreadLine(int lineNo)
+void ScriptViewer::addThreadLine(int iLineNo)
 {
-    m_editor->addThreadLine(lineNo);
+    m_editor->addThreadLine(iLineNo);
 }
 
-void ScriptViewer::removeThreadLine(int lineNo)
+void ScriptViewer::removeThreadLine(int iLineNo)
 {
-    m_editor->removeThreadLine(lineNo);
+    m_editor->removeThreadLine(iLineNo);
 }
 
 void ScriptViewer::clearThreadLines()
@@ -866,19 +866,19 @@ void ScriptViewer::setEditorFont(const QFont &font)
     m_editor->viewport()->update();
 }
 
-void ScriptViewer::enableHighlighting(bool on)
+void ScriptViewer::enableHighlighting(bool bOn)
 {
-    m_editor->setHighlighting(on);
+    m_editor->setHighlighting(bOn);
 }
 
-void ScriptViewer::enableCommHighlighting(bool on)
+void ScriptViewer::enableCommHighlighting(bool bOn)
 {
-    m_editor->setCommHighlighting(on);
+    m_editor->setCommHighlighting(bOn);
 }
 
-void ScriptViewer::setReadOnly(bool ro)
+void ScriptViewer::setReadOnly(bool bRo)
 {
-    m_editor->setReadOnly(ro);
+    m_editor->setReadOnly(bRo);
 }
 
 // ── Persistence ────────────────────────────────────────────────────────────
@@ -952,10 +952,10 @@ void ScriptViewer::onIncludeFileClicked(const QString &rawPath)
     emit includeFileRequested(QDir(baseDir).filePath(rawPath));
 }
 
-void ScriptViewer::onModificationChanged(bool modified)
+void ScriptViewer::onModificationChanged(bool bModified)
 {
     updateInfo();
-    emit modificationChanged(modified);
+    emit modificationChanged(bModified);
 }
 
 // ── Info label ─────────────────────────────────────────────────────────────

@@ -83,9 +83,9 @@ namespace {
         return strS.find(':') != std::string::npos || strS.find('.') != std::string::npos;
     }
 
-    inline const DdsTypeEntry *asTypeEntry(const void *pvP)
+    inline const DdsTypeEntry *asTypeEntry(const void *p)
     {
-        return static_cast<const DdsTypeEntry *>(pvP);
+        return static_cast<const DdsTypeEntry *>(p);
     }
 } // namespace
 
@@ -97,13 +97,13 @@ namespace {
 /// sample on success; returns std::nullopt on timeout/cancellation,
 /// touching nothing. A private static member (not a free function) purely
 /// because LocalReader is a private nested type.
-std::optional<std::string> DdsTypedDriver::m_WaitPopOne(LocalReader &sReader, uint32_t u32ReadTimeout,
+std::optional<std::string> DdsTypedDriver::m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
                                                         std::stop_token stop_tok)
 {
-    std::unique_lock<std::mutex> qlock(sReader.queueMutex);
+    std::unique_lock<std::mutex> qlock(reader.queueMutex);
     bool got;
     if (u32ReadTimeout == 0) {
-        got = sReader.queueCv.wait(qlock, stop_tok, [&] { return !sReader.queue.empty(); });
+        got = reader.queueCv.wait(qlock, stop_tok, [&] { return !reader.queue.empty(); });
     } else {
         constexpr auto kSliceMs = std::chrono::milliseconds(200);
         const auto tDeadline    = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
@@ -120,7 +120,7 @@ std::optional<std::string> DdsTypedDriver::m_WaitPopOne(LocalReader &sReader, ui
             }
             const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow);
             const auto sliceMs   = std::min(kSliceMs, remaining);
-            got                  = sReader.queueCv.wait_for(qlock, sliceMs, [&] { return !sReader.queue.empty(); });
+            got                  = reader.queueCv.wait_for(qlock, sliceMs, [&] { return !reader.queue.empty(); });
             if (got) {
                 break;
             }
@@ -129,14 +129,14 @@ std::optional<std::string> DdsTypedDriver::m_WaitPopOne(LocalReader &sReader, ui
     if (!got) {
         return std::nullopt;
     }
-    std::string text = std::move(sReader.queue.front());
-    sReader.queue.pop_front();
+    std::string text = std::move(reader.queue.front());
+    reader.queue.pop_front();
     return text;
 }
 
 // ---------------------------------------------------------------------------
 DdsTypedDriver::DdsTypedDriver(Config sConfig)
-    : m_config(std::move(config))
+    : m_config(std::move(sConfig))
 {
     if (m_config.strInstanceName.empty()) {
         m_config.strInstanceName = kPluginNameForDump;
@@ -382,7 +382,7 @@ DdsTypedDriver::DdsEntity DdsTypedDriver::m_EnsureLocalWriter(const std::string 
 
     auto typeIt = m_typesByTopic.find(strTopic);
     if (typeIt == m_typesByTopic.end()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No loaded type plugin publishes strTopic '"); LOG_STRING(strTopic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No loaded type plugin publishes topic '"); LOG_STRING(strTopic.c_str());
                   LOG_STRING("' — LOAD its customer .so first"));
         return kInvalidEntity;
     }
@@ -455,10 +455,10 @@ void DdsTypedDriver::m_OnReaderDataAvailable(DdsEntity reader, void *pvArg)
     }
 }
 
-std::shared_ptr<DdsTypedDriver::LocalReader> DdsTypedDriver::m_EnsureLocalReader(const std::string &strTopic) const
+std::shared_ptr<DdsTypedDriver::LocalReader> DdsTypedDriver::m_EnsureLocalReader(const std::string &topic) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    auto it = m_localReaders.find(strTopic);
+    auto it = m_localReaders.find(topic);
     if (it != m_localReaders.end()) {
         return it->second;
     }
@@ -470,9 +470,9 @@ std::shared_ptr<DdsTypedDriver::LocalReader> DdsTypedDriver::m_EnsureLocalReader
         return nullptr;
     }
 
-    auto typeIt = m_typesByTopic.find(strTopic);
+    auto typeIt = m_typesByTopic.find(topic);
     if (typeIt == m_typesByTopic.end()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No loaded type plugin subscribes strTopic '"); LOG_STRING(strTopic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No loaded type plugin subscribes topic '"); LOG_STRING(topic.c_str());
                   LOG_STRING("' — LOAD its customer .so first"));
         return nullptr;
     }
@@ -488,9 +488,9 @@ std::shared_ptr<DdsTypedDriver::LocalReader> DdsTypedDriver::m_EnsureLocalReader
     // are themselves mutable.
     localReader->owner        = const_cast<DdsTypedDriver *>(this);
 
-    const DdsEntity topicEnt  = dds_create_topic(m_participant, entry->descriptor, strTopic.c_str(), nullptr, nullptr);
+    const DdsEntity topicEnt  = dds_create_topic(m_participant, entry->descriptor, topic.c_str(), nullptr, nullptr);
     if (topicEnt < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(strTopic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(topic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-topicEnt)));
         return localReader; // still registered, empty queue forever — same convention as DdsDriver
     }
@@ -505,15 +505,15 @@ std::shared_ptr<DdsTypedDriver::LocalReader> DdsTypedDriver::m_EnsureLocalReader
     dds_delete_listener(listener);
     dds_delete_qos(qos);
     if (readerEnt < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_reader failed for '"); LOG_STRING(strTopic.c_str());
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_reader failed for '"); LOG_STRING(topic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-readerEnt)));
         dds_delete(topicEnt);
     } else {
-        localReader->strTopic  = topicEnt;
+        localReader->topic  = topicEnt;
         localReader->reader = readerEnt;
     }
 
-    m_localReaders.emplace(strTopic, localReader);
+    m_localReaders.emplace(topic, localReader);
     return localReader;
 }
 
@@ -546,8 +546,8 @@ bool DdsTypedDriver::m_Publish(const std::string &strTopic, const std::string &s
     }
 
     if (gui_mode_active()) {
-        // Dumps the PUBLISH strText as given to decode() (see DdsTypeEntry's
-        // doc comment) — same "whatever crossed the DDS_TYPED.CMD strText
+        // Dumps the PUBLISH text as given to decode() (see DdsTypeEntry's
+        // doc comment) — same "whatever crossed the DDS_TYPED.CMD text
         // boundary" convention as receive()'s Rx dump below, which shows
         // whatever encode() produced.
         gui_notify_comm_dump(m_config.strInstanceName, describeConnection(strTopic), CommDir::Tx,
@@ -571,8 +571,8 @@ bool DdsTypedDriver::m_Unsubscribe(const std::string &strTopic) const
     if (it->second->reader >= 0) {
         dds_delete(it->second->reader);
     }
-    if (it->second->strTopic >= 0) {
-        dds_delete(it->second->strTopic);
+    if (it->second->topic >= 0) {
+        dds_delete(it->second->topic);
     }
     m_localReaders.erase(it);
     return true;

@@ -142,9 +142,9 @@ namespace log_concepts {
  * @param level The log level to convert.
  * @return The string representation of the log level.
  */
-[[nodiscard]] constexpr const char *toString(LogLevel eLevel) noexcept
+[[nodiscard]] constexpr const char *toString(LogLevel level) noexcept
 {
-    switch (eLevel) {
+    switch (level) {
     case LOG_WERBOSE:
         return "WERBOSE";
     case LOG_VERBOSE:
@@ -173,9 +173,9 @@ namespace log_concepts {
  * @param level The log level to get the color code for.
  * @return The color code for the log level.
  */
-[[nodiscard]] constexpr const char *getColor(LogLevel eLevel) noexcept
+[[nodiscard]] constexpr const char *getColor(LogLevel level) noexcept
 {
-    switch (eLevel) {
+    switch (level) {
     case LOG_WERBOSE:
         return "\033[30m"; // Black/dark navy-gray — one shade dimmer than VERBOSE
     case LOG_VERBOSE:
@@ -744,7 +744,7 @@ struct LogBuffer {
 
             std::string actualFilename;
             if (strFilename.empty()) {
-                // Auto-generate strFilename with timestamp
+                // Auto-generate filename with timestamp
                 auto now      = std::chrono::system_clock::now();
                 std::time_t t = std::chrono::system_clock::to_time_t(now);
                 std::tm tm;

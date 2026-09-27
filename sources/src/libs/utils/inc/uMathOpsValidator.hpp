@@ -112,7 +112,7 @@ namespace eval {
         } else if (strRule == "AND") {
             evalRule = BoolRule::AND;
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid boolean strRule:"); LOG_STRING(strRule); LOG_STRING("use AND OR"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid boolean rule:"); LOG_STRING(strRule); LOG_STRING("use AND OR"));
             return false;
         }
 

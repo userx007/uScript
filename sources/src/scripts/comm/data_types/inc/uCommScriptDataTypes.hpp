@@ -78,9 +78,9 @@ enum class CommCommandReadType {
 };
 
 // Helper functions for enum to string conversion
-inline const char *getDirectionName(CommCommandDirection eDir)
+inline const char *getDirectionName(CommCommandDirection dir)
 {
-    switch (eDir) {
+    switch (dir) {
     case CommCommandDirection::SEND_RECV:
         return "SEND_RECV";
     case CommCommandDirection::RECV_SEND:
@@ -96,9 +96,9 @@ inline const char *getDirectionName(CommCommandDirection eDir)
     }
 }
 
-inline const char *getTokenTypeName(CommCommandTokenType eType)
+inline const char *getTokenTypeName(CommCommandTokenType type)
 {
-    switch (eType) {
+    switch (type) {
     case CommCommandTokenType::EMPTY:
         return "EMPTY";
     case CommCommandTokenType::HEXSTREAM:

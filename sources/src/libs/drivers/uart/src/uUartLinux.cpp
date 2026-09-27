@@ -241,7 +241,7 @@ UART::Status UART::setup(uint32_t u32Speed, Parity eParity, uint8_t u8DataBits, 
     }
 
     // Parity — PARENB/PARODD control the hardware's transmit-side generation
-    // and receive-side checking of the eParity bit; see the Parity enum's doc
+    // and receive-side checking of the parity bit; see the Parity enum's doc
     // comment (uUart.hpp) for why this driver leaves INPCK off regardless.
     settings.c_cflag &= ~(PARENB | PARODD);
     if (eParity == Parity::Even) {
@@ -269,7 +269,7 @@ UART::Status UART::setup(uint32_t u32Speed, Parity eParity, uint8_t u8DataBits, 
 
     // POSIX only requires tcsetattr() to apply *some* of the requested
     // changes to report success (see `man tcsetattr`) — some backends
-    // (notably Linux pseudo-terminals, which have no real eParity hardware
+    // (notably Linux pseudo-terminals, which have no real parity hardware
     // to emulate) silently drop bits like PARENB while still returning 0.
     // Read the settings back and warn (rather than fail open() outright,
     // since a caller on a genuinely constrained device might still want
@@ -283,7 +283,7 @@ UART::Status UART::setup(uint32_t u32Speed, Parity eParity, uint8_t u8DataBits, 
                       LOG_STRING("Port accepted tcsetattr() but framing did not fully apply — requested cflag:");
                       LOG_UINT32(static_cast<uint32_t>(settings.c_cflag & (PARENB | PARODD | CSIZE | CSTOPB)));
                       LOG_STRING("actual:"); LOG_UINT32(static_cast<uint32_t>(verify.c_cflag & (PARENB | PARODD | CSIZE | CSTOPB)));
-                      LOG_STRING("(a pseudo-terminal cannot emulate eParity — this is expected on a PTY, not on real serial hardware)"));
+                      LOG_STRING("(a pseudo-terminal cannot emulate parity — this is expected on a PTY, not on real serial hardware)"));
         }
     }
 

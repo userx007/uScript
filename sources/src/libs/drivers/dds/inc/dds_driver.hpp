@@ -285,7 +285,7 @@ class DdsDriver : public ICommDriver {
         // ---- helpers (implemented in dds_driver.cpp) ----
         std::string m_BuildDomainConfigXml() const;
         DdsEntity m_EnsureLocalWriter(const std::string &strTopic) const;
-        std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &strTopic) const;
+        std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;
 
         bool m_Publish(const std::string &strTopic, const std::string &strPayload) const;
         bool m_Subscribe(const std::string &strTopic) const;
@@ -300,7 +300,7 @@ class DdsDriver : public ICommDriver {
         /// Blocks on one reader's queue; see the .cpp definition's doc
         /// comment. Static (not const, no `this`) since it only ever
         /// touches the LocalReader passed in.
-        static std::optional<std::string> m_WaitPopOne(LocalReader &sReader, uint32_t u32ReadTimeout,
+        static std::optional<std::string> m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
                                                         std::stop_token stop_tok);
 
         /// dds_on_data_available_fn callback (see <dds/ddsc/dds_public_listener.h>)

@@ -49,7 +49,7 @@
 class CanOpenSdoProtocol final : public ITransportProtocol {
     public:
         explicit CanOpenSdoProtocol(const TpConfig &sCfg = {})
-            : m_cfg(cfg)
+            : m_cfg(sCfg)
         {
         }
 

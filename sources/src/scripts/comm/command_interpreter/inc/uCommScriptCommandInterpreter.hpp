@@ -93,10 +93,10 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             SendFunc pfsend          = SendFunc{},
             RecvFunc pfrecv          = RecvFunc{},
             std::stop_token stop_tok = {})
-            : m_driver(driver)
-            , m_pluginName(std::move(pluginName))
+            : m_driver(shpDriver)
+            , m_pluginName(std::move(strPluginName))
             , m_maxRecvSize(maxRecvSize)
-            , m_defaultTimeout(defaultTimeout)
+            , m_defaultTimeout(u32DefaultTimeout)
             , m_pfsend(std::move(pfsend))
             , m_pfrecv(std::move(pfrecv))
             , m_stopTok(std::move(stop_tok))
@@ -148,7 +148,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             if (!bRealExec && ((sCommand.direction == CommCommandDirection::SEND_RECV) ||
                                (sCommand.direction == CommCommandDirection::RECV_SEND))) {
                 // Dry-run: the caller (ucmdexec::generic_cmd) has already validated the
-                // sCommand's grammar and successfully opened/configured the driver above -
+                // command's grammar and successfully opened/configured the driver above -
                 // this is deliberately the one place left to stop, one step short of the
                 // actual send/receive interface, so a dry-run pass never puts a byte on
                 // the wire or blocks on a real read. DELAY has no hardware side effect so
@@ -203,12 +203,12 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                     result = true;
                 }
             } else {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid sCommand type"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command type"));
                 return false;
             }
 
             if (!result) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Comm sCommand failed"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Comm command failed"));
             }
 
             return result;
@@ -386,21 +386,21 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * See m_regexCache's doc comment for why this cache lives here (per
          * interpreter instance) rather than on CommCommand.
          */
-        const CachedRegex &getCompiledRegex(const std::string &strPattern)
+        const CachedRegex &getCompiledRegex(const std::string &pattern)
         {
-            auto it = m_regexCache.find(strPattern);
+            auto it = m_regexCache.find(pattern);
             if (it != m_regexCache.end()) {
                 return it->second;
             }
 
             CachedRegex entry;
             try {
-                entry.compiled = std::make_shared<std::regex>(strPattern);
+                entry.compiled = std::make_shared<std::regex>(pattern);
             } catch (const std::regex_error &e) {
                 entry.error = e.what();
             }
 
-            return m_regexCache.emplace(strPattern, std::move(entry)).first->second;
+            return m_regexCache.emplace(pattern, std::move(entry)).first->second;
         }
 
         /**
@@ -422,16 +422,16 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * the same key - see receiveUntilDelimiter() for how to adjust a
          * comparison range instead of trimming the cached vector.
          */
-        const std::vector<uint8_t> *getConvertedData(const std::string &strValue, CommCommandTokenType eType)
+        const std::vector<uint8_t> *getConvertedData(const std::string &value, CommCommandTokenType type)
         {
-            DataCacheKey key{eType, strValue};
+            DataCacheKey key{type, value};
             auto it = m_dataCache.find(key);
             if (it != m_dataCache.end()) {
                 return &it->second;
             }
 
             std::vector<uint8_t> converted;
-            if (!convertToData(strValue, eType, converted)) {
+            if (!convertToData(value, type, converted)) {
                 return nullptr;
             }
 
@@ -491,7 +491,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                 return sendFile(strValue, strXtra_params);
             }
 
-            // Convert strValue to bytes based on eType (cached - see getConvertedData())
+            // Convert value to bytes based on type (cached - see getConvertedData())
             const std::vector<uint8_t> *data = getConvertedData(strValue, eType);
             if (!data) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -573,7 +573,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                 return receiveAndHexdump(strValue, strXtra_params);
 
             default:
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported receive token eType"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported receive token type"));
                 return false;
             }
         }
@@ -600,7 +600,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                 notifyCommDump(CommDir::Rx, strXtra_params, m_lastReceived.data(), m_lastReceived.size());
             }
 
-            // Match against strPattern directly over the received bytes - uint8_t and
+            // Match against pattern directly over the received bytes - uint8_t and
             // char share representation, so a reinterpret_cast pair of pointers is
             // a valid bidirectional char iterator range for std::regex_match,
             // avoiding a full copy of m_lastReceived into a temporary std::string
@@ -611,7 +611,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             const CachedRegex &cached = getCompiledRegex(strPattern);
             if (!cached.compiled) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Invalid regex strPattern:");
+                          LOG_STRING("Invalid regex pattern:");
                           LOG_STRING(cached.error));
                 return false;
             }
@@ -629,7 +629,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                 return matched;
             } catch (const std::regex_error &e) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Invalid regex strPattern:");
+                          LOG_STRING("Invalid regex pattern:");
                           LOG_STRING(e.what()));
                 return false;
             }
@@ -726,13 +726,13 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
         {
             ICommDriver::ReadOptions options;
             options.mode      = ICommDriver::ReadMode::UntilDelimiter;
-            options.u8Delimiter = u8Delimiter;
+            options.delimiter = u8Delimiter;
 
             auto result       = doReceiveInto(options, strXtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Read until u8Delimiter failed:");
+                          LOG_STRING("Read until delimiter failed:");
                           LOG_STRING(ICommDriver::to_string(result.status)));
                 return false;
             }
@@ -755,10 +755,10 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                 return false;
             }
 
-            // Note: m_lastReceived won't have the u8Delimiter, but expected will have '\0'
-            // appended by stringToVector() when the expected u8Delimiter was encountered.
+            // Note: m_lastReceived won't have the delimiter, but expected will have '\0'
+            // appended by stringToVector() when the expected delimiter was encountered.
             // expected now comes from the per-interpreter cache and may be shared with
-            // future lookups of the same strExpected, so we adjust the comparison
+            // future lookups of the same expectedStr, so we adjust the comparison
             // length instead of mutating it in place with pop_back().
             size_t expectedLen = expected->size();
             if (expectedLen > 0 && (*expected)[expectedLen - 1] == '\0') {
@@ -1061,7 +1061,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             case CommCommandTokenType::STRING_DELIMITED_EMPTY:
                 /* Skip the expandEscapes() allocation+copy entirely when there is
                  * no backslash to expand (the common case) - go straight from the
-                 * already-owned `strValue` into the byte vector, which needs exactly
+                 * already-owned `value` into the byte vector, which needs exactly
                  * one copy regardless (stringToVector always builds a fresh
                  * vector<uint8_t>), instead of string-copy-then-vector-copy. */
                 return (strValue.find('\\') == std::string::npos)
@@ -1074,7 +1074,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             case CommCommandTokenType::TOKEN_HEXSTREAM:
                 return hexutils::stringUnhexlify(strValue, vData);
             default:
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported token eType for vData conversion"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported token type for data conversion"));
                 return false;
             }
         }

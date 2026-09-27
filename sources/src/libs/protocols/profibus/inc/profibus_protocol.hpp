@@ -126,24 +126,24 @@ class ProfibusProtocol {
         // Used for broadcasts (da == kBroadcastAddress, e.g. Global_Control) as
         // well as unicast "don't care about the reply" exchanges. FCB/FCV are
         // always 0 for SDN, per the security-sequence rules (no ack to track).
-        std::vector<uint8_t> buildSdn(uint8_t u8Da, uint8_t u8Sa, const std::vector<uint8_t> &vData, bool bHighPriority = false) const;
+        std::vector<uint8_t> buildSdn(uint8_t da, uint8_t sa, const std::vector<uint8_t> &data, bool highPriority = false) const;
 
         // Send Data with Acknowledge: the responder replies with a bare SC
         // (or, on a malformed/rejected request, nothing — the caller's read
         // will simply time out). Carries the FCB/FCV security sequence, so the
         // per-da FCB state (m_lastFcbForDa) is read and updated here.
-        std::vector<uint8_t> buildSda(uint8_t u8Da, uint8_t u8Sa, const std::vector<uint8_t> &vData, bool bHighPriority = false);
+        std::vector<uint8_t> buildSda(uint8_t da, uint8_t sa, const std::vector<uint8_t> &data, bool highPriority = false);
 
         // Send and Request Data: the FDL service PROFIBUS-DP's own Data_Exchange
         // is built on top of — send data out, get the responder's reply data
         // back in the very same telegram cycle. Also carries the FCB/FCV
         // security sequence.
-        std::vector<uint8_t> buildSrd(uint8_t u8Da, uint8_t u8Sa, const std::vector<uint8_t> &vData, bool bHighPriority = false);
+        std::vector<uint8_t> buildSrd(uint8_t da, uint8_t sa, const std::vector<uint8_t> &data, bool highPriority = false);
 
         // Request FDL Status: SD1, no data. FCB=FCV=0 always (excluded from
         // the security sequence, same as SDN — see the PROFIBUS Manual's
         // "Function code" page, Frame Count Bit section).
-        std::vector<uint8_t> buildFdlStatusRequest(uint8_t u8Da, uint8_t u8Sa, bool bHighPriority = false) const;
+        std::vector<uint8_t> buildFdlStatusRequest(uint8_t da, uint8_t sa, bool highPriority = false) const;
 
         static std::vector<uint8_t> buildShortAck()
         {
@@ -171,7 +171,7 @@ class ProfibusProtocol {
 
         // Human-readable label for a decoded response status code, for
         // ProfibusDriver's receive()/monitor output (e.g. "DATA_LOW", "USER_ERROR").
-        static const char *responseStatusName(uint8_t u8StatusCode);
+        static const char *responseStatusName(uint8_t statusCode);
 
         // ---- FCS (Frame Check Sequence) ----
         // Simple 8-bit arithmetic sum (no carry) of DA, SA, FC and DU — NOT a
@@ -199,7 +199,7 @@ class ProfibusProtocol {
         // is sent with FCV=0, FCB=1 ("first request" marker); every subsequent
         // request to that same DA toggles FCB with FCV=1. Returns the
         // (fcb, fcv) pair to use for this call and updates m_lastFcbForDa.
-        std::pair<bool, bool> m_NextFcbFcv(uint8_t u8Da);
+        std::pair<bool, bool> m_NextFcbFcv(uint8_t da);
 
         // Builds a complete SD1 (no data), SD2 (variable data) or SD3 (fixed
         // 8-byte data) telegram around the given da/sa/fc/data — SD2 is chosen
@@ -207,7 +207,7 @@ class ProfibusProtocol {
         // fixed-length wire format when data.size() == 8; SD1 when data is
         // empty. Shared by buildSdn()/buildSda()/buildSrd() (buildFdlStatusRequest()
         // always uses SD1 directly, since Request FDL Status never carries data).
-        static std::vector<uint8_t> m_BuildDataTelegram(uint8_t u8Da, uint8_t u8Sa, uint8_t u8Fc, const std::vector<uint8_t> &vData);
+        static std::vector<uint8_t> m_BuildDataTelegram(uint8_t da, uint8_t sa, uint8_t fc, const std::vector<uint8_t> &data);
 
         // Per-destination-address FCB state for the acknowledged services
         // (SDA/SRD) — see m_NextFcbFcv(). Keyed by DA; absent == "no request

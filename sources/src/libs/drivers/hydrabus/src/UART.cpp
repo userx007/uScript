@@ -35,7 +35,7 @@ namespace HydraHAL {
     // ---------------------------------------------------------------------------
 
     UART::UART(std::shared_ptr<Hydrabus> shpHydrabus)
-        : Protocol(std::move(hydrabus), "ART1", "UART", 0x03)
+        : Protocol(std::move(shpHydrabus), "ART1", "UART", 0x03)
     {
     }
 
@@ -109,7 +109,7 @@ namespace HydraHAL {
         _write_u32_be(u32Baud);
 
         if (!_ack("set_baud")) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting u32Baud rate"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting baud rate"));
             return false;
         }
         _baud = u32Baud;
@@ -127,12 +127,12 @@ namespace HydraHAL {
 
     bool UART::set_parity(Parity eParity)
     {
-        // CMD 0b10000000 | (eParity << 2)
+        // CMD 0b10000000 | (parity << 2)
         uint8_t cmd = static_cast<uint8_t>(0b10000000 | (static_cast<uint8_t>(eParity) << 2));
         _write_byte(cmd);
 
         if (!_ack("set_parity")) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting eParity"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting parity"));
             return false;
         }
         _parity = eParity;
@@ -152,7 +152,7 @@ namespace HydraHAL {
     {
         // CMD 0b0000001x : x=0 means echo ON (NOT inverted in firmware),
         //                  x=1 means echo OFF
-        // Python: CMD = 0b00000010 | (not value)  → same as (bEnable ? 0x02 : 0x03)
+        // Python: CMD = 0b00000010 | (not value)  → same as (enable ? 0x02 : 0x03)
         uint8_t cmd = static_cast<uint8_t>(bEnable ? 0x02 : 0x03);
         _write_byte(cmd);
 

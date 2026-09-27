@@ -146,7 +146,7 @@ bool generic_module_dispatch(const T *pOwner,
     ustring::splitAtFirst(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     if (parts.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd strArgs]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd args]"));
         return false;
     }
 
@@ -158,7 +158,7 @@ bool generic_module_dispatch(const T *pOwner,
     }
 
     if (parts.size() < 2) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd strArgs]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd args]"));
         return false;
     }
 

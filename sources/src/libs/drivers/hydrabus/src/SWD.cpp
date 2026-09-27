@@ -40,7 +40,7 @@ namespace HydraHAL {
     // ---------------------------------------------------------------------------
 
     SWD::SWD(std::shared_ptr<Hydrabus> shpHydrabus)
-        : RawWire(std::move(hydrabus))
+        : RawWire(std::move(shpHydrabus))
     {
         // SWD requires 3-Wire, Open-Drain, polarity 0  → config = 0b1010
         _config = 0x0A;
@@ -113,7 +113,7 @@ namespace HydraHAL {
 
     uint32_t SWD::read_dp(uint8_t u8Addr, int iTo_ap, std::stop_token stop_tok)
     {
-        // Build request byte: 0b10000101 | iTo_ap<<1 | addr_bits<<1
+        // Build request byte: 0b10000101 | to_ap<<1 | addr_bits<<1
         uint8_t cmd = 0x85;
         cmd         = cmd | static_cast<uint8_t>(iTo_ap << 1);
         cmd         = cmd | static_cast<uint8_t>((u8Addr & 0b1100) << 1);
@@ -193,7 +193,7 @@ namespace HydraHAL {
         auto payload = u32_le(u32Value);
         write(std::vector<uint8_t>(payload.begin(), payload.end()), stop_tok);
 
-        // Parity bit: 1 if odd number of set bits in u32Value, else 0
+        // Parity bit: 1 if odd number of set bits in value, else 0
         uint8_t parity = static_cast<uint8_t>(
             std::bitset<32>(u32Value).count() % 2);
         const std::array<uint8_t, 1> par_byte{parity};
@@ -208,7 +208,7 @@ namespace HydraHAL {
     {
         // Build SELECT register:
         //   bits [31:24] = AP address
-        //   bits [7:4]   = u8Bank select
+        //   bits [7:4]   = bank select
         uint32_t select_reg = (static_cast<uint32_t>(u8Ap_address) << 24) | (static_cast<uint32_t>(u8Bank) & 0xF0u);
 
         write_dp(0x08, select_reg, 0, false, stop_tok); // DP SELECT register

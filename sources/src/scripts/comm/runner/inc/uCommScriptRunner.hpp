@@ -45,8 +45,8 @@ class CommScriptRunner : public ScriptRunner<TScriptEntries> {
         explicit CommScriptRunner(std::shared_ptr<IScriptReader> shpScriptReader,
                                   std::shared_ptr<IScriptValidator<TScriptEntries>> shpShvScriptValidator,
                                   std::shared_ptr<ICommScriptInterpreter<TScriptEntries, TDriver>> shpShvScriptInterpreter)
-            : ScriptRunner<TScriptEntries>(shpScriptReader, shvScriptValidator, shvScriptInterpreter)
-            , m_shpScriptInterpreterComm(std::move(shvScriptInterpreter))
+            : ScriptRunner<TScriptEntries>(shpScriptReader, shpShvScriptValidator, shpShvScriptInterpreter)
+            , m_shpScriptInterpreterComm(std::move(shpShvScriptInterpreter))
         {
         }
 

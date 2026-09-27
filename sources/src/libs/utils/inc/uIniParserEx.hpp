@@ -185,30 +185,30 @@ class IniParserEx {
             return resolveVariables(keyIt->second, strSection, iMaxDepth);
         }
 
-        [[nodiscard]] std::optional<std::string> getValueOpt(const std::string &strSection,
-                                                             const std::string &strKey,
-                                                             bool bResolve = true) const
+        [[nodiscard]] std::optional<std::string> getValueOpt(const std::string &section,
+                                                             const std::string &key,
+                                                             bool resolve = true) const
         {
-            auto secIt = iniData.find(strSection);
+            auto secIt = iniData.find(section);
             if (secIt == iniData.end()) {
                 return std::nullopt;
             }
 
-            auto keyIt = secIt->second.find(strKey);
+            auto keyIt = secIt->second.find(key);
             if (keyIt == secIt->second.end()) {
                 return std::nullopt;
             }
 
-            if (bResolve) {
-                return resolveVariables(keyIt->second, strSection, 10);
+            if (resolve) {
+                return resolveVariables(keyIt->second, section, 10);
             }
             return keyIt->second;
         }
 
-        [[nodiscard]] std::optional<std::string> getRawValue(const std::string &strSection,
-                                                             const std::string &strKey) const
+        [[nodiscard]] std::optional<std::string> getRawValue(const std::string &section,
+                                                             const std::string &key) const
         {
-            return getValueOpt(strSection, strKey, false);
+            return getValueOpt(section, key, false);
         }
 
         // -----------------------------------------------------------------------
@@ -280,10 +280,10 @@ class IniParserEx {
             return sections;
         }
 
-        [[nodiscard]] std::vector<std::string> getKeys(const std::string &strSection) const
+        [[nodiscard]] std::vector<std::string> getKeys(const std::string &section) const
         {
             std::vector<std::string> keys;
-            auto it = iniData.find(strSection);
+            auto it = iniData.find(section);
             if (it != iniData.end()) {
                 keys.reserve(it->second.size());
                 for (const auto &[key, _] : it->second) {
@@ -381,7 +381,7 @@ class IniParserEx {
                     if (resolved.count(section)) {
                         return; // already done
                     }
-                    if (!mapIncludes.count(section)) { // no mapIncludes → nothing to do
+                    if (!mapIncludes.count(section)) { // no includes → nothing to do
                         resolved.insert(section);
                         return;
                     }
@@ -397,7 +397,7 @@ class IniParserEx {
                         }
 
                         // Make sure the source section is itself fully resolved first
-                        // (handles transitive / nested mapIncludes).
+                        // (handles transitive / nested includes).
                         resolve(src);
 
                         auto srcIt = iniData.find(src);
@@ -528,19 +528,19 @@ class IniParserEx {
 //  Free helpers
 // ---------------------------------------------------------------------------
 
-[[nodiscard]] inline std::optional<IniParserEx> loadIniFile(const std::string &strFilename)
+[[nodiscard]] inline std::optional<IniParserEx> loadIniFile(const std::string &filename)
 {
     IniParserEx parser;
-    if (!parser.load(strFilename)) {
+    if (!parser.load(filename)) {
         return std::nullopt;
     }
     return parser;
 }
 
-[[nodiscard]] inline std::optional<IniParserEx> parseIniString(const std::string &strContent)
+[[nodiscard]] inline std::optional<IniParserEx> parseIniString(const std::string &content)
 {
     IniParserEx parser;
-    if (!parser.loadFromString(strContent)) {
+    if (!parser.loadFromString(content)) {
         return std::nullopt;
     }
     return parser;

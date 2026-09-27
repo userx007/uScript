@@ -46,7 +46,7 @@ namespace {
 } // namespace
 
 GrpcDriver::GrpcDriver(Config sConfig)
-    : m_config(std::move(config))
+    : m_config(std::move(sConfig))
 {
 }
 
@@ -54,7 +54,7 @@ namespace {
     bool readFileIntoString(const std::string &strPath, std::string &strOut)
     {
         if (strPath.empty()) {
-            return true; // optional file — leaving `strOut` untouched is fine
+            return true; // optional file — leaving `out` untouched is fine
         }
         std::ifstream in(strPath, std::ios::binary);
         if (!in) {
@@ -303,10 +303,10 @@ ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodD
     const bool bWasStopRequestedBeforeCall = stop_tok.stop_requested();
     std::stop_callback onStop(stop_tok, [&ctx]() { ctx.TryCancel(); });
 
-    // strMethodPath may have used "package.Service/Method" or
+    // methodPath may have used "package.Service/Method" or
     // "package.Service.Method"; the wire path is always "/Service/Method"
     // with the service's *fully-qualified* name — take that straight from
-    // the resolved descriptor rather than re-deriving it from strMethodPath.
+    // the resolved descriptor rather than re-deriving it from methodPath.
     const std::string wirePath = std::string{"/"} + std::string{pMethod->service()->full_name()} + std::string{"/"} + std::string{pMethod->name()};
 
     grpc::internal::RpcMethod rpcMethod(wirePath.c_str(), grpc::internal::RpcMethod::NORMAL_RPC);
@@ -403,7 +403,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallClientStreaming(const google::protobu
     std::lock_guard<std::mutex> lock(m_streamMutex);
 
     if (!m_pClientStreamWriter || m_strActiveStreamMethodPath != strMethodPath) {
-        // First CALL to this pMethod (or a different pMethod was open — see
+        // First CALL to this method (or a different method was open — see
         // m_AbandonActiveStreamLocked()'s doc comment: any new CALL starts
         // from a clean slate): open a fresh client-streaming call.
         m_AbandonActiveStreamLocked();
@@ -454,7 +454,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallBidiStreaming(const google::protobuf:
     std::lock_guard<std::mutex> lock(m_streamMutex);
 
     if (!m_pBidiStream || m_strActiveStreamMethodPath != strMethodPath) {
-        // First CALL to this pMethod (or a different pMethod/stream was open
+        // First CALL to this method (or a different method/stream was open
         // — see m_AbandonActiveStreamLocked()'s doc comment): open a fresh
         // bidi call. Unlike ClientReader<R> (server streaming),
         // ClientReaderWriter<W,R>'s constructor takes no initial request —

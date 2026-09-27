@@ -42,9 +42,9 @@ ProfibusProtocol::ResponseFc ProfibusProtocol::decodeResponseFc(uint8_t u8Fc)
     return result;
 }
 
-const char *ProfibusProtocol::responseStatusName(uint8_t u8StatusCode)
+const char *ProfibusProtocol::responseStatusName(uint8_t statusCode)
 {
-    switch (u8StatusCode) {
+    switch (statusCode) {
     case kRspOk:
         return "OK";
     case kRspUserError:
@@ -73,12 +73,12 @@ const char *ProfibusProtocol::responseStatusName(uint8_t u8StatusCode)
 // Count Bit"). See this function's doc comment in profibus_protocol.hpp.
 // -----------------------------------------------------------------------
 
-std::pair<bool, bool> ProfibusProtocol::m_NextFcbFcv(uint8_t u8Da)
+std::pair<bool, bool> ProfibusProtocol::m_NextFcbFcv(uint8_t da)
 {
-    auto it = m_lastFcbForDa.find(u8Da);
+    auto it = m_lastFcbForDa.find(da);
     if (it == m_lastFcbForDa.end()) {
         // First request to this DA on this session: FCV=0, FCB=1.
-        m_lastFcbForDa.emplace(u8Da, true);
+        m_lastFcbForDa.emplace(da, true);
         return {true, false};
     }
     // Subsequent request: FCV=1, FCB toggled from the last value sent to
@@ -92,84 +92,84 @@ std::pair<bool, bool> ProfibusProtocol::m_NextFcbFcv(uint8_t u8Da)
 // Telegram assembly
 // -----------------------------------------------------------------------
 
-std::vector<uint8_t> ProfibusProtocol::m_BuildDataTelegram(uint8_t u8Da, uint8_t u8Sa, uint8_t u8Fc, const std::vector<uint8_t> &vData)
+std::vector<uint8_t> ProfibusProtocol::m_BuildDataTelegram(uint8_t da, uint8_t sa, uint8_t fc, const std::vector<uint8_t> &data)
 {
-    if (vData.empty()) {
-        // SD1 — no vData field.
+    if (data.empty()) {
+        // SD1 — no data field.
         std::vector<uint8_t> t;
         t.reserve(6);
         t.push_back(kSD1);
-        t.push_back(u8Da);
-        t.push_back(u8Sa);
-        t.push_back(u8Fc);
-        t.push_back(computeFcs(u8Da, u8Sa, u8Fc, {}));
+        t.push_back(da);
+        t.push_back(sa);
+        t.push_back(fc);
+        t.push_back(computeFcs(da, sa, fc, {}));
         t.push_back(kED);
         return t;
     }
 
-    if (vData.size() == 8) {
-        // SD3 — fixed 8-byte vData field.
+    if (data.size() == 8) {
+        // SD3 — fixed 8-byte data field.
         std::vector<uint8_t> t;
         t.reserve(14);
         t.push_back(kSD3);
-        t.push_back(u8Da);
-        t.push_back(u8Sa);
-        t.push_back(u8Fc);
-        t.insert(t.end(), vData.begin(), vData.end());
-        t.push_back(computeFcs(u8Da, u8Sa, u8Fc, vData));
+        t.push_back(da);
+        t.push_back(sa);
+        t.push_back(fc);
+        t.insert(t.end(), data.begin(), data.end());
+        t.push_back(computeFcs(da, sa, fc, data));
         t.push_back(kED);
         return t;
     }
 
-    // SD2 — variable-length vData field. LE/LEr count DA+SA+FC+DU (i.e.
-    // 3 + vData.size()), per the PROFIBUS Manual's "Length" page; repeated
+    // SD2 — variable-length data field. LE/LEr count DA+SA+FC+DU (i.e.
+    // 3 + data.size()), per the PROFIBUS Manual's "Length" page; repeated
     // twice (LE, LEr) and the SD2 marker itself repeated, both purely for
     // the receiver's plausibility check (Hamming-distance robustness of
     // the header) — not a length-prefix-plus-checksum scheme.
-    const uint8_t le = static_cast<uint8_t>(3 + vData.size());
+    const uint8_t le = static_cast<uint8_t>(3 + data.size());
     std::vector<uint8_t> t;
-    t.reserve(static_cast<size_t>(6) + vData.size());
+    t.reserve(static_cast<size_t>(6) + data.size());
     t.push_back(kSD2);
     t.push_back(le);
     t.push_back(le);
     t.push_back(kSD2);
-    t.push_back(u8Da);
-    t.push_back(u8Sa);
-    t.push_back(u8Fc);
-    t.insert(t.end(), vData.begin(), vData.end());
-    t.push_back(computeFcs(u8Da, u8Sa, u8Fc, vData));
+    t.push_back(da);
+    t.push_back(sa);
+    t.push_back(fc);
+    t.insert(t.end(), data.begin(), data.end());
+    t.push_back(computeFcs(da, sa, fc, data));
     t.push_back(kED);
     return t;
 }
 
-std::vector<uint8_t> ProfibusProtocol::buildSdn(uint8_t u8Da, uint8_t u8Sa, const std::vector<uint8_t> &vData, bool bHighPriority) const
+std::vector<uint8_t> ProfibusProtocol::buildSdn(uint8_t da, uint8_t sa, const std::vector<uint8_t> &data, bool highPriority) const
 {
-    const uint8_t fc = buildRequestFc(bHighPriority ? kFnSdnHigh : kFnSdnLow, /*fcb=*/false, /*fcv=*/false);
-    return m_BuildDataTelegram(u8Da, u8Sa, fc, vData);
+    const uint8_t fc = buildRequestFc(highPriority ? kFnSdnHigh : kFnSdnLow, /*fcb=*/false, /*fcv=*/false);
+    return m_BuildDataTelegram(da, sa, fc, data);
 }
 
-std::vector<uint8_t> ProfibusProtocol::buildSda(uint8_t u8Da, uint8_t u8Sa, const std::vector<uint8_t> &vData, bool bHighPriority)
+std::vector<uint8_t> ProfibusProtocol::buildSda(uint8_t da, uint8_t sa, const std::vector<uint8_t> &data, bool highPriority)
 {
-    const auto [fcb, fcv] = m_NextFcbFcv(u8Da);
-    const uint8_t fc      = buildRequestFc(bHighPriority ? kFnSdaHigh : kFnSdaLow, fcb, fcv);
-    return m_BuildDataTelegram(u8Da, u8Sa, fc, vData);
+    const auto [fcb, fcv] = m_NextFcbFcv(da);
+    const uint8_t fc      = buildRequestFc(highPriority ? kFnSdaHigh : kFnSdaLow, fcb, fcv);
+    return m_BuildDataTelegram(da, sa, fc, data);
 }
 
-std::vector<uint8_t> ProfibusProtocol::buildSrd(uint8_t u8Da, uint8_t u8Sa, const std::vector<uint8_t> &vData, bool bHighPriority)
+std::vector<uint8_t> ProfibusProtocol::buildSrd(uint8_t da, uint8_t sa, const std::vector<uint8_t> &data, bool highPriority)
 {
-    const auto [fcb, fcv] = m_NextFcbFcv(u8Da);
-    const uint8_t fc      = buildRequestFc(bHighPriority ? kFnSrdHigh : kFnSrdLow, fcb, fcv);
-    return m_BuildDataTelegram(u8Da, u8Sa, fc, vData);
+    const auto [fcb, fcv] = m_NextFcbFcv(da);
+    const uint8_t fc      = buildRequestFc(highPriority ? kFnSrdHigh : kFnSrdLow, fcb, fcv);
+    return m_BuildDataTelegram(da, sa, fc, data);
 }
 
-std::vector<uint8_t> ProfibusProtocol::buildFdlStatusRequest(uint8_t u8Da, uint8_t u8Sa, bool bHighPriority) const
+std::vector<uint8_t> ProfibusProtocol::buildFdlStatusRequest(uint8_t da, uint8_t sa, bool highPriority) const
 {
     // Excluded from the security sequence (FCB=FCV=0 always) — see the
     // PROFIBUS Manual's Frame Count Bit table, "Request FDL Status/ Ident/
     // LSAP Status" row.
-    (void)bHighPriority; // Request FDL Status has no low/high-priority variant in the function-code table
+    (void)highPriority; // Request FDL Status has no low/high-priority variant in the function-code table
     const uint8_t fc = buildRequestFc(kFnRequestFdlStatus, /*fcb=*/false, /*fcv=*/false);
-    return m_BuildDataTelegram(u8Da, u8Sa, fc, {});
+    return m_BuildDataTelegram(da, sa, fc, {});
 }
 
 // -----------------------------------------------------------------------

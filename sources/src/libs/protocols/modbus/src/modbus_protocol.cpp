@@ -1,121 +1,121 @@
 #include "modbus_protocol.hpp"
 
-std::vector<uint8_t> ModbusProtocol::m_buildRequest(uint8_t u8UnitId, const std::vector<uint8_t> &vPdu, uint16_t *pu16OutTxnId)
+std::vector<uint8_t> ModbusProtocol::m_buildRequest(uint8_t unitId, const std::vector<uint8_t> &pdu, uint16_t *pOutTxnId)
 {
     const uint16_t txnId = m_allocateTransactionId();
-    if (pu16OutTxnId) {
-        *pu16OutTxnId = txnId;
+    if (pOutTxnId) {
+        *pOutTxnId = txnId;
     }
 
-    const uint16_t followingLength = static_cast<uint16_t>(1 + vPdu.size()); // Unit Id + PDU
+    const uint16_t followingLength = static_cast<uint16_t>(1 + pdu.size()); // Unit Id + PDU
 
     std::vector<uint8_t> adu;
-    adu.reserve(7 + vPdu.size());
+    adu.reserve(7 + pdu.size());
     adu.push_back(static_cast<uint8_t>((txnId >> 8) & 0xFF));
     adu.push_back(static_cast<uint8_t>(txnId & 0xFF));
     adu.push_back(0x00); // Protocol Identifier hi — always 0 for Modbus
     adu.push_back(0x00); // Protocol Identifier lo
     adu.push_back(static_cast<uint8_t>((followingLength >> 8) & 0xFF));
     adu.push_back(static_cast<uint8_t>(followingLength & 0xFF));
-    adu.push_back(u8UnitId);
-    adu.insert(adu.end(), vPdu.begin(), vPdu.end());
+    adu.push_back(unitId);
+    adu.insert(adu.end(), pdu.begin(), pdu.end());
     return adu;
 }
 
-std::vector<uint8_t> ModbusProtocol::buildReadCoils(uint8_t u8UnitId, uint16_t u16StartAddr, uint16_t u16Quantity, uint16_t *pu16OutTxnId)
+std::vector<uint8_t> ModbusProtocol::buildReadCoils(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId)
 {
     std::vector<uint8_t> pdu{kReadCoils,
-                             static_cast<uint8_t>((u16StartAddr >> 8) & 0xFF), static_cast<uint8_t>(u16StartAddr & 0xFF),
-                             static_cast<uint8_t>((u16Quantity >> 8) & 0xFF), static_cast<uint8_t>(u16Quantity & 0xFF)};
-    return m_buildRequest(u8UnitId, pdu, pu16OutTxnId);
+                             static_cast<uint8_t>((startAddr >> 8) & 0xFF), static_cast<uint8_t>(startAddr & 0xFF),
+                             static_cast<uint8_t>((quantity >> 8) & 0xFF), static_cast<uint8_t>(quantity & 0xFF)};
+    return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
-std::vector<uint8_t> ModbusProtocol::buildReadDiscreteInputs(uint8_t u8UnitId, uint16_t u16StartAddr, uint16_t u16Quantity, uint16_t *pu16OutTxnId)
+std::vector<uint8_t> ModbusProtocol::buildReadDiscreteInputs(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId)
 {
     std::vector<uint8_t> pdu{kReadDiscreteInputs,
-                             static_cast<uint8_t>((u16StartAddr >> 8) & 0xFF), static_cast<uint8_t>(u16StartAddr & 0xFF),
-                             static_cast<uint8_t>((u16Quantity >> 8) & 0xFF), static_cast<uint8_t>(u16Quantity & 0xFF)};
-    return m_buildRequest(u8UnitId, pdu, pu16OutTxnId);
+                             static_cast<uint8_t>((startAddr >> 8) & 0xFF), static_cast<uint8_t>(startAddr & 0xFF),
+                             static_cast<uint8_t>((quantity >> 8) & 0xFF), static_cast<uint8_t>(quantity & 0xFF)};
+    return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
-std::vector<uint8_t> ModbusProtocol::buildReadHoldingRegisters(uint8_t u8UnitId, uint16_t u16StartAddr, uint16_t u16Quantity, uint16_t *pu16OutTxnId)
+std::vector<uint8_t> ModbusProtocol::buildReadHoldingRegisters(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId)
 {
     std::vector<uint8_t> pdu{kReadHoldingRegisters,
-                             static_cast<uint8_t>((u16StartAddr >> 8) & 0xFF), static_cast<uint8_t>(u16StartAddr & 0xFF),
-                             static_cast<uint8_t>((u16Quantity >> 8) & 0xFF), static_cast<uint8_t>(u16Quantity & 0xFF)};
-    return m_buildRequest(u8UnitId, pdu, pu16OutTxnId);
+                             static_cast<uint8_t>((startAddr >> 8) & 0xFF), static_cast<uint8_t>(startAddr & 0xFF),
+                             static_cast<uint8_t>((quantity >> 8) & 0xFF), static_cast<uint8_t>(quantity & 0xFF)};
+    return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
-std::vector<uint8_t> ModbusProtocol::buildReadInputRegisters(uint8_t u8UnitId, uint16_t u16StartAddr, uint16_t u16Quantity, uint16_t *pu16OutTxnId)
+std::vector<uint8_t> ModbusProtocol::buildReadInputRegisters(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId)
 {
     std::vector<uint8_t> pdu{kReadInputRegisters,
-                             static_cast<uint8_t>((u16StartAddr >> 8) & 0xFF), static_cast<uint8_t>(u16StartAddr & 0xFF),
-                             static_cast<uint8_t>((u16Quantity >> 8) & 0xFF), static_cast<uint8_t>(u16Quantity & 0xFF)};
-    return m_buildRequest(u8UnitId, pdu, pu16OutTxnId);
+                             static_cast<uint8_t>((startAddr >> 8) & 0xFF), static_cast<uint8_t>(startAddr & 0xFF),
+                             static_cast<uint8_t>((quantity >> 8) & 0xFF), static_cast<uint8_t>(quantity & 0xFF)};
+    return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
-std::vector<uint8_t> ModbusProtocol::buildWriteSingleCoil(uint8_t u8UnitId, uint16_t u16Addr, bool bValue, uint16_t *pu16OutTxnId)
+std::vector<uint8_t> ModbusProtocol::buildWriteSingleCoil(uint8_t unitId, uint16_t addr, bool value, uint16_t *pOutTxnId)
 {
-    const uint16_t wireValue = bValue ? 0xFF00 : 0x0000; // Modbus's own encoding for a single coil write
+    const uint16_t wireValue = value ? 0xFF00 : 0x0000; // Modbus's own encoding for a single coil write
     std::vector<uint8_t> pdu{kWriteSingleCoil,
-                             static_cast<uint8_t>((u16Addr >> 8) & 0xFF), static_cast<uint8_t>(u16Addr & 0xFF),
+                             static_cast<uint8_t>((addr >> 8) & 0xFF), static_cast<uint8_t>(addr & 0xFF),
                              static_cast<uint8_t>((wireValue >> 8) & 0xFF), static_cast<uint8_t>(wireValue & 0xFF)};
-    return m_buildRequest(u8UnitId, pdu, pu16OutTxnId);
+    return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
-std::vector<uint8_t> ModbusProtocol::buildWriteSingleRegister(uint8_t u8UnitId, uint16_t u16Addr, uint16_t u16Value, uint16_t *pu16OutTxnId)
+std::vector<uint8_t> ModbusProtocol::buildWriteSingleRegister(uint8_t unitId, uint16_t addr, uint16_t value, uint16_t *pOutTxnId)
 {
     std::vector<uint8_t> pdu{kWriteSingleRegister,
-                             static_cast<uint8_t>((u16Addr >> 8) & 0xFF), static_cast<uint8_t>(u16Addr & 0xFF),
-                             static_cast<uint8_t>((u16Value >> 8) & 0xFF), static_cast<uint8_t>(u16Value & 0xFF)};
-    return m_buildRequest(u8UnitId, pdu, pu16OutTxnId);
+                             static_cast<uint8_t>((addr >> 8) & 0xFF), static_cast<uint8_t>(addr & 0xFF),
+                             static_cast<uint8_t>((value >> 8) & 0xFF), static_cast<uint8_t>(value & 0xFF)};
+    return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
-std::vector<uint8_t> ModbusProtocol::buildWriteMultipleCoils(uint8_t u8UnitId, uint16_t u16StartAddr,
-                                                             const std::vector<bool> &vValues, uint16_t *pu16OutTxnId)
+std::vector<uint8_t> ModbusProtocol::buildWriteMultipleCoils(uint8_t unitId, uint16_t startAddr,
+                                                             const std::vector<bool> &values, uint16_t *pOutTxnId)
 {
-    const uint16_t quantity = static_cast<uint16_t>(vValues.size());
-    const uint8_t byteCount = static_cast<uint8_t>((vValues.size() + 7) / 8);
+    const uint16_t quantity = static_cast<uint16_t>(values.size());
+    const uint8_t byteCount = static_cast<uint8_t>((values.size() + 7) / 8);
 
     std::vector<uint8_t> pdu;
     pdu.push_back(kWriteMultipleCoils);
-    pdu.push_back(static_cast<uint8_t>((u16StartAddr >> 8) & 0xFF));
-    pdu.push_back(static_cast<uint8_t>(u16StartAddr & 0xFF));
+    pdu.push_back(static_cast<uint8_t>((startAddr >> 8) & 0xFF));
+    pdu.push_back(static_cast<uint8_t>(startAddr & 0xFF));
     pdu.push_back(static_cast<uint8_t>((quantity >> 8) & 0xFF));
     pdu.push_back(static_cast<uint8_t>(quantity & 0xFF));
     pdu.push_back(byteCount);
 
     std::vector<uint8_t> packed(byteCount, 0);
-    for (size_t i = 0; i < vValues.size(); ++i) {
-        if (vValues[i]) {
+    for (size_t i = 0; i < values.size(); ++i) {
+        if (values[i]) {
             packed[i / 8] |= static_cast<uint8_t>(1u << (i % 8));
         }
     }
     pdu.insert(pdu.end(), packed.begin(), packed.end());
 
-    return m_buildRequest(u8UnitId, pdu, pu16OutTxnId);
+    return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
-std::vector<uint8_t> ModbusProtocol::buildWriteMultipleRegisters(uint8_t u8UnitId, uint16_t u16StartAddr,
-                                                                 const std::vector<uint16_t> &vValues, uint16_t *pu16OutTxnId)
+std::vector<uint8_t> ModbusProtocol::buildWriteMultipleRegisters(uint8_t unitId, uint16_t startAddr,
+                                                                 const std::vector<uint16_t> &values, uint16_t *pOutTxnId)
 {
-    const uint16_t quantity = static_cast<uint16_t>(vValues.size());
-    const uint8_t byteCount = static_cast<uint8_t>(vValues.size() * 2);
+    const uint16_t quantity = static_cast<uint16_t>(values.size());
+    const uint8_t byteCount = static_cast<uint8_t>(values.size() * 2);
 
     std::vector<uint8_t> pdu;
     pdu.push_back(kWriteMultipleRegisters);
-    pdu.push_back(static_cast<uint8_t>((u16StartAddr >> 8) & 0xFF));
-    pdu.push_back(static_cast<uint8_t>(u16StartAddr & 0xFF));
+    pdu.push_back(static_cast<uint8_t>((startAddr >> 8) & 0xFF));
+    pdu.push_back(static_cast<uint8_t>(startAddr & 0xFF));
     pdu.push_back(static_cast<uint8_t>((quantity >> 8) & 0xFF));
     pdu.push_back(static_cast<uint8_t>(quantity & 0xFF));
     pdu.push_back(byteCount);
 
-    for (uint16_t v : vValues) {
+    for (uint16_t v : values) {
         pdu.push_back(static_cast<uint8_t>((v >> 8) & 0xFF));
         pdu.push_back(static_cast<uint8_t>(v & 0xFF));
     }
 
-    return m_buildRequest(u8UnitId, pdu, pu16OutTxnId);
+    return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
 // -----------------------------------------------------------------------

@@ -143,7 +143,7 @@ namespace {
         if (!bVerbose) {
             return;
         }
-        std::fprintf(stderr, "  [%s] strRxId=%-8s strTxId=%-8s len=%3zu  ", pstrDir, strRxId.c_str(), strTxId.c_str(), vData.size());
+        std::fprintf(stderr, "  [%s] rxId=%-8s txId=%-8s len=%3zu  ", pstrDir, strRxId.c_str(), strTxId.c_str(), vData.size());
         for (uint8_t b : vData) {
             std::fprintf(stderr, "%02X ", b);
         }
@@ -236,7 +236,7 @@ namespace {
         auto onDirectionKnown = [&](bool download) {
             isDownload    = download;
             sawFirstFrame = true;
-            // Only an Upload echoes previously-vStored data back to the peer;
+            // Only an Upload echoes previously-stored data back to the peer;
             // that's the response this app's configurable delay applies to.
             if (!download) {
                 sleep_delay(sArgs.delayMs);

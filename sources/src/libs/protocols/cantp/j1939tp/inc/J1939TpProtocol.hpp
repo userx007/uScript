@@ -40,7 +40,7 @@
 class J1939TpProtocol final : public ITransportProtocol {
     public:
         explicit J1939TpProtocol(const TpConfig &sCfg = {})
-            : m_cfg(cfg)
+            : m_cfg(sCfg)
         {
         }
 

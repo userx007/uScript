@@ -28,7 +28,7 @@ static constexpr auto C_PRINT      = "#a5b4fc"; // periwinkle — @ print direct
 
 // ─────────────────────────────────────────────────────────────────────────────
 CommScriptHighlighter::CommScriptHighlighter(QTextDocument *pParent)
-    : ScriptHighlighterBase(parent)
+    : ScriptHighlighterBase(pParent)
 {
     using RE = QRegularExpression;
 

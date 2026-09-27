@@ -276,8 +276,8 @@ class BuspiratePlugin : public PluginInterface {
             return false;
         }
 
-        ModuleCommandsMap<BuspiratePlugin> *getModuleCmdsMap(const std::string &strM) const;
-        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strM) const;
+        ModuleCommandsMap<BuspiratePlugin> *getModuleCmdsMap(const std::string &strModule) const;
+        ModuleSpeedMap *getModuleSpeedsMap(const std::string &strModule) const;
         bool generic_uart_send_receive(std::span<const uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, std::span<const uint8_t> expected = std::span<const uint8_t>{}, bool bStrictCompare = true, std::stop_token st = {}) const;
 
         static constexpr uint8_t m_positive_response[]                  = {0x01};
@@ -472,7 +472,7 @@ class BuspiratePlugin : public PluginInterface {
 #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
 #define BUSPIRATE_PLUGIN_CMD_RECORD(a)                                                    \
-    bool m_Buspirate_##a(const std::string &strArgs, std::stop_token st) const               \
+    bool m_Buspirate_##a(const std::string &args, std::stop_token st) const               \
     {                                                                                     \
         return generic_module_dispatch<BuspiratePlugin>(this, std::string(#a), args, st); \
     }
@@ -535,8 +535,8 @@ class BuspiratePlugin : public PluginInterface {
         // through one of these — only the bulk-write side needs a helper here.
         bool m_uart_bulk_write(std::span<const uint8_t> request, std::stop_token st = {}) const;
 
-        bool generic_write_read_file(const uint8_t u8Owner, const std::string &strArgs, std::stop_token st = {}) const;
-        bool generic_write_read_data(const uint8_t u8Owner, const std::string &strArgs, std::stop_token st = {}) const;
+        bool generic_write_read_file(const uint8_t u8Cmd, const std::string &strArgs, std::stop_token st = {}) const;
+        bool generic_write_read_data(const uint8_t u8Cmd, const std::string &strArgs, std::stop_token st = {}) const;
         bool generic_set_peripheral(const std::string &strArgs, std::stop_token st = {}) const;
         bool generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool bStrictCompare = false, std::stop_token st = {}) const;
         bool generic_internal_write_read_file(const uint8_t u8Cmd, const std::string &strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize, std::stop_token st = {}) const;

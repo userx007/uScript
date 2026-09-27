@@ -117,7 +117,7 @@ bool generic_module_dispatch(const T *pOwner,
     ustring::splitAtFirst(strArgs, CHAR_SEPARATOR_SPACE, parts);
 
     if (parts.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd strArgs]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd args]"));
         return false;
     }
 
@@ -134,7 +134,7 @@ bool generic_module_dispatch(const T *pOwner,
     }
 
     if (parts.size() < 2) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd strArgs]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd args]"));
         return false;
     }
 
@@ -224,18 +224,18 @@ bool generic_write_data(const T *pOwner, const std::string &strArgs, WRITE_DATA_
 ============================================================================================ */
 
 template <typename T, typename TCommDriver>
-bool generic_execute_script(const T *pDriver, const std::string &strPluginName, const std::string &strScriptName, std::stop_token st = {})
+bool generic_execute_script(const T *pOwner, const std::string &strPluginName, const std::string &strArgs, std::stop_token st = {})
 {
     bool bRetVal = false;
     std::string strScriptPathName;
 
-    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("generic_execute_script:"); LOG_STRING(strScriptName));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("generic_execute_script:"); LOG_STRING(strArgs));
 
     // get the values from the configuration file
-    auto *pIniValues = getAccessIniValues(*pDriver);
+    auto *pIniValues = getAccessIniValues(*pOwner);
 
     // build the artefacts path
-    ufile::buildFilePath(pIniValues->strArtefactsPath, strScriptName, strScriptPathName);
+    ufile::buildFilePath(pIniValues->strArtefactsPath, strArgs, strScriptPathName);
 
     // Check file existence and size
     if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
@@ -243,10 +243,10 @@ bool generic_execute_script(const T *pDriver, const std::string &strPluginName, 
     } else {
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Script:"); LOG_STRING(strScriptPathName));
         try {
-            bool bEnabled  = getEnabledStatus(*pDriver);
+            bool bEnabled  = getEnabledStatus(*pOwner);
 
             // construct the driver with the outer reference fulfilled
-            auto shpDriver = bEnabled ? std::make_shared<TCommDriver>(*pDriver) : nullptr;
+            auto shpDriver = bEnabled ? std::make_shared<TCommDriver>(*pOwner) : nullptr;
 
             // check if the driver opened successfully only if the plugin is enabled
             if (bEnabled && shpDriver && !shpDriver->is_open()) {

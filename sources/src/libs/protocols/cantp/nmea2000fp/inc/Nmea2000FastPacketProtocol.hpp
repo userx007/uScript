@@ -54,7 +54,7 @@
 class Nmea2000FastPacketProtocol final : public ITransportProtocol {
     public:
         explicit Nmea2000FastPacketProtocol(const TpConfig &sCfg = {})
-            : m_cfg(cfg)
+            : m_cfg(sCfg)
         {
         }
 

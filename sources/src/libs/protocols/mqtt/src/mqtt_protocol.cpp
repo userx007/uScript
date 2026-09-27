@@ -9,17 +9,17 @@ uint16_t MqttProtocol::m_allocatePacketId()
     return id;
 }
 
-std::vector<uint8_t> MqttProtocol::encodeVarInt(uint32_t u32Value)
+std::vector<uint8_t> MqttProtocol::encodeVarInt(uint32_t value)
 {
     std::vector<uint8_t> bytes;
     do {
-        uint8_t encoded = u32Value % 128;
-        u32Value /= 128;
-        if (u32Value > 0) {
+        uint8_t encoded = value % 128;
+        value /= 128;
+        if (value > 0) {
             encoded |= 0x80;
         }
         bytes.push_back(encoded);
-    } while (u32Value > 0);
+    } while (value > 0);
     return bytes;
 }
 
@@ -45,11 +45,11 @@ uint32_t MqttProtocol::decodeVarInt(const std::vector<uint8_t> &vData, size_t &o
 // Builders
 // -----------------------------------------------------------------------
 
-std::vector<uint8_t> MqttProtocol::buildConnect(const ConnectParams &sParams) const
+std::vector<uint8_t> MqttProtocol::buildConnect(const ConnectParams &params) const
 {
-    const bool hasUser = !sParams.username.empty();
-    const bool hasPass = hasUser && !sParams.password.empty();
-    const bool hasWill = !sParams.willTopic.empty();
+    const bool hasUser = !params.username.empty();
+    const bool hasPass = hasUser && !params.password.empty();
+    const bool hasWill = !params.willTopic.empty();
 
     uint8_t flags      = 0;
     if (hasUser) {
@@ -60,16 +60,16 @@ std::vector<uint8_t> MqttProtocol::buildConnect(const ConnectParams &sParams) co
     }
     if (hasWill) {
         flags |= 0x04;
-        flags |= static_cast<uint8_t>((sParams.willQos & 0x03) << 3);
-        if (sParams.willRetain) {
+        flags |= static_cast<uint8_t>((params.willQos & 0x03) << 3);
+        if (params.willRetain) {
             flags |= 0x20;
         }
     }
-    if (sParams.cleanSession) {
+    if (params.cleanSession) {
         flags |= 0x02;
     }
 
-    const std::string clientId            = sParams.clientId.empty() ? "mqtt_client_" : sParams.clientId;
+    const std::string clientId            = params.clientId.empty() ? "mqtt_client_" : params.clientId;
 
     static const std::string protocolName = "MQTT";
     std::vector<uint8_t> varHeader;
@@ -78,8 +78,8 @@ std::vector<uint8_t> MqttProtocol::buildConnect(const ConnectParams &sParams) co
     varHeader.insert(varHeader.end(), protocolName.begin(), protocolName.end());
     varHeader.push_back(4); // MQTT Version 3.1.1
     varHeader.push_back(flags);
-    varHeader.push_back(static_cast<uint8_t>((sParams.keepAlive >> 8) & 0xFF));
-    varHeader.push_back(static_cast<uint8_t>(sParams.keepAlive & 0xFF));
+    varHeader.push_back(static_cast<uint8_t>((params.keepAlive >> 8) & 0xFF));
+    varHeader.push_back(static_cast<uint8_t>(params.keepAlive & 0xFF));
 
     // Payload order is mandated by the spec: Client ID, Will Topic + Will
     // Message (if Will Flag), User Name (if flag), Password (if flag).
@@ -89,23 +89,23 @@ std::vector<uint8_t> MqttProtocol::buildConnect(const ConnectParams &sParams) co
     payload.insert(payload.end(), clientId.begin(), clientId.end());
 
     if (hasWill) {
-        payload.push_back(static_cast<uint8_t>((sParams.willTopic.length() >> 8) & 0xFF));
-        payload.push_back(static_cast<uint8_t>(sParams.willTopic.length() & 0xFF));
-        payload.insert(payload.end(), sParams.willTopic.begin(), sParams.willTopic.end());
+        payload.push_back(static_cast<uint8_t>((params.willTopic.length() >> 8) & 0xFF));
+        payload.push_back(static_cast<uint8_t>(params.willTopic.length() & 0xFF));
+        payload.insert(payload.end(), params.willTopic.begin(), params.willTopic.end());
 
-        payload.push_back(static_cast<uint8_t>((sParams.willPayload.length() >> 8) & 0xFF));
-        payload.push_back(static_cast<uint8_t>(sParams.willPayload.length() & 0xFF));
-        payload.insert(payload.end(), sParams.willPayload.begin(), sParams.willPayload.end());
+        payload.push_back(static_cast<uint8_t>((params.willPayload.length() >> 8) & 0xFF));
+        payload.push_back(static_cast<uint8_t>(params.willPayload.length() & 0xFF));
+        payload.insert(payload.end(), params.willPayload.begin(), params.willPayload.end());
     }
     if (hasUser) {
-        payload.push_back(static_cast<uint8_t>((sParams.username.length() >> 8) & 0xFF));
-        payload.push_back(static_cast<uint8_t>(sParams.username.length() & 0xFF));
-        payload.insert(payload.end(), sParams.username.begin(), sParams.username.end());
+        payload.push_back(static_cast<uint8_t>((params.username.length() >> 8) & 0xFF));
+        payload.push_back(static_cast<uint8_t>(params.username.length() & 0xFF));
+        payload.insert(payload.end(), params.username.begin(), params.username.end());
     }
     if (hasPass) {
-        payload.push_back(static_cast<uint8_t>((sParams.password.length() >> 8) & 0xFF));
-        payload.push_back(static_cast<uint8_t>(sParams.password.length() & 0xFF));
-        payload.insert(payload.end(), sParams.password.begin(), sParams.password.end());
+        payload.push_back(static_cast<uint8_t>((params.password.length() >> 8) & 0xFF));
+        payload.push_back(static_cast<uint8_t>(params.password.length() & 0xFF));
+        payload.insert(payload.end(), params.password.begin(), params.password.end());
     }
 
     const size_t remainingLen        = varHeader.size() + payload.size();
@@ -130,69 +130,69 @@ std::vector<uint8_t> MqttProtocol::buildPingReq() const
     return {kPingReq, 0x00};
 }
 
-std::vector<uint8_t> MqttProtocol::buildPublish(const std::string &strTopic, const std::string &strPayload,
-                                                uint8_t u8Qos, bool bRetain, uint16_t *pu16OutPacketId)
+std::vector<uint8_t> MqttProtocol::buildPublish(const std::string &topic, const std::string &payload,
+                                                uint8_t qos, bool retain, uint16_t *pOutPacketId)
 {
-    u8Qos &= 0x03;
+    qos &= 0x03;
 
     std::vector<uint8_t> varAndPayload;
-    varAndPayload.push_back(static_cast<uint8_t>((strTopic.length() >> 8) & 0xFF));
-    varAndPayload.push_back(static_cast<uint8_t>(strTopic.length() & 0xFF));
-    varAndPayload.insert(varAndPayload.end(), strTopic.begin(), strTopic.end());
+    varAndPayload.push_back(static_cast<uint8_t>((topic.length() >> 8) & 0xFF));
+    varAndPayload.push_back(static_cast<uint8_t>(topic.length() & 0xFF));
+    varAndPayload.insert(varAndPayload.end(), topic.begin(), topic.end());
 
     uint16_t packetId = 0;
-    if (u8Qos > 0) {
+    if (qos > 0) {
         packetId = m_allocatePacketId();
         varAndPayload.push_back(static_cast<uint8_t>((packetId >> 8) & 0xFF));
         varAndPayload.push_back(static_cast<uint8_t>(packetId & 0xFF));
     }
 
-    varAndPayload.insert(varAndPayload.end(), strPayload.begin(), strPayload.end());
+    varAndPayload.insert(varAndPayload.end(), payload.begin(), payload.end());
 
     std::vector<uint8_t> remLenBytes = encodeVarInt(varAndPayload.size());
     std::vector<uint8_t> packet;
     packet.reserve(1 + remLenBytes.size() + varAndPayload.size());
-    packet.push_back(static_cast<uint8_t>(kPublish | (u8Qos << 1) | (bRetain ? 0x01 : 0x00)));
+    packet.push_back(static_cast<uint8_t>(kPublish | (qos << 1) | (retain ? 0x01 : 0x00)));
     packet.insert(packet.end(), remLenBytes.begin(), remLenBytes.end());
     packet.insert(packet.end(), varAndPayload.begin(), varAndPayload.end());
 
-    if (pu16OutPacketId) {
-        *pu16OutPacketId = packetId;
+    if (pOutPacketId) {
+        *pOutPacketId = packetId;
     }
     return packet;
 }
 
-std::vector<uint8_t> MqttProtocol::buildPubAck(uint16_t u16PacketId) const
+std::vector<uint8_t> MqttProtocol::buildPubAck(uint16_t packetId) const
 {
-    return {kPubAck, 0x02, static_cast<uint8_t>((u16PacketId >> 8) & 0xFF), static_cast<uint8_t>(u16PacketId & 0xFF)};
+    return {kPubAck, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
-std::vector<uint8_t> MqttProtocol::buildPubRec(uint16_t u16PacketId) const
+std::vector<uint8_t> MqttProtocol::buildPubRec(uint16_t packetId) const
 {
-    return {kPubRec, 0x02, static_cast<uint8_t>((u16PacketId >> 8) & 0xFF), static_cast<uint8_t>(u16PacketId & 0xFF)};
+    return {kPubRec, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
-std::vector<uint8_t> MqttProtocol::buildPubRel(uint16_t u16PacketId) const
+std::vector<uint8_t> MqttProtocol::buildPubRel(uint16_t packetId) const
 {
-    return {kPubRel, 0x02, static_cast<uint8_t>((u16PacketId >> 8) & 0xFF), static_cast<uint8_t>(u16PacketId & 0xFF)};
+    return {kPubRel, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
-std::vector<uint8_t> MqttProtocol::buildPubComp(uint16_t u16PacketId) const
+std::vector<uint8_t> MqttProtocol::buildPubComp(uint16_t packetId) const
 {
-    return {kPubComp, 0x02, static_cast<uint8_t>((u16PacketId >> 8) & 0xFF), static_cast<uint8_t>(u16PacketId & 0xFF)};
+    return {kPubComp, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
-std::vector<uint8_t> MqttProtocol::buildSubscribe(const std::string &strTopic, uint8_t u8Qos, uint16_t *pu16OutPacketId)
+std::vector<uint8_t> MqttProtocol::buildSubscribe(const std::string &topic, uint8_t qos, uint16_t *pOutPacketId)
 {
     const uint16_t packetId = m_allocatePacketId();
 
     std::vector<uint8_t> varAndPayload;
     varAndPayload.push_back(static_cast<uint8_t>((packetId >> 8) & 0xFF));
     varAndPayload.push_back(static_cast<uint8_t>(packetId & 0xFF));
-    varAndPayload.push_back(static_cast<uint8_t>((strTopic.length() >> 8) & 0xFF));
-    varAndPayload.push_back(static_cast<uint8_t>(strTopic.length() & 0xFF));
-    varAndPayload.insert(varAndPayload.end(), strTopic.begin(), strTopic.end());
-    varAndPayload.push_back(u8Qos & 0x03);
+    varAndPayload.push_back(static_cast<uint8_t>((topic.length() >> 8) & 0xFF));
+    varAndPayload.push_back(static_cast<uint8_t>(topic.length() & 0xFF));
+    varAndPayload.insert(varAndPayload.end(), topic.begin(), topic.end());
+    varAndPayload.push_back(qos & 0x03);
 
     std::vector<uint8_t> remLenBytes = encodeVarInt(varAndPayload.size());
     std::vector<uint8_t> packet;
@@ -200,22 +200,22 @@ std::vector<uint8_t> MqttProtocol::buildSubscribe(const std::string &strTopic, u
     packet.insert(packet.end(), remLenBytes.begin(), remLenBytes.end());
     packet.insert(packet.end(), varAndPayload.begin(), varAndPayload.end());
 
-    if (pu16OutPacketId) {
-        *pu16OutPacketId = packetId;
+    if (pOutPacketId) {
+        *pOutPacketId = packetId;
     }
     return packet;
 }
 
-std::vector<uint8_t> MqttProtocol::buildUnsubscribe(const std::string &strTopic, uint16_t *pu16OutPacketId)
+std::vector<uint8_t> MqttProtocol::buildUnsubscribe(const std::string &topic, uint16_t *pOutPacketId)
 {
     const uint16_t packetId = m_allocatePacketId();
 
     std::vector<uint8_t> varAndPayload;
     varAndPayload.push_back(static_cast<uint8_t>((packetId >> 8) & 0xFF));
     varAndPayload.push_back(static_cast<uint8_t>(packetId & 0xFF));
-    varAndPayload.push_back(static_cast<uint8_t>((strTopic.length() >> 8) & 0xFF));
-    varAndPayload.push_back(static_cast<uint8_t>(strTopic.length() & 0xFF));
-    varAndPayload.insert(varAndPayload.end(), strTopic.begin(), strTopic.end());
+    varAndPayload.push_back(static_cast<uint8_t>((topic.length() >> 8) & 0xFF));
+    varAndPayload.push_back(static_cast<uint8_t>(topic.length() & 0xFF));
+    varAndPayload.insert(varAndPayload.end(), topic.begin(), topic.end());
 
     std::vector<uint8_t> remLenBytes = encodeVarInt(varAndPayload.size());
     std::vector<uint8_t> packet;
@@ -223,8 +223,8 @@ std::vector<uint8_t> MqttProtocol::buildUnsubscribe(const std::string &strTopic,
     packet.insert(packet.end(), remLenBytes.begin(), remLenBytes.end());
     packet.insert(packet.end(), varAndPayload.begin(), varAndPayload.end());
 
-    if (pu16OutPacketId) {
-        *pu16OutPacketId = packetId;
+    if (pOutPacketId) {
+        *pOutPacketId = packetId;
     }
     return packet;
 }
