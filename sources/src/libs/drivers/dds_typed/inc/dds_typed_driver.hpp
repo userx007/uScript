@@ -84,6 +84,21 @@ class DdsTypedDriver : public ICommDriver {
                 // driver is handed back to the plugin — in addition to (not
                 // instead of) whatever DDS_TYPED.CMD > LOAD calls happen later.
                 std::vector<std::string> preloadPluginPaths;
+                // Optional path to an external, native Cyclone DDS configuration
+                // XML (the kind normally supplied through CYCLONEDDS_URI, e.g.
+                // cyclonedds-loopback.xml / cyclonedds-eth0.xml /
+                // cyclonedds-trace.xml). When non-empty, open() hands that file
+                // to dds_create_domain() as `file://<absolute path>` INSTEAD OF
+                // the XML m_BuildDomainConfigXml() would generate — so
+                // ifaceAddress, multicastInterface, spdpMulticastGroup, useIpv6,
+                // ttl, spdpPeriodMs, leaseDurationSec, fragmentThresholdBytes and
+                // participantId are then NOT applied (put whatever you need in
+                // the file itself). domainId is still used: it selects the domain
+                // the file is applied to (files normally say `Domain Id="any"`).
+                // open() fails (returns false) if the file can't be read or
+                // Cyclone rejects its content, rather than silently falling back.
+                // Must not contain ',' (Cyclone splits its config string on it).
+                std::string cycloneConfigFile;
                 // Safety cap on how many distinct topics may have a live local
                 // reader at once (i.e. concurrently SUBSCRIBEd — see
                 // m_EnsureLocalReader()'s doc comment). Cyclone DDS itself has
@@ -226,6 +241,10 @@ class DdsTypedDriver : public ICommDriver {
         mutable std::atomic<uint64_t> m_anyDataGeneration{0};
 
         std::string m_BuildDomainConfigXml() const; // identical field mapping to DdsDriver's — see that .cpp
+        /// Validates Config::cycloneConfigFile and turns it into the
+        /// `file://<absolute path>` string dds_create_domain() expects. Logs
+        /// the reason and returns false if it isn't usable.
+        bool m_ResolveExternalConfig(std::string &strConfigOut) const;
         bool m_LoadPlugin(const std::string &strPath) const;
         DdsEntity m_EnsureLocalWriter(const std::string &strTopic) const;
         std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;

@@ -121,6 +121,7 @@ class DdsTypedPlugin : public PluginInterface {
             , m_u32HistoryDepth(32)
             , m_u32FragmentThresholdBytes(1300)
             , m_strPreloadPlugins()
+            , m_strCycloneConfigFile()
             , m_u32ReadTimeout(5000)
             , m_u32ReadBufferSize(4096)
             , m_u32MaxSubscriptions(64)
@@ -378,6 +379,25 @@ class DdsTypedPlugin : public PluginInterface {
             m_strPreloadPlugins = strV;
         }
 
+        // Path of an external native Cyclone DDS configuration XML (the same
+        // kind of file normally handed to Cyclone via CYCLONEDDS_URI, e.g.
+        // cyclonedds-loopback.xml). When non-empty it REPLACES the XML this
+        // plugin would otherwise generate from IFACE/MCAST_IFACE/TTL/
+        // SPDP_PERIOD_MS/LEASE_DURATION_SEC/FRAGMENT_THRESHOLD_BYTES/
+        // USE_IPV6/SPDP_MULTICAST_GROUP/PARTICIPANT_ID — see
+        // DdsTypedDriver::Config::cycloneConfigFile. INI key
+        // CYCLONE_CONFIG_FILE, DDS_TYPED.CONFIG key `cf=`; an empty value
+        // (or `cf=none`) switches back to the generated configuration.
+        const std::string &getCycloneConfigFile(void) const
+        {
+            return m_strCycloneConfigFile;
+        }
+
+        void setCycloneConfigFile(const std::string &strV) const
+        {
+            m_strCycloneConfigFile = (strV == "none") ? std::string() : strV;
+        }
+
         uint32_t getReadTimeout(void) const
         {
             return m_u32ReadTimeout;
@@ -452,6 +472,7 @@ class DdsTypedPlugin : public PluginInterface {
         mutable uint32_t m_u32HistoryDepth;
         mutable uint32_t m_u32FragmentThresholdBytes;
         mutable std::string m_strPreloadPlugins;
+        mutable std::string m_strCycloneConfigFile;
 
         mutable uint32_t m_u32ReadTimeout;
         mutable uint32_t m_u32ReadBufferSize;

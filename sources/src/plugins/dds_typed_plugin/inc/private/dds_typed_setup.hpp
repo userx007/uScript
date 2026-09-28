@@ -40,6 +40,7 @@
 #define K_HISTORY_DEPTH    "HISTORY_DEPTH"
 #define K_FRAG_THRESHOLD   "FRAGMENT_THRESHOLD_BYTES"
 #define K_PRELOAD_PLUGINS  "PRELOAD_PLUGINS"
+#define K_CYCLONE_CFG      "CYCLONE_CONFIG_FILE"
 #define K_READ_TIMEOUT     "READ_TIMEOUT"
 #define K_READ_BUFSIZE     "READ_BUFFER_SIZE"
 #define K_MAX_SUBS         "MAX_SUBSCRIPTIONS"
@@ -78,6 +79,7 @@ bool DdsTypedPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_READ_TIMEOUT,                  [this](const std::string &v) { return setReadTimeout(v); });
     sSettings.Bind(K_READ_BUFSIZE,                  [this](const std::string &v) { return setReadBufferSize(v); });
     sSettings.Bind(K_MAX_SUBS,                      [this](const std::string &v) { return setMaxSubscriptions(v); });
+    sSettings.Bind(K_CYCLONE_CFG,                   [this](const std::string &v) { setCycloneConfigFile(v); return true; });
     sSettings.Bind(K_PRELOAD_PLUGINS,               m_strPreloadPlugins);
     sSettings.Bind(K_ARTEFACTS,                     m_strArtefactsPath);
     sSettings.Bind(K_IFACE,                         m_strIface);
@@ -102,7 +104,7 @@ bool DdsTypedPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
  *
  * \param[in] pOwner  pointer to the plugin instance
  * \param[in] args    space-separated key=value pairs (same key letters as DDS.CONFIG where the
- *                     setting exists in both; pp=preload_plugins is new here)
+ *                     setting exists in both; pp=preload_plugins and cf=cyclone_config_file are new here)
  * \return true if processing succeeded, false otherwise
  */
 /*--------------------------------------------------------------------------------------------------------*/
@@ -125,6 +127,7 @@ bool generic_dds_typed_set_params(const T *pOwner, const std::string &strArgs)
         {.key = "hd",       .boolSetter = &T::setHistoryDepth},
         {.key = "fr",       .boolSetter = &T::setFragmentThresholdBytes},
         {.key = "pp",       .voidSetter = &T::setPreloadPlugins},
+        {.key = "cf",       .voidSetter = &T::setCycloneConfigFile},
         {.key = "rt",       .boolSetter = &T::setReadTimeout},
         {.key = "rb",       .boolSetter = &T::setReadBufferSize},
         {.key = "ms",       .boolSetter = &T::setMaxSubscriptions},

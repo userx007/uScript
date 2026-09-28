@@ -7,6 +7,7 @@
 #include "uLogger.hpp"
 #include "uString.hpp"
 
+#include <filesystem>
 #include <span>
 #include <sstream>
 #include <stddef.h>
@@ -57,6 +58,30 @@ namespace {
         }
         return out;
     }
+
+    // CYCLONE_CONFIG_FILE / cf= resolution: as given (absolute, or relative to
+    // the process working directory) if it exists, otherwise relative to
+    // ARTEFACTS_PATH if that has it, otherwise unchanged so the driver can
+    // report the original path in its error message.
+    std::string resolveCycloneConfigPath(const std::string &raw, const std::string &strArtefacts)
+    {
+        namespace fs           = std::filesystem;
+        const std::string path = ustring::trim(raw);
+        if (path.empty()) {
+            return {};
+        }
+        std::error_code ec;
+        if (fs::is_regular_file(fs::path(path), ec)) {
+            return path;
+        }
+        if (!strArtefacts.empty() && fs::path(path).is_relative()) {
+            const fs::path candidate = fs::path(strArtefacts) / path;
+            if (fs::is_regular_file(candidate, ec)) {
+                return candidate.string();
+            }
+        }
+        return path;
+    }
 } // namespace
 
 std::shared_ptr<DdsTypedDriver> DdsTypedPlugin::m_OpenDriver(void) const
@@ -81,6 +106,7 @@ std::shared_ptr<DdsTypedDriver> DdsTypedPlugin::m_OpenDriver(void) const
     cfg.fragmentThresholdBytes = m_u32FragmentThresholdBytes;
     cfg.strInstanceName        = m_strInstanceName;
     cfg.preloadPluginPaths     = splitPreloadPaths(m_strPreloadPlugins);
+    cfg.cycloneConfigFile      = resolveCycloneConfigPath(m_strCycloneConfigFile, m_strArtefactsPath);
     cfg.maxSubscriptions       = m_u32MaxSubscriptions;
 
     auto driver                = std::make_shared<DdsTypedDriver>(cfg);
@@ -108,6 +134,9 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &strArgs, std::stop_toke
         << " participant_id=" << m_u32ParticipantId
         << " iface=" << m_strIface
         << " name=" << m_strParticipantName;
+    if (!m_strCycloneConfigFile.empty()) {
+        oss << " cyclone_config=" << m_strCycloneConfigFile;
+    }
     m_strResultData = oss.str();
 
     LOG_SEP();
@@ -133,7 +162,14 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &strArgs, std::stop_toke
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [mg=spdp_mcast_group] [n=name] [t=ttl] [sp=spdp_period_ms] [l=lease_sec]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [r=0|1 reliable] [hd=history_depth] [fr=fragment_threshold_bytes]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [pp=path1.so;path2.so] [rt=read_tout] [rb=read_bufsize] [ms=max_subs]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [cf=cyclonedds.xml|none]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DDS_TYPED.CONFIG d=12 pp=./libcustomer1_types.so"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS_TYPED.CONFIG d=12 cf=./cyclonedds-loopback.xml pp=./libcustomer1_types.so"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : cf= loads a native Cyclone DDS config XML (as used with CYCLONEDDS_URI) and"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         REPLACES the XML generated from i/mi/mg/v6/t/sp/l/fr/pid — those keys are then"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         ignored (d= still selects the domain). Relative paths are looked up in the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         working dir, then in ARTEFACTS_PATH. No spaces or commas in the path."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         The driver refuses to open if the file is missing or Cyclone rejects it."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : one DDS_TYPED operation, on the plugin's single persistent Cyclone DDS participant"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : > LOAD <path.so>   |   > PUBLISH <topic> <payload...>   |"));
@@ -181,6 +217,9 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &strArgs, std::stop_toke
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FRAGMENT_THRESHOLD_BYTES = 1300"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("PRELOAD_PLUGINS     =            # semicolon-separated customer type-plugin .so paths,"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("                                 # loaded automatically the first time the driver opens"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLONE_CONFIG_FILE =            # optional native Cyclone DDS config XML; replaces the generated"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("                                 # config (IFACE/MCAST_IFACE/TTL/SPDP_*/LEASE_*/FRAGMENT_*/PARTICIPANT_ID/"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("                                 # USE_IPV6 are then ignored), e.g. ./cyclonedds-loopback.xml"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT        = 5000"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUFFER_SIZE    = 4096"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("MAX_SUBSCRIPTIONS   = 64          # safety cap on concurrently SUBSCRIBEd topics, 0=unbounded"));

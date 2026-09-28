@@ -58,6 +58,49 @@ is needed either way. Several customers' `.so`s can also be loaded at
 once (`pp=a.so;b.so`) — each topic name routes to whichever plugin most
 recently registered it.
 
+## Using an external Cyclone DDS configuration file
+
+To talk to an application that is run with a native Cyclone DDS config
+(the kind normally passed via `CYCLONEDDS_URI`, e.g. `cyclonedds-loopback.xml`,
+`cyclonedds-eth0.xml`, `cyclonedds-trace.xml`), give the plugin that same file:
+
+```
+DDS_TYPED.CONFIG d=12 cf=./cyclonedds-loopback.xml pp=./libcustomer1_types.so
+```
+
+or in the ini file:
+
+```
+[DDS_TYPED]
+DOMAIN             = 12
+CYCLONE_CONFIG_FILE = ./cyclonedds-loopback.xml
+PRELOAD_PLUGINS    = ./libcustomer1_types.so
+```
+
+Rules:
+
+- The file **replaces** the XML the plugin otherwise generates. `IFACE`,
+  `MCAST_IFACE`, `SPDP_MULTICAST_GROUP`, `USE_IPV6`, `TTL`, `SPDP_PERIOD_MS`,
+  `LEASE_DURATION_SEC`, `FRAGMENT_THRESHOLD_BYTES` and `PARTICIPANT_ID` are then
+  ignored — put what you need in the file. `DOMAIN` / `d=` still selects the
+  domain (the files use `Domain Id="any"`). `RELIABLE`, `HISTORY_DEPTH`,
+  `PARTICIPANT_NAME` are per-endpoint/participant QoS, not part of that XML, and
+  keep working.
+- A relative path is looked up in the working directory, then in `ARTEFACTS_PATH`.
+  No commas in the path (Cyclone splits its config string on them); for `cf=`
+  also no spaces.
+- `cf=none` (or an empty `CYCLONE_CONFIG_FILE`) goes back to the generated config.
+- If the file is missing, or Cyclone rejects it, the driver does **not** open
+  (no silent fallback); Cyclone's own message says which element is wrong.
+  If a file with tracing to a path (e.g. `/var/log/dds/...`) is used, that
+  directory must exist and be writable.
+- Only Cyclone *configuration* files are accepted. DDS-XML QoS profile files
+  (`USER_QOS_PROFILES_*.xml`, root element `<dds>`/`<qos_library>`) are a
+  different format and are rejected.
+- The domain is deleted when the driver closes (if no other participant of this
+  process still uses it), so `DDS_TYPED.CONFIG cf=<other file>` really takes effect
+  the next time the participant opens.
+
 ## When to use this instead of (or alongside) `DDS`
 
 Only when this process needs to exchange real, specific IDL structs with

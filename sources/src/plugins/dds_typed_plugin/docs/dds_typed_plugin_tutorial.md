@@ -144,8 +144,12 @@ DDS_TYPED.CONFIG [d=domain] [pid=participant_id] [v6=0|1] [i=iface] [mi=mcast_if
                  [mg=spdp_mcast_group] [n=name] [t=ttl] [sp=spdp_period_ms]
                  [l=lease_sec] [r=0|1] [hd=history_depth]
                  [fr=fragment_threshold_bytes] [pp=path1.so;path2.so]
-                 [rt=read_tout] [rb=read_bufsize]
+                 [rt=read_tout] [rb=read_bufsize] [cf=cyclonedds.xml|none]
 ```
+
+`cf=` (ini: `CYCLONE_CONFIG_FILE`) loads a native Cyclone DDS configuration XML
+instead of the settings generated from `i/mi/mg/v6/t/sp/l/fr/pid` — see
+README.md, "Using an external Cyclone DDS configuration file".
 
 **Scenario:** join domain 90 and have `customer1`'s types available
 immediately, with no explicit `LOAD` line needed later in the script:

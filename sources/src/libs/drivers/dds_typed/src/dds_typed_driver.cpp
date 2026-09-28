@@ -12,6 +12,8 @@
 #include <cstring>
 #include <dds/dds.h>
 #include <dlfcn.h>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <sstream>
 #include <utility>
@@ -190,6 +192,47 @@ std::string DdsTypedDriver::m_BuildDomainConfigXml() const
 }
 
 // ---------------------------------------------------------------------------
+// External Cyclone configuration file (CYCLONE_CONFIG_FILE / cf=)
+// ---------------------------------------------------------------------------
+bool DdsTypedDriver::m_ResolveExternalConfig(std::string &strConfigOut) const
+{
+    namespace fs = std::filesystem;
+    std::error_code ec;
+
+    const std::string &strPath = m_config.cycloneConfigFile;
+    if (strPath.find(',') != std::string::npos) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CYCLONE_CONFIG_FILE '"); LOG_STRING(strPath.c_str());
+                  LOG_STRING("' contains a ',' — Cyclone splits its config string on commas, rename/move the file"));
+        return false;
+    }
+
+    const fs::path abs = fs::absolute(fs::path(strPath), ec);
+    if (ec || !fs::is_regular_file(abs, ec)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CYCLONE_CONFIG_FILE '"); LOG_STRING(strPath.c_str());
+                  LOG_STRING("' does not exist or is not a regular file"));
+        return false;
+    }
+
+    std::ifstream in(abs, std::ios::binary);
+    if (!in) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CYCLONE_CONFIG_FILE '"); LOG_STRING(abs.string().c_str());
+                  LOG_STRING("' is not readable"));
+        return false;
+    }
+    // Cheap sanity check only — the real parse/validation is Cyclone's own
+    // (dds_create_domain() below rejects malformed content).
+    const std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    if (content.find("<CycloneDDS") == std::string::npos) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("CYCLONE_CONFIG_FILE '"); LOG_STRING(abs.string().c_str());
+                  LOG_STRING("' has no <CycloneDDS> root element — is this really a Cyclone DDS config file "
+                             "(and not, e.g., a DDS-XML QoS profile)?"));
+    }
+
+    strConfigOut = "file://" + abs.string();
+    return true;
+}
+
+// ---------------------------------------------------------------------------
 // open()/close()
 // ---------------------------------------------------------------------------
 bool DdsTypedDriver::open()
@@ -198,9 +241,33 @@ bool DdsTypedDriver::open()
         return true;
     }
 
-    const std::string xml    = m_BuildDomainConfigXml();
-    const DdsEntity domainRc = dds_create_domain(static_cast<dds_domainid_t>(m_config.domainId), xml.c_str());
-    if (domainRc < 0 && -domainRc != DDS_RETCODE_PRECONDITION_NOT_MET) {
+    const bool bExternalCfg = !m_config.cycloneConfigFile.empty();
+    std::string strDomainCfg;
+    if (bExternalCfg) {
+        if (!m_ResolveExternalConfig(strDomainCfg)) {
+            return false;
+        }
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Using external Cyclone config: "); LOG_STRING(strDomainCfg.c_str());
+                  LOG_STRING(" (IFACE/MCAST_IFACE/TTL/SPDP_*/LEASE/FRAGMENT/PARTICIPANT_ID/USE_IPV6 are not applied)"));
+    } else {
+        strDomainCfg = m_BuildDomainConfigXml();
+    }
+
+    const DdsEntity domainRc = dds_create_domain(static_cast<dds_domainid_t>(m_config.domainId), strDomainCfg.c_str());
+    if (domainRc < 0 && -domainRc == DDS_RETCODE_PRECONDITION_NOT_MET) {
+        if (bExternalCfg) {
+            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Domain "); LOG_UINT32(m_config.domainId);
+                      LOG_STRING(" already exists in this process (another participant is still using it) — "
+                                 "CYCLONE_CONFIG_FILE is NOT applied, the running domain keeps its current configuration"));
+        }
+    } else if (domainRc < 0) {
+        if (bExternalCfg) {
+            // An explicitly requested config file must not be silently dropped.
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cyclone rejected CYCLONE_CONFIG_FILE (");
+                      LOG_STRING(dds_strretcode(-domainRc));
+                      LOG_STRING(") — check the file's content and the Cyclone error output"));
+            return false;
+        }
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Custom transport config for domain rejected (");
                   LOG_STRING(dds_strretcode(-domainRc));
                   LOG_STRING(") — continuing with whatever config this process already has for this domain id, if any"));
@@ -278,7 +345,18 @@ void DdsTypedDriver::close()
     }
     m_participant         = kInvalidEntity;
     m_biParticipantReader = m_biPublicationReader = m_biSubscriptionReader = kInvalidEntity;
-    m_domain                                                               = kInvalidEntity; // see DdsDriver::close()'s identical rationale for not dds_delete()ing the domain
+    // Unlike DdsDriver::close(): if THIS driver created the domain (m_domain
+    // is only valid in that case) and no other participant is attached to it
+    // any more, delete it too. Otherwise the domain — and with it the
+    // configuration it was created with — would live on for the whole process,
+    // and a later DDS_TYPED.CONFIG (e.g. a different cf= file, or another
+    // IFACE) followed by a re-open would be silently ignored
+    // (dds_create_domain() => PRECONDITION_NOT_MET). If another participant
+    // still uses it, we leave it alone, exactly as before.
+    if (m_domain >= 0 && dds_get_children(m_domain, nullptr, 0) == 0) {
+        dds_delete(m_domain);
+    }
+    m_domain = kInvalidEntity;
 
     m_typesByTopic.clear(); // the descriptors/function pointers would dangle once close() runs; re-LOAD after re-open()
     m_guidHex.clear();
