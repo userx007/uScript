@@ -76,7 +76,7 @@ class CommDumpView : public QFrame {
         // so this panel's Timestamp column stays on the same time base as the
         // Log panel's.
         void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool bIsTx,
-                       const QByteArray &data);
+                       const QByteArray &bytes);
 
         void clear();
         void setDumpFont(const QFont &font);

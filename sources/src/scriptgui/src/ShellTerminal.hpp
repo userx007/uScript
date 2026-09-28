@@ -57,7 +57,7 @@ class TermView : public QAbstractScrollArea {
         explicit TermView(QWidget *pParent = nullptr);
 
         void setTermFont(const QFont &font);
-        void processBytes(const QByteArray &data);
+        void processBytes(const QByteArray &bytes);
         void clearAll();
         void clearKeepPrompt();
 

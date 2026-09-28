@@ -236,10 +236,10 @@ void TermView::applySgr(const QList<int> &params)
 
 // ── CSI state machine ─────────────────────────────────────────────────────────
 
-void TermView::processBytes(const QByteArray &data)
+void TermView::processBytes(const QByteArray &bytes)
 {
-    for (int i = 0; i < data.size(); ++i) {
-        const uchar c = static_cast<uchar>(data[i]);
+    for (int i = 0; i < bytes.size(); ++i) {
+        const uchar c = static_cast<uchar>(bytes[i]);
 
         // ── UTF-8 multi-byte assembly ──────────────────────────────────────
         // A leading byte of 0xC0–0xDF starts a 2-byte sequence,

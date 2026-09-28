@@ -559,12 +559,12 @@ void CommDumpView::rebuildPluginMenuFromModel()
 }
 
 void CommDumpView::addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool bIsTx,
-                             const QByteArray &data)
+                             const QByteArray &bytes)
 {
     // Does NOT touch the model/tree directly — see the class comment on why
     // ingestion is coalesced. Just stage the record and make sure a flush is
     // scheduled.
-    m_pendingQueue.append({timestampUs, plugin, details, bIsTx, data});
+    m_pendingQueue.append({timestampUs, plugin, details, bIsTx, bytes});
 
     if (m_pendingQueue.size() >= kForceFlushThreshold) {
         // Pathological burst: don't let the pending queue itself grow

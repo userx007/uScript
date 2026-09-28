@@ -1749,10 +1749,10 @@ void MainWindow::dispatchCommDump(const QString &base64Payload)
     if (dataLen > static_cast<uint32_t>(raw.size() - pos)) {
         return;
     }
-    const QByteArray data(raw.constData() + pos, static_cast<int>(dataLen));
+    const QByteArray bytes(raw.constData() + pos, static_cast<int>(dataLen));
 
     if (m_wCommDump) {
-        m_wCommDump->addRecord(timestampUs, plugin, details, isTx, data);
+        m_wCommDump->addRecord(timestampUs, plugin, details, isTx, bytes);
     }
 }
 
