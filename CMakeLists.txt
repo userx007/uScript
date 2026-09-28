@@ -258,7 +258,6 @@ install(
 
 set(UPLUGIN_TARGETS
     SimpleTypes
-    AlarmsTypes
 )
 
 install(TARGETS ${UPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_UPLUGIN_DIR})
