@@ -12,6 +12,13 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/inc/private
 )
 
+set_target_properties(${PROJECT_NAME} 
+    PROPERTIES 
+        INSTALL_RPATH 
+            "$ORIGIN;$ORIGIN/../extlibs" 
+    BUILD_WITH_INSTALL_RPATH ON
+)
+
 target_link_libraries( ${PROJECT_NAME}
     PUBLIC
         uPluginSettings
