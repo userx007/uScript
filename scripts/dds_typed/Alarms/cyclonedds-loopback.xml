@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  What this profile does
+    - See cyclonedds-default.xml description.
+    - It pins the network interface to the loopback interface (127.0.0.1).
+
+  When to use it
+    - On a device where the firewall (e.g., NCP) may block participant discovery based on UDP multicast.
+    - Or as the default configuration for development and testing.
+
+  Reference
+    https://cyclonedds.io/docs/cyclonedds/11.0.1/config/config_file_reference.html
+-->
+<CycloneDDS>
+  <Domain Id="any">
+    <General>
+      <Interfaces>
+        <NetworkInterface address="127.0.0.1"/>
+      </Interfaces>
+    </General>
+    <Tracing>
+      <Verbosity>warning</Verbosity>
+      <OutputFile>stderr</OutputFile>
+    </Tracing>
+  </Domain>
+</CycloneDDS>

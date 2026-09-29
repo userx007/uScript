@@ -106,10 +106,13 @@ class DdsTypedDriver : public ICommDriver {
                 // cycloneConfigFile above (that one is Cyclone's own transport/
                 // tracing config, root <CycloneDDS>). Empty = feature off: every
                 // writer/reader is built from `reliable`/`historyDepth` exactly as
-                // before. The file must be one Cyclone's QoS Provider can parse;
-                // open() fails (returns false) if it can't, or if any profile
-                // named below doesn't exist in it — a typo never silently degrades
-                // to the built-in QoS.
+                // before. Read with Cyclone's QoS Provider when the Cyclone this is
+                // built against has one (DDS_HAS_QOS_PROVIDER), otherwise with the
+                // built-in DDS-XML reader in dds_typed_driver.cpp (also forced by
+                // -DDDS_TYPED_BUILTIN_QOS_PARSER). open() fails (returns false) if
+                // the file can't be parsed, or if any profile named below doesn't
+                // exist / is invalid — a typo never silently degrades to the
+                // built-in QoS.
                 std::string qosProfileFile;
                 // Library used to qualify a profile name that has no "::" of its
                 // own ("StatePattern" -> "<qosLibrary>::StatePattern").

@@ -145,9 +145,27 @@ Rules:
 - Profile names are case-sensitive; `Lib::Profile` or a bare `Profile` (then looked up
   in `QOS_LIBRARY`). A missing profile, a missing file, a malformed `QOS_TOPIC_PROFILES`
   or a file Cyclone can't parse makes the driver **refuse to open** — never a silent fallback.
-- Only files Cyclone's QoS Provider can parse work: root `<dds>`, no empty
-  `<deadline><period/></deadline>`-style elements. **`USER_QOS_PROFILES_Consolidated.xml`
-  can't be used** (no `<dds>` root, empty `<deadline>`); use `USER_QOS_PROFILES_Cyclone.xml`.
+- **Which reader parses the file** depends on how the CycloneDDS you build against was
+  configured. With Cyclone's own QoS Provider (Cyclone >= 11.0, `DDS_HAS_QOS_PROVIDER`
+  defined) that is used; otherwise (older Cyclone, or built with
+  `ENABLE_QOS_PROVIDER=OFF`) the plugin's **built-in DDS-XML reader** takes over
+  automatically — no rebuild of Cyclone needed. Both give identical QoS for
+  `USER_QOS_PROFILES_Cyclone.xml` (verified profile by profile). Define
+  `DDS_TYPED_BUILTIN_QOS_PARSER` to force the built-in one. The debug log says which is
+  in use (`QoS profiles: using the built-in DDS-XML reader`).
+- Differences between the two: Cyclone's provider parses and validates the **whole**
+  file and needs a `<dds>` root, so it rejects `USER_QOS_PROFILES_Consolidated.xml`
+  (no `<dds>` root, empty `<deadline><period/>` templates). The built-in reader accepts
+  a `<dds>` or `<qos_library>` root and validates **only the profiles you select**, so
+  that file works for its complete profiles (State, Command, Event, Alarm,
+  Specification) and fails with a clear message for a template one (Periodic, Watchdog)
+  — `USER_QOS_PROFILES_Cyclone.xml` works with either.
+- Built-in reader scope: durability, reliability (+`max_blocking_time`), history,
+  destination_order, deadline, latency_budget, lifespan, liveliness, ownership,
+  ownership_strength, transport_priority, resource_limits, writer_data_lifecycle,
+  reader_data_lifecycle, time_based_filter. Policies not applicable to that entity, or
+  unsupported (user_data, topic_data, ...), and `base_name` inheritance are reported as
+  warnings and skipped; an invalid value is an error.
 - Publisher / subscriber / participant QoS in the file (partition, ...) is not applied,
   only writer, reader and topic QoS.
 - In an INI value do not put whitespace before a `;` (it would start an inline comment);

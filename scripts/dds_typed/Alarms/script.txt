@@ -1,16 +1,15 @@
 LOAD_PLUGIN DDSTY
 
-DDSTY:1.CONFIG d=12 i=127.0.0.1:40054
-DDSTY:2.CONFIG d=12 i=127.0.0.1:40054
+DDSTY:1.CONFIG d=12 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
+DDSTY:2.CONFIG d=12 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
 
-DDSTY:1.CMD > LOAD ../../../uplugins/libAlarmsTypes.so
+DDSTY:1.CMD > LOAD ../../../uplugins/libAlarmsTypes.so 
 DDSTY:2.CMD > LOAD ../../../uplugins/libAlarmsTypes.so
 
 DDSTY:1.CMD > LIST
 list ?= DDSTY:1.CMD <   
 PRINT $list
 
-received ?= DDSTY:2.CMD < &
 
 DDSTY:2.CMD > SUBSCRIBE Alarms__Crew_Role_In_Mission_State \
                         Alarms__Alarm_Category_Specification \
@@ -28,6 +27,8 @@ DDSTY:2.CMD > SUBSCRIBE Alarms__Crew_Role_In_Mission_State \
                         Alarms__Actual_Alarm_Condition__clearAlarmCondition \
                         Alarms__Actual_Alarm_Condition \
                         Alarms__Alarm_Category                  
+
+received ?= DDSTY:2.CMD < &
 
 DDSTY:1.CMD > PUBLISH Alarms__Crew_Role_In_Mission_State \
     A_sourceID={A_resourceId=2;A_instanceId=3};\

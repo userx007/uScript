@@ -141,8 +141,18 @@ int main()
     {
         auto c = baseCfg("s6a"); c.qosProfileFile = P("USER_QOS_PROFILES_Cyclone.xml"); c.qosDefaultProfile = "NoSuchPattern";
         DdsTypedDriver d(c); CHECK(!d.open(), "unknown profile name -> open() fails");
+#if defined(DDS_HAS_QOS_PROVIDER) && !defined(DDS_TYPED_BUILTIN_QOS_PARSER)
+        // Cyclone's provider rejects the whole Consolidated file.
         auto c2 = baseCfg("s6b"); c2.qosProfileFile = P("USER_QOS_PROFILES_Consolidated.xml"); c2.qosDefaultProfile = "StatePattern";
-        DdsTypedDriver d2(c2); CHECK(!d2.open(), "Consolidated.xml (not parseable by Cyclone) -> open() fails");
+        DdsTypedDriver d2(c2); CHECK(!d2.open(), "Consolidated.xml (not parseable by Cyclone's provider) -> open() fails");
+#else
+        // Built-in reader: only the selected profile is validated.
+        auto c2 = baseCfg("s6b"); c2.qosProfileFile = P("USER_QOS_PROFILES_Consolidated.xml"); c2.qosDefaultProfile = "StatePattern";
+        DdsTypedDriver d2(c2); CHECK(d2.open(), "Consolidated.xml + complete profile (StatePattern) -> opens (built-in reader)");
+        d2.close();
+        auto c2b = baseCfg("s6b2"); c2b.qosProfileFile = P("USER_QOS_PROFILES_Consolidated.xml"); c2b.qosDefaultProfile = "PeriodicPattern";
+        DdsTypedDriver d2b(c2b); CHECK(!d2b.open(), "Consolidated.xml + template profile (PeriodicPattern, empty deadline) -> open() fails");
+#endif
         auto c3 = baseCfg("s6c"); c3.qosProfileFile = "/nonexistent.xml"; c3.qosDefaultProfile = "StatePattern";
         DdsTypedDriver d3(c3); CHECK(!d3.open(), "missing file -> open() fails");
         auto c4 = baseCfg("s6d"); c4.qosProfileFile = P("USER_QOS_PROFILES_Cyclone.xml"); c4.qosTopicProfiles = "vehicle/state";

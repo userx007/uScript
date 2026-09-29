@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dds xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.omg.org/spec/DDS-XML/20180501/dds-xml_qos_definitions.xsd">
+<qos_library name="DDSDefaultQoSLibrary">
+	<!-- OpenSplice doesn't support qos_library name="NGVADataModel" -->
+	<qos_profile name="Default"></qos_profile>
+
+	<qos_profile name="StatePattern"> <!-- OpenSplice doesn't support is_default_qos="true" -->
+
+		<!-- QoS used to configure the data reader -->
+		<datareader_qos>
+			<durability>
+				<kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<history>
+				<kind>KEEP_LAST_HISTORY_QOS</kind>
+			</history>
+		</datareader_qos>
+
+		<!-- QoS used to configure the data writer -->
+		<datawriter_qos>
+			<durability>
+				<kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<history>
+				<kind>KEEP_LAST_HISTORY_QOS</kind>
+			</history>
+			<writer_data_lifecycle>
+				<autodispose_unregistered_instances>false</autodispose_unregistered_instances>
+			</writer_data_lifecycle>
+		</datawriter_qos>
+
+		<!-- QoS used to configure the topic -->
+		<topic_qos>
+			<durability>
+				<kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<history>
+				<kind>KEEP_LAST_HISTORY_QOS</kind>
+			</history>
+		</topic_qos>
+	</qos_profile>
+
+	<qos_profile name="CommandPattern" >
+		<!-- QoS used to configure the data reader -->
+		<datareader_qos>
+			<durability>
+				<kind>VOLATILE_DURABILITY_QOS</kind>
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<history>
+				<kind>KEEP_ALL_HISTORY_QOS</kind>
+			</history>
+		</datareader_qos>
+
+		<!-- QoS used to configure the data writer -->
+		<datawriter_qos>
+			<durability>
+				<kind>VOLATILE_DURABILITY_QOS</kind>
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<lifespan>
+				<duration>
+					<sec>2</sec>
+					<nanosec>0</nanosec>
+				</duration>
+			</lifespan>
+		</datawriter_qos>
+
+		<!-- QoS used to configure the topic -->
+		<topic_qos>
+			<durability>
+				<kind>VOLATILE_DURABILITY_QOS</kind>
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<history>
+				<kind>KEEP_LAST_HISTORY_QOS</kind>
+			</history>
+			<lifespan>
+				<duration>
+					<sec>2</sec>
+					<nanosec>0</nanosec>
+				</duration>
+			</lifespan>
+		</topic_qos>
+	</qos_profile>
+
+	<qos_profile name="EventPattern" >
+		<!-- QoS used to configure the data reader -->
+		<datareader_qos>
+			<history>
+				<kind>KEEP_LAST_HISTORY_QOS</kind>
+			</history>
+		</datareader_qos>
+
+		<!-- QoS used to configure the data writer -->
+		<datawriter_qos>
+			<history>
+				<kind>KEEP_LAST_HISTORY_QOS</kind>
+			</history>
+			<writer_data_lifecycle>
+				<autodispose_unregistered_instances>false</autodispose_unregistered_instances>
+			</writer_data_lifecycle>
+		</datawriter_qos>
+
+		<!-- QoS used to configure the topic -->
+		<topic_qos>
+			<history>
+				<kind>KEEP_LAST_HISTORY_QOS</kind>
+			</history>
+		</topic_qos>
+	</qos_profile>
+
+	<qos_profile name="AlarmPattern" >
+		<!-- QoS used to configure the data reader -->
+		<datareader_qos>
+			<durability>
+				<kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<history>
+				<kind>KEEP_ALL_HISTORY_QOS</kind>
+			</history>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+		</datareader_qos>
+
+		<!-- QoS used to configure the data writer -->
+		<datawriter_qos>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<durability>
+				<kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<writer_data_lifecycle>
+				<autodispose_unregistered_instances>false</autodispose_unregistered_instances>
+			</writer_data_lifecycle>
+		</datawriter_qos>
+
+		<!-- QoS used to configure the topic -->
+		<topic_qos>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<durability>
+				<kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind>
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<history>
+				<kind>KEEP_ALL_HISTORY_QOS</kind>
+			</history>
+		</topic_qos>
+	</qos_profile>
+
+	<qos_profile name="PeriodicPattern" >
+		<!-- QoS used to configure the data reader -->
+		<datareader_qos>
+			<reliability>
+				<kind>BEST_EFFORT_RELIABILITY_QOS</kind>
+			</reliability>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<latency_budget>
+				<duration>
+					<sec>0</sec>
+					<nanosec>0</nanosec>
+				</duration>
+			</latency_budget>
+		</datareader_qos>
+
+		<!-- QoS used to configure the data writer -->
+		<datawriter_qos>
+			<reliability>
+				<kind>BEST_EFFORT_RELIABILITY_QOS</kind>
+			</reliability>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<!-- deadline period intentionally unset (application-specified); removed for the CycloneDDS QoS Provider (parser), policy stays at DDS default -->
+			<writer_data_lifecycle>
+				<autodispose_unregistered_instances>false</autodispose_unregistered_instances>
+			</writer_data_lifecycle>
+			<latency_budget>
+				<duration>
+					<sec>0</sec>
+					<nanosec>0</nanosec>
+				</duration>
+			</latency_budget>
+		</datawriter_qos>
+
+		<!-- QoS used to configure the topic -->
+		<topic_qos>
+			<reliability>
+				<kind>BEST_EFFORT_RELIABILITY_QOS</kind>
+			</reliability>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<!-- deadline period intentionally unset (application-specified); removed for the CycloneDDS QoS Provider (parser), policy stays at DDS default -->
+			<latency_budget>
+				<duration>
+					<sec>0</sec>
+					<nanosec>0</nanosec>
+				</duration>
+			</latency_budget>
+		</topic_qos>
+	</qos_profile>
+	<qos_profile name="WatchdogPattern" >
+		<!-- QoS used to configure the data reader -->
+		<datareader_qos>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<!-- deadline period intentionally unset (application-specified); removed for the CycloneDDS QoS Provider (parser), policy stays at DDS default -->
+		</datareader_qos>
+
+		<!-- QoS used to configure the data writer -->
+		<datawriter_qos>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<!-- lifespan duration intentionally unset (application-specified); removed for the CycloneDDS QoS Provider (parser), policy stays at DDS default -->
+			<!-- deadline period intentionally unset (application-specified); removed for the CycloneDDS QoS Provider (parser), policy stays at DDS default -->
+		</datawriter_qos>
+
+		<!-- QoS used to configure the topic -->
+		<topic_qos>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<destination_order>
+				<kind>BY_SOURCE_TIMESTAMP_DESTINATIONORDER_QOS</kind>
+			</destination_order>
+			<!-- lifespan duration intentionally unset (application-specified); removed for the CycloneDDS QoS Provider (parser), policy stays at DDS default -->
+			<!-- deadline period intentionally unset (application-specified); removed for the CycloneDDS QoS Provider (parser), policy stays at DDS default -->
+		</topic_qos>
+	</qos_profile>
+
+	<qos_profile name="SpecificationPattern" >
+		<!-- QoS used to configure the data reader -->
+		<datareader_qos>
+			<durability>
+				<kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind><!-- derived: PERSISTENT unsupported by CycloneDDS, downgraded -->
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<history>
+				<kind>KEEP_LAST_HISTORY_QOS</kind>
+				<depth>1</depth>
+			</history>
+		</datareader_qos>
+
+		<!-- QoS used to configure the data writer -->
+		<datawriter_qos>
+			<durability>
+				<kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind><!-- derived: PERSISTENT unsupported by CycloneDDS, downgraded -->
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<writer_data_lifecycle>
+				<autodispose_unregistered_instances>false</autodispose_unregistered_instances>
+			</writer_data_lifecycle>
+		</datawriter_qos>
+
+		<!-- QoS used to configure the topic -->
+		<topic_qos>
+			<durability>
+				<kind>TRANSIENT_LOCAL_DURABILITY_QOS</kind><!-- derived: PERSISTENT unsupported by CycloneDDS, downgraded -->
+			</durability>
+			<reliability>
+				<kind>RELIABLE_RELIABILITY_QOS</kind>
+			</reliability>
+			<history>
+				<kind>KEEP_LAST_HISTORY_QOS</kind>
+				<depth>1</depth>
+			</history>
+		</topic_qos>
+	</qos_profile>
+</qos_library>
+</dds>
