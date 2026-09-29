@@ -101,6 +101,62 @@ Rules:
   process still uses it), so `DDS_TYPED.CONFIG cf=<other file>` really takes effect
   the next time the participant opens.
 
+## Using DDS-XML QoS profiles (`USER_QOS_PROFILES_*.xml`)
+
+A peer application (e.g. an NGVA one) usually expects specific reader/writer QoS —
+reliability, durability, history, destination order, ... — that it defines in a
+DDS-XML QoS profile file. The plugin can read such a file with Cyclone's QoS Provider
+and apply a profile per topic. This is **separate from** `CYCLONE_CONFIG_FILE`
+(Cyclone's transport/tracing config, root `<CycloneDDS>`): a typical setup uses both.
+
+```
+DDS_TYPED.CONFIG d=12 cf=./cyclonedds-loopback.xml pp=./libcustomer1_types.so \
+    qf=./USER_QOS_PROFILES_Cyclone.xml qd=StatePattern \
+    qt=Alarms__Actual_Alarm=AlarmPattern;*__acknowledgeAlarm=CommandPattern
+```
+```ini
+[DDS_TYPED]
+DOMAIN              = 12
+CYCLONE_CONFIG_FILE = ./cyclonedds-loopback.xml
+QOS_PROFILE_FILE    = ./USER_QOS_PROFILES_Cyclone.xml
+QOS_LIBRARY         = DDSDefaultQoSLibrary
+QOS_DEFAULT_PROFILE = StatePattern
+QOS_TOPIC_PROFILES  = Alarms__Actual_Alarm=AlarmPattern;*__acknowledgeAlarm=CommandPattern
+```
+
+| INI key | CONFIG key | Meaning |
+|---|---|---|
+| `QOS_PROFILE_FILE` | `qf=` | DDS-XML QoS file. Empty / `none` = feature off (everything built from `RELIABLE`/`HISTORY_DEPTH` as before) |
+| `QOS_LIBRARY` | `ql=` | Library used for a profile name written without `::` (default `DDSDefaultQoSLibrary`) |
+| `QOS_DEFAULT_PROFILE` | `qd=` | Profile for every topic no rule below matches |
+| `QOS_TOPIC_PROFILES` | `qt=` | `topic=profile;topic=profile;...` (`;` or `,`) — `topic` is an exact name or a glob (`*`, `?`, `[..]`); **first match wins**, so put specific names before broad patterns |
+
+Rules:
+
+- A selected profile's `<datawriter_qos>` / `<datareader_qos>` / `<topic_qos>` are used
+  **as-is** for that topic. Policies the profile leaves unset get the DDS defaults —
+  what an application using the QoS Provider would get. `RELIABLE` / `HISTORY_DEPTH`
+  are **not** layered on top.
+- A topic with no matching rule and no default profile keeps the built-in
+  `RELIABLE`/`HISTORY_DEPTH` QoS.
+- A profile that has no entry for one of the three kinds (the empty `Default` profile in
+  `USER_QOS_PROFILES_Cyclone.xml` has none) means DDS defaults for that kind. Cyclone may
+  print `Failed to get qos with name: ...` for the missing kind; that is expected.
+- Profile names are case-sensitive; `Lib::Profile` or a bare `Profile` (then looked up
+  in `QOS_LIBRARY`). A missing profile, a missing file, a malformed `QOS_TOPIC_PROFILES`
+  or a file Cyclone can't parse makes the driver **refuse to open** — never a silent fallback.
+- Only files Cyclone's QoS Provider can parse work: root `<dds>`, no empty
+  `<deadline><period/></deadline>`-style elements. **`USER_QOS_PROFILES_Consolidated.xml`
+  can't be used** (no `<dds>` root, empty `<deadline>`); use `USER_QOS_PROFILES_Cyclone.xml`.
+- Publisher / subscriber / participant QoS in the file (partition, ...) is not applied,
+  only writer, reader and topic QoS.
+- In an INI value do not put whitespace before a `;` (it would start an inline comment);
+  `CONFIG` values contain no spaces at all.
+- `LIST` shows the applied profile: `local_writers=1 vehicle/state{qos=DDSDefaultQoSLibrary::StatePattern}`.
+- Discovery shows what was applied: with `StatePattern` a writer is advertised as
+  RELIABLE / TRANSIENT_LOCAL / BY_SOURCE_TIMESTAMP, so a subscriber that starts *later*
+  still receives the last sample.
+
 ## When to use this instead of (or alongside) `DDS`
 
 Only when this process needs to exchange real, specific IDL structs with

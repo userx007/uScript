@@ -107,6 +107,11 @@ std::shared_ptr<DdsTypedDriver> DdsTypedPlugin::m_OpenDriver(void) const
     cfg.strInstanceName        = m_strInstanceName;
     cfg.preloadPluginPaths     = splitPreloadPaths(m_strPreloadPlugins);
     cfg.cycloneConfigFile      = resolveCycloneConfigPath(m_strCycloneConfigFile, m_strArtefactsPath);
+    // Same lookup rule as the Cyclone config file: as given, else under ARTEFACTS_PATH.
+    cfg.qosProfileFile         = resolveCycloneConfigPath(m_strQosProfileFile, m_strArtefactsPath);
+    cfg.qosLibrary             = m_strQosLibrary;
+    cfg.qosDefaultProfile      = m_strQosDefaultProfile;
+    cfg.qosTopicProfiles       = m_strQosTopicProfiles;
     cfg.maxSubscriptions       = m_u32MaxSubscriptions;
 
     auto driver                = std::make_shared<DdsTypedDriver>(cfg);
@@ -137,6 +142,11 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &strArgs, std::stop_toke
     if (!m_strCycloneConfigFile.empty()) {
         oss << " cyclone_config=" << m_strCycloneConfigFile;
     }
+    if (!m_strQosProfileFile.empty()) {
+        oss << " qos_file=" << m_strQosProfileFile << " qos_default="
+            << (m_strQosDefaultProfile.empty() ? "(none)" : m_strQosDefaultProfile)
+            << " qos_topic_rules=" << (m_strQosTopicProfiles.empty() ? "(none)" : m_strQosTopicProfiles);
+    }
     m_strResultData = oss.str();
 
     LOG_SEP();
@@ -163,6 +173,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &strArgs, std::stop_toke
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [r=0|1 reliable] [hd=history_depth] [fr=fragment_threshold_bytes]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [pp=path1.so;path2.so] [rt=read_tout] [rb=read_bufsize] [ms=max_subs]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [cf=cyclonedds.xml|none]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [qf=qos_profiles.xml|none] [ql=library] [qd=profile|none] [qt=topic=profile;...|none]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DDS_TYPED.CONFIG d=12 pp=./libcustomer1_types.so"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS_TYPED.CONFIG d=12 cf=./cyclonedds-loopback.xml pp=./libcustomer1_types.so"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : cf= loads a native Cyclone DDS config XML (as used with CYCLONEDDS_URI) and"));
@@ -170,6 +181,13 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &strArgs, std::stop_toke
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         ignored (d= still selects the domain). Relative paths are looked up in the"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         working dir, then in ARTEFACTS_PATH. No spaces or commas in the path."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         The driver refuses to open if the file is missing or Cyclone rejects it."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("QoS    : qf= loads a DDS-XML QoS profile file (root <dds>, e.g. USER_QOS_PROFILES_Cyclone.xml);"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         qd= is the profile used for every topic, qt= picks profiles per topic (exact name or"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         glob, first match wins), ql= the library for bare profile names (default"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDSDefaultQoSLibrary). A selected profile's writer/reader/topic QoS is used as-is (r=/hd="));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         are not layered on top); topics with no profile keep r=/hd=. Unknown profile => no open."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DDS_TYPED.CONFIG cf=./cyclonedds-loopback.xml qf=./USER_QOS_PROFILES_Cyclone.xml \\"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("             qt=Alarms__Actual_Alarm=AlarmPattern;*__acknowledgeAlarm=CommandPattern qd=StatePattern"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : one DDS_TYPED operation, on the plugin's single persistent Cyclone DDS participant"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : > LOAD <path.so>   |   > PUBLISH <topic> <payload...>   |"));
@@ -220,6 +238,10 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &strArgs, std::stop_toke
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLONE_CONFIG_FILE =            # optional native Cyclone DDS config XML; replaces the generated"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("                                 # config (IFACE/MCAST_IFACE/TTL/SPDP_*/LEASE_*/FRAGMENT_*/PARTICIPANT_ID/"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("                                 # USE_IPV6 are then ignored), e.g. ./cyclonedds-loopback.xml"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("QOS_PROFILE_FILE    =            # optional DDS-XML QoS profile file (root <dds>), e.g. ./USER_QOS_PROFILES_Cyclone.xml"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("QOS_LIBRARY         = DDSDefaultQoSLibrary   # library for profile names given without '::'"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("QOS_DEFAULT_PROFILE =            # profile for every topic not matched below, e.g. StatePattern"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("QOS_TOPIC_PROFILES  =            # topic=profile;topic*=profile — no space before ';' (ini inline comment)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT        = 5000"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUFFER_SIZE    = 4096"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("MAX_SUBSCRIPTIONS   = 64          # safety cap on concurrently SUBSCRIBEd topics, 0=unbounded"));

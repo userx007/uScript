@@ -99,6 +99,36 @@ class DdsTypedDriver : public ICommDriver {
                 // Cyclone rejects its content, rather than silently falling back.
                 // Must not contain ',' (Cyclone splits its config string on it).
                 std::string cycloneConfigFile;
+
+                // ---- QoS profiles (OMG DDS-XML, read with Cyclone's QoS Provider) ----
+                // Optional path to a DDS-XML QoS profile file (root element <dds>,
+                // e.g. USER_QOS_PROFILES_Cyclone.xml) — NOT the same thing as
+                // cycloneConfigFile above (that one is Cyclone's own transport/
+                // tracing config, root <CycloneDDS>). Empty = feature off: every
+                // writer/reader is built from `reliable`/`historyDepth` exactly as
+                // before. The file must be one Cyclone's QoS Provider can parse;
+                // open() fails (returns false) if it can't, or if any profile
+                // named below doesn't exist in it — a typo never silently degrades
+                // to the built-in QoS.
+                std::string qosProfileFile;
+                // Library used to qualify a profile name that has no "::" of its
+                // own ("StatePattern" -> "<qosLibrary>::StatePattern").
+                std::string qosLibrary = "DDSDefaultQoSLibrary";
+                // Profile applied to every topic NOT matched by qosTopicProfiles.
+                // Empty = such topics keep the built-in reliable/historyDepth QoS.
+                std::string qosDefaultProfile;
+                // Per-topic selection: "<topic-glob>=<profile>[;<topic-glob>=<profile>...]"
+                // (';' or ',' separated). <topic-glob> is an exact topic name or an
+                // fnmatch() pattern ('*', '?', '[..]'); the FIRST matching rule wins,
+                // so list specific names before broad patterns, e.g.
+                //   "Alarms__Actual_Alarm=AlarmPattern;*__setMissionState=CommandPattern"
+                // The profile's <datawriter_qos>/<datareader_qos>/<topic_qos> are used
+                // as-is for that topic's writer/reader/topic (policies the profile
+                // leaves unset get the DDS defaults, i.e. what an application using
+                // the QoS Provider would get — `reliable`/`historyDepth` are NOT
+                // layered on top). A profile that has no entry for one of the three
+                // kinds (e.g. the empty "Default" profile) means DDS defaults for it.
+                std::string qosTopicProfiles;
                 // Safety cap on how many distinct topics may have a live local
                 // reader at once (i.e. concurrently SUBSCRIBEd — see
                 // m_EnsureLocalReader()'s doc comment). Cyclone DDS itself has
@@ -246,6 +276,25 @@ class DdsTypedDriver : public ICommDriver {
         /// the reason and returns false if it isn't usable.
         bool m_ResolveExternalConfig(std::string &strConfigOut) const;
         bool m_LoadPlugin(const std::string &strPath) const;
+
+        // ---- QoS profile support (see Config::qosProfileFile) ----
+        // Defined in the .cpp only (holds dds_qos_t copies); this header stays
+        // free of <dds/dds.h>.
+        struct ResolvedQos;
+        /// Loads Config::qosProfileFile and resolves qosDefaultProfile + every
+        /// qosTopicProfiles rule. Called once from open(); false = logged reason.
+        bool m_ResolveQosProfiles();
+        /// Profile selected for this topic (rules in order, then the default),
+        /// or nullptr if none applies (=> built-in reliable/historyDepth QoS).
+        std::shared_ptr<const ResolvedQos> m_QosForTopic(const std::string &strTopic, std::string *pstrProfileName = nullptr) const;
+        std::shared_ptr<const ResolvedQos> m_defaultQos;
+        std::string m_strDefaultQosName;
+        struct QosRule {
+                std::string topicGlob;
+                std::string profileName;
+                std::shared_ptr<const ResolvedQos> qos;
+        };
+        std::vector<QosRule> m_qosRules; // written only by open()/close(), read-only in between
         DdsEntity m_EnsureLocalWriter(const std::string &strTopic) const;
         std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;
 

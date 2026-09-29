@@ -12,9 +12,12 @@
 #include <cstring>
 #include <dds/dds.h>
 #include <dlfcn.h>
+#include <cstdlib>
 #include <filesystem>
+#include <fnmatch.h>
 #include <fstream>
 #include <iomanip>
+#include <map>
 #include <sstream>
 #include <utility>
 
@@ -253,8 +256,19 @@ bool DdsTypedDriver::open()
         strDomainCfg = m_BuildDomainConfigXml();
     }
 
+    // Resolve QoS profiles before any DDS entity exists, so a bad file/profile
+    // name leaves nothing to clean up.
+    if (!m_ResolveQosProfiles()) {
+        return false;
+    }
+
     const DdsEntity domainRc = dds_create_domain(static_cast<dds_domainid_t>(m_config.domainId), strDomainCfg.c_str());
-    if (domainRc < 0 && -domainRc == DDS_RETCODE_PRECONDITION_NOT_MET) {
+    // Cyclone's DDS_RETCODE_* macros are negative in current releases (-4 for
+    // PRECONDITION_NOT_MET, which is exactly what the API returns) but were
+    // positive in older ones, so compare magnitudes. "Not met" here means the
+    // domain already exists in this process — not an error.
+    const bool bDomainExists = domainRc < 0 && std::abs(static_cast<int>(domainRc)) == std::abs(static_cast<int>(DDS_RETCODE_PRECONDITION_NOT_MET));
+    if (bDomainExists) {
         if (bExternalCfg) {
             LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Domain "); LOG_UINT32(m_config.domainId);
                       LOG_STRING(" already exists in this process (another participant is still using it) — "
@@ -358,6 +372,10 @@ void DdsTypedDriver::close()
     }
     m_domain = kInvalidEntity;
 
+    m_qosRules.clear();
+    m_defaultQos.reset();
+    m_strDefaultQosName.clear();
+
     m_typesByTopic.clear(); // the descriptors/function pointers would dangle once close() runs; re-LOAD after re-open()
     m_guidHex.clear();
     // Loaded .so handles are intentionally NOT dlclose()d here — see class
@@ -394,6 +412,217 @@ ICommDriver::ReadResult DdsTypedDriver::tout_read(uint32_t, std::span<uint8_t>, 
     ReadResult r;
     r.status = ICommDriver::Status::OPERATION_FAILED;
     return r;
+}
+
+// ---------------------------------------------------------------------------
+// QoS profiles (QOS_PROFILE_FILE / qf=) — OMG DDS-XML via Cyclone's QoS Provider
+// ---------------------------------------------------------------------------
+
+/// Independent copies of one profile's reader/writer/topic QoS. Copies (not
+/// the provider's own pointers) so the provider can be deleted right after
+/// loading and these stay valid for the driver's lifetime. Any of the three
+/// may be nullptr: the profile simply has no entry of that kind (an empty
+/// profile such as "Default" has none) => DDS defaults for that entity.
+struct DdsTypedDriver::ResolvedQos {
+        std::string key;
+        dds_qos_t *reader = nullptr;
+        dds_qos_t *writer = nullptr;
+        dds_qos_t *topic  = nullptr;
+
+        ResolvedQos()     = default;
+        ResolvedQos(const ResolvedQos &)            = delete;
+        ResolvedQos &operator=(const ResolvedQos &) = delete;
+        ~ResolvedQos()
+        {
+            for (dds_qos_t *q : {reader, writer, topic}) {
+                if (q) {
+                    dds_delete_qos(q);
+                }
+            }
+        }
+};
+
+namespace {
+    struct RawQosRule {
+            std::string glob;
+            std::string profile;
+    };
+
+    // "topicA=ProfA;topicB*=Lib::ProfB,other=ProfC" -> rules. ';' and ',' both
+    // separate (DDS topic names can't contain either). Returns false + message on
+    // a malformed entry.
+    bool parseQosTopicRules(const std::string &strIn, std::vector<RawQosRule> &out, std::string &strErr)
+    {
+        size_t start = 0;
+        while (start <= strIn.size()) {
+            const size_t sep = strIn.find_first_of(";,", start);
+            const std::string token =
+                ustring::trim(strIn.substr(start, sep == std::string::npos ? std::string::npos : sep - start));
+            if (!token.empty()) {
+                const size_t eq = token.find('=');
+                if (eq == std::string::npos) {
+                    strErr = "'" + token + "' is not <topic>=<profile>";
+                    return false;
+                }
+                RawQosRule r{ustring::trim(token.substr(0, eq)), ustring::trim(token.substr(eq + 1))};
+                if (r.glob.empty() || r.profile.empty()) {
+                    strErr = "'" + token + "' has an empty topic or profile";
+                    return false;
+                }
+                out.push_back(std::move(r));
+            }
+            if (sep == std::string::npos) {
+                break;
+            }
+            start = sep + 1;
+        }
+        return true;
+    }
+
+    bool absoluteRegularFile(const std::string &strPath, std::string &strAbsOut)
+    {
+        namespace fs = std::filesystem;
+        std::error_code ec;
+        const fs::path abs = fs::absolute(fs::path(strPath), ec);
+        if (ec || !fs::is_regular_file(abs, ec)) {
+            return false;
+        }
+        strAbsOut = abs.string();
+        return true;
+    }
+} // namespace
+
+bool DdsTypedDriver::m_ResolveQosProfiles()
+{
+    m_defaultQos.reset();
+    m_strDefaultQosName.clear();
+    m_qosRules.clear();
+
+    if (m_config.qosProfileFile.empty()) {
+        if (!m_config.qosDefaultProfile.empty() || !m_config.qosTopicProfiles.empty()) {
+            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("QOS_DEFAULT_PROFILE / QOS_TOPIC_PROFILES are set but QOS_PROFILE_FILE is empty — ignored"));
+        }
+        return true;
+    }
+
+#ifndef DDS_HAS_QOS_PROVIDER
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("QOS_PROFILE_FILE needs a CycloneDDS built with the QoS Provider (DDS_HAS_QOS_PROVIDER, Cyclone >= 11.0)"));
+    return false;
+#else
+    std::string strFile;
+    if (!absoluteRegularFile(m_config.qosProfileFile, strFile)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("QOS_PROFILE_FILE '"); LOG_STRING(m_config.qosProfileFile.c_str());
+                  LOG_STRING("' does not exist or is not a regular file"));
+        return false;
+    }
+
+    std::vector<RawQosRule> rawRules;
+    std::string strErr;
+    if (!parseQosTopicRules(m_config.qosTopicProfiles, rawRules, strErr)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("QOS_TOPIC_PROFILES: "); LOG_STRING(strErr.c_str());
+                  LOG_STRING(" (expected <topic-or-glob>=<profile>[;...])"));
+        return false;
+    }
+    if (m_config.qosDefaultProfile.empty() && rawRules.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("QOS_PROFILE_FILE is set but neither QOS_DEFAULT_PROFILE nor QOS_TOPIC_PROFILES names a profile — the file has no effect"));
+    }
+
+    // Whole-file check first, so "the file itself is unusable" and "this profile
+    // name doesn't exist" get different messages.
+    {
+        dds_qos_provider_t *whole = nullptr;
+        const dds_return_t rc     = dds_create_qos_provider(strFile.c_str(), &whole);
+        if (rc != DDS_RETCODE_OK || !whole) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cyclone's QoS Provider rejected '"); LOG_STRING(strFile.c_str());
+                      LOG_STRING("' — it needs a DDS-XML file with a <dds> root (see Cyclone's own message above; "
+                                 "typical causes: missing <dds> wrapper, empty <deadline>/<period/> elements, unknown tags)"));
+            return false;
+        }
+        dds_delete_qos_provider(whole);
+    }
+
+    const auto qualify = [this](const std::string &strName) {
+        return strName.find("::") != std::string::npos ? strName : m_config.qosLibrary + "::" + strName;
+    };
+
+    std::map<std::string, std::shared_ptr<const ResolvedQos>> cache;
+    const auto load = [&](const std::string &strKey) -> std::shared_ptr<const ResolvedQos> {
+        if (auto it = cache.find(strKey); it != cache.end()) {
+            return it->second;
+        }
+        dds_qos_provider_t *prov = nullptr;
+        if (dds_create_qos_provider_scope(strFile.c_str(), &prov, strKey.c_str()) != DDS_RETCODE_OK || !prov) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("QoS profile '"); LOG_STRING(strKey.c_str()); LOG_STRING("' not found in '");
+                      LOG_STRING(strFile.c_str()); LOG_STRING("' (names are case-sensitive; form is <library>::<profile>, "
+                                                              "a bare name is looked up in QOS_LIBRARY='");
+                      LOG_STRING(m_config.qosLibrary.c_str()); LOG_STRING("')"));
+            return nullptr;
+        }
+        auto rq = std::make_shared<ResolvedQos>();
+        rq->key = strKey;
+        const auto fetch = [&](dds_qos_kind_t kind, dds_qos_t *&dst) {
+            const dds_qos_t *q = nullptr;
+            if (dds_qos_provider_get_qos(prov, kind, strKey.c_str(), &q) == DDS_RETCODE_OK && q) {
+                dst = dds_create_qos();
+                if (dds_copy_qos(dst, q) != DDS_RETCODE_OK) {
+                    dds_delete_qos(dst);
+                    dst = nullptr;
+                }
+            }
+        };
+        fetch(DDS_READER_QOS, rq->reader);
+        fetch(DDS_WRITER_QOS, rq->writer);
+        fetch(DDS_TOPIC_QOS, rq->topic);
+        dds_delete_qos_provider(prov);
+
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("QoS profile '"); LOG_STRING(strKey.c_str()); LOG_STRING("': reader=");
+                  LOG_STRING(rq->reader ? "yes" : "no"); LOG_STRING("writer="); LOG_STRING(rq->writer ? "yes" : "no");
+                  LOG_STRING("topic="); LOG_STRING(rq->topic ? "yes" : "no"));
+        if (!rq->reader || !rq->writer || !rq->topic) {
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("  (a kind the profile doesn't define gets DDS defaults; any 'Failed to get qos with name' "
+                                                     "line Cyclone printed for it is expected)"));
+        }
+        cache.emplace(strKey, rq);
+        return rq;
+    };
+
+    if (!m_config.qosDefaultProfile.empty()) {
+        m_strDefaultQosName = qualify(m_config.qosDefaultProfile);
+        m_defaultQos        = load(m_strDefaultQosName);
+        if (!m_defaultQos) {
+            return false;
+        }
+    }
+    for (const auto &r : rawRules) {
+        QosRule rule;
+        rule.topicGlob   = r.glob;
+        rule.profileName = qualify(r.profile);
+        rule.qos         = load(rule.profileName);
+        if (!rule.qos) {
+            return false;
+        }
+        m_qosRules.push_back(std::move(rule));
+    }
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("QoS profiles active from '"); LOG_STRING(strFile.c_str()); LOG_STRING("':");
+              LOG_SIZET(m_qosRules.size()); LOG_STRING("topic rule(s), default="); LOG_STRING(m_strDefaultQosName.empty() ? "(none)" : m_strDefaultQosName.c_str()));
+    return true;
+#endif
+}
+
+std::shared_ptr<const DdsTypedDriver::ResolvedQos> DdsTypedDriver::m_QosForTopic(const std::string &strTopic, std::string *pstrProfileName) const
+{
+    for (const auto &rule : m_qosRules) {
+        if (fnmatch(rule.topicGlob.c_str(), strTopic.c_str(), 0) == 0) {
+            if (pstrProfileName) {
+                *pstrProfileName = rule.profileName;
+            }
+            return rule.qos;
+        }
+    }
+    if (m_defaultQos && pstrProfileName) {
+        *pstrProfileName = m_strDefaultQosName;
+    }
+    return m_defaultQos;
 }
 
 // ---------------------------------------------------------------------------
@@ -466,18 +695,34 @@ DdsTypedDriver::DdsEntity DdsTypedDriver::m_EnsureLocalWriter(const std::string 
     }
     const DdsTypeEntry *entry = asTypeEntry(typeIt->second);
 
-    const DdsEntity topicEnt  = dds_create_topic(m_participant, entry->descriptor, strTopic.c_str(), nullptr, nullptr);
+    std::string strProfile;
+    const auto profile       = m_QosForTopic(strTopic, &strProfile);
+
+    const DdsEntity topicEnt = dds_create_topic(m_participant, entry->descriptor, strTopic.c_str(), profile ? profile->topic : nullptr, nullptr);
     if (topicEnt < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(strTopic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-topicEnt)));
         return kInvalidEntity;
     }
-    dds_qos_t *qos = dds_create_qos();
-    dds_qset_reliability(qos, m_config.reliable ? DDS_RELIABILITY_RELIABLE : DDS_RELIABILITY_BEST_EFFORT,
-                         m_config.reliable ? DDS_SECS(10) : 0);
-    dds_qset_history(qos, DDS_HISTORY_KEEP_LAST, static_cast<int32_t>(std::max<uint32_t>(1, m_config.historyDepth)));
+    // Profile selected for this topic: its <datawriter_qos> is used as-is (nullptr =
+    // the profile has none = DDS defaults). No profile: the built-in QoS.
+    dds_qos_t *ownQos      = nullptr;
+    const dds_qos_t *qos   = nullptr;
+    if (profile) {
+        qos = profile->writer;
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Writer for '"); LOG_STRING(strTopic.c_str()); LOG_STRING("' uses QoS profile '");
+                  LOG_STRING(strProfile.c_str()); LOG_STRING("'"));
+    } else {
+        ownQos = dds_create_qos();
+        dds_qset_reliability(ownQos, m_config.reliable ? DDS_RELIABILITY_RELIABLE : DDS_RELIABILITY_BEST_EFFORT,
+                             m_config.reliable ? DDS_SECS(10) : 0);
+        dds_qset_history(ownQos, DDS_HISTORY_KEEP_LAST, static_cast<int32_t>(std::max<uint32_t>(1, m_config.historyDepth)));
+        qos = ownQos;
+    }
     const DdsEntity writerEnt = dds_create_writer(m_participant, topicEnt, qos, nullptr);
-    dds_delete_qos(qos);
+    if (ownQos) {
+        dds_delete_qos(ownQos);
+    }
     if (writerEnt < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_writer failed for '"); LOG_STRING(strTopic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-writerEnt)));
@@ -566,22 +811,37 @@ std::shared_ptr<DdsTypedDriver::LocalReader> DdsTypedDriver::m_EnsureLocalReader
     // are themselves mutable.
     localReader->owner        = const_cast<DdsTypedDriver *>(this);
 
-    const DdsEntity topicEnt  = dds_create_topic(m_participant, entry->descriptor, topic.c_str(), nullptr, nullptr);
+    std::string strProfile;
+    const auto profile        = m_QosForTopic(topic, &strProfile);
+
+    const DdsEntity topicEnt  = dds_create_topic(m_participant, entry->descriptor, topic.c_str(), profile ? profile->topic : nullptr, nullptr);
     if (topicEnt < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(topic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-topicEnt)));
         return localReader; // still registered, empty queue forever — same convention as DdsDriver
     }
-    dds_qos_t *qos = dds_create_qos();
-    dds_qset_reliability(qos, m_config.reliable ? DDS_RELIABILITY_RELIABLE : DDS_RELIABILITY_BEST_EFFORT,
-                         m_config.reliable ? DDS_SECS(10) : 0);
-    dds_qset_history(qos, DDS_HISTORY_KEEP_LAST, static_cast<int32_t>(std::max<uint32_t>(1, m_config.historyDepth)));
+    // See m_EnsureLocalWriter(): profile's <datareader_qos> as-is, else the built-in QoS.
+    dds_qos_t *ownQos    = nullptr;
+    const dds_qos_t *qos = nullptr;
+    if (profile) {
+        qos = profile->reader;
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Reader for '"); LOG_STRING(topic.c_str()); LOG_STRING("' uses QoS profile '");
+                  LOG_STRING(strProfile.c_str()); LOG_STRING("'"));
+    } else {
+        ownQos = dds_create_qos();
+        dds_qset_reliability(ownQos, m_config.reliable ? DDS_RELIABILITY_RELIABLE : DDS_RELIABILITY_BEST_EFFORT,
+                             m_config.reliable ? DDS_SECS(10) : 0);
+        dds_qset_history(ownQos, DDS_HISTORY_KEEP_LAST, static_cast<int32_t>(std::max<uint32_t>(1, m_config.historyDepth)));
+        qos = ownQos;
+    }
 
     dds_listener_t *listener = dds_create_listener(localReader.get());
     dds_lset_data_available(listener, &DdsTypedDriver::m_OnReaderDataAvailable);
     const DdsEntity readerEnt = dds_create_reader(m_participant, topicEnt, qos, listener);
     dds_delete_listener(listener);
-    dds_delete_qos(qos);
+    if (ownQos) {
+        dds_delete_qos(ownQos);
+    }
     if (readerEnt < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_reader failed for '"); LOG_STRING(topic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-readerEnt)));
@@ -794,12 +1054,22 @@ std::string DdsTypedDriver::m_BuildListText() const
     oss << " ; local_writers=" << m_localWriters.size();
     for (const auto &[topic, w] : m_localWriters) {
         (void)w;
+        std::string strProfile;
+        m_QosForTopic(topic, &strProfile);
         oss << " " << topic;
+        if (!strProfile.empty()) {
+            oss << "{qos=" << strProfile << "}";
+        }
     }
     oss << " ; local_readers=" << m_localReaders.size();
     for (const auto &[topic, r] : m_localReaders) {
         (void)r;
+        std::string strProfile;
+        m_QosForTopic(topic, &strProfile);
         oss << " " << topic;
+        if (!strProfile.empty()) {
+            oss << "{qos=" << strProfile << "}";
+        }
     }
 
     return oss.str();

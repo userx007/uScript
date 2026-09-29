@@ -122,6 +122,10 @@ class DdsTypedPlugin : public PluginInterface {
             , m_u32FragmentThresholdBytes(1300)
             , m_strPreloadPlugins()
             , m_strCycloneConfigFile()
+            , m_strQosProfileFile()
+            , m_strQosLibrary("DDSDefaultQoSLibrary")
+            , m_strQosDefaultProfile()
+            , m_strQosTopicProfiles()
             , m_u32ReadTimeout(5000)
             , m_u32ReadBufferSize(4096)
             , m_u32MaxSubscriptions(64)
@@ -398,6 +402,54 @@ class DdsTypedPlugin : public PluginInterface {
             m_strCycloneConfigFile = (strV == "none") ? std::string() : strV;
         }
 
+        // ---- DDS-XML QoS profiles (see DdsTypedDriver::Config::qosProfileFile) ----
+        // Not the Cyclone config XML above: this is the OMG DDS-XML QoS file
+        // (root <dds>, e.g. USER_QOS_PROFILES_Cyclone.xml) whose profiles carry
+        // the reader/writer/topic QoS an NGVA-style peer expects. INI keys
+        // QOS_PROFILE_FILE / QOS_LIBRARY / QOS_DEFAULT_PROFILE /
+        // QOS_TOPIC_PROFILES, CONFIG keys qf= / ql= / qd= / qt=; "none" clears
+        // qf/qd/qt. With QOS_PROFILE_FILE empty everything is built from
+        // RELIABLE/HISTORY_DEPTH as before.
+        const std::string &getQosProfileFile(void) const
+        {
+            return m_strQosProfileFile;
+        }
+
+        void setQosProfileFile(const std::string &strV) const
+        {
+            m_strQosProfileFile = (strV == "none") ? std::string() : strV;
+        }
+
+        const std::string &getQosLibrary(void) const
+        {
+            return m_strQosLibrary;
+        }
+
+        void setQosLibrary(const std::string &strV) const
+        {
+            m_strQosLibrary = strV.empty() ? std::string("DDSDefaultQoSLibrary") : strV;
+        }
+
+        const std::string &getQosDefaultProfile(void) const
+        {
+            return m_strQosDefaultProfile;
+        }
+
+        void setQosDefaultProfile(const std::string &strV) const
+        {
+            m_strQosDefaultProfile = (strV == "none") ? std::string() : strV;
+        }
+
+        const std::string &getQosTopicProfiles(void) const
+        {
+            return m_strQosTopicProfiles;
+        }
+
+        void setQosTopicProfiles(const std::string &strV) const
+        {
+            m_strQosTopicProfiles = (strV == "none") ? std::string() : strV;
+        }
+
         uint32_t getReadTimeout(void) const
         {
             return m_u32ReadTimeout;
@@ -473,6 +525,10 @@ class DdsTypedPlugin : public PluginInterface {
         mutable uint32_t m_u32FragmentThresholdBytes;
         mutable std::string m_strPreloadPlugins;
         mutable std::string m_strCycloneConfigFile;
+        mutable std::string m_strQosProfileFile;
+        mutable std::string m_strQosLibrary;
+        mutable std::string m_strQosDefaultProfile;
+        mutable std::string m_strQosTopicProfiles;
 
         mutable uint32_t m_u32ReadTimeout;
         mutable uint32_t m_u32ReadBufferSize;
