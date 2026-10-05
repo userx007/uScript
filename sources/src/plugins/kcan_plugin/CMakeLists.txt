@@ -1,0 +1,31 @@
+cmake_minimum_required(VERSION 3.25)
+project(kcan_plugin)
+
+add_library(${PROJECT_NAME}
+    SHARED
+        src/kcan_plugin.cpp
+)
+
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/inc
+        ${CMAKE_CURRENT_SOURCE_DIR}/inc/private
+)
+
+target_link_libraries( ${PROJECT_NAME}
+    PUBLIC
+        uPluginSettings
+        uCommandExec
+        uIPlugin
+        uICoreScript
+        uITpInterface
+        uCommScriptClient
+        uCommScriptCommandInterpreter
+        uScriptReader
+        uPluginOps
+        uTpFactory
+        uTpConfig
+        uIsoTp
+        uJ1939Tp        
+        uKCan
+)
