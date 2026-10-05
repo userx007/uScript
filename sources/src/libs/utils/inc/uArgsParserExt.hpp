@@ -38,7 +38,7 @@ class CommandLineParser {
         void add_option(std::string strLong_flag, std::string strShort_flag = "",
                         std::string strHelp = "", bool bRequired = false,
                         std::string strDefault_value = "",
-                        OptionType eType           = OptionType::String)
+                        OptionType eType             = OptionType::String)
         {
             OptionConfig config{std::move(strLong_flag), std::move(strShort_flag),
                                 std::move(strHelp), std::move(strDefault_value),

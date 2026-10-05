@@ -242,7 +242,7 @@ class DdsTypedDriver : public ICommDriver {
                 // dds_lset_data_available() callback (which only gets this
                 // LocalReader as its `arg`) can also poke the driver-level
                 // "something arrived somewhere" signal — see m_anyDataCv.
-                DdsTypedDriver *owner = nullptr;
+                DdsTypedDriver *owner     = nullptr;
                 mutable std::mutex queueMutex;
                 mutable std::condition_variable_any queueCv;
                 std::deque<std::string> queue;
@@ -292,11 +292,13 @@ class DdsTypedDriver : public ICommDriver {
         std::shared_ptr<const ResolvedQos> m_QosForTopic(const std::string &strTopic, std::string *pstrProfileName = nullptr) const;
         std::shared_ptr<const ResolvedQos> m_defaultQos;
         std::string m_strDefaultQosName;
+
         struct QosRule {
                 std::string topicGlob;
                 std::string profileName;
                 std::shared_ptr<const ResolvedQos> qos;
         };
+
         std::vector<QosRule> m_qosRules; // written only by open()/close(), read-only in between
         DdsEntity m_EnsureLocalWriter(const std::string &strTopic) const;
         std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;
@@ -315,7 +317,7 @@ class DdsTypedDriver : public ICommDriver {
         /// comment. Static (not const, no `this`) since it only ever
         /// touches the LocalReader passed in.
         static std::optional<std::string> m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
-                                                        std::stop_token stop_tok);
+                                                       std::stop_token stop_tok);
 
         static void m_OnReaderDataAvailable(DdsEntity reader, void *pvArg);
 };

@@ -60,7 +60,7 @@ class UART : public ICommDriver {
          */
         explicit UART(const std::string &strDevice, uint32_t u32Speed,
                       const std::string &strIdentityLabel = {},
-                      Parity eParity                       = Parity::None,
+                      Parity eParity                      = Parity::None,
                       uint8_t u8DataBits                  = 8,
                       uint8_t u8StopBits                  = 1)
             : m_strDevice(strDevice)
@@ -85,7 +85,7 @@ class UART : public ICommDriver {
          * unaffected by their addition — this is purely additive.
          */
         Status open(const std::string &strDevice, uint32_t u32Speed,
-                    Parity eParity      = Parity::None,
+                    Parity eParity     = Parity::None,
                     uint8_t u8DataBits = 8,
                     uint8_t u8StopBits = 1);
         Status close();

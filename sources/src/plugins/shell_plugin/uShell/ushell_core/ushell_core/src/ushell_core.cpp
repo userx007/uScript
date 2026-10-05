@@ -453,7 +453,7 @@ int Microshell::m_CoreHandleBorderedStrings(char **ppstrPpstrToken, char **ppstr
             }
         }
         if (true == bFound) {
-            bFound      = false;
+            bFound           = false;
             **ppstrPpstrRest = '\0';
             while (*m_pstrTokenSeparator == *(++(*ppstrPpstrRest)))
                 ; /* cleanup the trailing separators */
@@ -1568,7 +1568,7 @@ void Microshell::m_HistoryClear(history_s *pHistory)
 void Microshell::m_HistoryGetFreeSpace(const history_s *pHistory, size_t *pPszFreeBytes)
 {
     size_t szUsedBytes = m_HistoryCalculateUsedSpace(pHistory);
-    *pPszFreeBytes      = pHistory->szDataBufferSize - szUsedBytes;
+    *pPszFreeBytes     = pHistory->szDataBufferSize - szUsedBytes;
 }
 
 /*----------------------------------------------------------------------------*/

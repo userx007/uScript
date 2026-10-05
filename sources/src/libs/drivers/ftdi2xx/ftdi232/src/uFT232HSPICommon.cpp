@@ -102,7 +102,7 @@ FT232HSPI::Status FT232HSPI::configure_mpsse_spi(const SpiConfig &sConfig)
 
     // SCK idle level depends on CPOL (Mode2/Mode3 = high)
     bool sckIdle    = (sConfig.mode == SpiMode::Mode2 ||
-                       sConfig.mode == SpiMode::Mode3);
+                    sConfig.mode == SpiMode::Mode3);
 
     // Build initial pin state
     m_pinDir        = 0x0Bu; // SCK+MOSI+CS = outputs; MISO = input

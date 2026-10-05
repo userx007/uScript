@@ -811,13 +811,13 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &sOut
                     const auto &msg = evt.tagData.canRxOkMsg;
                     const bool ext  = (msg.canId & XL_CAN_EXT_MSG_ID) != 0U;
 
-                    sOut.u32Id       = msg.canId & CAN_EFF_MASK;
-                    sOut.bExtended   = ext;
-                    sOut.u8Len       = static_cast<uint8_t>(
+                    sOut.u32Id      = msg.canId & CAN_EFF_MASK;
+                    sOut.bExtended  = ext;
+                    sOut.u8Len      = static_cast<uint8_t>(
                         std::min<size_t>(VECTOR_FD_MAX_PAYLOAD,
-                                         CANFD_GET_NUM_DATABYTES(msg.dlc,
-                                                                 (msg.msgFlags & XL_CAN_RXMSG_FLAG_EDL) != 0U,
-                                                                 (msg.msgFlags & XL_CAN_RXMSG_FLAG_RTR) != 0U)));
+                                              CANFD_GET_NUM_DATABYTES(msg.dlc,
+                                                                      (msg.msgFlags & XL_CAN_RXMSG_FLAG_EDL) != 0U,
+                                                                      (msg.msgFlags & XL_CAN_RXMSG_FLAG_RTR) != 0U)));
                     std::memcpy(sOut.data.data(), msg.data, sOut.u8Len);
                     return Status::SUCCESS;
                 }
@@ -853,9 +853,9 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &sOut
                     }
 
                     const bool ext = (evt.tagData.msg.id & XL_CAN_EXT_MSG_ID) != 0U;
-                    sOut.u32Id      = evt.tagData.msg.id & CAN_EFF_MASK;
-                    sOut.bExtended  = ext;
-                    sOut.u8Len      = static_cast<uint8_t>(std::min<uint16_t>(VECTOR_MAX_PAYLOAD, evt.tagData.msg.dlc));
+                    sOut.u32Id     = evt.tagData.msg.id & CAN_EFF_MASK;
+                    sOut.bExtended = ext;
+                    sOut.u8Len     = static_cast<uint8_t>(std::min<uint16_t>(VECTOR_MAX_PAYLOAD, evt.tagData.msg.dlc));
                     std::memcpy(sOut.data.data(), evt.tagData.msg.data, sOut.u8Len);
                     return Status::SUCCESS;
                 }
@@ -1239,9 +1239,9 @@ ICommDriver::WriteResult Vector::writeFragmented_locked(uint32_t u32WriteTimeout
 
     (void)u32WriteTimeout; // xlCanTransmit(Ex) is non-blocking; timeout reserved for future use.
 
-    const uint32_t u32TxId    = resolveTxId(xtra_params);
-    const bool bExtended      = m_bExtendedId || (u32TxId & CAN_EFF_FLAG) != 0U ||
-                                ((u32TxId & CAN_EFF_MASK) > CAN_SFF_MASK);
+    const uint32_t u32TxId = resolveTxId(xtra_params);
+    const bool bExtended   = m_bExtendedId || (u32TxId & CAN_EFF_FLAG) != 0U ||
+                           ((u32TxId & CAN_EFF_MASK) > CAN_SFF_MASK);
     const uint32_t u32RawTxId = u32TxId & (bExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
     const size_t maxPayload   = m_bFD ? VECTOR_FD_MAX_PAYLOAD : VECTOR_MAX_PAYLOAD;
 

@@ -6,8 +6,8 @@
 template <typename TCommand>
 class IScriptCommandValidator {
     public:
-        IScriptCommandValidator()                                                                 = default;
-        virtual ~IScriptCommandValidator()                                                        = default;
+        IScriptCommandValidator()                                                                    = default;
+        virtual ~IScriptCommandValidator()                                                           = default;
 
         virtual bool validateCommand(int iLineNumber, const std::string &strCommand, TCommand &type) = 0;
 };

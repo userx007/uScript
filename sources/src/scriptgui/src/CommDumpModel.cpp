@@ -238,7 +238,7 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int iMaxBytes)
 QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool bIncludeAscii, double dFontSize, int iBytesPerLine)
 {
     Q_UNUSED(dFontSize) // Font size is handled by Qt's rendering context in the view,
-                       // or via FontRole. The text content itself is just the dump.
+                        // or via FontRole. The text content itself is just the dump.
 
     QString out;
     const int perLine = iBytesPerLine;

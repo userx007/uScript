@@ -49,10 +49,10 @@ void KCAN::set_tx_id(uint32_t u32Id)
 }
 
 KCAN::ReadResult KCAN::tout_read(uint32_t u32ReadTimeout,
-                                   std::span<uint8_t> buffer,
-                                   const ReadOptions &sOptions,
-                                   std::string_view xtra_params,
-                                   std::stop_token stop_tok) const
+                                 std::span<uint8_t> buffer,
+                                 const ReadOptions &sOptions,
+                                 std::string_view xtra_params,
+                                 std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -223,9 +223,9 @@ uint32_t KCAN::resolveTxId(std::string_view xtra_params) const
 }
 
 KCAN::WriteResult KCAN::tout_write(uint32_t u32WriteTimeout,
-                                     std::span<const uint8_t> buffer,
-                                     std::string_view xtra_params,
-                                     std::stop_token stop_tok) const
+                                   std::span<const uint8_t> buffer,
+                                   std::string_view xtra_params,
+                                   std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -279,10 +279,10 @@ KCAN::WriteResult KCAN::tout_write(uint32_t u32WriteTimeout,
                                            : CAN_SFF_MASK;
 
         const bool bAlreadyCovered   = m_vFilters.empty() ||
-                                       std::any_of(m_vFilters.begin(), m_vFilters.end(),
-                                                   [&](const CanFilter &f) {
+                                     std::any_of(m_vFilters.begin(), m_vFilters.end(),
+                                                 [&](const CanFilter &f) {
                                                      return f.can_id == u32EffectiveTxId && f.can_mask == u32FilterMask;
-                                                   });
+                                                 });
 
         if (!bAlreadyCovered) {
             std::vector<CanFilter> vWidened = m_vFilters;
@@ -324,9 +324,9 @@ KCAN::WriteResult KCAN::tout_write(uint32_t u32WriteTimeout,
 // ============================================================================
 
 KCAN::Status KCAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
-                                            std::span<const uint8_t> token,
-                                            bool bUseBuffer,
-                                            std::stop_token stop_tok) const
+                                          std::span<const uint8_t> token,
+                                          bool bUseBuffer,
+                                          std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
     if (token.empty() || szTokenLength == 0 || szTokenLength >= CAN_DRV_MAX_BUFLENGTH) {
@@ -345,18 +345,18 @@ KCAN::Status KCAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
 }
 
 void KCAN::build_kmp_table(std::span<const uint8_t> pattern,
-                            size_t szLength,
-                            std::vector<int> &vViLps) const
+                           size_t szLength,
+                           std::vector<int> &vViLps) const
 {
     ukmp::build_kmp_table(pattern, szLength, vViLps);
 }
 
 KCAN::Status KCAN::kmp_stream_match(std::span<const uint8_t> token,
-                                      const std::vector<int> &vViLps,
-                                      uint32_t u32Timeout,
-                                      bool bReturnOnTimeout,
-                                      bool bUseBuffer,
-                                      std::stop_token stop_tok) const
+                                    const std::vector<int> &vViLps,
+                                    uint32_t u32Timeout,
+                                    bool bReturnOnTimeout,
+                                    bool bUseBuffer,
+                                    std::stop_token stop_tok) const
 {
     // Receive frames and feed their payload bytes one-by-one into KMP.
     // A scratch buffer sized to one max CAN FD payload is sufficient because
@@ -370,10 +370,10 @@ KCAN::Status KCAN::kmp_stream_match(std::span<const uint8_t> token,
 }
 
 KCAN::Status KCAN::timeout_read_until(uint32_t u32ReadTimeout,
-                                        std::span<uint8_t> buffer,
-                                        uint8_t u8CDelimiter,
-                                        size_t &szBytesRead,
-                                        std::stop_token stop_tok) const
+                                      std::span<uint8_t> buffer,
+                                      uint8_t u8CDelimiter,
+                                      size_t &szBytesRead,
+                                      std::stop_token stop_tok) const
 {
     if (buffer.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -382,7 +382,7 @@ KCAN::Status KCAN::timeout_read_until(uint32_t u32ReadTimeout,
     }
 
     szBytesRead                                        = 0;
-    KCAN::Status eResult                              = Status::RETVAL_NOT_SET;
+    KCAN::Status eResult                               = Status::RETVAL_NOT_SET;
 
     std::array<uint8_t, CAN_DRV_MAX_DLEN> framePayload = {};
 

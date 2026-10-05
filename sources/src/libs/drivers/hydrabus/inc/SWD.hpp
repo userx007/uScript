@@ -80,8 +80,8 @@ namespace HydraHAL {
              * @throws std::runtime_error on FAULT response (unless ignore_status).
              */
             void write_dp(uint8_t u8Addr, uint32_t u32Value,
-                          int iTo_ap                = 0,
-                          bool bIgnore_status       = false,
+                          int iTo_ap               = 0,
+                          bool bIgnore_status      = false,
                           std::stop_token stop_tok = {});
 
             // -------------------------------------------------------------------------

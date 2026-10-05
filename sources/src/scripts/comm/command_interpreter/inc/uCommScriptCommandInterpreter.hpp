@@ -88,11 +88,11 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
         explicit CommScriptCommandInterpreter(
             std::shared_ptr<const TDriver> shpDriver,
             std::string strPluginName,
-            size_t maxRecvSize       = 4096,
-            uint32_t u32DefaultTimeout  = 5000,
-            SendFunc pfsend          = SendFunc{},
-            RecvFunc pfrecv          = RecvFunc{},
-            std::stop_token stop_tok = {})
+            size_t maxRecvSize         = 4096,
+            uint32_t u32DefaultTimeout = 5000,
+            SendFunc pfsend            = SendFunc{},
+            RecvFunc pfrecv            = RecvFunc{},
+            std::stop_token stop_tok   = {})
             : m_driver(shpDriver)
             , m_pluginName(std::move(strPluginName))
             , m_maxRecvSize(maxRecvSize)

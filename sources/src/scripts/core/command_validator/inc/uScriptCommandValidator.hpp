@@ -188,7 +188,7 @@ class ScriptCommandValidator : public IScriptCommandValidator<Token> {
                     break;
                 }
 
-                eToken   = Token::INVALID;
+                eToken  = Token::INVALID;
                 bRetVal = false;
 
             } while (false);

@@ -86,7 +86,7 @@ std::string VectorEth::formatMac(const MacAddress &mac)
 
 void VectorEth::resolveDest(std::string_view xtra_params, MacAddress &outMac, uint16_t &u16OutEtherType) const
 {
-    outMac       = m_defaultDestMac;
+    outMac          = m_defaultDestMac;
     u16OutEtherType = m_u16DefaultEtherType;
 
     if (xtra_params.empty()) {
@@ -422,7 +422,7 @@ ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelInd
         return Status::PORT_ACCESS;
     }
 
-    strOutMeasurementPointName       = (pFound->measurementPointName != nullptr) ? pFound->measurementPointName : "";
+    strOutMeasurementPointName    = (pFound->measurementPointName != nullptr) ? pFound->measurementPointName : "";
     const unsigned int networkIdx = pFound->networkIdx;
 
     XLnetworkDrvConfigListV1 netList;
@@ -437,8 +437,8 @@ ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelInd
         return Status::PORT_ACCESS;
     }
 
-    const auto &net = netList.item[networkIdx];
-    strOutNetworkName  = (net.networkName != nullptr) ? net.networkName : "";
+    const auto &net   = netList.item[networkIdx];
+    strOutNetworkName = (net.networkName != nullptr) ? net.networkName : "";
 
     if (net.statusCode != 0) {
         LOG_PRINT(LOG_WARNING, LOG_HDR;
@@ -629,7 +629,7 @@ ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame
             if (evt.tag == XL_ETH_EVENT_TAG_FRAMERX) {
                 const auto &rx = evt.tagData.frameRxOk;
 
-                sOut.u16Len     = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
+                sOut.u16Len    = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
                 std::memcpy(sOut.destMac.data(), rx.destMAC, sOut.destMac.size());
                 std::memcpy(sOut.srcMac.data(), rx.sourceMAC, sOut.srcMac.size());
                 sOut.u16EtherType = hostToNetU16(rx.frameData.ethFrame.etherType); // network -> host order
@@ -669,7 +669,7 @@ ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame
             if (evt.tag == XL_ETH_EVENT_TAG_FRAMERX_MEASUREMENT) {
                 const auto &rx = evt.tagData.frameMeasureRx;
 
-                sOut.u16Len     = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
+                sOut.u16Len    = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
                 std::memcpy(sOut.destMac.data(), rx.destMAC, sOut.destMac.size());
                 std::memcpy(sOut.srcMac.data(), rx.sourceMAC, sOut.srcMac.size());
                 sOut.u16EtherType = hostToNetU16(rx.frameData.ethFrame.etherType); // network -> host order

@@ -107,7 +107,7 @@ class CH347I2C : public ICommDriver {
          *                         strDevice — e.g. "/dev/ch34xpis0" or a friendlier name.
          */
         explicit CH347I2C(const std::string &strDevice,
-                          I2cSpeed eSpeed                      = I2cSpeed::Fast,
+                          I2cSpeed eSpeed                     = I2cSpeed::Fast,
                           const std::string &strIdentityLabel = {})
             : m_iHandle(CH347_INVALID_HANDLE)
             , m_strIdentityLabel(strIdentityLabel)

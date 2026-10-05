@@ -9,10 +9,10 @@
 #include <cctype>
 #include <chrono>
 #include <compare>
+#include <cstdlib>
 #include <cstring>
 #include <dds/dds.h>
 #include <dlfcn.h>
-#include <cstdlib>
 #include <filesystem>
 #include <fnmatch.h>
 #include <fstream>
@@ -177,7 +177,7 @@ std::string DdsTypedDriver::m_BuildDomainConfigXml() const
         xml << "<FragmentSize>" << m_config.fragmentThresholdBytes << "B</FragmentSize>";
     }
     const bool listensOnAll    = (m_config.ifaceAddress == "0.0.0.0" || m_config.ifaceAddress == "::" ||
-                                  m_config.ifaceAddress.empty());
+                               m_config.ifaceAddress.empty());
     const std::string ifaceSel = !listensOnAll ? m_config.ifaceAddress : m_config.multicastInterface;
     if (!ifaceSel.empty()) {
         const char *attr = looksLikeIpLiteral(ifaceSel) ? "address" : "name";
@@ -458,13 +458,14 @@ ICommDriver::ReadResult DdsTypedDriver::tout_read(uint32_t, std::span<uint8_t>, 
 /// profile such as "Default" has none) => DDS defaults for that entity.
 struct DdsTypedDriver::ResolvedQos {
         std::string key;
-        dds_qos_t *reader = nullptr;
-        dds_qos_t *writer = nullptr;
-        dds_qos_t *topic  = nullptr;
+        dds_qos_t *reader                           = nullptr;
+        dds_qos_t *writer                           = nullptr;
+        dds_qos_t *topic                            = nullptr;
 
-        ResolvedQos()     = default;
+        ResolvedQos()                               = default;
         ResolvedQos(const ResolvedQos &)            = delete;
         ResolvedQos &operator=(const ResolvedQos &) = delete;
+
         ~ResolvedQos()
         {
             for (dds_qos_t *q : {reader, writer, topic}) {
@@ -558,7 +559,12 @@ namespace qosxml {
                 }
                 return nullptr;
             }
-            std::string trimmedText() const { return ustring::trim(text); }
+
+            std::string trimmedText() const
+            {
+                return ustring::trim(text);
+            }
+
             std::string attr(const char *k) const
             {
                 auto it = attrs.find(k);
@@ -571,7 +577,9 @@ namespace qosxml {
             std::map<std::string, const Node *> profiles; // "Library::Profile" -> <qos_profile>
     };
 
-    enum class Kind { Reader, Writer, Topic };
+    enum class Kind { Reader,
+                      Writer,
+                      Topic };
 
     inline std::string decodeEntities(const std::string &in)
     {
@@ -583,11 +591,17 @@ namespace qosxml {
                 if (semi != std::string::npos && semi - i <= 8) {
                     const std::string ent = in.substr(i + 1, semi - i - 1);
                     char rep              = 0;
-                    if (ent == "lt") rep = '<';
-                    else if (ent == "gt") rep = '>';
-                    else if (ent == "amp") rep = '&';
-                    else if (ent == "quot") rep = '"';
-                    else if (ent == "apos") rep = '\'';
+                    if (ent == "lt") {
+                        rep = '<';
+                    } else if (ent == "gt") {
+                        rep = '>';
+                    } else if (ent == "amp") {
+                        rep = '&';
+                    } else if (ent == "quot") {
+                        rep = '"';
+                    } else if (ent == "apos") {
+                        rep = '\'';
+                    }
                     if (rep) {
                         out += rep;
                         i = semi;
@@ -627,24 +641,34 @@ namespace qosxml {
             }
             if (s.compare(i, 4, "<!--") == 0) {
                 const size_t e = s.find("-->", i + 4);
-                if (e == std::string::npos) return fail(i, "unterminated comment");
+                if (e == std::string::npos) {
+                    return fail(i, "unterminated comment");
+                }
                 i = e + 3;
             } else if (s.compare(i, 9, "<![CDATA[") == 0) {
                 const size_t e = s.find("]]>", i + 9);
-                if (e == std::string::npos) return fail(i, "unterminated CDATA");
+                if (e == std::string::npos) {
+                    return fail(i, "unterminated CDATA");
+                }
                 stack.back()->text += s.substr(i + 9, e - i - 9);
                 i = e + 3;
             } else if (s.compare(i, 2, "<?") == 0) {
                 const size_t e = s.find("?>", i + 2);
-                if (e == std::string::npos) return fail(i, "unterminated processing instruction");
+                if (e == std::string::npos) {
+                    return fail(i, "unterminated processing instruction");
+                }
                 i = e + 2;
             } else if (s.compare(i, 2, "<!") == 0) { // DOCTYPE etc.
                 const size_t e = s.find('>', i);
-                if (e == std::string::npos) return fail(i, "unterminated declaration");
+                if (e == std::string::npos) {
+                    return fail(i, "unterminated declaration");
+                }
                 i = e + 1;
             } else if (s.compare(i, 2, "</") == 0) {
                 const size_t e = s.find('>', i);
-                if (e == std::string::npos) return fail(i, "unterminated closing tag");
+                if (e == std::string::npos) {
+                    return fail(i, "unterminated closing tag");
+                }
                 const std::string nm = stripPrefix(ustring::trim(s.substr(i + 2, e - i - 2)));
                 if (stack.size() <= 1 || stack.back()->name != nm) {
                     return fail(i, "unexpected closing tag </" + nm + ">");
@@ -653,29 +677,56 @@ namespace qosxml {
                 i = e + 1;
             } else { // start tag
                 size_t k = i + 1;
-                while (k < s.size() && !std::isspace(static_cast<unsigned char>(s[k])) && s[k] != '>' && s[k] != '/') ++k;
+                while (k < s.size() && !std::isspace(static_cast<unsigned char>(s[k])) && s[k] != '>' && s[k] != '/') {
+                    ++k;
+                }
                 Node n;
                 n.name = stripPrefix(s.substr(i + 1, k - i - 1));
-                if (n.name.empty()) return fail(i, "empty tag name");
+                if (n.name.empty()) {
+                    return fail(i, "empty tag name");
+                }
                 bool selfClose = false;
                 for (;;) {
-                    while (k < s.size() && std::isspace(static_cast<unsigned char>(s[k]))) ++k;
-                    if (k >= s.size()) return fail(i, "unterminated tag <" + n.name + ">");
-                    if (s[k] == '>') { ++k; break; }
-                    if (s[k] == '/' && k + 1 < s.size() && s[k + 1] == '>') { selfClose = true; k += 2; break; }
+                    while (k < s.size() && std::isspace(static_cast<unsigned char>(s[k]))) {
+                        ++k;
+                    }
+                    if (k >= s.size()) {
+                        return fail(i, "unterminated tag <" + n.name + ">");
+                    }
+                    if (s[k] == '>') {
+                        ++k;
+                        break;
+                    }
+                    if (s[k] == '/' && k + 1 < s.size() && s[k + 1] == '>') {
+                        selfClose = true;
+                        k += 2;
+                        break;
+                    }
                     const size_t a0 = k;
-                    while (k < s.size() && s[k] != '=' && s[k] != '>' && s[k] != '/' && !std::isspace(static_cast<unsigned char>(s[k]))) ++k;
+                    while (k < s.size() && s[k] != '=' && s[k] != '>' && s[k] != '/' && !std::isspace(static_cast<unsigned char>(s[k]))) {
+                        ++k;
+                    }
                     const std::string an = s.substr(a0, k - a0);
-                    while (k < s.size() && std::isspace(static_cast<unsigned char>(s[k]))) ++k;
-                    if (k >= s.size() || s[k] != '=' || an.empty()) return fail(i, "malformed attribute in <" + n.name + ">");
+                    while (k < s.size() && std::isspace(static_cast<unsigned char>(s[k]))) {
+                        ++k;
+                    }
+                    if (k >= s.size() || s[k] != '=' || an.empty()) {
+                        return fail(i, "malformed attribute in <" + n.name + ">");
+                    }
                     ++k;
-                    while (k < s.size() && std::isspace(static_cast<unsigned char>(s[k]))) ++k;
-                    if (k >= s.size() || (s[k] != '"' && s[k] != '\'')) return fail(i, "attribute '" + an + "' is not quoted");
-                    const char q  = s[k++];
+                    while (k < s.size() && std::isspace(static_cast<unsigned char>(s[k]))) {
+                        ++k;
+                    }
+                    if (k >= s.size() || (s[k] != '"' && s[k] != '\'')) {
+                        return fail(i, "attribute '" + an + "' is not quoted");
+                    }
+                    const char q    = s[k++];
                     const size_t v1 = s.find(q, k);
-                    if (v1 == std::string::npos) return fail(i, "unterminated attribute value");
+                    if (v1 == std::string::npos) {
+                        return fail(i, "unterminated attribute value");
+                    }
                     n.attrs[stripPrefix(an)] = decodeEntities(s.substr(k, v1 - k));
-                    k                         = v1 + 1;
+                    k                        = v1 + 1;
                 }
                 stack.back()->children.push_back(std::move(n));
                 if (!selfClose) {
@@ -684,8 +735,12 @@ namespace qosxml {
                 i = k;
             }
         }
-        if (stack.size() != 1) return fail(s.size(), "unclosed element <" + stack.back()->name + ">");
-        if (holder.children.size() != 1) return fail(0, "expected exactly one root element");
+        if (stack.size() != 1) {
+            return fail(s.size(), "unclosed element <" + stack.back()->name + ">");
+        }
+        if (holder.children.size() != 1) {
+            return fail(0, "expected exactly one root element");
+        }
         root = std::move(holder.children.front());
         return true;
     }
@@ -696,7 +751,9 @@ namespace qosxml {
         std::vector<const Node *> libs;
         if (doc.root.name == "dds") {
             for (const auto &c : doc.root.children) {
-                if (c.name == "qos_library") libs.push_back(&c);
+                if (c.name == "qos_library") {
+                    libs.push_back(&c);
+                }
             }
         } else if (doc.root.name == "qos_library") {
             libs.push_back(&doc.root);
@@ -711,7 +768,9 @@ namespace qosxml {
                 return false;
             }
             for (const auto &pr : lib->children) {
-                if (pr.name != "qos_profile") continue;
+                if (pr.name != "qos_profile") {
+                    continue;
+                }
                 const std::string pn = pr.attr("name");
                 if (pn.empty()) {
                     err = "a <qos_profile> in library '" + ln + "' has no name attribute";
@@ -771,7 +830,7 @@ namespace qosxml {
     // <x><sec>..</sec><nanosec>..</nanosec></x>; an empty element leaves `isSet` false.
     inline bool toDuration(const Node &e, dds_duration_t &out, bool &isSet, std::string &err)
     {
-        isSet = false;
+        isSet            = false;
         const Node *sec  = e.child("sec");
         const Node *nsec = e.child("nanosec");
         if (!sec && !nsec) {
@@ -811,7 +870,7 @@ namespace qosxml {
             out = -1;
             return true;
         }
-        char *e         = nullptr;
+        char *e           = nullptr;
         const long long v = std::strtoll(t.c_str(), &e, 10);
         if (*e != '\0' || v < INT32_MIN || v > INT32_MAX) {
             err = "invalid integer '" + t + "'";
@@ -828,16 +887,22 @@ namespace qosxml {
             out = def;
             return true;
         }
-        if (t == "true" || t == "TRUE" || t == "1") { out = true; return true; }
-        if (t == "false" || t == "FALSE" || t == "0") { out = false; return true; }
+        if (t == "true" || t == "TRUE" || t == "1") {
+            out = true;
+            return true;
+        }
+        if (t == "false" || t == "FALSE" || t == "0") {
+            out = false;
+            return true;
+        }
         err = "invalid boolean '" + t + "'";
         return false;
     }
 
-    inline const EnumItem kDurability[] = {{"VOLATILE_DURABILITY_QOS", DDS_DURABILITY_VOLATILE},
-                                           {"TRANSIENT_LOCAL_DURABILITY_QOS", DDS_DURABILITY_TRANSIENT_LOCAL},
-                                           {"TRANSIENT_DURABILITY_QOS", DDS_DURABILITY_TRANSIENT},
-                                           {"PERSISTENT_DURABILITY_QOS", DDS_DURABILITY_PERSISTENT}};
+    inline const EnumItem kDurability[]  = {{"VOLATILE_DURABILITY_QOS", DDS_DURABILITY_VOLATILE},
+                                            {"TRANSIENT_LOCAL_DURABILITY_QOS", DDS_DURABILITY_TRANSIENT_LOCAL},
+                                            {"TRANSIENT_DURABILITY_QOS", DDS_DURABILITY_TRANSIENT},
+                                            {"PERSISTENT_DURABILITY_QOS", DDS_DURABILITY_PERSISTENT}};
     inline const EnumItem kReliability[] = {{"BEST_EFFORT_RELIABILITY_QOS", DDS_RELIABILITY_BEST_EFFORT},
                                             {"RELIABLE_RELIABILITY_QOS", DDS_RELIABILITY_RELIABLE}};
     inline const EnumItem kHistory[]     = {{"KEEP_LAST_HISTORY_QOS", DDS_HISTORY_KEEP_LAST}, {"KEEP_ALL_HISTORY_QOS", DDS_HISTORY_KEEP_ALL}};
@@ -854,12 +919,17 @@ namespace qosxml {
         static const char *const common[] = {"durability", "deadline", "latency_budget", "liveliness", "reliability",
                                              "destination_order", "history", "resource_limits", "ownership"};
         for (const char *c : common) {
-            if (p == c) return true;
+            if (p == c) {
+                return true;
+            }
         }
         switch (k) {
-        case Kind::Reader: return p == "time_based_filter" || p == "reader_data_lifecycle";
-        case Kind::Writer: return p == "transport_priority" || p == "lifespan" || p == "ownership_strength" || p == "writer_data_lifecycle";
-        case Kind::Topic: return p == "transport_priority" || p == "lifespan";
+        case Kind::Reader:
+            return p == "time_based_filter" || p == "reader_data_lifecycle";
+        case Kind::Writer:
+            return p == "transport_priority" || p == "lifespan" || p == "ownership_strength" || p == "writer_data_lifecycle";
+        case Kind::Topic:
+            return p == "transport_priority" || p == "lifespan";
         }
         return false;
     }
@@ -868,7 +938,7 @@ namespace qosxml {
     // section. nullptr + err on an invalid value; `warnings` collects the rest.
     inline dds_qos_t *buildQos(const Node &sec, Kind kind, std::vector<std::string> &warnings, std::string &err)
     {
-        dds_qos_t *q = dds_create_qos();
+        dds_qos_t *q   = dds_create_qos();
         const auto bad = [&](const std::string &pol, const std::string &m) -> dds_qos_t * {
             err = "<" + sec.name + "><" + pol + ">: " + m;
             dds_delete_qos(q);
@@ -883,64 +953,106 @@ namespace qosxml {
             std::string er;
             if (pol == "durability") {
                 int k;
-                if (!toEnum(e.child("kind"), kDurability, 4, DDS_DURABILITY_VOLATILE, "durability kind", k, er)) return bad(pol, er);
+                if (!toEnum(e.child("kind"), kDurability, 4, DDS_DURABILITY_VOLATILE, "durability kind", k, er)) {
+                    return bad(pol, er);
+                }
                 dds_qset_durability(q, static_cast<dds_durability_kind_t>(k));
             } else if (pol == "reliability") {
                 int k;
                 const int defK = (kind == Kind::Writer) ? DDS_RELIABILITY_RELIABLE : DDS_RELIABILITY_BEST_EFFORT;
-                if (!toEnum(e.child("kind"), kReliability, 2, defK, "reliability kind", k, er)) return bad(pol, er);
+                if (!toEnum(e.child("kind"), kReliability, 2, defK, "reliability kind", k, er)) {
+                    return bad(pol, er);
+                }
                 dds_duration_t mbt = DDS_MSECS(100); // DDS-spec default
                 bool set           = false;
                 if (const Node *m = e.child("max_blocking_time")) {
                     dds_duration_t v;
-                    if (!toDuration(*m, v, set, er)) return bad(pol, er);
-                    if (set) mbt = v;
+                    if (!toDuration(*m, v, set, er)) {
+                        return bad(pol, er);
+                    }
+                    if (set) {
+                        mbt = v;
+                    }
                 }
                 dds_qset_reliability(q, static_cast<dds_reliability_kind_t>(k), mbt);
             } else if (pol == "history") {
                 int k;
                 int32_t depth;
-                if (!toEnum(e.child("kind"), kHistory, 2, DDS_HISTORY_KEEP_LAST, "history kind", k, er)) return bad(pol, er);
+                if (!toEnum(e.child("kind"), kHistory, 2, DDS_HISTORY_KEEP_LAST, "history kind", k, er)) {
+                    return bad(pol, er);
+                }
                 // Same defaulting as Cyclone's QoS Provider: 1 for KEEP_LAST, 0 (unused) for KEEP_ALL.
-                if (!toInt(e.child("depth"), k == DDS_HISTORY_KEEP_ALL ? 0 : 1, depth, er)) return bad(pol, er);
-                if (k == DDS_HISTORY_KEEP_LAST && depth < 1) return bad(pol, "KEEP_LAST needs depth >= 1");
+                if (!toInt(e.child("depth"), k == DDS_HISTORY_KEEP_ALL ? 0 : 1, depth, er)) {
+                    return bad(pol, er);
+                }
+                if (k == DDS_HISTORY_KEEP_LAST && depth < 1) {
+                    return bad(pol, "KEEP_LAST needs depth >= 1");
+                }
                 dds_qset_history(q, static_cast<dds_history_kind_t>(k), depth);
             } else if (pol == "destination_order") {
                 int k;
-                if (!toEnum(e.child("kind"), kDestOrder, 2, DDS_DESTINATIONORDER_BY_RECEPTION_TIMESTAMP, "destination_order kind", k, er)) return bad(pol, er);
+                if (!toEnum(e.child("kind"), kDestOrder, 2, DDS_DESTINATIONORDER_BY_RECEPTION_TIMESTAMP, "destination_order kind", k, er)) {
+                    return bad(pol, er);
+                }
                 dds_qset_destination_order(q, static_cast<dds_destination_order_kind_t>(k));
             } else if (pol == "deadline" || pol == "latency_budget" || pol == "lifespan" || pol == "time_based_filter") {
-                const char *inner = pol == "deadline" ? "period" : pol == "latency_budget" ? "duration" : pol == "lifespan" ? "duration" : "minimum_separation";
+                const char *inner = pol == "deadline" ? "period" : pol == "latency_budget" ? "duration"
+                                                               : pol == "lifespan"         ? "duration"
+                                                                                           : "minimum_separation";
                 const Node *d     = e.child(inner);
                 dds_duration_t v  = 0;
                 bool set          = false;
-                if (!d) return bad(pol, std::string("missing <") + inner + ">");
-                if (!toDuration(*d, v, set, er)) return bad(pol, er);
-                if (!set) return bad(pol, std::string("<") + inner + "> is empty — a value must be specified");
-                if (pol == "deadline") dds_qset_deadline(q, v);
-                else if (pol == "latency_budget") dds_qset_latency_budget(q, v);
-                else if (pol == "lifespan") dds_qset_lifespan(q, v);
-                else dds_qset_time_based_filter(q, v);
+                if (!d) {
+                    return bad(pol, std::string("missing <") + inner + ">");
+                }
+                if (!toDuration(*d, v, set, er)) {
+                    return bad(pol, er);
+                }
+                if (!set) {
+                    return bad(pol, std::string("<") + inner + "> is empty — a value must be specified");
+                }
+                if (pol == "deadline") {
+                    dds_qset_deadline(q, v);
+                } else if (pol == "latency_budget") {
+                    dds_qset_latency_budget(q, v);
+                } else if (pol == "lifespan") {
+                    dds_qset_lifespan(q, v);
+                } else {
+                    dds_qset_time_based_filter(q, v);
+                }
             } else if (pol == "liveliness") {
                 int k;
                 dds_duration_t lease = DDS_INFINITY;
                 bool set             = false;
-                if (!toEnum(e.child("kind"), kLiveliness, 3, DDS_LIVELINESS_AUTOMATIC, "liveliness kind", k, er)) return bad(pol, er);
+                if (!toEnum(e.child("kind"), kLiveliness, 3, DDS_LIVELINESS_AUTOMATIC, "liveliness kind", k, er)) {
+                    return bad(pol, er);
+                }
                 if (const Node *l = e.child("lease_duration")) {
                     dds_duration_t v;
-                    if (!toDuration(*l, v, set, er)) return bad(pol, er);
-                    if (set) lease = v;
+                    if (!toDuration(*l, v, set, er)) {
+                        return bad(pol, er);
+                    }
+                    if (set) {
+                        lease = v;
+                    }
                 }
                 dds_qset_liveliness(q, static_cast<dds_liveliness_kind_t>(k), lease);
             } else if (pol == "ownership") {
                 int k;
-                if (!toEnum(e.child("kind"), kOwnership, 2, DDS_OWNERSHIP_SHARED, "ownership kind", k, er)) return bad(pol, er);
+                if (!toEnum(e.child("kind"), kOwnership, 2, DDS_OWNERSHIP_SHARED, "ownership kind", k, er)) {
+                    return bad(pol, er);
+                }
                 dds_qset_ownership(q, static_cast<dds_ownership_kind_t>(k));
             } else if (pol == "ownership_strength" || pol == "transport_priority") {
                 int32_t v;
-                if (!toInt(e.child("value"), 0, v, er)) return bad(pol, er);
-                if (pol == "ownership_strength") dds_qset_ownership_strength(q, v);
-                else dds_qset_transport_priority(q, v);
+                if (!toInt(e.child("value"), 0, v, er)) {
+                    return bad(pol, er);
+                }
+                if (pol == "ownership_strength") {
+                    dds_qset_ownership_strength(q, v);
+                } else {
+                    dds_qset_transport_priority(q, v);
+                }
             } else if (pol == "resource_limits") {
                 int32_t ms, mi, mspi;
                 if (!toInt(e.child("max_samples"), -1, ms, er) || !toInt(e.child("max_instances"), -1, mi, er) ||
@@ -950,20 +1062,30 @@ namespace qosxml {
                 dds_qset_resource_limits(q, ms, mi, mspi);
             } else if (pol == "writer_data_lifecycle") {
                 bool v;
-                if (!toBool(e.child("autodispose_unregistered_instances"), true, v, er)) return bad(pol, er);
+                if (!toBool(e.child("autodispose_unregistered_instances"), true, v, er)) {
+                    return bad(pol, er);
+                }
                 dds_qset_writer_data_lifecycle(q, v);
             } else if (pol == "reader_data_lifecycle") {
                 dds_duration_t nw = DDS_INFINITY, dp = DDS_INFINITY;
-                bool set          = false;
+                bool set = false;
                 if (const Node *a = e.child("autopurge_nowriter_samples_delay")) {
                     dds_duration_t v;
-                    if (!toDuration(*a, v, set, er)) return bad(pol, er);
-                    if (set) nw = v;
+                    if (!toDuration(*a, v, set, er)) {
+                        return bad(pol, er);
+                    }
+                    if (set) {
+                        nw = v;
+                    }
                 }
                 if (const Node *b = e.child("autopurge_disposed_samples_delay")) {
                     dds_duration_t v;
-                    if (!toDuration(*b, v, set, er)) return bad(pol, er);
-                    if (set) dp = v;
+                    if (!toDuration(*b, v, set, er)) {
+                        return bad(pol, er);
+                    }
+                    if (set) {
+                        dp = v;
+                    }
                 }
                 dds_qset_reader_data_lifecycle(q, nw, dp);
             }
@@ -981,10 +1103,16 @@ namespace qosxml {
         for (const Node &c : profile.children) {
             dds_qos_t **dst = nullptr;
             Kind k          = Kind::Reader;
-            if (c.name == "datareader_qos") { dst = &reader; k = Kind::Reader; }
-            else if (c.name == "datawriter_qos") { dst = &writer; k = Kind::Writer; }
-            else if (c.name == "topic_qos") { dst = &topic; k = Kind::Topic; }
-            else {
+            if (c.name == "datareader_qos") {
+                dst = &reader;
+                k   = Kind::Reader;
+            } else if (c.name == "datawriter_qos") {
+                dst = &writer;
+                k   = Kind::Writer;
+            } else if (c.name == "topic_qos") {
+                dst = &topic;
+                k   = Kind::Topic;
+            } else {
                 warnings.push_back("<" + c.name + "> in a profile is not applied (only datareader_qos / datawriter_qos / topic_qos are)");
                 continue;
             }
@@ -995,7 +1123,9 @@ namespace qosxml {
             *dst = buildQos(c, k, warnings, err);
             if (!*dst) {
                 for (dds_qos_t *x : {reader, writer, topic}) {
-                    if (x) dds_delete_qos(x);
+                    if (x) {
+                        dds_delete_qos(x);
+                    }
                 }
                 reader = writer = topic = nullptr;
                 return false;
@@ -1087,8 +1217,8 @@ bool DdsTypedDriver::m_ResolveQosProfiles()
                       LOG_STRING(m_config.qosLibrary.c_str()); LOG_STRING("')"));
             return nullptr;
         }
-        auto rq = std::make_shared<ResolvedQos>();
-        rq->key = strKey;
+        auto rq          = std::make_shared<ResolvedQos>();
+        rq->key          = strKey;
         const auto fetch = [&](dds_qos_kind_t kind, dds_qos_t *&dst) {
             const dds_qos_t *q = nullptr;
             if (dds_qos_provider_get_qos(prov, kind, strKey.c_str(), &q) == DDS_RETCODE_OK && q) {
@@ -1258,8 +1388,8 @@ DdsTypedDriver::DdsEntity DdsTypedDriver::m_EnsureLocalWriter(const std::string 
     }
     // Profile selected for this topic: its <datawriter_qos> is used as-is (nullptr =
     // the profile has none = DDS defaults). No profile: the built-in QoS.
-    dds_qos_t *ownQos      = nullptr;
-    const dds_qos_t *qos   = nullptr;
+    dds_qos_t *ownQos    = nullptr;
+    const dds_qos_t *qos = nullptr;
     if (profile) {
         qos = profile->writer;
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Writer for '"); LOG_STRING(strTopic.c_str()); LOG_STRING("' uses QoS profile '");
@@ -1364,9 +1494,9 @@ std::shared_ptr<DdsTypedDriver::LocalReader> DdsTypedDriver::m_EnsureLocalReader
     localReader->owner        = const_cast<DdsTypedDriver *>(this);
 
     std::string strProfile;
-    const auto profile        = m_QosForTopic(topic, &strProfile);
+    const auto profile       = m_QosForTopic(topic, &strProfile);
 
-    const DdsEntity topicEnt  = dds_create_topic(m_participant, entry->descriptor, topic.c_str(), profile ? profile->topic : nullptr, nullptr);
+    const DdsEntity topicEnt = dds_create_topic(m_participant, entry->descriptor, topic.c_str(), profile ? profile->topic : nullptr, nullptr);
     if (topicEnt < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dds_create_topic failed for '"); LOG_STRING(topic.c_str());
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-topicEnt)));
@@ -1888,7 +2018,7 @@ ICommDriver::ReadResult DdsTypedDriver::receive(uint32_t u32ReadTimeout, std::sp
 /// for a scripting/test tool; a caller that needs strict cross-topic
 /// ordering should read each topic individually via `< ~ <topic>` instead.
 ICommDriver::ReadResult DdsTypedDriver::m_MultiplexedReceive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                                              std::stop_token stop_tok) const
+                                                             std::stop_token stop_tok) const
 {
     ReadResult result;
     constexpr auto kSliceMs = std::chrono::milliseconds(200);

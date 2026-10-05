@@ -91,7 +91,7 @@ class CH347JTAG : public ICommDriver {
          *                         strDevice — e.g. "/dev/ch34xpis0".
          */
         explicit CH347JTAG(const std::string &strDevice,
-                           uint8_t u8ClockRate                  = 2,
+                           uint8_t u8ClockRate                 = 2,
                            const std::string &strIdentityLabel = {})
             : m_iHandle(CH347_INVALID_HANDLE)
             , m_strIdentityLabel(strIdentityLabel)

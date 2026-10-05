@@ -239,10 +239,10 @@ class KCAN : public ICommDriver {
                                std::stop_token stop_tok     = {}) const override;
 
     private:
-        int m_iHandle      = -1;                   /**< Socket file descriptor.                    */
+        int m_iHandle = -1;                        /**< Socket file descriptor.                    */
         std::string m_strIface;                    /**< Interface name the socket is bound to.      */
         uint32_t m_u32ErrMask = 0;                 /**< CAN_RAW_ERR_FILTER currently installed.     */
-        uint32_t m_u32TxId = 0x000u;               /**< Default CAN ID for outgoing frames.        */
+        uint32_t m_u32TxId    = 0x000u;            /**< Default CAN ID for outgoing frames.        */
         mutable std::vector<CanFilter> m_vFilters; /**< Mirrors the filter set currently installed
                                                   on the socket (empty == accept-all). Kept
                                                   in sync by set_filters() and used by

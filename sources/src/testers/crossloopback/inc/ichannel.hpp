@@ -18,13 +18,13 @@ namespace loopback {
 
     class IChannel {
         public:
-            virtual ~IChannel()                     = default;
+            virtual ~IChannel()                      = default;
 
             // Open/bind/connect/listen as appropriate for this transport. Returns
             // false (after logging the reason) on failure.
-            virtual bool open()                     = 0;
+            virtual bool open()                      = 0;
 
-            virtual void close()                    = 0;
+            virtual void close()                     = 0;
 
             // Block until one message (a CAN frame's payload, or one chunk of
             // bytes for stream/datagram transports) is available, or until
@@ -55,7 +55,7 @@ namespace loopback {
 
             // Short human-readable identity used in banners and dump lines, e.g.
             // "uart:/dev/tnt0@115200" or "kvcan:vcan0".
-            virtual std::string name() const        = 0;
+            virtual std::string name() const         = 0;
 
             // A coarser identity used only to detect "the -i and -o spec refer to
             // the same underlying endpoint" (e.g. same CAN interface, same UART
@@ -64,7 +64,7 @@ namespace loopback {
             // resource twice - which for CAN would otherwise create an infinite
             // echo storm between the two sockets, and for UART/TCP would just
             // fail or fight over the same fd/port.
-            virtual std::string identity() const    = 0;
+            virtual std::string identity() const     = 0;
 
             virtual bool isCan() const
             {

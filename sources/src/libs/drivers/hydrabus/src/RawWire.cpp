@@ -197,7 +197,7 @@ namespace HydraHAL {
 
     bool RawWire::set_clk(int iLevel)
     {
-        iLevel       = iLevel & 1;
+        iLevel      = iLevel & 1;
         uint8_t cmd = static_cast<uint8_t>(0b00001010 | iLevel);
         _write_byte(cmd);
 
@@ -218,7 +218,7 @@ namespace HydraHAL {
 
     bool RawWire::set_sda(int iLevel)
     {
-        iLevel       = iLevel & 1;
+        iLevel      = iLevel & 1;
         uint8_t cmd = static_cast<uint8_t>(0b00001100 | iLevel);
         _write_byte(cmd);
 

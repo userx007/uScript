@@ -322,7 +322,7 @@ RawEth::Status RawEth::timeout_write(uint32_t u32WriteTimeout,
     constexpr int kPollSliceMs = 200;
     const bool bInfinite       = (u32WriteTimeout == 0);
     const auto tDeadline       = std::chrono::steady_clock::now() +
-                                 std::chrono::milliseconds(u32WriteTimeout);
+                           std::chrono::milliseconds(u32WriteTimeout);
 
     while (true) {
         if (stop_tok.stop_requested()) {

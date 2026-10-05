@@ -194,6 +194,6 @@ FT232HGPIO::Status FT232HGPIO::read_pins(Bank eBank, uint8_t u8PinMask, uint8_t 
 {
     uint8_t raw = 0;
     auto s      = read(eBank, raw);
-    u8Value       = raw & u8PinMask;
+    u8Value     = raw & u8PinMask;
     return s;
 }

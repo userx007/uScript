@@ -52,9 +52,9 @@ namespace kcan {
             uint32_t dataBitrate     = 0; ///< CAN FD data-phase bitrate in bit/s; 0 = untouched
             uint32_t dataSamplePoint = 0; ///< CAN FD data-phase sample point in permille; 0 = kernel default
             bool restartMsSet        = false;
-            uint32_t restartMs       = 0;   ///< automatic bus-off recovery delay in ms (0 = off); only used if restartMsSet
-            uint32_t ctrlModeMask    = 0;   ///< which CtrlMode bits the caller cares about
-            uint32_t ctrlModeFlags   = 0;   ///< value of those bits (bit set in mask+flags = on, set in mask only = off)
+            uint32_t restartMs       = 0; ///< automatic bus-off recovery delay in ms (0 = off); only used if restartMsSet
+            uint32_t ctrlModeMask    = 0; ///< which CtrlMode bits the caller cares about
+            uint32_t ctrlModeFlags   = 0; ///< value of those bits (bit set in mask+flags = on, set in mask only = off)
 
             /** @brief true when nothing is requested at all */
             bool empty() const
@@ -65,27 +65,27 @@ namespace kcan {
 
     /** @brief Snapshot of an interface as reported by the kernel. */
     struct LinkStatus {
-            bool exists        = false;
-            std::string kind;          ///< "can", "vcan", "" (e.g. a slcan tty netdev) ...
-            bool isCan         = false; ///< kind == "can" (bit-timing settable)
-            bool up            = false; ///< IFF_UP
-            bool lowerUp       = false; ///< IFF_LOWER_UP (carrier: controller is active on the bus)
-            uint32_t mtu       = 0;     ///< 16 = classic CAN, 72 = CAN FD
-            uint32_t state     = 0;     ///< CAN_STATE_* (0 = ERROR-ACTIVE ... 4 = BUS-OFF, 5 = STOPPED, 6 = SLEEPING)
-            bool hasState      = false;
+            bool exists = false;
+            std::string kind;             ///< "can", "vcan", "" (e.g. a slcan tty netdev) ...
+            bool isCan           = false; ///< kind == "can" (bit-timing settable)
+            bool up              = false; ///< IFF_UP
+            bool lowerUp         = false; ///< IFF_LOWER_UP (carrier: controller is active on the bus)
+            uint32_t mtu         = 0;     ///< 16 = classic CAN, 72 = CAN FD
+            uint32_t state       = 0;     ///< CAN_STATE_* (0 = ERROR-ACTIVE ... 4 = BUS-OFF, 5 = STOPPED, 6 = SLEEPING)
+            bool hasState        = false;
 
-            uint32_t bitrate   = 0;
-            uint32_t samplePoint = 0;   ///< permille
+            uint32_t bitrate     = 0;
+            uint32_t samplePoint = 0; ///< permille
             uint32_t tq = 0, propSeg = 0, phaseSeg1 = 0, phaseSeg2 = 0, sjw = 0, brp = 0;
 
             uint32_t dataBitrate     = 0;
             uint32_t dataSamplePoint = 0;
 
-            uint32_t ctrlModeMask  = 0; ///< modes the driver *supports*
-            uint32_t ctrlModeFlags = 0; ///< modes currently *enabled*
-            uint32_t restartMs     = 0;
-            uint32_t clockHz       = 0;
-            bool hasBerr           = false;
+            uint32_t ctrlModeMask    = 0; ///< modes the driver *supports*
+            uint32_t ctrlModeFlags   = 0; ///< modes currently *enabled*
+            uint32_t restartMs       = 0;
+            uint32_t clockHz         = 0;
+            bool hasBerr             = false;
             uint16_t txErr = 0, rxErr = 0;
     };
 

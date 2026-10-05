@@ -56,8 +56,8 @@ class DeviceHandling {
 
             if (eOpType == OperationType::Insert) {
                 if (insertItem(strInput)) {
-                    strOutput  = strInput;
-                    updated = true;
+                    strOutput = strInput;
+                    updated   = true;
                 }
             } else {
                 int idx = findItemIndex(strInput);

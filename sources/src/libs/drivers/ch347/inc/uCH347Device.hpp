@@ -77,8 +77,8 @@ class CH347Device {
          */
         explicit CH347Device(const std::string &strDevice,
                              const mSpiCfgS &spiCfg = {},
-                             I2cSpeed eI2cSpeed      = I2cSpeed::Fast,
-                             uint8_t u8JtagRate       = 2)
+                             I2cSpeed eI2cSpeed     = I2cSpeed::Fast,
+                             uint8_t u8JtagRate     = 2)
         {
             m_iFd = CH347OpenDevice(strDevice.c_str());
             if (m_iFd == CH347_INVALID_HANDLE) {

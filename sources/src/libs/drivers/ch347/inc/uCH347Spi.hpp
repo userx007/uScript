@@ -90,7 +90,7 @@ class CH347SPI : public ICommDriver {
          */
         explicit CH347SPI(const std::string &strDevice,
                           const mSpiCfgS &cfg,
-                          const SpiXferOptions &sXferOpts      = {},
+                          const SpiXferOptions &sXferOpts     = {},
                           const std::string &strIdentityLabel = {})
             : m_iHandle(CH347_INVALID_HANDLE)
             , m_xferOpts(sXferOpts)

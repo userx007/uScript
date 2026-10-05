@@ -287,7 +287,7 @@ FT4232GPIO::Status FT4232GPIO::read(Bank eBank, uint8_t &u8Value)
         return Status::PORT_ACCESS;
     }
 
-    u8Value                = 0;
+    u8Value              = 0;
 
     // Build: GET_BITS + SEND_IMMEDIATE → fetch 1 response byte
     const uint8_t getCmd = (eBank == Bank::Low) ? MPSSE_GET_BITS_LOW : MPSSE_GET_BITS_HIGH;

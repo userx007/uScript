@@ -216,7 +216,7 @@ SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter> &vFilters)
     }
 
     m_vFilters = vFilters; // mirror applied kernel state so tout_read()'s
-                          // transient-filter snapshot/restore stays accurate
+                           // transient-filter snapshot/restore stays accurate
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("SYSTEC CAN filters set, count:"); LOG_UINT32(static_cast<uint32_t>(vFilters.size())));

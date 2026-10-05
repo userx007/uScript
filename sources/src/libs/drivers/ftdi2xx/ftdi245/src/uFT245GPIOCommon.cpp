@@ -158,7 +158,7 @@ FT245GPIO::Status FT245GPIO::read(uint8_t &u8Value)
         return Status::PORT_ACCESS;
     }
 
-    u8Value      = 0;
+    u8Value    = 0;
 
     // In bit-bang mode the current pin state (including inputs) is read back
     // via a single-byte read from the device.

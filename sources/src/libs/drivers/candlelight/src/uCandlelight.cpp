@@ -639,7 +639,7 @@ size_t Candlelight::encode_frame(uint32_t u32Echo_id, const CanFrame &sFrame, st
     put_u32le(p + 0, u32Echo_id);
     put_u32le(p + 4, can_id);
     p[8]                  = sFrame.is_canfd ? ucanframe::len_to_dlc(sFrame.len) : dataLen; // can_dlc: DLC code for FD, byte count for classic
-    p[9]                  = 0;                                                           // channel — single-channel adapters only (see class doc comment)
+    p[9]                  = 0;                                                             // channel — single-channel adapters only (see class doc comment)
     p[10]                 = flags;
     p[11]                 = 0; // reserved
 
@@ -662,7 +662,7 @@ bool Candlelight::decode_frame(const uint8_t *pu8Pkt, size_t len, uint32_t &u32E
         return false;
     }
 
-    u32Echo_id                   = get_u32le(pu8Pkt + 0);
+    u32Echo_id                = get_u32le(pu8Pkt + 0);
     const uint32_t can_id_raw = get_u32le(pu8Pkt + 4);
     const uint8_t can_dlc     = pu8Pkt[8];
     // pkt[9] is channel — ignored (single-channel adapters only, see class doc comment)

@@ -82,7 +82,7 @@ namespace ustring {
     /**
      * @brief Trims leading and trailing whitespace in place preserving eventually the last one
      */
-    inline void trimInPlace(std::string& strInput, bool bKeepOneTrailingSpace = false)
+    inline void trimInPlace(std::string &strInput, bool bKeepOneTrailingSpace = false)
     {
         auto first = std::find_if_not(strInput.begin(), strInput.end(), is_space);
 
@@ -91,14 +91,15 @@ namespace ustring {
             return;
         }
 
-        auto last = std::find_if_not(strInput.rbegin(), strInput.rend(), is_space).base();
+        auto last                        = std::find_if_not(strInput.rbegin(), strInput.rend(), is_space).base();
         const bool hadTrailingWhitespace = last != strInput.end();
 
-        strInput.erase(last, strInput.end());  // trim trailing
+        strInput.erase(last, strInput.end());    // trim trailing
         strInput.erase(strInput.begin(), first); // trim leading
 
-        if (bKeepOneTrailingSpace && hadTrailingWhitespace)
+        if (bKeepOneTrailingSpace && hadTrailingWhitespace) {
             strInput.push_back(' ');
+        }
     }
 
     /**
@@ -354,8 +355,8 @@ namespace ustring {
                                    std::string &strRight, char ch)
     {
         auto [l, r] = splitReverseAtChar(input, ch);
-        strLeft        = std::move(l);
-        strRight       = std::move(r);
+        strLeft     = std::move(l);
+        strRight    = std::move(r);
     }
 
     /**
@@ -1185,8 +1186,8 @@ namespace ustring {
         std::string_view value_sv = before_unit.substr(0, value_end + 1);
         size_t value_start        = value_sv.find_first_not_of(" \t");
 
-        strValue                     = std::string(value_sv.substr(value_start));
-        strUnit                      = std::string(matched_unit);
+        strValue                  = std::string(value_sv.substr(value_start));
+        strUnit                   = std::string(matched_unit);
         return true;
     }
 

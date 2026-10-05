@@ -6,9 +6,9 @@
 #include <compare>
 #include <cstring>
 #include <errno.h>
-#include <linux/can.h>     // can_frame, canfd_frame, CAN_RAW, CAN_MTU …
+#include <linux/can.h>       // can_frame, canfd_frame, CAN_RAW, CAN_MTU …
 #include <linux/can/error.h> // CAN_ERR_* classes
-#include <linux/can/raw.h> // SOL_CAN_RAW, CAN_RAW_FILTER, CAN_RAW_FD_FRAMES, CAN_RAW_ERR_FILTER
+#include <linux/can/raw.h>   // SOL_CAN_RAW, CAN_RAW_FILTER, CAN_RAW_FD_FRAMES, CAN_RAW_ERR_FILTER
 #include <mutex>
 #include <net/if.h> // if_nametoindex, ifreq
 #include <poll.h>
@@ -47,10 +47,17 @@ namespace {
                 canid_t bit;
                 const char *name;
         } kClasses[] = {
-            {CAN_ERR_TX_TIMEOUT, "TX-TIMEOUT"}, {CAN_ERR_LOSTARB, "LOST-ARBITRATION"}, {CAN_ERR_CRTL, "CONTROLLER"},
-            {CAN_ERR_PROT, "PROTOCOL"},         {CAN_ERR_TRX, "TRANSCEIVER"},          {CAN_ERR_ACK, "NO-ACK"},
-            {CAN_ERR_BUSOFF, "BUS-OFF"},        {CAN_ERR_BUSERROR, "BUS-ERROR"},       {CAN_ERR_RESTARTED, "RESTARTED"},
+            {CAN_ERR_TX_TIMEOUT, "TX-TIMEOUT"},
+            {CAN_ERR_LOSTARB, "LOST-ARBITRATION"},
+            {CAN_ERR_CRTL, "CONTROLLER"},
+            {CAN_ERR_PROT, "PROTOCOL"},
+            {CAN_ERR_TRX, "TRANSCEIVER"},
+            {CAN_ERR_ACK, "NO-ACK"},
+            {CAN_ERR_BUSOFF, "BUS-OFF"},
+            {CAN_ERR_BUSERROR, "BUS-ERROR"},
+            {CAN_ERR_RESTARTED, "RESTARTED"},
         };
+
         std::string str;
         for (const auto &c : kClasses) {
             if (id & c.bit) {
@@ -85,7 +92,7 @@ KCAN::Status KCAN::open(const std::string &strIface)
     m_u32ErrMask = 0;
 
     // Create a raw SocketCAN socket.
-    m_iHandle = ::socket(PF_CAN, SOCK_RAW, CAN_RAW);
+    m_iHandle    = ::socket(PF_CAN, SOCK_RAW, CAN_RAW);
     if (m_iHandle < 0) {
         const int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -246,7 +253,7 @@ KCAN::Status KCAN::set_filters(const std::vector<CanFilter> &vFilters)
     }
 
     m_vFilters = vFilters; // mirror applied kernel state so tout_read()'s
-                          // transient-filter snapshot/restore stays accurate
+                           // transient-filter snapshot/restore stays accurate
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("KCAN filters set, count:"); LOG_UINT32(static_cast<uint32_t>(vFilters.size())));
@@ -298,9 +305,9 @@ KCAN::Status KCAN::timeout_read(uint32_t u32ReadTimeout,
     szBytesRead = 0;
 
     struct pollfd sPollFd;
-    sPollFd.fd      = m_iHandle;
-    sPollFd.events  = POLLIN;
-    sPollFd.revents = 0;
+    sPollFd.fd                 = m_iHandle;
+    sPollFd.events             = POLLIN;
+    sPollFd.revents            = 0;
 
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
     // poll in bounded slices so a stop request can be observed promptly.
@@ -414,7 +421,7 @@ KCAN::Status KCAN::timeout_write(uint32_t u32WriteTimeout,
         return Status::INVALID_PARAM;
     }
 
-    szBytesWritten = 0;
+    szBytesWritten            = 0;
 
     // Build the frame. Classic CAN: <= 8 bytes; CAN FD: 9..64 bytes.
     // An 8-byte-or-less payload always goes out as a classic frame, so it also
@@ -463,7 +470,7 @@ KCAN::Status KCAN::timeout_write(uint32_t u32WriteTimeout,
             break;
         }
 
-        const int err = errno;
+        const int err          = errno;
         const bool bWouldBlock = (nbytes < 0) && (err == EAGAIN || err == EWOULDBLOCK || err == ENOBUFS);
         if (!bWouldBlock) {
             if (nbytes >= 0 || err != EINTR) {

@@ -352,7 +352,7 @@ class EvalExprEvaluator {
                 return false;
             }
 
-            sAtom.lhs                      = m_stripQuotes(word1);
+            sAtom.lhs                     = m_stripQuotes(word1);
 
             // Save position so we can test if this is a lone boolean literal
             std::string_view svAfterWord1 = sv;
@@ -362,7 +362,7 @@ class EvalExprEvaluator {
 
             // If word2 is a logical connector or empty → word1 is a lone boolean
             if (word2.empty() || word2 == "&&" || word2 == "||") {
-                sv                     = svAfterWord1;
+                sv                      = svAfterWord1;
                 sAtom.isBoolLiteralOnly = true;
                 if (!m_isBoolLiteral(sAtom.lhs)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -390,7 +390,7 @@ class EvalExprEvaluator {
                     opRaw           = (fs == std::string::npos) ? "" : opRaw.substr(fs, ls - fs + 1);
                 }
 
-                sAtom.op                = opRaw;
+                sAtom.op               = opRaw;
 
                 // word3 — right-hand side
                 std::string_view word3 = m_nextWord(sv);

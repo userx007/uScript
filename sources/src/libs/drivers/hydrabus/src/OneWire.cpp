@@ -166,7 +166,7 @@ namespace HydraHAL {
     bool OneWire::swio_write_reg(uint8_t u8Address, uint32_t u32Value, std::stop_token stop_tok)
     {
         _write_byte(0b00110000, stop_tok);
-        _write_byte(u8Address, stop_tok); // little-endian 1-byte address
+        _write_byte(u8Address, stop_tok);  // little-endian 1-byte address
         _write_u32_le(u32Value, stop_tok); // 4-byte LE value
 
         if (!_ack("swio_write_reg", stop_tok)) {

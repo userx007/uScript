@@ -6,8 +6,8 @@
 #include <cstring>
 #include <linux/can/netlink.h> // can_bittiming, can_ctrlmode, IFLA_CAN_*, CAN_CTRLMODE_*, CAN_STATE_*
 #include <linux/netlink.h>
-#include <linux/rtnetlink.h>   // RTM_NEWLINK / RTM_GETLINK, ifinfomsg, rtattr, IFLA_*
-#include <net/if.h>            // if_nametoindex, IFF_UP, IFF_LOWER_UP
+#include <linux/rtnetlink.h> // RTM_NEWLINK / RTM_GETLINK, ifinfomsg, rtattr, IFLA_*
+#include <net/if.h>          // if_nametoindex, IFF_UP, IFF_LOWER_UP
 #include <string>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -33,7 +33,7 @@ namespace kcan {
 
     namespace {
 
-        constexpr int kNlTimeoutSec = 3;
+        constexpr int kNlTimeoutSec    = 3;
 
         // IFF_LOWER_UP lives in <linux/if.h>, which clashes with <net/if.h>; use the stable ABI value.
         constexpr unsigned kIffLowerUp = 0x10000;
@@ -46,10 +46,10 @@ namespace kcan {
                 NlRequest(uint16_t u16Type, uint16_t u16Flags, int iIfIndex)
                 {
                     std::memset(m_buf, 0, sizeof(m_buf));
-                    nlmsghdr *h    = hdr();
-                    h->nlmsg_len   = NLMSG_LENGTH(sizeof(ifinfomsg));
-                    h->nlmsg_type  = u16Type;
-                    h->nlmsg_flags = u16Flags;
+                    nlmsghdr *h       = hdr();
+                    h->nlmsg_len      = NLMSG_LENGTH(sizeof(ifinfomsg));
+                    h->nlmsg_type     = u16Type;
+                    h->nlmsg_flags    = u16Flags;
                     ifi()->ifi_family = AF_UNSPEC;
                     ifi()->ifi_index  = iIfIndex;
                 }
@@ -107,9 +107,9 @@ namespace kcan {
                         m_ok = false;
                         return nullptr;
                     }
-                    rtattr *a   = reinterpret_cast<rtattr *>(tail());
-                    a->rta_type = u16Type;
-                    a->rta_len  = static_cast<unsigned short>(RTA_LENGTH(szLen));
+                    rtattr *a        = reinterpret_cast<rtattr *>(tail());
+                    a->rta_type      = u16Type;
+                    a->rta_len       = static_cast<unsigned short>(RTA_LENGTH(szLen));
                     hdr()->nlmsg_len = NLMSG_ALIGN(hdr()->nlmsg_len) + RTA_ALIGN(a->rta_len);
                     return a;
                 }
@@ -168,9 +168,9 @@ namespace kcan {
                         return EMSGSIZE;
                     }
 
-                    nlmsghdr *h = req.hdr();
-                    h->nlmsg_seq = ++m_seq;
-                    h->nlmsg_pid = 0;
+                    nlmsghdr *h         = req.hdr();
+                    h->nlmsg_seq        = ++m_seq;
+                    h->nlmsg_pid        = 0;
 
                     sockaddr_nl sKernel = {};
                     sKernel.nl_family   = AF_NETLINK;
@@ -189,7 +189,7 @@ namespace kcan {
                         }
 
                         size_t szLeft = static_cast<size_t>(nRead);
-                        for (const nlmsghdr *r = reinterpret_cast<const nlmsghdr *>(vBuf.data());
+                        for (const nlmsghdr *r      = reinterpret_cast<const nlmsghdr *>(vBuf.data());
                              NLMSG_OK(r, szLeft); r = NLMSG_NEXT(r, szLeft)) {
                             if (r->nlmsg_seq != m_seq) {
                                 continue; // stale / unrelated
@@ -214,8 +214,8 @@ namespace kcan {
                 }
 
             private:
-                int m_fd      = -1;
-                int m_err     = 0;
+                int m_fd       = -1;
+                int m_err      = 0;
                 uint32_t m_seq = 0;
         };
 
@@ -246,12 +246,12 @@ namespace kcan {
                         std::memcpy(&bt, RTA_DATA(a), sizeof(bt));
                         s.bitrate     = bt.bitrate;
                         s.samplePoint = bt.sample_point;
-                        s.tq = bt.tq;
-                        s.propSeg = bt.prop_seg;
-                        s.phaseSeg1 = bt.phase_seg1;
-                        s.phaseSeg2 = bt.phase_seg2;
-                        s.sjw = bt.sjw;
-                        s.brp = bt.brp;
+                        s.tq          = bt.tq;
+                        s.propSeg     = bt.prop_seg;
+                        s.phaseSeg1   = bt.phase_seg1;
+                        s.phaseSeg2   = bt.phase_seg2;
+                        s.sjw         = bt.sjw;
+                        s.brp         = bt.brp;
                     }
                     break;
                 case IFLA_CAN_DATA_BITTIMING:
@@ -292,9 +292,9 @@ namespace kcan {
                     if (szLen >= sizeof(can_berr_counter)) {
                         can_berr_counter bc;
                         std::memcpy(&bc, RTA_DATA(a), sizeof(bc));
-                        s.txErr    = bc.txerr;
-                        s.rxErr    = bc.rxerr;
-                        s.hasBerr  = true;
+                        s.txErr   = bc.txerr;
+                        s.rxErr   = bc.rxerr;
+                        s.hasBerr = true;
                     }
                     break;
                 default:
@@ -329,7 +329,7 @@ namespace kcan {
 
     int link_get_status(const std::string &strIface, LinkStatus &sStatus)
     {
-        sStatus = LinkStatus{};
+        sStatus        = LinkStatus{};
 
         const int iIdx = ifindex_of(strIface);
         if (iIdx == 0) {
@@ -346,11 +346,11 @@ namespace kcan {
         const nlmsghdr *h   = reinterpret_cast<const nlmsghdr *>(vReply.data());
         const ifinfomsg *fi = static_cast<const ifinfomsg *>(NLMSG_DATA(h));
 
-        sStatus.exists  = true;
-        sStatus.up      = (fi->ifi_flags & IFF_UP) != 0;
-        sStatus.lowerUp = (fi->ifi_flags & kIffLowerUp) != 0;
+        sStatus.exists      = true;
+        sStatus.up          = (fi->ifi_flags & IFF_UP) != 0;
+        sStatus.lowerUp     = (fi->ifi_flags & kIffLowerUp) != 0;
 
-        int iLen = static_cast<int>(IFLA_PAYLOAD(h));
+        int iLen            = static_cast<int>(IFLA_PAYLOAD(h));
         for (const rtattr *a = IFLA_RTA(fi); RTA_OK(a, iLen); a = RTA_NEXT(a, iLen)) {
             const unsigned type = a->rta_type & NLA_TYPE_MASK;
             if (type == IFLA_MTU && RTA_PAYLOAD(a) >= sizeof(uint32_t)) {
@@ -391,7 +391,7 @@ namespace kcan {
         NlSocket sSock;
         NlRequest req(RTM_NEWLINK, NLM_F_REQUEST | NLM_F_ACK, iIdx);
 
-        rtattr *pLinkInfo = req.nestBegin(IFLA_LINKINFO);
+        rtattr *pLinkInfo         = req.nestBegin(IFLA_LINKINFO);
         static const char kKind[] = "can";
         req.addAttr(IFLA_INFO_KIND, kKind, sizeof(kKind) - 1);
         rtattr *pData = req.nestBegin(IFLA_INFO_DATA);
@@ -433,10 +433,10 @@ namespace kcan {
 
         NlSocket sSock;
         NlRequest req(RTM_NEWLINK, NLM_F_REQUEST | NLM_F_ACK, iIdx);
-        rtattr *pLinkInfo = req.nestBegin(IFLA_LINKINFO);
+        rtattr *pLinkInfo         = req.nestBegin(IFLA_LINKINFO);
         static const char kKind[] = "can";
         req.addAttr(IFLA_INFO_KIND, kKind, sizeof(kKind) - 1);
-        rtattr *pData = req.nestBegin(IFLA_INFO_DATA);
+        rtattr *pData         = req.nestBegin(IFLA_INFO_DATA);
         const uint32_t u32One = 1;
         req.addValue(IFLA_CAN_RESTART, u32One);
         req.nestEnd(pData);
@@ -530,13 +530,20 @@ namespace kcan {
     const char *state_name(uint32_t u32State)
     {
         switch (u32State) {
-        case CAN_STATE_ERROR_ACTIVE:  return "ERROR-ACTIVE";
-        case CAN_STATE_ERROR_WARNING: return "ERROR-WARNING";
-        case CAN_STATE_ERROR_PASSIVE: return "ERROR-PASSIVE";
-        case CAN_STATE_BUS_OFF:       return "BUS-OFF";
-        case CAN_STATE_STOPPED:       return "STOPPED";
-        case CAN_STATE_SLEEPING:      return "SLEEPING";
-        default:                      return "UNKNOWN";
+        case CAN_STATE_ERROR_ACTIVE:
+            return "ERROR-ACTIVE";
+        case CAN_STATE_ERROR_WARNING:
+            return "ERROR-WARNING";
+        case CAN_STATE_ERROR_PASSIVE:
+            return "ERROR-PASSIVE";
+        case CAN_STATE_BUS_OFF:
+            return "BUS-OFF";
+        case CAN_STATE_STOPPED:
+            return "STOPPED";
+        case CAN_STATE_SLEEPING:
+            return "SLEEPING";
+        default:
+            return "UNKNOWN";
         }
     }
 
@@ -569,10 +576,16 @@ namespace kcan {
                     uint32_t bit;
                     const char *name;
             } kModes[] = {
-                {CTRLMODE_LOOPBACK, "LOOPBACK"},         {CTRLMODE_LISTEN_ONLY, "LISTEN-ONLY"}, {CTRLMODE_TRIPLE_SAMPLING, "TRIPLE-SAMPLING"},
-                {CTRLMODE_ONE_SHOT, "ONE-SHOT"},         {CTRLMODE_BERR_REPORTING, "BERR-REPORTING"}, {CTRLMODE_FD, "FD"},
-                {CTRLMODE_PRESUME_ACK, "PRESUME-ACK"},   {CTRLMODE_FD_NON_ISO, "FD-NON-ISO"},
+                {CTRLMODE_LOOPBACK, "LOOPBACK"},
+                {CTRLMODE_LISTEN_ONLY, "LISTEN-ONLY"},
+                {CTRLMODE_TRIPLE_SAMPLING, "TRIPLE-SAMPLING"},
+                {CTRLMODE_ONE_SHOT, "ONE-SHOT"},
+                {CTRLMODE_BERR_REPORTING, "BERR-REPORTING"},
+                {CTRLMODE_FD, "FD"},
+                {CTRLMODE_PRESUME_ACK, "PRESUME-ACK"},
+                {CTRLMODE_FD_NON_ISO, "FD-NON-ISO"},
             };
+
             str += " ctrlmode=<";
             bool bFirst = true;
             for (const auto &m : kModes) {

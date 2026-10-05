@@ -29,7 +29,7 @@ class BoolExprEvaluator {
         bool evaluate(std::string_view input, bool &bResult) const
         {
             try {
-                bResult       = false;
+                bResult      = false;
                 bool success = parseExpression(input, bResult);
                 if (!(success && input.empty())) { // Ensure full input was consumed
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate, remained:"); LOG_STRING(input));

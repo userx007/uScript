@@ -7,9 +7,9 @@
 #include "PluginExport.hpp"
 #include "PluginOperations.hpp"
 #include "TpFactory.hpp"
+#include "kcan_parse.hpp"
 #include "uBoolEvaluator.hpp"
 #include "uCommandExec.hpp"
-#include "kcan_parse.hpp"
 #include "uKCan.hpp"
 #include "uKCanLink.hpp"
 #include "uLogger.hpp"
@@ -473,16 +473,16 @@ class KCANPlugin : public PluginInterface {
                 u32Id &= CAN_SFF_MASK; // keep only 11 data bits
             }
 
-            m_u32CanTxId               = u32Id;
+            m_u32CanTxId              = u32Id;
 
             // Mirror the same id onto the default RX filter: build a single
             // acceptance filter that matches exactly this CAN ID (same EFF/SFF
             // convention as m_ParseFilters), and make it the new default,
             // replacing whatever filter set was previously in effect.
             KCAN::CanFilter sRxFilter = {};
-            sRxFilter.can_id           = u32Id;
-            sRxFilter.can_mask         = (u32Id & CAN_EFF_FLAG) ? (CAN_EFF_FLAG | CAN_EFF_MASK)
-                                                                : CAN_SFF_MASK;
+            sRxFilter.can_id          = u32Id;
+            sRxFilter.can_mask        = (u32Id & CAN_EFF_FLAG) ? (CAN_EFF_FLAG | CAN_EFF_MASK)
+                                                               : CAN_SFF_MASK;
 
             m_vFilters.clear();
             m_vFilters.push_back(sRxFilter);
@@ -921,12 +921,12 @@ class KCANPlugin : public PluginInterface {
         /**
          * \brief true when m_sLinkCfg / the interface name changed since it was last applied to the kernel
          */
-        mutable bool m_bLinkDirty = false;
+        mutable bool m_bLinkDirty     = false;
 
         /**
          * \brief apply the link configuration automatically before first use (see setCanAutoLink())
          */
-        mutable bool m_bAutoLink = true;
+        mutable bool m_bAutoLink      = true;
 
         /**
          * \brief CAN_ERR_* mask of error frames to receive/log (0 = none)

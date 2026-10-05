@@ -194,7 +194,7 @@ namespace hexutils {
     /*--------------------------------------------------------------------------------------------------------*/
     [[nodiscard]] inline std::string hexdumpToString(std::span<const uint8_t> data,
                                                      const HexDumpConfig &sConfig = HexDumpConfig(),
-                                                     size_t offset               = 0)
+                                                     size_t offset                = 0)
     {
         if (data.empty()) {
             return "";
@@ -226,7 +226,7 @@ namespace hexutils {
     [[nodiscard]] inline std::string hexdumpToString(const uint8_t *pu8Data,
                                                      size_t size,
                                                      const HexDumpConfig &sConfig = HexDumpConfig(),
-                                                     size_t offset               = 0)
+                                                     size_t offset                = 0)
     {
         return hexdumpToString(std::span<const uint8_t>(pu8Data, size), sConfig, offset);
     }
@@ -241,7 +241,7 @@ namespace hexutils {
     /*--------------------------------------------------------------------------------------------------------*/
     inline void printHexdump(std::span<const uint8_t> data,
                              const HexDumpConfig &sConfig = HexDumpConfig(),
-                             size_t offset               = 0)
+                             size_t offset                = 0)
     {
         std::string dump = hexdumpToString(data, sConfig, offset);
         std::fputs(dump.c_str(), stdout);
@@ -251,7 +251,7 @@ namespace hexutils {
     inline void printHexdump(const uint8_t *pu8Data,
                              size_t size,
                              const HexDumpConfig &sConfig = HexDumpConfig(),
-                             size_t offset               = 0)
+                             size_t offset                = 0)
     {
         printHexdump(std::span<const uint8_t>(pu8Data, size), sConfig, offset);
     }
@@ -288,7 +288,7 @@ namespace hexutils {
     /*--------------------------------------------------------------------------------------------------------*/
     inline void HexDump1S(const uint8_t *pu8Data,
                           size_t szDataSize,
-                          size_t szBytesPerLine         = 16,
+                          size_t szBytesPerLine            = 16,
                           const std::string &strFlagString = "SAOD")
     {
         HexDumpConfig config = HexDumpConfig::fromFlags(strFlagString);
@@ -327,7 +327,7 @@ namespace hexutils {
     /*--------------------------------------------------------------------------------------------------------*/
     inline void HexDump2S(const uint8_t *pu8Data,
                           size_t szDataSize,
-                          size_t szBytesPerLine         = 16,
+                          size_t szBytesPerLine            = 16,
                           const std::string &strFlagString = "SAOD")
     {
         HexDumpConfig config = HexDumpConfig::fromFlags(strFlagString);
@@ -366,7 +366,7 @@ namespace hexutils {
     /*--------------------------------------------------------------------------------------------------------*/
     inline void HexDump3S(const uint8_t *pu8Data,
                           size_t szDataSize,
-                          size_t szBytesPerLine         = 16,
+                          size_t szBytesPerLine            = 16,
                           const std::string &strFlagString = "SAOD")
     {
         HexDumpConfig config = HexDumpConfig::fromFlags(strFlagString);

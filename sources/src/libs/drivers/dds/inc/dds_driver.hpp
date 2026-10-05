@@ -301,7 +301,7 @@ class DdsDriver : public ICommDriver {
         /// comment. Static (not const, no `this`) since it only ever
         /// touches the LocalReader passed in.
         static std::optional<std::string> m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
-                                                        std::stop_token stop_tok);
+                                                       std::stop_token stop_tok);
 
         /// dds_on_data_available_fn callback (see <dds/ddsc/dds_public_listener.h>)
         /// registered on every local reader: drains whatever Cyclone just made

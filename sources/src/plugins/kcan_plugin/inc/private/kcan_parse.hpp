@@ -52,9 +52,9 @@ namespace kcan_parse {
         }
 
         // hex ("0x7A120") only makes sense without a suffix; strtod would also take it, but be explicit
-        char *pEnd         = nullptr;
-        errno              = 0;
-        const double dVal  = std::strtod(s.c_str(), &pEnd);
+        char *pEnd        = nullptr;
+        errno             = 0;
+        const double dVal = std::strtod(s.c_str(), &pEnd);
         if (errno != 0 || pEnd == s.c_str() || *pEnd != '\0') {
             return false;
         }
@@ -96,9 +96,9 @@ namespace kcan_parse {
             return false;
         }
 
-        char *pEnd      = nullptr;
-        errno           = 0;
-        const double d  = std::strtod(s.c_str(), &pEnd);
+        char *pEnd     = nullptr;
+        errno          = 0;
+        const double d = std::strtod(s.c_str(), &pEnd);
         if (errno != 0 || pEnd == s.c_str() || *pEnd != '\0' || d < 0.0) {
             return false;
         }

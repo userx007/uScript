@@ -203,7 +203,7 @@ FT2232GPIO::Status FT2232GPIO::read(Bank eBank, uint8_t &u8Value)
         return Status::PORT_ACCESS;
     }
 
-    u8Value                = 0;
+    u8Value              = 0;
 
     const uint8_t getCmd = (eBank == Bank::Low) ? MPSSE_GET_BITS_LOW : MPSSE_GET_BITS_HIGH;
     const uint8_t cmd[2] = {getCmd, MPSSE_SEND_IMMEDIATE};

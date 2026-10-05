@@ -21,9 +21,9 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "usage: %s status|up|down|restart <iface> [bitrate [sample_point]] [fd=<data_bitrate>]\n", argv[0]);
         return 2;
     }
-    const std::string cmd = argv[1];
+    const std::string cmd   = argv[1];
     const std::string iface = argv[2];
-    int rc = 0;
+    int rc                  = 0;
 
     if (cmd == "status") {
         kcan::LinkStatus st;
@@ -58,7 +58,7 @@ int main(int argc, char **argv)
             }
         }
         bool changed = false;
-        rc = kcan::link_apply(iface, cfg, changed);
+        rc           = kcan::link_apply(iface, cfg, changed);
         if (rc == 0) {
             kcan::LinkStatus st;
             kcan::link_get_status(iface, st);

@@ -133,7 +133,7 @@ std::string DdsDriver::m_BuildDomainConfigXml() const
     }
 
     const bool listensOnAll    = (m_config.ifaceAddress == "0.0.0.0" || m_config.ifaceAddress == "::" ||
-                                  m_config.ifaceAddress.empty());
+                               m_config.ifaceAddress.empty());
     const std::string ifaceSel = !listensOnAll ? m_config.ifaceAddress : m_config.multicastInterface;
     if (!ifaceSel.empty()) {
         const char *attr = looksLikeIpLiteral(ifaceSel) ? "address" : "name";
@@ -672,7 +672,7 @@ namespace {
 /// touching nothing. A private static member (not a free function) purely
 /// because LocalReader is a private nested type.
 std::optional<std::string> DdsDriver::m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
-                                                    std::stop_token stop_tok)
+                                                   std::stop_token stop_tok)
 {
     // 0 == infinite timeout: condition_variable_any::wait(lock, stop_token, pred) is a
     // clean native fit — it blocks until either pred() is true or stop_tok fires,
@@ -942,7 +942,7 @@ ICommDriver::ReadResult DdsDriver::receive(uint32_t u32ReadTimeout, std::span<ui
 /// for a scripting/test tool; a caller that needs strict cross-topic
 /// ordering should read each topic individually via `< ~ <topic>` instead.
 ICommDriver::ReadResult DdsDriver::m_MultiplexedReceive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                                         std::stop_token stop_tok) const
+                                                        std::stop_token stop_tok) const
 {
     ReadResult result;
     constexpr auto kSliceMs = std::chrono::milliseconds(200);

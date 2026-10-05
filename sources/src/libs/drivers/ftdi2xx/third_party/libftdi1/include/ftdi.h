@@ -113,45 +113,45 @@ enum ftdi_module_detach_mode {
 };
 
 /* Shifting commands IN MPSSE Mode*/
-#define MPSSE_WRITE_NEG               0x01 /* Write TDI/DO on negative TCK/SK edge*/
-#define MPSSE_BITMODE                 0x02 /* Write bits, not bytes */
-#define MPSSE_READ_NEG                0x04 /* Sample TDO/DI on negative TCK/SK edge */
-#define MPSSE_LSB                     0x08 /* LSB first */
-#define MPSSE_DO_WRITE                0x10 /* Write TDI/DO */
-#define MPSSE_DO_READ                 0x20 /* Read TDO/DI */
-#define MPSSE_WRITE_TMS               0x40 /* Write TMS/CS */
+#define MPSSE_WRITE_NEG      0x01 /* Write TDI/DO on negative TCK/SK edge*/
+#define MPSSE_BITMODE        0x02 /* Write bits, not bytes */
+#define MPSSE_READ_NEG       0x04 /* Sample TDO/DI on negative TCK/SK edge */
+#define MPSSE_LSB            0x08 /* LSB first */
+#define MPSSE_DO_WRITE       0x10 /* Write TDI/DO */
+#define MPSSE_DO_READ        0x20 /* Read TDO/DI */
+#define MPSSE_WRITE_TMS      0x40 /* Write TMS/CS */
 
 /* FTDI MPSSE commands */
-#define SET_BITS_LOW                  0x80
+#define SET_BITS_LOW         0x80
 /*BYTE DATA*/
 /*BYTE Direction*/
-#define SET_BITS_HIGH                 0x82
+#define SET_BITS_HIGH        0x82
 /*BYTE DATA*/
 /*BYTE Direction*/
-#define GET_BITS_LOW                  0x81
-#define GET_BITS_HIGH                 0x83
-#define LOOPBACK_START                0x84
-#define LOOPBACK_END                  0x85
-#define TCK_DIVISOR                   0x86
+#define GET_BITS_LOW         0x81
+#define GET_BITS_HIGH        0x83
+#define LOOPBACK_START       0x84
+#define LOOPBACK_END         0x85
+#define TCK_DIVISOR          0x86
 /* H Type specific commands */
-#define DIS_DIV_5                     0x8a
-#define EN_DIV_5                      0x8b
-#define EN_3_PHASE                    0x8c
-#define DIS_3_PHASE                   0x8d
-#define CLK_BITS                      0x8e
-#define CLK_BYTES                     0x8f
-#define CLK_WAIT_HIGH                 0x94
-#define CLK_WAIT_LOW                  0x95
-#define EN_ADAPTIVE                   0x96
-#define DIS_ADAPTIVE                  0x97
-#define CLK_BYTES_OR_HIGH             0x9c
-#define CLK_BYTES_OR_LOW              0x9d
+#define DIS_DIV_5            0x8a
+#define EN_DIV_5             0x8b
+#define EN_3_PHASE           0x8c
+#define DIS_3_PHASE          0x8d
+#define CLK_BITS             0x8e
+#define CLK_BYTES            0x8f
+#define CLK_WAIT_HIGH        0x94
+#define CLK_WAIT_LOW         0x95
+#define EN_ADAPTIVE          0x96
+#define DIS_ADAPTIVE         0x97
+#define CLK_BYTES_OR_HIGH    0x9c
+#define CLK_BYTES_OR_LOW     0x9d
 /*FT232H specific commands */
-#define DRIVE_OPEN_COLLECTOR          0x9e
+#define DRIVE_OPEN_COLLECTOR 0x9e
 /* Value Low */
 /* Value HIGH */ /*rate is 12000000/((1+value)*2) */
-#define DIV_VALUE(rate)               (rate > 6000000) ? 0 : ((6000000 / rate - 1) > 0xffff) ? 0xffff \
-                                                                                             : (6000000 / rate - 1)
+#define DIV_VALUE(rate)      (rate > 6000000) ? 0 : ((6000000 / rate - 1) > 0xffff) ? 0xffff \
+                                                                                    : (6000000 / rate - 1)
 
 /* Commands in MPSSE and Host Emulation Mode */
 #define SEND_IMMEDIATE                0x87

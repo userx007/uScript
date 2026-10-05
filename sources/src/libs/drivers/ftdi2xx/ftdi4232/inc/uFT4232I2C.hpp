@@ -55,7 +55,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver {
          */
         explicit FT4232I2C(uint8_t u8I2CAddress,
                            uint32_t u32ClockHz                 = 100000u,
-                           Channel eChannel                     = Channel::A,
+                           Channel eChannel                    = Channel::A,
                            uint8_t u8DeviceIndex               = 0u,
                            const std::string &strIdentityLabel = {})
         {
@@ -78,7 +78,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver {
          */
         Status open(uint8_t u8I2CAddress,
                     uint32_t u32ClockHz   = 100000u,
-                    Channel eChannel       = Channel::A,
+                    Channel eChannel      = Channel::A,
                     uint8_t u8DeviceIndex = 0u);
 
         /** @copydoc FT4232Base::close — also sends I²C STOP before closing */

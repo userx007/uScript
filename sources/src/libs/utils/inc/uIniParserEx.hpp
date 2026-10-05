@@ -166,7 +166,7 @@ class IniParserEx {
         [[nodiscard]] std::string getValue(const std::string &strSection,
                                            const std::string &strKey,
                                            const std::string &strDefaultValue = "",
-                                           int iMaxDepth                    = 10) const
+                                           int iMaxDepth                      = 10) const
         {
             if (iMaxDepth <= 0) {
                 return strDefaultValue;

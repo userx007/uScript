@@ -162,7 +162,7 @@ namespace loopback {
                 sMsg.has_can_id = true;
                 sMsg.can_id     = frame.can_id;
 
-                ssize_t sent   = ::write(fd_, &frame, sizeof(frame));
+                ssize_t sent    = ::write(fd_, &frame, sizeof(frame));
                 if (sent < 0) {
                     log_err(name(), std::string("write: ") + std::strerror(errno));
                     return false;

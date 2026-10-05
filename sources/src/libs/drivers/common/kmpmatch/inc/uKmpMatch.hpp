@@ -43,7 +43,7 @@ namespace ukmp {
     inline void build_kmp_table(std::span<const uint8_t> pattern, size_t szLength, std::vector<int> &vViLps)
     {
         vViLps.resize(szLength);
-        int len  = 0;
+        int len   = 0;
         vViLps[0] = 0;
 
         for (size_t i = 1; i < szLength;) {

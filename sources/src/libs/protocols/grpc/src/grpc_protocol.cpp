@@ -22,8 +22,8 @@ bool GrpcProtocol::loadDescriptorSet(const std::string &strProtosetPath, std::st
     google::protobuf::FileDescriptorSet fdSet;
     if (!fdSet.ParseFromString(ss.str())) {
         strOutError = "not a valid FileDescriptorSet (produce it with: protoc --descriptor_set_out=... "
-                   "--include_imports your.proto): " +
-                   strProtosetPath;
+                      "--include_imports your.proto): " +
+                      strProtosetPath;
         return false;
     }
 
@@ -37,7 +37,7 @@ bool GrpcProtocol::loadDescriptorSet(const std::string &strProtosetPath, std::st
         }
         if (m_pool.BuildFile(fileProto) == nullptr) {
             strOutError = "failed to build descriptor for '" + fileProto.name() +
-                       "' (malformed or missing an import not included in the set)";
+                          "' (malformed or missing an import not included in the set)";
             return false;
         }
     }

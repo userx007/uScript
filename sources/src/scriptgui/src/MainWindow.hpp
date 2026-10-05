@@ -119,12 +119,12 @@ class MainWindow : public QMainWindow {
 
         // ── Protocol dispatch ──────────────────────────────────────────────────
         void dispatchLine(const QString &raw);
-        void dispatchCommDump(const QString &base64Payload);                       // GUI:COMM_DUMP:<base64>
-        void processTerminalModeBytes(const QByteArray &newBytes);                 // filters GUI: lines out of m_terminalMode traffic, see onProcessOutput()
+        void dispatchCommDump(const QString &base64Payload);                         // GUI:COMM_DUMP:<base64>
+        void processTerminalModeBytes(const QByteArray &newBytes);                   // filters GUI: lines out of m_terminalMode traffic, see onProcessOutput()
         bool autoLoadCommScriptForLine(ScriptViewer *pViewer, int iLineNo);          // returns true if comm script was (re)loaded
-        QString resolveCommScriptPath(const QString &rawPath) const;               // resolve interpreter-relative path to absolute
+        QString resolveCommScriptPath(const QString &rawPath) const;                 // resolve interpreter-relative path to absolute
         QString threadedCommScriptForLine(ScriptViewer *pViewer, int iLineNo) const; // canonical path of comm script on a '&' line, or empty
-        bool isThreadedCommFile(const QString &filePath) const;                    // true when filePath is in m_threadedCommScripts
+        bool isThreadedCommFile(const QString &filePath) const;                      // true when filePath is in m_threadedCommScripts
 
         // ── Per-thread comm-script tabs (GUI:LOAD_COMM_T / EXEC_COMM_T / CLEAR_COMM_T) ──
         // Each parallel '&' comm script gets its own closable tab (tid > 0) in

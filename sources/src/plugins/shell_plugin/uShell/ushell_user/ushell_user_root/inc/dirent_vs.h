@@ -775,7 +775,7 @@ extern "C" {
         }
 
         /* Close wide-character directory stream */
-        ok          = _wclosedir(psDirp->wdirp);
+        ok            = _wclosedir(psDirp->wdirp);
         psDirp->wdirp = NULL;
 
         /* Release multi-byte character version */

@@ -61,10 +61,10 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
         bool validateCommand(int iLineNumber, const std::string &strCommand, CommCommand &sToken) noexcept override
         {
             ItemParser itemParser;
-            bool bRetVal      = itemParser.parse(strCommand, sToken);
+            bool bRetVal       = itemParser.parse(strCommand, sToken);
             sToken.iLineNumber = iLineNumber;
 
-            auto lineNr       = ustring::fmtLineNr(iLineNumber);
+            auto lineNr        = ustring::fmtLineNr(iLineNumber);
             LOG_PRINT((bRetVal ? LOG_WERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(lineNr.data());
                       LOG_STRING(getDirectionName(sToken.direction));
                       LOG_STRING("["); LOG_STRING(sToken.values.first);
@@ -135,7 +135,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                             return false;
                         }
 
-                        sResult.values           = std::make_pair(std::move(field1), std::move(field2));
+                        sResult.values          = std::make_pair(std::move(field1), std::move(field2));
                         CommCommandTokenType t1 = getTokenType(sResult.values.first);
                         CommCommandTokenType t2 = getTokenType(sResult.values.second);
                         return evaluateAndValidate(sResult, t1, t2, /*separatorFound=*/false);
@@ -267,11 +267,11 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
                                                 ? command
                                                 : command.substr(0, tildePos);
 
-                    bSeparatorFound        = (pipePos != std::string_view::npos);
+                    bSeparatorFound       = (pipePos != std::string_view::npos);
                     field1                = ustring::trim_view(bSeparatorFound ? body.substr(0, pipePos) : body);
                     field2                = ustring::trim_view(bSeparatorFound ? body.substr(pipePos + 1) : std::string_view{});
 
-                    bHasXtra               = (tildePos != std::string_view::npos);
+                    bHasXtra              = (tildePos != std::string_view::npos);
                     xtraRaw               = bHasXtra ? ustring::trim_view(command.substr(tildePos + 1)) : std::string_view{};
 
                     return true;

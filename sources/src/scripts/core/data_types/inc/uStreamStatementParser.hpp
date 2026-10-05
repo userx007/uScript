@@ -98,7 +98,7 @@ inline bool parseStreamStatement(const std::string &strKeyword,
     // No field (offset/length/value, whether literal or $macro) can contain
     // '|', so the LAST '|' in the line unambiguously marks this suffix, if
     // one is present at all.
-    sOut.eReverse       = StreamReverseMode::NONE;
+    sOut.eReverse      = StreamReverseMode::NONE;
     const auto pipePos = strRhs.rfind('|');
     if (pipePos != std::string::npos) {
         const std::string strSuffix = trim(strRhs.substr(pipePos + 1));

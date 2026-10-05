@@ -96,7 +96,7 @@ namespace HydraHAL {
 
     bool Smartcard::set_rst(int iLevel)
     {
-        iLevel       = iLevel & 1;
+        iLevel      = iLevel & 1;
         uint8_t cmd = static_cast<uint8_t>(0b00000010 | iLevel);
         _write_byte(cmd);
 

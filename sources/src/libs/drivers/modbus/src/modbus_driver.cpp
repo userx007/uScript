@@ -454,7 +454,7 @@ bool ModbusDriver::m_ParseReadArgs(const std::vector<std::string> &vArgs, uint16
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid quantity (1-"); LOG_UINT32(u16MaxQuantity); LOG_STRING("):"); LOG_STRING(vArgs[2]));
         return false;
     }
-    u8OutUnitId   = static_cast<uint8_t>(unitId);
+    u8OutUnitId    = static_cast<uint8_t>(unitId);
     u16OutAddr     = static_cast<uint16_t>(addr);
     u16OutQuantity = static_cast<uint16_t>(quantity);
     return true;

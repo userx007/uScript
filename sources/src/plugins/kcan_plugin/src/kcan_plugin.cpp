@@ -825,8 +825,8 @@ bool KCANPlugin::m_ParseFilters(const std::string &strFilters, std::vector<KCAN:
 /*--------------------------------------------------------------------------------------------------------*/
 
 ICommDriver::WriteResult KCANPlugin::m_Send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                             std::shared_ptr<const KCAN> shpDriver, std::string_view xtra_params,
-                                             std::stop_token stop_tok) const
+                                            std::shared_ptr<const KCAN> shpDriver, std::string_view xtra_params,
+                                            std::stop_token stop_tok) const
 {
     ICommDriver::WriteResult result;
 
@@ -887,9 +887,9 @@ ICommDriver::WriteResult KCANPlugin::m_Send(uint32_t u32WriteTimeout, std::span<
 /*--------------------------------------------------------------------------------------------------------*/
 
 ICommDriver::ReadResult KCANPlugin::m_Receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                               const ICommDriver::ReadOptions &options,
-                                               std::shared_ptr<const KCAN> shpDriver, std::string_view xtra_params,
-                                               std::stop_token stop_tok) const
+                                              const ICommDriver::ReadOptions &options,
+                                              std::shared_ptr<const KCAN> shpDriver, std::string_view xtra_params,
+                                              std::stop_token stop_tok) const
 {
     ICommDriver::ReadResult result;
 

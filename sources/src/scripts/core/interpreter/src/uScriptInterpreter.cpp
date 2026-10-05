@@ -233,7 +233,7 @@ namespace {
 
         // SAWTOOTH/LINEAR: sequential, wraps back to element 0 after the last one.
         const double dVal = vValues[sState.arrIndex];
-        sState.arrIndex    = (sState.arrIndex + 1) % n;
+        sState.arrIndex   = (sState.arrIndex + 1) % n;
         return dVal;
     }
 
@@ -701,8 +701,8 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &sCom
         }
         if (!numeric::str2uint64(strExpanded, out)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
-                      LOG_STRING(pszKind); LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
-                      LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
+                          LOG_STRING(pszKind); LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
+                          LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
             return false;
         }
         return true;
@@ -838,9 +838,9 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
         }
         if (!numeric::str2uint64(strExpanded, out)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
-                      LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
-                      LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
-                      LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
+                          LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                          LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
+                          LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
             return false;
         }
         return true;
@@ -1853,10 +1853,10 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string &strInput, bool bDef
 void ScriptInterpreter::m_initLoopIterIndex(LoopState &sState) noexcept
 {
     if (!sState.strVarMacroName.empty()) {
-        const std::string strVal                   = sState.bIsUntil
-                                                         ? "0"
-                                                         : (sState.bRangeIsInteger ? std::to_string(sState.llCurrent)
-                                                                                  : formatRepeatDouble(sState.dCurrent));
+        const std::string strVal                     = sState.bIsUntil
+                                                           ? "0"
+                                                           : (sState.bRangeIsInteger ? std::to_string(sState.llCurrent)
+                                                                                     : formatRepeatDouble(sState.dCurrent));
         sState.mapLoopMacros[sState.strVarMacroName] = strVal;
         LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                   LOG_STRING("REPEAT iter-index $"); LOG_STRING(sState.strVarMacroName);
@@ -3365,17 +3365,17 @@ bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes &sRep, ResolvedRe
         return false;
     }
 
-    sOut.bIsInteger         = bBeginInt && bEndInt && bStepInt;
+    sOut.bIsInteger        = bBeginInt && bEndInt && bStepInt;
 
     // Mirror both representations regardless of bIsInteger, using the exact
     // integer value where available so integer-only ranges keep full 64-bit
     // precision even though a double copy also exists.
-    sOut.llBegin            = llBegin;
-    sOut.llEnd              = llEnd;
-    sOut.llStep             = llStep;
-    sOut.dBegin             = bBeginInt ? static_cast<double>(llBegin) : dBegin;
-    sOut.dEnd               = bEndInt ? static_cast<double>(llEnd) : dEnd;
-    sOut.dStep              = bStepInt ? static_cast<double>(llStep) : dStep;
+    sOut.llBegin           = llBegin;
+    sOut.llEnd             = llEnd;
+    sOut.llStep            = llStep;
+    sOut.dBegin            = bBeginInt ? static_cast<double>(llBegin) : dBegin;
+    sOut.dEnd              = bEndInt ? static_cast<double>(llEnd) : dEnd;
+    sOut.dStep             = bStepInt ? static_cast<double>(llStep) : dStep;
 
     const bool bStepIsZero = sOut.bIsInteger ? (sOut.llStep == 0) : (sOut.dStep == 0.0);
     if (bStepIsZero) {

@@ -140,8 +140,8 @@ namespace hexutils {
      */
     /*--------------------------------------------------------------------------------------------------------*/
     [[nodiscard]] inline std::string stringHexlify(std::span<const uint8_t> input,
-                                                   size_t offset  = 0,
-                                                   size_t count   = std::string::npos,
+                                                   size_t offset   = 0,
+                                                   size_t count    = std::string::npos,
                                                    bool bUppercase = true)
     {
         if (offset >= input.size()) {
@@ -165,8 +165,8 @@ namespace hexutils {
 
     // Overload for vector
     [[nodiscard]] inline std::string stringHexlify(const std::vector<uint8_t> &vInput,
-                                                   size_t offset  = 0,
-                                                   size_t count   = std::string::npos,
+                                                   size_t offset   = 0,
+                                                   size_t count    = std::string::npos,
                                                    bool bUppercase = true)
     {
         return stringHexlify(std::span<const uint8_t>(vInput), offset, count, bUppercase);
@@ -454,7 +454,7 @@ namespace hexutils {
     /*--------------------------------------------------------------------------------------------------------*/
     [[nodiscard]] inline std::string toHexString(std::span<const uint8_t> input,
                                                  std::string_view separator = "",
-                                                 bool bUppercase             = true)
+                                                 bool bUppercase            = true)
     {
         if (input.empty()) {
             return "";
@@ -480,7 +480,7 @@ namespace hexutils {
     // Overload for vector
     [[nodiscard]] inline std::string toHexString(const std::vector<uint8_t> &vInput,
                                                  std::string_view separator = "",
-                                                 bool bUppercase             = true)
+                                                 bool bUppercase            = true)
     {
         return toHexString(std::span<const uint8_t>(vInput), separator, bUppercase);
     }

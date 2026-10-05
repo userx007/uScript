@@ -242,7 +242,7 @@ bool unhexlify(const char *pstrHexstr, uint8_t *pu8Output, size_t *pOut_len)
         uint8_t high_val = (high >= 'A') ? (high - 'A' + 10) : (high - '0');
         uint8_t low_val  = (low >= 'A') ? (low - 'A' + 10) : (low - '0');
 
-        pu8Output[i]        = (high_val << 4) | low_val;
+        pu8Output[i]     = (high_val << 4) | low_val;
     }
 
     return true;

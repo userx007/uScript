@@ -46,7 +46,7 @@ class CodeEditor : public QPlainTextEdit {
 
         // Error markers (validation phase) — red bar(s), independent of exec bar
         void setErrorLine(int iLineNo); // 1-based; accumulates (call once per error line)
-        void clearErrorLines();        // clear all error markers
+        void clearErrorLines();         // clear all error markers
 
         bool hasErrorLines() const
         {
@@ -56,7 +56,7 @@ class CodeEditor : public QPlainTextEdit {
         // Thread-active markers — bright-green rectangle outline while a & thread runs
         void addThreadLine(int iLineNo);    // 1-based; draw rectangle until removed
         void removeThreadLine(int iLineNo); // remove rectangle when thread joins
-        void clearThreadLines();           // clear all (called on script finish)
+        void clearThreadLines();            // clear all (called on script finish)
 
         bool hasScriptHighlighter() const
         {
@@ -148,7 +148,7 @@ class ScriptViewer : public QFrame {
         // ── Execution marker ─────────────────────────────────────────────────
         void setCurrentLine(int iLineNo);
         QString lineText(int iLineNo) const; // 1-based; empty string if out of range
-        int lineCount() const;              // total number of lines in the document
+        int lineCount() const;               // total number of lines in the document
 
         // ── Editor configuration ──────────────────────────────────────────────
         void setEditorFont(const QFont &font);
@@ -177,16 +177,16 @@ class ScriptViewer : public QFrame {
 
         // Error markers (validation phase) — red bar(s), independent of exec bar
         void setErrorLine(int iLineNo); // 1-based; accumulates
-        void clearErrorLines();        // clear all error markers
-        bool hasErrorLines() const;    // true if any error markers are set
+        void clearErrorLines();         // clear all error markers
+        bool hasErrorLines() const;     // true if any error markers are set
 
         // Thread markers — outline rectangle shown while a '&' thread is running
         void addThreadLine(int iLineNo);    // start showing rectangle on lineNo
         void removeThreadLine(int iLineNo); // remove it (thread joined)
-        void clearThreadLines();           // remove all (script reset / new load)
+        void clearThreadLines();            // remove all (script reset / new load)
 
     signals:
-        void modificationChanged(bool bModified);             // forwarded from QTextDocument
+        void modificationChanged(bool bModified);            // forwarded from QTextDocument
         void commScriptRequested(const QString &scriptName); // user clicked a .SCRIPT line
 
         // Emitted when the cursor lands on an INCLUDE "path" line.

@@ -51,7 +51,7 @@ void RawEth::resolve_destination(std::string_view xtra_params,
                                  MacAddr &outDestMac,
                                  uint16_t &u16OutEtherType) const
 {
-    outDestMac   = m_defaultDestMac;
+    outDestMac      = m_defaultDestMac;
     u16OutEtherType = m_u16EtherType;
 
     if (xtra_params.empty()) {

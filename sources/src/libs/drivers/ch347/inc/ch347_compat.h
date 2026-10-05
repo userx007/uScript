@@ -503,7 +503,7 @@ static inline bool CH347GPIO_IRQ_Set(CH347_HANDLE idx,
                Int0Pin, Int0Mode,
                0xFF, 0, // INT1 disabled
                bEnable ? reinterpret_cast<mPCH347_INT_ROUTINE>(pvHandler)
-                      : nullptr) != FALSE;
+                       : nullptr) != FALSE;
 }
 
 // ============================================================================
@@ -542,8 +542,8 @@ static inline uint32_t CH347Jtag_ClockTms(uint8_t *pu8BitBangPkt,
 {
     const uint8_t tms_bit        = (u32Tms == 1u) ? 0x02u : 0x00u;
     const uint8_t base           = static_cast<uint8_t>(CH347_JtagPinState.base_pins);
-    pu8BitBangPkt[u32BI++]             = (base | tms_bit) | 0x10u; // TCK low  (bit4 = framing)
-    pu8BitBangPkt[u32BI++]             = (base | tms_bit) | 0x11u; // TCK high (bit0 = TCK, bit4)
+    pu8BitBangPkt[u32BI++]       = (base | tms_bit) | 0x10u; // TCK low  (bit4 = framing)
+    pu8BitBangPkt[u32BI++]       = (base | tms_bit) | 0x11u; // TCK high (bit0 = TCK, bit4)
     CH347_JtagPinState.tms_state = tms_bit;
     CH347_JtagPinState.tck_state = 0x10u;
     CH347_JtagPinState.flag      = 1u;
@@ -562,7 +562,7 @@ static inline uint32_t CH347Jtag_IdleClock(uint8_t *pu8BitBangPkt,
     const uint8_t tck_part = (CH347_JtagPinState.tck_state != 0u)
                                  ? 0x10u
                                  : static_cast<uint8_t>(CH347_JtagPinState.base_pins);
-    pu8BitBangPkt[u32BI++]       = tms_part | tck_part;
+    pu8BitBangPkt[u32BI++] = tms_part | tck_part;
     return u32BI;
 }
 

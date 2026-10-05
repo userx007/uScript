@@ -328,8 +328,8 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t u32ReadTimeout,
             int ret = ftdi_read_data(CTX, &byte, 1);
             if (ret < 0) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("ftdi_read_data() error, ret="); LOG_INT(ret);
-                          LOG_STRING(": "); LOG_STRING(ftdi_get_error_string(CTX)));
+                                     LOG_STRING("ftdi_read_data() error, ret="); LOG_INT(ret);
+                                     LOG_STRING(": "); LOG_STRING(ftdi_get_error_string(CTX)));
                 result.status = Status::READ_ERROR;
                 return false;
             }
