@@ -593,7 +593,7 @@ namespace {
      */
     class DumpingDriver : public ICommDriver {
         public:
-            DumpingDriver(std::shared_ptr<const ICommDriver> shpInner, std::string strPluginName)
+            DumpingDriver(std::shared_ptr<const KCAN> shpInner, std::string strPluginName)
                 : m_shpInner(std::move(shpInner))
                 , m_strPluginName(std::move(strPluginName))
             {
@@ -615,7 +615,7 @@ namespace {
             {
                 auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, sOptions, xtra_params, stop_tok);
                 if (result.status == Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
-                    gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
+                    gui_notify_comm_dump(m_strPluginName, m_shpInner->describeRxConnection(),
                                          CommDir::Rx, buffer.data(), static_cast<uint32_t>(result.bytes_read));
                 }
                 return result;
@@ -634,7 +634,7 @@ namespace {
             }
 
         private:
-            std::shared_ptr<const ICommDriver> m_shpInner;
+            std::shared_ptr<const KCAN> m_shpInner;
             std::string m_strPluginName;
     };
 
@@ -933,7 +933,7 @@ ICommDriver::ReadResult KCANPlugin::m_Receive(uint32_t u32ReadTimeout, std::span
         // so there is nothing meaningful to dump for that mode; the bytes_read
         // > 0 guard below already skips it.
         if (result.status == ICommDriver::Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
-            gui_notify_comm_dump(m_strInstanceName, shpDriver->describeConnection(xtra_params),
+            gui_notify_comm_dump(m_strInstanceName, shpDriver->describeRxConnection(),
                                  CommDir::Rx, dataSpan.data(), static_cast<uint32_t>(result.bytes_read));
         }
     }

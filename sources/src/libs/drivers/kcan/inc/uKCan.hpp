@@ -3,6 +3,7 @@
 
 #include "ICommDriver.hpp"
 
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <mutex>
@@ -152,6 +153,26 @@ class KCAN : public ICommDriver {
         }
 
         /**
+         * @brief Describe this connection for an RX comm-dump row.
+         *
+         * Like describeConnection(), but shows the CAN ID of the frame most
+         * recently returned by timeout_read() instead of the configured TX id,
+         * so a monitor-style receive (e.g. "x ?= KCAN.CMD < &") lists the real
+         * arbitration ids. Extended (29-bit) ids are flagged with " ext".
+         * Must be called from the same thread right after the read it describes.
+         */
+        CommDetails describeRxConnection() const
+        {
+            const uint32_t raw = m_u32LastRxId.load(std::memory_order_relaxed);
+            const bool bExt    = (raw & 0x80000000u) != 0u; // CAN_EFF_FLAG
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s id=0x%X%s",
+                          m_strIdentityLabel.empty() ? "KCAN" : m_strIdentityLabel.c_str(),
+                          raw & 0x1FFFFFFFu, bExt ? " ext" : "");
+            return commdump_details(CommFamily::CAN, label);
+        }
+
+        /**
          * @brief Set the CAN ID stamped on every outgoing frame.
          *
          * This becomes the default TX ID used by tout_write() when no
@@ -239,17 +260,18 @@ class KCAN : public ICommDriver {
                                std::stop_token stop_tok     = {}) const override;
 
     private:
-        int m_iHandle = -1;                        /**< Socket file descriptor.                    */
-        std::string m_strIface;                    /**< Interface name the socket is bound to.      */
-        uint32_t m_u32ErrMask = 0;                 /**< CAN_RAW_ERR_FILTER currently installed.     */
-        uint32_t m_u32TxId    = 0x000u;            /**< Default CAN ID for outgoing frames.        */
-        mutable std::vector<CanFilter> m_vFilters; /**< Mirrors the filter set currently installed
-                                                  on the socket (empty == accept-all). Kept
-                                                  in sync by set_filters() and used by
-                                                  tout_read() to snapshot/restore around a
-                                                  transient per-call filter.               */
-        mutable std::mutex m_mutex;                /**< Protects concurrent access.                */
-        std::string m_strIdentityLabel;            /**< GUI comm-dump display label, see describeConnection(). */
+        int m_iHandle = -1;                             /**< Socket file descriptor.                    */
+        std::string m_strIface;                         /**< Interface name the socket is bound to.      */
+        uint32_t m_u32ErrMask = 0;                      /**< CAN_RAW_ERR_FILTER currently installed.     */
+        uint32_t m_u32TxId    = 0x000u;                 /**< Default CAN ID for outgoing frames.        */
+        mutable std::vector<CanFilter> m_vFilters;      /**< Mirrors the filter set currently installed
+                                                       on the socket (empty == accept-all). Kept
+                                                       in sync by set_filters() and used by
+                                                       tout_read() to snapshot/restore around a
+                                                       transient per-call filter.               */
+        mutable std::mutex m_mutex;                     /**< Protects concurrent access.                */
+        std::string m_strIdentityLabel;                 /**< GUI comm-dump display label, see describeConnection(). */
+        mutable std::atomic<uint32_t> m_u32LastRxId{0}; /**< CAN id (+EFF flag) of the last data frame returned by timeout_read(). */
 
         // -----------------------------------------------------------------------
         uint32_t resolveTxId(std::string_view xtra_params) const;

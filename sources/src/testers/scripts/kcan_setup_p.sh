@@ -8,8 +8,8 @@
 #   ./kcan_setup.sh [iface] [bitrate] [sample_point]     e.g.  ./kcan_setup.sh can0 500000 0.875
 
 IFACE=${1:-can0}
-BITRATE=${2:-500000}
-SP=${3:-}
+BITRATE=${2:-125000}
+SP=${3:-0.875}
 
 sudo modprobe can
 sudo modprobe can_raw

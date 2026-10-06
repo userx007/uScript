@@ -393,6 +393,9 @@ KCAN::Status KCAN::timeout_read(uint32_t u32ReadTimeout,
                   LOG_STRING("RX id:"); LOG_HEX32(frame.can_id);
                   LOG_STRING(" len:"); LOG_UINT32(static_cast<uint32_t>(payloadLen)));
 
+        // Remember the id so the GUI comm-dump can show the real RX id (describeRxConnection()).
+        m_u32LastRxId.store(frame.can_id & (CAN_EFF_FLAG | CAN_EFF_MASK), std::memory_order_relaxed);
+
         // Copy as many bytes as the caller's buffer can hold.
         const size_t copyLen = std::min(payloadLen, buffer.size());
         std::memcpy(buffer.data(), frame.data, copyLen);
