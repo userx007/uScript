@@ -58,23 +58,11 @@ if(MINGW)
   endif()
 endif()
 
-# --- RPATH ---
-# Must match INSTALL_EXTLIBS_DIR below - both uscript/ScriptFrontend and
-# extlibs/ live directly under bin/<os>/, so "$ORIGIN/extlibs" (the
-# executable's own directory, a linker/loader token resolved by ld.so, NOT a
-# CMake variable) always finds it regardless of the process's working
-# directory or the exact value of CMAKE_INSTALL_PREFIX.
-#
-# IMPORTANT: do NOT build this from "${CMAKE_INSTALL_PREFIX}/..." instead -
-# CMAKE_INSTALL_PREFIX is set to the literal relative string "../" a few
-# lines below, and a RUNPATH entry that doesn't start with $ORIGIN is
-# resolved by ld.so relative to the CURRENT WORKING DIRECTORY of the
-# process at launch, not relative to the binary's own location. That
-# previously baked in "..//bin/<os>/extlibs" verbatim, which only happened
-# to work when uscript was launched from one specific CWD.
 if(UNIX AND NOT APPLE)
   set(CMAKE_INSTALL_RPATH "$ORIGIN/${INSTALL_BASE_EXTLIBS}")
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()
+
 
 # Add subdirectories
 add_subdirectory(sources)
@@ -82,23 +70,16 @@ add_subdirectory(sources)
 # --- 1. Applications ---
 install(TARGETS uscript ScriptFrontend DESTINATION ${INSTALL_APP_DIR})
 
+
+if(UNIX AND NOT APPLE)
+    set_target_properties(uscript PROPERTIES
+        BUILD_RPATH ""
+        SKIP_BUILD_RPATH TRUE
+    )
+endif()
+
+
 # --- 1b. External runtime libraries ---
-# These are regular, non-dlopen()'d SHARED dependencies of the apps
-# themselves (e.g. uVolatileMacroStore, a link-time dependency of uscript
-# via uUtils) - unlike splugins/iplugins, which get loaded on demand by
-# an explicit configured path, the dynamic loader must resolve these
-# automatically at process startup. CMAKE_INSTALL_RPATH above already
-# points every installed executable at "${CMAKE_INSTALL_PREFIX}/${INSTALL_EXTLIBS_DIR}"
-# (i.e. bin/<os>/extlibs, next to uscript/ScriptFrontend themselves, same
-# level as splugins/iplugins) on Unix, so this is where any such library
-# belongs. Add future non-plugin SHARED libs here as they show up.
-#
-# NOTE (Windows): CMAKE_INSTALL_RPATH only applies on Unix (see the
-# "if(UNIX AND NOT APPLE)" guard above) - Windows has no rpath equivalent,
-# and its DLL search order only checks the executable's own directory (or
-# PATH) automatically. A DLL installed only to extlibs/ will NOT be found
-# by uscript.exe there as-is; on Windows this either needs extlibs/ added
-# to PATH at launch, or the DLL copied/installed alongside the app instead.
 set(EXTLIB_TARGETS
     uVolatileMacroStore
 )
@@ -106,39 +87,6 @@ set(EXTLIB_TARGETS
 install(TARGETS ${EXTLIB_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_EXTLIBS_DIR})
 
 # --- 1c. Windows runtime DLL packaging ---
-#
-# Follows through on the NOTE (Windows) comment directly above: a DLL
-# installed only to extlibs/ is invisible to uscript.exe's default search
-# order, so vendored proprietary SDK runtime DLLs (FTD2XX, Vector's vxlapi)
-# need installing next to the app itself instead.
-#
-# FTDI_RUNTIME_DLL / VECTOR_RUNTIME_DLL originate deep in the tree
-# (src/lib/drivers/ftdi2xx/third_party/CMakeLists.txt and
-# src/lib/drivers/vector/third_party/CMakeLists.txt respectively) and are
-# only ever set via PARENT_SCOPE, which only reaches the *immediate*
-# parent directory's scope — reaching this file requires an explicit
-# relay at every intermediate add_subdirectory() level in between
-# (ftdi2xx/, drivers/, lib/, src/, sources/), each one re-exporting the
-# variable with its own PARENT_SCOPE. That full chain has been added
-# alongside this section; without it, both variables would silently be
-# empty/undefined here even on a real vendored-SDK Windows build, and
-# this whole section would be dead code.
-#
-# Both are conditional on WIN32 *and* being defined at all: they're only
-# set in the first place when a real vendored SDK was found (see each
-# third_party/CMakeLists.txt's own EXISTS check) — building against the
-# bundled compatibility stub headers (no real SDK dropped in) leaves them
-# unset, same as building on Linux where these drivers aren't even
-# add_subdirectory()'d.
-#
-# PCANBasic.dll and CH347DLLA64.dll are NOT included here: uPcan's and
-# uCH347's own CMakeLists.txt already copy their DLL next to that
-# target's own build output via a POST_BUILD step, and neither exports a
-# PARENT_SCOPE variable equivalent to FTDI_RUNTIME_DLL/VECTOR_RUNTIME_DLL
-# for this file to install from — that convenience copy is not a
-# substitute for a real install() of the final packaged binary tree.
-# Extend those two third_party/CMakeLists.txt files with the same
-# PARENT_SCOPE relay pattern used for FTDI/Vector if you need them here too.
 
 if(WIN32)
     if(DEFINED FTDI_RUNTIME_DLL)
