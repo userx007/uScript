@@ -98,9 +98,21 @@ std::shared_ptr<GrpcDriver> GrpcPlugin::m_OpenDriver(void) const
 // -----------------------------------------------------------------------
 bool GrpcPlugin::m_GRPC_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    (void)strArgs;
     (void)st;
+
+    // expected no arguments
+    if (!strArgs.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+        return false;
+    }
+
+    // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+    if (!m_bIsEnabled) {
+        return true;
+    }
+
     resetData();
+
     std::ostringstream oss;
     oss << GRPC_PLUGIN_NAME " v" << m_strVersion
         << " host=" << m_strHost

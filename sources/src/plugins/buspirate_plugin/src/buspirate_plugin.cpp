@@ -108,6 +108,8 @@ void BuspiratePlugin::doCleanup(void)
 
 bool BuspiratePlugin::m_Buspirate_INFO(const std::string &strArgs, std::stop_token st) const
 {
+    (void)st;
+
     // expected no arguments
     if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));

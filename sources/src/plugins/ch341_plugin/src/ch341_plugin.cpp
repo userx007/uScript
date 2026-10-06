@@ -62,6 +62,8 @@ extern "C" {
 
 bool CH341Plugin::m_CH341_INFO(const std::string &strArgs, std::stop_token st) const
 {
+    (void)st;
+
     // expected no arguments
     if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));

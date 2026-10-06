@@ -82,6 +82,8 @@ void FT232HPlugin::doCleanup()
 
 bool FT232HPlugin::m_FT232H_INFO(const std::string &strArgs, std::stop_token st) const
 {
+    (void)st;
+
     if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;

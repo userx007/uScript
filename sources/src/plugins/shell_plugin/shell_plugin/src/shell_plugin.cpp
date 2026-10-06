@@ -108,35 +108,28 @@ bool ShellPlugin::m_Shell_RUN(const std::string &strArgs, std::stop_token st) co
 
 bool ShellPlugin::m_Shell_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    bool bRetVal = false;
+    (void)st;
 
-    do {
+    // expected no arguments
+    if (!strArgs.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+        return false;
+    }
 
-        // expected no arguments
-        if (!strArgs.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
-            break;
-        }
+    // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+    if (!m_bIsEnabled) {
+        return true;
+    }
 
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled) {
-            bRetVal = true;
-            break;
-        }
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(SHELL_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: launch an interactive shell session"));
 
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING(SHELL_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: launch an interactive shell session"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RUN : start an interactive shell session (blocks until the user exits)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: SHELL.RUN"));
+    LOG_SEP();
 
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("RUN : start an interactive shell session (blocks until the user exits)"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: SHELL.RUN"));
-        LOG_SEP();
-
-        bRetVal = true;
-
-    } while (false);
-
-    return bRetVal;
+    return true;
 }

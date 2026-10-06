@@ -154,6 +154,8 @@ bool FT245Plugin::m_FT245_GPIO(const std::string &strArgs, std::stop_token st) c
 
 bool FT245Plugin::m_FT245_INFO(const std::string &strArgs, std::stop_token st) const
 {
+    (void)st;
+
     if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;

@@ -19,9 +19,6 @@
 #include <string>
 #include <utility>
 
-struct PluginDataGet;
-struct PluginDataSet;
-
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //
 /////////////////////////////////////////////////////////////////////////////////
@@ -123,9 +120,41 @@ class ProfibusPlugin : public PluginInterface {
             return m_bIsEnabled;
         }
 
-        bool setParams(const PluginDataSet *psSetParams);
-        void getParams(PluginDataGet *psGetParams) const;
-        bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st = {}) const;
+        bool doInit(void *pvUserData)
+        {
+            (void)pvUserData;
+            m_bIsInitialized = true;
+            return true;
+        }
+
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+            m_strResultData.clear();
+            m_pDriver.reset(); // ~ProfibusDriver() closes the serial port
+        }
+
+        bool setParams(const PluginDataSet *psSetParams)
+        {
+            bool bRetVal = false;
+            if (generic_setparams<ProfibusPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+                if (m_LocalSetParams(psSetParams)) {
+                    bRetVal = true;
+                }
+            }
+            return bRetVal;
+        }
+
+        void getParams(PluginDataGet *psGetParams) const
+        {
+            generic_getparams<ProfibusPlugin>(this, psGetParams);
+        }
+
+        bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
+        {
+            return generic_dispatch<ProfibusPlugin>(this, strCmd, strParams, st);
+        }
 
         const PluginCommandsMap<ProfibusPlugin> *getMap(void) const
         {
@@ -163,15 +192,11 @@ class ProfibusPlugin : public PluginInterface {
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
-        bool doInit(void *pvUserData);
-
         bool doEnable(void)
         {
             m_bIsEnabled = true;
             return true;
         }
-
-        void doCleanup(void);
 
         bool isFaultTolerant(void) const
         {

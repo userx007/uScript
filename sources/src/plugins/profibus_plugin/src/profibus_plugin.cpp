@@ -10,17 +10,9 @@
 #include <sstream>
 #include <string_view>
 
-struct PluginDataGet;
-struct PluginDataSet;
-
-#ifdef LT_HDR
-#undef LT_HDR
-#endif
-#ifdef LOG_HDR
-#undef LOG_HDR
-#endif
-#define LT_HDR  "PROFIBUS PLUGIN |"
-#define LOG_HDR LOG_STRING(LT_HDR)
+/////////////////////////////////////////////////////////////////////////////////
+//                  PLUGIN ENTRY POINTS                                        //
+/////////////////////////////////////////////////////////////////////////////////
 
 extern "C" {
     EXPORTED ProfibusPlugin *pluginEntry()
@@ -32,42 +24,6 @@ extern "C" {
     {
         delete pPlugin;
     }
-}
-
-bool ProfibusPlugin::doInit(void *pvUserData)
-{
-    (void)pvUserData;
-    m_bIsInitialized = true;
-    return true;
-}
-
-void ProfibusPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-    m_strResultData.clear();
-    m_pDriver.reset(); // ~ProfibusDriver() closes the serial port
-}
-
-bool ProfibusPlugin::setParams(const PluginDataSet *psSetParams)
-{
-    bool bRetVal = false;
-    if (generic_setparams<ProfibusPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-        if (m_LocalSetParams(psSetParams)) {
-            bRetVal = true;
-        }
-    }
-    return bRetVal;
-}
-
-void ProfibusPlugin::getParams(PluginDataGet *psGetParams) const
-{
-    generic_getparams<ProfibusPlugin>(this, psGetParams);
-}
-
-bool ProfibusPlugin::doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
-{
-    return generic_dispatch<ProfibusPlugin>(this, strCmd, strParams, st);
 }
 
 // -----------------------------------------------------------------------
@@ -109,9 +65,21 @@ std::shared_ptr<ProfibusDriver> ProfibusPlugin::m_OpenDriver(void) const
 
 bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string &strArgs, std::stop_token st) const
 {
-    (void)strArgs;
     (void)st;
+
+    // expected no arguments
+    if (!strArgs.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+        return false;
+    }
+
+    // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+    if (!m_bIsEnabled) {
+        return true;
+    }
+
     resetData();
+
     std::ostringstream oss;
     oss << PROFIBUS_PLUGIN_NAME " v" << m_strVersion
         << " device=" << m_strDevice

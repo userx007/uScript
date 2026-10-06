@@ -194,6 +194,8 @@ bool CH347Plugin::setModuleSpeed(const std::string &strModule, size_t hz) const
 
 bool CH347Plugin::m_CH347_INFO(const std::string &strArgs, std::stop_token st) const
 {
+    (void)st;
+
     if (!strArgs.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
