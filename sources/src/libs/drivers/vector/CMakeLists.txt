@@ -8,7 +8,7 @@ project(uVector
 
 # ---------------------------------------------------------------------------
 # Platform check — the XL Driver Library ships for Windows (Vector's own SDK)
-# and Linux (the unofficial libXlApi.so.26.20.14 port - see
+# and Linux (the unofficial libXlApi.so.26.30.16 port - see
 # third_party/vxlapi/include/vxlapi_linux.h's own header comment for what
 # that is). No other platform (macOS, BSD, ...) has ever had a build.
 # ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ if(NOT (WIN32 OR LINUX))
 endif()
 
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-    message(FATAL_ERROR "uVector: only 64-bit builds are supported (vxlapi64.dll / libXlApi.so.26.20.14 are both x86-64 only).")
+    message(FATAL_ERROR "uVector: only 64-bit builds are supported (vxlapi64.dll / libXlApi.so.26.30.16 are both x86-64 only).")
 endif()
 
 option(UVECTOR_BUILD_SHARED "Build uVector as a shared library instead of static" OFF)
@@ -55,7 +55,7 @@ set(UVECTOR_SOURCES
 # Ethernet API, Linux uses the Network/virtual-switch API instead
 # (xlNetEthOpenNetwork()/xlNetConnectMeasurementPoint()/xlNetEthSend()/
 # xlNetEthReceive()/...) — both confirmed present against real
-# libXlApi.so.26.20.14 AND 26.30.16 symbol-table dumps, not just header
+# libXlApi.so.26.30.16 AND 26.30.16 symbol-table dumps, not just header
 # presence (that distinction mattered here: xlEthTransmit()/xlEthReceive()/
 # xlEthSetConfig() are declared in the Linux header too but genuinely absent
 # from what the library exports). See uVectorEth.hpp's class comment for the
@@ -95,7 +95,7 @@ target_link_libraries(uVector
 target_compile_definitions(uVector PRIVATE $<$<PLATFORM_ID:Windows>:_WIN32_WINNT=0x0601>)
 
 # Convenience for local dev/debug builds only: copy vxlapi64.dll (Windows) or
-# libXlApi.so.26.20.14 (Linux) next to uVector's own build output so a quick
+# libXlApi.so.26.30.16 (Linux) next to uVector's own build output so a quick
 # standalone run/debug session finds it without needing the full extlibs/
 # packaging step. This is IN ADDITION TO VECTOR_RUNTIME_DLL - not a
 # replacement for it - since the real extlibs/ folder sits next to the final

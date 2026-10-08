@@ -20,7 +20,7 @@ cmake_minimum_required(VERSION 3.25)
 #     └── linux/                  (Linux only)
 #         ├── vxlapi_linux.h      (optional override - only needed if your installed
 #         │                        library's header differs from the vendored one above)
-#         └── libXlApi.so.26.20.14  (the versioned .so itself - REQUIRED for an actual
+#         └── libXlApi.so.26.30.16  (the versioned .so itself - REQUIRED for an actual
 #                                     link to succeed; this repo has no unversioned
 #                                     "libXlApi.so" symlink, so IMPORTED_LOCATION points
 #                                     straight at the versioned file - see below)
@@ -97,7 +97,7 @@ if(WIN32)
 elseif(LINUX)
 
     set(_vxlapi_linux_dir "${VXLAPI_ROOT}/linux")
-    set(_vxlapi_linux_so  "${_vxlapi_linux_dir}/libXlApi.so.26.20.14")
+    set(_vxlapi_linux_so  "${_vxlapi_linux_dir}/libXlApi.so.26.30.16")
     set(_vxlapi_linux_hdr "${_vxlapi_linux_dir}/vxlapi_linux.h")
 
     if(EXISTS "${_vxlapi_linux_so}")
@@ -105,7 +105,7 @@ elseif(LINUX)
         if(EXISTS "${_vxlapi_linux_hdr}")
             set(_vxlapi_include_dir "${_vxlapi_linux_dir}")
         else()
-            message(STATUS "uVector/third_party: found libXlApi.so.26.20.14 under "
+            message(STATUS "uVector/third_party: found libXlApi.so.26.30.16 under "
                             "${_vxlapi_linux_dir} but no vxlapi_linux.h next to it - "
                             "falling back to the vendored vxlapi_linux.h under "
                             "${VXLAPI_ROOT}/include for declarations. Drop a copy of "
@@ -134,11 +134,11 @@ elseif(LINUX)
 
     else()
 
-        message(WARNING "uVector/third_party: no libXlApi.so.26.20.14 found under "
+        message(WARNING "uVector/third_party: no libXlApi.so.26.30.16 found under "
                          "${_vxlapi_linux_dir} - using the vendored vxlapi_linux.h "
                          "for declarations only. This lets the source compile but "
                          "there is nothing to actually link a final binary against "
-                         "until you drop your real libXlApi.so.26.20.14 there (and "
+                         "until you drop your real libXlApi.so.26.30.16 there (and "
                          "optionally vxlapi_linux.h, if your installed library's "
                          "header differs from the vendored one). See this file's "
                          "header comment for the expected layout.")
