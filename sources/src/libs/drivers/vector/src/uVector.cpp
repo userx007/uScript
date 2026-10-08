@@ -158,9 +158,16 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
     XLaccess permissionMask             = 0;
 
     // CAN FD requires the V4 interface (XLcanTxEvent/XLcanRxEvent, 64-byte
-    // payloads); classic CAN keeps using V3 for the smallest behavioural
-    // delta against the existing (pre-FD) wire format/event semantics.
-    const unsigned int interfaceVersion = bFD ? XL_INTERFACE_VERSION_V4 : XL_INTERFACE_VERSION_V3;
+    // payloads). Classic CAN uses V3 (xlReceive()/xlCanTransmit()) on Windows,
+    // but libXlApi.so on Linux does not export xlReceive() at all, so there
+    // classic CAN has to ride on V4 as well (xlCanReceive()/xlCanTransmitEx()
+    // with no EDL/BRS flag = plain classic frames). See k_bClassicOnV4.
+    const bool bV4                      = bFD || k_bClassicOnV4;
+    const unsigned int interfaceVersion = bV4 ? XL_INTERFACE_VERSION_V4 : XL_INTERFACE_VERSION_V3;
+
+    // rxQueueSize unit depends on the interface version: V3 = events,
+    // V4 = bytes (and V4/CAN requires a power of two in 8192..524288).
+    const unsigned int rxQueueSize      = bV4 ? VECTOR_RX_QUEUE_SIZE_V4 : VECTOR_RX_QUEUE_SIZE;
 
 #if defined(_WIN32)
 
@@ -171,7 +178,7 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
     // to the Vector Hardware Config "application name" used by open()'s
     // xlGetApplConfig() path; openDirect() never touches that indirection.
     XLstatus sts   = xlOpenPort(&portHandle, const_cast<char *>("Vector"), accessMask, &permissionMask,
-                                VECTOR_RX_QUEUE_SIZE, interfaceVersion, XL_BUS_TYPE_CAN);
+                                rxQueueSize, interfaceVersion, XL_BUS_TYPE_CAN);
     if (sts != XL_SUCCESS || portHandle == XL_INVALID_PORTHANDLE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlOpenPort failed:"); LOG_STRING(xlGetErrorString(sts)));
@@ -196,7 +203,7 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
     // "count trailing zero bits", i.e. exactly log2() of a single set bit.
     const unsigned int channelIndex = static_cast<unsigned int>(__builtin_ctzll(static_cast<unsigned long long>(accessMask)));
 
-    XLstatus sts                    = xlCreatePort(&portHandle, "Vector", VECTOR_RX_QUEUE_SIZE, interfaceVersion, XL_BUS_TYPE_CAN);
+    XLstatus sts                    = xlCreatePort(&portHandle, "Vector", rxQueueSize, interfaceVersion, XL_BUS_TYPE_CAN);
     if (sts != XL_SUCCESS || portHandle == XL_INVALID_PORTHANDLE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlCreatePort failed:"); LOG_STRING(xlGetErrorString(sts)));
@@ -256,9 +263,28 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
             }
         } else {
             sts = xlCanSetChannelBitrate(portHandle, accessMask, u32Bitrate);
+
+            if (sts != XL_SUCCESS && k_bClassicOnV4) {
+                // Classic CAN on a V4 port (Linux): if the driver refuses the
+                // classic bitrate call on a V4 port, fall back to the V4-native
+                // configuration call with data-phase == arbitration-phase
+                // bitrate. Frames are still sent without EDL/BRS (see
+                // sendFrame()), so nothing FD ever appears on the wire.
+                LOG_PRINT(LOG_WARNING, LOG_HDR;
+                          LOG_STRING("xlCanSetChannelBitrate failed on V4 port, retrying via xlCanFdSetConfiguration:");
+                          LOG_STRING(xlGetErrorString(sts)));
+
+                XLcanFdConf canConf;
+                std::memset(&canConf, 0, sizeof(canConf));
+                canConf.arbitrationBitRate = u32Bitrate;
+                canConf.dataBitRate        = std::max<uint32_t>(u32Bitrate, 25000U); // manual: dataBitRate >= max(arbitrationBitRate, 25000)
+                sts                        = xlCanFdSetConfiguration(portHandle, accessMask, &canConf);
+            }
+
             if (sts != XL_SUCCESS) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("xlCanSetChannelBitrate failed:"); LOG_STRING(xlGetErrorString(sts)));
+                          LOG_STRING("classic CAN bitrate configuration failed:"); LOG_STRING(xlGetErrorString(sts));
+                          LOG_STRING("bitrate:"); LOG_UINT32(u32Bitrate));
                 xlClosePort(portHandle);
                 return Status::PORT_ACCESS;
             }
@@ -801,8 +827,10 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &sOut
             return Status::READ_TIMEOUT;
         }
 
-        if (m_bFD) {
-            // ---- CAN FD path: xlCanReceive()/XLcanRxEvent -----------------
+        if (usesV4Events()) {
+            // ---- V4 path (CAN FD, and classic CAN on Linux): xlCanReceive()/XLcanRxEvent
+            // Classic frames arrive here as plain XL_CAN_EV_TAG_RX_OK events with
+            // EDL clear and dlc 0..8, so the same decoding covers both.
             XLcanRxEvent evt;
             XLstatus sts = xlCanReceive(m_xlPort, &evt);
 
@@ -833,8 +861,13 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &sOut
                 return Status::READ_ERROR;
             }
             // fall through to the shared wait-and-retry below
-        } else {
-            // ---- Classic CAN path: xlReceive()/XLevent ---------------------
+        }
+#if defined(_WIN32)
+        else {
+            // ---- V3 classic CAN path (Windows only): xlReceive()/XLevent ---
+            // Deliberately compiled out on Linux: libXlApi.so does not export
+            // xlReceive(), so merely referencing it makes dlopen() of the plugin
+            // fail with "undefined symbol: xlReceive".
             XLevent evt;
             unsigned int msgCount = 1;
             XLstatus sts          = xlReceive(m_xlPort, &msgCount, &evt);
@@ -871,6 +904,7 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &sOut
             }
             // fall through to the shared wait-and-retry below
         }
+#endif
 
         // Queue empty — wait for the notification, then retry.
         VectorNotifyWaiter::WaitResult waitResult = m_notifyWaiter.wait(u32TimeoutMs, stop_tok);
@@ -905,8 +939,10 @@ ICommDriver::Status Vector::sendFrame(uint32_t u32Id,
         return Status::INVALID_PARAM;
     }
 
-    if (m_bFD) {
-        // ---- CAN FD path: xlCanTransmitEx()/XLcanTxEvent -------------------
+    if (usesV4Events()) {
+        // ---- V4 path (CAN FD, and classic CAN on Linux): xlCanTransmitEx()/XLcanTxEvent
+        // For classic CAN (!m_bFD) the length is <= 8 so DLC == length, no
+        // padding is needed, and neither EDL nor BRS is set: a plain classic frame.
         const uint8_t u8Dlc     = canFdLenToDlc(data.size());
         const size_t szFrameLen = canFdDlcToLen(u8Dlc);
 
@@ -915,9 +951,9 @@ ICommDriver::Status Vector::sendFrame(uint32_t u32Id,
         evt.tag                     = XL_CAN_EV_TAG_TX_MSG;
         evt.tagData.canMsg.canId    = bExtended ? (u32Id | XL_CAN_EXT_MSG_ID) : u32Id;
         evt.tagData.canMsg.dlc      = u8Dlc;
-        evt.tagData.canMsg.msgFlags = XL_CAN_TXMSG_FLAG_EDL | (m_bFdBrs ? XL_CAN_TXMSG_FLAG_BRS : 0U);
+        evt.tagData.canMsg.msgFlags = m_bFD ? (XL_CAN_TXMSG_FLAG_EDL | (m_bFdBrs ? XL_CAN_TXMSG_FLAG_BRS : 0U)) : 0U;
 
-        std::memset(evt.tagData.canMsg.data, m_u8FdPaddingByte, sizeof(evt.tagData.canMsg.data));
+        std::memset(evt.tagData.canMsg.data, m_bFD ? m_u8FdPaddingByte : 0U, sizeof(evt.tagData.canMsg.data));
         std::memcpy(evt.tagData.canMsg.data, data.data(), data.size());
 
         unsigned int msgCount = 1, msgCountSent = 0;
@@ -934,8 +970,10 @@ ICommDriver::Status Vector::sendFrame(uint32_t u32Id,
         // application payload.
         dumpFrame(CommDir::Tx, u32Id, bExtended, data);
         (void)szFrameLen;
-    } else {
-        // ---- Classic CAN path: xlCanTransmit()/XLevent ----------------------
+    }
+#if defined(_WIN32)
+    else {
+        // ---- V3 classic CAN path (Windows only): xlCanTransmit()/XLevent ----
         XLevent evt;
         std::memset(&evt, 0, sizeof(evt));
         evt.tag               = XL_TRANSMIT_MSG;
@@ -955,6 +993,7 @@ ICommDriver::Status Vector::sendFrame(uint32_t u32Id,
 
         dumpFrame(CommDir::Tx, u32Id, bExtended, data);
     }
+#endif
 
     return Status::SUCCESS;
 }

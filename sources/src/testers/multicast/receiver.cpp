@@ -1,15 +1,16 @@
+#include <arpa/inet.h>
 #include <iostream>
+#include <netdb.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 #include <unistd.h>
-#include <netdb.h>
 
-#define MCAST_PORT 11111
-#define MCAST_ADDR "239.1.1.1"
+#define MCAST_PORT  11111
+#define MCAST_ADDR  "239.1.1.1"
 #define BUFFER_SIZE 1024
 
-int main() {
+int main()
+{
     int sock;
     struct sockaddr_in multicastAddr;
     socklen_t addr_len = sizeof(multicastAddr);
@@ -28,11 +29,11 @@ int main() {
     // 3. Bind to ALL interfaces (0.0.0.0)
     struct sockaddr_in localAddr;
     memset(&localAddr, 0, sizeof(localAddr));
-    localAddr.sin_family = AF_INET;
-    localAddr.sin_port = htons(MCAST_PORT);
+    localAddr.sin_family      = AF_INET;
+    localAddr.sin_port        = htons(MCAST_PORT);
     localAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    if (bind(sock, (struct sockaddr*)&localAddr, sizeof(localAddr)) == -1) {
+    if (bind(sock, (struct sockaddr *)&localAddr, sizeof(localAddr)) == -1) {
         perror("bind");
         close(sock);
         return 1;
@@ -70,7 +71,7 @@ int main() {
     // 8. Receive Loop
     while (true) {
         memset(buffer, 0, BUFFER_SIZE);
-        int bytesReceived = recvfrom(sock, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&multicastAddr, &addr_len);
+        int bytesReceived = recvfrom(sock, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&multicastAddr, &addr_len);
 
         if (bytesReceived > 0) {
             std::cout << "Received from " << inet_ntoa(multicastAddr.sin_addr)

@@ -1,15 +1,16 @@
+#include <arpa/inet.h>
 #include <iostream>
+#include <netdb.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 #include <unistd.h>
-#include <netdb.h>
 
 #define MCAST_PORT 11111
 #define MCAST_ADDR "239.1.1.1" // Local Administration Multicast
-#define TTL 1
+#define TTL        1
 
-int main() {
+int main()
+{
     int sock;
     struct sockaddr_in multicastAddr;
     char message[1024];
@@ -43,7 +44,7 @@ int main() {
     // 4. Configure Multicast Address
     memset(&multicastAddr, 0, sizeof(multicastAddr));
     multicastAddr.sin_family = AF_INET;
-    multicastAddr.sin_port = htons(MCAST_PORT);
+    multicastAddr.sin_port   = htons(MCAST_PORT);
     if (inet_pton(AF_INET, MCAST_ADDR, &multicastAddr.sin_addr) <= 0) {
         std::cerr << "Invalid address/ Address not supported: " << MCAST_ADDR << std::endl;
         close(sock);
@@ -53,10 +54,10 @@ int main() {
     std::cout << "Sender started. Sending to " << MCAST_ADDR << ":" << MCAST_PORT << std::endl;
 
     // 5. Send Message
-    const char* msg = "Hello from C++ Loopback/Network Multicast!";
-    size_t len = strlen(msg);
+    const char *msg = "Hello from C++ Loopback/Network Multicast!";
+    size_t len      = strlen(msg);
 
-    if (sendto(sock, msg, len, 0, (struct sockaddr*)&multicastAddr, sizeof(multicastAddr)) == -1) {
+    if (sendto(sock, msg, len, 0, (struct sockaddr *)&multicastAddr, sizeof(multicastAddr)) == -1) {
         perror("sendto");
     } else {
         std::cout << "Message sent: " << msg << std::endl;

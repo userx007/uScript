@@ -91,12 +91,19 @@
  * CAN / CAN FD
  * ------------
  *  - Classic CAN: bytes are packed into consecutive frames, up to
- *    VECTOR_MAX_PAYLOAD (8) bytes each, via the classic xlCanTransmit()/
- *    xlReceive() event pair (XL_INTERFACE_VERSION_V3).
+ *    VECTOR_MAX_PAYLOAD (8) bytes each.
+ *      Windows: the classic xlCanTransmit()/xlReceive() event pair
+ *               (XL_INTERFACE_VERSION_V3).
+ *      Linux:   libXlApi.so does NOT export xlReceive() (the header declares
+ *               it, the library doesn't implement it - loading a plugin that
+ *               references it fails with "undefined symbol: xlReceive"). Classic
+ *               CAN therefore runs on the same V4 event interface as CAN FD
+ *               (xlCanTransmitEx()/xlCanReceive()), simply without the EDL/BRS
+ *               flags, so frames on the wire are plain classic CAN.
  *  - CAN FD (bFD=true in open()/openDirect()): bytes are packed into
  *    consecutive frames, up to VECTOR_FD_MAX_PAYLOAD (64) bytes each, via
  *    the FD-aware xlCanTransmitEx()/xlCanReceive() event pair
- *    (XL_INTERFACE_VERSION_V4, required for FD). A fragment shorter than 64
+ *    (XL_INTERFACE_VERSION_V4, required for FD; identical on both platforms). A fragment shorter than 64
  *    bytes that doesn't land exactly on one of the 16 legal CAN-FD DLC
  *    lengths (0-8, 12, 16, 20, 24, 32, 48, 64 — see canFdLenToDlc()) is
  *    padded up to the next legal length with setFdPaddingByte() (default
@@ -114,7 +121,9 @@
  *    readOneFrame_locked/frameMatchesFilter/dumpFrame) is written once
  *    against the mode-agnostic VectorRxFrame struct recvFrame() produces, so
  *    classic and FD channels share the exact same read-mode code — only
- *    recvFrame()/sendFrame() themselves branch on m_bFD.
+ *    recvFrame()/sendFrame() themselves branch (on m_bFD for FD-vs-classic
+ *    frame content, and on usesV4Events() for which XL-API event interface
+ *    is used).
  *
  * Reading
  * -------
@@ -184,7 +193,8 @@ class Vector : public ICommDriver {
         static constexpr uint32_t VECTOR_WRITE_DEFAULT_TIMEOUT       = 5000;                           ///< Default TX timeout in milliseconds.
         static constexpr uint32_t VECTOR_DEFAULT_TX_ID               = 0x7FF;                          ///< Default TX CAN ID.
         static constexpr uint32_t VECTOR_DEFAULT_RX_FILTER_ID        = 0x000;                          ///< 0 = accept all (open filter).
-        static constexpr uint32_t VECTOR_RX_QUEUE_SIZE               = 256;                            ///< xlOpenPort() RX event queue depth.
+        static constexpr uint32_t VECTOR_RX_QUEUE_SIZE               = 256;                            ///< V3 port RX queue size, in EVENTS (power of 2, 16..32768).
+        static constexpr uint32_t VECTOR_RX_QUEUE_SIZE_V4            = 65536;                          ///< V4 port RX queue size, in BYTES (power of 2, 8192..524288 for CAN/CAN FD).
         static constexpr uint32_t VECTOR_DEFAULT_FD_DATA_BITRATE     = VECTOR_FD_DEFAULT_DATA_BITRATE; ///< Default CAN FD data-phase bitrate.
 
         /// CAN FD tuning bundle — see VectorFdOptions (namespace scope, just above
@@ -575,9 +585,26 @@ class Vector : public ICommDriver {
         XLportHandle m_xlPort   = XL_INVALID_PORTHANDLE; ///< XL-API port handle.
         XLaccess m_xlAccessMask = 0;                     ///< Resolved channel access mask.
         VectorNotifyWaiter m_notifyWaiter;               ///< Cross-platform wrapper around xlSetNotification()'s wait primitive.
-        bool m_bOpen                    = false;
-        bool m_bExtendedId              = false;
-        bool m_bFD                      = false; ///< CAN FD mode, set by the most recent open()/openDirect().
+        bool m_bOpen       = false;
+        bool m_bExtendedId = false;
+        bool m_bFD         = false; ///< CAN FD mode, set by the most recent open()/openDirect().
+
+        /// true when classic (non-FD) CAN also has to use the V4 event interface
+        /// (xlCanReceive()/xlCanTransmitEx()) because the platform's XL-API
+        /// library doesn't export the V3 xlReceive(). Linux: yes (confirmed
+        /// against libXlApi.so's exported-symbol table). Windows: no.
+#if defined(__linux__)
+        static constexpr bool k_bClassicOnV4 = true;
+#else
+        static constexpr bool k_bClassicOnV4 = false;
+#endif
+
+        /// Which XL-API event interface this channel's port was opened with.
+        bool usesV4Events() const
+        {
+            return m_bFD || k_bClassicOnV4;
+        }
+
         uint32_t m_u32DefaultTxId       = VECTOR_DEFAULT_TX_ID;
         uint32_t m_u32DefaultRxFilterId = VECTOR_DEFAULT_RX_FILTER_ID;
         mutable std::mutex m_mutex;
@@ -634,14 +661,15 @@ class Vector : public ICommDriver {
          *        skipping non-data events (chip state, bus errors, our own TX
          *        echo/ack, ...) and normalising it into out.
          *
-         * Branches internally on m_bFD:
-         *  - classic: drains xlReceive()/XLevent, accepting only XL_RECEIVE_MSG
+         * Branches internally on usesV4Events():
+         *  - V3 (Windows classic CAN only): drains xlReceive()/XLevent, accepting only XL_RECEIVE_MSG
          *    events without ERROR_FRAME/OVERRUN/NERR/TX_COMPLETED flags (the
          *    TX_COMPLETED skip is XL-API echoing every frame THIS port
          *    transmits back through xlReceive() as a confirmation event — see
          *    the original rationale in the class's git history, cross-checked
          *    against ETAS/RBEI's BUSMASTER XL-API driver).
-         *  - CAN FD: drains xlCanReceive()/XLcanRxEvent, accepting only
+         *  - V4 (CAN FD everywhere, plus classic CAN on Linux): drains
+         *    xlCanReceive()/XLcanRxEvent, accepting only
          *    XL_CAN_EV_TAG_RX_OK events (there is no ambiguity to resolve here:
          *    XL_CAN_EV_TAG_TX_OK is XL-API's own separate tag for our TX echo,
          *    so unlike the classic path there is no flag to inspect - any
