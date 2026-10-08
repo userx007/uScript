@@ -210,3 +210,29 @@ set(UPLUGIN_TARGETS
 )
 
 install(TARGETS ${UPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_UPLUGIN_DIR})
+
+# ---------------------------------------------------------------------------
+# Install Vector XL API Linux Libraries
+# ---------------------------------------------------------------------------
+
+set(XLAPI_LINUX_SOURCE_DIR "${CMAKE_SOURCE_DIR}/sources/src/libs/drivers/vector/third_party/vxlapi/linux")
+
+set(XLAPI_LINUX_FILES
+    "${XLAPI_LINUX_SOURCE_DIR}/libXlApi.so"
+    "${XLAPI_LINUX_SOURCE_DIR}/libXlApi.so.26"
+    "${XLAPI_LINUX_SOURCE_DIR}/libXlApi.so.26.30.16"
+)
+
+file(GLOB EXISTS_FILES ${XLAPI_LINUX_FILES})
+if(EXISTS_FILES)
+    install(
+        FILES ${XLAPI_LINUX_FILES}
+        DESTINATION ${INSTALL_EXTLIBS_DIR}
+        PERMISSIONS
+            OWNER_READ OWNER_WRITE OWNER_EXECUTE
+            GROUP_READ GROUP_EXECUTE
+            WORLD_READ
+    )
+else()
+    message(WARNING "Vector XL API Linux libraries not found in ${XLAPI_LINUX_SOURCE_DIR}. Install step will skip them.")
+endif()

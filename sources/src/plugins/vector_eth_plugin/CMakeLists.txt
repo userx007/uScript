@@ -30,3 +30,8 @@ target_link_libraries( ${PROJECT_NAME}
         uPluginOps
         uVector
 )
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    INSTALL_RPATH "$ORIGIN/../extlibs"
+    BUILD_RPATH "$ORIGIN/../extlibs"
+)
