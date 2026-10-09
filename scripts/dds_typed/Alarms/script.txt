@@ -1,7 +1,14 @@
+# observe the trafic on UDP (SHM was disabled in .xml so the data transfer occurs over UDS)
+# Note: the port 7400 is valid for domain 0, otherwise add the domain value to it, e.g d=12 => p=7412
+# sudo tcpdump -i lo udp portrange 7400-7500
+# sudo tcpdump -i lo udp port 7400
+# sudo tcpdump -ni lo -s 0 -vv udp
+
+
 LOAD_PLUGIN DDSTY
 
-DDSTY:1.CONFIG d=12 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
-DDSTY:2.CONFIG d=12 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
+DDSTY:1.CONFIG d=0 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
+DDSTY:2.CONFIG d=0 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
 
 DDSTY:1.CMD > LOAD ../../../uplugins/libAlarmsTypes.so 
 DDSTY:2.CMD > LOAD ../../../uplugins/libAlarmsTypes.so
@@ -37,6 +44,7 @@ DDSTY:1.CMD > PUBLISH Alarms__Crew_Role_In_Mission_State \
     A_relevantAlarmType_sourceID=[{A_resourceId=7;A_instanceId=8},{A_resourceId=9;A_instanceId=10}];\
     A_missionState_sourceID=[{A_resourceId=11;A_instanceId=12},{A_resourceId=13;A_instanceId=14}]
 
+
 DDSTY:1.CMD > PUBLISH Alarms__Alarm_Category_Specification \
     A_sourceID={A_resourceId=15;A_instanceId=16};\
     A_timeOfDataGeneration={A_second=17;A_nanoseconds=18};\
@@ -50,6 +58,7 @@ DDSTY:1.CMD > PUBLISH Alarms__Alarm_Category_Specification \
     A_categorisedConditionSpecification_sourceID=[{A_resourceId=27;A_instanceId=28},{A_resourceId=29;A_instanceId=30}];\
     A_notifyingToneSpecification_sourceID={A_resourceId=31;A_instanceId=32};\
     A_alarmCategory_sourceID={A_resourceId=33;A_instanceId=34}
+
 
 DDSTY:1.CMD > PUBLISH Alarms__Mission_State__setMissionState \
     A_recipientID={A_resourceId=35;A_instanceId=36};\
@@ -183,3 +192,4 @@ DDSTY:1.CMD > PUBLISH Alarms__Alarm_Category \
     A_categorisedActualAlarm_sourceID=[{A_resourceId=190;A_instanceId=191},{A_resourceId=192;A_instanceId=193}];\
     A_alarmCategorySpecification_sourceID={A_resourceId=194;A_instanceId=195}
 
+DELAY 3 sec

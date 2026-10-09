@@ -1,0 +1,21 @@
+# 1. compile and load the kernel module from ../uScript/firmware/systec_usbcan/
+# 2. setup the SYSTEC interface to can0 by executing: uScript/sources/src/testers/scripts/systec_can_setup.sh 
+# 3. disable status timeout for systec module on can0
+#    echo 0 | sudo tee /sys/class/net/can0/device/status_timeout
+# 4. setup the KCAN interface to can1 by executing: uScript/sources/src/testers/scripts/candlelight_can_setup.sh
+
+LOAD_PLUGIN SYSTEC
+LOAD_PLUGIN KCAN
+
+SYSTEC.CONFIG i=can0 r=0 w=2000 s=8 x=0x111
+KCAN.CONFIG i=can1 r=0 w=2000 s=8 x=0x111
+
+read ?= KCAN.CMD < &
+
+i ?= REPEAT loopend 10
+    x ?= MATH $i | HEX_32_BE
+    SYSTEC.CMD > H'$x$x' #~ 0x$i
+    DELAY 5 ms
+END_REPEAT loopend
+
+#DELAY 10 sec

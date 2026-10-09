@@ -5,15 +5,17 @@
 # runs as root / with CAP_NET_ADMIN. Use this script when you prefer to configure the interface
 # from the outside (e.g. the plugin runs unprivileged: it then just uses the interface as-is).
 #
-#   ./kcan_setup.sh [iface] [bitrate] [sample_point]     e.g.  ./kcan_setup.sh can0 500000 0.875
+#   ./systec_can_setup.sh [iface] [bitrate] [sample_point]     e.g.  ./systec_can_setup.sh can0 125000 0.875
 
-IFACE=${1:-can1}
+# disable status timeout
+# echo 0 | sudo tee /sys/class/net/can0/device/status_timeout
+
+IFACE=${1:-can0}
 BITRATE=${2:-125000}
 SP=${3:-0.875}
 
 sudo modprobe can
 sudo modprobe can_raw
-sudo modprobe gs_usb          # candleLight
 
 sudo ip link set "$IFACE" down 2>/dev/null
 if [ -n "$SP" ]; then

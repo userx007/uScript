@@ -1,0 +1,10 @@
+LOAD_PLUGIN KCAN
+
+#KCAN.INFO
+SYSTEC.INFO
+---
+KCAN.CONFIG i=can0 r=0 w=2000 s=8
+
+i ?= KCAN.CMD < &
+
+DELAY 10 sec

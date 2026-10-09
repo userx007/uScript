@@ -1,0 +1,21 @@
+# 1. compile and load the kernel module from ../uScript/firmware/systec_usbcan/
+# 2. set the interface up by executing: uScript/sources/src/testers/scripts/systec_can_setup.sh
+# 3. disable status timeout for systec module on can0
+#    echo 0 | sudo tee /sys/class/net/can0/device/status_timeout
+
+
+LOAD_PLUGIN SYSTEC
+
+SYSTEC.INFO
+
+SYSTEC.CONFIG i=can0 r=0 w=2000 s=8 x=111
+
+x ?= SYSTEC.HWCTRL devicenr
+x ?= SYSTEC.HWCTRL status_timeout
+
+x ?= SYSTEC.CMD < &
+
+SYSTEC.CMD > H'1122334455667788'
+
+
+DELAY 10 sec
