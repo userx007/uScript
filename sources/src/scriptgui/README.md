@@ -138,9 +138,9 @@ The button **SETUP** sits in the script tab bar right after **SAVE ALL**.
 * It is **enabled only when the folder of the active script contains a setup script**:
   `setup.sh` on Linux, `setup.bat` on Windows. Otherwise it stays disabled. The check is
   repeated on every tab switch, load, save and when the window regains focus.
-* **Single click** → runs the setup script (working directory = the script's folder, output
+* **Left click** → runs the setup script (working directory = the script's folder, output
   and exit code appear in the log panel, stderr in red).
-* **Double click** → opens the setup script in an editor tab (re-uses the tab if it is already
+* **Right click** → opens the setup script in an editor tab (re-uses the tab if it is already
   open). It is shown as plain text (no µScript highlighting) and **RUN** refuses to feed it to
   the interpreter.
 * If the setup script is open with unsaved edits, you are asked whether to save first.

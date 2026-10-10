@@ -23,6 +23,7 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QEvent>
+#include <QMouseEvent>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileDialog>
@@ -560,21 +561,15 @@ QWidget *MainWindow::buildCentralWidget()
         cLay->addWidget(saveBtn);
         // SETUP: enabled only when the folder of the active script holds
         // setup.sh (Linux) / setup.bat (Windows).
-        //   single click  → run it
-        //   double click  → open it in an editor tab
-        // A double click also delivers two clicked() signals, so the run is
-        // deferred by the system double-click interval and cancelled when the
-        // second click arrives.
+        //   left click  → run it (immediately)
+        //   right click → open it in an editor tab (see eventFilter())
         m_setupBtn = new QPushButton("SETUP", cornerBar);
         m_setupBtn->setObjectName("setupBtn");
         m_setupBtn->setFixedHeight(24);
         m_setupBtn->setEnabled(false);
         m_setupBtn->setToolTip(QString("No %1 in the folder of the active script").arg(SetupRunner::setupFileName()));
-        connect(m_setupBtn, &QPushButton::clicked, this, &MainWindow::onSetupClicked);
-
-        m_setupClickTimer = new QTimer(this);
-        m_setupClickTimer->setSingleShot(true);
-        connect(m_setupClickTimer, &QTimer::timeout, this, &MainWindow::runSetupScript);
+        connect(m_setupBtn, &QPushButton::clicked, this, &MainWindow::runSetupScript);
+        m_setupBtn->installEventFilter(this);
 
         m_setupRunner = new SetupRunner(this);
         connect(m_setupRunner, &SetupRunner::outputLine, this, [this](const QString &text, bool bErr) {
@@ -2384,7 +2379,7 @@ void MainWindow::updateSetupButton()
 
     const bool bHas    = !m_setupPath.isEmpty();
     m_setupBtn->setEnabled(bHas);
-    m_setupBtn->setToolTip(bHas ? QString("Click: run %1\nDouble-click: edit it").arg(m_setupPath)
+    m_setupBtn->setToolTip(bHas ? QString("Left-click: run %1\nRight-click: edit it").arg(m_setupPath)
                                 : QString("No %1 in the folder of the active script").arg(SetupRunner::setupFileName()));
 }
 
@@ -2393,17 +2388,6 @@ void MainWindow::setSetupRunning(bool bOn)
     m_setupBtn->setProperty("running", bOn);
     m_setupBtn->style()->unpolish(m_setupBtn);
     m_setupBtn->style()->polish(m_setupBtn);
-}
-
-void MainWindow::onSetupClicked()
-{
-    if (m_setupClickTimer->isActive()) {
-        // Second click inside the double-click interval → edit, don't run.
-        m_setupClickTimer->stop();
-        editSetupScript();
-        return;
-    }
-    m_setupClickTimer->start(QApplication::doubleClickInterval());
 }
 
 void MainWindow::editSetupScript()
@@ -2541,10 +2525,27 @@ void MainWindow::applyFontSize()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Event filter — INI path edit click-to-open
+//  Event filter — INI path edit click-to-open, SETUP button right-click
 // ─────────────────────────────────────────────────────────────────────────────
 bool MainWindow::eventFilter(QObject *pObj, QEvent *pEv)
 {
+    // SETUP button: right click (press + release inside the button) → edit the setup script.
+    // Only an enabled button receives mouse events, i.e. only when a setup script exists.
+    if (pObj == m_setupBtn) {
+        if (pEv->type() == QEvent::MouseButtonRelease) {
+            const auto *me = static_cast<QMouseEvent *>(pEv);
+            if (me->button() == Qt::RightButton) {
+                if (m_setupBtn->rect().contains(me->position().toPoint())) {
+                    editSetupScript();
+                }
+                return true;
+            }
+        } else if (pEv->type() == QEvent::MouseButtonPress &&
+                   static_cast<QMouseEvent *>(pEv)->button() == Qt::RightButton) {
+            return true; // swallow so the button doesn't react to the right press
+        }
+        return QMainWindow::eventFilter(pObj, pEv);
+    }
     if (pEv->type() == QEvent::MouseButtonPress &&
         (pObj == m_iniPathEdit || pObj == m_scriptPathEdit)) {
         const QString path = static_cast<QLineEdit *>(pObj)->text().trimmed();
