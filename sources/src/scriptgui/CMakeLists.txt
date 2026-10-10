@@ -23,6 +23,7 @@ set(SOURCES
     src/CommScriptHighlighter.cpp
     src/IniHighlighter.cpp
     src/ShellTerminal.cpp
+    src/SetupRunner.cpp
     src/CommDumpView.cpp
     src/CommDumpModel.cpp
 )
@@ -38,6 +39,7 @@ set(HEADERS
     src/CommScriptHighlighter.hpp
     src/IniHighlighter.hpp
     src/ShellTerminal.hpp
+    src/SetupRunner.hpp
 )
 
 qt_add_executable(ScriptFrontend

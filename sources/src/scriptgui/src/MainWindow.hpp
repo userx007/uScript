@@ -37,6 +37,7 @@ class QTabWidget;
 class QTimer;
 class QWidget;
 class ScriptViewer;
+class SetupRunner;
 class ShellTerminal;
 class StatusLed;
 
@@ -95,6 +96,11 @@ class MainWindow : public QMainWindow {
         void onCommScriptRequested(const QString &scriptName);
         void onIncludeFileRequested(const QString &resolvedPath); // INCLUDE "file" clicked in editor
 
+        // SETUP button (setup.sh / setup.bat next to the active script)
+        void onSetupClicked();    // single click → run (delayed), double click → edit
+        void runSetupScript();    // runs m_setupPath, asking for a sudo/admin password if needed
+        void editSetupScript();   // opens m_setupPath in an editor tab
+
         void onProcessOutput();
         void onProcessError();
         void onProcessFinished(int iExitCode, QProcess::ExitStatus status);
@@ -116,6 +122,10 @@ class MainWindow : public QMainWindow {
         void saveCurrentTab();
         void saveAllTabs();
         void updateTabModifiedState(ScriptViewer *pViewer);
+
+        // ── Setup script (SETUP button) ────────────────────────────────────────
+        void updateSetupButton();            // enable only if the active script's folder has setup.sh / setup.bat
+        void setSetupRunning(bool bOn);      // visual "running" state of the button
 
         // ── Protocol dispatch ──────────────────────────────────────────────────
         void dispatchLine(const QString &raw);
@@ -160,6 +170,10 @@ class MainWindow : public QMainWindow {
         QPushButton *m_startStopBtn;
         QPushButton *m_reloadBtn = nullptr; // reloads every open script/INI file from disk
         QPushButton *m_resetBtn  = nullptr; // clears error bars without clearing content
+        QPushButton *m_setupBtn  = nullptr; // runs (click) / edits (double-click) setup.sh | setup.bat
+        QTimer *m_setupClickTimer = nullptr; // tells a single click from a double click
+        SetupRunner *m_setupRunner = nullptr;
+        QString m_setupPath;                 // setup script of the active tab's folder; empty = none
         StatusLed *m_led;
         QLabel *m_ledLabel;
 

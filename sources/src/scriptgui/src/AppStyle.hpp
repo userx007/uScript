@@ -156,6 +156,30 @@ QPushButton#browseBtn {
     font-size: 14px; /* Icon-like size */
 }
 
+/* SETUP button (setup.sh / setup.bat): same size as the other tab-bar buttons,
+   brighter when available, amber while the script is running. */
+QPushButton#setupBtn {
+    min-width: 28px;
+    max-width: 60px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: normal;
+    color: #c8d0e0;
+}
+QPushButton#setupBtn:hover {
+    color: #ffffff;
+    border-color: #4a9eff;
+    background-color: #252a35;
+}
+QPushButton#setupBtn:disabled {
+    color: #404855;
+    border-color: #1c1f27;
+}
+QPushButton#setupBtn[running="true"] {
+    color: #e5c07b;
+    border-color: #e5c07b;
+}
+
 /* ── Script viewers (QPlainTextEdit) ─────────────────────────────────────── */
 
 QPlainTextEdit#scriptView {

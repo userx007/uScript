@@ -3,6 +3,7 @@
 #include "CommScriptHighlighter.hpp"
 #include "IniHighlighter.hpp"
 #include "ScriptHighlighter.hpp"
+#include "SetupRunner.hpp"
 #include "uSharedScriptRegex.hpp"
 
 #include <QAbstractTextDocumentLayout>
@@ -725,7 +726,11 @@ void ScriptViewer::loadScript(const QString &filePath)
     m_currentFile = filePath;
 
     // ── swap highlighter only when the file type changes ─────────────────
-    if (filePath.endsWith(".ini", Qt::CaseInsensitive)) {
+    if (SetupRunner::isSetupFileName(filePath)) {
+        // setup.sh / setup.bat are shell scripts, not µScripts: plain text.
+        // (setHighlighting(false) detaches whichever highlighter is active.)
+        m_editor->setHighlighting(false);
+    } else if (filePath.endsWith(".ini", Qt::CaseInsensitive)) {
         if (!m_editor->hasIniHighlighter()) {
             m_editor->setIniHighlighting(true);
         }

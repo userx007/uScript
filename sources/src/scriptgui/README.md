@@ -131,3 +131,32 @@ exec "$DIR/ScriptFrontend" "$@"
 ├── ScriptFrontend
 └── uscript
 
+# SETUP button (setup.sh / setup.bat)
+
+The button **SETUP** sits in the script tab bar right after **SAVE ALL**.
+
+* It is **enabled only when the folder of the active script contains a setup script**:
+  `setup.sh` on Linux, `setup.bat` on Windows. Otherwise it stays disabled. The check is
+  repeated on every tab switch, load, save and when the window regains focus.
+* **Single click** → runs the setup script (working directory = the script's folder, output
+  and exit code appear in the log panel, stderr in red).
+* **Double click** → opens the setup script in an editor tab (re-uses the tab if it is already
+  open). It is shown as plain text (no µScript highlighting) and **RUN** refuses to feed it to
+  the interpreter.
+* If the setup script is open with unsaved edits, you are asked whether to save first.
+
+## Elevated rights
+
+| | Linux (`setup.sh`) | Windows (`setup.bat`) |
+|---|---|---|
+| Detection | a `sudo` command outside comment lines | well-known admin-only commands (`net start`, `sc config`, `netsh`, `reg add HKLM`, `schtasks`, `choco`, ...) |
+| Not needed / already root-admin / passwordless sudo | runs directly, **no dialog** | runs directly, **no dialog** |
+| Needed | a password dialog appears; the password is checked first (`sudo -S -k -v`) and re-requested if wrong | a dialog asks for an administrator account + password |
+| Execution | `bash setup.sh`; `sudo` inside the script is routed through a private `SUDO_ASKPASS` helper (works in pipes and repeated calls, no terminal needed) | PowerShell `Start-Process -Credential`, output tailed from redirect files |
+
+The dialog also has **Run without password** (for when the detection is wrong) and **Cancel**.
+The password is only kept in memory for the duration of the run; the askpass helper lives in a
+private temp directory that is removed when the script ends.
+
+Notes: the script runs without a terminal and with stdin closed, so it must be non-interactive
+(`apt-get -y`, no `read` prompts). Closing the app while the setup runs asks for confirmation.

@@ -5,6 +5,7 @@
 #include "ICommDumpProtocol.hpp"
 #include "LogViewer.hpp"
 #include "ScriptViewer.hpp"
+#include "SetupRunner.hpp"
 #include "ShellTerminal.hpp"
 #include "StatusLed.hpp"
 #include "uSharedScriptRegex.hpp"
@@ -16,6 +17,8 @@
 #include <QColor>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -25,6 +28,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFlags>
+#include <QFormLayout>
 #include <QFont>
 #include <QFontDatabase>
 #include <QFrame>
@@ -101,6 +105,106 @@ static QFont buildEditorFont(int iPointSize)
     cache.insert(iPointSize, f);
     return f;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Setup-script credentials dialog
+// ─────────────────────────────────────────────────────────────────────────────
+namespace {
+
+enum class SetupAuth {
+    Run,                // run with the entered password / credentials
+    RunWithoutPassword, // the script-text heuristic was wrong: just run it
+    Cancel
+};
+
+// Asks for the sudo password (Linux) or an administrator account + password
+// (Windows).  `errorText` (e.g. "Incorrect password.") is shown in red when
+// the dialog is re-presented after a failed check.
+SetupAuth askSetupCredentials(QWidget *pParent, const QString &scriptName, const QString &errorText,
+                              QString &user, QString &password)
+{
+    QDialog dlg(pParent);
+    dlg.setWindowTitle(QStringLiteral("Setup – administrator rights"));
+    dlg.setMinimumWidth(380);
+
+    auto *lay  = new QVBoxLayout(&dlg);
+    auto *info = new QLabel(&dlg);
+    info->setWordWrap(true);
+#ifdef Q_OS_WIN
+    info->setText(QStringLiteral("<b>%1</b> needs administrator rights.<br>"
+                                 "Enter the credentials of an administrator account.")
+                      .arg(scriptName.toHtmlEscaped()));
+#else
+    info->setText(QStringLiteral("<b>%1</b> uses <tt>sudo</tt>.<br>Enter your password to continue.")
+                      .arg(scriptName.toHtmlEscaped()));
+#endif
+    lay->addWidget(info);
+
+    auto *form   = new QFormLayout();
+    auto *userEd = new QLineEdit(user, &dlg);
+    auto *pwEd   = new QLineEdit(&dlg);
+    pwEd->setEchoMode(QLineEdit::Password);
+    pwEd->setPlaceholderText(QStringLiteral("Password"));
+#ifdef Q_OS_WIN
+    if (user.isEmpty()) {
+        userEd->setText(QStringLiteral("Administrator"));
+    }
+    form->addRow(QStringLiteral("User:"), userEd);
+#else
+    userEd->hide();
+#endif
+    form->addRow(QStringLiteral("Password:"), pwEd);
+    lay->addLayout(form);
+
+    if (!errorText.isEmpty()) {
+        auto *err = new QLabel(errorText, &dlg);
+        err->setStyleSheet(QStringLiteral("color: #ff5555;"));
+        err->setWordWrap(true);
+        lay->addWidget(err);
+    }
+
+    auto *box      = new QDialogButtonBox(&dlg);
+    auto *runBtn   = box->addButton(QStringLiteral("Run"), QDialogButtonBox::AcceptRole);
+    auto *plainBtn = box->addButton(QStringLiteral("Run without password"), QDialogButtonBox::ActionRole);
+    auto *cancel   = box->addButton(QDialogButtonBox::Cancel);
+    plainBtn->setToolTip(QStringLiteral("The script does not actually need elevated rights"));
+    runBtn->setDefault(true);
+    lay->addWidget(box);
+
+    SetupAuth result = SetupAuth::Cancel;
+    QObject::connect(box, &QDialogButtonBox::clicked, &dlg, [&](QAbstractButton *b) {
+        result = (b == runBtn)     ? SetupAuth::Run
+                 : (b == plainBtn) ? SetupAuth::RunWithoutPassword
+                                   : SetupAuth::Cancel;
+        if (b == cancel) {
+            dlg.reject();
+        } else {
+            dlg.accept();
+        }
+    });
+    const auto refreshRun = [&] {
+#ifdef Q_OS_WIN
+        runBtn->setEnabled(!pwEd->text().isEmpty() && !userEd->text().trimmed().isEmpty());
+#else
+        runBtn->setEnabled(!pwEd->text().isEmpty()); // the user field is Windows-only
+#endif
+    };
+    QObject::connect(pwEd, &QLineEdit::textChanged, &dlg, refreshRun);
+    QObject::connect(userEd, &QLineEdit::textChanged, &dlg, refreshRun);
+    refreshRun();
+    pwEd->setFocus();
+
+    dlg.exec();
+
+    if (result == SetupAuth::Run) {
+        user     = userEd->text().trimmed();
+        password = pwEd->text();
+    }
+    pwEd->clear();
+    return result;
+}
+
+} // namespace
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Construction
@@ -182,6 +286,14 @@ MainWindow::MainWindow(QWidget *pParent)
     const int clampedTab = qBound(0, activeTab, m_tabWidget->count() - 1);
     m_tabWidget->setCurrentIndex(clampedTab);
     syncPathEdit(clampedTab);
+    updateSetupButton();
+
+    // setup.sh / setup.bat may be created or deleted while the app is in the
+    // background: re-check whenever the window comes back to the foreground.
+    connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState st) {
+        if (st == Qt::ApplicationActive) {
+            updateSetupButton();
+        } });
 
     applyFontSize(); // called here so all restored tabs get the right font
     setStatus("Ready");
@@ -446,7 +558,38 @@ QWidget *MainWindow::buildCentralWidget()
 
         cLay->addWidget(addTabBtn);
         cLay->addWidget(saveBtn);
+        // SETUP: enabled only when the folder of the active script holds
+        // setup.sh (Linux) / setup.bat (Windows).
+        //   single click  → run it
+        //   double click  → open it in an editor tab
+        // A double click also delivers two clicked() signals, so the run is
+        // deferred by the system double-click interval and cancelled when the
+        // second click arrives.
+        m_setupBtn = new QPushButton("SETUP", cornerBar);
+        m_setupBtn->setObjectName("setupBtn");
+        m_setupBtn->setFixedHeight(24);
+        m_setupBtn->setEnabled(false);
+        m_setupBtn->setToolTip(QString("No %1 in the folder of the active script").arg(SetupRunner::setupFileName()));
+        connect(m_setupBtn, &QPushButton::clicked, this, &MainWindow::onSetupClicked);
+
+        m_setupClickTimer = new QTimer(this);
+        m_setupClickTimer->setSingleShot(true);
+        connect(m_setupClickTimer, &QTimer::timeout, this, &MainWindow::runSetupScript);
+
+        m_setupRunner = new SetupRunner(this);
+        connect(m_setupRunner, &SetupRunner::outputLine, this, [this](const QString &text, bool bErr) {
+            // stderr in red; the log viewer renders ANSI colours
+            m_w3->appendLine(bErr ? QString("\x1b[31m%1\x1b[0m").arg(text) : text); });
+        connect(m_setupRunner, &SetupRunner::finished, this, [this](int iCode, bool bCrashed) {
+            setSetupRunning(false);
+            const QString name = SetupRunner::setupFileName();
+            const QString msg  = bCrashed ? QString("%1 was terminated").arg(name)
+                                          : QString("%1 finished (exit code %2)").arg(name).arg(iCode);
+            m_w3->appendStatus(msg);
+            setStatus(msg); });
+
         cLay->addWidget(saveAllBtn);
+        cLay->addWidget(m_setupBtn);
         m_tabWidget->setCornerWidget(cornerBar, Qt::TopRightCorner);
     }
 
@@ -764,6 +907,7 @@ void MainWindow::loadIntoTab(int iIndex, const QString &filePath)
 
     m_w3->appendStatus(QString("Loaded: %1").arg(name));
     setStatus(QString("Script loaded: %1").arg(name));
+    updateSetupButton();
 }
 
 void MainWindow::loadIntoCurrentTab(const QString &filePath)
@@ -793,13 +937,16 @@ void MainWindow::syncPathEdit(int iTabIndex)
     // Only update the script field when the active tab holds a script.
     // When an .ini tab is active the script field must keep the last script
     // path so clicking it still navigates back to the correct script tab.
-    if (!viewer->isIniFile()) {
+    // setup.sh / setup.bat tabs are shell scripts, not µScripts: like .ini tabs
+    // they must not replace the script path that RUN will execute.
+    const bool bEditorOnly = viewer->isIniFile() || SetupRunner::isSetupFileName(viewer->currentFile());
+    if (!bEditorOnly) {
         m_scriptPathEdit->setText(viewer->currentFile());
         m_w3->setScriptPath(viewer->currentFile());
     }
 
     // Auto-fill the INI field from the script directory only for script tabs.
-    if (!viewer->currentFile().isEmpty() && !viewer->isIniFile()) {
+    if (!viewer->currentFile().isEmpty() && !bEditorOnly) {
         const QString scriptDir  = QFileInfo(viewer->currentFile()).absolutePath();
         const QString defaultIni = scriptDir + "/uscript.ini";
         const bool isEmpty       = m_iniPathEdit->text().trimmed().isEmpty();
@@ -877,6 +1024,7 @@ void MainWindow::onTabCloseRequested(int iIndex)
 void MainWindow::onCurrentTabChanged(int iIndex)
 {
     syncPathEdit(iIndex);
+    updateSetupButton();
 
     // Highlight the running tab label so the user can see which one is active
     for (int i = 0; i < m_tabWidget->count(); ++i) {
@@ -933,6 +1081,11 @@ void MainWindow::onStartStop()
     }
     if (viewer->isIniFile()) {
         m_w3->appendStatus(QString("'%1' is a configuration file — use the editor to view/edit it, not Run.")
+                               .arg(QFileInfo(scriptPath).fileName()));
+        return;
+    }
+    if (SetupRunner::isSetupFileName(scriptPath)) {
+        m_w3->appendStatus(QString("'%1' is a shell script — use the SETUP button to run it, not Run.")
                                .arg(QFileInfo(scriptPath).fileName()));
         return;
     }
@@ -2218,6 +2371,139 @@ void MainWindow::setRunning(bool bOn)
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Setup script  (SETUP button)
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::updateSetupButton()
+{
+    if (!m_setupBtn) {
+        return;
+    }
+    const auto *viewer = currentViewer();
+    m_setupPath        = viewer ? SetupRunner::findSetupScript(viewer->currentFile()) : QString();
+
+    const bool bHas    = !m_setupPath.isEmpty();
+    m_setupBtn->setEnabled(bHas);
+    m_setupBtn->setToolTip(bHas ? QString("Click: run %1\nDouble-click: edit it").arg(m_setupPath)
+                                : QString("No %1 in the folder of the active script").arg(SetupRunner::setupFileName()));
+}
+
+void MainWindow::setSetupRunning(bool bOn)
+{
+    m_setupBtn->setProperty("running", bOn);
+    m_setupBtn->style()->unpolish(m_setupBtn);
+    m_setupBtn->style()->polish(m_setupBtn);
+}
+
+void MainWindow::onSetupClicked()
+{
+    if (m_setupClickTimer->isActive()) {
+        // Second click inside the double-click interval → edit, don't run.
+        m_setupClickTimer->stop();
+        editSetupScript();
+        return;
+    }
+    m_setupClickTimer->start(QApplication::doubleClickInterval());
+}
+
+void MainWindow::editSetupScript()
+{
+    if (m_setupPath.isEmpty() || !QFileInfo::exists(m_setupPath)) {
+        updateSetupButton();
+        return;
+    }
+    const QString canon = QFileInfo(m_setupPath).canonicalFilePath();
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v && !v->currentFile().isEmpty() && QFileInfo(v->currentFile()).canonicalFilePath() == canon) {
+            m_tabWidget->setCurrentIndex(i); // already open
+            return;
+        }
+    }
+    addTab(m_setupPath);
+}
+
+void MainWindow::runSetupScript()
+{
+    const QString path = m_setupPath;
+    if (path.isEmpty() || !QFileInfo::exists(path)) {
+        m_w3->appendStatus(QString("%1 not found").arg(SetupRunner::setupFileName()));
+        updateSetupButton();
+        return;
+    }
+    if (m_setupRunner->isRunning()) {
+        m_w3->appendStatus(QString("%1 is already running").arg(QFileInfo(path).fileName()));
+        return;
+    }
+
+    const QString name  = QFileInfo(path).fileName();
+    const QString canon = QFileInfo(path).canonicalFilePath();
+
+    // The setup script may be open in a tab with unsaved edits: running the
+    // file on disk would silently ignore them.
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (!v || !v->isModified() || v->currentFile().isEmpty() ||
+            QFileInfo(v->currentFile()).canonicalFilePath() != canon) {
+            continue;
+        }
+        QMessageBox dlg(this);
+        dlg.setWindowTitle("Unsaved changes");
+        dlg.setIcon(QMessageBox::Question);
+        dlg.setText(QString("\"%1\" has unsaved changes.").arg(name));
+        auto *saveBtn = dlg.addButton("Save and run", QMessageBox::AcceptRole);
+        auto *diskBtn = dlg.addButton("Run saved version", QMessageBox::DestructiveRole);
+        dlg.addButton("Cancel", QMessageBox::RejectRole);
+        dlg.exec();
+        if (dlg.clickedButton() == saveBtn) {
+            if (!v->save()) {
+                return;
+            }
+            updateTabModifiedState(v);
+        } else if (dlg.clickedButton() != diskBtn) {
+            return; // cancel
+        }
+        break;
+    }
+
+    // ── Elevation ────────────────────────────────────────────────────────────
+    // Only ask when the script looks like it needs sudo / admin rights AND we
+    // are not already allowed (root / admin, or sudo works without a password).
+    // Otherwise the script is simply executed.
+    QString user;
+    QString password;
+    if (SetupRunner::needsElevation(path) && !SetupRunner::isElevatedNow()) {
+        QString errorText;
+        for (;;) {
+            const SetupAuth res = askSetupCredentials(this, name, errorText, user, password);
+            if (res == SetupAuth::Cancel) {
+                m_w3->appendStatus(QString("%1 cancelled").arg(name));
+                return;
+            }
+            if (res == SetupAuth::RunWithoutPassword) {
+                user.clear();
+                password.clear();
+                break;
+            }
+            QString verifyError;
+            QApplication::setOverrideCursor(Qt::WaitCursor);
+            const bool bOk = SetupRunner::verifyPassword(password, &verifyError);
+            QApplication::restoreOverrideCursor();
+            if (bOk) {
+                break;
+            }
+            errorText = verifyError;
+            password.clear();
+        }
+    }
+
+    m_w3->appendStatus(QString("Running %1").arg(path));
+    setStatus(QString("Running %1 …").arg(name));
+    setSetupRunning(true);
+    m_setupRunner->start(path, user, password);
+    password.clear();
+}
+
 void MainWindow::setStatus(const QString &msg)
 {
     m_statusText->setText(msg);
@@ -2338,6 +2624,18 @@ void MainWindow::closeEvent(QCloseEvent *pEv)
         terminateProcess();
     }
 
+    if (m_setupRunner && m_setupRunner->isRunning()) {
+        const auto ans = QMessageBox::question(
+            this, "Setup running",
+            QString("%1 is still running.\nTerminate it and quit?").arg(SetupRunner::setupFileName()),
+            QMessageBox::Yes | QMessageBox::Cancel);
+        if (ans != QMessageBox::Yes) {
+            pEv->ignore();
+            return;
+        }
+        m_setupRunner->stop();
+    }
+
     // Check comm script for unsaved changes first
     if (m_w2 && m_w2->isModified()) {
         QMessageBox dlg(this);
@@ -2427,6 +2725,7 @@ void MainWindow::saveCurrentTab()
     if (viewer->save()) {
         updateTabModifiedState(viewer);
         setStatus(QString("Saved: %1").arg(QFileInfo(viewer->currentFile()).fileName()));
+        updateSetupButton(); // "save as" may have moved the script to another folder
     }
 }
 
