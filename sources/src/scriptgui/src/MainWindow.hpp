@@ -47,7 +47,7 @@ class StatusLed;
  * Layout:
  *
  *   ┌─ toolbar ──────────────────────────────────────────────────────────┐
- *   │  [script path …] [▶ RUN / ■ STOP]  ● led  state text               │
+ *   │  [script path …] Config:Open Setup:Open Run ▶ RUN / ■ STOP] ● led  │
  *   └────────────────────────────────────────────────────────────────────┘
  *   ┌─ hSplitter ────────────────────────────────────────────────────────┐
  *   │  ┌─ vSplitter ──────────────────┐  ┌─ w3 log ─────────────────────┐│
@@ -96,9 +96,10 @@ class MainWindow : public QMainWindow {
         void onCommScriptRequested(const QString &scriptName);
         void onIncludeFileRequested(const QString &resolvedPath); // INCLUDE "file" clicked in editor
 
-        // SETUP button (setup.sh / setup.bat next to the active script)
+        // Toolbar project buttons (uscript.ini / setup.sh|bat next to the active script)
+        void onConfigButton();    // Open / Create uscript.ini
+        void onSetupOpenButton(); // Open / Create setup.sh|bat
         void runSetupScript();    // runs m_setupPath, asking for a sudo/admin password if needed
-        void editSetupScript();   // opens m_setupPath in an editor tab
 
         void onProcessOutput();
         void onProcessError();
@@ -122,9 +123,13 @@ class MainWindow : public QMainWindow {
         void saveAllTabs();
         void updateTabModifiedState(ScriptViewer *pViewer);
 
-        // ── Setup script (SETUP button) ────────────────────────────────────────
-        void updateSetupButton();            // enable only if the active script's folder has setup.sh / setup.bat
-        void setSetupRunning(bool bOn);      // visual "running" state of the button
+        // ── Config / setup buttons ─────────────────────────────────────────────
+        QString activeScriptPath() const;                 // script that RUN would execute (ignores ini / setup tabs)
+        void refreshProjectButtons();                     // re-evaluate labels / enabled state of Config + Setup buttons
+        void openOrSwitchToFile(const QString &filePath); // open in a tab, or activate the tab already showing it
+        bool createFile(const QString &filePath, const QByteArray &content);
+        void onViewerSaved(const QString &filePath);      // a tab was written to disk
+        void setSetupRunning(bool bOn);                   // visual "running" state of the Run button
 
         // ── Protocol dispatch ──────────────────────────────────────────────────
         void dispatchLine(const QString &raw);
@@ -164,14 +169,17 @@ class MainWindow : public QMainWindow {
 
         // ── UI elements ────────────────────────────────────────────────────────
         QLineEdit *m_scriptPathEdit;
-        QLineEdit *m_iniPathEdit; // toolbar ini-config field
         QLineEdit *m_interpEdit;  // toolbar interpreter-path field
         QPushButton *m_startStopBtn;
         QPushButton *m_reloadBtn = nullptr; // reloads every open script/INI file from disk
         QPushButton *m_resetBtn  = nullptr; // clears error bars without clearing content
-        QPushButton *m_setupBtn  = nullptr; // runs (left click) / edits (right click) setup.sh | setup.bat
-        SetupRunner *m_setupRunner = nullptr;
-        QString m_setupPath;                 // setup script of the active tab's folder; empty = none
+        QPushButton *m_configBtn     = nullptr; // "Open" / "Create" uscript.ini next to the active script
+        QPushButton *m_setupOpenBtn  = nullptr; // "Open" / "Create" setup.sh | setup.bat
+        QPushButton *m_setupRunBtn   = nullptr; // "Run" setup.sh | setup.bat
+        SetupRunner *m_setupRunner   = nullptr;
+        QString m_setupPath;                    // setup script next to the active script; empty = none
+        QString m_configPath;                   // uscript.ini next to the active script; empty = none
+        QSet<QString> m_setupUnsaved;           // canonical paths of freshly created setup scripts not saved yet
         StatusLed *m_led;
         QLabel *m_ledLabel;
 
@@ -200,7 +208,7 @@ class MainWindow : public QMainWindow {
         bool m_running   = false;
         int m_runningTab = -1; // tab index that is currently executing
         QString m_interpreterPath;
-        QString m_iniPath; // -c argument for the interpreter
+        QString m_iniPath; // -c argument for the interpreter (uscript.ini next to the active script, if any)
 
         QByteArray m_lineBuf;
         QByteArray m_errBuf;                 // stderr accumulation buffer (mirrors m_lineBuf)

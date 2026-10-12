@@ -187,6 +187,7 @@ class ScriptViewer : public QFrame {
 
     signals:
         void modificationChanged(bool bModified);            // forwarded from QTextDocument
+        void saved(const QString &filePath);                 // emitted after a successful write to disk
         void commScriptRequested(const QString &scriptName); // user clicked a .SCRIPT line
 
         // Emitted when the cursor lands on an INCLUDE "path" line.

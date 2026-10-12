@@ -1,87 +1,51 @@
 cmake_minimum_required(VERSION 3.25)
 
+# Shared by every plugin (always built).
 add_subdirectory(common/commandexec)
 add_subdirectory(common/pluginsettings)
-add_subdirectory(buspirate_plugin)
-add_subdirectory(ch341_plugin)
-add_subdirectory(ch347_plugin)
-add_subdirectory(cp2112_plugin)
-add_subdirectory(dspki2c_plugin)
-add_subdirectory(dspkspi_plugin)
-add_subdirectory(ftdi2232_plugin)
-add_subdirectory(ftdi232h_plugin)
-add_subdirectory(ftdi245_plugin)
-add_subdirectory(ftdi4232_plugin)
-add_subdirectory(hydrabus_plugin)
-add_subdirectory(pcan_plugin)
-add_subdirectory(shell_plugin)
-add_subdirectory(slcan_plugin)
-add_subdirectory(candlelight_plugin)
-add_subdirectory(dds_plugin)
-add_subdirectory(dds_typed_plugin)
-add_subdirectory(uart_plugin)
-add_subdirectory(uartmon_plugin)
-add_subdirectory(udp_plugin)
-add_subdirectory(tcpip_plugin)
-add_subdirectory(w5500_plugin)
-add_subdirectory(enc28J60_plugin)
-add_subdirectory(lan8720_plugin)
-add_subdirectory(mqtt_plugin)
-add_subdirectory(websocket_plugin)
-add_subdirectory(modbus_plugin)
-add_subdirectory(profibus_plugin)
-add_subdirectory(grpc_plugin)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Linux-kernel-only plugins.
-#
-# Each of these wraps a driver that intentionally FATAL_ERRORs its own
-# CMakeLists.txt on non-Linux platforms, because it talks directly to a
-# Linux-specific kernel ABI with no Windows equivalent to port to:
-#   uKI2C    -> linux/i2c-dev.h            (ki2c_plugin)
-#   uKSpi    -> linux/spi/spidev.h         (kspi_plugin)
-#   uKVCan   -> linux/can.h, linux/can/raw.h (kvcan_plugin)
-#   uRawEth  -> linux/if_packet.h (AF_PACKET) (raweth_plugin)
-#   uSystecCan -> linux/can.h + systec_can.ko sysfs layout (systec_plugin)
-#
-# Left unconditional, add_subdirectory()'ing these on Windows aborts CMake
-# configuration for the *entire* project the moment it reaches one of them
-# (message(FATAL_ERROR ...) is fatal, not skippable) — so every other plugin
-# below this point would never even get configured. Gating them here lets a
-# Windows build configure and produce every plugin that has a real Windows
-# backend; these five simply aren't part of that build.
-# ─────────────────────────────────────────────────────────────────────────────
-if(UNIX AND NOT APPLE)
-    add_subdirectory(ki2c_plugin)
-    add_subdirectory(kspi_plugin)
-    add_subdirectory(kcan_plugin)
-    add_subdirectory(kvcan_plugin)
-    add_subdirectory(raweth_plugin)
-    add_subdirectory(systec_plugin)
-endif()
+# Each plugin is built only if its USCRIPT_PLUGIN_<NAME> option is ON; the
+# drivers / protocols it needs are then configured automatically (see
+# cmake/uScriptFeatures.cmake). Platform restrictions are handled there too:
+# on a platform that can't build a plugin its flag is forced OFF, so no
+# #if(UNIX AND NOT APPLE) / #if(WIN32 OR LINUX) guard is needed here.
+uscript_add_subdirectory(USCRIPT_PLUGIN_BUSPIRATE   buspirate_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_CH341       ch341_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_CH347       ch347_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_CP2112      cp2112_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_DSPKI2C     dspki2c_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_DSPKSPI     dspkspi_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_FTDI2232    ftdi2232_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_FTDI232H    ftdi232h_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_FTDI245     ftdi245_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_FTDI4232    ftdi4232_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_HYDRABUS    hydrabus_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_PCAN        pcan_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_SHELL       shell_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_SLCAN       slcan_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_CANDLELIGHT candlelight_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_DDS         dds_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_DDS_TYPED   dds_typed_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_UART        uart_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_UARTMON     uartmon_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_UDP         udp_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_TCPIP       tcpip_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_W5500       w5500_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_ENC28J60    enc28J60_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_LAN8720     lan8720_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_MQTT        mqtt_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_WEBSOCKET   websocket_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_MODBUS      modbus_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_PROFIBUS    profibus_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_GRPC        grpc_plugin)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# vector_plugin (CAN/CAN-FD) and vector_eth_plugin (Ethernet) — both Windows
-# and Linux. Both depend on uVector/uVectorEth, which depend on Vector
-# Informatik's XL Driver Library (vxlapi): Vector's own SDK on Windows, the
-# unofficial libXlApi.so.26.20.14/.26.30.16 port on Linux (see
-# src/lib/drivers/vector/third_party/vxlapi/include/vxlapi_linux.h's own
-# header comment) — no macOS build either way. Same rationale as the
-# Linux-kernel-only guard above, mirrored: both plugins' own CMakeLists.txt
-# FATAL_ERROR on any other platform, so they're gated here to avoid aborting
-# the whole configure on an unsupported-platform build. See
-# src/lib/drivers/CMakeLists.txt's matching guard around add_subdirectory(vector);
-# both must stay in sync.
-#
-# vector_eth_plugin's Linux path uses an architecturally different XL-API
-# subsystem than Windows (the Network/virtual-switch API, not the direct
-# port-based one) — confirmed against real symbol-table dumps of two separate
-# driver releases, not just header presence — but it's a real, working path
-# either way. See uVectorEth.hpp's class comment for the full platform split.
-# ─────────────────────────────────────────────────────────────────────────────
-if(WIN32 OR LINUX)
-    add_subdirectory(vector_plugin)
-    add_subdirectory(vector_eth_plugin)
-endif()
+# Linux-kernel-only (forced OFF elsewhere)
+uscript_add_subdirectory(USCRIPT_PLUGIN_KI2C        ki2c_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_KSPI        kspi_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_KVCAN       kvcan_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_RAWETH      raweth_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_SYSTEC      systec_plugin)
 
-
+# Windows / Linux only (forced OFF elsewhere)
+uscript_add_subdirectory(USCRIPT_PLUGIN_VECTOR      vector_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_VECTOR_ETH  vector_eth_plugin)

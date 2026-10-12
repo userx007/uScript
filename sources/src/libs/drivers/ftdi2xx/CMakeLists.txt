@@ -30,7 +30,9 @@ if(DEFINED FTDI_RUNTIME_DLL)
 endif()
 
 # ── Project modules ───────────────────────────────────────────────────────────
-add_subdirectory(ftdi232)
-add_subdirectory(ftdi2232)
-add_subdirectory(ftdi4232)
-add_subdirectory(ftdi245)
+# Each chip family is only configured if its plugin is enabled (the shared SDK
+# above is configured whenever at least one of them is).
+uscript_add_subdirectory(USCRIPT_LIB_FTDI232  ftdi232)
+uscript_add_subdirectory(USCRIPT_LIB_FTDI2232 ftdi2232)
+uscript_add_subdirectory(USCRIPT_LIB_FTDI4232 ftdi4232)
+uscript_add_subdirectory(USCRIPT_LIB_FTDI245  ftdi245)

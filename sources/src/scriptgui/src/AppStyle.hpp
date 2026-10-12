@@ -89,6 +89,7 @@ QLabel#toolbarLabel {
     font-weight: bold;
     letter-spacing: 2px;
     color: #d3d3d3;
+    background: transparent; /* same flat colour as the bar */
 }
 
 /* ── Line edits ──────────────────────────────────────────────────────────── */
@@ -156,28 +157,39 @@ QPushButton#browseBtn {
     font-size: 14px; /* Icon-like size */
 }
 
-/* SETUP button (setup.sh / setup.bat): same size as the other tab-bar buttons,
-   brighter when available, amber while the script is running. */
-QPushButton#setupBtn {
-    min-width: 28px;
-    max-width: 60px;
-    padding: 4px 8px;
-    font-size: 11px;
-    font-weight: normal;
-    color: #c8d0e0;
+/* Toolbar buttons: every button in the top bar uses the green RUN look.
+   Red while its action is running (RUN -> STOP, setup Run). */
+QPushButton#toolbarBtn {
+    background-color: #1a3a1a;
+    border: 1px solid #2a5a2a;
+    border-radius: 3px;
+    color: #50fa7b;
+    font-weight: bold;
+    font-size: 12px;
+    letter-spacing: 1px;
+    min-width: 90px;
+    padding: 5px 14px;
 }
-QPushButton#setupBtn:hover {
-    color: #ffffff;
-    border-color: #4a9eff;
-    background-color: #252a35;
+QPushButton#toolbarBtn:hover {
+    background-color: #1e4a1e;
+    border-color: #50fa7b;
 }
-QPushButton#setupBtn:disabled {
-    color: #404855;
-    border-color: #1c1f27;
+QPushButton#toolbarBtn:pressed {
+    background-color: #0f2a0f;
 }
-QPushButton#setupBtn[running="true"] {
-    color: #e5c07b;
-    border-color: #e5c07b;
+QPushButton#toolbarBtn:disabled {
+    background-color: #181818;
+    border-color: #2a2a2a;
+    color: #3a3a3a;
+}
+QPushButton#toolbarBtn[running="true"] {
+    background-color: #3a1a1a;
+    border-color: #6a2a2a;
+    color: #ff5555;
+}
+QPushButton#toolbarBtn[running="true"]:hover {
+    background-color: #4a1a1a;
+    border-color: #ff5555;
 }
 
 /* ── Script viewers (QPlainTextEdit) ─────────────────────────────────────── */

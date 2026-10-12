@@ -26,6 +26,7 @@
 #include <QMouseEvent>
 #include <QEventLoop>
 #include <QFile>
+#include <QFileDevice>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFlags>
@@ -287,13 +288,13 @@ MainWindow::MainWindow(QWidget *pParent)
     const int clampedTab = qBound(0, activeTab, m_tabWidget->count() - 1);
     m_tabWidget->setCurrentIndex(clampedTab);
     syncPathEdit(clampedTab);
-    updateSetupButton();
+    refreshProjectButtons();
 
     // setup.sh / setup.bat may be created or deleted while the app is in the
     // background: re-check whenever the window comes back to the foreground.
     connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState st) {
         if (st == Qt::ApplicationActive) {
-            updateSetupButton();
+            refreshProjectButtons();
         } });
 
     applyFontSize(); // called here so all restored tabs get the right font
@@ -354,7 +355,8 @@ QFrame *MainWindow::buildToolbar()
         m_interpreterPath = t; });
 
     auto *interpBrowse = new QPushButton("…", bar);
-    interpBrowse->setObjectName("browseBtn");
+    interpBrowse->setObjectName("toolbarBtn");
+    interpBrowse->setStyleSheet("min-width: 28px; padding: 4px 6px;");
     interpBrowse->setToolTip("Browse for interpreter binary");
     connect(interpBrowse, &QPushButton::clicked, this, [this, interpEdit] {
         const QString f = QFileDialog::getOpenFileName(
@@ -389,56 +391,59 @@ QFrame *MainWindow::buildToolbar()
         } });
 
     auto *browseBtn = new QPushButton("…", bar);
-    browseBtn->setObjectName("browseBtn");
+    browseBtn->setObjectName("toolbarBtn");
+    browseBtn->setStyleSheet("min-width: 28px; padding: 4px 6px;");
     browseBtn->setToolTip("Browse for script file");
     connect(browseBtn, &QPushButton::clicked, this, &MainWindow::onBrowse);
 
-    // INI config file
-    auto *iniLabel = new QLabel("CONFIG", bar);
+    // Config: [Open|Create]  — uscript.ini next to the active script
+    auto *iniLabel = new QLabel("Config:", bar);
     iniLabel->setObjectName("toolbarLabel");
 
-    m_iniPathEdit = new QLineEdit(bar);
-    m_iniPathEdit->setObjectName("interpPathEdit"); // reuse same QSS
-    m_iniPathEdit->setPlaceholderText("path/to/uscript.ini…");
-    m_iniPathEdit->setToolTip("INI configuration file passed as -c to the interpreter\n"
-                              "Click to open/switch to this file in a tab");
+    m_configBtn = new QPushButton("Create", bar);
+    m_configBtn->setObjectName("toolbarBtn");
+    m_configBtn->setEnabled(false);
+    connect(m_configBtn, &QPushButton::clicked, this, &MainWindow::onConfigButton);
 
-    // Click on a valid path → open in tab (or switch if already open)
-    m_iniPathEdit->installEventFilter(this);
+    // Setup: [Open|Create] [Run]  — setup.sh / setup.bat next to the active script
+    auto *setupLabel = new QLabel("Setup:", bar);
+    setupLabel->setObjectName("toolbarLabel");
 
-    m_iniPath = cfg.value("session/iniPath").toString();
-    m_iniPathEdit->setText(m_iniPath);
-    connect(m_iniPathEdit, &QLineEdit::textChanged, this, [this](const QString &t) {
-        m_iniPath = t;
-        QSettings s;
-        s.setValue("session/iniPath", t); });
+    m_setupOpenBtn = new QPushButton("Create", bar);
+    m_setupOpenBtn->setObjectName("toolbarBtn");
+    m_setupOpenBtn->setEnabled(false);
+    connect(m_setupOpenBtn, &QPushButton::clicked, this, &MainWindow::onSetupOpenButton);
 
-    auto *iniBrowseBtn = new QPushButton("…", bar);
-    iniBrowseBtn->setObjectName("browseBtn");
-    iniBrowseBtn->setToolTip("Browse for INI config file");
-    connect(iniBrowseBtn, &QPushButton::clicked, this, [this] {
-        const QString start = m_iniPath.isEmpty()
-                                  ? (m_scriptPathEdit->text().isEmpty()
-                                         ? QDir::homePath()
-                                         : QFileInfo(m_scriptPathEdit->text()).absolutePath())
-                                  : QFileInfo(m_iniPath).absolutePath();
-        const QString f     = QFileDialog::getOpenFileName(
-            this, "Select INI Config File", start,
-            "INI files (*.ini);;All files (*)");
-        if (!f.isEmpty()) {
-            m_iniPathEdit->setText(f);
-        } });
+    m_setupRunBtn = new QPushButton("Run", bar);
+    m_setupRunBtn->setObjectName("toolbarBtn");
+    m_setupRunBtn->setEnabled(false);
+    connect(m_setupRunBtn, &QPushButton::clicked, this, &MainWindow::runSetupScript);
+
+    m_setupRunner = new SetupRunner(this);
+    connect(m_setupRunner, &SetupRunner::outputLine, this, [this](const QString &text, bool bErr) {
+        // stderr in red; the log viewer renders ANSI colours
+        m_w3->appendLine(bErr ? QString("\x1b[31m%1\x1b[0m").arg(text) : text); });
+    connect(m_setupRunner, &SetupRunner::finished, this, [this](int iCode, bool bCrashed) {
+        setSetupRunning(false);
+        const QString name = SetupRunner::setupFileName();
+        const QString msg  = bCrashed ? QString("%1 was terminated").arg(name)
+                                      : QString("%1 finished (exit code %2)").arg(name).arg(iCode);
+        m_w3->appendStatus(msg);
+        setStatus(msg); });
+
+    auto *execLabel = new QLabel("Exec:", bar);
+    execLabel->setObjectName("toolbarLabel");
 
     // Reload every open script/INI file from disk
     m_reloadBtn = new QPushButton("⟳  RELOAD", bar);
-    m_reloadBtn->setObjectName("reloadBtn");
+    m_reloadBtn->setObjectName("toolbarBtn");
     m_reloadBtn->setToolTip("Reload every open script and INI file from disk\n"
                             "(all tabs, plus the comm-script window)");
     connect(m_reloadBtn, &QPushButton::clicked, this, &MainWindow::onReloadAll);
 
     // Reset error bars
     m_resetBtn = new QPushButton("✕  RESET", bar);
-    m_resetBtn->setObjectName("resetErrorBtn");
+    m_resetBtn->setObjectName("toolbarBtn");
     m_resetBtn->setToolTip("Clear all validation/execution error markers\n"
                            "from the script windows without changing their content");
     m_resetBtn->setEnabled(false); // enabled only when there are errors to clear
@@ -446,9 +451,8 @@ QFrame *MainWindow::buildToolbar()
 
     // Run / Stop
     m_startStopBtn = new QPushButton("▶  RUN", bar);
-    m_startStopBtn->setObjectName("startBtn");
+    m_startStopBtn->setObjectName("toolbarBtn");
     m_startStopBtn->setToolTip("Run active tab's script");
-    m_startStopBtn->setMinimumWidth(100);
     connect(m_startStopBtn, &QPushButton::clicked, this, &MainWindow::onStartStop);
 
     // LED
@@ -468,14 +472,16 @@ QFrame *MainWindow::buildToolbar()
     lay->addWidget(browseBtn);
     lay->addSpacing(8);
     lay->addWidget(iniLabel);
-    lay->addWidget(m_iniPathEdit, 1);
-    lay->addWidget(iniBrowseBtn);
+    lay->addWidget(m_configBtn);
     lay->addSpacing(8);
-    lay->addWidget(m_reloadBtn);
-    lay->addSpacing(4);
-    lay->addWidget(m_resetBtn);
-    lay->addSpacing(4);
+    lay->addWidget(setupLabel);
+    lay->addWidget(m_setupOpenBtn);
+    lay->addWidget(m_setupRunBtn);
+    lay->addSpacing(8);
+    lay->addWidget(execLabel);
     lay->addWidget(m_startStopBtn);
+    lay->addWidget(m_resetBtn);
+    lay->addWidget(m_reloadBtn);
     lay->addSpacing(6);
     lay->addWidget(m_led);
     lay->addWidget(m_ledLabel);
@@ -559,32 +565,7 @@ QWidget *MainWindow::buildCentralWidget()
 
         cLay->addWidget(addTabBtn);
         cLay->addWidget(saveBtn);
-        // SETUP: enabled only when the folder of the active script holds
-        // setup.sh (Linux) / setup.bat (Windows).
-        //   left click  → run it (immediately)
-        //   right click → open it in an editor tab (see eventFilter())
-        m_setupBtn = new QPushButton("SETUP", cornerBar);
-        m_setupBtn->setObjectName("setupBtn");
-        m_setupBtn->setFixedHeight(24);
-        m_setupBtn->setEnabled(false);
-        m_setupBtn->setToolTip(QString("No %1 in the folder of the active script").arg(SetupRunner::setupFileName()));
-        connect(m_setupBtn, &QPushButton::clicked, this, &MainWindow::runSetupScript);
-        m_setupBtn->installEventFilter(this);
-
-        m_setupRunner = new SetupRunner(this);
-        connect(m_setupRunner, &SetupRunner::outputLine, this, [this](const QString &text, bool bErr) {
-            // stderr in red; the log viewer renders ANSI colours
-            m_w3->appendLine(bErr ? QString("\x1b[31m%1\x1b[0m").arg(text) : text); });
-        connect(m_setupRunner, &SetupRunner::finished, this, [this](int iCode, bool bCrashed) {
-            setSetupRunning(false);
-            const QString name = SetupRunner::setupFileName();
-            const QString msg  = bCrashed ? QString("%1 was terminated").arg(name)
-                                          : QString("%1 finished (exit code %2)").arg(name).arg(iCode);
-            m_w3->appendStatus(msg);
-            setStatus(msg); });
-
         cLay->addWidget(saveAllBtn);
-        cLay->addWidget(m_setupBtn);
         m_tabWidget->setCornerWidget(cornerBar, Qt::TopRightCorner);
     }
 
@@ -842,6 +823,9 @@ ScriptViewer *MainWindow::addTab(const QString &filePath)
     // Update tab title dot whenever this viewer's modified state changes
     connect(viewer, &ScriptViewer::modificationChanged, this, [this, viewer](bool) { updateTabModifiedState(viewer); });
 
+    // A freshly created setup script becomes runnable once it was saved
+    connect(viewer, &ScriptViewer::saved, this, &MainWindow::onViewerSaved);
+
     // Load comm script when user clicks a PLUGIN.SCRIPT line
     connect(viewer, &ScriptViewer::commScriptRequested,
             this, &MainWindow::onCommScriptRequested);
@@ -902,7 +886,7 @@ void MainWindow::loadIntoTab(int iIndex, const QString &filePath)
 
     m_w3->appendStatus(QString("Loaded: %1").arg(name));
     setStatus(QString("Script loaded: %1").arg(name));
-    updateSetupButton();
+    refreshProjectButtons();
 }
 
 void MainWindow::loadIntoCurrentTab(const QString &filePath)
@@ -940,16 +924,7 @@ void MainWindow::syncPathEdit(int iTabIndex)
         m_w3->setScriptPath(viewer->currentFile());
     }
 
-    // Auto-fill the INI field from the script directory only for script tabs.
-    if (!viewer->currentFile().isEmpty() && !bEditorOnly) {
-        const QString scriptDir  = QFileInfo(viewer->currentFile()).absolutePath();
-        const QString defaultIni = scriptDir + "/uscript.ini";
-        const bool isEmpty       = m_iniPathEdit->text().trimmed().isEmpty();
-        const bool isDefault     = QFileInfo(m_iniPathEdit->text()).fileName().compare("uscript.ini", Qt::CaseInsensitive) == 0;
-        if (isEmpty || isDefault) {
-            m_iniPathEdit->setText(defaultIni);
-        }
-    }
+    refreshProjectButtons();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1019,7 +994,7 @@ void MainWindow::onTabCloseRequested(int iIndex)
 void MainWindow::onCurrentTabChanged(int iIndex)
 {
     syncPathEdit(iIndex);
-    updateSetupButton();
+    refreshProjectButtons();
 
     // Highlight the running tab label so the user can see which one is active
     for (int i = 0; i < m_tabWidget->count(); ++i) {
@@ -1080,7 +1055,7 @@ void MainWindow::onStartStop()
         return;
     }
     if (SetupRunner::isSetupFileName(scriptPath)) {
-        m_w3->appendStatus(QString("'%1' is a shell script — use the SETUP button to run it, not Run.")
+        m_w3->appendStatus(QString("'%1' is a shell script — use the Setup Run button to run it, not RUN.")
                                .arg(QFileInfo(scriptPath).fileName()));
         return;
     }
@@ -1248,7 +1223,11 @@ void MainWindow::onStartStop()
 
     // Build argument list: always -s <script>, optionally -c <ini>
     QStringList args;
-    const QString iniPath = m_iniPath.trimmed();
+    // uscript.ini next to the script being run (if any); evaluated at run time
+    // so it is correct even when the active tab is an ini / setup file.
+    const QString localIni = QFileInfo(scriptPath).absoluteDir().filePath("uscript.ini");
+    m_iniPath              = QFileInfo(localIni).isFile() ? localIni : QString();
+    const QString iniPath  = m_iniPath.trimmed();
     if (!iniPath.isEmpty()) {
         args << "-c" << iniPath;
     }
@@ -2367,36 +2346,66 @@ void MainWindow::setRunning(bool bOn)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Setup script  (SETUP button)
+//  Config / Setup buttons
 // ─────────────────────────────────────────────────────────────────────────────
-void MainWindow::updateSetupButton()
+QString MainWindow::activeScriptPath() const
 {
-    if (!m_setupBtn) {
+    // m_scriptPathEdit keeps the last real script while an ini / setup tab is
+    // active, so the buttons stay bound to the script that RUN would execute.
+    const QString p = m_scriptPathEdit ? m_scriptPathEdit->text().trimmed() : QString();
+    return (!p.isEmpty() && QFileInfo::exists(p)) ? p : QString();
+}
+
+void MainWindow::refreshProjectButtons()
+{
+    if (!m_configBtn || !m_setupOpenBtn || !m_setupRunBtn) {
         return;
     }
-    const auto *viewer = currentViewer();
-    m_setupPath        = viewer ? SetupRunner::findSetupScript(viewer->currentFile()) : QString();
+    const QString script = activeScriptPath();
+    const bool bHaveDir  = !script.isEmpty();
+    const QDir dir       = QFileInfo(script).absoluteDir();
 
-    const bool bHas    = !m_setupPath.isEmpty();
-    m_setupBtn->setEnabled(bHas);
-    m_setupBtn->setToolTip(bHas ? QString("Left-click: run %1\nRight-click: edit it").arg(m_setupPath)
-                                : QString("No %1 in the folder of the active script").arg(SetupRunner::setupFileName()));
+    // Config
+    const QFileInfo ini(dir.filePath("uscript.ini"));
+    m_configPath        = (bHaveDir && ini.isFile()) ? ini.absoluteFilePath() : QString();
+    const bool bHasIni  = !m_configPath.isEmpty();
+    m_iniPath           = m_configPath;
+    m_configBtn->setText(bHasIni ? "Open" : "Create");
+    m_configBtn->setEnabled(bHaveDir);
+    m_configBtn->setToolTip(!bHaveDir ? QString("Open a script first")
+                            : bHasIni ? QString("Open %1").arg(m_configPath)
+                                      : QString("Create an empty uscript.ini next to the script and open it"));
+
+    // Setup
+    m_setupPath          = bHaveDir ? SetupRunner::findSetupScript(script) : QString();
+    const bool bHasSetup = !m_setupPath.isEmpty();
+    m_setupOpenBtn->setText(bHasSetup ? "Open" : "Create");
+    m_setupOpenBtn->setEnabled(bHaveDir);
+    m_setupOpenBtn->setToolTip(!bHaveDir   ? QString("Open a script first")
+                               : bHasSetup ? QString("Open %1").arg(m_setupPath)
+                                           : QString("Create %1 next to the script and open it").arg(SetupRunner::setupFileName()));
+
+    // Run is available once the script exists, was saved at least once after
+    // being created here, and is not already running.
+    const bool bUnsaved = bHasSetup && m_setupUnsaved.contains(QFileInfo(m_setupPath).canonicalFilePath());
+    const bool bRunning = m_setupRunner && m_setupRunner->isRunning();
+    m_setupRunBtn->setEnabled(bHasSetup && !bUnsaved && !bRunning);
+    m_setupRunBtn->setToolTip(!bHasSetup ? QString("No %1 next to the script - create it first").arg(SetupRunner::setupFileName())
+                              : bUnsaved ? QString("Save %1 first").arg(SetupRunner::setupFileName())
+                                         : QString("Run %1").arg(m_setupPath));
 }
 
 void MainWindow::setSetupRunning(bool bOn)
 {
-    m_setupBtn->setProperty("running", bOn);
-    m_setupBtn->style()->unpolish(m_setupBtn);
-    m_setupBtn->style()->polish(m_setupBtn);
+    m_setupRunBtn->setProperty("running", bOn);
+    m_setupRunBtn->style()->unpolish(m_setupRunBtn);
+    m_setupRunBtn->style()->polish(m_setupRunBtn);
+    refreshProjectButtons();
 }
 
-void MainWindow::editSetupScript()
+void MainWindow::openOrSwitchToFile(const QString &filePath)
 {
-    if (m_setupPath.isEmpty() || !QFileInfo::exists(m_setupPath)) {
-        updateSetupButton();
-        return;
-    }
-    const QString canon = QFileInfo(m_setupPath).canonicalFilePath();
+    const QString canon = QFileInfo(filePath).canonicalFilePath();
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
         if (v && !v->currentFile().isEmpty() && QFileInfo(v->currentFile()).canonicalFilePath() == canon) {
@@ -2404,7 +2413,77 @@ void MainWindow::editSetupScript()
             return;
         }
     }
-    addTab(m_setupPath);
+    addTab(filePath);
+}
+
+bool MainWindow::createFile(const QString &filePath, const QByteArray &content)
+{
+    QFile f(filePath);
+    if (!f.open(QIODevice::WriteOnly)) {
+        QMessageBox::warning(this, "Create failed",
+                             QString("Could not create:\n%1\n\n%2").arg(filePath, f.errorString()));
+        return false;
+    }
+    f.write(content);
+    f.close();
+#ifndef Q_OS_WIN
+    if (filePath.endsWith(".sh", Qt::CaseInsensitive)) {
+        f.setPermissions(f.permissions() | QFileDevice::ExeOwner);
+    }
+#endif
+    return true;
+}
+
+void MainWindow::onConfigButton()
+{
+    const QString script = activeScriptPath();
+    if (script.isEmpty()) {
+        return;
+    }
+    QString path = m_configPath;
+    if (path.isEmpty()) {
+        path = QFileInfo(script).absoluteDir().filePath("uscript.ini");
+        if (!QFileInfo::exists(path) && !createFile(path, QByteArray())) {
+            return;
+        }
+        m_w3->appendStatus(QString("Created: %1").arg(path));
+    }
+    openOrSwitchToFile(path);
+    refreshProjectButtons();
+}
+
+void MainWindow::onSetupOpenButton()
+{
+    const QString script = activeScriptPath();
+    if (script.isEmpty()) {
+        return;
+    }
+    QString path = m_setupPath;
+    if (path.isEmpty()) {
+        path = QFileInfo(script).absoluteDir().filePath(SetupRunner::setupFileName());
+        if (!QFileInfo::exists(path)) {
+#ifdef Q_OS_WIN
+            const QByteArray tmpl = "@echo off\r\n";
+#else
+            const QByteArray tmpl = "#!/bin/bash\n";
+#endif
+            if (!createFile(path, tmpl)) {
+                return;
+            }
+            // Run stays disabled until the user saved the new script.
+            m_setupUnsaved.insert(QFileInfo(path).canonicalFilePath());
+            m_w3->appendStatus(QString("Created: %1").arg(path));
+        }
+    }
+    openOrSwitchToFile(path);
+    refreshProjectButtons();
+}
+
+void MainWindow::onViewerSaved(const QString &filePath)
+{
+    if (m_setupUnsaved.remove(QFileInfo(filePath).canonicalFilePath())) {
+        refreshProjectButtons();
+    }
 }
 
 void MainWindow::runSetupScript()
@@ -2412,7 +2491,7 @@ void MainWindow::runSetupScript()
     const QString path = m_setupPath;
     if (path.isEmpty() || !QFileInfo::exists(path)) {
         m_w3->appendStatus(QString("%1 not found").arg(SetupRunner::setupFileName()));
-        updateSetupButton();
+        refreshProjectButtons();
         return;
     }
     if (m_setupRunner->isRunning()) {
@@ -2485,6 +2564,7 @@ void MainWindow::runSetupScript()
     setStatus(QString("Running %1 …").arg(name));
     setSetupRunning(true);
     m_setupRunner->start(path, user, password);
+    refreshProjectButtons(); // Run is disabled while the script runs
     password.clear();
 }
 
@@ -2525,29 +2605,12 @@ void MainWindow::applyFontSize()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Event filter — INI path edit click-to-open, SETUP button right-click
+//  Event filter — script path edit click-to-open
 // ─────────────────────────────────────────────────────────────────────────────
 bool MainWindow::eventFilter(QObject *pObj, QEvent *pEv)
 {
-    // SETUP button: right click (press + release inside the button) → edit the setup script.
-    // Only an enabled button receives mouse events, i.e. only when a setup script exists.
-    if (pObj == m_setupBtn) {
-        if (pEv->type() == QEvent::MouseButtonRelease) {
-            const auto *me = static_cast<QMouseEvent *>(pEv);
-            if (me->button() == Qt::RightButton) {
-                if (m_setupBtn->rect().contains(me->position().toPoint())) {
-                    editSetupScript();
-                }
-                return true;
-            }
-        } else if (pEv->type() == QEvent::MouseButtonPress &&
-                   static_cast<QMouseEvent *>(pEv)->button() == Qt::RightButton) {
-            return true; // swallow so the button doesn't react to the right press
-        }
-        return QMainWindow::eventFilter(pObj, pEv);
-    }
     if (pEv->type() == QEvent::MouseButtonPress &&
-        (pObj == m_iniPathEdit || pObj == m_scriptPathEdit)) {
+        pObj == m_scriptPathEdit) {
         const QString path = static_cast<QLineEdit *>(pObj)->text().trimmed();
         if (!path.isEmpty() && QFileInfo::exists(path)) {
             // Scan all tabs for an already-loaded copy
@@ -2726,7 +2789,7 @@ void MainWindow::saveCurrentTab()
     if (viewer->save()) {
         updateTabModifiedState(viewer);
         setStatus(QString("Saved: %1").arg(QFileInfo(viewer->currentFile()).fileName()));
-        updateSetupButton(); // "save as" may have moved the script to another folder
+        refreshProjectButtons(); // "save as" may have moved the script to another folder
     }
 }
 

@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 3.25)
 
-add_subdirectory(cantploopback)
-add_subdirectory(crossloopback)
-add_subdirectory(simpleloopback)
-add_subdirectory(modbus_server)
-if(UNIX AND NOT APPLE)
-    add_subdirectory(kcan_link)
+# Helper executables for the plugins' loopback tests. Switch the whole group
+# off with -DUSCRIPT_BUILD_TESTERS=OFF; individual testers are additionally
+# skipped when the plugin / library they exercise is not built.
+if(USCRIPT_BUILD_TESTERS)
+    # links uTpFactory (the CAN transport stack), so it needs a CAN plugin
+    uscript_add_subdirectory(USCRIPT_LIB_CANTP        cantploopback)
+    add_subdirectory(crossloopback)
+    add_subdirectory(simpleloopback)
+    uscript_add_subdirectory(USCRIPT_PLUGIN_MODBUS    modbus_server)
 endif()

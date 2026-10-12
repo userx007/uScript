@@ -64,6 +64,39 @@ if(UNIX AND NOT APPLE)
 endif()
 
 
+# ---------------------------------------------------------------------------
+# uscript_install_existing(<DESTINATION> <targets...>)
+#
+# Plugins, drivers and testers are now individually switchable (see
+# sources/cmake/uScriptFeatures.cmake), so a target listed below may simply not
+# exist in this build tree. install(TARGETS) on a missing target is a hard
+# configure error, hence this filter: only targets that were really created
+# are installed.
+# ---------------------------------------------------------------------------
+function(uscript_install_existing DEST)
+    set(_present "")
+    foreach(_t IN LISTS ARGN)
+        if(TARGET ${_t})
+            list(APPEND _present ${_t})
+        endif()
+    endforeach()
+    if(_present)
+        install(TARGETS ${_present} ${LIB_INSTALL_TYPE} DESTINATION ${DEST})
+    endif()
+endfunction()
+
+function(uscript_install_existing_exe DEST)
+    set(_present "")
+    foreach(_t IN LISTS ARGN)
+        if(TARGET ${_t})
+            list(APPEND _present ${_t})
+        endif()
+    endforeach()
+    if(_present)
+        install(TARGETS ${_present} DESTINATION ${DEST})
+    endif()
+endfunction()
+
 # Add subdirectories
 add_subdirectory(sources)
 
@@ -84,7 +117,7 @@ set(EXTLIB_TARGETS
     uVolatileMacroStore
 )
 
-install(TARGETS ${EXTLIB_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_EXTLIBS_DIR})
+uscript_install_existing(${INSTALL_EXTLIBS_DIR} ${EXTLIB_TARGETS})
 
 # --- 1c. Windows runtime DLL packaging ---
 
@@ -133,7 +166,7 @@ set(SPLUGIN_TARGETS_COMMON
 )
 
 set(SPLUGIN_TARGETS_LINUX_ONLY
-    kcan_plugin
+#    kcan_plugin
     ki2c_plugin
     kspi_plugin
     kvcan_plugin
@@ -149,20 +182,21 @@ elseif(WIN32)
     list(APPEND SPLUGIN_TARGETS ${SPLUGIN_TARGETS_WINDOWS_ONLY})
 endif()
 
-install(TARGETS ${SPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_SPLUGIN_DIR})
+uscript_install_existing(${INSTALL_SPLUGIN_DIR} ${SPLUGIN_TARGETS})
 
 # --- 3. IPlugins ---
 set(IPLUGIN_TARGETS
     test_iplugin
 )
 
-install(TARGETS ${IPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR})
+uscript_install_existing(${INSTALL_IPLUGIN_DIR} ${IPLUGIN_TARGETS})
 
 # --- 4. Testers (Executables) ---
 set(TESTER_TARGETS_COMMON
     cantp_loopback
     tcpip_loopback_server
     udp_loopback_server
+    websocket_loopback_server
     uart_loopback
     cross_loopback
     modbus_server
@@ -178,7 +212,7 @@ if(UNIX AND NOT APPLE)
     list(APPEND TESTER_TARGETS ${TESTER_TARGETS_LINUX_ONLY})
 endif()
 
-install(TARGETS ${TESTER_TARGETS} DESTINATION ${INSTALL_TESTERS_DIR})
+uscript_install_existing_exe(${INSTALL_TESTERS_DIR} ${TESTER_TARGETS})
 
 # --- 5. Testers' Scripts ---
 install(
@@ -209,7 +243,7 @@ set(UPLUGIN_TARGETS
     SimpleTypes
 )
 
-install(TARGETS ${UPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_UPLUGIN_DIR})
+uscript_install_existing(${INSTALL_UPLUGIN_DIR} ${UPLUGIN_TARGETS})
 
 # ---------------------------------------------------------------------------
 # Install Vector XL API Linux Libraries

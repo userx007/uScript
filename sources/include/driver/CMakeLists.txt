@@ -12,13 +12,19 @@ target_include_directories(${PROJECT_NAME} INTERFACE
 # see DdsTypePluginAbi.h's doc comment) rather than folded into uICommDriver
 # above: it needs CycloneDDS::ddsc (for dds_topic_descriptor_t) and nothing
 # else in this repo should have to pull that in just to get ICommDriver.hpp.
-find_package(CycloneDDS REQUIRED)
+#
+# Only configured when the DDS_TYPED plugin is enabled (USCRIPT_LIB_DDS_ABI is
+# derived from USCRIPT_PLUGIN_DDS_TYPED, see cmake/uScriptFeatures.cmake), so a
+# build without that plugin does not need CycloneDDS installed at all.
+if(USCRIPT_LIB_DDS_ABI)
+    find_package(CycloneDDS REQUIRED)
 
-add_library(uIDdsTypePluginAbi INTERFACE)
+    add_library(uIDdsTypePluginAbi INTERFACE)
 
-target_include_directories(uIDdsTypePluginAbi INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
-    $<INSTALL_INTERFACE:include>
-)
+    target_include_directories(uIDdsTypePluginAbi INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
+        $<INSTALL_INTERFACE:include>
+    )
 
-target_link_libraries(uIDdsTypePluginAbi INTERFACE CycloneDDS::ddsc)
+    target_link_libraries(uIDdsTypePluginAbi INTERFACE CycloneDDS::ddsc)
+endif()

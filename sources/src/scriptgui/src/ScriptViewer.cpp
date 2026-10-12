@@ -934,6 +934,7 @@ bool ScriptViewer::writeFile(const QString &path)
     }
     m_editor->document()->setModified(false);
     updateInfo();
+    emit saved(path);
     return true;
 }
 

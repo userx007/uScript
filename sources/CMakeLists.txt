@@ -60,12 +60,33 @@ cmake_minimum_required(VERSION 3.25)
 #       especially in Debug builds. Harmless to set unconditionally — the
 #       only cost is marginally larger intermediate .obj files.
 # ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# Position-independent code everywhere. The drivers / protocols are STATIC
+# libraries that get linked into the plugins, which are SHARED libraries
+# (.so/.dll); without -fPIC the link fails with R_X86_64_TPOFF32 errors.
+# This used to work only by accident: ushell_core leaked -fPIC into
+# CMAKE_CXX_FLAGS, so any build with the SHELL plugin disabled failed to link.
+# ─────────────────────────────────────────────────────────────────────────────
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 if(MSVC)
     add_compile_options(/utf-8 /Zc:__cplusplus /permissive- /bigobj)
 endif()
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Which plugins get built (USCRIPT_PLUGIN_<NAME> options) and, derived from
+# that, which drivers / protocols / support libraries are configured at all.
+# MUST come before the first add_subdirectory(): include/driver already
+# consults the derived flags. See cmake/uScriptFeatures.cmake for usage.
+# ─────────────────────────────────────────────────────────────────────────────
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/uScriptFeatures.cmake)
+
 add_subdirectory(include)
 add_subdirectory(src)
+
+# Fail the configure now (with a readable message) if the plugin -> driver
+# tables are out of date, rather than at link time.
+uscript_verify_link_graph()
 
 # Final relay: src/'s PARENT_SCOPE exports land here; re-export once more so
 # the true top-level CMakeLists.txt (the one that does add_subdirectory(sources))
