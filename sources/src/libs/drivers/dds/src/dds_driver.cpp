@@ -133,7 +133,7 @@ std::string DdsDriver::m_BuildDomainConfigXml() const
     }
 
     const bool listensOnAll    = (m_config.ifaceAddress == "0.0.0.0" || m_config.ifaceAddress == "::" ||
-                                  m_config.ifaceAddress.empty());
+                               m_config.ifaceAddress.empty());
     const std::string ifaceSel = !listensOnAll ? m_config.ifaceAddress : m_config.multicastInterface;
     if (!ifaceSel.empty()) {
         const char *attr = looksLikeIpLiteral(ifaceSel) ? "address" : "name";

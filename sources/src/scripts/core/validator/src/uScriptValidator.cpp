@@ -70,7 +70,7 @@ bool ScriptValidator::validateScript(std::vector<ScriptRawLine> &vRawLines, Scri
             break;
         }
 
-        if (false == m_validateGeneratorPairing()) {
+        if (false == m_validateKillTargets()) {
             break;
         }
 
@@ -218,7 +218,7 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
                     checkField(command.k.strExpr, scriptLine.iLineNumber);
                 }
             }
-            // Label, RepeatEnd, LoopBreak, LoopContinue, GeneratorStopAllStatement
+            // Label, RepeatEnd, LoopBreak, LoopContinue, KillStatement
             // carry only plain identifiers or nothing at all (no $macro
             // templates) — nothing to scan.
         },
@@ -632,8 +632,8 @@ bool ScriptValidator::m_preprocessScriptStatements(const ScriptRawLine &sRawLine
     case Token::GENERATOR_STMT: {
         bRetVal = m_HandleGeneratorStmt(sRawLine);
     } break;
-    case Token::GENERATOR_STOP_ALL_STMT: {
-        bRetVal = m_HandleGeneratorStopAll(sRawLine);
+    case Token::KILL_STMT: {
+        bRetVal = m_HandleKill(sRawLine);
     } break;
     default: {
         auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
@@ -1983,7 +1983,6 @@ bool ScriptValidator::m_HandleBreakpoint(const ScriptRawLine &sRawLine) noexcept
     name ?= GENERATOR <count> <unit> <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
     name ?= GENERATOR <count> <unit> <elem1>,<elem2>,...        | WAVEFORM [| ENCODING]
     name ?= GENERATOR <count> <unit> $arrayName                 | WAVEFORM [| ENCODING]
-    name ?= GENERATOR STOP
 
   m_isGeneratorStmt() has already confirmed the lexical shape; this handler
   splits out every field, tells the range form apart from the array-data
@@ -2040,21 +2039,7 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
         strRhs          = (re == std::string::npos) ? "" : strRhs.substr(0, re + 1);
     }
 
-    // ── 3. "GENERATOR STOP" form — nothing else to parse ────────────────────
-    if (strRhs == "STOP") {
-        GeneratorStatement stopStmt;
-        stopStmt.strName = strName;
-        stopStmt.bStop   = true;
-
-        m_sScriptEntries->vCommands.emplace_back(
-            ScriptLine{m_iCurrentSourceLine, stopStmt});
-
-        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("GENERATOR STOP ["); LOG_STRING(strName); LOG_STRING("]"));
-        return true;
-    }
-
-    // ── 4. Start/restart form — pull count/unit/range-or-array/waveform/
+    // ── 3. Parse the statement — pull count/unit/range-or-array/waveform/
     //      encoding out with one capturing regex (m_isGeneratorStmt already
     //      validated the overall shape). The range form and the array-list
     //      form are two alternatives inside the same regex; exactly one of
@@ -2327,7 +2312,6 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
     // ── 12. Emit IR node ─────────────────────────────────────────────────
     GeneratorStatement stmt;
     stmt.strName        = strName;
-    stmt.bStop          = false;
     stmt.uIntervalUs    = uIntervalUs;
     stmt.bIsArraySource = bIsArraySource;
     stmt.begin          = rangeBegin;
@@ -2354,78 +2338,102 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
 } // m_HandleGeneratorStmt()
 
 /*-------------------------------------------------------------------------------
-  GENERATOR_STOP_ALL_STMT handler:  GENERATOR STOP ALL
+  KILL_STMT handler:  [result ?=] KILL name
 
-  Bare command, no destination macro — see GeneratorStopAllStatement's doc
-  comment (uScriptDataTypes.hpp). Nothing to parse beyond the keyword itself;
-  m_isGeneratorStopAll() has already confirmed the exact literal shape.
+  Lexical shape (the KILL keyword) already confirmed by usyntax::m_isKillStmt();
+  the two names are extracted - and the target's shape is enforced - by
+  parseKillStatement() (uScriptDataTypes.hpp), shared with the interactive-shell
+  path so both forms stay identical.
+
+  The target must be the plain name of a volatile macro.
+
+  Whether `name` really is the destination of a threaded capture command or of
+  a GENERATOR is a script-wide check, see m_validateKillTargets().
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleGeneratorStopAll(const ScriptRawLine &sRawLine) noexcept
+bool ScriptValidator::m_HandleKill(const ScriptRawLine &rawLine) noexcept
 {
-    m_sScriptEntries->vCommands.emplace_back(
-        ScriptLine{m_iCurrentSourceLine, GeneratorStopAllStatement{}});
+    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
 
-    auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
+    KillStatement stmt;
+    std::string strError;
+    if (false == parseKillStatement(rawLine.strContent, stmt, &strError)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(strError));
+        return false;
+    }
+
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, stmt});
+
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-              LOG_STRING("GENERATOR STOP ALL"));
+              LOG_STRING("KILL ["); LOG_STRING(stmt.strTargetName); LOG_STRING("]");
+              LOG_STRING(stmt.strResultName.empty() ? "" : "-> result in");
+              LOG_STRING(stmt.strResultName));
 
     return true;
 
-} // m_HandleGeneratorStopAll()
+} // m_HandleKill()
 
 /*-------------------------------------------------------------------------------
-  Walks the compiled command list in source order, tracking which GENERATOR
-  destination names are currently "started" (see m_validateGeneratorPairing's
-  doc comment in uScriptValidator.hpp for the exact rules). Runs after
-  m_validateArraySizeUsage() — order relative to that pass doesn't actually
-  matter (the two scans are independent), it's just grouped with the other
-  whole-command-list passes.
+  Static check for KILL: every target name must be a volatile macro that has a
+  thread/generator running behind it, i.e. the destination of
+
+      name ?= PLUGIN.CMD args &       (threaded variable-capture command)
+      name ?= GENERATOR ...
+
+  that appears earlier in the script text. A command that does not return a
+  volatile macro cannot be killed - see m_validateKillTargets()'s doc comment
+  in uScriptValidator.hpp (and why a KILL does not consume the name).
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_validateGeneratorPairing() noexcept
+bool ScriptValidator::m_validateKillTargets() noexcept
 {
     bool bRetVal = true;
-    std::unordered_set<std::string> setStarted;
+    std::unordered_set<std::string> setKillable;                       // threaded capture / GENERATOR destinations
+    std::unordered_map<std::string, std::string> mapSequentialCapture; // name -> "PLUGIN.CMD" that already finished
 
     for (const auto &scriptLine : m_sScriptEntries->vCommands) {
         std::visit([&](const auto &command) {
             using T     = std::decay_t<decltype(command)>;
             auto lineNr = ustring::fmtLineNr(scriptLine.iLineNumber);
 
-            if constexpr (std::is_same_v<T, GeneratorStatement>) {
-                if (command.bStop) {
-                    if (setStarted.find(command.strName) == setStarted.end()) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                                  LOG_STRING("GENERATOR STOP ["); LOG_STRING(command.strName);
-                                  LOG_STRING("]: no active generator (never started, or already stopped, before this line)"));
-                        gui_notify_error_main(scriptLine.iLineNumber);
-                        bRetVal = false;
-                    } else {
-                        setStarted.erase(command.strName);
-                    }
+            if constexpr (std::is_same_v<T, MacroCommand>) {
+                if (command.bThreaded) {
+                    setKillable.insert(command.strVarMacroName);
+                    mapSequentialCapture.erase(command.strVarMacroName);
                 } else {
-                    setStarted.insert(command.strName); // start or restart — always allowed
+                    mapSequentialCapture[command.strVarMacroName] = command.strPlugin + "." + command.strCommand;
                 }
-            } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
-                if (setStarted.empty()) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                              LOG_STRING("GENERATOR STOP ALL: no generator currently running before this line"));
+            } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
+                setKillable.insert(command.strName);
+            } else if constexpr (std::is_same_v<T, KillStatement>) {
+                if (setKillable.find(command.strTargetName) == setKillable.end()) {
+                    const auto itSeq = mapSequentialCapture.find(command.strTargetName);
+                    if (itSeq != mapSequentialCapture.end()) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("KILL ["); LOG_STRING(command.strTargetName);
+                                  LOG_STRING("]: it is returned by"); LOG_STRING(itSeq->second);
+                                  LOG_STRING("which was not launched with '&' and has already finished - nothing to kill"));
+                    } else {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("KILL ["); LOG_STRING(command.strTargetName);
+                                  LOG_STRING("]: not a volatile macro returned by a threaded command or a GENERATOR "
+                                             "- expected '"); LOG_STRING(command.strTargetName);
+                                  LOG_STRING("?= PLUGIN.CMD ... &' (or '"); LOG_STRING(command.strTargetName);
+                                  LOG_STRING("?= GENERATOR ...') on an earlier line"));
+                    }
                     gui_notify_error_main(scriptLine.iLineNumber);
                     bRetVal = false;
-                } else {
-                    setStarted.clear();
                 }
             } },
                    scriptLine.command);
     }
 
     LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR;
-              LOG_STRING("GENERATOR START/STOP pairing validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
+              LOG_STRING("KILL target validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
-} // m_validateGeneratorPairing()
+} // m_validateKillTargets()
 
 /*-------------------------------------------------------------------------------
 
@@ -2511,9 +2519,7 @@ bool ScriptValidator::m_ListStatements() noexcept
                     const char *pszKind = item.bByteMode ? "BYTESTREAM:" : " BITSTREAM:";
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(pszKind); LOG_STRING(item.strName); LOG_STRING("= ["); LOG_STRING(oss.str()); LOG_STRING("]"));
                 } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
-                    if (item.bStop) {
-                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR:"); LOG_STRING(item.strName); LOG_STRING("STOP"));
-                    } else {
+                    {
                         std::ostringstream oss;
                         if (item.bIsArraySource) {
                             for (size_t k = 0; k < item.vArrayValues.size(); ++k) {
@@ -2534,8 +2540,9 @@ bool ScriptValidator::m_ListStatements() noexcept
                                   LOG_STRING("["); LOG_STRING(oss.str()); LOG_STRING("] hex=[");
                                   LOG_STRING(getHexFormatName(item.eHexFormat)); LOG_STRING("]"));
                     }
-                } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR: STOP ALL"));
+                } else if constexpr (std::is_same_v<T, KillStatement>) {
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("      KILL:"); LOG_STRING(item.strTargetName);
+                              LOG_STRING("result=["); LOG_STRING(item.strResultName.empty() ? "<none>" : item.strResultName); LOG_STRING("]"));
                 } },
                                                                                                                                        data.command); });
     }

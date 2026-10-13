@@ -241,7 +241,6 @@ namespace usyntax {
     //   name ?= GENERATOR <count> <unit> <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
     //   name ?= GENERATOR <count> <unit> <elem1>,<elem2>,...        | WAVEFORM [| ENCODING]
     //   name ?= GENERATOR <count> <unit> $arrayName                 | WAVEFORM [| ENCODING]
-    //   name ?= GENERATOR STOP
     //
     // Syntax:
     //   <count> <unit>  — identical grammar to DELAY (SCRIPT_RX_TIME_UNITS: us|ms|sec).
@@ -278,17 +277,17 @@ namespace usyntax {
     //   ENCODING        — optional, same "HEX[_<width>][_<endian>]" suffix MATH
     //                      already accepts (see m_isMathStmt above); defaults to
     //                      plain decimal when absent.
-    //   STOP            — stops the named generator's background thread. Every
-    //                      other (non-STOP) form always (re)launches a fresh
-    //                      thread for `name`, stopping any thread already running
-    //                      for that name first — see ScriptInterpreter's
-    //                      GeneratorStatement execution.
+    //
+    // Every statement always (re)launches a fresh thread for `name`, stopping
+    // any thread already running for that name first — see ScriptInterpreter's
+    // GeneratorStatement execution. To stop a generator use "KILL name"
+    // (m_isKillStmt below); there is no "GENERATOR STOP" / "STOP ALL" form.
     //
     // All numeric/semantic checks (field count vs. waveform, k only allowed for
     // EXP/LOG, SQUARE's step must be a positive integer, waveform restrictions
-    // for an array source, START/STOP pairing) are deferred to the validator
-    // handler and its script-wide pairing pass — this pattern only enforces the
-    // lexical shape, exactly like BITSTREAM/MATH above.
+    // for an array source) are deferred to the validator handler — this
+    // pattern only enforces the lexical shape, exactly like BITSTREAM/MATH
+    // above.
     //
     // Examples:
     //   ctr   ?= GENERATOR 100 ms 0:255:1   | SAWTOOTH | HEX_8
@@ -299,7 +298,6 @@ namespace usyntax {
     //   dice  ?= GENERATOR 200 ms 1:6:1     | RANDOM
     //   arr   ?= GENERATOR 200 ms 1,7,$x,$y,8,9 | SAWTOOTH
     //   arr   ?= GENERATOR 200 ms $array        | RANDOM             (array [= 1,7,9,$x,$y)
-    //   lvl   ?= GENERATOR STOP
     inline bool m_isGeneratorStmt(const std::string &strExpression)
     {
         static const std::string tok       = std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
@@ -307,8 +305,7 @@ namespace usyntax {
         static const std::string arrayList = tok + "(?:\\s*,\\s*" + tok + ")*";
         static const std::regex pattern(
             "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*GENERATOR\\s+"
-            "(?:STOP"
-            "|[1-9][0-9]*\\s+" SCRIPT_RX_TIME_UNITS "\\s+(?:" +
+            "(?:[1-9][0-9]*\\s+" SCRIPT_RX_TIME_UNITS "\\s+(?:" +
             range + "|" + arrayList + ")" +
             "\\s*\\|\\s*(?:LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)"
             "(?:\\s*\\|\\s*HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?)?"
@@ -316,15 +313,35 @@ namespace usyntax {
         return std::regex_match(strExpression, pattern);
     }
 
-    // validate the bare "GENERATOR STOP ALL" command — stops every currently
-    // running GENERATOR thread, regardless of destination macro name. Modeled on
-    // BREAK/CONTINUE's bare-command shape (no "?=", no destination). Requires at
-    // least one generator to be running at that point in the script — enforced
-    // at validation time by the same START/STOP pairing pass m_isGeneratorStmt's
-    // STOP form uses (see ScriptValidator's generator-pairing validation).
-    inline bool m_isGeneratorStopAll(const std::string &strExpression)
+    // validate "[<result> ?=] KILL <name>" — stops whatever keeps the VOLATILE
+    // macro <name> alive: the background thread of a threaded variable-capture
+    // command ("<name> ?= PLUGIN.CMD args &", e.g. "<name> ?= UART.CYCLIC ... &")
+    // or a native generator ("<name> ?= GENERATOR ..."). When the "<result> ?="
+    // prefix is present, the number of threads/generators that were actually
+    // stopped is stored in <result> (see KillStatement, uScriptDataTypes.hpp).
+    //
+    // A command that does not return a volatile macro cannot be killed, so the
+    // target is always a macro NAME — never "PLUGIN.CMD" / "PLUGIN:N.CMD".
+    //
+    // This pattern is deliberately LENIENT about what follows KILL: it only
+    // recognises the statement by its keyword. Whether the target really is a
+    // plain macro name is decided by parseKillStatement() (uScriptDataTypes.hpp),
+    // which produces a specific error message for "KILL UART:2.CMD" or
+    // "ok ?= KILL UART.CYCLIC". A strict pattern would instead let the second
+    // form fall through to the VAR_MACRO_INIT catch-all and be silently accepted
+    // as a plain string initialisation, and the first to a generic INVALID.
+    // Whether <name> is the destination of a threaded capture / GENERATOR is a
+    // script-wide semantic check, see ScriptValidator::m_validateKillTargets().
+    //
+    // Must be classified before the VAR_MACRO_INIT catch-all.
+    //
+    // Examples:
+    //   KILL retval
+    //   ok ?= KILL retval
+    inline bool m_isKillStmt(const std::string &strExpression)
     {
-        static const std::regex pattern("^GENERATOR\\s+STOP\\s+ALL$");
+        static const std::regex pattern(
+            "^(?:" SCRIPT_RX_IDENT "\\s*\\?=\\s*)?KILL(?:\\s.*)?$");
         return std::regex_match(strExpression, pattern);
     }
 

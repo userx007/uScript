@@ -299,6 +299,11 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         //   done    — atomic flag set true by the thread lambda just before returning;
         //             used by m_harvestFinishedThreads() to prune completed entries
         //             without blocking.
+        //   strVarMacroName — destination macro of a threaded variable-capture command
+        //             ("name ?= PLUGIN.CMD args &"), the key KILL looks threads up by.
+        //             Empty for a threaded command that captures nothing
+        //             ("PLUGIN.CMD args &"), which therefore cannot be KILLed
+        //             (it still stops with the script, see m_joinAllThreads()).
         //
         // m_busyPlugins tracks which plugin instances currently have a live thread.
         // Attempting to launch a second thread for the same instance is rejected so
@@ -307,6 +312,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         struct ThreadEntry {
                 std::jthread thread;
                 std::shared_ptr<std::atomic<bool>> done;
+                std::string strVarMacroName;
         };
 
         // Remove entries whose "done" flag is true (thread has already returned).
@@ -321,6 +327,20 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // script command has executed.
         void m_joinAllThreads() noexcept;
 
+        // Implements "[ret ?=] KILL name": stops (request_stop + join) whatever keeps
+        // the volatile macro strName alive - every still-running "&" thread whose
+        // variable-capture destination is strName, plus the GENERATOR thread of that
+        // name - and returns how many were actually stopped (0 when none was alive:
+        // already finished, or never launched - which is NOT an error, see
+        // KillStatement).
+        //
+        // Thread entries are moved out of m_threads under m_threadsMutex and joined
+        // OUTSIDE it: the thread lambda takes the same mutex on its way out (to clear
+        // m_busyPlugins), so joining while holding it would deadlock.
+        // When this returns, the plugin instance is no longer marked busy and a
+        // new "&" command may be launched on it immediately.
+        size_t m_killVolatileMacro(const std::string &strName) noexcept;
+
         std::vector<ThreadEntry> m_threads;
         std::mutex m_threadsMutex;
 
@@ -331,7 +351,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // -------------------------------------------------------------------------
         // GENERATOR thread management — sibling to the "&"-command machinery just
         // above, but keyed by DESTINATION MACRO NAME rather than plugin instance,
-        // and RESTART-on-collision rather than reject-on-collision: every non-STOP
+        // and RESTART-on-collision rather than reject-on-collision: every
         // GENERATOR statement for a given name unconditionally stops whatever
         // generator thread is already running for that name (m_stopNamedGenerator,
         // a no-op if none is running) before launching the new one, which is what
@@ -343,10 +363,9 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         //
         // m_generatorThreads and m_threads are deliberately separate containers
         // (different key space, different collision policy) rather than one
-        // generalised over both — m_validateGeneratorPairing() at validation time
-        // is what actually guarantees a well-formed script's STOP/STOP ALL calls
-        // are meaningful; these runtime helpers stay as simple, tolerant no-ops on
-        // a missing name, same as m_joinAllThreads() tolerates an empty m_threads.
+        // generalised over both. They share one front door for stopping, though:
+        // "KILL name" goes through m_killVolatileMacro(), which looks in both - the
+        // script author only ever deals in volatile macro names.
         // -------------------------------------------------------------------------
         struct GeneratorThreadEntry {
                 std::jthread thread;
@@ -354,16 +373,16 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         };
 
         // Stops (request_stop + join) and erases the named generator's thread, if
-        // one is currently running. Harmless no-op if strName has no active
-        // generator. Used both by GENERATOR STOP and unconditionally, first thing,
-        // by every non-STOP GENERATOR statement (the "restart" half of restart-
-        // on-recall).
-        void m_stopNamedGenerator(const std::string &strName) noexcept;
+        // one is currently running, and returns how many were stopped (0 or 1).
+        // Harmless no-op if strName has no active generator. Used by KILL and,
+        // unconditionally first thing, by every GENERATOR statement (the "restart"
+        // half of restart-on-recall).
+        size_t m_stopNamedGenerator(const std::string &strName) noexcept;
 
-        // Stops and erases every currently running generator thread. Used by the
-        // bare "GENERATOR STOP ALL" command and folded into the same end-of-script
-        // cleanup pass as m_joinAllThreads() (see interpretScript()), so a script
-        // that never explicitly stops its generators still exits cleanly.
+        // Stops and erases every currently running generator thread. Folded into
+        // the same end-of-script cleanup pass as m_joinAllThreads() (see
+        // interpretScript()), so a script that never explicitly KILLs its
+        // generators still exits cleanly.
         void m_stopAllGenerators() noexcept;
 
         std::unordered_map<std::string, GeneratorThreadEntry> m_generatorThreads; // key = destination macro name

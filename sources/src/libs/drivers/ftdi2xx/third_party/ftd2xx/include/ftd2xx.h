@@ -128,8 +128,8 @@ enum {
 #define FT_OPEN_BY_LOCATION      4
 
 #define FT_OPEN_MASK             (FT_OPEN_BY_SERIAL_NUMBER | \
-                                  FT_OPEN_BY_DESCRIPTION |   \
-                                  FT_OPEN_BY_LOCATION)
+                      FT_OPEN_BY_DESCRIPTION |               \
+                      FT_OPEN_BY_LOCATION)
 /** @} */
 
 /** @{
@@ -138,11 +138,11 @@ enum {
  * @see FT_ListDevices
  * @see FT_OpenEx
  */
-#define FT_LIST_NUMBER_ONLY      0x80000000
-#define FT_LIST_BY_INDEX         0x40000000
-#define FT_LIST_ALL              0x20000000
+#define FT_LIST_NUMBER_ONLY 0x80000000
+#define FT_LIST_BY_INDEX    0x40000000
+#define FT_LIST_ALL         0x20000000
 
-#define FT_LIST_MASK             (FT_LIST_NUMBER_ONLY | FT_LIST_BY_INDEX | FT_LIST_ALL)
+#define FT_LIST_MASK        (FT_LIST_NUMBER_ONLY | FT_LIST_BY_INDEX | FT_LIST_ALL)
 /** @} */
 
 /** @{
@@ -150,65 +150,65 @@ enum {
  * Standard baud rates supported by many implementations and applications.
  * @see FT_SetBaudRate
  */
-#define FT_BAUD_300              300
-#define FT_BAUD_600              600
-#define FT_BAUD_1200             1200
-#define FT_BAUD_2400             2400
-#define FT_BAUD_4800             4800
-#define FT_BAUD_9600             9600
-#define FT_BAUD_14400            14400
-#define FT_BAUD_19200            19200
-#define FT_BAUD_38400            38400
-#define FT_BAUD_57600            57600
-#define FT_BAUD_115200           115200
-#define FT_BAUD_230400           230400
-#define FT_BAUD_460800           460800
-#define FT_BAUD_921600           921600
+#define FT_BAUD_300         300
+#define FT_BAUD_600         600
+#define FT_BAUD_1200        1200
+#define FT_BAUD_2400        2400
+#define FT_BAUD_4800        4800
+#define FT_BAUD_9600        9600
+#define FT_BAUD_14400       14400
+#define FT_BAUD_19200       19200
+#define FT_BAUD_38400       38400
+#define FT_BAUD_57600       57600
+#define FT_BAUD_115200      115200
+#define FT_BAUD_230400      230400
+#define FT_BAUD_460800      460800
+#define FT_BAUD_921600      921600
 /** @} */
 
 /** @{
  * @name Word Lengths
  * @see FT_SetDataCharacteristics
  */
-#define FT_BITS_8                (UCHAR)8
-#define FT_BITS_7                (UCHAR)7
+#define FT_BITS_8           (UCHAR)8
+#define FT_BITS_7           (UCHAR)7
 /** @} */
 
 /** @{
  * @name Stop Bits
  * @see FT_SetDataCharacteristics
  */
-#define FT_STOP_BITS_1           (UCHAR)0
-#define FT_STOP_BITS_2           (UCHAR)2
+#define FT_STOP_BITS_1      (UCHAR)0
+#define FT_STOP_BITS_2      (UCHAR)2
 /** @} */
 
 /* * @name Parity
  * @see FT_SetDataCharacteristics
  * @{
  */
-#define FT_PARITY_NONE           (UCHAR)0
-#define FT_PARITY_ODD            (UCHAR)1
-#define FT_PARITY_EVEN           (UCHAR)2
-#define FT_PARITY_MARK           (UCHAR)3
-#define FT_PARITY_SPACE          (UCHAR)4
+#define FT_PARITY_NONE      (UCHAR)0
+#define FT_PARITY_ODD       (UCHAR)1
+#define FT_PARITY_EVEN      (UCHAR)2
+#define FT_PARITY_MARK      (UCHAR)3
+#define FT_PARITY_SPACE     (UCHAR)4
 /** @} */
 
 /** @{
  * @name Flow Control
  * @see FT_SetFlowControl
  */
-#define FT_FLOW_NONE             0x0000
-#define FT_FLOW_RTS_CTS          0x0100
-#define FT_FLOW_DTR_DSR          0x0200
-#define FT_FLOW_XON_XOFF         0x0400
+#define FT_FLOW_NONE        0x0000
+#define FT_FLOW_RTS_CTS     0x0100
+#define FT_FLOW_DTR_DSR     0x0200
+#define FT_FLOW_XON_XOFF    0x0400
 /** @} */
 
 /** @{
  * @name Purge rx and tx buffers
  * @see FT_Purge
  */
-#define FT_PURGE_RX              1
-#define FT_PURGE_TX              2
+#define FT_PURGE_RX         1
+#define FT_PURGE_TX         2
 /** @} */
 
 /** @{

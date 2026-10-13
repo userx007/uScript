@@ -25,9 +25,9 @@ class QTextDocument;
 //   red         #ff5555  — .COMMAND  ·  BREAKPOINT
 //   periwinkle  #a5b4fc  — native functions (PRINT DELAY FORMAT MATH EVAL
 //                          BITSTREAM BYTESTREAM BITSTREAMVAL BYTESTREAMVAL
-//                          GENERATOR)
+//                          GENERATOR KILL)
 //                          · HEX / REVERSE_BIT / REVERSE_BYTE / GENERATOR's
-//                          own STOP/STOP ALL/waveform post-processor keywords
+//                          own waveform post-processor keywords
 //   purple      #bd93f9  — label names
 //                          (same as base C_DEF_NAME — values share the colour)
 //   blue        #89a1ef  — numeric literals (hex/bin/oct/dec, signed) · version literals
@@ -488,33 +488,21 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
     for (const QString &fn : {"PRINT", "DELAY", "FORMAT", "MATH", "EVAL",
                               "BITSTREAM", "BYTESTREAM",
                               "BITSTREAMVAL", "BYTESTREAMVAL",
-                              "GENERATOR"}) {
+                              "GENERATOR", "KILL"}) {
         addRule(QString(R"(\b%1\b)").arg(fn), fmt(C_FUNC, true));
     }
 
-    // ── 7a. GENERATOR STOP / STOP ALL ───────────────────────────────────────
-    //  "name ?= GENERATOR STOP" and the bare "GENERATOR STOP ALL" command
-    //  (see usyntax::m_isGeneratorStmt / m_isGeneratorStopAll). Anchored to
-    //  GENERATOR (\bGENERATOR\s+...) rather than a bare \bSTOP\b/\bALL\b so
-    //  an unrelated PRINT/label/macro-name token that happens to spell
-    //  "STOP" or "ALL" is never mis-highlighted — same care LOAD_PLUGIN's
-    //  own argument rule (step 5) takes for its instance-name capture.
-    //  Same periwinkle/bold as GENERATOR itself (C_FUNC) — STOP/STOP ALL are
-    //  the same statement family, not a distinct control-flow keyword.
-    {
-        Rule r;
-        r.pattern      = RE(R"(\bGENERATOR\s+(STOP)\b)");
-        r.format       = fmt(C_FUNC, true);
-        r.captureGroup = 1;
-        m_rules.append(r);
-    }
-    {
-        Rule r;
-        r.pattern      = RE(R"(\bGENERATOR\s+STOP\s+(ALL)\b)");
-        r.format       = fmt(C_FUNC, true);
-        r.captureGroup = 1;
-        m_rules.append(r);
-    }
+    // ── 7a. KILL target ─────────────────────────────────────────────────────
+    //  "[result ?=] KILL name" (see usyntax::m_isKillStmt / parseKillStatement).
+    //  KILL itself is already periwinkle/bold via the native-function list
+    //  above. <name> is the volatile macro whose thread/generator is being
+    //  stopped, i.e. the same identifier that appears as NAME in an earlier
+    //  "NAME ?= PLUGIN.CMD ... &" / "NAME ?= GENERATOR ...", so it gets the
+    //  same cyan as that NAME (C_VAR_NAME). Anchored to KILL (\bKILL\s+...)
+    //  so an unrelated identifier is never mis-highlighted. Something that is
+    //  not a plain identifier (e.g. "KILL UART:2.CMD", which the validator
+    //  rejects) simply gets no name colour.
+    addRule(QString("\\bKILL\\s+(" SCRIPT_RX_IDENT ")\\s*$"), fmt(C_VAR_NAME), 1);
 
     // ── 7b. GENERATOR waveform keyword ──────────────────────────────────────
     //  "| WAVEFORM" in "name ?= GENERATOR <count> <unit> range | WAVEFORM

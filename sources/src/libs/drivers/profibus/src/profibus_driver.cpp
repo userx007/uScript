@@ -598,7 +598,7 @@ ICommDriver::ReadResult ProfibusDriver::m_DoStandaloneReceive(uint32_t u32Timeou
                                          ? std::string(ProfibusProtocol::responseStatusName(ProfibusProtocol::decodeResponseFc(t.fc).statusCode))
                                          : m_BytesToHex(t.du);
         text                       = "DA=" + std::to_string(t.da) + " SA=" + std::to_string(t.sa) +
-                                     " FC=0x" + m_BytesToHex({t.fc}) + " " + payload + checksum;
+               " FC=0x" + m_BytesToHex({t.fc}) + " " + payload + checksum;
         break;
     }
     }

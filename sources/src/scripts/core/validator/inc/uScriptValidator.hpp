@@ -59,7 +59,7 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType> {
         bool m_HandleDelay(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleBreakpoint(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexcept;
-        bool m_HandleGeneratorStopAll(const ScriptRawLine &sRawLine) noexcept;
+        bool m_HandleKill(const ScriptRawLine &sRawLine) noexcept;
 
         bool m_preprocessScriptStatements(const ScriptRawLine &sRawLine, const Token eToken) noexcept;
         bool m_validateConditions() noexcept;
@@ -73,27 +73,24 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType> {
         // in the file — are already known.
         bool m_validateArraySizeUsage() noexcept;
 
-        // Walks the compiled command list in source (textual) order tracking
-        // which GENERATOR destination names are currently "started", and
-        // fails validation on:
-        //   - "val ?= GENERATOR STOP" when val has no active generator
-        //     immediately before this line (never started, or already
-        //     stopped since its last start);
-        //   - "GENERATOR STOP ALL" when no generator at all is active
-        //     immediately before this line.
-        // A start (or restart) on an already-started name is NOT an error —
-        // repeated starts without an intervening STOP are the expected way
-        // to relaunch a generator (e.g. from inside a REPEAT body with
-        // different params each iteration). "GENERATOR STOP ALL" clears
-        // every name's started state, same as an individual STOP would.
-        //
-        // This is a static, textual-order check — like m_validateArraySizeUsage()
-        // and m_validateLoops()'s label matching, it does not simulate
-        // IF/GOTO control flow, so a STOP reachable only via a conditional
-        // branch is still paired against the nearest preceding textual start.
-        // Runs after m_validateScriptStatements() so the full command list
-        // (and every GENERATOR node in it) already exists.
-        bool m_validateGeneratorPairing() noexcept;
+        // Walks the compiled command list in source (textual) order, collecting
+        // the names of every VOLATILE macro that has something running behind it:
+        //   - the destination of a threaded variable-capture command
+        //     ("name ?= PLUGIN.CMD args &" - this includes "name ?= UART.CYCLIC ... &");
+        //   - the destination of a GENERATOR ("name ?= GENERATOR ...").
+        // and fails validation on a "[ret ?=] KILL name" whose name has not been
+        // launched that way on an earlier line. That catches typos and, above all,
+        // an attempt to kill something that does not return a volatile macro:
+        // a command launched sequentially (no '&') has already finished, and a
+        // command that captures nothing ("PLUGIN.CMD args &") has no name to be
+        // killed by - there is no way to kill it short of the end of the script.
+        // Unlike a start/stop pairing check a KILL does NOT consume the name:
+        // a second KILL of the same name (e.g. on a cleanup path reachable both
+        // after a normal KILL and via a GOTO that skipped it) is legitimate and
+        // simply stops nothing at run time (result "0"). Being a textual-order
+        // check it does not simulate IF/GOTO flow. Runs after
+        // m_validateScriptStatements() so the full command list already exists.
+        bool m_validateKillTargets() noexcept;
 
         bool m_ListStatements() noexcept;
 

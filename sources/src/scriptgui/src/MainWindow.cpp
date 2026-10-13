@@ -1376,7 +1376,7 @@ void MainWindow::onProcessOutput()
             const QString line = QString::fromUtf8(
                                      m_lineBuf.sliced(start, nlPos - start))
                                      .trimmed();
-            start              = nlPos + 1;
+            start = nlPos + 1;
             if (!line.isEmpty()) {
                 dispatchLine(line); // may set m_terminalMode = true
             }
@@ -1415,7 +1415,7 @@ void MainWindow::onProcessError()
         const QString line = QString::fromUtf8(
                                  m_errBuf.sliced(start, nlPos - start))
                                  .trimmed();
-        start              = nlPos + 1;
+        start = nlPos + 1;
         if (!line.isEmpty()) {
             m_w3->appendLine(line);
         }

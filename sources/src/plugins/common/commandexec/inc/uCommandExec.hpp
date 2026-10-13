@@ -12,9 +12,11 @@
 #include "uVolatileMacroStore.hpp"
 
 #include <chrono>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <numeric>
 #include <string>
 #include <thread>
@@ -634,6 +636,7 @@ namespace ucmdexec {
                 struct ResolvedCyclicEntry {
                         CommCommand command;
                         uint32_t u32PeriodMs;
+                        std::string strVal; // the entry's value text, published to the capture sink after each send
                 };
 
                 std::vector<ResolvedCyclicEntry> vResolvedEntries;
@@ -645,7 +648,7 @@ namespace ucmdexec {
                     for (const auto &sEntry : vEntries) {
                         CommCommand command;
                         if (validator.validateCommand(0, sEntry.strVal, command)) {
-                            vResolvedEntries.push_back(ResolvedCyclicEntry{std::move(command), sEntry.u32PeriodMs});
+                            vResolvedEntries.push_back(ResolvedCyclicEntry{std::move(command), sEntry.u32PeriodMs, sEntry.strVal});
                         }
                     }
 
@@ -719,6 +722,9 @@ namespace ucmdexec {
                                 if (false == (bRetVal = interpreter.interpretCommand(sEntry.command, !uexec::isDryRun()))) {
                                     break;
                                 }
+                                // "retval ?= PLUGIN.CYCLIC ... &": hand the value just sent to the
+                                // volatile macro (no-op without a capture destination).
+                                uexec::publishCapture(sEntry.strVal);
                             }
                         }
                     } else {
@@ -748,6 +754,7 @@ namespace ucmdexec {
                                 if (false == (bRetVal = interpreter.interpretCommand(command, !uexec::isDryRun()))) {
                                     break;
                                 }
+                                uexec::publishCapture(strResolvedVal); // same as the cached branch above
                             }
                         }
                     }
@@ -776,7 +783,23 @@ namespace ucmdexec {
                     // extra load cost.
                     const std::chrono::steady_clock::time_point tpNextTick =
                         tpStart + std::chrono::milliseconds(u64Tick * (u64TickIdx + 1U));
-                    std::this_thread::sleep_until(tpNextTick);
+
+                    // Interruptible wait instead of a plain sleep_until(): a threaded session
+                    // is stopped by "KILL <macro>" (or the end of the script), which must not
+                    // have to sit out the rest of a possibly long tick (a 10 s period would
+                    // otherwise make KILL block for up to 10 s). condition_variable_any's
+                    // stop_token overload wakes the instant stop is requested, and behaves
+                    // like sleep_until() when the token can never be stopped (sequential call).
+                    {
+                        std::mutex mtxWait;
+                        std::condition_variable_any cvWait;
+                        std::unique_lock<std::mutex> lkWait(mtxWait);
+                        cvWait.wait_until(lkWait, st, tpNextTick, [] { return false; });
+                    }
+
+                    if (bThreaded && st.stop_requested()) {
+                        break; // stopped while waiting: do not send one more tick
+                    }
                 }
             } catch (const std::bad_alloc &e) {
                 LOG_PRINT(LOG_ERROR, LOG_STRING(pstrPszLogHdr); LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));

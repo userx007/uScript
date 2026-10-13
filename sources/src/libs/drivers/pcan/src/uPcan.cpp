@@ -125,8 +125,8 @@ bool PCAN::frameMatchesFilter(const TPCANMsg &msg, uint32_t u32RxFilterId) const
     // rest is either an 11-bit or 29-bit numeric id. PCANBasic's msg.ID
     // never carries that flag bit — extended-ness lives in MSGTYPE — so
     // both the flag and the numeric id must be handled separately here.
-    const bool bWantExtended  = (u32RxFilterId & CAN_EFF_FLAG) != 0U ||
-                                ((u32RxFilterId & CAN_EFF_MASK) > CAN_SFF_MASK);
+    const bool bWantExtended = (u32RxFilterId & CAN_EFF_FLAG) != 0U ||
+                               ((u32RxFilterId & CAN_EFF_MASK) > CAN_SFF_MASK);
     const uint32_t u32WantId  = u32RxFilterId & (bWantExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
     const bool bFrameExtended = (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U;
 
@@ -741,9 +741,9 @@ ICommDriver::WriteResult PCAN::writeFragmented_locked(uint32_t u32WriteTimeout,
 
     (void)u32WriteTimeout; // CAN_Write is non-blocking; timeout reserved for future use.
 
-    const uint32_t u32TxId    = resolveTxId(xtra_params);
-    const bool bExtended      = m_bExtendedId || (u32TxId & CAN_EFF_FLAG) != 0U ||
-                                ((u32TxId & CAN_EFF_MASK) > CAN_SFF_MASK);
+    const uint32_t u32TxId = resolveTxId(xtra_params);
+    const bool bExtended   = m_bExtendedId || (u32TxId & CAN_EFF_FLAG) != 0U ||
+                           ((u32TxId & CAN_EFF_MASK) > CAN_SFF_MASK);
     // sendFrame()/TPCANMsg::ID hold only the raw 11/29-bit value — PCANBasic
     // has no equivalent of the CAN_EFF_FLAG bit (extended-ness is carried
     // separately via MSGTYPE) — so it must be stripped here, not forwarded.

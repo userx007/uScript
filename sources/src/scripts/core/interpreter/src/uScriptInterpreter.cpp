@@ -320,10 +320,10 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType &sScriptEntries, bool 
     // every jthread so cooperative plugins can exit cleanly, then joins each
     // one unconditionally.  This is a no-op when no "&" commands were used.
     // m_stopAllGenerators() does the same for any GENERATOR threads still
-    // running — a script is not required to explicitly STOP every generator
-    // it starts (m_validateGeneratorPairing() only checks that the EXPLICIT
-    // STOP/STOP ALL calls a script does make are meaningful, not that every
-    // started generator eventually gets one).
+    // running — a script is not required to explicitly KILL every generator
+    // or threaded capture command it starts (m_validateKillTargets() only
+    // checks that the KILLs a script does make are meaningful, not that every
+    // started one eventually gets one).
     if (bRealExec) {
         m_joinAllThreads();
         m_stopAllGenerators();
@@ -701,8 +701,8 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &sCom
         }
         if (!numeric::str2uint64(strExpanded, out)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
-                      LOG_STRING(pszKind); LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
-                      LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
+                          LOG_STRING(pszKind); LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
+                          LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
             return false;
         }
         return true;
@@ -838,9 +838,9 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
         }
         if (!numeric::str2uint64(strExpanded, out)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
-                      LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
-                      LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
-                      LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
+                          LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                          LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
+                          LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
             return false;
         }
         return true;
@@ -1144,6 +1144,30 @@ bool ScriptInterpreter::executeCmd(const std::string &strCommand)
                 bRetVal = m_dispatchShellLine(std::move(sStmt));
             } else {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strError));
+                bRetVal = false;
+            }
+            break;
+        }
+
+        case Token::KILL_STMT: {
+            // "[ret ?=] KILL name" - same shared parser as ScriptValidator, so the
+            // interactive form can never drift from the compiled-script one, and the
+            // same rule applies: the target is the name of a volatile macro.
+            // The threads a shell session started with "name ?= PLUGIN.CMD args &" live
+            // in m_threads exactly like a script's (and "name ?= GENERATOR ..." in
+            // m_generatorThreads), so m_killVolatileMacro() finds them; the result
+            // variable (if any) is mirrored to the shell scope so it persists across
+            // executeCmd() calls like every other "?=" result.
+            KillStatement sStmt;
+            std::string strKillError;
+            if (parseKillStatement(strCommandTemp, sStmt, &strKillError)) {
+                const std::string strResultName = sStmt.strResultName;
+                bRetVal                         = m_dispatchShellLine(std::move(sStmt));
+                if (!strResultName.empty()) {
+                    m_mirrorToShellVarMacros(strResultName);
+                }
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strKillError));
                 bRetVal = false;
             }
             break;
@@ -2028,10 +2052,11 @@ void ScriptInterpreter::m_joinAllThreads() noexcept
   GENERATOR's thread, if one is currently running. Harmless no-op if strName
   has no active generator — see m_generatorThreads' doc comment
   (uScriptInterpreter.hpp) for why that tolerance is safe: a well-formed
-  script's actual STOP calls are already guaranteed meaningful by
-  ScriptValidator::m_validateGeneratorPairing() at validation time; this is
-  just the runtime mechanism, also reused unconditionally by every non-STOP
-  GENERATOR statement to implement "restart on recall".
+  script's KILLs are already guaranteed meaningful by
+  ScriptValidator::m_validateKillTargets() at validation time; this is
+  just the runtime mechanism (reached through m_killVolatileMacro()), also
+  reused unconditionally by every GENERATOR statement to implement "restart
+  on recall". Returns the number of generator threads stopped (0 or 1).
 
   The entry is moved out of m_generatorThreads under the lock, then
   request_stop()+join() happen OUTSIDE the lock — joining while holding
@@ -2040,7 +2065,7 @@ void ScriptInterpreter::m_joinAllThreads() noexcept
   point of keying by name in the first place.
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_stopNamedGenerator(const std::string &strName) noexcept
+size_t ScriptInterpreter::m_stopNamedGenerator(const std::string &strName) noexcept
 {
     GeneratorThreadEntry entry;
     bool bFound = false;
@@ -2063,13 +2088,77 @@ void ScriptInterpreter::m_stopNamedGenerator(const std::string &strName) noexcep
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("GENERATOR ["); LOG_STRING(strName); LOG_STRING("] stopped."));
     }
 
+    return bFound ? 1U : 0U;
+
 } /* m_stopNamedGenerator() */
 
 /*-------------------------------------------------------------------------------
+  m_killVolatileMacro — implements "[ret ?=] KILL name": stop and join whatever
+  keeps the volatile macro strName alive, i.e. the "&" thread(s) whose
+  variable-capture destination is strName ("name ?= PLUGIN.CMD args &", incl.
+  "name ?= UART.CYCLIC ... &") and the GENERATOR thread of that name. Returns the
+  number of threads that were still alive and were stopped.
+
+  Selection happens under m_threadsMutex; request_stop()+join() happen outside
+  it (see the declaration's comment for why). An entry whose done flag is
+  already set has finished on its own (e.g. the plugin command failed and the
+  capture loop exited): it is simply reclaimed and not counted, so the result
+  reflects threads KILL itself had to stop.
+
+  Stopping is cooperative: the stop_token reaches the driver's blocking read
+  (and the CYCLIC scheduler's wait) through doDispatch(), so the join normally
+  completes within the driver's poll granularity (the UART driver polls every
+  200 ms). A plugin that never looks at its stop_token would make this block
+  until its current dispatch returns - the same property m_joinAllThreads()
+  already has.
+
+  Only threads registered under strName are touched: a command launched
+  without a volatile macro destination ("PLUGIN.CMD args &") is anonymous and
+  can never be reached from here - by design, see KillStatement.
+-------------------------------------------------------------------------------*/
+
+size_t ScriptInterpreter::m_killVolatileMacro(const std::string &strName) noexcept
+{
+    std::vector<ThreadEntry> toStop;
+    size_t szAlive = 0;
+
+    {
+        std::lock_guard<std::mutex> lock(m_threadsMutex);
+
+        for (auto it = m_threads.begin(); it != m_threads.end();) {
+            if (it->strVarMacroName == strName) {
+                if (!it->done->load(std::memory_order_acquire)) {
+                    ++szAlive;
+                }
+                it->thread.request_stop(); // signal before moving out, under the lock
+                toStop.push_back(std::move(*it));
+                it = m_threads.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
+    for (auto &entry : toStop) {
+        if (entry.thread.joinable()) {
+            entry.thread.join();
+        }
+    }
+
+    szAlive += m_stopNamedGenerator(strName);
+
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("KILL ["); LOG_STRING(strName); LOG_STRING("]: stopped");
+              LOG_SIZET(szAlive); LOG_STRING("thread(s)"));
+
+    return szAlive;
+
+} /* m_killVolatileMacro() */
+
+/*-------------------------------------------------------------------------------
   m_stopAllGenerators — stop and erase every currently running generator
-  thread. Used by the bare "GENERATOR STOP ALL" command and by
-  interpretScript()'s end-of-run cleanup (alongside m_joinAllThreads()), so a
-  script that never explicitly stops its generators still exits cleanly.
+  thread. Used by interpretScript()'s end-of-run cleanup (alongside
+  m_joinAllThreads()), so a script that never explicitly KILLs its generators
+  still exits cleanly.
   Same move-out-then-join-outside-the-lock shape as m_joinAllThreads().
 -------------------------------------------------------------------------------*/
 
@@ -2175,6 +2264,16 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                 // Shared done-flag: set by thread on exit; read by harvest/join.
                                 auto doneFlag = std::make_shared<std::atomic<bool>>(false);
 
+                                // "VAL ?= PLUGIN.CYCLIC ... &": make VAL exist (empty) right now, on the
+                                // main thread, so a line that reads $VAL immediately after this one never
+                                // finds it undefined while the first tick is still on its way. From then
+                                // on it holds the value generated by the most recent tick.
+                                if constexpr (std::is_same_v<T, MacroCommand>) {
+                                    if (bIsCyclic) {
+                                        m_setRuntimeVarMacro(command.strVarMacroName, std::string{});
+                                    }
+                                }
+
                                 // Capture everything needed by VALUE — no references into
                                 // interpreter state cross the thread boundary.
                                 std::jthread t(
@@ -2191,6 +2290,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                      }(),
                                      lineNo,
                                      doneFlag,
+                                     bIsCyclic,
                                      this](std::stop_token st) mutable {
                                         // Pass the stop_token into doDispatch so the plugin
                                         // can poll st.stop_requested() inside its own loop
@@ -2207,6 +2307,31 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                             set_gui_comm_tid(lineNo);
 
                                             if constexpr (std::is_same_v<T, MacroCommand>) {
+                                                if (bIsCyclic) {
+                                                    // ---- Variable-capture CYCLIC session ----
+                                                    // "VAL ?= PLUGIN.CYCLIC args &": unlike a "receive" CMD, one
+                                                    // dispatch of CYCLIC never comes back until it is stopped - it
+                                                    // loops internally, sending its entries on schedule - so it must
+                                                    // NOT be re-dispatched in the loop below (a plugin that is not
+                                                    // enabled returns at once, which would turn that loop into a
+                                                    // busy spin), and getData() is of no use because it is only read
+                                                    // after a dispatch returns. Instead the value generated at each
+                                                    // tick is handed to VAL through the thread-local capture sink
+                                                    // that generic_send_cyclic() publishes to (see uExecContext.hpp),
+                                                    // so VAL always holds the value sent most recently - exactly
+                                                    // what the script sees when it reads $VAL, and what makes
+                                                    // "KILL VAL" meaningful for this command.
+                                                    uexec::CaptureScope captureScope(
+                                                        [this, &strVarMacroName](const std::string &strGenerated) {
+                                                            m_setRuntimeVarMacro(strVarMacroName, strGenerated);
+                                                        });
+                                                    if (!sPluginEntryPoint->doDispatch(strCommand, strParams, st)) {
+                                                        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                                                  LOG_STRING("Threaded var-capture CYCLIC failed:");
+                                                                  LOG_STRING(strPlugin + "." + strCommand));
+                                                    }
+                                                    sPluginEntryPoint->resetData();
+                                                } else {
                                                 // ---- Variable-capture threaded loop ----
                                                 // "VAL ?= PLUGIN.CMD args &": re-dispatch the
                                                 // command forever (each call blocks internally
@@ -2243,6 +2368,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                                     }
                                                     sPluginEntryPoint->resetData();
                                                 }
+                                                } // !bIsCyclic
                                             } else {
                                                 sPluginEntryPoint->doDispatch(strCommand, strParams, st);
                                             }
@@ -2261,10 +2387,18 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                     });
 
                                 {
+                                    // Remember the capture destination so KILL <name> can find this
+                                    // thread later (empty for a non-capturing "PLUGIN.CMD &", which
+                                    // therefore cannot be killed by name).
+                                    std::string strEntryVarName;
+                                    if constexpr (std::is_same_v<T, MacroCommand>) {
+                                        strEntryVarName = command.strVarMacroName;
+                                    }
+
                                     std::lock_guard<std::mutex> lock(m_threadsMutex);
                                     m_harvestFinishedThreads(); // prune completed entries first
                                     m_busyPlugins.insert(command.strPlugin);
-                                    m_threads.push_back(ThreadEntry{std::move(t), doneFlag});
+                                    m_threads.push_back(ThreadEntry{std::move(t), doneFlag, std::move(strEntryVarName)});
                                 }
 
                                 // Notify GUI so it draws the thread-active rectangle on this line.
@@ -2282,6 +2416,17 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                           LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                                 {
                                     utime::Timer timer(std::string(lineNr.data()) + " Command");
+                                    // "VAL ?= PLUGIN.CYCLIC args" (no '&'): same capture sink as the
+                                    // threaded form, so VAL ends up holding the last value generated.
+                                    std::function<void(const std::string &)> fnCaptureSink;
+                                    if constexpr (std::is_same_v<T, MacroCommand>) {
+                                        if (bIsCyclic) {
+                                            fnCaptureSink = [this, &command](const std::string &strGenerated) {
+                                                m_setRuntimeVarMacro(command.strVarMacroName, strGenerated);
+                                            };
+                                        }
+                                    }
+                                    uexec::CaptureScope captureScope(std::move(fnCaptureSink));
                                     if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, strExpandedParams, uexec::getStopToken())) {
                                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                                                   LOG_STRING("Failed executing");
@@ -2291,10 +2436,14 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                     } else { // execution succeeded, update the value of the associated macro if any
                                         if constexpr (std::is_same_v<T, MacroCommand>) {
                                             const std::string strValue = plugin.shptrPluginEntryPoint->getData();
-                                            m_setRuntimeVarMacro(command.strVarMacroName, strValue);
-                                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
-                                                      LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName);
-                                                      LOG_STRING("]->["); LOG_STRING(strValue); LOG_STRING("]"));
+                                            // CYCLIC delivers its value through the capture sink while it
+                                            // runs; its (empty) getData() must not wipe that value out now.
+                                            if (!bIsCyclic || !strValue.empty()) {
+                                                m_setRuntimeVarMacro(command.strVarMacroName, strValue);
+                                                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                                                          LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName);
+                                                          LOG_STRING("]->["); LOG_STRING(strValue); LOG_STRING("]"));
+                                            }
                                             plugin.shptrPluginEntryPoint->resetData();
                                         }
                                     }
@@ -3101,13 +3250,12 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
             /*-----------------------------------------------------------------
                 name ?= GENERATOR <count> <unit> begin:end:step[:k] | WAVEFORM [| ENCODING]
                 name ?= GENERATOR <count> <unit> elem1,elem2,...    | WAVEFORM [| ENCODING]
-                name ?= GENERATOR STOP
 
-                Every non-STOP call unconditionally stops any generator thread
-                already running for `command.strName` first (m_stopNamedGenerator,
-                a no-op if none is running) — this IS the "restart on recall"
-                behaviour GeneratorStatement's doc comment describes; bStop is
-                simply the case where nothing relaunches afterward.
+                Every call unconditionally stops any generator thread already
+                running for `command.strName` first (m_stopNamedGenerator, a
+                no-op if none is running) — this IS the "restart on recall"
+                behaviour GeneratorStatement's doc comment describes. Stopping
+                a generator for good is done with "KILL name" (see KillStatement).
 
                 begin/end/step/k (or every array element) are resolved once,
                 right here (m_resolveGeneratorRange), then captured BY VALUE into
@@ -3118,7 +3266,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
 
                 The thread sleeps via std::condition_variable_any::wait_for(lock,
                 stop_token, duration, pred) rather than a plain sleep_for(), so
-                GENERATOR STOP / a restart wakes it immediately instead of after
+                KILL / a restart wakes it immediately instead of after
                 up to one full tick interval.
             -----------------------------------------------------------------*/
 
@@ -3127,10 +3275,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
 
                 m_stopNamedGenerator(command.strName);
 
-                if (command.bStop) {
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-                              LOG_STRING("GENERATOR ["); LOG_STRING(command.strName); LOG_STRING("] STOP"));
-                } else {
+                {
                     ResolvedGeneratorRange range;
                     if (!m_resolveGeneratorRange(command, range)) {
                         bRetVal = false;
@@ -3219,13 +3364,25 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
             }
 
             /*-----------------------------------------------------------------
-                GENERATOR STOP ALL — bare command, stops every running generator.
+                [result ?=] KILL name — stop whatever keeps the volatile macro
+                <name> alive: the threaded capture command launched as
+                "name ?= PLUGIN.CMD args &" (incl. "name ?= UART.CYCLIC ... &")
+                or the generator started by "name ?= GENERATOR ...". <result>
+                (if given) receives how many threads were stopped. This is the
+                one way to stop either of them early (there is no GENERATOR
+                STOP / STOP ALL). See KillStatement; the static "is <name> really
+                such a macro" check is ScriptValidator::m_validateKillTargets().
             -----------------------------------------------------------------*/
 
-        } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
+        } else if constexpr (std::is_same_v<T, KillStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                m_stopAllGenerators();
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("GENERATOR STOP ALL"));
+                const size_t szStopped = m_killVolatileMacro(command.strTargetName);
+                if (!command.strResultName.empty()) {
+                    m_setRuntimeVarMacro(command.strResultName, std::to_string(szStopped));
+                }
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("KILL ["); LOG_STRING(command.strTargetName); LOG_STRING("]->");
+                          LOG_SIZET(szStopped));
             }
         } },
                sData.command);

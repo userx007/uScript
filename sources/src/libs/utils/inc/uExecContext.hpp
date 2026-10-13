@@ -4,9 +4,11 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <functional>
 #include <stop_token>
 #include <string>
 #include <thread>
+#include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                                  RATIONALE                                  //
@@ -91,6 +93,68 @@ namespace uexec {
 
         private:
             bool m_bPrev;
+    };
+
+    // -------------------------------------------------------------------------
+    // Capture sink: lets a long-running plugin command that never "returns" a
+    // value in the usual sense (UART.CYCLIC & friends: ONE doDispatch() call
+    // that runs until it is stopped) hand every value it generates to the
+    // volatile macro the script bound it to:
+    //
+    //     retval ?= UART.CYCLIC 100 AABBCCDD &
+    //
+    // For an ordinary threaded capture ("rx ?= UART.CMD < &") the interpreter
+    // re-dispatches the command and reads PluginInterface::getData() after each
+    // call, which is why that needs nothing here. A cyclic command dispatches
+    // once and then loops internally, so getData() would only be consulted
+    // after it was stopped - far too late. Instead the interpreter's command
+    // thread installs a sink for the duration of that one dispatch
+    // (CaptureScope) and ucmdexec::generic_send_cyclic() calls
+    // publishCapture() with the value it has just sent, on every tick.
+    //
+    // Thread-local for the same reason as the dry-run flag above: the sink
+    // belongs to exactly one command thread, needs no locking, and is invisible
+    // (an empty std::function => publishCapture() is a no-op) to every other
+    // thread and to every plugin call made without a capture destination.
+    // -------------------------------------------------------------------------
+    namespace detail {
+        inline thread_local std::function<void(const std::string &)> t_captureSink;
+    }
+
+    /**
+     * \brief Hands strValue to the calling thread's capture sink, if any (see
+     *        CaptureScope). A no-op when the command was not launched with a
+     *        volatile-macro destination.
+     */
+    inline void publishCapture(const std::string &strValue)
+    {
+        if (detail::t_captureSink) {
+            detail::t_captureSink(strValue);
+        }
+    }
+
+    /**
+     * \brief RAII scope guard installing the calling thread's capture sink for
+     *        its lifetime and restoring the previous one on destruction.
+     */
+    class CaptureScope {
+        public:
+            explicit CaptureScope(std::function<void(const std::string &)> sink)
+                : m_prev(std::move(detail::t_captureSink))
+            {
+                detail::t_captureSink = std::move(sink);
+            }
+
+            ~CaptureScope()
+            {
+                detail::t_captureSink = std::move(m_prev);
+            }
+
+            CaptureScope(const CaptureScope &)            = delete;
+            CaptureScope &operator=(const CaptureScope &) = delete;
+
+        private:
+            std::function<void(const std::string &)> m_prev;
     };
 
 } // namespace uexec

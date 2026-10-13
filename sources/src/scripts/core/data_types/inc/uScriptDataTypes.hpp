@@ -2,6 +2,7 @@
 #define SCRIPTDATATYPES_HPP
 #include "uNumeric.hpp"
 
+#include <cctype>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -67,8 +68,8 @@ enum class Token {
     BYTESTREAMVAL_STMT,       // name ?= hex_source | BYTESTREAMVAL byte_offset:bit_offset:value_size
     BITSTREAMVAL_ARRAY_STMT,  // name [= hex_source | BITSTREAMVAL  bit_offset1:value_size1 [bit_offset2:value_size2 ...]
     BYTESTREAMVAL_ARRAY_STMT, // name [= hex_source | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
-    GENERATOR_STMT,           // name ?= GENERATOR <count> <unit> min:max:step[:k] | WAVEFORM [| ENCODING]  |  name ?= GENERATOR STOP
-    GENERATOR_STOP_ALL_STMT,  // GENERATOR STOP ALL (bare command — stops every running generator)
+    GENERATOR_STMT,           // name ?= GENERATOR <count> <unit> min:max:step[:k] | WAVEFORM [| ENCODING]
+    KILL_STMT,                // [result ?=] KILL name  — stops the thread/generator that keeps the volatile macro "name" alive
     INVALID
 };
 
@@ -417,10 +418,9 @@ enum class GeneratorWaveform {
 // name ?= GENERATOR <count> <unit> <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
 // name ?= GENERATOR <count> <unit> <elem1>,<elem2>,...                | WAVEFORM [| ENCODING]
 // name ?= GENERATOR <count> <unit> $arrayName                        | WAVEFORM [| ENCODING]
-// name ?= GENERATOR STOP
 //
 // Native, self-threading cyclic value generator — no plugin required.
-// A non-STOP statement (re)launches a background jthread, keyed by strName,
+// A statement (re)launches a background jthread, keyed by strName,
 // that ticks every uIntervalUs microseconds, computes the next sample of the
 // requested waveform, and writes it into m_RuntimeVarMacros[strName] via the
 // same ScriptInterpreter::m_setRuntimeVarMacro() every other built-in
@@ -430,12 +430,15 @@ enum class GeneratorWaveform {
 // uvolatile::VolatileMacroStore, ...), exactly like a threaded
 // "VAL ?= PLUGIN.CMD args &" MacroCommand's result.
 //
-// Restart semantics: EVERY non-STOP GENERATOR statement for a given strName
+// Stopping: "KILL name" (see KillStatement) stops the generator whose
+// destination macro is "name"
+//
+// Restart semantics: EVERY GENERATOR statement for a given strName
 // unconditionally stops whatever generator thread is already running for
 // that name (if any) before launching the new one — there is no attempt to
 // detect "same params as before" and skip the relaunch. This is what makes
 // "val ?= GENERATOR ..." with different params on each loop iteration behave
-// as intended: no explicit STOP is needed between iterations, and the
+// as intended: no explicit KILL is needed between iterations, and the
 // waveform's internal state (current/direction/phase/ticksAtLevel/arrIndex)
 // always restarts cleanly from <begin> (or from array element 0).
 //
@@ -523,13 +526,8 @@ enum class GeneratorWaveform {
 //     instead kept as one ordinary (deferred) element — a one-element array.
 // vArrayValues always has at least one element when bIsArraySource is true.
 //
-// bStop selects the "val ?= GENERATOR STOP" form: only strName is meaningful
-// then (stops that one name's generator thread; every other field is
-// default-initialised and unused). See GeneratorStopAllStatement below for
-// the bare, no-destination "GENERATOR STOP ALL" form.
 struct GeneratorStatement {
         std::string strName;                        // destination macro name (identifier)
-        bool bStop           = false;               // true => "val ?= GENERATOR STOP"
         uint64_t uIntervalUs = 0;                   // tick interval, normalised to microseconds (DELAY-style)
         bool bIsArraySource  = false;               // true => vArrayValues drives the generator, begin/end/step unused
         RepeatRangeValue begin, end, step;          // deferred $macro-capable, resolved once at (re)launch. Meaningful only when !bIsArraySource
@@ -540,15 +538,135 @@ struct GeneratorStatement {
         HexOutputFormat eHexFormat  = HexOutputFormat::NONE;
 };
 
-// GENERATOR STOP ALL — bare command (no destination macro, no "?="),
-// modeled on BREAK/CONTINUE's bare-command shape. Stops every currently
-// running generator thread. Carries no fields of its own; its mere presence
-// in the IR is the instruction. Requires at least one generator to be
-// running at that point in the script — enforced at validation time by the
-// same START/STOP pairing pass GeneratorStatement's STOP form uses (see
-// ScriptValidator's generator-pairing validation).
-struct GeneratorStopAllStatement {
+// [result ?=] KILL <name>
+//
+// Stops whatever is keeping the VOLATILE macro <name> alive, and waits for it
+// to finish. Exactly two things create such a macro and can therefore be
+// killed:
+//
+//   <name> ?= PLUGIN.CMD args &       a threaded variable-capture command
+//                                     (MacroCommand with bThreaded == true) -
+//                                     this includes "<name> ?= UART.CYCLIC ... &"
+//   <name> ?= GENERATOR ...           a native generator thread
+//
+// A command that does not return a volatile macro can NOT be killed: there is
+// no handle to name it by. Consequently the target of KILL is always the name
+// of a volatile macro - never a plugin, never a "PLUGIN.CMD" - and these forms
+// are rejected at validation time:
+//
+//     ok ?= KILL UART.CYCLIC          (a command, not a volatile macro)
+//     KILL UART:2.CMD                 (ditto, instanced)
+//
+// The one supported way to kill a command is to make it return a volatile macro
+// when it is launched and to hand that very macro to KILL:
+//
+//     retval ?= UART.CYCLIC 100 AABBCCDD &
+//     ...
+//     KILL retval
+//
+// Mechanism: request_stop() is issued on the thread's std::jthread. That is
+// cooperative - the stop_token travels down through PluginInterface::doDispatch
+// into the driver / the cyclic scheduler, so the loop winds down promptly
+// instead of being abandoned. KILL then join()s the thread, so when it returns
+// the plugin instance is free again (a new "&" command may be launched on it
+// at once).
+//
+// strResultName: optional ("result ?= KILL name" vs. the bare "KILL name").
+// When present it receives the number of threads/generators that were still
+// alive and were stopped, as a decimal string - "1" in the normal case, "0"
+// when there was nothing to stop (it had already ended on its own, e.g. because
+// the plugin command failed, or it was already killed). Stopping nothing is
+// deliberately NOT an error, so a script can KILL unconditionally from a
+// cleanup path and inspect the result if it cares.
+//
+// The volatile macro itself (<name>) keeps the last value that was written to
+// it; KILL only stops the refreshing. Anything still running when the script
+// ends is stopped and joined automatically (see ScriptInterpreter::
+// m_joinAllThreads() / m_stopAllGenerators()), so KILL is only needed to stop
+// something *earlier*.
+//
+// Static check (ScriptValidator::m_validateKillTargets()): <name> must be the
+// destination of a threaded capture command or of a GENERATOR that appears
+// earlier in the script text, which catches typos - and attempts to kill a
+// command that returns no volatile macro - at validation time rather than
+// silently stopping nothing at run time.
+struct KillStatement {
+        std::string strTargetName; // volatile macro to kill (destination of a threaded capture command / GENERATOR)
+        std::string strResultName; // optional: macro receiving the stopped count ("" = bare form)
 };
+
+// Extracts the two names from a line already accepted by usyntax::m_isKillStmt()
+// ("[result ?=] KILL name"). Shared by ScriptValidator and the interactive-shell
+// path (ScriptInterpreter::executeCmd()) so the compiled-script and shell forms
+// can never drift apart - same role parseStreamStatement() plays for BITSTREAM.
+//
+// Returns false if the line is not acceptable and, when strError is non-null,
+// stores a human-readable reason there. The target must be the plain name of a
+// volatile macro: anything that looks like a command ("UART.CYCLIC",
+// "UART:2.CMD"), carries arguments, or is not a valid identifier is rejected.
+inline bool parseKillStatement(const std::string &strLine, KillStatement &out, std::string *pstrError = nullptr)
+{
+    const auto fail = [pstrError](const std::string &strReason) {
+        if (pstrError != nullptr) {
+            *pstrError = strReason;
+        }
+        return false;
+    };
+
+    const auto trim = [](const std::string &s) {
+        size_t b = 0, e = s.size();
+        while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) {
+            ++b;
+        }
+        while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) {
+            --e;
+        }
+        return s.substr(b, e - b);
+    };
+
+    const auto isIdentifier = [](const std::string &s) {
+        if (s.empty() || !(std::isalpha(static_cast<unsigned char>(s[0])) || s[0] == '_')) {
+            return false;
+        }
+        for (const char c : s) {
+            if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '_')) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    std::string strRest = trim(strLine);
+    std::string strResult;
+
+    const size_t szAssign = strRest.find("?=");
+    if (szAssign != std::string::npos) {
+        strResult = trim(strRest.substr(0, szAssign));
+        strRest   = trim(strRest.substr(szAssign + 2));
+        if (!isIdentifier(strResult)) {
+            return fail("KILL: '" + strResult + "' is not a valid result macro name");
+        }
+    }
+
+    if (strRest.compare(0, 4, "KILL") != 0 || (strRest.size() > 4 && !std::isspace(static_cast<unsigned char>(strRest[4])))) {
+        return fail("KILL: expected '[result ?=] KILL name'");
+    }
+
+    const std::string strTarget = trim(strRest.substr(4));
+    if (strTarget.empty()) {
+        return fail("KILL: missing target, expected '[result ?=] KILL name' where name is a volatile macro");
+    }
+
+    if (!isIdentifier(strTarget)) {
+        return fail("KILL: '" + strTarget + "' is not the name of a volatile macro. A command can only be killed "
+                                            "through the volatile macro it returns: launch it as 'name ?= PLUGIN.CMD args &' "
+                                            "(or 'name ?= GENERATOR ...') and then use 'KILL name'");
+    }
+
+    out.strTargetName = strTarget;
+    out.strResultName = strResult;
+    return true;
+}
 
 // Post-processing mirror requested by an optional "| REVERSE_BIT" or
 // "| REVERSE_BYTE" suffix on a BITSTREAM/BYTESTREAM statement. Applied to
@@ -749,7 +867,7 @@ using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        VarMacroInit, FormatStatement, DelayStatement,
                                        MathStatement, BreakpointStatement, StreamStatement,
                                        StreamValStatement, StreamValArrayStatement,
-                                       GeneratorStatement, GeneratorStopAllStatement>;
+                                       GeneratorStatement, KillStatement>;
 
 struct ScriptLine {
         int iLineNumber = 0;
@@ -877,8 +995,8 @@ inline const std::string &getTokenTypeName(Token type)
         static const std::string name = "GENERATOR";
         return name;
     }
-    case Token::GENERATOR_STOP_ALL_STMT: {
-        static const std::string name = "GENERATOR_STOP_ALL";
+    case Token::KILL_STMT: {
+        static const std::string name = "KILL";
         return name;
     }
     case Token::INVALID: {

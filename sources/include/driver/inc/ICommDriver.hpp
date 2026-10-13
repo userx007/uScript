@@ -141,7 +141,7 @@ class ICommDriver {
                                      std::span<uint8_t> buffer,
                                      const ReadOptions &sOptions,
                                      std::string_view xtra_params = {},
-                                     std::stop_token stop_tok     = {}) const           = 0;
+                                     std::stop_token stop_tok     = {}) const               = 0;
 
         /**
          * @brief Unified write interface
@@ -164,7 +164,7 @@ class ICommDriver {
         virtual WriteResult tout_write(uint32_t u32WriteTimeout,
                                        std::span<const uint8_t> buffer,
                                        std::string_view xtra_params = {},
-                                       std::stop_token stop_tok     = {}) const         = 0;
+                                       std::stop_token stop_tok     = {}) const             = 0;
 
         /**
          * @brief Reset the driver state (e.g., flush buffers, reset filters).

@@ -130,6 +130,11 @@ class ScriptCommandValidator : public IScriptCommandValidator<Token> {
                     break;
                 }
 
+                if (true == usyntax::m_isKillStmt(strCommand)) {
+                    eToken = Token::KILL_STMT;
+                    break;
+                }
+
                 // Must be checked AFTER VARIABLE_MACRO (rhs PLUGIN.COMMAND wins) and
                 // AFTER REPEAT (index-capture form wins).  Anything else of the form
                 // "identifier ?= <value>" is a direct string initialisation.
@@ -180,11 +185,6 @@ class ScriptCommandValidator : public IScriptCommandValidator<Token> {
 
                 if (true == usyntax::m_isBreakpoint(strCommand)) {
                     eToken = Token::BREAKPOINT_STMT;
-                    break;
-                }
-
-                if (true == usyntax::m_isGeneratorStopAll(strCommand)) {
-                    eToken = Token::GENERATOR_STOP_ALL_STMT;
                     break;
                 }
 

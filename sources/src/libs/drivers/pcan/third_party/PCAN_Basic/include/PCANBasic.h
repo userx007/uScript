@@ -51,7 +51,7 @@
 /* workaround to prevent pcan.h to throw an error when <DWORD>, <WORD>, <BYTE> are already defined */
 #if defined(DWORD) || defined(WORD) || defined(BYTE)
 #if (DWORD != __u32) && (WORD != __u16) && (BYTE != __u8)
-#warning (message, "Warning <pcan.h> requires <DWORD>, <WORD>, <BYTE> to be redefined to __u32, __u16, __u8.")
+#warning(message, "Warning <pcan.h> requires <DWORD>, <WORD>, <BYTE> to be redefined to __u32, __u16, __u8.")
 #endif
 #undef DWORD
 #undef WORD
