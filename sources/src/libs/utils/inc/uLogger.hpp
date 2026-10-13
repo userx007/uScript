@@ -82,7 +82,7 @@ using FileLogLevel                    = LogLevel; /**< File log level threshold.
 /**
  * @brief Shared separator
  */
-inline const char *g_pstrLogSeparator = "------------------------------------------------";
+inline const char *g_pstrLogSeparator = "------------------------------------------------------------------------------------------------";
 
 /**
  * @brief Conversion from size_t to LogLevel
