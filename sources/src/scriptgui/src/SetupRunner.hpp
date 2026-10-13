@@ -2,7 +2,6 @@
 #include <QByteArray>
 #include <QObject>
 #include <QString>
-
 #include <memory>
 
 class QProcess;

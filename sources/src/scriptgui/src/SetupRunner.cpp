@@ -305,7 +305,8 @@ void SetupRunner::startPosix(const QString &scriptPath, const QString &password)
     m_proc->closeWriteChannel(); // scripts see EOF on stdin instead of hanging on a prompt
 }
 #else
-void SetupRunner::startPosix(const QString &, const QString &) {}
+void SetupRunner::startPosix(const QString &, const QString &)
+{}
 #endif
 
 #ifdef Q_OS_WIN
@@ -338,7 +339,7 @@ void SetupRunner::startWindows(const QString &scriptPath, const QString &user, c
     m_tailErrPath = m_tailDir + QStringLiteral("/err.txt");
     m_tailOutPos = m_tailErrPos = 0;
 
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    QProcessEnvironment env     = QProcessEnvironment::systemEnvironment();
     env.insert(QStringLiteral("SG_USER"), user);
     env.insert(QStringLiteral("SG_PW"), password);
     env.insert(QStringLiteral("SG_SCRIPT"), native);
@@ -367,7 +368,8 @@ void SetupRunner::startWindows(const QString &scriptPath, const QString &user, c
     m_proc->closeWriteChannel();
 }
 #else
-void SetupRunner::startWindows(const QString &, const QString &, const QString &) {}
+void SetupRunner::startWindows(const QString &, const QString &, const QString &)
+{}
 #endif
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -701,8 +701,8 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &sCom
         }
         if (!numeric::str2uint64(strExpanded, out)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
-                          LOG_STRING(pszKind); LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
-                          LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
+                      LOG_STRING(pszKind); LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
+                      LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
             return false;
         }
         return true;
@@ -838,9 +838,9 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
         }
         if (!numeric::str2uint64(strExpanded, out)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
-                          LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
-                          LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
-                          LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
+                      LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                      LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
+                      LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
             return false;
         }
         return true;

@@ -177,7 +177,7 @@ std::string DdsTypedDriver::m_BuildDomainConfigXml() const
         xml << "<FragmentSize>" << m_config.fragmentThresholdBytes << "B</FragmentSize>";
     }
     const bool listensOnAll    = (m_config.ifaceAddress == "0.0.0.0" || m_config.ifaceAddress == "::" ||
-                               m_config.ifaceAddress.empty());
+                                  m_config.ifaceAddress.empty());
     const std::string ifaceSel = !listensOnAll ? m_config.ifaceAddress : m_config.multicastInterface;
     if (!ifaceSel.empty()) {
         const char *attr = looksLikeIpLiteral(ifaceSel) ? "address" : "name";

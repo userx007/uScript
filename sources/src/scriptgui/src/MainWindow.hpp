@@ -128,8 +128,8 @@ class MainWindow : public QMainWindow {
         void refreshProjectButtons();                     // re-evaluate labels / enabled state of Config + Setup buttons
         void openOrSwitchToFile(const QString &filePath); // open in a tab, or activate the tab already showing it
         bool createFile(const QString &filePath, const QByteArray &content);
-        void onViewerSaved(const QString &filePath);      // a tab was written to disk
-        void setSetupRunning(bool bOn);                   // visual "running" state of the Run button
+        void onViewerSaved(const QString &filePath); // a tab was written to disk
+        void setSetupRunning(bool bOn);              // visual "running" state of the Run button
 
         // ── Protocol dispatch ──────────────────────────────────────────────────
         void dispatchLine(const QString &raw);
@@ -169,17 +169,17 @@ class MainWindow : public QMainWindow {
 
         // ── UI elements ────────────────────────────────────────────────────────
         QLineEdit *m_scriptPathEdit;
-        QLineEdit *m_interpEdit;  // toolbar interpreter-path field
+        QLineEdit *m_interpEdit; // toolbar interpreter-path field
         QPushButton *m_startStopBtn;
-        QPushButton *m_reloadBtn = nullptr; // reloads every open script/INI file from disk
-        QPushButton *m_resetBtn  = nullptr; // clears error bars without clearing content
-        QPushButton *m_configBtn     = nullptr; // "Open" / "Create" uscript.ini next to the active script
-        QPushButton *m_setupOpenBtn  = nullptr; // "Open" / "Create" setup.sh | setup.bat
-        QPushButton *m_setupRunBtn   = nullptr; // "Run" setup.sh | setup.bat
-        SetupRunner *m_setupRunner   = nullptr;
-        QString m_setupPath;                    // setup script next to the active script; empty = none
-        QString m_configPath;                   // uscript.ini next to the active script; empty = none
-        QSet<QString> m_setupUnsaved;           // canonical paths of freshly created setup scripts not saved yet
+        QPushButton *m_reloadBtn    = nullptr; // reloads every open script/INI file from disk
+        QPushButton *m_resetBtn     = nullptr; // clears error bars without clearing content
+        QPushButton *m_configBtn    = nullptr; // "Open" / "Create" uscript.ini next to the active script
+        QPushButton *m_setupOpenBtn = nullptr; // "Open" / "Create" setup.sh | setup.bat
+        QPushButton *m_setupRunBtn  = nullptr; // "Run" setup.sh | setup.bat
+        SetupRunner *m_setupRunner  = nullptr;
+        QString m_setupPath;          // setup script next to the active script; empty = none
+        QString m_configPath;         // uscript.ini next to the active script; empty = none
+        QSet<QString> m_setupUnsaved; // canonical paths of freshly created setup scripts not saved yet
         StatusLed *m_led;
         QLabel *m_ledLabel;
 

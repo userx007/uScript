@@ -23,16 +23,15 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QEvent>
-#include <QMouseEvent>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileDevice>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFlags>
-#include <QFormLayout>
 #include <QFont>
 #include <QFontDatabase>
+#include <QFormLayout>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QHash>
@@ -45,6 +44,7 @@
 #include <QList>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QMouseEvent>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QPushButton>
@@ -113,98 +113,98 @@ static QFont buildEditorFont(int iPointSize)
 // ─────────────────────────────────────────────────────────────────────────────
 namespace {
 
-enum class SetupAuth {
-    Run,                // run with the entered password / credentials
-    RunWithoutPassword, // the script-text heuristic was wrong: just run it
-    Cancel
-};
-
-// Asks for the sudo password (Linux) or an administrator account + password
-// (Windows).  `errorText` (e.g. "Incorrect password.") is shown in red when
-// the dialog is re-presented after a failed check.
-SetupAuth askSetupCredentials(QWidget *pParent, const QString &scriptName, const QString &errorText,
-                              QString &user, QString &password)
-{
-    QDialog dlg(pParent);
-    dlg.setWindowTitle(QStringLiteral("Setup – administrator rights"));
-    dlg.setMinimumWidth(380);
-
-    auto *lay  = new QVBoxLayout(&dlg);
-    auto *info = new QLabel(&dlg);
-    info->setWordWrap(true);
-#ifdef Q_OS_WIN
-    info->setText(QStringLiteral("<b>%1</b> needs administrator rights.<br>"
-                                 "Enter the credentials of an administrator account.")
-                      .arg(scriptName.toHtmlEscaped()));
-#else
-    info->setText(QStringLiteral("<b>%1</b> uses <tt>sudo</tt>.<br>Enter your password to continue.")
-                      .arg(scriptName.toHtmlEscaped()));
-#endif
-    lay->addWidget(info);
-
-    auto *form   = new QFormLayout();
-    auto *userEd = new QLineEdit(user, &dlg);
-    auto *pwEd   = new QLineEdit(&dlg);
-    pwEd->setEchoMode(QLineEdit::Password);
-    pwEd->setPlaceholderText(QStringLiteral("Password"));
-#ifdef Q_OS_WIN
-    if (user.isEmpty()) {
-        userEd->setText(QStringLiteral("Administrator"));
-    }
-    form->addRow(QStringLiteral("User:"), userEd);
-#else
-    userEd->hide();
-#endif
-    form->addRow(QStringLiteral("Password:"), pwEd);
-    lay->addLayout(form);
-
-    if (!errorText.isEmpty()) {
-        auto *err = new QLabel(errorText, &dlg);
-        err->setStyleSheet(QStringLiteral("color: #ff5555;"));
-        err->setWordWrap(true);
-        lay->addWidget(err);
-    }
-
-    auto *box      = new QDialogButtonBox(&dlg);
-    auto *runBtn   = box->addButton(QStringLiteral("Run"), QDialogButtonBox::AcceptRole);
-    auto *plainBtn = box->addButton(QStringLiteral("Run without password"), QDialogButtonBox::ActionRole);
-    auto *cancel   = box->addButton(QDialogButtonBox::Cancel);
-    plainBtn->setToolTip(QStringLiteral("The script does not actually need elevated rights"));
-    runBtn->setDefault(true);
-    lay->addWidget(box);
-
-    SetupAuth result = SetupAuth::Cancel;
-    QObject::connect(box, &QDialogButtonBox::clicked, &dlg, [&](QAbstractButton *b) {
-        result = (b == runBtn)     ? SetupAuth::Run
-                 : (b == plainBtn) ? SetupAuth::RunWithoutPassword
-                                   : SetupAuth::Cancel;
-        if (b == cancel) {
-            dlg.reject();
-        } else {
-            dlg.accept();
-        }
-    });
-    const auto refreshRun = [&] {
-#ifdef Q_OS_WIN
-        runBtn->setEnabled(!pwEd->text().isEmpty() && !userEd->text().trimmed().isEmpty());
-#else
-        runBtn->setEnabled(!pwEd->text().isEmpty()); // the user field is Windows-only
-#endif
+    enum class SetupAuth {
+        Run,                // run with the entered password / credentials
+        RunWithoutPassword, // the script-text heuristic was wrong: just run it
+        Cancel
     };
-    QObject::connect(pwEd, &QLineEdit::textChanged, &dlg, refreshRun);
-    QObject::connect(userEd, &QLineEdit::textChanged, &dlg, refreshRun);
-    refreshRun();
-    pwEd->setFocus();
 
-    dlg.exec();
+    // Asks for the sudo password (Linux) or an administrator account + password
+    // (Windows).  `errorText` (e.g. "Incorrect password.") is shown in red when
+    // the dialog is re-presented after a failed check.
+    SetupAuth askSetupCredentials(QWidget *pParent, const QString &scriptName, const QString &errorText,
+                                  QString &user, QString &password)
+    {
+        QDialog dlg(pParent);
+        dlg.setWindowTitle(QStringLiteral("Setup – administrator rights"));
+        dlg.setMinimumWidth(380);
 
-    if (result == SetupAuth::Run) {
-        user     = userEd->text().trimmed();
-        password = pwEd->text();
+        auto *lay  = new QVBoxLayout(&dlg);
+        auto *info = new QLabel(&dlg);
+        info->setWordWrap(true);
+#ifdef Q_OS_WIN
+        info->setText(QStringLiteral("<b>%1</b> needs administrator rights.<br>"
+                                     "Enter the credentials of an administrator account.")
+                          .arg(scriptName.toHtmlEscaped()));
+#else
+        info->setText(QStringLiteral("<b>%1</b> uses <tt>sudo</tt>.<br>Enter your password to continue.")
+                          .arg(scriptName.toHtmlEscaped()));
+#endif
+        lay->addWidget(info);
+
+        auto *form   = new QFormLayout();
+        auto *userEd = new QLineEdit(user, &dlg);
+        auto *pwEd   = new QLineEdit(&dlg);
+        pwEd->setEchoMode(QLineEdit::Password);
+        pwEd->setPlaceholderText(QStringLiteral("Password"));
+#ifdef Q_OS_WIN
+        if (user.isEmpty()) {
+            userEd->setText(QStringLiteral("Administrator"));
+        }
+        form->addRow(QStringLiteral("User:"), userEd);
+#else
+        userEd->hide();
+#endif
+        form->addRow(QStringLiteral("Password:"), pwEd);
+        lay->addLayout(form);
+
+        if (!errorText.isEmpty()) {
+            auto *err = new QLabel(errorText, &dlg);
+            err->setStyleSheet(QStringLiteral("color: #ff5555;"));
+            err->setWordWrap(true);
+            lay->addWidget(err);
+        }
+
+        auto *box      = new QDialogButtonBox(&dlg);
+        auto *runBtn   = box->addButton(QStringLiteral("Run"), QDialogButtonBox::AcceptRole);
+        auto *plainBtn = box->addButton(QStringLiteral("Run without password"), QDialogButtonBox::ActionRole);
+        auto *cancel   = box->addButton(QDialogButtonBox::Cancel);
+        plainBtn->setToolTip(QStringLiteral("The script does not actually need elevated rights"));
+        runBtn->setDefault(true);
+        lay->addWidget(box);
+
+        SetupAuth result = SetupAuth::Cancel;
+        QObject::connect(box, &QDialogButtonBox::clicked, &dlg, [&](QAbstractButton *b) {
+            result = (b == runBtn)     ? SetupAuth::Run
+                     : (b == plainBtn) ? SetupAuth::RunWithoutPassword
+                                       : SetupAuth::Cancel;
+            if (b == cancel) {
+                dlg.reject();
+            } else {
+                dlg.accept();
+            }
+        });
+        const auto refreshRun = [&] {
+#ifdef Q_OS_WIN
+            runBtn->setEnabled(!pwEd->text().isEmpty() && !userEd->text().trimmed().isEmpty());
+#else
+            runBtn->setEnabled(!pwEd->text().isEmpty()); // the user field is Windows-only
+#endif
+        };
+        QObject::connect(pwEd, &QLineEdit::textChanged, &dlg, refreshRun);
+        QObject::connect(userEd, &QLineEdit::textChanged, &dlg, refreshRun);
+        refreshRun();
+        pwEd->setFocus();
+
+        dlg.exec();
+
+        if (result == SetupAuth::Run) {
+            user     = userEd->text().trimmed();
+            password = pwEd->text();
+        }
+        pwEd->clear();
+        return result;
     }
-    pwEd->clear();
-    return result;
-}
 
 } // namespace
 
@@ -1376,7 +1376,7 @@ void MainWindow::onProcessOutput()
             const QString line = QString::fromUtf8(
                                      m_lineBuf.sliced(start, nlPos - start))
                                      .trimmed();
-            start = nlPos + 1;
+            start              = nlPos + 1;
             if (!line.isEmpty()) {
                 dispatchLine(line); // may set m_terminalMode = true
             }
@@ -1415,7 +1415,7 @@ void MainWindow::onProcessError()
         const QString line = QString::fromUtf8(
                                  m_errBuf.sliced(start, nlPos - start))
                                  .trimmed();
-        start = nlPos + 1;
+        start              = nlPos + 1;
         if (!line.isEmpty()) {
             m_w3->appendLine(line);
         }
@@ -2362,9 +2362,9 @@ void MainWindow::refreshProjectButtons()
 
     // Config
     const QFileInfo ini(dir.filePath("uscript.ini"));
-    m_configPath        = (bHaveDir && ini.isFile()) ? ini.absoluteFilePath() : QString();
-    const bool bHasIni  = !m_configPath.isEmpty();
-    m_iniPath           = m_configPath;
+    m_configPath       = (bHaveDir && ini.isFile()) ? ini.absoluteFilePath() : QString();
+    const bool bHasIni = !m_configPath.isEmpty();
+    m_iniPath          = m_configPath;
     m_configBtn->setText(bHasIni ? "📄 Open" : "➕ Create");
     m_configBtn->setEnabled(bHaveDir);
     m_configBtn->setToolTip(!bHaveDir ? QString("Open a script first")
