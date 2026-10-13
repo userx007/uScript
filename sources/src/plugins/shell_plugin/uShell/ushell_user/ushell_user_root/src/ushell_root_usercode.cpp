@@ -287,7 +287,7 @@ int privLoadScriptPlugin(const char *pstrPluginName)
 ------------------------------------------------------------*/
 static int privExecScriptCommand(const char *pstrCommand)
 {
-    uSHELL_PRINTF("[.] executing [%s]\n", pstrCommand);
+    uSHELL_PRINTF("[.] executing [%s] : SHELL plugin must have PRIVILEGED = TRUE\n", pstrCommand);
     if (nullptr != pvLocalUserData) {
         IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType> *>(pvLocalUserData);
         pScript->executeCmd(pstrCommand);

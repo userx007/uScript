@@ -316,11 +316,8 @@ QFrame *MainWindow::buildToolbar()
     lay->setContentsMargins(12, 0, 12, 0);
     lay->setSpacing(8);
 
-    auto *appLabel = new QLabel("µSCRIPT", bar);
-    appLabel->setObjectName("toolbarLabel");
-
     // Interpreter binary
-    auto *interpLabel = new QLabel("INTERPRETER", bar);
+    auto *interpLabel = new QLabel("🐚 INTERPRETER:", bar);
     interpLabel->setObjectName("toolbarLabel");
 
     auto *interpEdit = new QLineEdit(bar);
@@ -373,7 +370,7 @@ QFrame *MainWindow::buildToolbar()
         } });
 
     // Active-tab script path
-    auto *scriptLabel = new QLabel("SCRIPT", bar);
+    auto *scriptLabel = new QLabel("📝 SCRIPT:", bar);
     scriptLabel->setObjectName("toolbarLabel");
 
     m_scriptPathEdit = new QLineEdit(bar);
@@ -397,24 +394,24 @@ QFrame *MainWindow::buildToolbar()
     connect(browseBtn, &QPushButton::clicked, this, &MainWindow::onBrowse);
 
     // Config: [Open|Create]  — uscript.ini next to the active script
-    auto *iniLabel = new QLabel("Config:", bar);
+    auto *iniLabel = new QLabel("⚙️ CONFIG:", bar);
     iniLabel->setObjectName("toolbarLabel");
 
-    m_configBtn = new QPushButton("Create", bar);
+    m_configBtn = new QPushButton("📄 Create", bar);
     m_configBtn->setObjectName("toolbarBtn");
     m_configBtn->setEnabled(false);
     connect(m_configBtn, &QPushButton::clicked, this, &MainWindow::onConfigButton);
 
     // Setup: [Open|Create] [Run]  — setup.sh / setup.bat next to the active script
-    auto *setupLabel = new QLabel("Setup:", bar);
+    auto *setupLabel = new QLabel("🛠️ SETUP:", bar);
     setupLabel->setObjectName("toolbarLabel");
 
-    m_setupOpenBtn = new QPushButton("Create", bar);
+    m_setupOpenBtn = new QPushButton("📄 Create", bar);
     m_setupOpenBtn->setObjectName("toolbarBtn");
     m_setupOpenBtn->setEnabled(false);
     connect(m_setupOpenBtn, &QPushButton::clicked, this, &MainWindow::onSetupOpenButton);
 
-    m_setupRunBtn = new QPushButton("Run", bar);
+    m_setupRunBtn = new QPushButton("⚡ Invoke", bar);
     m_setupRunBtn->setObjectName("toolbarBtn");
     m_setupRunBtn->setEnabled(false);
     connect(m_setupRunBtn, &QPushButton::clicked, this, &MainWindow::runSetupScript);
@@ -431,7 +428,7 @@ QFrame *MainWindow::buildToolbar()
         m_w3->appendStatus(msg);
         setStatus(msg); });
 
-    auto *execLabel = new QLabel("Exec:", bar);
+    auto *execLabel = new QLabel("▶️ EXECUTE:", bar);
     execLabel->setObjectName("toolbarLabel");
 
     // Reload every open script/INI file from disk
@@ -461,8 +458,6 @@ QFrame *MainWindow::buildToolbar()
     m_ledLabel->setObjectName("toolbarLabel");
     m_ledLabel->setMinimumWidth(80);
 
-    lay->addWidget(appLabel);
-    lay->addSpacing(12);
     lay->addWidget(interpLabel);
     lay->addWidget(interpEdit, 1);
     lay->addWidget(interpBrowse);
@@ -1050,12 +1045,12 @@ void MainWindow::onStartStop()
         return;
     }
     if (viewer->isIniFile()) {
-        m_w3->appendStatus(QString("'%1' is a configuration file — use the editor to view/edit it, not Run.")
+        m_w3->appendStatus(QString("'%1' is a configuration file — can't be executed.")
                                .arg(QFileInfo(scriptPath).fileName()));
         return;
     }
     if (SetupRunner::isSetupFileName(scriptPath)) {
-        m_w3->appendStatus(QString("'%1' is a shell script — use the Setup Run button to run it, not RUN.")
+        m_w3->appendStatus(QString("'%1' is a shell script — use the Invoke button to execute it.")
                                .arg(QFileInfo(scriptPath).fileName()));
         return;
     }
@@ -2370,7 +2365,7 @@ void MainWindow::refreshProjectButtons()
     m_configPath        = (bHaveDir && ini.isFile()) ? ini.absoluteFilePath() : QString();
     const bool bHasIni  = !m_configPath.isEmpty();
     m_iniPath           = m_configPath;
-    m_configBtn->setText(bHasIni ? "Open" : "Create");
+    m_configBtn->setText(bHasIni ? "📄 Open" : "➕ Create");
     m_configBtn->setEnabled(bHaveDir);
     m_configBtn->setToolTip(!bHaveDir ? QString("Open a script first")
                             : bHasIni ? QString("Open %1").arg(m_configPath)
@@ -2379,7 +2374,7 @@ void MainWindow::refreshProjectButtons()
     // Setup
     m_setupPath          = bHaveDir ? SetupRunner::findSetupScript(script) : QString();
     const bool bHasSetup = !m_setupPath.isEmpty();
-    m_setupOpenBtn->setText(bHasSetup ? "Open" : "Create");
+    m_setupOpenBtn->setText(bHasSetup ? "📄 Open" : "➕ Create");
     m_setupOpenBtn->setEnabled(bHaveDir);
     m_setupOpenBtn->setToolTip(!bHaveDir   ? QString("Open a script first")
                                : bHasSetup ? QString("Open %1").arg(m_setupPath)
