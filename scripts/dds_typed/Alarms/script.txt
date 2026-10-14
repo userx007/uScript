@@ -1,11 +1,16 @@
 # observe the trafic on UDP (SHM was disabled in .xml so the data transfer occurs over UDS)
 # Note: the port 7400 is valid for domain 0, otherwise add the domain value to it, e.g d=12 => p=7412
+# --- check the trafic ---
 # sudo tcpdump -i lo udp portrange 7400-7500
 # sudo tcpdump -i lo udp port 7400
 # sudo tcpdump -ni lo -s 0 -vv udp
+# --- decode one message ---
+# sudo tcpdump -i lo udp port 7410 -n -X
 
 
 LOAD_PLUGIN DDSTY
+DDSTY.INFO
+
 
 DDSTY:1.CONFIG d=0 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
 DDSTY:2.CONFIG d=0 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern

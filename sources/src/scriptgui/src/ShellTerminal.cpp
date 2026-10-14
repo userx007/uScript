@@ -894,17 +894,17 @@ ShellTerminal::ShellTerminal(QWidget *pParent)
     hlay->setContentsMargins(0, 0, 0, 0);
     hlay->setSpacing(6);
 
-    m_titleLabel = new QLabel("SHELL  TERMINAL", header);
+    m_titleLabel = new QLabel("SHELL TERMINAL", header);
     m_titleLabel->setObjectName("panelTitle");
 
     m_stateLabel = new QLabel("○  IDLE", header);
     m_stateLabel->setObjectName("panelInfo");
 
-    m_clearBtn = new QPushButton("CLR", header);
+    m_clearBtn = new QPushButton("✕ CLEAR", header);
     m_clearBtn->setObjectName("clearBtn");
     m_clearBtn->setToolTip("Clear terminal output");
 
-    m_stopBtn = new QPushButton("STOP", header);
+    m_stopBtn = new QPushButton("■ STOP", header);
     m_stopBtn->setObjectName("stopBtn");
     m_stopBtn->setToolTip("Send exit command to shell (#q + Enter)");
 

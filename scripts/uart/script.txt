@@ -1,9 +1,13 @@
 LOAD_PLUGIN UART
+
+UART.CMD > Hello | Hello
+UART.CMD > World | World
+
+---
 UART:1.SCRIPT uartscript1.txt
 UART:2.SCRIPT uartscript2.txt
 UART.SCRIPT uartscript1.txt
 
-#---
 DELAY 3000 ms
 
 REPEAT label 2
