@@ -317,7 +317,7 @@ QFrame *MainWindow::buildToolbar()
     lay->setSpacing(8);
 
     // Interpreter binary
-    auto *interpLabel = new QLabel("⚙️INTERPRETER:", bar);
+    auto *interpLabel = new QLabel("INTERPRETER:", bar);
     interpLabel->setObjectName("toolbarLabel");
 
     auto *interpEdit = new QLineEdit(bar);
@@ -370,7 +370,7 @@ QFrame *MainWindow::buildToolbar()
         } });
 
     // Active-tab script path
-    auto *scriptLabel = new QLabel("💻SCRIPT:", bar);
+    auto *scriptLabel = new QLabel("| SCRIPT:", bar);
     scriptLabel->setObjectName("toolbarLabel");
 
     m_scriptPathEdit = new QLineEdit(bar);
@@ -394,24 +394,24 @@ QFrame *MainWindow::buildToolbar()
     connect(browseBtn, &QPushButton::clicked, this, &MainWindow::onBrowse);
 
     // Config: [Open|Create]  — uscript.ini next to the active script
-    auto *iniLabel = new QLabel("🔧CONFIG:", bar);
+    auto *iniLabel = new QLabel("| CONFIG:", bar);
     iniLabel->setObjectName("toolbarLabel");
 
-    m_configBtn = new QPushButton("✨Create", bar);
+    m_configBtn = new QPushButton("⊕ Create", bar);
     m_configBtn->setObjectName("toolbarBtn");
     m_configBtn->setEnabled(false);
     connect(m_configBtn, &QPushButton::clicked, this, &MainWindow::onConfigButton);
 
     // Setup: [Open|Create] [Run]  — setup.sh / setup.bat next to the active script
-    auto *setupLabel = new QLabel("🛠️SETUP:", bar);
+    auto *setupLabel = new QLabel("| SETUP:", bar);
     setupLabel->setObjectName("toolbarLabel");
 
-    m_setupOpenBtn = new QPushButton("✨Create", bar);
+    m_setupOpenBtn = new QPushButton("⊕ Create", bar);
     m_setupOpenBtn->setObjectName("toolbarBtn");
     m_setupOpenBtn->setEnabled(false);
     connect(m_setupOpenBtn, &QPushButton::clicked, this, &MainWindow::onSetupOpenButton);
 
-    m_setupRunBtn = new QPushButton("⚡Invoke", bar);
+    m_setupRunBtn = new QPushButton("⚡ Invoke", bar);
     m_setupRunBtn->setObjectName("toolbarBtn");
     m_setupRunBtn->setEnabled(false);
     connect(m_setupRunBtn, &QPushButton::clicked, this, &MainWindow::runSetupScript);
@@ -428,7 +428,7 @@ QFrame *MainWindow::buildToolbar()
         m_w3->appendStatus(msg);
         setStatus(msg); });
 
-    auto *execLabel = new QLabel("▶️EXECUTE:", bar);
+    auto *execLabel = new QLabel("| EXECUTE:", bar);
     execLabel->setObjectName("toolbarLabel");
 
     // Reload every open script/INI file from disk
@@ -454,7 +454,7 @@ QFrame *MainWindow::buildToolbar()
 
     // LED
     m_led      = new StatusLed(bar);
-    m_ledLabel = new QLabel("IDLE", bar);
+    m_ledLabel = new QLabel("Idle", bar);
     m_ledLabel->setObjectName("toolbarLabel");
     m_ledLabel->setMinimumWidth(80);
 
@@ -546,13 +546,13 @@ QWidget *MainWindow::buildCentralWidget()
         addTabBtn->setFixedSize(24, 24);
         connect(addTabBtn, &QPushButton::clicked, this, [this] { addTab(); });
 
-        auto *saveBtn = new QPushButton("💾SAVE", cornerBar);
+        auto *saveBtn = new QPushButton("⬇SAVE", cornerBar);
         saveBtn->setObjectName("clearBtn");
         saveBtn->setToolTip("Save active tab  (Ctrl+S)");
         saveBtn->setFixedHeight(24);
         connect(saveBtn, &QPushButton::clicked, this, [this] { saveCurrentTab(); });
 
-        auto *saveAllBtn = new QPushButton("💾ALL", cornerBar);
+        auto *saveAllBtn = new QPushButton("⬇ ALL", cornerBar);
         saveAllBtn->setObjectName("clearBtn");
         saveAllBtn->setToolTip("Save all modified tabs  (Ctrl+Shift+S)");
         saveAllBtn->setFixedHeight(24);
@@ -589,7 +589,7 @@ QWidget *MainWindow::buildCentralWidget()
         m_commScriptNameLabel = new QLabel("", commBar);
         m_commScriptNameLabel->setObjectName("panelInfo");
         m_commScriptNameLabel->setStyleSheet("font-size: 13px; color: #c8d0e0;");
-        auto *commSaveBtn = new QPushButton("💾SAVE", commBar);
+        auto *commSaveBtn = new QPushButton("⬇SAVE", commBar);
         commSaveBtn->setObjectName("clearBtn");
         commSaveBtn->setToolTip("Save comm script");
         commSaveBtn->setFixedHeight(22);
@@ -598,7 +598,7 @@ QWidget *MainWindow::buildCentralWidget()
                 setStatus(QString("Saved: %1").arg(QFileInfo(m_w2->currentFile()).fileName()));
             } });
 
-        auto *commClearBtn = new QPushButton("🧹CLEAR", commBar);
+        auto *commClearBtn = new QPushButton("✕ CLEAR", commBar);
         commClearBtn->setObjectName("clearBtn");
         commClearBtn->setToolTip("Unload comm script");
         commClearBtn->setFixedHeight(22);
@@ -691,7 +691,7 @@ QWidget *MainWindow::buildCentralWidget()
         QTabBar::tear  { border: none; }
         QTabBar::scroller { width: 20px; }
     )");
-    m_commTabs->addTab(commWrapper, "🏠 Main");
+    m_commTabs->addTab(commWrapper, "★ Main");
     // "MAIN" is permanent — remove its close button specifically (index 0);
     // dynamic per-thread tabs added later keep theirs.
     m_commTabs->tabBar()->setTabButton(0, QTabBar::RightSide, nullptr);
@@ -705,7 +705,7 @@ QWidget *MainWindow::buildCentralWidget()
         cLay->setContentsMargins(0, 0, 4, 0);
         cLay->setSpacing(3);
 
-        auto *closeAllBtn = new QPushButton("❌ALL", cornerBar);
+        auto *closeAllBtn = new QPushButton("X ALL", cornerBar);
         closeAllBtn->setObjectName("clearBtn");
         closeAllBtn->setToolTip("Close all per-thread comm-script tabs (keeps MAIN)");
         closeAllBtn->setFixedHeight(22);
@@ -2365,7 +2365,7 @@ void MainWindow::refreshProjectButtons()
     m_configPath       = (bHaveDir && ini.isFile()) ? ini.absoluteFilePath() : QString();
     const bool bHasIni = !m_configPath.isEmpty();
     m_iniPath          = m_configPath;
-    m_configBtn->setText(bHasIni ? "📝Open" : "✨Create");
+    m_configBtn->setText(bHasIni ? "◩ Open" : "⊕ Create");
     m_configBtn->setEnabled(bHaveDir);
     m_configBtn->setToolTip(!bHaveDir ? QString("Open a script first")
                             : bHasIni ? QString("Open %1").arg(m_configPath)
@@ -2374,7 +2374,7 @@ void MainWindow::refreshProjectButtons()
     // Setup
     m_setupPath          = bHaveDir ? SetupRunner::findSetupScript(script) : QString();
     const bool bHasSetup = !m_setupPath.isEmpty();
-    m_setupOpenBtn->setText(bHasSetup ? "📝Open" : "✨Create");
+    m_setupOpenBtn->setText(bHasSetup ? "◩ Open" : "⊕ Create");
     m_setupOpenBtn->setEnabled(bHaveDir);
     m_setupOpenBtn->setToolTip(!bHaveDir   ? QString("Open a script first")
                                : bHasSetup ? QString("Open %1").arg(m_setupPath)

@@ -113,7 +113,7 @@ CommDumpView::CommDumpView(QWidget *parent)
         "One row per Plugin+Details combination");
 
     m_saveBtn = new QToolButton(header);
-    m_saveBtn->setText("💾SAVE");
+    m_saveBtn->setText("⬇ SAVE");
     m_saveBtn->setToolTip("Save trace to a file");
     m_saveBtn->setPopupMode(QToolButton::InstantPopup);
     m_saveMenu               = new QMenu(m_saveBtn);
@@ -125,12 +125,12 @@ CommDumpView::CommDumpView(QWidget *parent)
 
     m_saveBtn->setEnabled(false); // nothing to save until a record arrives
 
-    m_loadBtn = new QPushButton("📡LOAD", header);
+    m_loadBtn = new QPushButton("⬆ LOAD", header);
     m_loadBtn->setObjectName("clearBtn");
     m_loadBtn->setToolTip("Reload a previously saved trace");
     connect(m_loadBtn, &QPushButton::clicked, this, &CommDumpView::onLoadTriggered);
 
-    m_clearBtn = new QPushButton("🧹CLEAR", header);
+    m_clearBtn = new QPushButton("✕ CLEAR", header);
     m_clearBtn->setObjectName("clearBtn");
     m_clearBtn->setToolTip("Clear comm dump");
 
