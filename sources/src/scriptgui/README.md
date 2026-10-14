@@ -123,7 +123,7 @@ exec "$DIR/ScriptFrontend" "$@"
 │        ├── uartscript1.txt
 │        ├── uartscript2.txt
 │        ├── uartscript.txt
-│        └── uscript.ini
+│        └── config.ini
 │
 │
 ├── qt.conf
@@ -131,14 +131,14 @@ exec "$DIR/ScriptFrontend" "$@"
 ├── ScriptFrontend
 └── uscript
 
-# Config and Setup buttons (uscript.ini, setup.sh / setup.bat)
+# Config and Setup buttons (config.ini, setup.sh / setup.bat)
 
 The toolbar shows `Config: [Open|Create]   Setup: [Open|Create] [Run]`. They always refer to
 the folder of the active script (the one RUN executes; ini / setup tabs do not change it) and are
 re-evaluated on every tab switch, load, save and when the window regains focus.
 
-* **Config** – `Open` when `uscript.ini` exists next to the script (opens it in a tab), otherwise
-  `Create` (creates an empty `uscript.ini` and opens it). If the file exists it is passed to the
+* **Config** – `Open` when `config.ini` exists next to the script (opens it in a tab), otherwise
+  `Create` (creates an empty `config.ini` and opens it). If the file exists it is passed to the
   interpreter as `-c`; otherwise no `-c` is passed.
 * **Setup Open/Create** – `Open` when `setup.sh` (Linux) / `setup.bat` (Windows) exists next to the
   script, otherwise `Create` (creates it and opens it for editing). It is shown as plain text and

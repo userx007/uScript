@@ -3,7 +3,7 @@
 
 // configuration
 #define SCRIPT_DEFAULT                  "script.txt"
-#define SCRIPT_INI_CONFIG               "uscript.ini"
+#define SCRIPT_INI_CONFIG               "config.ini"
 
 // comments
 #define SCRIPT_LINE_COMMENT             '#'

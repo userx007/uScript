@@ -38,7 +38,7 @@
 // serve unrelated purposes (e.g. eval::isValidVersion() in uMathOpsValidator.hpp
 // validates a runtime plugin-ABI version string and has no connection to the
 // script grammar; IniHighlighter's TRUE/FALSE and hex-literal rules colour
-// uscript.ini files, not script text). Only fragments that recognise the same
+// config.ini files, not script text). Only fragments that recognise the same
 // piece of *script* syntax on both sides live here.
 // ─────────────────────────────────────────────────────────────────────────────
 

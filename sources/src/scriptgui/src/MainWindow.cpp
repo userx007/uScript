@@ -393,8 +393,8 @@ QFrame *MainWindow::buildToolbar()
     browseBtn->setToolTip("Browse for script file");
     connect(browseBtn, &QPushButton::clicked, this, &MainWindow::onBrowse);
 
-    // Config: [Open|Create]  — uscript.ini next to the active script
-    auto *iniLabel = new QLabel("| CONFIG:", bar);
+    // Config: [Open|Create]  — config.ini next to the active script
+    auto *iniLabel = new QLabel("| config.ini", bar);
     iniLabel->setObjectName("toolbarLabel");
 
     m_configBtn = new QPushButton("⊕ Create", bar);
@@ -403,7 +403,7 @@ QFrame *MainWindow::buildToolbar()
     connect(m_configBtn, &QPushButton::clicked, this, &MainWindow::onConfigButton);
 
     // Setup: [Open|Create] [Run]  — setup.sh / setup.bat next to the active script
-    auto *setupLabel = new QLabel("| SETUP:", bar);
+    auto *setupLabel = new QLabel("| setup.sh", bar);
     setupLabel->setObjectName("toolbarLabel");
 
     m_setupOpenBtn = new QPushButton("⊕ Create", bar);
@@ -1218,9 +1218,9 @@ void MainWindow::onStartStop()
 
     // Build argument list: always -s <script>, optionally -c <ini>
     QStringList args;
-    // uscript.ini next to the script being run (if any); evaluated at run time
+    // config.ini next to the script being run (if any); evaluated at run time
     // so it is correct even when the active tab is an ini / setup file.
-    const QString localIni = QFileInfo(scriptPath).absoluteDir().filePath("uscript.ini");
+    const QString localIni = QFileInfo(scriptPath).absoluteDir().filePath("config.ini");
     m_iniPath              = QFileInfo(localIni).isFile() ? localIni : QString();
     const QString iniPath  = m_iniPath.trimmed();
     if (!iniPath.isEmpty()) {
@@ -2361,7 +2361,7 @@ void MainWindow::refreshProjectButtons()
     const QDir dir       = QFileInfo(script).absoluteDir();
 
     // Config
-    const QFileInfo ini(dir.filePath("uscript.ini"));
+    const QFileInfo ini(dir.filePath("config.ini"));
     m_configPath       = (bHaveDir && ini.isFile()) ? ini.absoluteFilePath() : QString();
     const bool bHasIni = !m_configPath.isEmpty();
     m_iniPath          = m_configPath;
@@ -2369,7 +2369,7 @@ void MainWindow::refreshProjectButtons()
     m_configBtn->setEnabled(bHaveDir);
     m_configBtn->setToolTip(!bHaveDir ? QString("Open a script first")
                             : bHasIni ? QString("Open %1").arg(m_configPath)
-                                      : QString("Create an empty uscript.ini next to the script and open it"));
+                                      : QString("Create an empty config.ini next to the script and open it"));
 
     // Setup
     m_setupPath          = bHaveDir ? SetupRunner::findSetupScript(script) : QString();
@@ -2437,7 +2437,7 @@ void MainWindow::onConfigButton()
     }
     QString path = m_configPath;
     if (path.isEmpty()) {
-        path = QFileInfo(script).absoluteDir().filePath("uscript.ini");
+        path = QFileInfo(script).absoluteDir().filePath("config.ini");
         if (!QFileInfo::exists(path) && !createFile(path, QByteArray())) {
             return;
         }

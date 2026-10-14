@@ -96,8 +96,8 @@ class MainWindow : public QMainWindow {
         void onCommScriptRequested(const QString &scriptName);
         void onIncludeFileRequested(const QString &resolvedPath); // INCLUDE "file" clicked in editor
 
-        // Toolbar project buttons (uscript.ini / setup.sh|bat next to the active script)
-        void onConfigButton();    // Open / Create uscript.ini
+        // Toolbar project buttons (config.ini / setup.sh|bat next to the active script)
+        void onConfigButton();    // Open / Create config.ini
         void onSetupOpenButton(); // Open / Create setup.sh|bat
         void runSetupScript();    // runs m_setupPath, asking for a sudo/admin password if needed
 
@@ -173,12 +173,12 @@ class MainWindow : public QMainWindow {
         QPushButton *m_startStopBtn;
         QPushButton *m_reloadBtn    = nullptr; // reloads every open script/INI file from disk
         QPushButton *m_resetBtn     = nullptr; // clears error bars without clearing content
-        QPushButton *m_configBtn    = nullptr; // "Open" / "Create" uscript.ini next to the active script
+        QPushButton *m_configBtn    = nullptr; // "Open" / "Create" config.ini next to the active script
         QPushButton *m_setupOpenBtn = nullptr; // "Open" / "Create" setup.sh | setup.bat
         QPushButton *m_setupRunBtn  = nullptr; // "Run" setup.sh | setup.bat
         SetupRunner *m_setupRunner  = nullptr;
         QString m_setupPath;          // setup script next to the active script; empty = none
-        QString m_configPath;         // uscript.ini next to the active script; empty = none
+        QString m_configPath;         // config.ini next to the active script; empty = none
         QSet<QString> m_setupUnsaved; // canonical paths of freshly created setup scripts not saved yet
         StatusLed *m_led;
         QLabel *m_ledLabel;
@@ -208,7 +208,7 @@ class MainWindow : public QMainWindow {
         bool m_running   = false;
         int m_runningTab = -1; // tab index that is currently executing
         QString m_interpreterPath;
-        QString m_iniPath; // -c argument for the interpreter (uscript.ini next to the active script, if any)
+        QString m_iniPath; // -c argument for the interpreter (config.ini next to the active script, if any)
 
         QByteArray m_lineBuf;
         QByteArray m_errBuf;                 // stderr accumulation buffer (mirrors m_lineBuf)

@@ -559,7 +559,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
     //  green/red colouring (rather than the generic blue C_NUMBER) so a
     //  literal boolean value reads distinctly from a numeric literal, and
     //  to stay visually consistent with IniHighlighter's TRUE/FALSE
-    //  colouring of uscript.ini (green TRUE / red FALSE — though that rule
+    //  colouring of config.ini (green TRUE / red FALSE — though that rule
     //  is case-insensitive and lives in a separate file; not shared here,
     //  it colours a different file format).
     addRule(R"(\bTRUE\b)", fmt(C_BOOL_TRUE));
