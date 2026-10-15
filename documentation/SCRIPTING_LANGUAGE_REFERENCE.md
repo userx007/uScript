@@ -4,7 +4,7 @@
 
 ## Table of Contents
 
-1. [Comments](#1-comments)
+1. [Comments, Line Continuation and INCLUDE](#1-comments-line-continuation-and-include)
 2. [Plugin Loading](#2-plugin-loading)
 3. [Constant Macros](#3-constant-macros)
 4. [Array Macros](#4-array-macros)
@@ -20,6 +20,8 @@
     - [8.6 BITSTREAM / BYTESTREAM](#86-bitstream--bytestream)
     - [8.7 BITSTREAMVAL / BYTESTREAMVAL](#87-bitstreamval--bytestreamval)
     - [8.8 BITSTREAMVAL / BYTESTREAMVAL — Array Form](#88-bitstreamval--bytestreamval--array-form)
+    - [8.9 GENERATOR](#89-generator)
+    - [8.10 KILL](#810-kill)
 9. [Conditional Flow — IF / GOTO / LABEL](#9-conditional-flow)
 10. [EVAL Expression Evaluator](#10-eval-expression-evaluator)
 11. [Loops — REPEAT / END_REPEAT](#11-loops)
@@ -28,12 +30,20 @@
 14. [Macro Resolution Order](#14-macro-resolution-order)
 15. [Validation Rules](#15-validation-rules)
 16. [Complete Example Script](#16-complete-example-script)
+17. [Execution Model and Runtime Behaviour](#17-execution-model-and-runtime-behaviour)
 
 ---
 
-## 1. Comments
+## 1. Comments, Line Continuation and INCLUDE
 
-Three comment forms are supported.
+The reader (`ScriptReader`) pre-processes the script text before anything is
+parsed. It strips comments, joins continued lines, expands `INCLUDE`
+directives and trims every line. Line numbers in all diagnostics (and in the GUI
+front-end) always refer to the physical line in the file that the text came from.
+
+### Comments
+
+Two comment forms are supported: line comments (full-line or trailing) and block comments.
 
 ### Line comment
 
@@ -56,6 +66,40 @@ Multiple lines. No nesting allowed.
 !--
 ```
 
+### Line continuation
+
+A line whose last character (after comment and whitespace stripping) is `\` is
+joined with the following physical line. This repeats until a line no longer
+ends in `\`. The `\` itself is removed, and the joined line keeps the line
+number of its first physical line. It is mainly used to split long array macro
+declarations (see [Section 4](#4-array-macros--)).
+
+### INCLUDE
+
+```
+INCLUDE  "path/to/file"
+```
+
+Splices the contents of another script file into this one before parsing.
+
+- The path must be **double-quoted** and nothing but whitespace may follow the closing quote.
+- A **relative** path is resolved against the directory of the file that
+  *contains* the `INCLUDE` line (not the working directory). Absolute paths are used as-is.
+- The included file goes through the same reader, so comments, block comments,
+  line continuation and nested `INCLUDE`s all work inside it.
+- Included content is **placed ahead of the including file's own lines**,
+  regardless of where the `INCLUDE` line sits. Constants and arrays declared in an
+  included file are therefore visible to the whole including script.
+- A circular include, **or including the same file twice**, is an error, as is a
+  file that cannot be opened.
+
+```
+INCLUDE  "common/boards.script"      # declares BOARDS [= ... and constants
+INCLUDE  "../shared/limits.script"
+
+LOAD_PLUGIN  UART
+```
+
 ---
 
 ## 2. Plugin Loading — `LOAD_PLUGIN`
@@ -72,6 +116,10 @@ LOAD_PLUGIN  <n>:<N>  <op>  v<major>.<minor>.<patch>.<build>
 - Duplicate declarations and references to undeclared plugins are rejected at
   validation time.
 - Settings are read from the matching `[NAME]` section of the `.ini` file.
+- The shared library is looked up in the `splugins/` directory next to the
+  executable as `lib<name>_plugin.so` (`lib<name>_plugin.dll` on Windows), where
+  `<name>` is the plugin name in lower case (for example `UART` →
+  `splugins/libuart_plugin.so`).
 
 ```
 LOAD_PLUGIN  SERIAL
@@ -94,8 +142,8 @@ LOAD_PLUGIN  UART:2
 UART:1.CONFIG  p=/dev/ttyUSB0  b=115200
 UART:2.CONFIG  p=/dev/ttyUSB1  b=9600
 
-UART:1.CMD  > "ping" | "pong"
-UART:2.CMD  > "AT"   | "OK"
+UART:1.CMD  > 'ping' | 'pong'
+UART:2.CMD  > 'AT'   | 'OK'
 ```
 
 - An explicit `LOAD_PLUGIN NAME:N` line is optional. If a command references
@@ -327,6 +375,34 @@ port1_id  ?=  UART:1.READ_ID
 port2_id  ?=  UART:2.READ_ID
 ```
 
+### Return value of `CMD`
+
+For the comm-driver plugins (`UART`, `KVCAN`, `TCPIP`, `MQTT`, …) the value captured by
+`name ?= PLUGIN.CMD …` is whatever the command **received**: the bytes read by the
+receive side of the expression, **hexlified** by default (`AABB01…`). A receive that
+times out with nothing read is not an error and yields an empty string. Setting
+`raw=1` (or `RAW_RESULT = true` in the plugin's ini section) returns the raw payload
+bytes instead of their hex representation.
+
+```
+reply  ?=  UART.CMD  <                  # whatever arrives, as hex
+reply  ?=  UART.CMD  >  'AT\r\n'  |     # send, then read whatever comes back
+```
+
+### Threaded form — trailing `&`
+
+```
+<n>  ?=  <PLUGIN>.<COMMAND>  [params]  &
+```
+
+With a trailing ` &` the command is launched in a **background thread** and
+the script continues immediately. The thread re-dispatches the command in a loop
+and refreshes `$name` after every successful iteration, so `$name` always holds the
+most recent result. A macro maintained this way is called a **volatile macro**.
+It can be stopped early with [`KILL`](#810-kill); anything still running when
+the script ends is stopped automatically. See [Section 7](#threaded-commands--trailing-)
+for the rules that apply to every threaded command.
+
 ---
 
 ## 6. Variable Macros — Direct Initialisation
@@ -394,6 +470,56 @@ UART:1.CONFIG  p=/dev/ttyUSB0 b=115200
 UART:2.CONFIG  p=/dev/ttyUSB1 b=9600
 ```
 
+### Threaded commands — trailing `&`
+
+```
+<PLUGIN>.<COMMAND>  [params]  &
+<n>  ?=  <PLUGIN>.<COMMAND>  [params]  &
+```
+
+A trailing ` &` (a space followed by `&`, as the last token) runs the command in a
+background `std::jthread` instead of waiting for it to return.
+
+- The `$macros` in `params` are expanded **once, on the main thread, before the
+  thread starts**; the thread only ever sees the already-expanded text.
+- **At most one threaded command per plugin instance** (`UART`, `UART:1`, … each count separately). Launching a
+  second one on an instance that already has a live thread is an error.
+  [`KILL`](#810-kill) releases the instance immediately.
+- Plugins that may run indefinitely cooperatively watch a stop request, so `KILL` or the end
+  of the script stops them promptly.
+- Without a capture destination the command is anonymous and cannot be killed
+  individually; it is stopped (and joined) when the script ends.
+- In the GUI front-end the line of a running threaded command is outlined for as long as the thread lives.
+
+#### `CYCLIC`
+
+Every comm-driver plugin offers a `CYCLIC` command that sends one or more
+messages on a fixed schedule — the natural partner of `&`:
+
+```
+<PLUGIN>.CYCLIC  <time_ms>:<command> [, <time_ms>:<command> ...]  [&]
+```
+
+- Each `<command>` is a complete `CMD` argument (`> H'AABBCCDD'`, `> 'ping\r\n'`, …).
+  A comma inside a `'…'`- or `"…"`-quoted value does not end the entry.
+- All entries share one master tick (the greatest common divisor of their periods);
+  an entry is sent whenever its own period has elapsed. Scheduling is drift-free.
+- **Without `&`** it runs for exactly one super-period (the least common multiple
+  of the periods) and returns. **With `&`** it repeats until it is stopped.
+- Captured with `name ?= PLUGIN.CYCLIC … &`, `$name` holds the command text of the
+  entry sent most recently (it exists, empty, from the moment the line runs).
+- A `$volatile` macro written by another background thread (or `GENERATOR`) can
+  be used inside an entry. By default each entry is parsed **once**, so the macro's value is fixed
+  at that moment; with `cached=0` (`CYCLIC_CACHED = false` in the ini) every due entry is
+  re-resolved on every tick, so the entry tracks the macro's latest value.
+
+```
+LOAD_PLUGIN  UART
+UART.CONFIG  p=/dev/ttyUSB0  b=115200
+
+UART.CYCLIC  100:> H'AABBCCDD', 250:> 'ping\r\n'  &
+```
+
 ---
 
 ## 8. Native Statements
@@ -439,6 +565,15 @@ DELAY  50   us
 DELAY  300  ms
 DELAY  2    sec
 ```
+
+**Inside a loop, `DELAY` is drift-compensating.** Every `DELAY` in the body of a
+`REPEAT` adds its duration to a per-loop schedule that starts when the loop is
+entered, and sleeps only until that absolute point is reached. Time spent
+elsewhere in the iteration (plugin I/O, logging, …) is automatically subtracted
+from the next `DELAY`, so a loop with `DELAY 100 ms` keeps an average period of 100 ms
+instead of drifting later each pass. If the loop is already behind schedule the
+`DELAY` is skipped entirely (it never sleeps a negative time and never
+"catches up" in one jump). Outside a loop a `DELAY` is a plain sleep.
 
 ### 8.3 FORMAT
 
@@ -518,6 +653,35 @@ r5  ?=  MATH  17 % 5                   # 2  (modulo)
 r6  ?=  MATH  2 ** 10                  # 1024
 r7  ?=  MATH  $score >= 80 ? 1 : 0    # ternary
 r8  ?=  MATH  min($a, $b) + max($c, $d)
+```
+
+**Hex output — `| HEX…` post-processor.** An optional `| HEX…` suffix renders the
+(integer) result as a fixed-width, zero-padded hex string instead of decimal text:
+
+```
+<n>  ?=  MATH  <expression>  |  HEX[_<width>][_<endian>]
+```
+
+| Suffix | Result |
+|--------|--------|
+| `HEX` / `HEX_8` | 1 byte (no endianness; `HEX_8_LE`/`_BE` is an error) |
+| `HEX_16_LE` / `HEX_16_BE` | 2 bytes |
+| `HEX_32_LE` / `HEX_32_BE` | 4 bytes |
+| `HEX_64_LE` / `HEX_64_BE` | 8 bytes |
+| `HEX_128_LE` / `HEX_128_BE` | 16 bytes |
+| `HEX_FLOAT_LE` / `HEX_FLOAT_BE` | 4 bytes — raw IEEE-754 binary32 bit pattern |
+| `HEX_DOUBLE_LE` / `HEX_DOUBLE_BE` | 8 bytes — raw IEEE-754 binary64 bit pattern |
+
+Every width above 8 bits **requires** an explicit `_LE` or `_BE`. `LE` writes the least
+significant byte first, `BE` the most significant. The integer widths convert the result
+to a two's-complement integer; the `FLOAT`/`DOUBLE` forms reinterpret the number's bit
+pattern directly (so they have no overflow concern).
+
+```
+a  ?=  MATH  255   |  HEX            # FF
+b  ?=  MATH  255   |  HEX_16_BE      # 00FF
+c  ?=  MATH  255   |  HEX_16_LE      # FF00
+d  ?=  MATH  -1.0  |  HEX_FLOAT_BE   # BF800000
 ```
 
 **Persisting Calculator variables** — `=` inside MATH assigns a named variable
@@ -782,6 +946,184 @@ source, `value_size` outside 1–64, offset beyond the end of the source, a
 `bit_offset` outside 0–7 — plus an empty field list, or a destination name
 that collides with a constant or already-declared array macro) abort script
 execution, exactly like the scalar form's own errors.
+
+---
+
+### 8.9 GENERATOR
+
+```
+<n>  ?=  GENERATOR  <count> <unit>  <begin>:<end>:<step>[:<k>]  |  <WAVEFORM>  [| <ENCODING>]
+<n>  ?=  GENERATOR  <count> <unit>  <e1>,<e2>,...               |  <WAVEFORM>  [| <ENCODING>]
+<n>  ?=  GENERATOR  <count> <unit>  $<array>                    |  <WAVEFORM>  [| <ENCODING>]
+```
+
+A native, self-threading **signal generator** — no plugin needed. It starts a background
+thread that writes a new sample into the volatile macro `$n` every `<count> <unit>`,
+so `$n` is usable anywhere a macro is (`PRINT`, `IF`, `MATH`, plugin parameters, a
+`CYCLIC` entry with `cached=0`, …). It runs until [`KILL n`](#810-kill) or the end of the script.
+
+| Part | Meaning |
+|------|---------|
+| `<count> <unit>` | Tick interval — same grammar as [`DELAY`](#82-delay): a positive integer and `us`, `ms` or `sec` |
+| `<begin>:<end>:<step>` | The range. Each field is a number (decimal, `0x`/`0b`/`0o`, float) or a `$macro` |
+| `:<k>` | Optional 4th field, curve steepness — **only** for `EXP` / `LOG` |
+| `<e1>,<e2>,…` / `$array` | Array source — an inline comma list, or the name of a declared [array macro](#4-array-macros--) |
+| `<WAVEFORM>` | `SAWTOOTH` (alias `LINEAR`), `TRIANGLE`, `SINE`, `SQUARE`, `EXP`, `LOG`, `RANDOM` |
+| `<ENCODING>` | Optional `HEX…` suffix — same set as [`MATH`](#84-math); default is plain decimal text |
+
+#### Waveforms
+
+| Waveform | Range source | Behaviour |
+|----------|--------------|-----------|
+| `SAWTOOTH` / `LINEAR` | range or array | Steps by `step` towards `end`, then wraps back to `begin`. Array source: elements in order, then wraps to element 0 |
+| `TRIANGLE` | range or array | Like `SAWTOOTH`, but reverses direction at each end instead of wrapping (ping-pong). Array source: forward, then backward through the elements |
+| `SINE` | range | `mid + amp·sin(phase)` with `mid=(begin+end)/2`, `amp=(end−begin)/2`; `step` is the phase advance in **degrees per tick** (wraps at 360) |
+| `SQUARE` | range | Toggles between `begin` and `end` every `step` ticks — `step` must be a **positive integer** |
+| `EXP` / `LOG` | range | Exponential / logarithmic ramp over one normalised cycle driven by `step`, shaped by `k` (default `k` = 3.0 for `EXP`, e−1 for `LOG`) |
+| `RANDOM` | range or array | Range: a fresh uniform random value in `[min,max]` each tick (`step` is required syntactically but ignored). Array: a *shuffled playlist* — every element exactly once in random order, then reshuffled |
+
+- **`begin` need not be smaller than `end`.** `20:10:1` counts down from 20 to 10. `step` is
+  always a magnitude (its sign is ignored); the direction comes from comparing `begin` and `end`.
+- The first sample is written as soon as the thread starts (before the first interval
+  elapses). For `SAWTOOTH` and `TRIANGLE` ranges the state starts *at* `begin` and then
+  steps, so the first value is `begin + step`; array sources start at element 0. The
+  thread starts asynchronously — allow a short `DELAY` before reading `$n` the first time.
+- `begin`, `end`, `step`, `k` and every array element are resolved **once**, when
+  the statement runs. A `$macro` is read at that moment, never mid-run.
+- Samples are computed in floating point and written as decimal text with up to 15
+  significant digits. With a `| HEX…` encoding the value is rendered as fixed-width hex
+  exactly as for `MATH` (integer widths truncate to an integer; `HEX_FLOAT`/`HEX_DOUBLE` use the raw bit pattern).
+- **Restart semantics.** Every `GENERATOR` statement for a name first stops whatever generator is
+  already running under that name, then starts a new one from the beginning. Re-issuing it with
+  different parameters (for example inside a loop) therefore needs no `KILL`.
+- The destination name must not be a constant macro (`:=`).
+
+```
+ctr    ?=  GENERATOR  100 ms  0:255:1       |  SAWTOOTH  |  HEX_8         # ramp, as 1-byte hex
+cnt    ?=  GENERATOR  100 ms  255:0:1       |  SAWTOOTH                   # counts down
+angle  ?=  GENERATOR  20  ms  0:360:1       |  SINE
+lvl    ?=  GENERATOR  50  ms  0:100:5       |  TRIANGLE  |  HEX_16_LE
+gpio   ?=  GENERATOR  500 ms  0:1:1         |  SQUARE                     # toggle every tick
+dice   ?=  GENERATOR  200 ms  1:6:1         |  RANDOM
+curve  ?=  GENERATOR  10  ms  0:100:2:3.0   |  EXP                        # k = 3.0
+
+x  ?=  7
+seq    ?=  GENERATOR  200 ms  1,7,$x,8,9    |  SAWTOOTH                   # inline array source
+LIST   [=  10, 20, 30
+pick   ?=  GENERATOR  200 ms  $LIST         |  RANDOM                     # declared array macro
+```
+
+**Errors** (detected during validation unless noted): a malformed statement; an interval
+count of 0; a non-numeric literal; `k` given for a waveform other than `EXP`/`LOG`; `SINE`,
+`SQUARE`, `EXP` or `LOG` used with an array source; a `SQUARE` step that is not a positive
+integer (checked at run time when it is a `$macro`); `HEX_8` with an endianness suffix, or a wider
+`HEX_n` without one; a `$macro` bound that does not resolve to a number (at run time);
+a destination that is already a constant macro.
+
+---
+
+### 8.10 KILL
+
+```
+KILL  <name>
+<result>  ?=  KILL  <name>
+```
+
+Stops a background activity **early** and waits for it to finish. `<name>` is
+the name of a *volatile macro* — a variable macro that something in the
+background keeps refreshing. Exactly two statements create one, and therefore
+exactly two things can be killed:
+
+| Started by | What runs behind `$name` |
+|------------|--------------------------|
+| `name  ?=  PLUGIN.COMMAND  args  &` | A **threaded capture**: the trailing ` &` launches the command in its own thread, which re-dispatches it in a loop and refreshes `$name` after every successful iteration (e.g. `retval ?= UART.CYCLIC 100:> H'AABBCCDD' &`; see [`CYCLIC`](#cyclic)) |
+| `name  ?=  GENERATOR  …` | A native [**generator**](#89-generator) thread that writes a new sample into `$name` on every tick |
+
+**The target is always the macro name — never the command.** To be able to
+kill a background command, launch it with a capture destination and hand that
+same name to `KILL`:
+
+```
+LOAD_PLUGIN  UART
+
+UART.CONFIG  p=/dev/ttyUSB0  b=115200
+retval  ?=  UART.CYCLIC  100:> H'AABBCCDD'  &    # runs in the background
+DELAY  2  sec
+KILL  retval                                     # stop it again
+```
+
+A command launched **without** a destination (`PLUGIN.CMD args &`) is
+anonymous: there is nothing to name it by, so it cannot be killed and runs
+until the script ends.
+
+**Behaviour:**
+
+- **Cooperative stop, then wait.** `KILL` signals the thread to stop and then
+  waits for it to finish. When `KILL` returns, the plugin instance is free
+  again and a new `&` command may be launched on it immediately. The stop
+  normally completes within the driver's poll interval (the UART driver polls
+  every 200 ms), so `KILL` can take a moment to return.
+- **The macro keeps its last value.** `KILL` only stops the refreshing;
+  `$name` still holds whatever was written to it last.
+- **Optional result.** With the `<result> ?=` prefix, `<result>` receives the
+  number of threads/generators that were still alive and were stopped, as a
+  decimal string: `1` in the normal case, `0` when there was nothing left to
+  stop (it had already ended on its own — for example because the plugin
+  command failed — or was already killed).
+- **Stopping nothing is not an error.** `KILL` can therefore be called
+  unconditionally from a cleanup path, even one reachable both after a normal
+  `KILL` and via a `GOTO` that skipped it.
+- **`KILL` is only needed to stop something *earlier*.** Every background
+  thread and generator still running when the script ends is stopped and
+  joined automatically.
+- **Restarting a generator needs no `KILL`.** Executing
+  `name ?= GENERATOR …` for a name that already has a running generator
+  stops the old one and starts a new one from its beginning (see
+  [8.9](#89-generator)), so re-issuing it with different parameters on each
+  loop iteration just works.
+- Like every other native statement, `KILL` is skipped during the dry-run
+  validation pass and inside any active `GOTO` / `BREAK` / `CONTINUE` skip
+  region.
+
+> **Note:** `KILL` is the **only** way to stop a generator or a threaded
+> capture early. There is no `GENERATOR STOP` and no `STOP ALL` form.
+
+```
+# Generator: step 0..255 every 100 ms (first value 1), read it, then stop it
+ctr  ?=  GENERATOR  100 ms  0:255:1  |  SAWTOOTH
+DELAY  1  sec
+PRINT  counter is now $ctr
+
+stopped  ?=  KILL  ctr
+PRINT  stopped $stopped generator(s)         # 1
+PRINT  ctr stays frozen at $ctr              # last value, no longer updated
+
+stopped  ?=  KILL  ctr
+PRINT  second KILL stopped $stopped          # 0 — nothing left to stop, not an error
+```
+
+**Errors** (all detected during validation, before the script runs):
+
+```
+KILL                          # missing target
+ok  ?=  KILL  UART.CYCLIC     # a command, not a volatile macro
+KILL  UART:2.CMD              # ditto, instanced
+KILL  ctr  now                # not a plain macro name
+KILL  never_started           # not launched with '&' or GENERATOR on an earlier line
+```
+
+- The target must be a **plain identifier**: anything that looks like a
+  command (`UART.CYCLIC`, `UART:2.CMD`) or carries arguments is rejected, and
+  the error message tells you to launch the command as
+  `name ?= PLUGIN.CMD args &` and kill `name` instead.
+- The target must be the destination of a `name ?= PLUGIN.CMD … &` or a
+  `name ?= GENERATOR …` that appears **earlier in the script text**. This
+  catches typos and attempts to kill a command that returns no volatile
+  macro. If the name was captured by a command launched *without* `&`, the
+  error says that command has already finished and there is nothing to kill.
+- The check follows textual order only — it does not simulate
+  `IF … GOTO` flow — and a `KILL` does **not** consume the name, so killing
+  the same name more than once is valid.
 
 ---
 
@@ -1341,6 +1683,17 @@ just like any other piece of script text, using the values those macros hold
 Constant macros (`:=`) are expanded at **validation time** and are never seen
 by the runtime resolver.
 
+### Volatile macros
+
+A macro written by a background thread — the destination of a threaded
+`name ?= PLUGIN.CMD … &` or of a [`GENERATOR`](#89-generator) — lives in tier 2
+(script-level variable macros) like any other `?=` result. Reads and writes are
+synchronised, so `$name` can be used from the main script while the thread keeps
+updating it; each expansion sees the value written most recently. The one
+exception is a `*.CYCLIC` dispatch: its `$volatile` references are intentionally
+left unexpanded by the interpreter and resolved by the `CYCLIC` implementation itself
+(once up front, or on every tick with `cached=0` — see [`CYCLIC`](#cyclic)).
+
 ---
 
 ## 15. Validation Rules
@@ -1397,6 +1750,22 @@ by the runtime resolver.
 | `BITSTREAMVAL`/`BYTESTREAMVAL` array form (`[=`) has an empty field list | Error |
 | `BITSTREAMVAL`/`BYTESTREAMVAL` array form destination name conflicts with a constant macro | Error |
 | `BITSTREAMVAL`/`BYTESTREAMVAL` array form destination name conflicts with an already-declared array macro | Error |
+| `KILL` has no target | Error |
+| `KILL` target is not a plain macro name (a command such as `UART.CYCLIC` / `UART:2.CMD`, or a name followed by arguments) | Error |
+| `KILL` target is not the destination of an earlier `name ?= PLUGIN.CMD … &` or `name ?= GENERATOR …` | Error |
+| `KILL` target was captured by a command launched without `&` (already finished — nothing to kill) | Error |
+| `INCLUDE` file cannot be opened | Error |
+| Circular `INCLUDE`, or the same file included twice | Error |
+| `MATH` `\| HEX…` suffix not one of the supported forms; `HEX_8` with `_LE`/`_BE`; wider `HEX_n` without `_LE`/`_BE` | Error |
+| `GENERATOR` statement is malformed, or its interval count is `0` | Error |
+| `GENERATOR` `begin`/`end`/`step`/`k`/array element is a non-numeric literal | Error |
+| `GENERATOR` 4th field (`k`) used with a waveform other than `EXP`/`LOG` | Error |
+| `GENERATOR` array source combined with `SINE`/`SQUARE`/`EXP`/`LOG` | Error |
+| `GENERATOR` `SQUARE` literal step that is not a positive integer | Error |
+| `GENERATOR` `HEX_8` with an endianness suffix, or a wider `HEX_n` without one | Error |
+| `GENERATOR` destination name conflicts with a constant macro | Error |
+| `GENERATOR` `$macro` bound/`SQUARE` step does not resolve to a valid number | Error — fails at runtime |
+| Second threaded (`&`) command launched on a plugin instance that already has a live thread | Error — fails at runtime |
 | Nested block comment | Error |
 | `EVAL` expression has trailing tokens after the final atom/type hint (anything that isn't `&&`/`||`) | Error — evaluation fails at runtime |
 
@@ -1637,3 +2006,50 @@ LABEL  cleanup
 SERIAL.CLOSE
 PRINT  Done.
 ```
+
+---
+
+## 17. Execution Model and Runtime Behaviour
+
+### Two passes
+
+The interpreter runs every script **twice** (`uscript` does this for you):
+
+1. **Validation pass** — read (with `INCLUDE`), validate the statements, load the declared
+   plugins from `splugins/`, check that every `PLUGIN.COMMAND` exists, initialise the plugins and
+   then do a **dry run**. In the dry run native statements are skipped, and each plugin command
+   is dispatched with *no hardware side effects* so it can check its own arguments (a `CMD` expression is parsed and
+   validated but nothing is sent).
+2. **Execution pass** — the plugins are enabled and every statement runs for real.
+
+Any failure in the first pass stops the script before any hardware is touched.
+
+### Plugin settings
+
+Each loaded plugin instance receives the key/value pairs of its `[NAME]` (or `[NAME:N]`) section in
+the `.ini` file (see the General Description). Two keys apply to every plugin:
+
+| Key | Effect |
+|-----|--------|
+| `FAULT_TOLERANT = true` | A failing command is logged but does **not** abort the script |
+| `PRIVILEGED = true` | The plugin receives a handle to the interpreter (used by the `SHELL` plugin) |
+
+`ARTEFACTS_PATH` — the directory that `SCRIPT`, `CMD` file operands (`F'…'`) and similar commands resolve relative file
+names against — defaults to **the directory of the main script**. A relative value in the ini is
+resolved against that directory; an absolute value is used as written.
+
+### Pacing
+
+`CMD_EXEC_DELAY` in the `[SCRIPT]` ini section (milliseconds, default `0`) inserts a pause after every
+real plugin command. Native statements are not affected.
+
+### Background activity and shutdown
+
+Threaded (`&`) commands and generators run alongside the script. When the script ends — normally
+or because of an error — every one still running is asked to stop and then joined, so a script never needs to `KILL`
+everything it starts. A script can also be stopped from outside: the GUI front-end asks the interpreter to stop
+gracefully, and the interpreter honours the request between top-level statements.
+
+### Interactive pause
+
+[`BREAKPOINT`](#85-breakpoint) waits for a key on the terminal (`a` = abort with confirmation, any other key = continue).

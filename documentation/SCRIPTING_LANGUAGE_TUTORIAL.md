@@ -27,6 +27,9 @@
 | [Step 17](#step-17--bitstream--bytestream) | BITSTREAM / BYTESTREAM — bit-packed frames |
 | [Step 18](#step-18--bitstreamval--bytestreamval) | BITSTREAMVAL / BYTESTREAMVAL — read fields back out |
 | [Step 19](#step-19--bitstreamval--bytestreamval-array-form) | BITSTREAMVAL / BYTESTREAMVAL array form — read several fields at once |
+| [Step 20](#step-20--generator) | GENERATOR — a background signal generator |
+| [Step 21](#step-21--kill) | KILL — stop a background command or generator |
+| [Step 22](#step-22--include) | INCLUDE — split a script into several files |
 | [Final](#comprehensive-example) | Comprehensive example |
 
 ---
@@ -808,6 +811,18 @@ counter  ?=  MATH  x = x + 1       # x is now 1; result stored in $counter
 PRINT  counter=$counter
 ```
 
+**Hex output — handy when the result is going to be sent as bytes.** Add `| HEX…` to
+render an integer result as fixed-width, zero-padded hex. Pick a width
+(`8`, `16`, `32`, `64`, `128`) and a byte order (`_LE` or `_BE`; required for everything wider
+than 8 bits), or `HEX_FLOAT_*` / `HEX_DOUBLE_*` for the raw IEEE-754 bit pattern:
+
+```
+a  ?=  MATH  255   |  HEX            # FF
+b  ?=  MATH  255   |  HEX_16_BE      # 00FF   (most significant byte first)
+c  ?=  MATH  255   |  HEX_16_LE      # FF00   (least significant byte first)
+d  ?=  MATH  -1.0  |  HEX_FLOAT_BE   # BF800000
+```
+
 ---
 
 ## Step 14 — Native FORMAT
@@ -1281,6 +1296,213 @@ value, `[=` always gives you back an array, even with just one field.
 **Things that abort the script:** everything Step 18 does (per field, checked
 independently for each one), plus an empty field list, and a destination
 name that's already used by a constant macro or another array macro.
+
+---
+
+## Step 20 — GENERATOR
+
+> **Make a value change on its own — a ramp, a sine wave, a dice roll — while the script does other things.**
+
+So far a macro only changed when a line of the script wrote to it. `GENERATOR` starts a
+**background thread** that keeps writing a new value into a macro at a fixed interval,
+with no plugin involved:
+
+```
+name  ?=  GENERATOR  <count> <unit>  <begin>:<end>:<step>  |  <WAVEFORM>
+```
+
+```
+# step_20_generator.script
+
+# Every 100 ms, $ctr steps up by 1 and wraps back to 0 after 255
+ctr  ?=  GENERATOR  100 ms  0:255:1  |  SAWTOOTH
+
+DELAY  1  sec
+PRINT  counter is now $ctr             # roughly 10
+
+DELAY  500 ms
+PRINT  and now $ctr                    # roughly 15
+```
+
+`100 ms` is the tick interval (the same `us` / `ms` / `sec` units as `DELAY`) and
+`0:255:1` is `begin:end:step`. `$ctr` is a normal macro: use it in `PRINT`, in an
+`IF`, in `MATH`, in a plugin command's parameters. Each time you read it you get the
+value written most recently.
+
+> The generator thread starts asynchronously, and the first value is written as soon as
+> it runs. That is why the example waits a moment with `DELAY` before reading `$ctr`.
+
+**Choosing a waveform:**
+
+```
+a  ?=  GENERATOR  100 ms  0:100:10   |  SAWTOOTH      # 10, 20 ... 100, then back to 0
+b  ?=  GENERATOR  100 ms  0:100:10   |  TRIANGLE      # up to 100, then back down, and so on
+c  ?=  GENERATOR  20  ms  0:360:5    |  SINE          # a sine wave; step = degrees per tick
+d  ?=  GENERATOR  500 ms  0:1:1      |  SQUARE        # toggles 0 / 1 every tick
+e  ?=  GENERATOR  200 ms  1:6:1      |  RANDOM        # a random value between 1 and 6
+```
+
+- Ranges can run **backwards**: `255:0:1` counts down. The `step` is just a size; the
+  direction comes from `begin` and `end`.
+- `SQUARE` reads `step` as "how many ticks to stay at each level" (a positive whole number).
+- `EXP` and `LOG` (exponential/logarithmic ramps) accept an optional fourth field for the curve steepness.
+- `begin`, `end` and `step` can be `$macros`. They are read **once**, when the statement runs.
+
+**Hex output.** Add `| HEX…` (the same options as `MATH` in Step 13) to get the value as
+fixed-width hex, ready to be embedded in a frame:
+
+```
+level  ?=  GENERATOR  50 ms  0:100:5  |  TRIANGLE  |  HEX_16_LE
+```
+
+**Stepping through your own list of values.** Instead of a range, give a comma list or the name
+of an array macro (Step 12):
+
+```
+x  ?=  7
+seq    ?=  GENERATOR  200 ms  1,7,$x,8,9  |  SAWTOOTH    # in order, then wrap around
+LIST   [=  10, 20, 30
+pick   ?=  GENERATOR  200 ms  $LIST        |  RANDOM      # a shuffled playlist: each element once, in random order
+```
+
+Array sources support `SAWTOOTH` (or `LINEAR`), `TRIANGLE` and `RANDOM` only.
+
+**Running it again restarts it.** Executing `name ?= GENERATOR …` for a name that is already
+running replaces the old generator, so you can change parameters inside a loop:
+
+```
+s  ?=  REPEAT  sweep  5, 20, 5
+    # each pass restarts $level from the beginning with a different step (5, 10, 15)
+    level  ?=  GENERATOR  50 ms  0:100:$s  |  TRIANGLE
+    DELAY  1  sec
+END_REPEAT  sweep
+```
+
+A generator keeps running until the script ends — or until you stop it with `KILL`, the next step.
+
+**Things that abort the script:** an interval of 0, a non-numeric range value, a 4th field
+on anything other than `EXP`/`LOG`, `SINE`/`SQUARE`/`EXP`/`LOG` with a list or array source, a `SQUARE` step
+that is not a positive whole number, or a destination name that is already a constant macro.
+
+---
+
+## Step 21 — KILL
+
+> **Stop something that is running in the background — on your own schedule.**
+
+Two statements keep a **volatile macro** refreshed in the background: the generator you just
+met, and a **threaded command** — any plugin command that ends with ` &` and captures its
+result:
+
+```
+name  ?=  PLUGIN.COMMAND  args  &                    # threaded capture — note the trailing  &
+name  ?=  GENERATOR  100 ms  0:255:1  |  SAWTOOTH    # generator
+```
+
+A threaded command runs in its own thread and is re-run over and over, refreshing `$name` each time.
+(Only one threaded command can be active per plugin instance at a time.) Both kinds keep
+running until the script ends. To stop one sooner, use `KILL` with the **macro's name**:
+
+```
+KILL  <name>
+<result>  ?=  KILL  <name>
+```
+
+```
+# step_21_kill.script
+
+ctr  ?=  GENERATOR  100 ms  0:255:1  |  SAWTOOTH
+
+DELAY  1  sec
+PRINT  counter is now $ctr              # somewhere around 10
+
+# Stop it — and find out how many things KILL actually had to stop
+stopped  ?=  KILL  ctr
+PRINT  stopped $stopped generator(s)    # 1
+
+DELAY  500 ms
+PRINT  ctr stays frozen at $ctr         # last value — no longer updated
+```
+
+Three things worth knowing:
+
+**1. You kill the macro, not the command.** `KILL UART.CYCLIC` is rejected.
+Capture the command into a macro when you launch it, then kill that macro. `CYCLIC` (every
+comm-driver plugin has one) is the typical background command: it sends messages on a schedule,
+written as `time_in_ms:command`, separated by commas:
+
+```
+LOAD_PLUGIN  UART
+
+UART.CONFIG  p=/dev/ttyUSB0  b=115200
+retval  ?=  UART.CYCLIC  100:> H'AABBCCDD', 250:> 'ping\r\n'  &   # sends in the background
+DELAY  2  sec
+KILL  retval                                                      # stop it
+```
+
+A background command launched without a destination (`UART.CYCLIC … &` with no
+`retval ?=` in front) can't be named, so it can't be killed — it runs until the
+script ends.
+
+**2. `KILL` waits.** It asks the thread to stop and then waits until it has
+actually finished, so the plugin is free again as soon as `KILL` returns — you
+can start a new `&` command on it straight away.
+
+**3. Killing twice, or killing nothing, is fine.** The optional `<result>`
+tells you how many threads were stopped: `1` normally, `0` if nothing was left
+to stop. That makes `KILL` safe to put in a cleanup path that might run more
+than once:
+
+```
+stopped  ?=  KILL  ctr
+PRINT  second KILL stopped $stopped     # 0 — not an error
+```
+
+You don't have to `KILL` everything: anything still running when the script
+ends is stopped automatically. Use `KILL` only when you need to stop something
+*earlier*.
+
+> There is no `GENERATOR STOP` and no `STOP ALL` — `KILL` is the one way to stop
+> a generator or a threaded capture early.
+
+**Things that abort the script (caught before it runs):** `KILL` with no
+target, a target that looks like a command (`KILL UART.CYCLIC`) or carries extra
+words, and a target that was never started with `name ?= PLUGIN.CMD … &` or
+`name ?= GENERATOR …` on an earlier line — usually a typo, or a command that
+was launched without `&` and has therefore already finished.
+
+---
+
+## Step 22 — INCLUDE
+
+> **Split a long script into reusable pieces.**
+
+Put shared declarations — constants, arrays, plugin loads — in their own file and
+pull them into any script with `INCLUDE`:
+
+```
+# common.script
+LOAD_PLUGIN  UART
+BAUD     :=  115200
+BOARDS   [=  /dev/ttyUSB0, /dev/ttyUSB1
+```
+
+```
+# step_22_include.script
+INCLUDE  "common.script"
+
+i  ?=  REPEAT  boards  $BOARDS.SIZE
+    UART.CONFIG  p=$BOARDS.$i  b=$BAUD
+END_REPEAT  boards
+```
+
+- The path is in **double quotes** and is relative to the file that contains the
+  `INCLUDE` (`"../shared/limits.script"` works too); an absolute path also works.
+- The included lines are placed **ahead of** the including file's own lines, so what
+  an included file declares is visible everywhere in the main script.
+- Included files can include other files, and use comments and `\` line continuation like any other script.
+- Including a file that is already included (or a file that includes itself) is an error,
+  as is a file that does not exist.
 
 ---
 
