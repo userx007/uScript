@@ -1,0 +1,23 @@
+LOAD_PLUGIN UART
+LOAD_PLUGIN KVCAN
+
+TOUT_RX := 5000
+TOUT_TX := 5000
+SZ_BUFF := 64
+CANIF   := vcan0
+TX_ID   := 0x100
+CFG_COMMON := i=$CANIF r=$TOUT_RX w=$TOUT_TX s=$SZ_BUFF x=$TX_ID
+
+carray [= 1000:>H'11223344'
+
+KVCAN.CONFIG $CFG_COMMON
+
+recval ?= UART.CYCLIC $carray &
+sndval ?= KVCAN.CMD < &
+
+DELAY 5 sec
+
+
+
+
+

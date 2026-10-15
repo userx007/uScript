@@ -10,13 +10,13 @@ BreakBeforeBraces: Custom
 
 BraceWrapping:
   AfterFunction: true
-  AfterClass: false
+  AfterClass: true
   AfterControlStatement: false
-  AfterEnum: false
-  AfterNamespace: false
-  AfterStruct: false
-  AfterUnion: false
-  AfterExternBlock: false
+  AfterEnum: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
   BeforeCatch: false
   BeforeElse: false
   BeforeWhile: false

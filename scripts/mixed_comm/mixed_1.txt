@@ -1,0 +1,26 @@
+CANP := KCAN
+
+LOAD_PLUGIN UART
+LOAD_PLUGIN $CANP
+
+TOUT_RX := 0
+TOUT_TX := 5000
+SZ_BUFF := 64
+CANIF   := vcan0
+TX_ID   := 0x100
+CFG_COMMON := i=$CANIF r=$TOUT_RX w=$TOUT_TX s=$SZ_BUFF x=$TX_ID
+
+$CANP.CONFIG $CFG_COMMON
+
+recvval ?= $CANP.CMD < &
+
+i ?= REPEAT loop 10
+    DELAY 1000 ms
+    snd ?= MATH $i | HEX_64_BE
+    UART.CMD > H'$snd'
+END_REPEAT loop
+
+KILL recvval
+
+DELAY 1 sec
+
