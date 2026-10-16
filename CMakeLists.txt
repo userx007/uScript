@@ -241,6 +241,26 @@ install(
 
 set(UPLUGIN_TARGETS
     SimpleTypes
+    AcousticGunshotDetectionSystemTypes
+    AlarmsTypes
+    ArbitrationTypes
+    AutomaticWeaponTypes
+    BrakesTypes
+    HMIInputDevicesTypes
+    HMIPresentationTypes
+    LaserWarningSystemTypes
+    LRFTypes
+    MountTypes
+    NavigationReferenceTypes
+    PowerTypes
+    RoutesTypes
+    SingleShotGrenadeLauncherArrayTypes
+    TacticalEffectorTypes
+    TacticalSensorTypes
+    UsageAndConditionMonitoringTypes
+    VehicleConfigurationTypes
+    VideoTypes
+    VideoTrackingTypes
 )
 
 uscript_install_existing(${INSTALL_UPLUGIN_DIR} ${UPLUGIN_TARGETS})
