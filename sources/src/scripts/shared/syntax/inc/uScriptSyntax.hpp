@@ -313,12 +313,13 @@ namespace usyntax {
         return std::regex_match(strExpression, pattern);
     }
 
-    // validate "[<result> ?=] KILL <name>" — stops whatever keeps the VOLATILE
-    // macro <name> alive: the background thread of a threaded variable-capture
+    // validate "[<result> ?=] KILL <name> [<name2> ...]" — stops whatever keeps each VOLATILE
+    // macro <name>, <name2>, ... alive: the background thread of a threaded variable-capture
     // command ("<name> ?= PLUGIN.CMD args &", e.g. "<name> ?= UART.CYCLIC ... &")
     // or a native generator ("<name> ?= GENERATOR ..."). When the "<result> ?="
     // prefix is present, the number of threads/generators that were actually
-    // stopped is stored in <result> (see KillStatement, uScriptDataTypes.hpp).
+    // stopped, summed over every listed name, is stored in <result> (see KillStatement,
+    // uScriptDataTypes.hpp).
     //
     // A command that does not return a volatile macro cannot be killed, so the
     // target is always a macro NAME — never "PLUGIN.CMD" / "PLUGIN:N.CMD".
@@ -338,6 +339,7 @@ namespace usyntax {
     // Examples:
     //   KILL retval
     //   ok ?= KILL retval
+    //   ok ?= KILL retval ctr level
     inline bool m_isKillStmt(const std::string &strExpression)
     {
         static const std::regex pattern(

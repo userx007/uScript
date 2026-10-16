@@ -2338,14 +2338,14 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
 } // m_HandleGeneratorStmt()
 
 /*-------------------------------------------------------------------------------
-  KILL_STMT handler:  [result ?=] KILL name
+  KILL_STMT handler:  [result ?=] KILL name [name ...]
 
   Lexical shape (the KILL keyword) already confirmed by usyntax::m_isKillStmt();
-  the two names are extracted - and the target's shape is enforced - by
+  the names are extracted - and each target's shape is enforced - by
   parseKillStatement() (uScriptDataTypes.hpp), shared with the interactive-shell
   path so both forms stay identical.
 
-  The target must be the plain name of a volatile macro.
+  Every target must be the plain name of a volatile macro.
 
   Whether `name` really is the destination of a threaded capture command or of
   a GENERATOR is a script-wide check, see m_validateKillTargets().
@@ -2365,7 +2365,8 @@ bool ScriptValidator::m_HandleKill(const ScriptRawLine &rawLine) noexcept
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, stmt});
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-              LOG_STRING("KILL ["); LOG_STRING(stmt.strTargetName); LOG_STRING("]");
+              LOG_STRING("KILL ["); LOG_STRING(std::to_string(stmt.vTargetNames.size())); LOG_STRING("target(s) ]");
+              LOG_STRING(stmt.vTargetNames.front());
               LOG_STRING(stmt.strResultName.empty() ? "" : "-> result in");
               LOG_STRING(stmt.strResultName));
 
@@ -2374,7 +2375,7 @@ bool ScriptValidator::m_HandleKill(const ScriptRawLine &rawLine) noexcept
 } // m_HandleKill()
 
 /*-------------------------------------------------------------------------------
-  Static check for KILL: every target name must be a volatile macro that has a
+  Static check for KILL: every target name (of every KILL, however many it lists) must be a volatile macro that has a
   thread/generator running behind it, i.e. the destination of
 
       name ?= PLUGIN.CMD args &       (threaded variable-capture command)
@@ -2406,21 +2407,30 @@ bool ScriptValidator::m_validateKillTargets() noexcept
             } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
                 setKillable.insert(command.strName);
             } else if constexpr (std::is_same_v<T, KillStatement>) {
-                if (setKillable.find(command.strTargetName) == setKillable.end()) {
-                    const auto itSeq = mapSequentialCapture.find(command.strTargetName);
+                // Every listed name is checked (and every bad one reported), so a
+                // script author sees all the problems of a statement in one run.
+                bool bThisLineBad = false;
+                for (const auto &strTarget : command.vTargetNames) {
+                    if (setKillable.find(strTarget) != setKillable.end()) {
+                        continue;
+                    }
+                    bThisLineBad = true;
+                    const auto itSeq = mapSequentialCapture.find(strTarget);
                     if (itSeq != mapSequentialCapture.end()) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                                  LOG_STRING("KILL ["); LOG_STRING(command.strTargetName);
+                                  LOG_STRING("KILL ["); LOG_STRING(strTarget);
                                   LOG_STRING("]: it is returned by"); LOG_STRING(itSeq->second);
                                   LOG_STRING("which was not launched with '&' and has already finished - nothing to kill"));
                     } else {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                                  LOG_STRING("KILL ["); LOG_STRING(command.strTargetName);
+                                  LOG_STRING("KILL ["); LOG_STRING(strTarget);
                                   LOG_STRING("]: not a volatile macro returned by a threaded command or a GENERATOR "
-                                             "- expected '"); LOG_STRING(command.strTargetName);
-                                  LOG_STRING("?= PLUGIN.CMD ... &' (or '"); LOG_STRING(command.strTargetName);
+                                             "- expected '"); LOG_STRING(strTarget);
+                                  LOG_STRING("?= PLUGIN.CMD ... &' (or '"); LOG_STRING(strTarget);
                                   LOG_STRING("?= GENERATOR ...') on an earlier line"));
                     }
+                }
+                if (bThisLineBad) {
                     gui_notify_error_main(scriptLine.iLineNumber);
                     bRetVal = false;
                 }
@@ -2541,7 +2551,7 @@ bool ScriptValidator::m_ListStatements() noexcept
                                   LOG_STRING(getHexFormatName(item.eHexFormat)); LOG_STRING("]"));
                     }
                 } else if constexpr (std::is_same_v<T, KillStatement>) {
-                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("      KILL:"); LOG_STRING(item.strTargetName);
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("      KILL:"); LOG_STRING(std::to_string(item.vTargetNames.size())); LOG_STRING("target(s), first="); LOG_STRING(item.vTargetNames.front());
                               LOG_STRING("result=["); LOG_STRING(item.strResultName.empty() ? "<none>" : item.strResultName); LOG_STRING("]"));
                 } },
                                                                                                                                        data.command); });

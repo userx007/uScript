@@ -1150,9 +1150,9 @@ bool ScriptInterpreter::executeCmd(const std::string &strCommand)
         }
 
         case Token::KILL_STMT: {
-            // "[ret ?=] KILL name" - same shared parser as ScriptValidator, so the
+            // "[ret ?=] KILL name [name ...]" - same shared parser as ScriptValidator, so the
             // interactive form can never drift from the compiled-script one, and the
-            // same rule applies: the target is the name of a volatile macro.
+            // same rule applies: every target is the name of a volatile macro.
             // The threads a shell session started with "name ?= PLUGIN.CMD args &" live
             // in m_threads exactly like a script's (and "name ?= GENERATOR ..." in
             // m_generatorThreads), so m_killVolatileMacro() finds them; the result
@@ -2093,7 +2093,7 @@ size_t ScriptInterpreter::m_stopNamedGenerator(const std::string &strName) noexc
 } /* m_stopNamedGenerator() */
 
 /*-------------------------------------------------------------------------------
-  m_killVolatileMacro — implements "[ret ?=] KILL name": stop and join whatever
+  m_killVolatileMacro — implements one name of "[ret ?=] KILL name [name ...]": stop and join whatever
   keeps the volatile macro strName alive, i.e. the "&" thread(s) whose
   variable-capture destination is strName ("name ?= PLUGIN.CMD args &", incl.
   "name ?= UART.CYCLIC ... &") and the GENERATOR thread of that name. Returns the
@@ -3364,11 +3364,11 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
             }
 
             /*-----------------------------------------------------------------
-                [result ?=] KILL name — stop whatever keeps the volatile macro
+                [result ?=] KILL name [name ...] — stop whatever keeps the volatile macro
                 <name> alive: the threaded capture command launched as
                 "name ?= PLUGIN.CMD args &" (incl. "name ?= UART.CYCLIC ... &")
                 or the generator started by "name ?= GENERATOR ...". <result>
-                (if given) receives how many threads were stopped. This is the
+                (if given) receives how many threads were stopped, summed over all names. This is the
                 one way to stop either of them early (there is no GENERATOR
                 STOP / STOP ALL). See KillStatement; the static "is <name> really
                 such a macro" check is ScriptValidator::m_validateKillTargets().
@@ -3376,13 +3376,19 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
 
         } else if constexpr (std::is_same_v<T, KillStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                const size_t szStopped = m_killVolatileMacro(command.strTargetName);
-                if (!command.strResultName.empty()) {
-                    m_setRuntimeVarMacro(command.strResultName, std::to_string(szStopped));
+                // Targets are killed one after the other, in the order written; the
+                // optional result macro receives the total over all of them.
+                size_t szStoppedTotal = 0;
+                for (const auto &strTarget : command.vTargetNames) {
+                    const size_t szStopped = m_killVolatileMacro(strTarget);
+                    szStoppedTotal += szStopped;
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("KILL ["); LOG_STRING(strTarget); LOG_STRING("]->");
+                              LOG_SIZET(szStopped));
                 }
-                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-                          LOG_STRING("KILL ["); LOG_STRING(command.strTargetName); LOG_STRING("]->");
-                          LOG_SIZET(szStopped));
+                if (!command.strResultName.empty()) {
+                    m_setRuntimeVarMacro(command.strResultName, std::to_string(szStoppedTotal));
+                }
             }
         } },
                sData.command);

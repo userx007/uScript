@@ -493,7 +493,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
     }
 
     // ── 7a. KILL target ─────────────────────────────────────────────────────
-    //  "[result ?=] KILL name" (see usyntax::m_isKillStmt / parseKillStatement).
+    //  "[result ?=] KILL name [name ...]" (see usyntax::m_isKillStmt / parseKillStatement).
     //  KILL itself is already periwinkle/bold via the native-function list
     //  above. <name> is the volatile macro whose thread/generator is being
     //  stopped, i.e. the same identifier that appears as NAME in an earlier
@@ -502,7 +502,9 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
     //  so an unrelated identifier is never mis-highlighted. Something that is
     //  not a plain identifier (e.g. "KILL UART:2.CMD", which the validator
     //  rejects) simply gets no name colour.
-    addRule(QString("\\bKILL\\s+(" SCRIPT_RX_IDENT ")\\s*$"), fmt(C_VAR_NAME), 1);
+    //  One or more whitespace-separated names: the whole name list is capture
+    //  group 1 (the blanks between names carry no visible colour).
+    addRule(QString("\\bKILL\\s+(" SCRIPT_RX_IDENT "(?:\\s+" SCRIPT_RX_IDENT ")*)\\s*$"), fmt(C_VAR_NAME), 1);
 
     // ── 7b. GENERATOR waveform keyword ──────────────────────────────────────
     //  "| WAVEFORM" in "name ?= GENERATOR <count> <unit> range | WAVEFORM
