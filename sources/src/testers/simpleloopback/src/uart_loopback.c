@@ -9,7 +9,10 @@
  *   ./uart_loopback <port> [baudrate]
  *
  *   port      e.g. /dev/ttyUSB0, /dev/tnt0 (tty0tty), /dev/ttyS0
- *   baudrate  one of the standard POSIX rates listed in BAUD_TABLE below
+ *             Windows: COM3, COM12, ... (names >= COM10 are mapped to \\.\COMn
+ *             automatically); a null-modem pair such as com0com works like tty0tty
+ *   baudrate  POSIX: one of the standard rates listed in BAUD_TABLE below
+ *             Windows: any positive rate the driver accepts
  *             (default: 115200)
  *
  * Setup with tty0tty (a pair of cross-linked virtual serial ports):
@@ -42,12 +45,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <signal.h>
 #include <errno.h>
 
+#if defined(_WIN32)
+#include <stddef.h>
+#include <windows.h>
+#if defined(_MSC_VER)
+typedef ptrdiff_t ssize_t; /* MSVC has no ssize_t */
+#endif
+#else
+#include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
+#endif
 
 /* ------------------------------------------------------------------ */
 /* Globals                                                             */
@@ -64,6 +75,8 @@ static void sig_handler(int iSig)
 /* ------------------------------------------------------------------ */
 /* Baud rate lookup                                                    */
 /* ------------------------------------------------------------------ */
+
+#if !defined(_WIN32)
 
 struct baud_entry {
     long     value;
@@ -98,9 +111,74 @@ static int baud_to_flag(long baud, speed_t *pOut)
     return -1;
 }
 
+#endif /* !_WIN32 */
+
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
+
+/* Thin port abstraction: file descriptor + read/write/close on POSIX,
+ * HANDLE + ReadFile/WriteFile/CloseHandle on Windows. */
+#if defined(_WIN32)
+typedef HANDLE port_t;
+#define PORT_INVALID INVALID_HANDLE_VALUE
+
+/** perror() replacement for Win32 errors. */
+static void report_error(const char *pstrWhat)
+{
+    char  msg[256] = "";
+    DWORD err      = GetLastError();
+    DWORD len      = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, err, 0,
+                                    msg, (DWORD)sizeof(msg), NULL);
+    while (len > 0 && (msg[len - 1] == '\r' || msg[len - 1] == '\n' || msg[len - 1] == ' '))
+        msg[--len] = '\0';
+    fprintf(stderr, "%s: %s (error %lu)\n", pstrWhat, msg, (unsigned long)err);
+}
+
+static ssize_t port_read(port_t h, void *buf, size_t len)
+{
+    DWORD got = 0;
+    if (!ReadFile(h, buf, (DWORD)len, &got, NULL))
+        return -1;
+    return (ssize_t)got;
+}
+
+static ssize_t port_write(port_t h, const void *buf, size_t len)
+{
+    DWORD put = 0;
+    if (!WriteFile(h, buf, (DWORD)len, &put, NULL))
+        return -1;
+    return (ssize_t)put;
+}
+
+static void port_close(port_t h)
+{
+    CloseHandle(h);
+}
+#else
+typedef int port_t;
+#define PORT_INVALID (-1)
+
+static void report_error(const char *pstrWhat)
+{
+    perror(pstrWhat);
+}
+
+static ssize_t port_read(port_t h, void *buf, size_t len)
+{
+    return read(h, buf, len);
+}
+
+static ssize_t port_write(port_t h, const void *buf, size_t len)
+{
+    return write(h, buf, len);
+}
+
+static void port_close(port_t h)
+{
+    close(h);
+}
+#endif
 
 /** Print a chunk of bytes in candump-like hex format. */
 static void print_chunk(const char *pstrPrefix, const unsigned char *buf, ssize_t len)
@@ -112,7 +190,77 @@ static void print_chunk(const char *pstrPrefix, const unsigned char *buf, ssize_
     fflush(stdout);
 }
 
-static int open_serial_port(const char *pstrPath, long baud)
+#if defined(_WIN32)
+
+static port_t open_serial_port(const char *pstrPath, long baud)
+{
+    char full[300];
+    /* COM10 and above (and, harmlessly, COM1-9) need the \\.\ device-namespace prefix. */
+    if (strncmp(pstrPath, "\\\\.\\", 4) != 0 && (pstrPath[0] == 'C' || pstrPath[0] == 'c')) {
+        snprintf(full, sizeof(full), "\\\\.\\%s", pstrPath);
+    } else {
+        snprintf(full, sizeof(full), "%s", pstrPath);
+    }
+
+    HANDLE h = CreateFileA(full, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) {
+        report_error(full);
+        return PORT_INVALID;
+    }
+
+    DCB dcb;
+    memset(&dcb, 0, sizeof(dcb));
+    dcb.DCBlength = sizeof(dcb);
+    if (!GetCommState(h, &dcb)) {
+        report_error("GetCommState");
+        CloseHandle(h);
+        return PORT_INVALID;
+    }
+
+    dcb.BaudRate        = (DWORD)baud;
+    dcb.ByteSize        = 8;            /* 8N1 */
+    dcb.Parity          = NOPARITY;
+    dcb.StopBits        = ONESTOPBIT;
+    dcb.fBinary         = TRUE;         /* raw: no EOF character handling */
+    dcb.fParity         = FALSE;
+    dcb.fOutxCtsFlow    = FALSE;        /* no hardware flow control */
+    dcb.fOutxDsrFlow    = FALSE;
+    dcb.fDtrControl     = DTR_CONTROL_ENABLE;
+    dcb.fDsrSensitivity = FALSE;        /* ignore modem control lines (CLOCAL) */
+    dcb.fOutX           = FALSE;        /* no XON/XOFF: payload must pass unmodified */
+    dcb.fInX            = FALSE;
+    dcb.fErrorChar      = FALSE;
+    dcb.fNull           = FALSE;        /* do not strip NUL bytes */
+    dcb.fRtsControl     = RTS_CONTROL_ENABLE;
+    dcb.fAbortOnError   = FALSE;
+    if (!SetCommState(h, &dcb)) {
+        report_error("SetCommState");
+        CloseHandle(h);
+        return PORT_INVALID;
+    }
+
+    /* Return as soon as >= 1 byte is available, else give up after 100 ms with 0 bytes, so the
+     * main loop's "nbytes == 0 -> try again" re-checks 'running' and Ctrl-C is honoured
+     * (a blocking ReadFile would not be interrupted by it). */
+    COMMTIMEOUTS to;
+    to.ReadIntervalTimeout         = MAXDWORD;
+    to.ReadTotalTimeoutMultiplier  = MAXDWORD;
+    to.ReadTotalTimeoutConstant    = 100;
+    to.WriteTotalTimeoutMultiplier = 0;
+    to.WriteTotalTimeoutConstant   = 5000;
+    if (!SetCommTimeouts(h, &to)) {
+        report_error("SetCommTimeouts");
+        CloseHandle(h);
+        return PORT_INVALID;
+    }
+
+    PurgeComm(h, PURGE_RXCLEAR | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_TXABORT);
+    return h;
+}
+
+#else /* POSIX */
+
+static port_t open_serial_port(const char *pstrPath, long baud)
 {
     speed_t speed;
     if (baud_to_flag(baud, &speed) < 0) {
@@ -120,7 +268,7 @@ static int open_serial_port(const char *pstrPath, long baud)
                 "unsupported baud rate %ld (edit BAUD_TABLE to add it,\n"
                 "or use Linux-specific BOTHER/termios2 for arbitrary rates)\n",
                 baud);
-        return -1;
+        return PORT_INVALID;
     }
 
     /* O_NDELAY/O_NONBLOCK at open time avoids blocking on DCD for modem
@@ -128,13 +276,13 @@ static int open_serial_port(const char *pstrPath, long baud)
     int fd = open(pstrPath, O_RDWR | O_NOCTTY | O_NDELAY);
     if (fd < 0) {
         fprintf(stderr, "open '%s': %s\n", pstrPath, strerror(errno));
-        return -1;
+        return PORT_INVALID;
     }
 
     if (fcntl(fd, F_SETFL, 0) < 0) {
         perror("fcntl F_SETFL");
         close(fd);
-        return -1;
+        return PORT_INVALID;
     }
 
     struct termios tty;
@@ -142,7 +290,7 @@ static int open_serial_port(const char *pstrPath, long baud)
     if (tcgetattr(fd, &tty) < 0) {
         perror("tcgetattr");
         close(fd);
-        return -1;
+        return PORT_INVALID;
     }
 
     cfmakeraw(&tty);               /* no canonical mode, no echo, no signals */
@@ -162,12 +310,14 @@ static int open_serial_port(const char *pstrPath, long baud)
     if (tcsetattr(fd, TCSANOW, &tty) < 0) {
         perror("tcsetattr");
         close(fd);
-        return -1;
+        return PORT_INVALID;
     }
 
     tcflush(fd, TCIOFLUSH);
     return fd;
 }
+
+#endif /* _WIN32 */
 
 /* ------------------------------------------------------------------ */
 /* Main                                                                */
@@ -192,8 +342,8 @@ int main(int iArgc, char *argv[])
         }
     }
 
-    int fd = open_serial_port(port, baud);
-    if (fd < 0)
+    port_t fd = open_serial_port(port, baud);
+    if (fd == PORT_INVALID)
         return EXIT_FAILURE;
 
     signal(SIGINT,  sig_handler);
@@ -207,12 +357,14 @@ int main(int iArgc, char *argv[])
     unsigned char buf[256];
 
     while (running) {
-        ssize_t nbytes = read(fd, buf, sizeof(buf));
+        ssize_t nbytes = port_read(fd, buf, sizeof(buf));
 
         if (nbytes < 0) {
+#if !defined(_WIN32)
             if (errno == EINTR)
                 break;          /* interrupted by signal */
-            perror("read");
+#endif
+            report_error("read");
             break;
         }
         if (nbytes == 0)
@@ -223,11 +375,13 @@ int main(int iArgc, char *argv[])
         /* Echo the exact bytes straight back out the same port. */
         ssize_t total_written = 0;
         while (total_written < nbytes) {
-            ssize_t w = write(fd, buf + total_written, nbytes - total_written);
+            ssize_t w = port_write(fd, buf + total_written, (size_t)(nbytes - total_written));
             if (w < 0) {
+#if !defined(_WIN32)
                 if (errno == EINTR)
                     continue;
-                perror("write");
+#endif
+                report_error("write");
                 running = 0;
                 break;
             }
@@ -241,6 +395,6 @@ int main(int iArgc, char *argv[])
     }
 
     printf("\nuart_loopback: shutting down.\n");
-    close(fd);
+    port_close(fd);
     return EXIT_SUCCESS;
 }

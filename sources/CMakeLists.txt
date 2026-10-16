@@ -69,6 +69,15 @@ cmake_minimum_required(VERSION 3.25)
 # ─────────────────────────────────────────────────────────────────────────────
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# The code base needs C++20 (std::span, <bit>, <stop_token>, <compare>, concepts, ...). MSVC
+# defaults to C++14 and GCC <= 14 to gnu++17, so request C++20 here unless the caller (e.g.
+# -DCMAKE_CXX_STANDARD=23), a preset or a toolchain file already chose a standard. Subdirectories
+# that set their own standard (scriptgui, testers) keep doing so in their own scope.
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
 if(MSVC)
     add_compile_options(/utf-8 /Zc:__cplusplus /permissive- /bigobj)
 endif()

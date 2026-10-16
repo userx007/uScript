@@ -65,10 +65,55 @@
 
 #include "ICommDumpProtocol.hpp"
 
+#include <atomic>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <pthread.h>
 #include <string>
+#include <type_traits>
+
+// ---------------------------------------------------------------------------
+// Platform thread-local-storage primitives
+//
+//   POSIX   (Linux, macOS, ...) : <pthread.h>  (unchanged from the original)
+//   Windows (MSVC and MinGW-w64): Win32 TLS API (TlsAlloc & friends).
+//
+// <windows.h> is deliberately NOT included: this header is pulled in by
+// uLogger.hpp, i.e. by practically every translation unit, and windows.h's
+// macro soup (min/max, ERROR, interface, ...) as well as its winsock.h /
+// winsock2.h ordering requirement (see uTcpipWindows.cpp) must not leak into
+// all of them.  uLogger.hpp already follows the same rule for
+// GetCurrentThreadId().  The handful of kernel32 entry points needed are
+// therefore forward-declared below with *exactly* the types the Windows SDK /
+// MinGW-w64 headers use (DWORD == unsigned long, HANDLE == void *,
+// BOOL == int, LPCSTR == const char *, SIZE_T == ULONG_PTR, ...), so a TU that
+// also includes the real <windows.h> sees an identical, redundant declaration
+// and not a conflicting one.
+// ---------------------------------------------------------------------------
+#if defined(_WIN32)
+struct _SECURITY_ATTRIBUTES; // tag used by SECURITY_ATTRIBUTES / LPSECURITY_ATTRIBUTES
+
+namespace gui_tls_detail {
+    // SIZE_T == ULONG_PTR: 64 bit on Win64, 32 bit (unsigned long) on Win32.
+    using win_size_t = std::conditional_t<sizeof(void *) == 8, unsigned long long, unsigned long>;
+} // namespace gui_tls_detail
+
+extern "C" {
+__declspec(dllimport) unsigned long __stdcall TlsAlloc(void);
+__declspec(dllimport) int __stdcall TlsFree(unsigned long dwTlsIndex);
+__declspec(dllimport) void *__stdcall TlsGetValue(unsigned long dwTlsIndex);
+__declspec(dllimport) int __stdcall TlsSetValue(unsigned long dwTlsIndex, void *lpTlsValue);
+__declspec(dllimport) unsigned long __stdcall GetCurrentProcessId(void);
+__declspec(dllimport) void *__stdcall CreateFileMappingA(void *hFile, _SECURITY_ATTRIBUTES *lpAttributes,
+                                                         unsigned long flProtect, unsigned long dwMaximumSizeHigh,
+                                                         unsigned long dwMaximumSizeLow, const char *lpName);
+__declspec(dllimport) void *__stdcall MapViewOfFile(void *hFileMappingObject, unsigned long dwDesiredAccess,
+                                                    unsigned long dwFileOffsetHigh, unsigned long dwFileOffsetLow,
+                                                    gui_tls_detail::win_size_t dwNumberOfBytesToMap);
+}
+#else
+#include <pthread.h>
+#endif
 
 // ---------------------------------------------------------------------------
 // Global mode flag
@@ -111,7 +156,107 @@ inline bool g_gui_mode = false; /**< true  → GUI front-end mode (structured st
 //   integer value is stored as a pointer-sized integer cast to void*.
 //   get_gui_comm_tid() / set_gui_comm_tid() are the cross-DSO safe accessors;
 //   all former uses of g_gui_comm_tid are replaced with these calls.
+//
+//   Windows: the same idea with a Win32 TLS index (TlsAlloc).  The *index* is
+//   process-wide, but - unlike an ELF DSO, where the dynamic linker merges the
+//   inline pthread_key_t variable across all modules - every PE module (EXE or
+//   DLL) would get its own copy of an inline variable holding it, and each
+//   would call TlsAlloc() separately.  The index is therefore published through
+//   a named, pagefile-backed file mapping ("Local\uScript_GuiTlsIdx_<pid>")
+//   that every module of the process opens by name; the first module to arrive
+//   allocates the index and publishes it with a compare-exchange, later ones
+//   (or racing ones, whose surplus index is released again) adopt it.
 // ---------------------------------------------------------------------------
+
+#if defined(_WIN32)
+
+namespace gui_tls_detail {
+
+    constexpr unsigned long kTlsOutOfIndexes = 0xFFFFFFFFul; // TLS_OUT_OF_INDEXES
+
+    /**
+     * Process-wide TLS index (see "Windows" note above), or kTlsOutOfIndexes
+     * if it could not be established.  The static is only a per-module cache;
+     * the authoritative value lives in the named file mapping.
+     */
+    inline unsigned long tls_index() noexcept
+    {
+        static std::atomic<unsigned long> s_cached{kTlsOutOfIndexes};
+
+        unsigned long idx = s_cached.load(std::memory_order_acquire);
+        if (idx != kTlsOutOfIndexes) {
+            return idx;
+        }
+
+        char szName[64];
+        std::snprintf(szName, sizeof(szName), "Local\\uScript_GuiTlsIdx_%lu", ::GetCurrentProcessId());
+
+        // INVALID_HANDLE_VALUE + PAGE_READWRITE == anonymous (pagefile-backed) section.
+        // The mapping handle and view are intentionally never released: the named
+        // object must stay alive for the whole process lifetime, otherwise a module
+        // loaded later would not find the published index and allocate its own.
+        void *hMap = ::CreateFileMappingA(reinterpret_cast<void *>(~std::uintptr_t{0}), nullptr,
+                                          0x04 /* PAGE_READWRITE */, 0, sizeof(std::uint32_t), szName);
+        if (hMap == nullptr) {
+            return kTlsOutOfIndexes;
+        }
+        void *pView = ::MapViewOfFile(hMap, 0x0006 /* FILE_MAP_READ | FILE_MAP_WRITE */, 0, 0, sizeof(std::uint32_t));
+        if (pView == nullptr) {
+            return kTlsOutOfIndexes;
+        }
+
+        // Slot holds (index + 1); the section is zero-filled, so 0 means "not published yet".
+        std::atomic_ref<std::uint32_t> slot(*static_cast<std::uint32_t *>(pView));
+        std::uint32_t published = slot.load(std::memory_order_acquire);
+        if (published == 0) {
+            const unsigned long candidate = ::TlsAlloc();
+            if (candidate == kTlsOutOfIndexes) {
+                return kTlsOutOfIndexes;
+            }
+            std::uint32_t expected = 0;
+            if (slot.compare_exchange_strong(expected, static_cast<std::uint32_t>(candidate) + 1u,
+                                             std::memory_order_acq_rel)) {
+                published = static_cast<std::uint32_t>(candidate) + 1u;
+            } else {
+                ::TlsFree(candidate); // another module won the race
+                published = expected;
+            }
+        }
+
+        idx = static_cast<unsigned long>(published - 1u);
+        s_cached.store(idx, std::memory_order_release);
+        return idx;
+    }
+
+    /** Last-resort storage if the shared TLS index is unavailable (per-module, never shared). */
+    inline int &fallback_tid() noexcept
+    {
+        static thread_local int s_iTid = 0;
+        return s_iTid;
+    }
+
+} // namespace gui_tls_detail
+
+inline int get_gui_comm_tid() noexcept
+{
+    const unsigned long idx = gui_tls_detail::tls_index();
+    if (idx == gui_tls_detail::kTlsOutOfIndexes) {
+        return gui_tls_detail::fallback_tid();
+    }
+    return static_cast<int>(reinterpret_cast<std::intptr_t>(::TlsGetValue(idx)));
+}
+
+inline void set_gui_comm_tid(int iTid) noexcept
+{
+    const unsigned long idx = gui_tls_detail::tls_index();
+    if (idx == gui_tls_detail::kTlsOutOfIndexes) {
+        gui_tls_detail::fallback_tid() = iTid;
+        return;
+    }
+    ::TlsSetValue(idx, reinterpret_cast<void *>(static_cast<std::intptr_t>(iTid)));
+}
+
+#else // POSIX — original implementation, unchanged
 
 namespace gui_tls_detail {
 
@@ -138,6 +283,8 @@ inline void set_gui_comm_tid(int iTid) noexcept
     pthread_setspecific(gui_tls_detail::g_tid_key,
                         reinterpret_cast<void *>(static_cast<std::intptr_t>(iTid)));
 }
+
+#endif // _WIN32
 
 // ---------------------------------------------------------------------------
 // Cross-DSO GUI mode query

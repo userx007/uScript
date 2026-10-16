@@ -12,6 +12,7 @@
 #include <array>
 #include <chrono>
 #include <compare>
+#include <cstddef>
 #include <cstring>
 #include <libusb-1.0/libusb.h>
 #include <sys/types.h>
@@ -134,7 +135,7 @@ ICommDriver::Status Candlelight::open(uint16_t u16Vendor_id, uint16_t u16Product
     }
 
     libusb_device **list = nullptr;
-    ssize_t count        = libusb_get_device_list(m_usbCtx, &list);
+    std::ptrdiff_t count = libusb_get_device_list(m_usbCtx, &list);
     if (count < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("libusb_get_device_list failed"));
         libusb_exit(m_usbCtx);
@@ -144,7 +145,7 @@ ICommDriver::Status Candlelight::open(uint16_t u16Vendor_id, uint16_t u16Product
 
     libusb_device *match = nullptr;
     unsigned seen        = 0;
-    for (ssize_t i = 0; i < count; ++i) {
+    for (std::ptrdiff_t i = 0; i < count; ++i) {
         libusb_device_descriptor desc{};
         if (libusb_get_device_descriptor(list[i], &desc) != LIBUSB_SUCCESS) {
             continue;

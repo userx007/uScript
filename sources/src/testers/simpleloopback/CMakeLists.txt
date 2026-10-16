@@ -3,11 +3,14 @@ cmake_minimum_required(VERSION 3.25)
 # Each tester is built only when the plugin it exercises is enabled.
 
 # --- UART ---
-# uart_loopback — plain C, POSIX termios (see uart_plugin/test/uart_loopback.c)
+# uart_loopback — plain C, POSIX termios on Linux / Win32 comm API on Windows (see uart_plugin/test/uart_loopback.c)
 if(USCRIPT_PLUGIN_UART)
     add_executable(uart_loopback
         src/uart_loopback.c
     )
+    if(MSVC)
+        target_compile_definitions(uart_loopback PRIVATE _CRT_SECURE_NO_WARNINGS)
+    endif()
 endif()
 
 
@@ -18,6 +21,10 @@ if(USCRIPT_PLUGIN_TCPIP)
         src/tcpip_loopback_server.cpp
     )
     target_compile_features(tcpip_loopback_server PRIVATE cxx_std_17)
+    target_include_directories(tcpip_loopback_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common) # tester_platform.h
+    if(WIN32)
+        target_link_libraries(tcpip_loopback_server PRIVATE ws2_32)
+    endif()
 endif()
 
 
@@ -28,6 +35,10 @@ if(USCRIPT_PLUGIN_UDP)
         src/udp_loopback_server.cpp
     )
     target_compile_features(udp_loopback_server PRIVATE cxx_std_17)
+    target_include_directories(udp_loopback_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common) # tester_platform.h
+    if(WIN32)
+        target_link_libraries(udp_loopback_server PRIVATE ws2_32)
+    endif()
 endif()
 
 
@@ -38,6 +49,10 @@ if(USCRIPT_PLUGIN_WEBSOCKET)
         src/websocket_loopback_server.cpp
     )
     target_compile_features(websocket_loopback_server PRIVATE cxx_std_17)
+    target_include_directories(websocket_loopback_server PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common) # tester_platform.h
+    if(WIN32)
+        target_link_libraries(websocket_loopback_server PRIVATE ws2_32)
+    endif()
 endif()
 
 

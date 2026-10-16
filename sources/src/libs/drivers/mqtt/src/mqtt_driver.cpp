@@ -9,10 +9,17 @@
 #include <cctype>
 #include <compare>
 #include <cstring>
+#if defined(_WIN32)
+// Winsock2 must precede anything that could pull in <windows.h> (and OpenSSL's headers).
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
+#if !defined(_WIN32)
 #include <poll.h> // TLS path only — mirrors how TCPIP itself bounds plain recv()/send() with poll() first
+#endif
 #include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -32,6 +39,19 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
+
+// poll(2) on POSIX, WSAPoll() on Windows. Same struct pollfd / POLLIN / POLLOUT
+// semantics and the same "<0 on error, 0 on timeout, >0 ready" return contract;
+// only the socket field type differs (int vs SOCKET), which callers handle by
+// casting to decltype(pollfd::fd) — see the pfd.fd assignments below.
+static inline int socketPoll(struct pollfd *pfd, int iCount, int iTimeoutMs)
+{
+#if defined(_WIN32)
+    return ::WSAPoll(pfd, static_cast<ULONG>(iCount), iTimeoutMs);
+#else
+    return ::poll(pfd, static_cast<nfds_t>(iCount), iTimeoutMs);
+#endif
+}
 
 static constexpr uint32_t kAckTimeoutMs                = 5000;
 static constexpr uint32_t kPacketContinuationTimeoutMs = 5000;
@@ -220,9 +240,9 @@ bool MqttDriver::m_SetupTls()
             return false;
         }
         struct pollfd pfd{};
-        pfd.fd     = m_pTcpip->nativeHandle();
+        pfd.fd     = static_cast<decltype(pfd.fd)>(m_pTcpip->nativeHandle());
         pfd.events = static_cast<short>(sslErr == SSL_ERROR_WANT_WRITE ? POLLOUT : POLLIN);
-        ::poll(&pfd, 1, static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        socketPoll(&pfd, 1, static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
     }
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("TLS handshake complete, cipher:"); LOG_STRING(SSL_get_cipher(m_ssl)));
@@ -333,9 +353,9 @@ ICommDriver::Status MqttDriver::m_PhysicalSend(std::span<const uint8_t> data, ui
             pollTimeout = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
         }
         struct pollfd pfd{};
-        pfd.fd     = m_pTcpip->nativeHandle();
+        pfd.fd     = static_cast<decltype(pfd.fd)>(m_pTcpip->nativeHandle());
         pfd.events = static_cast<short>(sslErr == SSL_ERROR_WANT_WRITE ? POLLOUT : POLLIN);
-        ::poll(&pfd, 1, pollTimeout);
+        socketPoll(&pfd, 1, pollTimeout);
     }
     return ICommDriver::Status::SUCCESS;
 }
@@ -353,7 +373,7 @@ ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32
     }
 
     struct pollfd pfd{};
-    pfd.fd                     = m_pTcpip->nativeHandle();
+    pfd.fd                     = static_cast<decltype(pfd.fd)>(m_pTcpip->nativeHandle());
     pfd.events                 = POLLIN;
 
     // 0 == infinite timeout: never expire the wait ourselves. Either way,
@@ -378,7 +398,7 @@ ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32
                                                              std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
         }
 
-        pollRc = ::poll(&pfd, 1, pollSliceMs);
+        pollRc = socketPoll(&pfd, 1, pollSliceMs);
         if (pollRc > 0) {
             break;
         }

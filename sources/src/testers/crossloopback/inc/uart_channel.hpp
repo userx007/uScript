@@ -5,9 +5,177 @@
 // binary payloads pass through unmodified. Reads block for at least one
 // byte (VMIN=1, VTIME=0) and return whatever is available at that point,
 // exactly like the original.
+//
+// Windows: separate implementation below (Win32 comm API: CreateFile / DCB /
+// COMMTIMEOUTS / ReadFile / WriteFile). Reads use a 100 ms timeout instead of
+// blocking forever, so the g_stop flag set by Ctrl-C is noticed promptly (a
+// blocking ReadFile is not interrupted by the console handler). Any positive
+// baud rate is accepted; "COM10" and above are mapped to \\.\COMn.
 #pragma once
 
 #include "ichannel.hpp"
+
+#if defined(_WIN32)
+
+#include <windows.h>
+
+namespace loopback {
+
+    class UartChannel : public IChannel {
+        public:
+            UartChannel(std::string strDevice, long baud)
+                : device_(std::move(strDevice))
+                , baud_(baud)
+            {
+            }
+
+            ~UartChannel() override
+            {
+                UartChannel::close();
+            }
+
+            bool open() override
+            {
+                if (baud_ <= 0) {
+                    log_err(name(), "invalid baud rate " + std::to_string(baud_));
+                    return false;
+                }
+
+                // COM10 and above need the \\.\ device-namespace prefix (harmless for COM1-9).
+                std::string path = device_;
+                if (path.compare(0, 4, "\\\\.\\") != 0 && !path.empty() && (path[0] == 'C' || path[0] == 'c')) {
+                    path = "\\\\.\\" + path;
+                }
+
+                h_ = ::CreateFileA(path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
+                                   FILE_ATTRIBUTE_NORMAL, nullptr);
+                if (h_ == INVALID_HANDLE_VALUE) {
+                    log_err(name(), "open '" + path + "': " + lastError());
+                    return false;
+                }
+
+                DCB dcb;
+                std::memset(&dcb, 0, sizeof(dcb));
+                dcb.DCBlength = sizeof(dcb);
+                if (!::GetCommState(h_, &dcb)) {
+                    log_err(name(), "GetCommState: " + lastError());
+                    close();
+                    return false;
+                }
+
+                dcb.BaudRate        = static_cast<DWORD>(baud_);
+                dcb.ByteSize        = 8; // 8N1, raw, no flow control, no XON/XOFF, NULs preserved
+                dcb.Parity          = NOPARITY;
+                dcb.StopBits        = ONESTOPBIT;
+                dcb.fBinary         = TRUE;
+                dcb.fParity         = FALSE;
+                dcb.fOutxCtsFlow    = FALSE;
+                dcb.fOutxDsrFlow    = FALSE;
+                dcb.fDtrControl     = DTR_CONTROL_ENABLE;
+                dcb.fDsrSensitivity = FALSE; // ignore modem control lines (CLOCAL)
+                dcb.fOutX           = FALSE;
+                dcb.fInX            = FALSE;
+                dcb.fErrorChar      = FALSE;
+                dcb.fNull           = FALSE;
+                dcb.fRtsControl     = RTS_CONTROL_ENABLE;
+                dcb.fAbortOnError   = FALSE;
+                if (!::SetCommState(h_, &dcb)) {
+                    log_err(name(), "SetCommState: " + lastError());
+                    close();
+                    return false;
+                }
+
+                // Return as soon as >= 1 byte is available, else after 100 ms with 0 bytes.
+                COMMTIMEOUTS to;
+                to.ReadIntervalTimeout         = MAXDWORD;
+                to.ReadTotalTimeoutMultiplier  = MAXDWORD;
+                to.ReadTotalTimeoutConstant    = 100;
+                to.WriteTotalTimeoutMultiplier = 0;
+                to.WriteTotalTimeoutConstant   = 5000;
+                if (!::SetCommTimeouts(h_, &to)) {
+                    log_err(name(), "SetCommTimeouts: " + lastError());
+                    close();
+                    return false;
+                }
+
+                ::PurgeComm(h_, PURGE_RXCLEAR | PURGE_TXCLEAR | PURGE_RXABORT | PURGE_TXABORT);
+
+                log_info(name(), "opened @ " + std::to_string(baud_) + " baud");
+                return true;
+            }
+
+            void close() override
+            {
+                if (h_ != INVALID_HANDLE_VALUE) {
+                    ::CloseHandle(h_);
+                    h_ = INVALID_HANDLE_VALUE;
+                }
+            }
+
+            bool readMessage(Message &sMsg) override
+            {
+                unsigned char buf[4096];
+                while (!g_stop) {
+                    DWORD got = 0;
+                    if (!::ReadFile(h_, buf, static_cast<DWORD>(sizeof(buf)), &got, nullptr)) {
+                        log_err(name(), "read: " + lastError());
+                        return false;
+                    }
+                    if (got == 0) {
+                        continue; // 100 ms timeout, nothing available yet: re-check g_stop and try again
+                    }
+
+                    sMsg.data.assign(buf, buf + got);
+                    sMsg.has_can_id = false;
+                    return true;
+                }
+                return false;
+            }
+
+            bool writeMessage(Message &sMsg) override
+            {
+                size_t total = 0;
+                while (total < sMsg.data.size()) {
+                    DWORD put = 0;
+                    if (!::WriteFile(h_, sMsg.data.data() + total, static_cast<DWORD>(sMsg.data.size() - total), &put,
+                                     nullptr)) {
+                        log_err(name(), "write: " + lastError());
+                        return false;
+                    }
+                    total += put;
+                }
+                return true;
+            }
+
+            std::string name() const override
+            {
+                return "uart:" + device_ + "@" + std::to_string(baud_);
+            }
+
+            std::string identity() const override
+            {
+                return "uart:" + device_;
+            }
+
+            void dump(const char *pstrDir, const Message &sMsg) const override
+            {
+                dump_bytes(name(), pstrDir, sMsg.data.data(), sMsg.data.size());
+            }
+
+        private:
+            static std::string lastError()
+            {
+                return tp_errstr(static_cast<int>(::GetLastError()));
+            }
+
+            std::string device_;
+            long baud_;
+            HANDLE h_ = INVALID_HANDLE_VALUE;
+    };
+
+} // namespace loopback
+
+#else // POSIX (Linux, macOS, ...) - original implementation, unchanged
 
 #include <cerrno>
 #include <fcntl.h>
@@ -198,3 +366,5 @@ namespace loopback {
     };
 
 } // namespace loopback
+
+#endif // _WIN32

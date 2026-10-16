@@ -16,12 +16,7 @@
 
 #include "ichannel.hpp"
 
-#include <arpa/inet.h>
-#include <cerrno>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include <cerrno> // sockets/Winsock come in through common.hpp -> tester_platform.h
 
 namespace loopback {
 
@@ -59,26 +54,29 @@ namespace loopback {
 
             void close() override
             {
-                if (fd_ >= 0) {
-                    ::close(fd_);
-                    fd_ = -1;
+                if (fd_ != TP_INVALID_SOCKET) {
+                    tp_close(fd_);
+                    fd_ = TP_INVALID_SOCKET;
                 }
             }
 
             bool readMessage(Message &sMsg) override
             {
                 while (!g_stop) {
+                    if (!tp_wait_readable(fd_, &g_stop)) { // Windows: lets Ctrl-C break a blocking recvfrom()
+                        return false;
+                    }
                     uint8_t buf[65507]; // IPv4 theoretical UDP payload ceiling
                     struct sockaddr_storage sender;
                     socklen_t sender_len = sizeof(sender);
 
-                    ssize_t n            = ::recvfrom(fd_, buf, sizeof(buf), 0,
+                    ssize_t n            = tp_recvfrom(fd_, buf, sizeof(buf), 0,
                                                       reinterpret_cast<struct sockaddr *>(&sender), &sender_len);
                     if (n < 0) {
-                        if (errno == EINTR) {
+                        if (tp_is_eintr(tp_last_error())) {
                             continue;
                         }
-                        log_err(name(), std::string("recvfrom: ") + std::strerror(errno));
+                        log_err(name(), std::string("recvfrom: ") + tp_errstr(tp_last_error()));
                         return false;
                     }
 
@@ -105,14 +103,14 @@ namespace loopback {
                                         "datagram to reply to; use udp:client/<host>/<port> for a pure output");
                         return false;
                     }
-                    sent = ::sendto(fd_, sMsg.data.data(), sMsg.data.size(), 0,
+                    sent = tp_sendto(fd_, sMsg.data.data(), sMsg.data.size(), 0,
                                     reinterpret_cast<struct sockaddr *>(&last_sender_), last_sender_len_);
                 } else {
-                    sent = ::send(fd_, sMsg.data.data(), sMsg.data.size(), 0);
+                    sent = tp_send(fd_, sMsg.data.data(), sMsg.data.size(), 0);
                 }
 
                 if (sent < 0) {
-                    log_err(name(), std::string("send: ") + std::strerror(errno));
+                    log_err(name(), std::string("send: ") + tp_errstr(tp_last_error()));
                     return false;
                 }
                 if (static_cast<size_t>(sent) != sMsg.data.size()) {
@@ -161,28 +159,28 @@ namespace loopback {
 
                 for (struct addrinfo *ai = result; ai != nullptr; ai = ai->ai_next) {
                     fd_ = ::socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-                    if (fd_ < 0) {
+                    if (fd_ == TP_INVALID_SOCKET) {
                         continue;
                     }
 
-                    int reuse = 1;
-                    ::setsockopt(fd_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+                    tp_set_reuse_listen(fd_);
+                    tp_udp_disable_connreset(fd_); // Windows: ICMP port-unreachable must not fail the next recvfrom()
                     if (ai->ai_family == AF_INET6) {
                         int v6only = 0;
-                        ::setsockopt(fd_, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only));
+                        tp_setsockopt(fd_, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only));
                     }
 
                     if (::bind(fd_, ai->ai_addr, ai->ai_addrlen) == 0) {
                         break;
                     }
 
-                    ::close(fd_);
-                    fd_ = -1;
+                    tp_close(fd_);
+                    fd_ = TP_INVALID_SOCKET;
                 }
                 ::freeaddrinfo(result);
 
-                if (fd_ < 0) {
-                    log_err(name(), std::string("bind failed: ") + std::strerror(errno));
+                if (fd_ == TP_INVALID_SOCKET) {
+                    log_err(name(), std::string("bind failed: ") + tp_errstr(tp_last_error()));
                     return false;
                 }
 
@@ -206,10 +204,10 @@ namespace loopback {
                     return false;
                 }
 
-                int fd = -1;
+                tp_socket_t fd = TP_INVALID_SOCKET;
                 for (struct addrinfo *ai = result; ai != nullptr; ai = ai->ai_next) {
                     fd = ::socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-                    if (fd < 0) {
+                    if (fd == TP_INVALID_SOCKET) {
                         continue;
                     }
                     // connect() on a DGRAM socket just fixes the default peer for
@@ -219,13 +217,13 @@ namespace loopback {
                     if (::connect(fd, ai->ai_addr, ai->ai_addrlen) == 0) {
                         break;
                     }
-                    ::close(fd);
-                    fd = -1;
+                    tp_close(fd);
+                    fd = TP_INVALID_SOCKET;
                 }
                 ::freeaddrinfo(result);
 
-                if (fd < 0) {
-                    log_err(name(), std::string("connect: ") + std::strerror(errno));
+                if (fd == TP_INVALID_SOCKET) {
+                    log_err(name(), std::string("connect: ") + tp_errstr(tp_last_error()));
                     return false;
                 }
 
@@ -247,7 +245,7 @@ namespace loopback {
             bool is_server_;
             std::string host_;
             int port_;
-            int fd_               = -1;
+            tp_socket_t fd_       = TP_INVALID_SOCKET;
 
             bool has_last_sender_ = false;
             struct sockaddr_storage last_sender_{};

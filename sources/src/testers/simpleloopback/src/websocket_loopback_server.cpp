@@ -37,19 +37,16 @@
 //   - Logs connect/disconnect and frame counts to stdout.
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current recv()
 //     call returns.
-#include <arpa/inet.h>
+#include "tester_platform.h" // POSIX sockets / Winsock portability (must come first on Windows)
+
 #include <array>
+#include <cctype>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <signal.h>
 #include <string>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <vector>
 
 namespace {
@@ -172,13 +169,16 @@ namespace {
     // ------------------------------------------------------------------
     // Blocking socket helpers
     // ------------------------------------------------------------------
-    bool recv_exact(int iFd, uint8_t *pu8Buf, size_t len)
+    bool recv_exact(tp_socket_t iFd, uint8_t *pu8Buf, size_t len)
     {
         size_t got = 0;
         while (got < len) {
-            const ssize_t n = ::recv(iFd, pu8Buf + got, len - got, 0);
+            if (!tp_wait_readable(iFd, &g_stop)) { // Windows: lets Ctrl+C break a blocking recv()
+                return false;
+            }
+            const ssize_t n = tp_recv(iFd, pu8Buf + got, len - got, 0);
             if (n < 0) {
-                if (errno == EINTR) {
+                if (tp_is_eintr(tp_last_error())) {
                     continue;
                 }
                 return false;
@@ -191,13 +191,13 @@ namespace {
         return true;
     }
 
-    bool send_all(int iFd, const uint8_t *pu8Data, size_t len)
+    bool send_all(tp_socket_t iFd, const uint8_t *pu8Data, size_t len)
     {
         size_t sent = 0;
         while (sent < len) {
-            const ssize_t n = ::send(iFd, pu8Data + sent, len - sent, MSG_NOSIGNAL);
+            const ssize_t n = tp_send(iFd, pu8Data + sent, len - sent, TP_MSG_NOSIGNAL);
             if (n < 0) {
-                if (errno == EINTR) {
+                if (tp_is_eintr(tp_last_error())) {
                     continue;
                 }
                 return false;
@@ -218,14 +218,17 @@ namespace {
     // ------------------------------------------------------------------
     // Handshake (server side)
     // ------------------------------------------------------------------
-    bool do_handshake(int iFd)
+    bool do_handshake(tp_socket_t iFd)
     {
         std::string request;
         std::array<uint8_t, 512> chunk{};
         size_t terminator = std::string::npos;
 
         while (terminator == std::string::npos) {
-            const ssize_t n = ::recv(iFd, chunk.data(), chunk.size(), 0);
+            if (!tp_wait_readable(iFd, &g_stop)) {
+                return false;
+            }
+            const ssize_t n = tp_recv(iFd, chunk.data(), chunk.size(), 0);
             if (n <= 0) {
                 return false;
             }
@@ -280,7 +283,7 @@ namespace {
     // ------------------------------------------------------------------
     // Frame echo loop
     // ------------------------------------------------------------------
-    void send_frame(int iFd, uint8_t u8Opcode, const uint8_t *pu8Payload, size_t len)
+    void send_frame(tp_socket_t iFd, uint8_t u8Opcode, const uint8_t *pu8Payload, size_t len)
     {
         std::vector<uint8_t> frame;
         frame.push_back(uint8_t(0x80 | (u8Opcode & 0x0F))); // FIN=1, server frames are never masked
@@ -300,7 +303,7 @@ namespace {
         send_all(iFd, frame.data(), frame.size());
     }
 
-    void serve_client(int iFd, const std::string &strPeer)
+    void serve_client(tp_socket_t iFd, const std::string &strPeer)
     {
         if (!do_handshake(iFd)) {
             std::fprintf(stderr, "[%s] handshake failed\n", strPeer.c_str());
@@ -407,13 +410,13 @@ int main(int iArgc, char **ppstrArgv)
         return 1;
     }
 
-    struct sigaction sSigAction = {};
-    sSigAction.sa_handler       = on_signal;
-    sSigAction.sa_flags         = 0; // no SA_RESTART, see tcpip_loopback_server.cpp
-    ::sigemptyset(&sSigAction.sa_mask);
-    ::sigaction(SIGINT, &sSigAction, nullptr);
-    ::sigaction(SIGTERM, &sSigAction, nullptr);
-    ::signal(SIGPIPE, SIG_IGN);
+    if (!tp_net_init()) {
+        std::fprintf(stderr, "Winsock initialisation failed\n");
+        return 1;
+    }
+
+    // no SA_RESTART on POSIX, see tcpip_loopback_server.cpp; Windows: signal() + tp_wait_readable()
+    tp_install_stop_handler(on_signal);
 
     struct addrinfo sHints    = {};
     sHints.ai_family          = AF_UNSPEC;
@@ -429,33 +432,32 @@ int main(int iArgc, char **ppstrArgv)
         return 1;
     }
 
-    int listenFd = -1;
+    tp_socket_t listenFd = TP_INVALID_SOCKET;
     for (struct addrinfo *pAi = pResult; pAi != nullptr; pAi = pAi->ai_next) {
         listenFd = ::socket(pAi->ai_family, pAi->ai_socktype, pAi->ai_protocol);
-        if (listenFd < 0) {
+        if (listenFd == TP_INVALID_SOCKET) {
             continue;
         }
 
-        int iReuse = 1;
-        ::setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(iReuse));
+        tp_set_reuse_listen(listenFd);
 
         if (::bind(listenFd, pAi->ai_addr, pAi->ai_addrlen) == 0) {
             break;
         }
 
-        ::close(listenFd);
-        listenFd = -1;
+        tp_close(listenFd);
+        listenFd = TP_INVALID_SOCKET;
     }
     ::freeaddrinfo(pResult);
 
-    if (listenFd < 0) {
+    if (listenFd == TP_INVALID_SOCKET) {
         std::fprintf(stderr, "Failed to bind to %s:%d\n", strBindTo.c_str(), iPort);
         return 1;
     }
 
     if (::listen(listenFd, LISTEN_BACKLOG) != 0) {
-        std::fprintf(stderr, "listen() failed, errno=%d (%s)\n", errno, std::strerror(errno));
-        ::close(listenFd);
+        std::fprintf(stderr, "listen() failed, errno=%d (%s)\n", tp_last_error(), tp_errstr(tp_last_error()));
+        tp_close(listenFd);
         return 1;
     }
 
@@ -465,26 +467,30 @@ int main(int iArgc, char **ppstrArgv)
         struct sockaddr_storage clientAddr;
         socklen_t clientAddrLen = sizeof(clientAddr);
 
-        const int clientFd      = ::accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr), &clientAddrLen);
-        if (clientFd < 0) {
-            if (errno == EINTR) {
+        if (!tp_wait_readable(listenFd, &g_stop)) { // Windows: lets Ctrl+C break a blocking accept()
+            break;
+        }
+
+        const tp_socket_t clientFd = ::accept(listenFd, reinterpret_cast<struct sockaddr *>(&clientAddr), &clientAddrLen);
+        if (clientFd == TP_INVALID_SOCKET) {
+            if (tp_is_eintr(tp_last_error())) {
                 continue;
             }
-            std::fprintf(stderr, "accept() failed, errno=%d (%s)\n", errno, std::strerror(errno));
+            std::fprintf(stderr, "accept() failed, errno=%d (%s)\n", tp_last_error(), tp_errstr(tp_last_error()));
             break;
         }
 
         int iNoDelay = 1;
-        ::setsockopt(clientFd, IPPROTO_TCP, TCP_NODELAY, &iNoDelay, sizeof(iNoDelay));
+        tp_setsockopt(clientFd, IPPROTO_TCP, TCP_NODELAY, &iNoDelay, sizeof(iNoDelay));
 
         const std::string strPeer = peer_to_string(clientAddr, clientAddrLen);
         std::printf("[%s] client connected\n", strPeer.c_str());
 
         serve_client(clientFd, strPeer);
-        ::close(clientFd);
+        tp_close(clientFd);
     }
 
-    ::close(listenFd);
+    tp_close(listenFd);
     std::printf("websocket_loopback_server stopped\n");
     return 0;
 }

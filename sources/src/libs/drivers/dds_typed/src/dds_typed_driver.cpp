@@ -1,6 +1,11 @@
+#if defined(_WIN32) && !defined(NOMINMAX)
+#define NOMINMAX // keep <windows.h> (pulled in by dds.h / below) from defining min/max macros
+#endif
+
 #include "dds_typed_driver.hpp"
 
 #include "DdsTypePluginAbi.h"
+#include "uGlobMatch.hpp"
 #include "uGuiNotify.hpp"
 #include "uLogger.hpp"
 #include "uString.hpp"
@@ -12,14 +17,19 @@
 #include <cstdlib>
 #include <cstring>
 #include <dds/dds.h>
-#include <dlfcn.h>
 #include <filesystem>
-#include <fnmatch.h>
 #include <fstream>
 #include <iomanip>
 #include <map>
 #include <sstream>
 #include <utility>
+
+#if defined(_WIN32)
+#include <windows.h> // LoadLibrary / GetProcAddress / FreeLibrary (after dds.h: Winsock ordering)
+#else
+#include <dlfcn.h>
+#include <fnmatch.h>
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //
@@ -34,6 +44,88 @@
 
 #define LT_HDR  "DDSTY_DRV   |"
 #define LOG_HDR LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                   PLATFORM SHIMS (dlopen / fnmatch)                         //
+/////////////////////////////////////////////////////////////////////////////////
+// POSIX: the original dlopen()/dlsym()/dlclose()/dlerror()/fnmatch() calls, unchanged.
+// Windows: LoadLibrary()/GetProcAddress()/FreeLibrary() and the portable uglob::match()
+// (fnmatch has no Windows equivalent). Customer type plugins are .dll files there.
+
+namespace {
+
+#if defined(_WIN32)
+
+    void *plat_dlopen(const char *pszPath)
+    {
+        // LOAD_WITH_ALTERED_SEARCH_PATH: resolve the plugin's own dependent DLLs from ITS directory,
+        // as one expects when loading "C:\plugins\my_types.dll" (RTLD_NOW has no direct equivalent;
+        // Windows always binds imports at load time).
+        const std::filesystem::path path = std::filesystem::path(std::string(pszPath));
+        return reinterpret_cast<void *>(::LoadLibraryExW(path.wstring().c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH));
+    }
+
+    void *plat_dlsym(void *pHandle, const char *pszName)
+    {
+        return reinterpret_cast<void *>(::GetProcAddress(reinterpret_cast<HMODULE>(pHandle), pszName));
+    }
+
+    void plat_dlclose(void *pHandle)
+    {
+        ::FreeLibrary(reinterpret_cast<HMODULE>(pHandle));
+    }
+
+    /** Text for the last failed LoadLibrary / GetProcAddress call on this thread. */
+    const char *plat_dlerror()
+    {
+        static thread_local char s_szMsg[512];
+        const DWORD dwErr = ::GetLastError();
+        DWORD dwLen       = ::FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, dwErr, 0,
+                                             s_szMsg, static_cast<DWORD>(sizeof(s_szMsg)), nullptr);
+        while (dwLen > 0 && (s_szMsg[dwLen - 1] == '\r' || s_szMsg[dwLen - 1] == '\n' || s_szMsg[dwLen - 1] == ' ')) {
+            s_szMsg[--dwLen] = '\0';
+        }
+        if (dwLen == 0) {
+            std::snprintf(s_szMsg, sizeof(s_szMsg), "error %lu", static_cast<unsigned long>(dwErr));
+        }
+        return s_szMsg;
+    }
+
+    bool plat_topic_glob(const char *pszGlob, const char *pszTopic)
+    {
+        return uglob::match(pszGlob, pszTopic);
+    }
+
+#else // POSIX
+
+    void *plat_dlopen(const char *pszPath)
+    {
+        return dlopen(pszPath, RTLD_NOW);
+    }
+
+    void *plat_dlsym(void *pHandle, const char *pszName)
+    {
+        return dlsym(pHandle, pszName);
+    }
+
+    void plat_dlclose(void *pHandle)
+    {
+        dlclose(pHandle);
+    }
+
+    const char *plat_dlerror()
+    {
+        return dlerror();
+    }
+
+    bool plat_topic_glob(const char *pszGlob, const char *pszTopic)
+    {
+        return fnmatch(pszGlob, pszTopic, 0) == 0;
+    }
+
+#endif
+
+} // namespace
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            IMPLEMENTATION                                   //
@@ -157,7 +249,7 @@ DdsTypedDriver::~DdsTypedDriver()
     // so nothing can still be executing plugin code by this point.
     for (void *h : m_loadedHandles) {
         if (h) {
-            dlclose(h);
+            plat_dlclose(h);
         }
     }
     m_loadedHandles.clear();
@@ -1294,7 +1386,7 @@ bool DdsTypedDriver::m_ResolveQosProfiles()
 std::shared_ptr<const DdsTypedDriver::ResolvedQos> DdsTypedDriver::m_QosForTopic(const std::string &strTopic, std::string *pstrProfileName) const
 {
     for (const auto &rule : m_qosRules) {
-        if (fnmatch(rule.topicGlob.c_str(), strTopic.c_str(), 0) == 0) {
+        if (plat_topic_glob(rule.topicGlob.c_str(), strTopic.c_str())) {
             if (pstrProfileName) {
                 *pstrProfileName = rule.profileName;
             }
@@ -1312,19 +1404,19 @@ std::shared_ptr<const DdsTypedDriver::ResolvedQos> DdsTypedDriver::m_QosForTopic
 // ---------------------------------------------------------------------------
 bool DdsTypedDriver::m_LoadPlugin(const std::string &strPath) const
 {
-    void *handle = dlopen(strPath.c_str(), RTLD_NOW);
+    void *handle = plat_dlopen(strPath.c_str());
     if (!handle) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dlopen failed for '"); LOG_STRING(strPath.c_str());
-                  LOG_STRING("': "); LOG_STRING(dlerror()));
+                  LOG_STRING("': "); LOG_STRING(plat_dlerror()));
         return false;
     }
 
     using GetPluginFn = const DdsTypePlugin *(*)(void);
-    auto getPlugin    = reinterpret_cast<GetPluginFn>(dlsym(handle, "dds_type_plugin_get"));
+    auto getPlugin    = reinterpret_cast<GetPluginFn>(plat_dlsym(handle, "dds_type_plugin_get"));
     if (!getPlugin) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dlsym('dds_type_plugin_get') failed for '"); LOG_STRING(strPath.c_str());
-                  LOG_STRING("': "); LOG_STRING(dlerror()));
-        dlclose(handle);
+                  LOG_STRING("': "); LOG_STRING(plat_dlerror()));
+        plat_dlclose(handle);
         return false;
     }
 
@@ -1332,7 +1424,7 @@ bool DdsTypedDriver::m_LoadPlugin(const std::string &strPath) const
     if (!plugin || plugin->abi_version != DDS_TYPE_PLUGIN_ABI_VERSION) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ABI version mismatch loading '"); LOG_STRING(strPath.c_str());
                   LOG_STRING("' — expected"); LOG_UINT32(DDS_TYPE_PLUGIN_ABI_VERSION));
-        dlclose(handle);
+        plat_dlclose(handle);
         return false;
     }
 

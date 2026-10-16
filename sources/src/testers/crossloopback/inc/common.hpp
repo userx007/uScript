@@ -8,6 +8,11 @@
 
 #pragma once
 
+// POSIX sockets / Winsock portability. Included here so that on Windows <winsock2.h> is
+// always seen before <windows.h>, whichever channel header a translation unit pulls in first.
+// (Needs "<testers>/common" on the include path - see CMakeLists.txt.)
+#include "tester_platform.h"
+
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -15,6 +20,16 @@
 #include <signal.h>
 #include <string>
 #include <vector>
+
+// SocketCAN and AF_PACKET are Linux kernel interfaces: the CAN and raw-Ethernet channels only
+// exist there. On other platforms the factory reports them as unsupported.
+#if defined(__linux__)
+#define LOOPBACK_HAVE_CAN    1
+#define LOOPBACK_HAVE_RAWETH 1
+#else
+#define LOOPBACK_HAVE_CAN    0
+#define LOOPBACK_HAVE_RAWETH 0
+#endif
 
 namespace loopback {
 

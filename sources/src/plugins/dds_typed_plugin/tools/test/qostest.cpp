@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <thread>
 
@@ -97,7 +98,14 @@ int main()
 {
     LOG_INIT(LOG_DEBUG, LOG_DEBUG, false, false, false, false);
     // Raw observer in the same domain (the first driver creates it with the loopback file).
-    setenv("CYCLONEDDS_URI", ("file://" + P("cyclonedds-loopback.xml")).c_str(), 1);
+    {
+        const std::string strUri = "file://" + P("cyclonedds-loopback.xml");
+#if defined(_WIN32)
+        _putenv_s("CYCLONEDDS_URI", strUri.c_str()); // no setenv() on Windows
+#else
+        setenv("CYCLONEDDS_URI", strUri.c_str(), 1);
+#endif
+    }
     dds_entity_t pp   = dds_create_participant(42, nullptr, nullptr);
     dds_entity_t pubs = dds_create_reader(pp, DDS_BUILTIN_TOPIC_DCPSPUBLICATION, nullptr, nullptr);
     dds_entity_t subs = dds_create_reader(pp, DDS_BUILTIN_TOPIC_DCPSSUBSCRIPTION, nullptr, nullptr);

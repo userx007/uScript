@@ -3,8 +3,7 @@
 #include "uGuiNotify.hpp"
 #include "ushell_core.h"
 #include "ushell_core_datatypes.h"
-#include "ushell_core_terminal.h"
-#include "ushell_core_terminal_linux.h"
+#include "ushell_core_terminal.h" // picks ..._windows.h / ..._linux.h by platform
 
 #include <memory>
 #include <string>

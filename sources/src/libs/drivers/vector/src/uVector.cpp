@@ -3,6 +3,7 @@
 #include "uLogger.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cctype>
 #include <charconv>
 #include <cstring>
@@ -199,9 +200,9 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
     // resolved by open()/openDirect() before calling this function), so
     // recovering the channel index XL-API's own documented invariant
     // (channelMask = 1 << channelIndex, see e.g. XLchannelConfig's own
-    // field comment) is exact, not a heuristic: __builtin_ctzll() is
+    // field comment) is exact, not a heuristic: std::countr_zero() (portable __builtin_ctzll) is
     // "count trailing zero bits", i.e. exactly log2() of a single set bit.
-    const unsigned int channelIndex = static_cast<unsigned int>(__builtin_ctzll(static_cast<unsigned long long>(accessMask)));
+    const unsigned int channelIndex = static_cast<unsigned int>(std::countr_zero(static_cast<unsigned long long>(accessMask)));
 
     XLstatus sts                    = xlCreatePort(&portHandle, "Vector", rxQueueSize, interfaceVersion, XL_BUS_TYPE_CAN);
     if (sts != XL_SUCCESS || portHandle == XL_INVALID_PORTHANDLE) {

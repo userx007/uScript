@@ -23,6 +23,12 @@
 #include <string.h>
 #include <stdbool.h>
 
+#if defined(_MSC_VER)
+/* MSVC spells the POSIX string functions differently */
+#define strtok_r strtok_s
+#define strdup   _strdup
+#endif
+
 static void* VehicleState_alloc(void) { return simple_VehicleState__alloc(); }
 static void  VehicleState_free(void* pvD, dds_free_op_t op) { simple_VehicleState_free((simple_VehicleState*)pvD, op); }
 

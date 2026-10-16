@@ -33,9 +33,13 @@
 //                    broadcast)
 #pragma once
 
-#include "can_channel.hpp"
 #include "ichannel.hpp"
-#include "raweth_channel.hpp"
+#if LOOPBACK_HAVE_CAN
+#include "can_channel.hpp" // SocketCAN - Linux only
+#endif
+#if LOOPBACK_HAVE_RAWETH
+#include "raweth_channel.hpp" // AF_PACKET - Linux only
+#endif
 #include "tcp_channel.hpp"
 #include "uart_channel.hpp"
 #include "udp_channel.hpp"
@@ -158,6 +162,7 @@ namespace loopback {
         }
 
         if (type == "kvcan" || type == "can") {
+#if LOOPBACK_HAVE_CAN
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
                 throw SpecError("kvcan spec requires an interface, e.g. kvcan:vcan0/0x100");
@@ -169,6 +174,9 @@ namespace loopback {
             }
 
             return std::make_shared<CanChannel>(tokens[0], fixed_id);
+#else
+            throw SpecError("the 'kvcan' channel (SocketCAN) is only available on Linux");
+#endif
         }
 
         if (type == "tcpip" || type == "tcp") {
@@ -227,6 +235,7 @@ namespace loopback {
         }
 
         if (type == "raweth" || type == "eth") {
+#if LOOPBACK_HAVE_RAWETH
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
                 throw SpecError("raweth spec requires an interface, e.g. raweth:eth0");
@@ -259,6 +268,9 @@ namespace loopback {
             }
 
             return std::make_shared<RawEthChannel>(ifname, capture_ethertype, tx_ethertype, dst_mac, promisc);
+#else
+            throw SpecError("the 'raweth' channel (AF_PACKET raw sockets) is only available on Linux");
+#endif
         }
 
         throw SpecError("unknown channel type '" + type + "' (expected uart, kvcan, tcpip, udp, or raweth)");

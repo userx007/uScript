@@ -118,7 +118,19 @@ namespace uexec {
     // thread and to every plugin call made without a capture destination.
     // -------------------------------------------------------------------------
     namespace detail {
-        inline thread_local std::function<void(const std::string &)> t_captureSink;
+        // Function-local thread_local behind an accessor instead of an
+        // `inline thread_local std::function` variable: a thread_local with a
+        // non-trivial constructor makes GCC emit a "TLS init function" per
+        // translation unit, and on Windows/COFF (MinGW-w64) those are strong
+        // symbols, so linking two TUs that include this header fails with
+        // "multiple definition of TLS init function for ...t_captureSink".
+        // (ELF/Linux and MSVC merge them, which is why it only shows up there.)
+        // Semantics are unchanged: one sink per thread, empty by default.
+        inline std::function<void(const std::string &)> &captureSink()
+        {
+            static thread_local std::function<void(const std::string &)> s_sink;
+            return s_sink;
+        }
     }
 
     /**
@@ -128,8 +140,8 @@ namespace uexec {
      */
     inline void publishCapture(const std::string &strValue)
     {
-        if (detail::t_captureSink) {
-            detail::t_captureSink(strValue);
+        if (detail::captureSink()) {
+            detail::captureSink()(strValue);
         }
     }
 
@@ -140,14 +152,14 @@ namespace uexec {
     class CaptureScope {
         public:
             explicit CaptureScope(std::function<void(const std::string &)> sink)
-                : m_prev(std::move(detail::t_captureSink))
+                : m_prev(std::move(detail::captureSink()))
             {
-                detail::t_captureSink = std::move(sink);
+                detail::captureSink() = std::move(sink);
             }
 
             ~CaptureScope()
             {
-                detail::t_captureSink = std::move(m_prev);
+                detail::captureSink() = std::move(m_prev);
             }
 
             CaptureScope(const CaptureScope &)            = delete;

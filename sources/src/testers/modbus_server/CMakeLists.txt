@@ -18,6 +18,8 @@ add_executable(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/inc
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../common   # tester_platform.h (POSIX / Winsock portability)
 )
 
 target_link_libraries(${PROJECT_NAME} 
@@ -26,7 +28,13 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 
-target_compile_options(${PROJECT_NAME} 
-    PRIVATE 
-    -Wall -Wextra
-)
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _CRT_SECURE_NO_WARNINGS)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
+endif()
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE ws2_32)
+endif()

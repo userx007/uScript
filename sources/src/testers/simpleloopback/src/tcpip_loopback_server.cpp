@@ -39,19 +39,15 @@
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current recv()
 //     call returns.
 
+#include "tester_platform.h" // POSIX sockets / Winsock portability (must come first on Windows)
+
 #include <algorithm>
-#include <arpa/inet.h>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <signal.h>
 #include <string>
-#include <sys/socket.h>
-#include <unistd.h>
 
 namespace {
     constexpr int DEFAULT_PORT         = 5000;
@@ -109,16 +105,16 @@ namespace {
 
     // Send the whole buffer, looping over short writes. Returns false on
     // error or if the peer went away mid-send.
-    bool send_all(int iFd, const uint8_t *pu8Data, size_t len)
+    bool send_all(tp_socket_t iFd, const uint8_t *pu8Data, size_t len)
     {
         size_t sent = 0;
         while (sent < len) {
-            const ssize_t n = ::send(iFd, pu8Data + sent, len - sent, MSG_NOSIGNAL);
+            const ssize_t n = tp_send(iFd, pu8Data + sent, len - sent, TP_MSG_NOSIGNAL);
             if (n < 0) {
-                if (errno == EINTR) {
+                if (tp_is_eintr(tp_last_error())) {
                     continue;
                 }
-                std::fprintf(stderr, "send() failed, errno=%d (%s)\n", errno, std::strerror(errno));
+                std::fprintf(stderr, "send() failed, errno=%d (%s)\n", tp_last_error(), tp_errstr(tp_last_error()));
                 return false;
             }
             sent += static_cast<size_t>(n);
@@ -128,19 +124,22 @@ namespace {
 
     // Serve one client connection: echo bytes until it disconnects or an
     // error occurs. Returns when the connection ends.
-    void serve_client(int iClientFd, const std::string &strPeer)
+    void serve_client(tp_socket_t iClientFd, const std::string &strPeer)
     {
         uint8_t buffer[RECV_CHUNK_SIZE];
         size_t totalBytes = 0;
 
         while (!g_stop) {
-            const ssize_t n = ::recv(iClientFd, buffer, sizeof(buffer), 0);
+            if (!tp_wait_readable(iClientFd, &g_stop)) { // Windows: lets Ctrl+C break a blocking recv()
+                break;
+            }
+            const ssize_t n = tp_recv(iClientFd, buffer, sizeof(buffer), 0);
             if (n < 0) {
-                if (errno == EINTR) {
+                if (tp_is_eintr(tp_last_error())) {
                     continue;
                 }
                 std::fprintf(stderr, "[%s] recv() failed, errno=%d (%s)\n",
-                             strPeer.c_str(), errno, std::strerror(errno));
+                             strPeer.c_str(), tp_last_error(), tp_errstr(tp_last_error()));
                 break;
             }
             if (n == 0) {
@@ -176,19 +175,19 @@ int main(int iArgc, char **ppstrArgv)
         return 1;
     }
 
-    // NOTE: plain signal(2) (via glibc's BSD-compatible wrapper) installs the
+    if (!tp_net_init()) {
+        std::fprintf(stderr, "Winsock initialisation failed\n");
+        return 1;
+    }
+
+    // NOTE (POSIX): plain signal(2) (via glibc's BSD-compatible wrapper) installs the
     // handler with SA_RESTART set, which transparently restarts an
     // interrupted accept()/recv() — the g_stop flag would then never be
     // observed and Ctrl+C would appear to do nothing until the next byte
-    // arrives. Use sigaction() directly with SA_RESTART OFF so blocking
-    // calls actually return EINTR.
-    struct sigaction sSigAction = {};
-    sSigAction.sa_handler       = on_signal;
-    sSigAction.sa_flags         = 0; // no SA_RESTART
-    ::sigemptyset(&sSigAction.sa_mask);
-    ::sigaction(SIGINT, &sSigAction, nullptr);
-    ::sigaction(SIGTERM, &sSigAction, nullptr);
-    ::signal(SIGPIPE, SIG_IGN); // we already pass MSG_NOSIGNAL, but belt-and-braces
+    // arrives. tp_install_stop_handler() uses sigaction() directly with SA_RESTART
+    // OFF so blocking calls actually return EINTR (and ignores SIGPIPE).
+    // On Windows it uses signal() and tp_wait_readable() polls g_stop instead.
+    tp_install_stop_handler(on_signal);
 
     // Resolve the bind address (supports "::", "0.0.0.0", or a specific
     // literal) the same way the ETH driver resolves its target host.
@@ -208,41 +207,40 @@ int main(int iArgc, char **ppstrArgv)
         return 1;
     }
 
-    int listenFd = -1;
+    tp_socket_t listenFd = TP_INVALID_SOCKET;
     for (struct addrinfo *pAi = pResult; pAi != nullptr; pAi = pAi->ai_next) {
         listenFd = ::socket(pAi->ai_family, pAi->ai_socktype, pAi->ai_protocol);
-        if (listenFd < 0) {
+        if (listenFd == TP_INVALID_SOCKET) {
             continue;
         }
 
-        int iReuse = 1;
-        ::setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(iReuse));
+        tp_set_reuse_listen(listenFd);
 
         // If we bound "::" (dual-stack wildcard), also accept IPv4 clients
         // (e.g. connections to 127.0.0.1) on the same socket.
         if (pAi->ai_family == AF_INET6) {
             int iV6Only = 0;
-            ::setsockopt(listenFd, IPPROTO_IPV6, IPV6_V6ONLY, &iV6Only, sizeof(iV6Only));
+            tp_setsockopt(listenFd, IPPROTO_IPV6, IPV6_V6ONLY, &iV6Only, sizeof(iV6Only));
         }
 
         if (::bind(listenFd, pAi->ai_addr, pAi->ai_addrlen) == 0) {
             break; // bound successfully
         }
 
-        ::close(listenFd);
-        listenFd = -1;
+        tp_close(listenFd);
+        listenFd = TP_INVALID_SOCKET;
     }
     ::freeaddrinfo(pResult);
 
-    if (listenFd < 0) {
+    if (listenFd == TP_INVALID_SOCKET) {
         std::fprintf(stderr, "Failed to bind to %s:%d, errno=%d (%s)\n",
-                     strBindTo.c_str(), iPort, errno, std::strerror(errno));
+                     strBindTo.c_str(), iPort, tp_last_error(), tp_errstr(tp_last_error()));
         return 1;
     }
 
     if (::listen(listenFd, LISTEN_BACKLOG) < 0) {
-        std::fprintf(stderr, "listen() failed, errno=%d (%s)\n", errno, std::strerror(errno));
-        ::close(listenFd);
+        std::fprintf(stderr, "listen() failed, errno=%d (%s)\n", tp_last_error(), tp_errstr(tp_last_error()));
+        tp_close(listenFd);
         return 1;
     }
 
@@ -255,14 +253,18 @@ int main(int iArgc, char **ppstrArgv)
         struct sockaddr_storage sClientAddr = {};
         socklen_t szClientLen               = sizeof(sClientAddr);
 
-        const int clientFd                  = ::accept(listenFd,
+        if (!tp_wait_readable(listenFd, &g_stop)) { // Windows: lets Ctrl+C break a blocking accept()
+            break;
+        }
+
+        const tp_socket_t clientFd          = ::accept(listenFd,
                                                        reinterpret_cast<struct sockaddr *>(&sClientAddr),
                                                        &szClientLen);
-        if (clientFd < 0) {
-            if (errno == EINTR) {
+        if (clientFd == TP_INVALID_SOCKET) {
+            if (tp_is_eintr(tp_last_error())) {
                 continue; // likely our own signal handler firing
             }
-            std::fprintf(stderr, "accept() failed, errno=%d (%s)\n", errno, std::strerror(errno));
+            std::fprintf(stderr, "accept() failed, errno=%d (%s)\n", tp_last_error(), tp_errstr(tp_last_error()));
             break;
         }
 
@@ -270,14 +272,14 @@ int main(int iArgc, char **ppstrArgv)
         std::printf("[%s] client connected\n", strPeer.c_str());
 
         int iNoDelay = 1;
-        ::setsockopt(clientFd, IPPROTO_TCP, TCP_NODELAY, &iNoDelay, sizeof(iNoDelay));
+        tp_setsockopt(clientFd, IPPROTO_TCP, TCP_NODELAY, &iNoDelay, sizeof(iNoDelay));
 
         serve_client(clientFd, strPeer);
 
-        ::close(clientFd);
+        tp_close(clientFd);
     }
 
     std::printf("eth_loopback_server shutting down\n");
-    ::close(listenFd);
+    tp_close(listenFd);
     return 0;
 }

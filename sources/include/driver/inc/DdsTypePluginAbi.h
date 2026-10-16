@@ -55,7 +55,7 @@
  * from `dds_take()` goes straight into `encode()` before `DdsTypedDriver`
  * ever touches it. A customer author is free to make this JSON, a
  * simple "field=value,field=value" grammar, or anything else — it is
- * entirely private to that one customer `.so`, `DdsTypedDriver` only
+ * entirely private to that one customer `.so` (`.dll` on Windows), `DdsTypedDriver` only
  * ever forwards the text through unmodified.
  */
 #include <dds/dds.h>
@@ -67,6 +67,17 @@ extern "C" {
 #endif
 
 #define DDS_TYPE_PLUGIN_ABI_VERSION 1u
+
+/* Export marker for dds_type_plugin_get(). A Windows .dll only exports symbols that are marked
+ * so, and DdsTypedDriver finds the plugin through GetProcAddress("dds_type_plugin_get").
+ * Because this header is included before the adapter defines the function, putting the marker on
+ * the declaration below exports the definition too - adapters need no changes.
+ * On POSIX (.so) the symbol is exported by default, so the macro is empty there. */
+#if defined(_WIN32)
+#define DDS_TYPE_PLUGIN_EXPORT __declspec(dllexport)
+#else
+#define DDS_TYPE_PLUGIN_EXPORT
+#endif
 
     /** One IDL type, addressed by the one DDS topic name it's published/subscribed on. */
     typedef struct DdsTypeEntry {
@@ -110,7 +121,7 @@ extern "C" {
     } DdsTypePlugin;
 
     /** The one exported symbol every customer type plugin `.so` must provide. */
-    const DdsTypePlugin *dds_type_plugin_get(void);
+    DDS_TYPE_PLUGIN_EXPORT const DdsTypePlugin *dds_type_plugin_get(void);
 
 #ifdef __cplusplus
 }

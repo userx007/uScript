@@ -41,6 +41,7 @@
 #include "common.hpp"
 
 #include <chrono>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -60,6 +61,16 @@ namespace loopback {
         // wrapper would transparently restart an interrupted blocking
         // read()/recv()/accept(), and Ctrl-C would appear to do nothing until
         // the next byte/frame/datagram arrived.
+#if defined(_WIN32)
+        // Windows has no sigaction(); the CRT signal() handler runs on its own thread and does not
+        // interrupt blocking calls, so every channel polls g_stop with short timeouts / select()
+        // slices instead (see tp_wait_readable() and the UART read timeouts).
+        std::signal(SIGINT, onSignal);
+        std::signal(SIGTERM, onSignal);
+#if defined(SIGBREAK)
+        std::signal(SIGBREAK, onSignal);
+#endif
+#else
         struct sigaction sa;
         std::memset(&sa, 0, sizeof(sa));
         sa.sa_handler = onSignal;
@@ -67,6 +78,7 @@ namespace loopback {
         sigemptyset(&sa.sa_mask);
         sigaction(SIGINT, &sa, nullptr);
         sigaction(SIGTERM, &sa, nullptr);
+#endif
     }
 } // namespace loopback
 
@@ -175,10 +187,16 @@ int main(int iArgc, char *argv[])
     // Only meaningful for CAN: enables the CAN_RAW_RECV_OWN_MSGS=0 single-
     // socket trick that lets one socket both receive and reply without an
     // echo storm. See can_channel.hpp.
+#if LOOPBACK_HAVE_CAN
     if (auto can = std::dynamic_pointer_cast<loopback::CanChannel>(input_channel)) {
         can->setMirrorMode(mirror);
     }
+#endif
 
+    if (!tp_net_init()) { // Winsock startup on Windows, no-op elsewhere
+        std::fprintf(stderr, "Winsock initialisation failed\n");
+        return 1;
+    }
     loopback::install_signal_handlers();
 
     if (!input_channel->open()) {

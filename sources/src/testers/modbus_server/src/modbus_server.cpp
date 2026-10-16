@@ -20,18 +20,15 @@
 // slave.
 #include "modbus_datastore.hpp"
 
-#include <arpa/inet.h>
+#include "tester_platform.h" // POSIX sockets / Winsock portability (must come first on Windows)
+
 #include <atomic>
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <string>
-#include <sys/socket.h>
 #include <thread>
-#include <unistd.h>
 #include <vector>
 
 namespace {
@@ -68,11 +65,11 @@ namespace {
     // ---- Full-read/write helpers (a single recv()/send() can return less
     // than requested even on a blocking socket) ----
 
-    bool readFull(int iFd, uint8_t *pu8Buf, size_t len)
+    bool readFull(tp_socket_t iFd, uint8_t *pu8Buf, size_t len)
     {
         size_t got = 0;
         while (got < len) {
-            ssize_t n = ::recv(iFd, pu8Buf + got, len - got, 0);
+            ssize_t n = tp_recv(iFd, pu8Buf + got, len - got, 0);
             if (n <= 0) {
                 return false; // peer closed or error
             }
@@ -81,11 +78,11 @@ namespace {
         return true;
     }
 
-    bool writeFull(int iFd, const uint8_t *pu8Buf, size_t len)
+    bool writeFull(tp_socket_t iFd, const uint8_t *pu8Buf, size_t len)
     {
         size_t sent = 0;
         while (sent < len) {
-            ssize_t n = ::send(iFd, pu8Buf + sent, len - sent, 0);
+            ssize_t n = tp_send(iFd, pu8Buf + sent, len - sent, 0);
             if (n <= 0) {
                 return false;
             }
@@ -280,7 +277,7 @@ namespace {
         }
     }
 
-    void handleClient(int iClientFd, std::string strPeerLabel, ModbusDataStore *pStore)
+    void handleClient(tp_socket_t iClientFd, std::string strPeerLabel, ModbusDataStore *pStore)
     {
         std::printf("[+] client connected: %s\n", strPeerLabel.c_str());
 
@@ -324,7 +321,7 @@ namespace {
         }
 
         std::printf("[-] client disconnected: %s\n", strPeerLabel.c_str());
-        ::close(iClientFd);
+        tp_close(iClientFd);
     }
 
     void onSignal(int)
@@ -355,7 +352,13 @@ int main(int iArgc, char **ppstrArgv)
 
     std::signal(SIGINT, onSignal);
     std::signal(SIGTERM, onSignal);
+#if defined(SIGPIPE)
     std::signal(SIGPIPE, SIG_IGN); // a client closing mid-write must not kill the server
+#endif
+    if (!tp_net_init()) {
+        std::fprintf(stderr, "Winsock initialisation failed\n");
+        return 1;
+    }
 
     ModbusDataStore store;
     // A little seed data, so a fresh server has something interesting to
@@ -364,13 +367,12 @@ int main(int iArgc, char **ppstrArgv)
     store.seedCoils(0, {true, false, true, true, false, false, false, true});
     store.seedHoldingRegisters(100, {12, 34, 56, 78});
 
-    const int listenFd = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (listenFd < 0) {
-        std::perror("socket");
+    const tp_socket_t listenFd = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (listenFd == TP_INVALID_SOCKET) {
+        tp_perror("socket");
         return 1;
     }
-    int reuse = 1;
-    ::setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+    tp_set_reuse_listen(listenFd);
 
     sockaddr_in addr{};
     addr.sin_family      = AF_INET;
@@ -378,13 +380,13 @@ int main(int iArgc, char **ppstrArgv)
     addr.sin_port        = htons(port);
 
     if (::bind(listenFd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) != 0) {
-        std::perror("bind");
-        ::close(listenFd);
+        tp_perror("bind");
+        tp_close(listenFd);
         return 1;
     }
     if (::listen(listenFd, 16) != 0) {
-        std::perror("listen");
-        ::close(listenFd);
+        tp_perror("listen");
+        tp_close(listenFd);
         return 1;
     }
 
@@ -395,8 +397,12 @@ int main(int iArgc, char **ppstrArgv)
     while (g_running) {
         sockaddr_in clientAddr{};
         socklen_t clientLen = sizeof(clientAddr);
-        const int clientFd  = ::accept(listenFd, reinterpret_cast<sockaddr *>(&clientAddr), &clientLen);
-        if (clientFd < 0) {
+        // Windows: a blocking accept() is not interrupted by Ctrl+C, so poll g_running (no-op on POSIX)
+        if (!tp_wait_readable_until(listenFd, [] { return !g_running.load(); })) {
+            break;
+        }
+        const tp_socket_t clientFd = ::accept(listenFd, reinterpret_cast<sockaddr *>(&clientAddr), &clientLen);
+        if (clientFd == TP_INVALID_SOCKET) {
             if (!g_running) {
                 break;
             }
@@ -408,13 +414,13 @@ int main(int iArgc, char **ppstrArgv)
         std::string peerLabel = std::string(ipStr) + ":" + std::to_string(ntohs(clientAddr.sin_port));
 
         int nodelay           = 1;
-        ::setsockopt(clientFd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+        tp_setsockopt(clientFd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
 
         clientThreads.emplace_back(handleClient, clientFd, peerLabel, &store);
         clientThreads.back().detach();
     }
 
-    ::close(listenFd);
+    tp_close(listenFd);
     std::printf("modbus_server: shutting down\n");
     return 0;
 }

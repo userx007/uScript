@@ -27,6 +27,76 @@ extern "C" {
 }
 
 // -----------------------------------------------------------------------
+// Parameter setters declared in profibus_plugin.hpp
+//
+// NOTE: setBaud() / setOwnAddress() were declared and used (profibus_setup.hpp)
+// but had no definition anywhere in the tree. A Linux .so tolerates that until the
+// symbol is touched at run time; a Windows .dll cannot even be linked. They are
+// implemented here following the contract documented in the header.
+// -----------------------------------------------------------------------
+
+bool ProfibusPlugin::setBaud(const std::string &strBaud) const
+{
+    uint32_t u32Baud = 0;
+    if (!numeric::str2uint32(strBaud, u32Baud)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid baud rate:"); LOG_STRING(strBaud.c_str()));
+        return false;
+    }
+
+    // PROFIBUS-DP bit rates the driver can actually reach through UART::open()
+    // (see profibus_driver.hpp, "Known hardware/timing limitations").
+    //   POSIX  : the ones that are also standard termios rates.
+    //   Windows: the DCB takes any integer rate, so every standard PROFIBUS rate is accepted.
+    bool bReachable = false;
+    switch (u32Baud) {
+    case 9600:
+    case 19200:
+    case 500000:
+    case 1500000:
+    case 3000000:
+        bReachable = true;
+        break;
+#if defined(_WIN32)
+    case 45450:
+    case 93750:
+    case 187500:
+    case 6000000:
+    case 12000000:
+        bReachable = true;
+        break;
+#endif
+    default:
+        break;
+    }
+
+    if (!bReachable) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Baud rate not reachable on this platform:"); LOG_UINT32(u32Baud));
+        return false;
+    }
+
+    m_u32Baud = u32Baud;
+    return true;
+}
+
+bool ProfibusPlugin::setOwnAddress(const std::string &strAddr) const
+{
+    uint32_t u32Addr = 0;
+    if (!numeric::str2uint32(strAddr, u32Addr)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid station address:"); LOG_STRING(strAddr.c_str()));
+        return false;
+    }
+
+    // 0-125 are valid FDL station addresses; 126 is reserved for commissioning, 127 is broadcast.
+    if (u32Addr > 125) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Station address must be 0-125:"); LOG_UINT32(u32Addr));
+        return false;
+    }
+
+    m_u8OwnAddress = static_cast<uint8_t>(u32Addr);
+    return true;
+}
+
+// -----------------------------------------------------------------------
 // Driver factory
 // -----------------------------------------------------------------------
 

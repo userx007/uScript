@@ -22,13 +22,7 @@
 
 #include "ichannel.hpp"
 
-#include <arpa/inet.h>
-#include <cerrno>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include <cerrno> // sockets/Winsock come in through common.hpp -> tester_platform.h
 
 namespace loopback {
 
@@ -68,30 +62,33 @@ namespace loopback {
 
             void close() override
             {
-                if (client_fd_ >= 0) {
-                    ::close(client_fd_);
-                    client_fd_ = -1;
+                if (client_fd_ != TP_INVALID_SOCKET) {
+                    tp_close(client_fd_);
+                    client_fd_ = TP_INVALID_SOCKET;
                 }
-                if (listen_fd_ >= 0) {
-                    ::close(listen_fd_);
-                    listen_fd_ = -1;
+                if (listen_fd_ != TP_INVALID_SOCKET) {
+                    tp_close(listen_fd_);
+                    listen_fd_ = TP_INVALID_SOCKET;
                 }
             }
 
             bool readMessage(Message &sMsg) override
             {
                 while (!g_stop) {
-                    if (client_fd_ < 0 && !acceptOrConnect()) {
+                    if (client_fd_ == TP_INVALID_SOCKET && !acceptOrConnect()) {
                         return false;
                     }
 
                     uint8_t buf[4096];
-                    ssize_t n = ::recv(client_fd_, buf, sizeof(buf), 0);
+                    if (!tp_wait_readable(client_fd_, &g_stop)) { // Windows: lets Ctrl-C break a blocking recv()
+                        return false;
+                    }
+                    ssize_t n = tp_recv(client_fd_, buf, sizeof(buf), 0);
                     if (n < 0) {
-                        if (errno == EINTR) {
+                        if (tp_is_eintr(tp_last_error())) {
                             continue;
                         }
-                        log_err(name(), std::string("recv: ") + std::strerror(errno));
+                        log_err(name(), std::string("recv: ") + tp_errstr(tp_last_error()));
                         dropClient();
                         if (!is_server_) {
                             return false; // a client has nobody else to talk to
@@ -116,18 +113,18 @@ namespace loopback {
 
             bool writeMessage(Message &sMsg) override
             {
-                if (client_fd_ < 0 && !acceptOrConnect()) {
+                if (client_fd_ == TP_INVALID_SOCKET && !acceptOrConnect()) {
                     return false;
                 }
 
                 size_t sent = 0;
                 while (sent < sMsg.data.size()) {
-                    ssize_t n = ::send(client_fd_, sMsg.data.data() + sent, sMsg.data.size() - sent, MSG_NOSIGNAL);
+                    ssize_t n = tp_send(client_fd_, sMsg.data.data() + sent, sMsg.data.size() - sent, TP_MSG_NOSIGNAL);
                     if (n < 0) {
-                        if (errno == EINTR) {
+                        if (tp_is_eintr(tp_last_error())) {
                             continue;
                         }
-                        log_err(name(), std::string("send: ") + std::strerror(errno));
+                        log_err(name(), std::string("send: ") + tp_errstr(tp_last_error()));
                         dropClient();
                         return false;
                     }
@@ -175,33 +172,32 @@ namespace loopback {
 
                 for (struct addrinfo *ai = result; ai != nullptr; ai = ai->ai_next) {
                     listen_fd_ = ::socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-                    if (listen_fd_ < 0) {
+                    if (listen_fd_ == TP_INVALID_SOCKET) {
                         continue;
                     }
 
-                    int reuse = 1;
-                    ::setsockopt(listen_fd_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+                    tp_set_reuse_listen(listen_fd_);
                     if (ai->ai_family == AF_INET6) {
                         int v6only = 0;
-                        ::setsockopt(listen_fd_, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only));
+                        tp_setsockopt(listen_fd_, IPPROTO_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only));
                     }
 
                     if (::bind(listen_fd_, ai->ai_addr, ai->ai_addrlen) == 0) {
                         break;
                     }
 
-                    ::close(listen_fd_);
-                    listen_fd_ = -1;
+                    tp_close(listen_fd_);
+                    listen_fd_ = TP_INVALID_SOCKET;
                 }
                 ::freeaddrinfo(result);
 
-                if (listen_fd_ < 0) {
-                    log_err(name(), std::string("bind failed: ") + std::strerror(errno));
+                if (listen_fd_ == TP_INVALID_SOCKET) {
+                    log_err(name(), std::string("bind failed: ") + tp_errstr(tp_last_error()));
                     return false;
                 }
 
                 if (::listen(listen_fd_, kBacklog) < 0) {
-                    log_err(name(), std::string("listen: ") + std::strerror(errno));
+                    log_err(name(), std::string("listen: ") + tp_errstr(tp_last_error()));
                     close();
                     return false;
                 }
@@ -226,27 +222,27 @@ namespace loopback {
                     return false;
                 }
 
-                int fd = -1;
+                tp_socket_t fd = TP_INVALID_SOCKET;
                 for (struct addrinfo *ai = result; ai != nullptr; ai = ai->ai_next) {
                     fd = ::socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-                    if (fd < 0) {
+                    if (fd == TP_INVALID_SOCKET) {
                         continue;
                     }
                     if (::connect(fd, ai->ai_addr, ai->ai_addrlen) == 0) {
                         break;
                     }
-                    ::close(fd);
-                    fd = -1;
+                    tp_close(fd);
+                    fd = TP_INVALID_SOCKET;
                 }
                 ::freeaddrinfo(result);
 
-                if (fd < 0) {
-                    log_err(name(), std::string("connect: ") + std::strerror(errno));
+                if (fd == TP_INVALID_SOCKET) {
+                    log_err(name(), std::string("connect: ") + tp_errstr(tp_last_error()));
                     return false;
                 }
 
                 int nodelay = 1;
-                ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+                tp_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
 
                 client_fd_ = fd;
                 peer_      = host_ + ":" + std::to_string(port_);
@@ -261,23 +257,26 @@ namespace loopback {
             bool acceptOrConnect()
             {
                 if (!is_server_) {
-                    return client_fd_ >= 0; // client re-dialing is out of scope; open() already connected once
+                    return client_fd_ != TP_INVALID_SOCKET; // client re-dialing is out of scope; open() already connected once
                 }
 
                 while (!g_stop) {
+                    if (!tp_wait_readable(listen_fd_, &g_stop)) { // Windows: lets Ctrl-C break a blocking accept()
+                        return false;
+                    }
                     struct sockaddr_storage addr;
                     socklen_t addr_len = sizeof(addr);
-                    int fd             = ::accept(listen_fd_, reinterpret_cast<struct sockaddr *>(&addr), &addr_len);
-                    if (fd < 0) {
-                        if (errno == EINTR) {
+                    tp_socket_t fd     = ::accept(listen_fd_, reinterpret_cast<struct sockaddr *>(&addr), &addr_len);
+                    if (fd == TP_INVALID_SOCKET) {
+                        if (tp_is_eintr(tp_last_error())) {
                             continue;
                         }
-                        log_err(name(), std::string("accept: ") + std::strerror(errno));
+                        log_err(name(), std::string("accept: ") + tp_errstr(tp_last_error()));
                         return false;
                     }
 
                     int nodelay = 1;
-                    ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+                    tp_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
 
                     client_fd_ = fd;
                     peer_      = peerToString(addr, addr_len);
@@ -289,9 +288,9 @@ namespace loopback {
 
             void dropClient()
             {
-                if (client_fd_ >= 0) {
-                    ::close(client_fd_);
-                    client_fd_ = -1;
+                if (client_fd_ != TP_INVALID_SOCKET) {
+                    tp_close(client_fd_);
+                    client_fd_ = TP_INVALID_SOCKET;
                 }
             }
 
@@ -310,8 +309,8 @@ namespace loopback {
             bool is_server_;
             std::string host_;
             int port_;
-            int listen_fd_ = -1;
-            int client_fd_ = -1;
+            tp_socket_t listen_fd_ = TP_INVALID_SOCKET;
+            tp_socket_t client_fd_ = TP_INVALID_SOCKET;
             std::string peer_;
     };
 

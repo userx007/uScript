@@ -40,19 +40,16 @@
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current
 //     recvfrom() call returns.
 
+#include "tester_platform.h" // POSIX sockets / Winsock portability (must come first on Windows)
+
 #include <algorithm>
-#include <arpa/inet.h>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <netdb.h>
-#include <netinet/in.h>
 #include <signal.h>
 #include <string>
-#include <sys/socket.h>
-#include <unistd.h>
 
 namespace {
     constexpr int DEFAULT_PORT         = 5000;
@@ -121,16 +118,16 @@ int main(int iArgc, char **ppstrArgv)
         return 1;
     }
 
+    if (!tp_net_init()) {
+        std::fprintf(stderr, "Winsock initialisation failed\n");
+        return 1;
+    }
+
     // See eth_loopback_server.cpp for why sigaction()+SA_RESTART-off is used
-    // instead of plain signal(): glibc's signal() restarts interrupted
+    // instead of plain signal() on POSIX: glibc's signal() restarts interrupted
     // blocking calls by default, which would swallow Ctrl+C until the next
-    // datagram arrived.
-    struct sigaction sSigAction = {};
-    sSigAction.sa_handler       = on_signal;
-    sSigAction.sa_flags         = 0; // no SA_RESTART
-    ::sigemptyset(&sSigAction.sa_mask);
-    ::sigaction(SIGINT, &sSigAction, nullptr);
-    ::sigaction(SIGTERM, &sSigAction, nullptr);
+    // datagram arrived. (Windows: signal() + tp_wait_readable() polling g_stop.)
+    tp_install_stop_handler(on_signal);
 
     struct addrinfo sHints    = {};
     sHints.ai_family          = AF_UNSPEC;
@@ -148,35 +145,35 @@ int main(int iArgc, char **ppstrArgv)
         return 1;
     }
 
-    int sockFd = -1;
+    tp_socket_t sockFd = TP_INVALID_SOCKET;
     for (struct addrinfo *pAi = pResult; pAi != nullptr; pAi = pAi->ai_next) {
         sockFd = ::socket(pAi->ai_family, pAi->ai_socktype, pAi->ai_protocol);
-        if (sockFd < 0) {
+        if (sockFd == TP_INVALID_SOCKET) {
             continue;
         }
 
-        int iReuse = 1;
-        ::setsockopt(sockFd, SOL_SOCKET, SO_REUSEADDR, &iReuse, sizeof(iReuse));
+        tp_set_reuse_listen(sockFd);
+        tp_udp_disable_connreset(sockFd);
 
         // If we bound "::" (dual-stack wildcard), also accept IPv4 datagrams
         // (e.g. sent to 127.0.0.1) on the same socket.
         if (pAi->ai_family == AF_INET6) {
             int iV6Only = 0;
-            ::setsockopt(sockFd, IPPROTO_IPV6, IPV6_V6ONLY, &iV6Only, sizeof(iV6Only));
+            tp_setsockopt(sockFd, IPPROTO_IPV6, IPV6_V6ONLY, &iV6Only, sizeof(iV6Only));
         }
 
         if (::bind(sockFd, pAi->ai_addr, pAi->ai_addrlen) == 0) {
             break; // bound successfully
         }
 
-        ::close(sockFd);
-        sockFd = -1;
+        tp_close(sockFd);
+        sockFd = TP_INVALID_SOCKET;
     }
     ::freeaddrinfo(pResult);
 
-    if (sockFd < 0) {
+    if (sockFd == TP_INVALID_SOCKET) {
         std::fprintf(stderr, "Failed to bind to %s:%d, errno=%d (%s)\n",
-                     strBindTo.c_str(), iPort, errno, std::strerror(errno));
+                     strBindTo.c_str(), iPort, tp_last_error(), tp_errstr(tp_last_error()));
         return 1;
     }
 
@@ -191,21 +188,25 @@ int main(int iArgc, char **ppstrArgv)
         struct sockaddr_storage sSenderAddr = {};
         socklen_t szSenderLen               = sizeof(sSenderAddr);
 
-        const ssize_t nRecv                 = ::recvfrom(sockFd, buffer, sizeof(buffer), 0,
+        if (!tp_wait_readable(sockFd, &g_stop)) { // Windows: lets Ctrl+C break a blocking recvfrom()
+            break;
+        }
+
+        const ssize_t nRecv                 = tp_recvfrom(sockFd, buffer, sizeof(buffer), 0,
                                                          reinterpret_cast<struct sockaddr *>(&sSenderAddr),
                                                          &szSenderLen);
         if (nRecv < 0) {
-            if (errno == EINTR) {
+            if (tp_is_eintr(tp_last_error())) {
                 continue; // likely our own signal handler firing
             }
-            std::fprintf(stderr, "recvfrom() failed, errno=%d (%s)\n", errno, std::strerror(errno));
+            std::fprintf(stderr, "recvfrom() failed, errno=%d (%s)\n", tp_last_error(), tp_errstr(tp_last_error()));
             break;
         }
 
         const std::string strPeer = peer_to_string(sSenderAddr, szSenderLen);
         print_datagram("RX", strPeer, buffer, static_cast<size_t>(nRecv));
 
-        const ssize_t nSent = ::sendto(sockFd, buffer, static_cast<size_t>(nRecv), 0,
+        const ssize_t nSent = tp_sendto(sockFd, buffer, static_cast<size_t>(nRecv), 0,
                                        reinterpret_cast<struct sockaddr *>(&sSenderAddr),
                                        szSenderLen);
         if (nSent < 0) {
@@ -213,7 +214,7 @@ int main(int iArgc, char **ppstrArgv)
             // "port unreachable" from an earlier datagram to a since-gone
             // peer) shouldn't take the whole loopback server down.
             std::fprintf(stderr, "[%s] sendto() failed, errno=%d (%s)\n",
-                         strPeer.c_str(), errno, std::strerror(errno));
+                         strPeer.c_str(), tp_last_error(), tp_errstr(tp_last_error()));
         } else if (nSent != nRecv) {
             std::fprintf(stderr, "[%s] short sendto(): sent %zd of %zd bytes\n",
                          strPeer.c_str(), nSent, nRecv);
@@ -223,6 +224,6 @@ int main(int iArgc, char **ppstrArgv)
     }
 
     std::printf("udp_loopback_server shutting down\n");
-    ::close(sockFd);
+    tp_close(sockFd);
     return 0;
 }

@@ -3,6 +3,7 @@
 #include "uLogger.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cctype>
 #include <charconv>
 #include <cstring>
@@ -292,7 +293,7 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
     // call at all - a network (virtual switch) has to be opened by NAME, and
     // our physical channel connected into it as a named measurement point,
     // both names resolved from channelIndex via the driver-config interface.
-    const unsigned int channelIndex = static_cast<unsigned int>(__builtin_ctzll(static_cast<unsigned long long>(accessMask)));
+    const unsigned int channelIndex = static_cast<unsigned int>(std::countr_zero(static_cast<unsigned long long>(accessMask)));
 
     if (!m_phyConfig.isDefault()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR;
