@@ -106,7 +106,8 @@ struct libusb_device_handle;
 
 /// USB control-transfer bRequest values (bmRequestType: vendor, interface,
 /// direction per-request — see the encode/probe functions below).
-enum class GsUsbBreq : uint8_t {
+enum class GsUsbBreq : uint8_t
+{
     HOST_FORMAT     = 0,
     BITTIMING       = 1,
     MODE            = 2,
@@ -124,12 +125,14 @@ enum class GsUsbBreq : uint8_t {
     GET_STATE       = 14,
 };
 
-enum class GsCanMode : uint32_t {
+enum class GsCanMode : uint32_t
+{
     RESET = 0,
     START = 1,
 };
 
-enum class GsCanState : uint32_t {
+enum class GsCanState : uint32_t
+{
     ERROR_ACTIVE  = 0,
     ERROR_WARNING = 1,
     ERROR_PASSIVE = 2,
@@ -140,7 +143,8 @@ enum class GsCanState : uint32_t {
 
 /// struct gs_device_mode::flags and struct gs_device_config feature bits
 /// (GS_CAN_MODE_* when writing MODE, GS_CAN_FEATURE_* when reading BT_CONST).
-enum GsCanFeature : uint32_t {
+enum GsCanFeature : uint32_t
+{
     GS_CAN_MODE_NORMAL                      = 0,
     GS_CAN_MODE_LISTEN_ONLY                 = 1u << 0,
     GS_CAN_MODE_LOOP_BACK                   = 1u << 1,
@@ -167,7 +171,8 @@ enum GsCanFeature : uint32_t {
 };
 
 /// struct gs_host_frame::flags
-enum GsCanFlag : uint8_t {
+enum GsCanFlag : uint8_t
+{
     GS_CAN_FLAG_OVERFLOW = 1u << 0,
     GS_CAN_FLAG_FD       = 1u << 1,
     GS_CAN_FLAG_BRS      = 1u << 2,
@@ -190,7 +195,8 @@ static constexpr uint32_t GS_CAN_ECHO_ID_RX = 0xFFFFFFFFu;
 #pragma pack(push, 1)
 
 /// USB_DIR_OUT control transfer payload for GsUsbBreq::HOST_FORMAT.
-struct GsHostConfig {
+struct GsHostConfig
+{
         uint32_t byte_order; ///< little-endian on the wire; 0x0000BEEF tells the
                              ///< device "host is little-endian" (candleLight-fw
                              ///< only ever speaks little-endian regardless, but
@@ -198,7 +204,8 @@ struct GsHostConfig {
 };
 
 /// USB_DIR_IN control transfer response for GsUsbBreq::DEVICE_CONFIG.
-struct GsDeviceConfig {
+struct GsDeviceConfig
+{
         uint8_t reserved1;
         uint8_t reserved2;
         uint8_t reserved3;
@@ -208,14 +215,16 @@ struct GsDeviceConfig {
 };
 
 /// USB_DIR_OUT control transfer payload for GsUsbBreq::MODE.
-struct GsDeviceMode {
+struct GsDeviceMode
+{
         uint32_t mode;  ///< GsCanMode
         uint32_t flags; ///< GS_CAN_MODE_* bitmask
 };
 
 /// USB_DIR_IN control transfer response for GsUsbBreq::GET_STATE
 /// (only if GsDeviceBtConst::feature has GS_CAN_FEATURE_GET_STATE).
-struct GsDeviceState {
+struct GsDeviceState
+{
         uint32_t state; ///< GsCanState
         uint32_t rxerr;
         uint32_t txerr;
@@ -223,7 +232,8 @@ struct GsDeviceState {
 
 /// USB_DIR_OUT control transfer payload for GsUsbBreq::BITTIMING /
 /// GsUsbBreq::DATA_BITTIMING.
-struct GsDeviceBittiming {
+struct GsDeviceBittiming
+{
         uint32_t prop_seg;
         uint32_t phase_seg1;
         uint32_t phase_seg2;
@@ -232,7 +242,8 @@ struct GsDeviceBittiming {
 };
 
 /// USB_DIR_IN control transfer response for GsUsbBreq::BT_CONST.
-struct GsDeviceBtConst {
+struct GsDeviceBtConst
+{
         uint32_t feature;  ///< GS_CAN_FEATURE_* bitmask
         uint32_t fclk_can; ///< CAN clock in Hz — the basis for every bit-timing calculation
         uint32_t tseg1_min;
@@ -247,7 +258,8 @@ struct GsDeviceBtConst {
 
 /// USB_DIR_IN control transfer response for GsUsbBreq::BT_CONST_EXT
 /// (only if GsDeviceBtConst::feature has GS_CAN_FEATURE_FD).
-struct GsDeviceBtConstExtended {
+struct GsDeviceBtConstExtended
+{
         uint32_t feature;
         uint32_t fclk_can;
         uint32_t tseg1_min;
@@ -279,7 +291,8 @@ struct GsDeviceBtConstExtended {
  * @brief Candlelight (gs_usb) driver — see uCandlelight.hpp's header comment
  *        for the protocol this implements.
  */
-class Candlelight : public ICommDriver {
+class Candlelight : public ICommDriver
+{
     public:
         static constexpr uint32_t CANDLELIGHT_DEFAULT_TIMEOUT = 1000; ///< ms
 

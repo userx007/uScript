@@ -51,13 +51,15 @@
 // SSL_set_fd(), which itself expects a plain int on every platform).
 // ─────────────────────────────────────────────────────────────────────────────
 
-namespace {
+namespace
+{
 
     // Process-wide Winsock init/teardown. Constructed the first time this
     // translation unit is touched (i.e. before any TCPIP::open() can run,
     // since static init of function-local statics is thread-safe and
     // happens-before their first use) and torn down at process exit.
-    class WinsockGuard {
+    class WinsockGuard
+    {
         public:
             WinsockGuard()
             {
@@ -330,7 +332,7 @@ TCPIP::Status TCPIP::timeout_write(uint32_t u32WriteTimeout,
     constexpr int kPollSliceMs = 200;
     const bool bInfinite       = (u32WriteTimeout == 0);
     const auto tDeadline       = std::chrono::steady_clock::now() +
-                           std::chrono::milliseconds(u32WriteTimeout);
+                                 std::chrono::milliseconds(u32WriteTimeout);
 
     while (szBytesWritten < buffer.size()) {
         if (stop_tok.stop_requested()) {

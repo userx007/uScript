@@ -7,7 +7,8 @@
 #include <unordered_map>
 #include <utility>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 } // namespace HydraHAL
 
@@ -29,7 +30,8 @@ namespace HydraHAL {
 //                         NAMESPACE IMPLEMENTATION                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace HydraHAL {
+namespace HydraHAL
+{
 
     // ---------------------------------------------------------------------------
     // Construction

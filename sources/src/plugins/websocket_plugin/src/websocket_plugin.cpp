@@ -21,7 +21,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED WEBSOCKETPlugin *pluginEntry()
     {
         return new WEBSOCKETPlugin();

@@ -41,7 +41,8 @@
 // LOCAL HELPERS
 // ============================================================================
 
-namespace {
+namespace
+{
     /**
      * @brief Split "host:port" or "[ipv6]:port" into separate host and port
      * strings. Does not validate either half — resolve_numeric_host_port()

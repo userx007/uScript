@@ -44,7 +44,8 @@
 // ---------------------------------------------------------------------------
 
 /** Which hardware chip-select line to assert for this transfer. */
-enum class SpiCS : uint8_t {
+enum class SpiCS : uint8_t
+{
     CS1      = 0x80, /**< CS1 line  (BIT7 set in iChipSelect) */
     CS2      = 0x84, /**< CS2 line  (BIT7+BIT2 set) – chip-dependent */
     IgnoreCS = 0x00, /**< Do not touch CS (caller manages it manually) */
@@ -56,7 +57,8 @@ enum class SpiCS : uint8_t {
  * Embed inside the generic ReadOptions::token field (reinterpreted as a
  * single-byte span) OR use the extended tout_xfer() helper directly.
  */
-struct SpiXferOptions {
+struct SpiXferOptions
+{
         SpiCS chipSelect = SpiCS::CS1; /**< CS line to use */
         bool ignoreCS    = false;      /**< Pass true to skip CS toggling */
         int writeStep    = 512;        /**< Bytes per USB packet for writes */
@@ -64,7 +66,8 @@ struct SpiXferOptions {
 
 // ---------------------------------------------------------------------------
 
-class CH347SPI : public ICommDriver {
+class CH347SPI : public ICommDriver
+{
     public:
         // -----------------------------------------------------------------------
         // Constants

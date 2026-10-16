@@ -23,7 +23,8 @@
  * XL-API channel opened anywhere in the process calls xlOpenDriver() and the
  * very last one closed calls xlCloseDriver().
  */
-class VectorDriverHandle {
+class VectorDriverHandle
+{
     public:
         /** xlOpenDriver() if this is the first live user in the whole process; always increments the refcount. */
         static ICommDriver::Status Acquire();

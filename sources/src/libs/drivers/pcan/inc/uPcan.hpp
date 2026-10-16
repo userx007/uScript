@@ -104,7 +104,8 @@
  *      protocol, so its own single-frame calls never re-enter tout_write()/
  *      tout_read() or re-lock m_mutex.
  */
-class PCAN : public ICommDriver {
+class PCAN : public ICommDriver
+{
     public:
         // ------------------------------------------------------------------ //
         //  Constants                                                           //
@@ -507,7 +508,8 @@ class PCAN : public ICommDriver {
          * thread, from within a tout_write()/tout_read() call that already
          * holds m_mutex — RawIo itself never locks.
          */
-        class RawIo final : public ICommDriver {
+        class RawIo final : public ICommDriver
+        {
             public:
                 explicit RawIo(const PCAN &owner)
                     : m_owner(owner)

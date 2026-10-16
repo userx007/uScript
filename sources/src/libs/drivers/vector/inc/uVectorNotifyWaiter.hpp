@@ -37,9 +37,11 @@
  * uVector.hpp's recvFrame() doc comment for the full rationale, which
  * applies identically on both platforms.
  */
-class VectorNotifyWaiter {
+class VectorNotifyWaiter
+{
     public:
-        enum class WaitResult {
+        enum class WaitResult
+        {
             SIGNALLED,
             TIMEOUT,
             ERROR

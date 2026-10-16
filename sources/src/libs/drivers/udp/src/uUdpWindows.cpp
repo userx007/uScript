@@ -32,14 +32,16 @@
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
 
     // See uTcpipWindows.cpp's WinsockGuard — independent, self-contained
     // init/teardown for this translation unit. WSAStartup()/WSACleanup()
     // are reference-counted per-process by ws2_32.dll, so having uUdp and
     // uTcpip each own a guard is safe even when both are linked into the
     // same binary.
-    class WinsockGuard {
+    class WinsockGuard
+    {
         public:
             WinsockGuard()
             {

@@ -64,7 +64,8 @@
 /**
  * \brief Template plugin class definition
  */
-class TemplatePlugin : public PluginInterface {
+class TemplatePlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

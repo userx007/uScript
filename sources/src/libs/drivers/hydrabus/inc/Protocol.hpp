@@ -13,7 +13,8 @@
 #include <string>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class AUXPin;
 
     /**
@@ -42,7 +43,8 @@ namespace HydraHAL {
      * @endcode
      */
 
-    class Protocol {
+    class Protocol
+    {
         public:
             /**
              * @param hydrabus  Open, BBIO-enabled Hydrabus instance.

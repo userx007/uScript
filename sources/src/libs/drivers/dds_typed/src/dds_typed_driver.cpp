@@ -52,7 +52,8 @@
 // Windows: LoadLibrary()/GetProcAddress()/FreeLibrary() and the portable uglob::match()
 // (fnmatch has no Windows equivalent). Customer type plugins are .dll files there.
 
-namespace {
+namespace
+{
 
 #if defined(_WIN32)
 
@@ -131,7 +132,8 @@ namespace {
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
     constexpr const char *kPluginNameForDump = "DDS_TYPED";
     constexpr uint32_t kBuiltinReadBatch     = 64;
     constexpr size_t kEncodeBufCap           = 4096; // see DdsTypeEntry::encode()'s doc comment — generous, fixed, stack-resident
@@ -269,7 +271,7 @@ std::string DdsTypedDriver::m_BuildDomainConfigXml() const
         xml << "<FragmentSize>" << m_config.fragmentThresholdBytes << "B</FragmentSize>";
     }
     const bool listensOnAll    = (m_config.ifaceAddress == "0.0.0.0" || m_config.ifaceAddress == "::" ||
-                               m_config.ifaceAddress.empty());
+                                  m_config.ifaceAddress.empty());
     const std::string ifaceSel = !listensOnAll ? m_config.ifaceAddress : m_config.multicastInterface;
     if (!ifaceSel.empty()) {
         const char *attr = looksLikeIpLiteral(ifaceSel) ? "address" : "name";
@@ -292,7 +294,8 @@ std::string DdsTypedDriver::m_BuildDomainConfigXml() const
 // if the running domain was configured differently from what this instance
 // asked for. Two instances given the same config (the common case: several
 // DDSTY:n.CONFIG lines with the same cf=) are simply sharing one domain.
-namespace {
+namespace
+{
     std::mutex g_domainCfgMutex;
     std::map<uint32_t, std::string> g_domainCfgs;
 } // namespace
@@ -548,7 +551,8 @@ ICommDriver::ReadResult DdsTypedDriver::tout_read(uint32_t, std::span<uint8_t>, 
 /// loading and these stay valid for the driver's lifetime. Any of the three
 /// may be nullptr: the profile simply has no entry of that kind (an empty
 /// profile such as "Default" has none) => DDS defaults for that entity.
-struct DdsTypedDriver::ResolvedQos {
+struct DdsTypedDriver::ResolvedQos
+{
         std::string key;
         dds_qos_t *reader                           = nullptr;
         dds_qos_t *writer                           = nullptr;
@@ -568,8 +572,10 @@ struct DdsTypedDriver::ResolvedQos {
         }
 };
 
-namespace {
-    struct RawQosRule {
+namespace
+{
+    struct RawQosRule
+    {
             std::string glob;
             std::string profile;
     };
@@ -635,8 +641,10 @@ namespace {
 // Policies that can't be applied (unsupported, or not applicable to that kind
 // of entity) are reported as warnings and skipped; invalid values are errors.
 // ---------------------------------------------------------------------------
-namespace qosxml {
-    struct Node {
+namespace qosxml
+{
+    struct Node
+    {
             std::string name;
             std::map<std::string, std::string> attrs;
             std::string text; // concatenated character data (untrimmed)
@@ -664,14 +672,18 @@ namespace qosxml {
             }
     };
 
-    struct Document {
+    struct Document
+    {
             Node root;
             std::map<std::string, const Node *> profiles; // "Library::Profile" -> <qos_profile>
     };
 
-    enum class Kind { Reader,
-                      Writer,
-                      Topic };
+    enum class Kind
+    {
+        Reader,
+        Writer,
+        Topic
+    };
 
     inline std::string decodeEntities(const std::string &in)
     {
@@ -897,7 +909,8 @@ namespace qosxml {
     }
 
     // ---- value helpers --------------------------------------------------
-    struct EnumItem {
+    struct EnumItem
+    {
             const char *name;
             int value;
     };
@@ -1852,7 +1865,8 @@ std::string DdsTypedDriver::m_BuildListText() const
 // ---------------------------------------------------------------------------
 // Intermediary layer: DDS_TYPED.CMD argument decomposition
 // ---------------------------------------------------------------------------
-namespace {
+namespace
+{
     void tokenize(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens)
     {
         vOutTokens.clear();

@@ -13,7 +13,8 @@
 #include <termios.h>
 #endif
 
-class UART : public ICommDriver {
+class UART : public ICommDriver
+{
 
     public:
         static constexpr size_t UART_MAX_BUFLENGTH           = 256;  /**< Maximum UART buffer length. */
@@ -34,7 +35,8 @@ class UART : public ICommDriver {
          * worse for a caller doing its own end-to-end checksums (e.g. PROFIBUS'
          * FCS) than just letting the checksum catch it.
          */
-        enum class Parity : uint8_t {
+        enum class Parity : uint8_t
+        {
             None,
             Even,
             Odd

@@ -36,7 +36,8 @@
  * shared by the sender thread, the receiver thread, and (for CANopen SDO)
  * the server thread all at once.
  */
-class LoopbackCommDriver final : public ICommDriver {
+class LoopbackCommDriver final : public ICommDriver
+{
     public:
         /** @param verbose  If true, prints every frame (id, direction, hex bytes) as it crosses the bus. */
         explicit LoopbackCommDriver(bool bVerbose = false)
@@ -72,7 +73,8 @@ class LoopbackCommDriver final : public ICommDriver {
         }
 
     private:
-        struct Frame {
+        struct Frame
+        {
                 std::vector<uint8_t> bytes;
         };
 

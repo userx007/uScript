@@ -4,7 +4,8 @@
 #include "ushell_core_settings.h"
 
 /* define logging levels */
-typedef enum {
+typedef enum
+{
     ULOG_VERBOSE,
     ULOG_DEBUG,
     ULOG_INFO,

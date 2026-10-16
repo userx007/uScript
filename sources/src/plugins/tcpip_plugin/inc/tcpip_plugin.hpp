@@ -62,7 +62,8 @@
  * concept with no TCP-stream equivalent. The plugin surface is therefore
  * INFO / CONFIG / CMD / SCRIPT only.
  */
-class TCPIPPlugin : public PluginInterface {
+class TCPIPPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

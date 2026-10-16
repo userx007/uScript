@@ -26,8 +26,10 @@
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
-    class WinsockGuard {
+namespace
+{
+    class WinsockGuard
+    {
         public:
             WinsockGuard()
             {

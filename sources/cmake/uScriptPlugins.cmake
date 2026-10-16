@@ -38,6 +38,7 @@ set(USCRIPT_PLUGIN_CANDLELIGHT ON  CACHE BOOL "")
 set(USCRIPT_PLUGIN_PCAN        ON  CACHE BOOL "")
 set(USCRIPT_PLUGIN_VECTOR      ON  CACHE BOOL "")   # Windows / Linux only
 set(USCRIPT_PLUGIN_VECTOR_ETH  ON  CACHE BOOL "")   # Windows / Linux only
+set(USCRIPT_PLUGIN_KCAN        ON  CACHE BOOL "")   # Linux only
 set(USCRIPT_PLUGIN_KVCAN       ON  CACHE BOOL "")   # Linux only
 set(USCRIPT_PLUGIN_SYSTEC      ON  CACHE BOOL "")   # Linux only
 

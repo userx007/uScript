@@ -1,6 +1,7 @@
 #include "uVolatileMacroStore.hpp"
 
-namespace uvolatile {
+namespace uvolatile
+{
 
     // Exactly one definition process-wide: this translation unit is compiled
     // into the uVolatileMacroStore SHARED library (see CMakeLists.txt next to

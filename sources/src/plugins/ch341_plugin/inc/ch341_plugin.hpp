@@ -50,7 +50,8 @@
 /**
  * \brief CH341 plugin class definition
  */
-class CH341Plugin : public PluginInterface {
+class CH341Plugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

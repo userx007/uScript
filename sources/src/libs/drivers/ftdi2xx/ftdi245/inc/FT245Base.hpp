@@ -57,7 +57,8 @@
  *            FTDI DS_FT245R  — FT245R USB FIFO IC Datasheet
  *            FTDI AN_232R-01 — Bit Bang Modes for the FT232R and FT245R
  */
-class FT245Base {
+class FT245Base
+{
     public:
         using Status                                          = ICommDriver::Status;
 
@@ -77,7 +78,8 @@ class FT245Base {
          * Both FT245BM and FT245R share the same USB PID (0x6001), but differ
          * in supported bit-modes and internal oscillator presence.
          */
-        enum class Variant : uint8_t {
+        enum class Variant : uint8_t
+        {
             FT245BM = 0, ///< FT245BM/RL — async/sync FIFO, external oscillator
             FT245R  = 1, ///< FT245R     — async FIFO, integrated 6 MHz oscillator
         };
@@ -89,7 +91,8 @@ class FT245Base {
          * FT245BM supports both async and sync.
          * FT245R supports async only; passing Sync returns INVALID_PARAM.
          */
-        enum class FifoMode : uint8_t {
+        enum class FifoMode : uint8_t
+        {
             Async = 0, ///< Asynchronous FIFO (BITMODE_RESET, default)
             Sync  = 1, ///< Synchronous FIFO  (BITMODE_SYNC_FIFO, FT245BM only)
         };

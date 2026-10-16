@@ -24,7 +24,8 @@ using LibHandle = void *;
 #endif
 
 // information to be set to a plugin
-struct PluginDataSet {
+struct PluginDataSet
+{
         std::shared_ptr<LogBuffer> shpLogger;
         std::unordered_map<std::string, std::string> mapSettings;
 
@@ -42,14 +43,16 @@ struct PluginDataSet {
 };
 
 // information to be extracted from a plugin
-struct PluginDataGet {
+struct PluginDataGet
+{
         std::string strPluginVersion;
         std::vector<std::string> vstrPluginCommands;
         std::unordered_map<std::string, bool> mapBlockingCommands; // cmd name → true if endless-loop capable
 };
 
 // script plugin definition
-struct PluginDataType {
+struct PluginDataType
+{
         std::string strPluginName;
         std::string strPluginVersRule;
         std::string strPluginVersRequested;

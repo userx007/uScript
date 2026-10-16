@@ -59,7 +59,8 @@
  *        the SCRIPT arg-count bounds check below) only needs to be made
  *        once instead of sixteen times.
  */
-namespace ucmdexec {
+namespace ucmdexec
+{
 
     /*--------------------------------------------------------------------------------------------------------*/
     /**
@@ -357,7 +358,8 @@ namespace ucmdexec {
      *        strVal is intentionally opaque strings not parsed further by this header
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    struct CyclicEntry {
+    struct CyclicEntry
+    {
             std::string strVal;
             uint32_t u32PeriodMs;
     };
@@ -633,7 +635,8 @@ namespace ucmdexec {
                 // Only populated (and only ever consulted) when bCached: see the un-cached
                 // branch of the tick loop below for the alternative, which re-validates
                 // straight out of vEntries on every due tick instead.
-                struct ResolvedCyclicEntry {
+                struct ResolvedCyclicEntry
+                {
                         CommCommand command;
                         uint32_t u32PeriodMs;
                         std::string strVal; // the entry's value text, published to the capture sink after each send

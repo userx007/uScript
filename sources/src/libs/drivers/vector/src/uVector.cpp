@@ -673,13 +673,15 @@ std::vector<Vector::ChannelInfo> Vector::matchChannels(const DeviceSelector &sel
     return vResult;
 }
 
-namespace {
+namespace
+{
     // Name <-> XL_HWTYPE_* lookup table, covering every CAN-relevant
     // XL_HWTYPE_* constant declared in Vector's real vxlapi.h (some very old
     // ISA/PCI-era types and a few non-CAN-only types are included too, since
     // hwTypeToString()/hwTypeFromString() are also used by VECTOR.DEVICES'
     // listing, independent of whether the channel actually supports CAN).
-    struct HwTypeEntry {
+    struct HwTypeEntry
+    {
             const char *name;
             uint32_t value;
     };
@@ -844,9 +846,9 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame &sOut
                     sOut.bExtended  = ext;
                     sOut.u8Len      = static_cast<uint8_t>(
                         std::min<size_t>(VECTOR_FD_MAX_PAYLOAD,
-                                              CANFD_GET_NUM_DATABYTES(msg.dlc,
-                                                                      (msg.msgFlags & XL_CAN_RXMSG_FLAG_EDL) != 0U,
-                                                                      (msg.msgFlags & XL_CAN_RXMSG_FLAG_RTR) != 0U)));
+                                         CANFD_GET_NUM_DATABYTES(msg.dlc,
+                                                                 (msg.msgFlags & XL_CAN_RXMSG_FLAG_EDL) != 0U,
+                                                                 (msg.msgFlags & XL_CAN_RXMSG_FLAG_RTR) != 0U)));
                     std::memcpy(sOut.data.data(), msg.data, sOut.u8Len);
                     return Status::SUCCESS;
                 }
@@ -1279,9 +1281,9 @@ ICommDriver::WriteResult Vector::writeFragmented_locked(uint32_t u32WriteTimeout
 
     (void)u32WriteTimeout; // xlCanTransmit(Ex) is non-blocking; timeout reserved for future use.
 
-    const uint32_t u32TxId = resolveTxId(xtra_params);
-    const bool bExtended   = m_bExtendedId || (u32TxId & CAN_EFF_FLAG) != 0U ||
-                           ((u32TxId & CAN_EFF_MASK) > CAN_SFF_MASK);
+    const uint32_t u32TxId    = resolveTxId(xtra_params);
+    const bool bExtended      = m_bExtendedId || (u32TxId & CAN_EFF_FLAG) != 0U ||
+                                ((u32TxId & CAN_EFF_MASK) > CAN_SFF_MASK);
     const uint32_t u32RawTxId = u32TxId & (bExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
     const size_t maxPayload   = m_bFD ? VECTOR_FD_MAX_PAYLOAD : VECTOR_MAX_PAYLOAD;
 

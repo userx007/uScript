@@ -19,7 +19,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED VectorEthPlugin *pluginEntry()
     {
         return new VectorEthPlugin();

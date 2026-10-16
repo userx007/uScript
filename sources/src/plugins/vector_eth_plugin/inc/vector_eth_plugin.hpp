@@ -80,7 +80,8 @@
  *     "<mac>", "<mac>/<ethertype>", or "/<ethertype>" (see
  *     VectorEth::resolveDest()), not a bare numeric CAN id.
  */
-class VectorEthPlugin : public PluginInterface {
+class VectorEthPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

@@ -11,7 +11,8 @@
  * Uses ICommDriver::Status so both driver families share one status vocabulary
  * without introducing a third enum.
  */
-class IGpioDriver {
+class IGpioDriver
+{
     public:
         using Status                     = ICommDriver::Status;
 
@@ -39,7 +40,8 @@ class IGpioDriver {
          *   bit 6 → GPIO.6 = clock output  (frequency set via clockDivider)
          *   bit 7 → GPIO.7 = RX LED
          */
-        struct GpioConfig {
+        struct GpioConfig
+        {
                 uint8_t directionMask   = 0x00; ///< Default: all inputs
                 uint8_t pushPullMask    = 0x00; ///< Default: open-drain
                 uint8_t specialFuncMask = 0x00; ///< Default: all GPIO

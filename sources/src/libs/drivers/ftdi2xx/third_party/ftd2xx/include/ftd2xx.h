@@ -87,7 +87,8 @@ typedef PVOID FT_HANDLE;
  */
 typedef ULONG FT_STATUS;
 
-enum {
+enum
+{
     FT_OK,
     FT_INVALID_HANDLE,
     FT_DEVICE_NOT_FOUND,
@@ -128,8 +129,8 @@ enum {
 #define FT_OPEN_BY_LOCATION      4
 
 #define FT_OPEN_MASK             (FT_OPEN_BY_SERIAL_NUMBER | \
-                      FT_OPEN_BY_DESCRIPTION |               \
-                      FT_OPEN_BY_LOCATION)
+                                  FT_OPEN_BY_DESCRIPTION |   \
+                                  FT_OPEN_BY_LOCATION)
 /** @} */
 
 /** @{
@@ -138,11 +139,11 @@ enum {
  * @see FT_ListDevices
  * @see FT_OpenEx
  */
-#define FT_LIST_NUMBER_ONLY 0x80000000
-#define FT_LIST_BY_INDEX    0x40000000
-#define FT_LIST_ALL         0x20000000
+#define FT_LIST_NUMBER_ONLY      0x80000000
+#define FT_LIST_BY_INDEX         0x40000000
+#define FT_LIST_ALL              0x20000000
 
-#define FT_LIST_MASK        (FT_LIST_NUMBER_ONLY | FT_LIST_BY_INDEX | FT_LIST_ALL)
+#define FT_LIST_MASK             (FT_LIST_NUMBER_ONLY | FT_LIST_BY_INDEX | FT_LIST_ALL)
 /** @} */
 
 /** @{
@@ -150,65 +151,65 @@ enum {
  * Standard baud rates supported by many implementations and applications.
  * @see FT_SetBaudRate
  */
-#define FT_BAUD_300         300
-#define FT_BAUD_600         600
-#define FT_BAUD_1200        1200
-#define FT_BAUD_2400        2400
-#define FT_BAUD_4800        4800
-#define FT_BAUD_9600        9600
-#define FT_BAUD_14400       14400
-#define FT_BAUD_19200       19200
-#define FT_BAUD_38400       38400
-#define FT_BAUD_57600       57600
-#define FT_BAUD_115200      115200
-#define FT_BAUD_230400      230400
-#define FT_BAUD_460800      460800
-#define FT_BAUD_921600      921600
+#define FT_BAUD_300              300
+#define FT_BAUD_600              600
+#define FT_BAUD_1200             1200
+#define FT_BAUD_2400             2400
+#define FT_BAUD_4800             4800
+#define FT_BAUD_9600             9600
+#define FT_BAUD_14400            14400
+#define FT_BAUD_19200            19200
+#define FT_BAUD_38400            38400
+#define FT_BAUD_57600            57600
+#define FT_BAUD_115200           115200
+#define FT_BAUD_230400           230400
+#define FT_BAUD_460800           460800
+#define FT_BAUD_921600           921600
 /** @} */
 
 /** @{
  * @name Word Lengths
  * @see FT_SetDataCharacteristics
  */
-#define FT_BITS_8           (UCHAR)8
-#define FT_BITS_7           (UCHAR)7
+#define FT_BITS_8                (UCHAR)8
+#define FT_BITS_7                (UCHAR)7
 /** @} */
 
 /** @{
  * @name Stop Bits
  * @see FT_SetDataCharacteristics
  */
-#define FT_STOP_BITS_1      (UCHAR)0
-#define FT_STOP_BITS_2      (UCHAR)2
+#define FT_STOP_BITS_1           (UCHAR)0
+#define FT_STOP_BITS_2           (UCHAR)2
 /** @} */
 
 /* * @name Parity
  * @see FT_SetDataCharacteristics
  * @{
  */
-#define FT_PARITY_NONE      (UCHAR)0
-#define FT_PARITY_ODD       (UCHAR)1
-#define FT_PARITY_EVEN      (UCHAR)2
-#define FT_PARITY_MARK      (UCHAR)3
-#define FT_PARITY_SPACE     (UCHAR)4
+#define FT_PARITY_NONE           (UCHAR)0
+#define FT_PARITY_ODD            (UCHAR)1
+#define FT_PARITY_EVEN           (UCHAR)2
+#define FT_PARITY_MARK           (UCHAR)3
+#define FT_PARITY_SPACE          (UCHAR)4
 /** @} */
 
 /** @{
  * @name Flow Control
  * @see FT_SetFlowControl
  */
-#define FT_FLOW_NONE        0x0000
-#define FT_FLOW_RTS_CTS     0x0100
-#define FT_FLOW_DTR_DSR     0x0200
-#define FT_FLOW_XON_XOFF    0x0400
+#define FT_FLOW_NONE             0x0000
+#define FT_FLOW_RTS_CTS          0x0100
+#define FT_FLOW_DTR_DSR          0x0200
+#define FT_FLOW_XON_XOFF         0x0400
 /** @} */
 
 /** @{
  * @name Purge rx and tx buffers
  * @see FT_Purge
  */
-#define FT_PURGE_RX         1
-#define FT_PURGE_TX         2
+#define FT_PURGE_RX              1
+#define FT_PURGE_TX              2
 /** @} */
 
 /** @{
@@ -236,7 +237,8 @@ typedef void (*PFT_EVENT_HANDLER)(DWORD, DWORD);
  */
 typedef ULONG FT_DEVICE;
 
-enum {
+enum
+{
     FT_DEVICE_BM,
     FT_DEVICE_AM,
     FT_DEVICE_100AX,
@@ -369,7 +371,8 @@ enum {
  * These flags are used in the Flags member of FT_DEVICE_LIST_INFO_NODE to indicated the state of
  * the device and speed of the device.
  */
-enum {
+enum
+{
     FT_FLAGS_OPENED  = 1,
     FT_FLAGS_HISPEED = 2
 };
@@ -377,7 +380,8 @@ enum {
 /** @} */
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #ifdef FTD2XX_STATIC
@@ -466,7 +470,8 @@ extern "C" {
      * This structure is used for passing information about a device back from the FT_GetDeviceInfoList function.
      * @see FT_GetDeviceInfoList
      */
-    typedef struct _ft_device_list_info_node {
+    typedef struct _ft_device_list_info_node
+    {
             ULONG Flags;
             ULONG Type;
             ULONG ID;
@@ -1478,7 +1483,8 @@ extern "C" {
      * @see FT_EE_Program
      * @see FT_EE_ProgramEx
      */
-    typedef struct ft_program_data {
+    typedef struct ft_program_data
+    {
 
             DWORD Signature1; /// Header - must be 0x00000000
             DWORD Signature2; /// Header - must be 0xffffffff
@@ -1860,7 +1866,8 @@ extern "C" {
      * @see FT_EEPROM_Read
      * @see FT_EEPROM_Program
      */
-    typedef struct ft_eeprom_header {
+    typedef struct ft_eeprom_header
+    {
             FT_DEVICE deviceType; /// FTxxxx device type to be programmed
             /// Device descriptor options
             WORD VendorId;      /// 0x0403
@@ -1880,7 +1887,8 @@ extern "C" {
      * This is appended to an FT_EEPROM_HEADER structure.
      * @see FT_EEPROM_HEADER
      */
-    typedef struct ft_eeprom_232b {
+    typedef struct ft_eeprom_232b
+    {
             /// Common header
             FT_EEPROM_HEADER common; /// common elements for all device EEPROMs
     } FT_EEPROM_232B, *PFT_EEPROM_232B;
@@ -1892,7 +1900,8 @@ extern "C" {
      * This is appended to an FT_EEPROM_HEADER structure.
      * @see FT_EEPROM_HEADER
      */
-    typedef struct ft_eeprom_2232 {
+    typedef struct ft_eeprom_2232
+    {
             /// Common header
             FT_EEPROM_HEADER common; /// common elements for all device EEPROMs
             /// Drive options
@@ -1916,7 +1925,8 @@ extern "C" {
      * This is appended to an FT_EEPROM_HEADER structure.
      * @see FT_EEPROM_HEADER
      */
-    typedef struct ft_eeprom_232r {
+    typedef struct ft_eeprom_232r
+    {
             /// Common header
             FT_EEPROM_HEADER common; /// common elements for all device EEPROMs
             /// Drive options
@@ -1946,7 +1956,8 @@ extern "C" {
      * This is appended to an FT_EEPROM_HEADER structure.
      * @see FT_EEPROM_HEADER
      */
-    typedef struct ft_eeprom_2232h {
+    typedef struct ft_eeprom_2232h
+    {
             /// Common header
             FT_EEPROM_HEADER common; /// common elements for all device EEPROMs
             /// Drive options
@@ -1981,7 +1992,8 @@ extern "C" {
      * This is appended to an FT_EEPROM_HEADER structure.
      * @see FT_EEPROM_HEADER
      */
-    typedef struct ft_eeprom_4232h {
+    typedef struct ft_eeprom_4232h
+    {
             /// Common header
             FT_EEPROM_HEADER common; /// common elements for all device EEPROMs
             /// Drive options
@@ -2015,7 +2027,8 @@ extern "C" {
      * This is appended to an FT_EEPROM_HEADER structure.
      * @see FT_EEPROM_HEADER
      */
-    typedef struct ft_eeprom_232h {
+    typedef struct ft_eeprom_232h
+    {
             /// Common header
             FT_EEPROM_HEADER common; /// common elements for all device EEPROMs
             /// Drive options
@@ -2056,7 +2069,8 @@ extern "C" {
      * This is appended to an FT_EEPROM_HEADER structure.
      * @see FT_EEPROM_HEADER
      */
-    typedef struct ft_eeprom_x_series {
+    typedef struct ft_eeprom_x_series
+    {
             /// Common header
             FT_EEPROM_HEADER common; /// common elements for all device EEPROMs
             /// Drive options
@@ -2108,7 +2122,8 @@ extern "C" {
      * This is appended to an FT_EEPROM_HEADER structure.
      * @see FT_EEPROM_HEADER
      */
-    typedef struct ft_eeprom_4222h {
+    typedef struct ft_eeprom_4222h
+    {
             /// Common header
             FT_EEPROM_HEADER common; /// common elements for all device EEPROMs
             CHAR Revision;           /// 'A', 'B', 'C', or 'D'.
@@ -2171,7 +2186,8 @@ extern "C" {
      * values 0 to 51100mV. This is part of the FT_EEPROM_PD structure.
      * @see FT_EEPROM_PD
      */
-    typedef struct ft_eeprom_PD_PDO_mv_ma {
+    typedef struct ft_eeprom_PD_PDO_mv_ma
+    {
             USHORT PDO1ma; /// PDO1 mA
             USHORT PDO1mv; /// PDO1 mV
             USHORT PDO2ma; /// PDO2 mA
@@ -2206,7 +2222,8 @@ extern "C" {
      * @see FT_EEPROM_HEADER
      * @see FT_EEPROM_PD_PDO_mv_ma
      */
-    typedef struct ft_eeprom_pd {
+    typedef struct ft_eeprom_pd
+    {
             /// Configuration
             UCHAR srprs;      /// non-zero to enable Sink Request Power Role Swap
             UCHAR sraprs;     /// non-zero to enable Sink Accept PR Swap
@@ -2285,42 +2302,48 @@ extern "C" {
 
     /// FT2233HP EEPROM structure for use with FT_EEPROM_Read and FT_EEPROM_Program
     /// FT2232H with power delivery
-    typedef struct _ft_eeprom_2233hp {
+    typedef struct _ft_eeprom_2233hp
+    {
             FT_EEPROM_2232H ft2232h;
             FT_EEPROM_PD pd;
     } FT_EEPROM_2233HP, *PFT_EEPROM_2233HP;
 
     /// FT4233HP EEPROM structure for use with FT_EEPROM_Read and FT_EEPROM_Program
     /// FT4232H with power delivery
-    typedef struct _ft_eeprom_4233hp {
+    typedef struct _ft_eeprom_4233hp
+    {
             FT_EEPROM_4232H ft4232h;
             FT_EEPROM_PD pd;
     } FT_EEPROM_4233HP, *PFT_EEPROM_4233HP;
 
     /// FT2232HP EEPROM structure for use with FT_EEPROM_Read and FT_EEPROM_Program
     /// FT2232H with power delivery
-    typedef struct _ft_eeprom_2232hp {
+    typedef struct _ft_eeprom_2232hp
+    {
             FT_EEPROM_2232H ft2232h;
             FT_EEPROM_PD pd;
     } FT_EEPROM_2232HP, *PFT_EEPROM_2232HP;
 
     /// FT4232HP EEPROM structure for use with FT_EEPROM_Read and FT_EEPROM_Program
     /// FT4232H with power delivery
-    typedef struct _ft_eeprom_4232hp {
+    typedef struct _ft_eeprom_4232hp
+    {
             FT_EEPROM_4232H ft4232h;
             FT_EEPROM_PD pd;
     } FT_EEPROM_4232HP, *PFT_EEPROM_4232HP;
 
     /// FT233HP EEPROM structure for use with FT_EEPROM_Read and FT_EEPROM_Program
     /// FT233H with power delivery
-    typedef struct _ft_eeprom_233hp {
+    typedef struct _ft_eeprom_233hp
+    {
             FT_EEPROM_232H ft232h;
             FT_EEPROM_PD pd;
     } FT_EEPROM_233HP, *PFT_EEPROM_233HP;
 
     /// FT232HP EEPROM structure for use with FT_EEPROM_Read and FT_EEPROM_Program
     /// FT232H with power delivery
-    typedef struct _ft_eeprom_232hp {
+    typedef struct _ft_eeprom_232hp
+    {
             FT_EEPROM_232H ft232h;
             FT_EEPROM_PD pd;
     } FT_EEPROM_232HP, *PFT_EEPROM_232HP;
@@ -2854,7 +2877,8 @@ extern "C" {
      * Structure for FT_W32_ClearCommError lpftComstat parameter.
      * @see FT_W32_ClearCommError
      */
-    typedef struct _FTCOMSTAT {
+    typedef struct _FTCOMSTAT
+    {
             DWORD fCtsHold : 1;
             DWORD fDsrHold : 1;
             DWORD fRlsdHold : 1;
@@ -2871,7 +2895,8 @@ extern "C" {
      * @see FT_W32_SetCommState
      * @see FT_W32_GetCommState
      */
-    typedef struct _FTDCB {
+    typedef struct _FTDCB
+    {
             DWORD DCBlength;             /** sizeof(FTDCB)                        */
             DWORD BaudRate;              /** Baudrate at which running            */
             DWORD fBinary : 1;           /** Binary Mode (skip EOF check)         */
@@ -2906,7 +2931,8 @@ extern "C" {
      * @see FT_W32_SetCommTimeouts
      * @see FT_W32_GetCommTimeouts
      */
-    typedef struct _FTTIMEOUTS {
+    typedef struct _FTTIMEOUTS
+    {
             DWORD ReadIntervalTimeout;         /** Maximum time between read chars.  */
             DWORD ReadTotalTimeoutMultiplier;  /** Multiplier of characters.         */
             DWORD ReadTotalTimeoutConstant;    /** Constant in milliseconds.         */

@@ -27,7 +27,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED DSPKSPIPlugin *pluginEntry()
     {
         return new DSPKSPIPlugin();

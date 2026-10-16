@@ -32,7 +32,8 @@
 #include <thread>
 #include <vector>
 
-namespace {
+namespace
+{
     std::atomic<bool> g_running{true};
 
     void on_signal(int /*sig*/)
@@ -73,7 +74,8 @@ namespace {
                      pstrArgv0, pstrArgv0);
     }
 
-    struct Args {
+    struct Args
+    {
             std::string protocol;
             std::string iface;
             std::string rxId;

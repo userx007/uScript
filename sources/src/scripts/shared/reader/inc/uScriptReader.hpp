@@ -58,7 +58,8 @@
  * SCRIPT_INCLUDE_KEYWORD so the GUI highlighter can reference the same
  * string constant without a separate header dependency.
  */
-class ScriptReader : public IScriptReader {
+class ScriptReader : public IScriptReader
+{
     public:
         explicit ScriptReader(const std::string &strScriptPathName)
             : m_strScriptPathName(strScriptPathName)

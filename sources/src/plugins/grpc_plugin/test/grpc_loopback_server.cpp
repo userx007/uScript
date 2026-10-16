@@ -58,7 +58,8 @@
 #include <sstream>
 #include <string>
 
-namespace {
+namespace
+{
     constexpr int DEFAULT_PORT         = 50051;
     constexpr const char *DEFAULT_BIND = "0.0.0.0";
 
@@ -75,7 +76,8 @@ namespace {
         }
     }
 
-    class LoopbackServiceImpl final : public loopback::LoopbackService::Service {
+    class LoopbackServiceImpl final : public loopback::LoopbackService::Service
+    {
         public:
             grpc::Status Echo(grpc::ServerContext *, const loopback::EchoRequest *pRequest,
                               loopback::EchoResponse *pResponse) override

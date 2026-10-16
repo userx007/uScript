@@ -42,26 +42,31 @@
  *   tout_read   → CS assert + read-only   + CS deassert
  *   spi_transfer→ CS assert + full-duplex + CS deassert  (extra method)
  */
-class FT2232SPI : public FT2232Base, public ICommDriver {
+class FT2232SPI : public FT2232Base, public ICommDriver
+{
     public:
         using Status = ICommDriver::Status;
 
-        enum class SpiMode : uint8_t {
+        enum class SpiMode : uint8_t
+        {
             Mode0 = 0,
             Mode1 = 1,
             Mode2 = 2,
             Mode3 = 3
         };
-        enum class BitOrder : uint8_t {
+        enum class BitOrder : uint8_t
+        {
             MsbFirst = 0,
             LsbFirst = 1
         };
-        enum class CsPolarity : uint8_t {
+        enum class CsPolarity : uint8_t
+        {
             ActiveLow  = 0,
             ActiveHigh = 1
         };
 
-        struct SpiConfig {
+        struct SpiConfig
+        {
                 uint32_t clockHz      = 1000000u;
                 SpiMode mode          = SpiMode::Mode0;
                 BitOrder bitOrder     = BitOrder::MsbFirst;
@@ -71,7 +76,8 @@ class FT2232SPI : public FT2232Base, public ICommDriver {
                 Channel channel       = Channel::A;
         };
 
-        struct TransferResult {
+        struct TransferResult
+        {
                 Status status       = Status::RETVAL_NOT_SET;
                 size_t bytes_xfered = 0;
         };

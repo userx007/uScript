@@ -39,7 +39,8 @@
 // helper for the full rationale (this driver uses the same wire protocol
 // and the same int-fd convention).
 // ============================================================================
-namespace {
+namespace
+{
     inline long net_recv(int iSocketFd, void *pvBuf, size_t szLen, int iFlags)
     {
 #ifdef _WIN32

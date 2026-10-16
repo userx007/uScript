@@ -24,7 +24,8 @@
 //                     IMPLEMENTATION                            //
 ///////////////////////////////////////////////////////////////////
 
-class BoolExprEvaluator {
+class BoolExprEvaluator
+{
     public:
         bool evaluate(std::string_view input, bool &bResult) const
         {

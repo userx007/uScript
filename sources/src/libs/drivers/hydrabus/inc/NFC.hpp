@@ -9,7 +9,8 @@
 #include <stop_token>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -31,10 +32,12 @@ namespace HydraHAL {
      * auto atqa = nfc.write({0x93, 0x20}, false);    // Anticol CL1
      * @endcode
      */
-    class NFC : public Protocol {
+    class NFC : public Protocol
+    {
 
         public:
-            enum class Mode : uint8_t {
+            enum class Mode : uint8_t
+            {
                 ISO_14443A = 0,
                 ISO_15693  = 1,
             };

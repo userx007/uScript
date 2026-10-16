@@ -13,8 +13,10 @@
 #include <cstdio>
 #endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)*/
 
-#define uSHELL_DATA_TYPES_TABLE_BEGIN typedef enum dataType_e_ {
-#define uSHELL_DATA_TYPE(a, b)        uSHELL_DATA_TYPE_##a,
+#define uSHELL_DATA_TYPES_TABLE_BEGIN \
+    typedef enum dataType_e_          \
+    {
+#define uSHELL_DATA_TYPE(a, b) uSHELL_DATA_TYPE_##a,
 #define uSHELL_DATA_TYPES_TABLE_END \
     uSHELL_DATA_TYPE_LAST           \
     }                               \
@@ -25,7 +27,8 @@
 #undef uSHELL_DATA_TYPES_TABLE_END
 
 /** \brief microshell core errors */
-enum {
+enum
+{
     uSHELL_ERR_OK                        = 0,
     uSHELL_ERR_ITEM_NOT_FOUND            = -1,
     uSHELL_ERR_FUNCTION_NOT_FOUND        = -2,
@@ -40,7 +43,8 @@ enum {
 };
 
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
-typedef enum {
+typedef enum
+{
     uSHELL_DEINIT_RESET = 0,
     uSHELL_DEINIT_FULL,
     uSHELL_DEINIT_PARTIAL,
@@ -49,7 +53,8 @@ typedef enum {
 #endif /*(1 == uSHELL_IMPLEMENTS_HISTORY)*/
 
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_HISTORY) || (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-typedef enum {
+typedef enum
+{
     uSHELL_DIR_BACKWARD = 0,
     uSHELL_DIR_FORWARD,
     uSHELL_DIR_HOME,
@@ -203,7 +208,8 @@ typedef struct
 using uShellPluginInterface = uShellInst_s;
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)

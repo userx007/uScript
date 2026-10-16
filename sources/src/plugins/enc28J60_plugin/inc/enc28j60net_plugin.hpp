@@ -48,7 +48,8 @@
 //                          PLUGIN INTERFACE                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-class Enc28J60NetPlugin : public PluginInterface {
+class Enc28J60NetPlugin : public PluginInterface
+{
     public:
         Enc28J60NetPlugin()
             : m_strVersion(ENC28J60NET_PLUGIN_VERSION)

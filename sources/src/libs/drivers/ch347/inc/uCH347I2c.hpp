@@ -51,7 +51,8 @@
 // I2C bus speed presets
 // ---------------------------------------------------------------------------
 
-enum class I2cSpeed : int {
+enum class I2cSpeed : int
+{
     Low      = 0, /**<  20 kHz  */
     Standard = 1, /**< 100 kHz  */
     Fast     = 2, /**< 400 kHz  */
@@ -76,14 +77,16 @@ enum class I2cSpeed : int {
  *
  * @note Prefer using tout_read_i2c() which accepts this struct directly.
  */
-struct I2cReadOptions {
+struct I2cReadOptions
+{
         uint8_t devAddr   = 0x00; /**< 7-bit I2C device address (un-shifted) */
         uint16_t writeLen = 0;    /**< Bytes at the front of buffer to write before reading */
 };
 
 // ---------------------------------------------------------------------------
 
-class CH347I2C : public ICommDriver {
+class CH347I2C : public ICommDriver
+{
     public:
         // -----------------------------------------------------------------------
         // Constants

@@ -37,7 +37,8 @@ class ICommDriver;
  * PROTOCOL_ERROR. The loopback app therefore always builds its CANopen SDO
  * test with TpConfig::canOpenUseBlock = false.
  */
-class SdoLoopbackServer {
+class SdoLoopbackServer
+{
     public:
         /**
          * @brief Answers exactly one Download (client send()) transaction.

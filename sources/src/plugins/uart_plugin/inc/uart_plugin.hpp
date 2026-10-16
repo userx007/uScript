@@ -46,7 +46,8 @@
 /**
  * \brief Uart plugin class definition
  */
-class UARTPlugin : public PluginInterface {
+class UARTPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

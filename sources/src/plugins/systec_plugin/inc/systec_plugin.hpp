@@ -71,7 +71,8 @@
  *             SocketCAN-generic equivalent (see uSystecCan.hpp)
  *             without reopening the socket.
  */
-class SYSTECPlugin : public PluginInterface {
+class SYSTECPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

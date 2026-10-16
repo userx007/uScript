@@ -72,7 +72,8 @@
  *   w  – write timeout [ms] (decimal)
  *   s  – read buffer size   (decimal)
  */
-class DSPKi2cPlugin : public PluginInterface {
+class DSPKi2cPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

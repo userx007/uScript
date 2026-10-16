@@ -27,7 +27,8 @@
 //                            CLASS DEFINITION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-class CommScriptValidator : public IScriptValidator<CommCommandsType> {
+class CommScriptValidator : public IScriptValidator<CommCommandsType>
+{
     public:
         explicit CommScriptValidator(std::shared_ptr<CommScriptCommandValidator> shpCommandValidator)
             : m_shpCommandValidator(std::move(shpCommandValidator))

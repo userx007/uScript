@@ -29,7 +29,8 @@ class QList;
 // ─────────────────────────────────────────────────────────────────────────────
 //  TermCell  —  one character cell in the grid
 // ─────────────────────────────────────────────────────────────────────────────
-struct TermCell {
+struct TermCell
+{
         QString text = QStringLiteral(" "); // 1 QChar for BMP, 2 for supplementary plane
         QColor fg;                          // invalid = use default
         QColor bg;                          // invalid = use default (transparent)
@@ -51,7 +52,8 @@ struct TermCell {
 //    ESC [ n m   SGR colour / attribute
 //    ESC [ ? h/l private modes (cursor show/hide)
 // ─────────────────────────────────────────────────────────────────────────────
-class TermView : public QAbstractScrollArea {
+class TermView : public QAbstractScrollArea
+{
         Q_OBJECT
     public:
         explicit TermView(QWidget *pParent = nullptr);
@@ -140,7 +142,8 @@ class TermView : public QAbstractScrollArea {
         static constexpr QRgb C_FG     = 0xFFABB2BF;
         static constexpr QRgb C_CURSOR = 0xFF528BFF;
 
-        enum class St {
+        enum class St
+        {
             Text,
             Esc,
             Csi,
@@ -166,7 +169,8 @@ class TermView : public QAbstractScrollArea {
 // ─────────────────────────────────────────────────────────────────────────────
 //  ShellTerminal  —  header bar + TermView
 // ─────────────────────────────────────────────────────────────────────────────
-class ShellTerminal : public QFrame {
+class ShellTerminal : public QFrame
+{
         Q_OBJECT
     public:
         explicit ShellTerminal(QWidget *pParent = nullptr);

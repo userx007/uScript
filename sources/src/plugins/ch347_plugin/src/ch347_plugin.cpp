@@ -23,7 +23,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED CH347Plugin *pluginEntry()
     {
         return new CH347Plugin();

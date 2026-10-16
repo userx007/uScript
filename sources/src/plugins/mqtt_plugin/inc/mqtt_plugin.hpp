@@ -76,7 +76,8 @@
  * ...` calls happened earlier on that same session, including from a
  * background thread (`MQTT.CMD < &`) or a running `MQTT.CYCLIC ... &`.
  */
-class MqttPlugin : public PluginInterface {
+class MqttPlugin : public PluginInterface
+{
     public:
         MqttPlugin()
             : m_strVersion(MQTT_PLUGIN_VERSION)

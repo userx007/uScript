@@ -56,7 +56,8 @@
  * Transport : USB HID via SPIBridge / hidapi
  * Default   : VID 0x16C0, PID 0x05DF, Mode0, Div4
  */
-class DSPKSPIPlugin : public PluginInterface {
+class DSPKSPIPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

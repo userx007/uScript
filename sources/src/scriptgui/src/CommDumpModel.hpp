@@ -35,10 +35,12 @@
 //  is a pure view-side operation with no cost beyond formatting the string
 //  once, lazily.
 // ─────────────────────────────────────────────────────────────────────────────
-class CommDumpModel : public QAbstractItemModel {
+class CommDumpModel : public QAbstractItemModel
+{
         Q_OBJECT
     public:
-        enum Column {
+        enum Column
+        {
             ColTimestamp = 0,
             ColPlugin,
             ColDetails,
@@ -60,7 +62,8 @@ class CommDumpModel : public QAbstractItemModel {
         // TimeFormatCount is a sentinel (not a real mode) so the view can cycle
         // through the real modes with a plain "% TimeFormatCount" without a
         // separately-maintained count.
-        enum TimeFormat {
+        enum TimeFormat
+        {
             TimeWallClock = 0,
             TimeDeltaPrevious,
             TimeSinceCaptureStart,
@@ -69,7 +72,8 @@ class CommDumpModel : public QAbstractItemModel {
 
         static constexpr int k_previewBytes = 8;
 
-        struct Record {
+        struct Record
+        {
                 // Microseconds since the Unix epoch, as captured by the *producer*
                 // process (the interpreter/plugin, at the moment the Rx/Tx event was
                 // observed) and passed in verbatim by addRecord() — see
@@ -88,7 +92,8 @@ class CommDumpModel : public QAbstractItemModel {
         // CommDumpView's coalesced ingestion queue) accumulate several records
         // off to the side and hand them to the model in one shot, instead of
         // paying one full insert transaction (and one view relayout) per record.
-        struct PendingRecord {
+        struct PendingRecord
+        {
                 qint64 timestampUs = 0;
                 QString plugin;
                 QString details;
@@ -103,7 +108,8 @@ class CommDumpModel : public QAbstractItemModel {
         // fonts, full-dump caching) already works unmodified on an
         // AggregateEntry* accessed through a Record* — the two extra fields
         // below are the only aggregate-specific additions.
-        struct AggregateEntry : Record {
+        struct AggregateEntry : Record
+        {
                 // Total occurrences of this key ever observed — monotonic, NOT
                 // reduced when maxRecords() evicts old *raw* records (see
                 // updateAggregateForRecord()); a repeating heartbeat's count should
@@ -154,7 +160,8 @@ class CommDumpModel : public QAbstractItemModel {
         // the whole view feel choppy (scrollToBottom() on a word-wrapped,
         // non-uniform-row-height tree recomputes the scrollbar geometry from
         // scratch every time, whether or not anything actually moved).
-        struct IngestResult {
+        struct IngestResult
+        {
                 QVector<int> touchedRows;
                 int rowsAppended = 0;
         };

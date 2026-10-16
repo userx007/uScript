@@ -71,9 +71,11 @@
  * SEDP handling are now entirely Cyclone's internal business rather than
  * something this class implements or tunes directly.
  */
-class DdsDriver : public ICommDriver {
+class DdsDriver : public ICommDriver
+{
     public:
-        struct Config {
+        struct Config
+        {
                 uint32_t domainId        = 0;
                 // Selects this participant's discovery port (RTPS "participant
                 // index", RTPS spec 9.6.1.1) — maps to Discovery/ParticipantIndex
@@ -122,13 +124,15 @@ class DdsDriver : public ICommDriver {
                 uint32_t maxSubscriptions = 64;
         };
 
-        struct DiscoveredParticipantView {
+        struct DiscoveredParticipantView
+        {
                 std::string guidHex;
                 std::string name;    // from the peer's USER_DATA QoS, if it set one (empty otherwise — not every DDS vendor does)
                 double ageSec = 0.0; // time since Cyclone's builtin-topic cache last refreshed this participant
         };
 
-        struct DiscoveredEndpointView {
+        struct DiscoveredEndpointView
+        {
                 std::string guidHex;
                 std::string topic;
                 std::string typeName;
@@ -238,12 +242,14 @@ class DdsDriver : public ICommDriver {
         std::string m_strIdentityLabel;
         std::string m_guidHex; // this participant's own GUID, hex — used to filter self out of listParticipants()
 
-        struct LocalWriter {
+        struct LocalWriter
+        {
                 DdsEntity topic  = kInvalidEntity;
                 DdsEntity writer = kInvalidEntity;
         };
 
-        struct LocalReader {
+        struct LocalReader
+        {
                 DdsEntity topic  = kInvalidEntity;
                 DdsEntity reader = kInvalidEntity;
                 // Back-pointer set by m_EnsureLocalReader() so the static

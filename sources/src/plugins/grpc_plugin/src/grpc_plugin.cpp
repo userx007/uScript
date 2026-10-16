@@ -20,7 +20,8 @@
 /**
  * \brief The plugin's entry points
  */
-extern "C" {
+extern "C"
+{
     EXPORTED GrpcPlugin *pluginEntry()
     {
         return new GrpcPlugin();

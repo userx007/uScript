@@ -72,7 +72,8 @@
  *   read/write are not required to serialize against each other beyond what
  *   the underlying TCPIP transport already provides.
  */
-class WebSocket : public ICommDriver {
+class WebSocket : public ICommDriver
+{
     public:
         static constexpr size_t WS_MAX_BUFLENGTH             = 4096; /**< Max assembled message length (delimiter/token modes and Exact truncation). */
         static constexpr uint32_t WS_READ_DEFAULT_TIMEOUT    = 5000; /**< Default read timeout in milliseconds.                                      */

@@ -16,7 +16,8 @@
 /**
  * \brief The plugin's entry points
  */
-extern "C" {
+extern "C"
+{
     EXPORTED ModbusPlugin *pluginEntry()
     {
         return new ModbusPlugin();

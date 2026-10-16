@@ -36,7 +36,8 @@
  * 0x04: CLOSE (Close TCP connection)
  * 0x05: GET_STATUS (Get PHY status/link state)
  */
-class Lan8720Net : public ICommDriver {
+class Lan8720Net : public ICommDriver
+{
     public:
         static constexpr uint32_t LAN8720NET_TIMEOUT_MS = 2000;
         static constexpr size_t LAN8720NET_MAX_BUF      = 1460; // Standard MTU for Ethernet

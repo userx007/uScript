@@ -103,31 +103,36 @@
 /*
  * structures to communicate via ioctls
  */
-typedef struct pcan_init {
+typedef struct pcan_init
+{
         WORD wBTR0BTR1;    // merged BTR0 and BTR1 register of the SJA1000
         BYTE ucCANMsgType; // 11 or 29 bits - put MSGTYPE_... in here
         BYTE ucListenOnly; // listen only mode when != 0
 } TPCANInit;               // for PCAN_INIT
 
-typedef struct pcan_msg {
+typedef struct pcan_msg
+{
         DWORD ID;     // 11/29 bit code
         BYTE MSGTYPE; // bits of MSGTYPE_*
         BYTE LEN;     // count of data bytes (0..8)
         BYTE DATA[8]; // data bytes, up to 8
 } TPCANMsg;           // for PCAN_WRITE_MSG
 
-typedef struct pcan_rd_msg {
+typedef struct pcan_rd_msg
+{
         TPCANMsg Msg; // the above message
         DWORD dwTime; // a timestamp in msec, read only
         WORD wUsec;   // remainder in micro-seconds
 } TPCANRdMsg;         // for PCAN_READ_MSG
 
-typedef struct pcan_status {
+typedef struct pcan_status
+{
         WORD wErrorFlag; // same as in TPDIAG, is cleared in driver after access
         int nLastError;  // is cleared in driver after access
 } TPSTATUS;              // for PCAN_GET_STATUS
 
-typedef struct pcan_diag {
+typedef struct pcan_diag
+{
         WORD wType;                              // the type of interface hardware - see HW_....
         DWORD dwBase;                            // the base address or port of this device
         WORD wIrqLevel;                          // the irq level of this device
@@ -141,19 +146,22 @@ typedef struct pcan_diag {
         char szVersionString[VERSIONSTRING_LEN]; // driver version string
 } TPDIAG;                                        // for PCAN_DIAG, in opposition to PCAN_GET_STATUS nothing is cleared
 
-typedef struct pcan_btr0btr1 {
+typedef struct pcan_btr0btr1
+{
         DWORD dwBitRate; // in + out, bitrate in bits per second
         WORD wBTR0BTR1;  // out only: the result
 } TPBTR0BTR1;
 
-typedef struct pcan_ext_status {
+typedef struct pcan_ext_status
+{
         WORD wErrorFlag;    // same as in TPDIAG, is cleared in driver after access
         int nLastError;     // is cleared in driver after access
         int nPendingReads;  // count of unread telegrams
         int nPendingWrites; // count of unsent telegrams
 } TPEXTENDEDSTATUS;         // for PCAN_GET_ESTATUS
 
-typedef struct pcan_msg_filter {
+typedef struct pcan_msg_filter
+{
         DWORD FromID; // First CAN ID to accept
         DWORD ToID;   // Last CAN ID to accept
         BYTE MSGTYPE; // bits of MSGTYPE_*
@@ -185,10 +193,12 @@ typedef struct pcan_msg_filter {
 
 #define PCAN_SF_DATA_MAXLEN  64
 
-typedef struct pcan_extra_params {
+typedef struct pcan_extra_params
+{
         int nSubFunction;
 
-        union {
+        union
+        {
                 DWORD dwSerialNumber;
                 BYTE ucHCDeviceNo;
                 BYTE ucDevData[PCAN_SF_DATA_MAXLEN];

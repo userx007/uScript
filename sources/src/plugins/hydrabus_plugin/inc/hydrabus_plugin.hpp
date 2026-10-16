@@ -37,7 +37,8 @@
 #include "uNumeric.hpp"
 #include "uUart.hpp"
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
     class Protocol;
 } // namespace HydraHAL
@@ -103,7 +104,8 @@ struct PluginDataSet;
  *   HYDRABUS.SPI   cs    dis
  *   HYDRABUS.MODE  bbio
  */
-class HydrabusPlugin : public PluginInterface {
+class HydrabusPlugin : public PluginInterface
+{
     public:
         HydrabusPlugin()
             : m_strVersion(HYDRABUS_PLUGIN_VERSION)
@@ -311,7 +313,8 @@ class HydrabusPlugin : public PluginInterface {
 
         // INI accessor (friend for generic_execute_script)
 
-        struct IniValues {
+        struct IniValues
+        {
                 std::string strArtefactsPath;
                 std::string strUartPort;
                 uint32_t u32UartBaudrate{0};
@@ -368,7 +371,8 @@ class HydrabusPlugin : public PluginInterface {
     private:
         // Mode tracking
 
-        enum class Mode {
+        enum class Mode
+        {
             None,
             SPI,
             I2C,
@@ -382,7 +386,8 @@ class HydrabusPlugin : public PluginInterface {
             SDIO
         };
 
-        struct mode_s {
+        struct mode_s
+        {
                 uint8_t iRequest;
                 uint8_t iRepetition;
                 std::string strAnswer;

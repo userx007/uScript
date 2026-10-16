@@ -6,7 +6,8 @@
 #include <stdexcept>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
 
     /**
      * @brief Split a byte vector into chunks of at most `chunk_size` bytes.

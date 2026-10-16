@@ -12,7 +12,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED ShellPlugin *pluginEntry()
     {
         return new ShellPlugin();

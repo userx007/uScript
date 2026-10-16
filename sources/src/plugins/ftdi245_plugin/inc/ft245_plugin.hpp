@@ -105,7 +105,8 @@ struct PluginDataSet;
  *   FT245.GPIO close
  */
 
-class FT245Plugin : public PluginInterface {
+class FT245Plugin : public PluginInterface
+{
 
     public:
         FT245Plugin()
@@ -235,7 +236,8 @@ class FT245Plugin : public PluginInterface {
 
         // INI accessor
 
-        struct IniValues {
+        struct IniValues
+        {
                 std::string strArtefactsPath;
                 uint8_t u8DeviceIndex{0};
                 FT245Base::Variant eDefaultVariant{FT245Base::Variant::FT245BM};
@@ -281,12 +283,14 @@ class FT245Plugin : public PluginInterface {
     private:
         // Pending configuration (updated by cfg, applied by open)
 
-        struct FifoPendingCfg {
+        struct FifoPendingCfg
+        {
                 FT245Base::Variant variant{FT245Base::Variant::FT245BM};
                 FT245Base::FifoMode fifoMode{FT245Base::FifoMode::Async};
         };
 
-        struct GpioPendingCfg {
+        struct GpioPendingCfg
+        {
                 FT245Base::Variant variant{FT245Base::Variant::FT245BM};
                 uint8_t dirMask{0x00u};
                 uint8_t initValue{0x00u};

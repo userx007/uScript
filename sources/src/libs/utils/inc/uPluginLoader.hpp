@@ -21,7 +21,8 @@ using LibHandle = void *;
 // RAII wrapper for library handle
 //------------------------------------------------------------------------------
 
-class LibraryHandle {
+class LibraryHandle
+{
     public:
         explicit LibraryHandle(LibHandle handle = nullptr) noexcept
             : handle_(handle)
@@ -92,7 +93,8 @@ class LibraryHandle {
 //------------------------------------------------------------------------------
 
 template <typename TPluginInterface>
-struct PluginTypes {
+struct PluginTypes
+{
 #if (1 == USE_PLUGIN_ENTRY_WITH_USERDATA)
         using PluginEntry = TPluginInterface *(*)(void *pvUserData);
 #else
@@ -106,8 +108,10 @@ struct PluginTypes {
 // Error information for plugin loading
 //------------------------------------------------------------------------------
 
-struct PluginLoadError {
-        enum class ErrorType {
+struct PluginLoadError
+{
+        enum class ErrorType
+        {
             FileNotFound,
             LibraryLoadFailed,
             EntryPointNotFound,
@@ -138,7 +142,8 @@ using PluginResult = std::pair<T, std::optional<PluginLoadError>>;
 // Utility functor to generate plugin pathname
 //------------------------------------------------------------------------------
 
-class PluginPathGenerator {
+class PluginPathGenerator
+{
     public:
         PluginPathGenerator(std::string strDirectory, std::string strPrefix, std::string strExtension)
             : pluginDirectory_(ensureTrailingSeparator(std::move(strDirectory)))
@@ -203,7 +208,8 @@ class PluginPathGenerator {
 // Functor to resolve entry points
 //------------------------------------------------------------------------------
 
-class PluginEntryPointResolver {
+class PluginEntryPointResolver
+{
     public:
         PluginEntryPointResolver(std::string strEntryName, std::string strExitName)
             : entryName_(std::move(strEntryName))
@@ -255,7 +261,8 @@ class PluginEntryPointResolver {
 // Platform-specific library loading utilities
 //------------------------------------------------------------------------------
 
-namespace detail {
+namespace detail
+{
 
     inline LibHandle loadLibrary(const std::filesystem::path &path) noexcept
     {
@@ -299,7 +306,8 @@ template <
     typename TPluginInterface,
     typename PathGenerator      = PluginPathGenerator,
     typename EntryPointResolver = PluginEntryPointResolver>
-class PluginLoaderFunctor {
+class PluginLoaderFunctor
+{
     public:
         using PluginEntry  = typename PluginTypes<TPluginInterface>::PluginEntry;
         using PluginExit   = typename PluginTypes<TPluginInterface>::PluginExit;
@@ -402,7 +410,8 @@ class PluginLoaderFunctor {
 // Convenience factory functions
 //------------------------------------------------------------------------------
 
-namespace plugin_loader {
+namespace plugin_loader
+{
 
     /**
      * \brief Create a plugin loader with default path generation

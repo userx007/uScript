@@ -25,7 +25,8 @@
 //                         NAMESPACE IMPLEMENTATION                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace HydraHAL {
+namespace HydraHAL
+{
 
     AUXPin::AUXPin(int iNumber, std::shared_ptr<Hydrabus> shpHydrabus)
         : _number(iNumber)

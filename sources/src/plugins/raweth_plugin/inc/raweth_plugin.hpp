@@ -65,7 +65,8 @@
  * same way TCPIP's host/port are, through CONFIG. The plugin surface is
  * therefore INFO / CONFIG / CMD / SCRIPT only, the same set as TCPIP.
  */
-class RawEthPlugin : public PluginInterface {
+class RawEthPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

@@ -362,7 +362,8 @@ SYSTECCAN::Status SYSTECCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
 //     i.e. directly under /sys/class/net/<iface>/{channel,tx_timeout_ms}
 // ============================================================================
 
-namespace {
+namespace
+{
 
     std::string sysfs_device_path(const std::string &strIface, const char *pstrPszAttr)
     {

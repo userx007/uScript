@@ -141,7 +141,8 @@
  *   m_eTpProtocol/m_u32CanRxId and pushing them onto the driver in
  *   m_OpenAndConfigure(), same as every other CONFIG-driven setting here.
  */
-class CandlelightPlugin : public PluginInterface {
+class CandlelightPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

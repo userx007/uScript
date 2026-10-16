@@ -25,7 +25,8 @@
  * - Ordered key iteration (uses std::map)
  * - Zero-copy string operations where possible
  */
-class IniParser {
+class IniParser
+{
     public:
         using KeyValueMap = std::map<std::string, std::string>;
         using SectionMap  = std::map<std::string, KeyValueMap>;

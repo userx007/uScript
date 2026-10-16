@@ -314,7 +314,8 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
         const QString tok      = QString(R"((%1)|(%2))").arg(numTok, macroTok);
         const QString prefix   = QString(SCRIPT_RX_REPEAT_PREFIX);
 
-        struct Arity {
+        struct Arity
+        {
                 QString suffix;
                 QVector<int> literalGroups;
                 QVector<int> macroGroups;

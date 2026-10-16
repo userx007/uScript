@@ -11,7 +11,8 @@
 #include <stop_token>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -34,7 +35,8 @@ namespace HydraHAL {
      * @endcode
      */
 
-    class Smartcard : public Protocol {
+    class Smartcard : public Protocol
+    {
 
         public:
             explicit Smartcard(std::shared_ptr<Hydrabus> shpHydrabus);

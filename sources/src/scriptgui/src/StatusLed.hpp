@@ -15,10 +15,12 @@ class QTimerEvent;
  *   Running – animated pulsing green
  *   Error   – red
  */
-class StatusLed : public QWidget {
+class StatusLed : public QWidget
+{
         Q_OBJECT
     public:
-        enum class State {
+        enum class State
+        {
             Idle,
             Ready,
             Running,

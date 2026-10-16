@@ -54,7 +54,8 @@
  * Wraps the W5500Net TCP-client driver and exposes it through the standard
  * PluginInterface dispatch model. Connects to a W5500-based device over Ethernet.
  */
-class W5500NetPlugin : public PluginInterface {
+class W5500NetPlugin : public PluginInterface
+{
     public:
         W5500NetPlugin()
             : m_strVersion(W5500NET_PLUGIN_VERSION)

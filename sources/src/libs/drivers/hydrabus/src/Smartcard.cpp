@@ -24,7 +24,8 @@
 //                         NAMESPACE IMPLEMENTATION                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace HydraHAL {
+namespace HydraHAL
+{
 
     Smartcard::Smartcard(std::shared_ptr<Hydrabus> shpHydrabus)
         : Protocol(std::move(shpHydrabus), "CRD1", "Smartcard", 0x0B)

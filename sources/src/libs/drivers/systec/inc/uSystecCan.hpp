@@ -88,7 +88,8 @@
  * Thread safety:
  *   All public methods are protected by an internal mutex.
  */
-class SYSTECCAN : public ICommDriver {
+class SYSTECCAN : public ICommDriver
+{
     public:
         static constexpr size_t CAN_DRV_MAX_DLEN            = 8;    /**< Max payload per frame (classic CAN only — see class docs). */
         static constexpr size_t CAN_DRV_MAX_BUFLENGTH       = 256;  /**< Max assembled buffer length.               */
@@ -98,7 +99,8 @@ class SYSTECCAN : public ICommDriver {
         /**
          * @brief A single hardware acceptance filter (wraps struct can_filter).
          */
-        struct CanFilter {
+        struct CanFilter
+        {
                 uint32_t can_id;   /**< CAN ID to match (may include EFF/RTR/ERR flags). */
                 uint32_t can_mask; /**< Mask applied before comparison.                   */
         };

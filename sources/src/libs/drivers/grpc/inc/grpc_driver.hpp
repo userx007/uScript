@@ -24,8 +24,10 @@
 #include <string_view>
 #include <vector>
 
-namespace google {
-    namespace protobuf {
+namespace google
+{
+    namespace protobuf
+    {
         class MethodDescriptor;
     } // namespace protobuf
 } // namespace google
@@ -256,9 +258,11 @@ namespace google {
  * live TCP connectivity at this instant — second-guessing the channel's
  * own reconnect logic here would fight the library, not use it.
  */
-class GrpcDriver : public ICommDriver {
+class GrpcDriver : public ICommDriver
+{
     public:
-        struct Config {
+        struct Config
+        {
                 std::string host;
                 uint16_t port = 50051;
 

@@ -11,7 +11,8 @@
 #include <stop_token>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -33,14 +34,16 @@ namespace HydraHAL {
      * spi.set_cs(1);                              // deassert CS
      * @endcode
      */
-    class SPI : public Protocol {
+    class SPI : public Protocol
+    {
 
         public:
             // -------------------------------------------------------------------------
             // Speed constants (match HydraFW bit patterns)
             // -------------------------------------------------------------------------
 
-            enum class Speed : uint8_t {
+            enum class Speed : uint8_t
+            {
                 // SPI1 speeds
                 SPI1_320K = 0b000,
                 SPI1_650K = 0b001,

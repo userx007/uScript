@@ -16,7 +16,8 @@
  * @tparam TDriver Type of communication driver
  */
 template <typename TCommand = void, typename TDriver = void>
-class ICommScriptCommandInterpreter : public IScriptCommandInterpreter<TCommand> {
+class ICommScriptCommandInterpreter : public IScriptCommandInterpreter<TCommand>
+{
     public:
         using SendFunc                           = SendFunction<TDriver>;
         using RecvFunc                           = RecvFunction<TDriver>;

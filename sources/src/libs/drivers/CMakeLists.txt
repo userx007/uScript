@@ -23,6 +23,7 @@ uscript_add_subdirectory(USCRIPT_LIB_SLCAN          slcan)
 # Linux-kernel-only drivers
 uscript_add_subdirectory(USCRIPT_LIB_KSPI           kspi)
 uscript_add_subdirectory(USCRIPT_LIB_KI2C           ki2c)
+uscript_add_subdirectory(USCRIPT_LIB_KCAN           kcan)
 uscript_add_subdirectory(USCRIPT_LIB_KVCAN          kvcan)
 uscript_add_subdirectory(USCRIPT_LIB_RAWETH         raweth)
 uscript_add_subdirectory(USCRIPT_LIB_SYSTEC         systec)

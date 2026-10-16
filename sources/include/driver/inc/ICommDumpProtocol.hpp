@@ -97,7 +97,8 @@
 // icon/colour choices in the GUI, not a full protocol descriptor. The actual
 // identifying information (port path, IP:port, bus+address, CAN id, ...)
 // lives entirely in CommDetails::label, rendered by the driver itself.
-enum class CommFamily : uint8_t {
+enum class CommFamily : uint8_t
+{
     SERIAL = 0, // UART and UART-like point-to-point byte streams
     I2C    = 1,
     SPI    = 2,
@@ -106,7 +107,8 @@ enum class CommFamily : uint8_t {
     OTHER  = 5  // GPIO, JTAG, or anything that doesn't fit the above
 };
 
-enum class CommDir : uint8_t {
+enum class CommDir : uint8_t
+{
     Rx = 0,
     Tx = 1
 };
@@ -120,7 +122,8 @@ enum class CommDir : uint8_t {
 // ---------------------------------------------------------------------------
 inline constexpr int k_labelSize = 64; // includes the NULL terminator
 
-struct CommDetails {
+struct CommDetails
+{
         CommFamily family       = CommFamily::OTHER;
         char label[k_labelSize] = {}; // e.g. "/dev/ttyUSB0", "192.168.1.5:502",
                                       // "PCAN-USB ch0 id=0x123", "i2c-1 addr=0x50"

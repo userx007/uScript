@@ -34,9 +34,9 @@
 #define NOMINMAX
 #endif
 // winsock2.h must precede windows.h
+#include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <windows.h>
 
 #if defined(_MSC_VER)
 #include <BaseTsd.h>
@@ -44,9 +44,9 @@ using ssize_t = SSIZE_T;
 #pragma comment(lib, "ws2_32.lib")
 #endif
 
-using tp_socket_t                          = SOCKET;
-constexpr tp_socket_t TP_INVALID_SOCKET    = INVALID_SOCKET;
-constexpr int TP_MSG_NOSIGNAL              = 0; // no SIGPIPE on Windows
+using tp_socket_t                       = SOCKET;
+constexpr tp_socket_t TP_INVALID_SOCKET = INVALID_SOCKET;
+constexpr int TP_MSG_NOSIGNAL           = 0; // no SIGPIPE on Windows
 
 #else // ------------------------------------------------------------ POSIX
 
@@ -122,7 +122,7 @@ inline const char *tp_errstr(int iErr)
     static thread_local char s_szBuf[256];
     const int iSavedWsaErr = ::WSAGetLastError(); // FormatMessage must not clobber the caller's error code
     DWORD dwLen            = ::FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr,
-                                   static_cast<DWORD>(iErr), 0, s_szBuf, sizeof(s_szBuf), nullptr);
+                                              static_cast<DWORD>(iErr), 0, s_szBuf, sizeof(s_szBuf), nullptr);
     while (dwLen > 0 && (s_szBuf[dwLen - 1] == '\r' || s_szBuf[dwLen - 1] == '\n' || s_szBuf[dwLen - 1] == ' ')) {
         s_szBuf[--dwLen] = '\0';
     }
@@ -184,7 +184,7 @@ inline void tp_udp_disable_connreset(tp_socket_t s)
 #ifndef SIO_UDP_CONNRESET
 #define SIO_UDP_CONNRESET _WSAIOW(IOC_VENDOR, 12)
 #endif
-    DWORD dwBytes    = 0;
+    DWORD dwBytes     = 0;
     BOOL bNewBehavior = FALSE;
     ::WSAIoctl(s, SIO_UDP_CONNRESET, &bNewBehavior, sizeof(bNewBehavior), nullptr, 0, &dwBytes, nullptr, nullptr);
 #else
@@ -282,8 +282,8 @@ inline bool tp_wait_readable_until(tp_socket_t s, StopPred stopRequested)
         FD_ZERO(&sSet);
         FD_SET(s, &sSet);
         timeval sTv;
-        sTv.tv_sec  = 0;
-        sTv.tv_usec = 200 * 1000;
+        sTv.tv_sec    = 0;
+        sTv.tv_usec   = 200 * 1000;
         const int iRc = ::select(0, &sSet, nullptr, nullptr, &sTv);
         if (iRc != 0) {
             return true; // readable, or error: let the real call deal with it

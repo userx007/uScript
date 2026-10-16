@@ -103,7 +103,8 @@ struct PluginDataSet;
  *   FT4232.UART close
  */
 
-class FT4232Plugin : public PluginInterface {
+class FT4232Plugin : public PluginInterface
+{
 
     public:
         FT4232Plugin()
@@ -264,7 +265,8 @@ class FT4232Plugin : public PluginInterface {
 
         // INI accessor (friend for generic_execute_script)
 
-        struct IniValues {
+        struct IniValues
+        {
                 std::string strArtefactsPath;
                 uint8_t u8DeviceIndex{0};
                 // Per-module defaults (overridable via open command)
@@ -353,7 +355,8 @@ class FT4232Plugin : public PluginInterface {
     private:
         // Pending open-configuration (set by cfg, applied by open)
 
-        struct SpiPendingCfg {
+        struct SpiPendingCfg
+        {
                 uint32_t clockHz{1000000u};
                 FT4232SPI::SpiMode mode{FT4232SPI::SpiMode::Mode0};
                 FT4232SPI::BitOrder bitOrder{FT4232SPI::BitOrder::MsbFirst};
@@ -362,13 +365,15 @@ class FT4232Plugin : public PluginInterface {
                 FT4232Base::Channel channel{FT4232Base::Channel::A};
         };
 
-        struct I2cPendingCfg {
+        struct I2cPendingCfg
+        {
                 uint8_t address{0x50u};
                 uint32_t clockHz{100000u};
                 FT4232Base::Channel channel{FT4232Base::Channel::A};
         };
 
-        struct GpioPendingCfg {
+        struct GpioPendingCfg
+        {
                 FT4232Base::Channel channel{FT4232Base::Channel::B};
                 uint8_t lowDirMask{0x00u};
                 uint8_t lowValue{0x00u};

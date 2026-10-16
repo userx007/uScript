@@ -51,7 +51,8 @@
  *     not demultiplex several interleaved messages arriving on the same
  *     rxId at once — receive() tracks exactly one message per call.
  */
-class Nmea2000FastPacketProtocol final : public ITransportProtocol {
+class Nmea2000FastPacketProtocol final : public ITransportProtocol
+{
     public:
         explicit Nmea2000FastPacketProtocol(const TpConfig &sCfg = {})
             : m_cfg(sCfg)

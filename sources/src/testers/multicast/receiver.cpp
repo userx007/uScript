@@ -77,8 +77,8 @@ int main()
     while (true) {
         memset(buffer, 0, BUFFER_SIZE);
         // BUFFER_SIZE - 1: keep the buffer NUL-terminated for the stream output below
-        addr_len                = sizeof(multicastAddr);
-        ssize_t bytesReceived   = tp_recvfrom(sock, buffer, BUFFER_SIZE - 1, 0, (struct sockaddr *)&multicastAddr, &addr_len);
+        addr_len              = sizeof(multicastAddr);
+        ssize_t bytesReceived = tp_recvfrom(sock, buffer, BUFFER_SIZE - 1, 0, (struct sockaddr *)&multicastAddr, &addr_len);
 
         if (bytesReceived > 0) {
             char szFrom[INET_ADDRSTRLEN] = "?";

@@ -44,7 +44,7 @@
 #ifdef LOG_HDR
 #undef LOG_HDR
 #endif
-#define LT_HDR        "HB_I2C     |"
+#define LT_HDR        "HB_I2C      |"
 #define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "I2C"

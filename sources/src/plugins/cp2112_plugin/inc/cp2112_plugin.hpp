@@ -89,7 +89,8 @@ struct PluginDataSet;
  *   CP2112.GPIO close
  */
 
-class CP2112Plugin : public PluginInterface {
+class CP2112Plugin : public PluginInterface
+{
 
     public:
         CP2112Plugin()
@@ -217,7 +218,8 @@ class CP2112Plugin : public PluginInterface {
 
         // INI accessor
 
-        struct IniValues {
+        struct IniValues
+        {
                 std::string strArtefactsPath;
                 uint8_t u8DeviceIndex{0};
                 uint32_t u32I2cClockHz{100000u};
@@ -263,12 +265,14 @@ class CP2112Plugin : public PluginInterface {
     private:
         // Pending configuration
 
-        struct I2cPendingCfg {
+        struct I2cPendingCfg
+        {
                 uint8_t address{0x50u};
                 uint32_t clockHz{100000u};
         };
 
-        struct GpioPendingCfg {
+        struct GpioPendingCfg
+        {
                 uint8_t directionMask{0x00u};   ///< 1 = output, 0 = input (default all inputs)
                 uint8_t pushPullMask{0x00u};    ///< 1 = push-pull, 0 = open-drain
                 uint8_t specialFuncMask{0x00u}; ///< Special function enables (TX LED, irq, clk, RX LED)

@@ -46,7 +46,8 @@
 //                          PLUGIN INTERFACE                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-class KSPIPlugin : public PluginInterface {
+class KSPIPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

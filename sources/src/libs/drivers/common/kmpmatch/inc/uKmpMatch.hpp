@@ -26,7 +26,8 @@
  *        that simply delegate here - the public API and each driver's own
  *        Status enum type are untouched.
  */
-namespace ukmp {
+namespace ukmp
+{
 
     /*--------------------------------------------------------------------------------------------------------*/
     /**

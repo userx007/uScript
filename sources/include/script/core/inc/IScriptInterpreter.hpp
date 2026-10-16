@@ -7,7 +7,8 @@
  * @tparam TScriptEntries Type representing script entries/commands
  */
 template <typename TScriptEntries>
-class IScriptInterpreter {
+class IScriptInterpreter
+{
     public:
         virtual ~IScriptInterpreter()                                                = default;
 

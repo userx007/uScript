@@ -9,7 +9,8 @@
 #include <stop_token>
 #include <utility>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -36,7 +37,8 @@ namespace HydraHAL {
      * auto [freq, duty] = utils.read_frequency();
      * @endcode
      */
-    class Utils {
+    class Utils
+    {
 
         public:
             /**

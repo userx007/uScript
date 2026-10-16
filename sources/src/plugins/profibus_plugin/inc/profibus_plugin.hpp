@@ -81,7 +81,8 @@
  * limitations (reachable baud rates, best-effort SYN
  * pause) that apply regardless of what's configured here.
  */
-class ProfibusPlugin : public PluginInterface {
+class ProfibusPlugin : public PluginInterface
+{
     public:
         ProfibusPlugin()
             : m_strVersion(PROFIBUS_PLUGIN_VERSION)

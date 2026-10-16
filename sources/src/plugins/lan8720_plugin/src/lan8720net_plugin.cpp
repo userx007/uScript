@@ -21,7 +21,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED Lan8720NetPlugin *pluginEntry()
     {
         return new Lan8720NetPlugin();

@@ -11,7 +11,8 @@
 /**
  * @brief Direction of command execution
  */
-enum class CommCommandDirection {
+enum class CommCommandDirection
+{
     SEND_RECV, ///< CommCommand starts with '>', send first then optionally receive
     RECV_SEND, ///< CommCommand starts with '<', receive first then optionally send
     DELAY,     ///< CommCommand starts with '!', insert delay
@@ -22,7 +23,8 @@ enum class CommCommandDirection {
 /**
  * @brief Type of token parsed from script line
  */
-enum class CommCommandTokenType {
+enum class CommCommandTokenType
+{
     EMPTY,                  ///< No content
     HEXSTREAM,              ///< Hexadecimal stream [exact buffer]  (e.g., H"4A6F686E")
     REGEX,                  ///< Regular expression pattern (e.g., R".*")
@@ -41,7 +43,8 @@ enum class CommCommandTokenType {
 /**
  * @brief Script token structure containing parsed command information
  */
-struct CommCommand {
+struct CommCommand
+{
         CommCommandDirection direction;                               ///< Send-Recv or Recv-Send
         std::pair<std::string, std::string> values;                   ///< First and second expression values
         std::pair<CommCommandTokenType, CommCommandTokenType> tokens; ///< First and second expression token types
@@ -62,7 +65,8 @@ struct CommCommand {
 /**
  * @brief definition of storage structure for plugin tokens
  */
-struct CommCommandsType {
+struct CommCommandsType
+{
         std::vector<CommCommand> vCommands;
         std::unordered_map<std::string, std::string> mapMacros;
 };
@@ -70,7 +74,8 @@ struct CommCommandsType {
 /**
  * @brief Read operation types for driver interface
  */
-enum class CommCommandReadType {
+enum class CommCommandReadType
+{
     DEFAULT,        ///< Read exact number of bytes
     LINE,           ///< Read until newline delimiter
     TOKEN_STRING,   ///< Read until specific string token is found

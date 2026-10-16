@@ -36,7 +36,8 @@
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
 
     // USB control-transfer bmRequestType bytes for gs_usb's vendor/interface
     // requests — see the "Protocol sequence" section of uCandlelight.hpp.
@@ -439,7 +440,8 @@ ICommDriver::Status Candlelight::set_data_bittiming(uint32_t u32Prop_seg, uint32
     return ctrl_out(GsUsbBreq::DATA_BITTIMING, 0, buf, sizeof(buf), u32Timeout_ms);
 }
 
-namespace {
+namespace
+{
 
     /**
      * @brief Search (brp, tseg1=prop_seg+phase_seg1, tseg2=phase_seg2) within

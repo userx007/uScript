@@ -44,7 +44,8 @@ extern "C" __declspec(dllimport) unsigned long __stdcall GetCurrentThreadId(void
 /**
  * @brief Enumeration for log levels.
  */
-enum class LogLevel : uint8_t {
+enum class LogLevel : uint8_t
+{
     EC_WERBOSE, /**< Even-more-verbose log level: chattier than EC_VERBOSE. Not currently emitted anywhere — available for future use. */
     EC_VERBOSE, /**< Verbose log level. */
     EC_DEBUG,   /**< Debug log level. */
@@ -120,7 +121,8 @@ inline std::optional<LogLevel> sizet2loglevel(size_t v)
 /**
  * @brief Type concepts for logger
  */
-namespace log_concepts {
+namespace log_concepts
+{
     template <typename T>
     concept Integral = std::is_integral_v<T> && !std::is_same_v<T, bool>;
 
@@ -233,7 +235,8 @@ namespace log_concepts {
 /**
  * @brief Structure for log buffer with optimized performance and safety.
  */
-struct LogBuffer {
+struct LogBuffer
+{
         static constexpr size_t BUFFER_SIZE      = 1024; /**< Buffer size constant. */
         static constexpr const char *RESET_COLOR = "\033[0m";
 
@@ -271,7 +274,8 @@ struct LogBuffer {
         // meant all threads shared a single buffer — the root cause of the
         // truncated / interleaved log lines observed when a threaded (&) comm
         // script and the main execution thread logged simultaneously.
-        struct ThreadSlot {
+        struct ThreadSlot
+        {
                 char buffer[BUFFER_SIZE]{};
                 size_t size           = 0;
                 LogLevel currentLevel = LOG_INFO;

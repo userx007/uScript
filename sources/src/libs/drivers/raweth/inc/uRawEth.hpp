@@ -90,7 +90,8 @@
  *   Linux-only; there is no portable BSD sockets equivalent of AF_PACKET,
  *   so — like uKVCan — it does not ship a macOS backend.
  */
-class RawEth : public ICommDriver {
+class RawEth : public ICommDriver
+{
     public:
         static constexpr size_t RAWETH_MAC_ADDR_LEN            = 6;    /**< Bytes in a MAC address.                    */
         static constexpr size_t RAWETH_ETH_HEADER_LEN          = 14;   /**< dst(6) + src(6) + EtherType(2).            */

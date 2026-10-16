@@ -29,12 +29,14 @@
  *   bit 6  ADBUS6 (GPIOL2)   bit 6  ACBUS6
  *   bit 7  ADBUS7 (GPIOL3)   bit 7  ACBUS7
  */
-class FT232HGPIO : public FT232HBase {
+class FT232HGPIO : public FT232HBase
+{
     public:
         using Status = ICommDriver::Status;
 
         /** GPIO bank selector */
-        enum class Bank : uint8_t {
+        enum class Bank : uint8_t
+        {
             Low  = 0, ///< ADBUS[7:0] — SET/GET_BITS_LOW
             High = 1  ///< ACBUS[7:0] — SET/GET_BITS_HIGH
         };
@@ -48,7 +50,8 @@ class FT232HGPIO : public FT232HBase {
          *
          * No channel field — FT232H has one MPSSE interface.
          */
-        struct GpioConfig {
+        struct GpioConfig
+        {
                 uint8_t lowDirMask  = 0x00u; ///< ADBUS direction  (1=output, 0=input)
                 uint8_t lowValue    = 0x00u; ///< ADBUS initial output levels
                 uint8_t highDirMask = 0x00u; ///< ACBUS direction

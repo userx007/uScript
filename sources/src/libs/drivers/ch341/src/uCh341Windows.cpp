@@ -48,7 +48,8 @@
 // bitmask semantics regardless of platform. Windows has no direct TIOCM_*
 // definitions, so they're reproduced locally rather than pulled from a
 // system header.
-namespace {
+namespace
+{
     constexpr unsigned int kTiocmDtr = 0x002;
     constexpr unsigned int kTiocmRts = 0x004;
     constexpr unsigned int kTiocmCts = 0x020;

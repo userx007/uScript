@@ -44,12 +44,14 @@
  *        I²C (ADBUS0–2) or SPI (ADBUS0–3) logic and can be driven with extra
  *        SET_BITS_LOW commands interleaved with protocol traffic.
  */
-class FT4232GPIO : public FT4232Base {
+class FT4232GPIO : public FT4232Base
+{
     public:
         using Status = ICommDriver::Status;
 
         // ── GPIO bank selector ───────────────────────────────────────────────
-        enum class Bank : uint8_t {
+        enum class Bank : uint8_t
+        {
             Low  = 0, ///< ADBUS[7:0] — SET/GET_BITS_LOW
             High = 1  ///< ACBUS[7:0] — SET/GET_BITS_HIGH
         };
@@ -64,7 +66,8 @@ class FT4232GPIO : public FT4232Base {
          *
          * Defaults: all pins as inputs (safe, no accidental drive on open).
          */
-        struct GpioConfig {
+        struct GpioConfig
+        {
                 uint8_t lowDirMask  = 0x00u;      ///< ADBUS direction  (1=output, 0=input)
                 uint8_t lowValue    = 0x00u;      ///< ADBUS initial output levels
                 uint8_t highDirMask = 0x00u;      ///< ACBUS direction  (1=output, 0=input)

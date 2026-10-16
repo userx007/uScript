@@ -33,7 +33,8 @@ using LPCTSTR = const char *;
 // Class used to get the address of a process
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-class ProcAddress {
+class ProcAddress
+{
     public:
         /**
          * \brief class constructor
@@ -76,7 +77,8 @@ class ProcAddress {
 //  Class used to handle a shared library (load, unload and get the symbols of the library)
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-class SharedLibLoader {
+class SharedLibLoader
+{
     public:
         /**
          * \brief Default constructor — creates an unloaded loader.

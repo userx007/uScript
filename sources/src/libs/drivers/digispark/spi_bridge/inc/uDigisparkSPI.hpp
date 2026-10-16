@@ -44,7 +44,8 @@
  *          - ReadMode::UntilDelimiter → not meaningful for SPI; returns
  *                                       Status::INVALID_PARAM
  */
-class SPIBridge : public ICommDriver {
+class SPIBridge : public ICommDriver
+{
 
     public:
         // ── Constants ─────────────────────────────────────────────────────────────
@@ -58,7 +59,8 @@ class SPIBridge : public ICommDriver {
         static constexpr uint32_t SPI_WRITE_DEFAULT_TIMEOUT = 2000;   ///< Default write timeout [ms]
 
         // ── SPI clock modes (standard CPOL/CPHA) ──────────────────────────────────
-        enum class SPIMode : uint8_t {
+        enum class SPIMode : uint8_t
+        {
             Mode0 = 0, ///< CPOL=0, CPHA=0 — most common (sample on rising edge)
             Mode1 = 1, ///< CPOL=0, CPHA=1
             Mode2 = 2, ///< CPOL=1, CPHA=0
@@ -75,7 +77,8 @@ class SPIBridge : public ICommDriver {
          *   Div8  ≈ 2.0  MHz
          *   Div16 ≈ 1.0  MHz
          */
-        enum class SPIClockDiv : uint8_t {
+        enum class SPIClockDiv : uint8_t
+        {
             Div2  = 0,
             Div4  = 1,
             Div8  = 2,
@@ -90,7 +93,8 @@ class SPIBridge : public ICommDriver {
          * Public callers use ICommDriver::ReadOptions::ReadMode to select
          * behaviour; this enum is an implementation detail.
          */
-        enum class SPIReadMode {
+        enum class SPIReadMode
+        {
             Transfer, ///< Full-duplex: send N bytes on MOSI, capture N bytes on MISO → CMD_SPI_TRANSFER
             Read,     ///< MOSI clocked as 0x00, capture N bytes on MISO             → CMD_SPI_READ
         };
@@ -102,7 +106,8 @@ class SPIBridge : public ICommDriver {
          * Not exposed through the ICommDriver interface; convenience helpers
          * (transfer, read_reg, write_reg) build this struct internally.
          */
-        struct SPIReadOptions {
+        struct SPIReadOptions
+        {
                 SPIReadMode mode = SPIReadMode::Transfer;
                 size_t length    = 0;           ///< Bytes to clock
                 std::vector<uint8_t> mosi_data; ///< Bytes to send (Transfer only, max SPI_MAX_TRANSFER_PAYLOAD)

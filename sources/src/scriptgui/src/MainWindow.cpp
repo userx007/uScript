@@ -111,9 +111,11 @@ static QFont buildEditorFont(int iPointSize)
 // ─────────────────────────────────────────────────────────────────────────────
 //  Setup-script credentials dialog
 // ─────────────────────────────────────────────────────────────────────────────
-namespace {
+namespace
+{
 
-    enum class SetupAuth {
+    enum class SetupAuth
+    {
         Run,                // run with the entered password / credentials
         RunWithoutPassword, // the script-text heuristic was wrong: just run it
         Cancel
@@ -1376,7 +1378,7 @@ void MainWindow::onProcessOutput()
             const QString line = QString::fromUtf8(
                                      m_lineBuf.sliced(start, nlPos - start))
                                      .trimmed();
-            start = nlPos + 1;
+            start              = nlPos + 1;
             if (!line.isEmpty()) {
                 dispatchLine(line); // may set m_terminalMode = true
             }
@@ -1415,7 +1417,7 @@ void MainWindow::onProcessError()
         const QString line = QString::fromUtf8(
                                  m_errBuf.sliced(start, nlPos - start))
                                  .trimmed();
-        start = nlPos + 1;
+        start              = nlPos + 1;
         if (!line.isEmpty()) {
             m_w3->appendLine(line);
         }

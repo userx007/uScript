@@ -36,7 +36,8 @@
  *        the MPSSE engine.  The device is opened directly through the D2XX /
  *        libftdi serial interface.
  */
-class FT232HUART : public ICommDriver {
+class FT232HUART : public ICommDriver
+{
     public:
         using Status                                                = ICommDriver::Status;
 
@@ -56,7 +57,8 @@ class FT232HUART : public ICommDriver {
          * parity encoding:
          *   0 = none  |  1 = odd  |  2 = even  |  3 = mark  |  4 = space
          */
-        struct UartConfig {
+        struct UartConfig
+        {
                 uint32_t baudRate{115200u}; ///< Baud rate in bps
                 uint8_t dataBits{8u};       ///< Data bits (7 or 8)
                 uint8_t stopBits{0u};       ///< 0=1bit 1=1.5bits 2=2bits

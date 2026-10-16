@@ -46,7 +46,8 @@
  *     (the "s" bit in its Initiate Upload response) for anything beyond
  *     expedited; a server that omits it is treated as a protocol error.
  */
-class CanOpenSdoProtocol final : public ITransportProtocol {
+class CanOpenSdoProtocol final : public ITransportProtocol
+{
     public:
         explicit CanOpenSdoProtocol(const TpConfig &sCfg = {})
             : m_cfg(sCfg)

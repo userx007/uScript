@@ -63,7 +63,8 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #define DDS_TYPE_PLUGIN_ABI_VERSION 1u
@@ -80,7 +81,8 @@ extern "C" {
 #endif
 
     /** One IDL type, addressed by the one DDS topic name it's published/subscribed on. */
-    typedef struct DdsTypeEntry {
+    typedef struct DdsTypeEntry
+    {
             const char *topic_name;
             const dds_topic_descriptor_t *descriptor; /* from idlc — passed straight to dds_create_topic() */
 
@@ -113,7 +115,8 @@ extern "C" {
      * DDS_TYPE_PLUGIN_ABI_VERSION) before anything else in this struct is
      * touched — see dds_typed_driver.cpp's m_LoadPlugin().
      */
-    typedef struct DdsTypePlugin {
+    typedef struct DdsTypePlugin
+    {
             uint32_t abi_version;
             const char *customer_name;
             size_t (*get_type_count)(void);

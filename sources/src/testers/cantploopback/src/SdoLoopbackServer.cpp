@@ -7,7 +7,8 @@
 #include <span>
 #include <stddef.h>
 
-namespace {
+namespace
+{
     using Frame                      = std::array<uint8_t, 8>;
 
     constexpr uint8_t kCcsDlSegment  = 0;

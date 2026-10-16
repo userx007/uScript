@@ -6,7 +6,8 @@
 #include <stddef.h>
 #include <thread>
 
-namespace {
+namespace
+{
     constexpr size_t kFrameLen       = 8; // classic CAN frame length used for every SF/FF/CF/FC
     constexpr size_t kSfMaxLen       = 7; // 1 PCI byte + up to 7 data bytes
     constexpr size_t kFfFirstLen     = 6; // FF: 2 PCI bytes + 6 data bytes

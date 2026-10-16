@@ -56,7 +56,8 @@
 // ---------------------------------------------------------------------------
 
 /** Selects IR or DR register for a transfer. */
-enum class JtagRegister : uint8_t {
+enum class JtagRegister : uint8_t
+{
     IR = 0, /**< Instruction Register */
     DR = 1, /**< Data Register        */
 };
@@ -66,7 +67,8 @@ constexpr uint8_t JTAG_TOKEN_IR_FLAG = 0x80; /**< Set this bit for IR; clear for
 
 // ---------------------------------------------------------------------------
 
-class CH347JTAG : public ICommDriver {
+class CH347JTAG : public ICommDriver
+{
     public:
         // -----------------------------------------------------------------------
         // Constants

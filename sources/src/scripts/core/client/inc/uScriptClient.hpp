@@ -13,7 +13,8 @@
 #include <memory>
 #include <string>
 
-class ScriptClient {
+class ScriptClient
+{
     public:
         explicit ScriptClient(const std::string &strScriptPathName, IniCfgLoader &&loader)
             : m_shpScriptRunner(std::make_shared<ScriptRunner<ScriptEntriesType>>(

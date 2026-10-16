@@ -44,7 +44,8 @@ class QTextDocument;
  *  --- / !-- delimiters             #6272a4   slate    italic
  *  ──────────────────────────────────────────────────────────────────────
  */
-class ScriptHighlighterBase : public QSyntaxHighlighter {
+class ScriptHighlighterBase : public QSyntaxHighlighter
+{
         Q_OBJECT
     public:
         explicit ScriptHighlighterBase(QTextDocument *pParent = nullptr);
@@ -73,7 +74,8 @@ class ScriptHighlighterBase : public QSyntaxHighlighter {
         static constexpr auto C_SEPARATOR = "#6272a4"; // slate
 
         // ── Rule table ────────────────────────────────────────────────────────
-        struct Rule {
+        struct Rule
+        {
                 QRegularExpression pattern;
                 QTextCharFormat format;
                 int captureGroup = 0; // 0 = whole match

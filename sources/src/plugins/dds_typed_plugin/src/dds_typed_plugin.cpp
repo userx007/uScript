@@ -18,7 +18,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED DdsTypedPlugin *pluginEntry()
     {
         return new DdsTypedPlugin();
@@ -36,7 +37,8 @@ extern "C" {
 // Driver factory
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
     // Splits PRELOAD_PLUGINS="./a.so ; ./b.so" into {"./a.so", "./b.so"} —
     // deliberately local/one-off rather than pulling in a shared split
     // utility, same convention as DdsTypedDriver's own local tokenize()

@@ -14,7 +14,8 @@
 #include <unistd.h>
 #include <vector>
 
-namespace kcan {
+namespace kcan
+{
 
     // The public CtrlMode values are a copy of the kernel's so that the plugin
     // layer never has to include kernel headers. Make sure they never drift.
@@ -31,7 +32,8 @@ namespace kcan {
     static_assert(CTRLMODE_FD_NON_ISO == CAN_CTRLMODE_FD_NON_ISO);
 #endif
 
-    namespace {
+    namespace
+    {
 
         constexpr int kNlTimeoutSec    = 3;
 
@@ -41,7 +43,8 @@ namespace kcan {
         // ---------------------------------------------------------------------
         // Minimal rtnetlink message builder
         // ---------------------------------------------------------------------
-        class NlRequest {
+        class NlRequest
+        {
             public:
                 NlRequest(uint16_t u16Type, uint16_t u16Flags, int iIfIndex)
                 {
@@ -121,7 +124,8 @@ namespace kcan {
         // ---------------------------------------------------------------------
         // Netlink socket
         // ---------------------------------------------------------------------
-        class NlSocket {
+        class NlSocket
+        {
             public:
                 NlSocket()
                 {
@@ -572,7 +576,8 @@ namespace kcan {
                 str += buf;
             }
 
-            static const struct {
+            static const struct
+            {
                     uint32_t bit;
                     const char *name;
             } kModes[] = {

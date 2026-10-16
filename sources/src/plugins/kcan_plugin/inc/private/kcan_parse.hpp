@@ -13,7 +13,8 @@
  *
  * Header-only and free of any framework dependency so they can be unit-tested standalone.
  */
-namespace kcan_parse {
+namespace kcan_parse
+{
 
     /**
      * \brief Parse a CAN bitrate in bit/s.

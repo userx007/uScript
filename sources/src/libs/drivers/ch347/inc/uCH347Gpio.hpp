@@ -57,7 +57,8 @@
 // ---------------------------------------------------------------------------
 
 /** Bitmask constants for individual GPIO pins. */
-enum GpioPin : uint8_t {
+enum GpioPin : uint8_t
+{
     GPIO_PIN_0 = (1u << 0),
     GPIO_PIN_1 = (1u << 1),
     GPIO_PIN_2 = (1u << 2),
@@ -70,7 +71,8 @@ enum GpioPin : uint8_t {
 };
 
 /** Edge type for interrupt configuration. */
-enum class GpioIrqEdge : uint8_t {
+enum class GpioIrqEdge : uint8_t
+{
     None    = IRQ_TYPE_NONE, /**< No interrupt (disable) */
     Rising  = IRQ_TYPE_EDGE_RISING,
     Falling = IRQ_TYPE_EDGE_FALLING,
@@ -82,7 +84,8 @@ using GpioIrqHandler = std::function<void(uint8_t pinIndex)>;
 
 // ---------------------------------------------------------------------------
 
-class CH347GPIO : public ICommDriver {
+class CH347GPIO : public ICommDriver
+{
     public:
         // -----------------------------------------------------------------------
         // Constants

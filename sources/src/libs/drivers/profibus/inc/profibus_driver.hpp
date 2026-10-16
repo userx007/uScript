@@ -97,9 +97,11 @@ class UART;
  * account of its software-approximated SYN pause/response timing and its
  * lack of token-ring participation.
  */
-class ProfibusDriver : public ICommDriver {
+class ProfibusDriver : public ICommDriver
+{
     public:
-        struct Config {
+        struct Config
+        {
                 // Transport
                 std::string device;                 // e.g. "/dev/ttyUSB0"
                 uint32_t baud              = 19200; // see class doc comment for which rates are actually reachable

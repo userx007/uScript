@@ -54,7 +54,8 @@
  * Thread safety:
  *   - All public methods are protected by an internal mutex.
  */
-class KI2C : public ICommDriver {
+class KI2C : public ICommDriver
+{
     public:
         static constexpr size_t KI2C_MAX_BUFLENGTH           = 256;  /**< Maximum KI2C buffer length.                    */
         static constexpr uint32_t KI2C_READ_DEFAULT_TIMEOUT  = 5000; /**< Default KI2C read timeout in milliseconds.     */

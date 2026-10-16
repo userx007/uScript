@@ -47,7 +47,7 @@
 #ifdef LOG_HDR
 #undef LOG_HDR
 #endif
-#define LT_HDR        "FT245_FIFO |"
+#define LT_HDR        "FT245_FIFO  |"
 #define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "FIFO"

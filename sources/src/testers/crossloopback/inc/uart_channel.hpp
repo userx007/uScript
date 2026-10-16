@@ -19,9 +19,11 @@
 
 #include <windows.h>
 
-namespace loopback {
+namespace loopback
+{
 
-    class UartChannel : public IChannel {
+    class UartChannel : public IChannel
+    {
         public:
             UartChannel(std::string strDevice, long baud)
                 : device_(std::move(strDevice))
@@ -182,9 +184,11 @@ namespace loopback {
 #include <termios.h>
 #include <unistd.h>
 
-namespace loopback {
+namespace loopback
+{
 
-    class UartChannel : public IChannel {
+    class UartChannel : public IChannel
+    {
         public:
             UartChannel(std::string strDevice, long baud)
                 : device_(std::move(strDevice))
@@ -318,7 +322,8 @@ namespace loopback {
             }
 
         private:
-            struct BaudEntry {
+            struct BaudEntry
+            {
                     long value;
                     speed_t flag;
             };

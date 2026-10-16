@@ -51,7 +51,7 @@
 /* workaround to prevent pcan.h to throw an error when <DWORD>, <WORD>, <BYTE> are already defined */
 #if defined(DWORD) || defined(WORD) || defined(BYTE)
 #if (DWORD != __u32) && (WORD != __u16) && (BYTE != __u8)
-#warning(message, "Warning <pcan.h> requires <DWORD>, <WORD>, <BYTE> to be redefined to __u32, __u16, __u8.")
+#warning (message, "Warning <pcan.h> requires <DWORD>, <WORD>, <BYTE> to be redefined to __u32, __u16, __u8.")
 #endif
 #undef DWORD
 #undef WORD
@@ -405,7 +405,8 @@
 
 // Represents a PCAN message
 //
-typedef struct tagTPCANMsg {
+typedef struct tagTPCANMsg
+{
         DWORD ID;                 // 11/29-bit message identifier
         TPCANMessageType MSGTYPE; // Type of the message
         BYTE LEN;                 // Data Length Code of the message (0..8)
@@ -415,7 +416,8 @@ typedef struct tagTPCANMsg {
 // Represents a timestamp of a received PCAN message
 // Total Microseconds = micros + (1000ULL * millis) + (0x100000000ULL * 1000ULL * millis_overflow)
 //
-typedef struct tagTPCANTimestamp {
+typedef struct tagTPCANTimestamp
+{
         DWORD millis;         // Base-value: milliseconds: 0.. 2^32-1
         WORD millis_overflow; // Roll-arounds of millis
         WORD micros;          // Microseconds: 0..999
@@ -423,7 +425,8 @@ typedef struct tagTPCANTimestamp {
 
 // Represents a PCAN message from a FD capable hardware
 //
-typedef struct tagTPCANMsgFD {
+typedef struct tagTPCANMsgFD
+{
         DWORD ID;                 // 11/29-bit message identifier
         TPCANMessageType MSGTYPE; // Type of the message
         BYTE DLC;                 // Data Length Code of the message (0..15)
@@ -435,7 +438,8 @@ typedef struct tagTPCANMsgFD {
 // CAN-CC/CAN-FD: only the fields PID, MSGTYPE, DLC,and DATA are used.
 // Additonal CAN-XL related fields are ignored
 //
-typedef struct tagTPCANMsgXL {
+typedef struct tagTPCANMsgXL
+{
         DWORD PID;                  // CAN-XL: Priority ID (physical layer) (0..0x7FF)
                                     // CAN-CC/CAN-FD: 11/29-bit message identifier
         BYTE VCID;                  // Virtual CAN network ID
@@ -450,7 +454,8 @@ typedef struct tagTPCANMsgXL {
 
 // Describes an available PCAN channel
 //
-typedef struct tagTPCANChannelInformation {
+typedef struct tagTPCANChannelInformation
+{
         TPCANHandle channel_handle;                 // PCAN channel handle
         TPCANDevice device_type;                    // Kind of PCAN device
         BYTE controller_number;                     // CAN-Controller number
@@ -461,7 +466,8 @@ typedef struct tagTPCANChannelInformation {
 } TPCANChannelInformation;
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #define _DEF_ARG = 0
 #else
 #define _DEF_ARG

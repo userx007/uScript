@@ -31,7 +31,8 @@
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
     constexpr const char *kPluginNameForDump = "DDS";
     constexpr uint32_t kBuiltinReadBatch     = 64; // see listParticipants()/listEndpoints()'s doc comment on this cap
 
@@ -133,7 +134,7 @@ std::string DdsDriver::m_BuildDomainConfigXml() const
     }
 
     const bool listensOnAll    = (m_config.ifaceAddress == "0.0.0.0" || m_config.ifaceAddress == "::" ||
-                               m_config.ifaceAddress.empty());
+                                  m_config.ifaceAddress.empty());
     const std::string ifaceSel = !listensOnAll ? m_config.ifaceAddress : m_config.multicastInterface;
     if (!ifaceSel.empty()) {
         const char *attr = looksLikeIpLiteral(ifaceSel) ? "address" : "name";
@@ -634,7 +635,8 @@ std::string DdsDriver::m_BuildListText() const
 // ---------------------------------------------------------------------------
 // Intermediary layer: DDS.CMD argument decomposition
 // ---------------------------------------------------------------------------
-namespace {
+namespace
+{
     void tokenize(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens)
     {
         vOutTokens.clear();

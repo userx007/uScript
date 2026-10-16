@@ -31,7 +31,8 @@
 #define LOOPBACK_HAVE_RAWETH 0
 #endif
 
-namespace loopback {
+namespace loopback
+{
 
     // Set by the SIGINT/SIGTERM handler installed in main(). Every blocking
     // call in every channel (read/recv/accept/...) must check this after an
@@ -51,7 +52,8 @@ namespace loopback {
     // given a fixed one of its own (e.g. bridging kvcan/vcan0 -> kvcan/vcan1
     // with no explicit ID on the output spec just forwards the ID that was
     // received). Non-CAN channels ignore this field entirely.
-    struct Message {
+    struct Message
+    {
             std::vector<uint8_t> data;
             bool has_can_id = false;
             uint32_t can_id = 0;

@@ -57,9 +57,11 @@ typedef struct ssl_ctx_st SSL_CTX;
  * one-liners (`[](..., shpDriver, ...) { return shpDriver->send(...); }`)
  * with no plugin state captured at all — see mqtt_plugin.cpp.
  */
-class MqttDriver : public ICommDriver {
+class MqttDriver : public ICommDriver
+{
     public:
-        struct Config {
+        struct Config
+        {
                 // Transport
                 std::string host;
                 uint16_t port             = 1883;

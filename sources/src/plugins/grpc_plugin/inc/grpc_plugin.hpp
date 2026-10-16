@@ -80,7 +80,8 @@
  * instance — opened by `m_OpenDriver()` the first time it's needed, and
  * kept alive for as long as the plugin is loaded (closed by doCleanup()).
  */
-class GrpcPlugin : public PluginInterface {
+class GrpcPlugin : public PluginInterface
+{
     public:
         GrpcPlugin()
             : m_strVersion(GRPC_PLUGIN_VERSION)

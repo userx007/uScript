@@ -14,10 +14,12 @@
 /**
  * @brief Class declaration
  */
-class ICommDriver {
+class ICommDriver
+{
 
     public:
-        enum class Status : int32_t {
+        enum class Status : int32_t
+        {
             SUCCESS          = 0,
             INVALID_PARAM    = -1,
             PORT_ACCESS      = -2,
@@ -37,7 +39,8 @@ class ICommDriver {
         /**
          * @brief Read operation mode
          */
-        enum class ReadMode {
+        enum class ReadMode
+        {
             Exact,          ///< Read exact number of bytes (fill buffer)
             UntilDelimiter, ///< Read until delimiter character found
             UntilToken      ///< Read until token sequence found
@@ -46,7 +49,8 @@ class ICommDriver {
         /**
          * @brief Options for configuring read operations
          */
-        struct ReadOptions {
+        struct ReadOptions
+        {
                 ReadMode mode                  = ReadMode::Exact; ///< Operation mode
                 uint8_t delimiter              = '\n';            ///< Delimiter for UntilDelimiter mode
                 std::span<const uint8_t> token = {};              ///< Token for UntilToken mode
@@ -56,7 +60,8 @@ class ICommDriver {
         /**
          * @brief Result of a read operation
          */
-        struct ReadResult {
+        struct ReadResult
+        {
                 Status status         = Status::RETVAL_NOT_SET; ///< Operation status
                 size_t bytes_read     = 0;                      ///< Number of bytes actually read
                 bool found_terminator = false;                  ///< True if delimiter/token was found
@@ -65,7 +70,8 @@ class ICommDriver {
         /**
          * @brief Result of a write operation
          */
-        struct WriteResult {
+        struct WriteResult
+        {
                 Status status        = Status::RETVAL_NOT_SET; ///< Operation status
                 size_t bytes_written = 0;                      ///< Number of bytes actually written
         };
@@ -141,7 +147,7 @@ class ICommDriver {
                                      std::span<uint8_t> buffer,
                                      const ReadOptions &sOptions,
                                      std::string_view xtra_params = {},
-                                     std::stop_token stop_tok     = {}) const               = 0;
+                                     std::stop_token stop_tok     = {}) const           = 0;
 
         /**
          * @brief Unified write interface
@@ -164,7 +170,7 @@ class ICommDriver {
         virtual WriteResult tout_write(uint32_t u32WriteTimeout,
                                        std::span<const uint8_t> buffer,
                                        std::string_view xtra_params = {},
-                                       std::stop_token stop_tok     = {}) const             = 0;
+                                       std::stop_token stop_tok     = {}) const         = 0;
 
         /**
          * @brief Reset the driver state (e.g., flush buffers, reset filters).

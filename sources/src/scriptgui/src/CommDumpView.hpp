@@ -62,7 +62,8 @@ class QToolButton;
 //  Save always exports the full raw event history regardless of which way
 //  this is currently set — see saveToFile()/rawRecordPassesFilters().
 // ─────────────────────────────────────────────────────────────────────────────
-class CommDumpView : public QFrame {
+class CommDumpView : public QFrame
+{
         Q_OBJECT
     public:
         explicit CommDumpView(QWidget *pParent = nullptr);

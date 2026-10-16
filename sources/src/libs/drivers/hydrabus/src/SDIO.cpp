@@ -5,7 +5,8 @@
 
 #include <utility>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 } // namespace HydraHAL
 
@@ -27,7 +28,8 @@ namespace HydraHAL {
 //                         NAMESPACE IMPLEMENTATION                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace HydraHAL {
+namespace HydraHAL
+{
 
     SDIO::SDIO(std::shared_ptr<Hydrabus> shpHydrabus)
         : Protocol(std::move(shpHydrabus), "SDI1", "SDIO", 0x0E)

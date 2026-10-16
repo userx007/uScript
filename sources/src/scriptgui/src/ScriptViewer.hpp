@@ -31,7 +31,8 @@ class QMouseEvent;
 //    Backspace → if cursor is at an indent boundary, deletes TAB_WIDTH spaces
 //    Otherwise → standard QPlainTextEdit behaviour
 // ─────────────────────────────────────────────────────────────────────────────
-class CodeEditor : public QPlainTextEdit {
+class CodeEditor : public QPlainTextEdit
+{
         Q_OBJECT
     public:
         static constexpr int TAB_WIDTH = 4;
@@ -135,7 +136,8 @@ class CodeEditor : public QPlainTextEdit {
 //    save() / saveAs()     write to disk, clears modified flag
 //    modificationChanged   emitted whenever the flag flips
 // ─────────────────────────────────────────────────────────────────────────────
-class ScriptViewer : public QFrame {
+class ScriptViewer : public QFrame
+{
         Q_OBJECT
     public:
         explicit ScriptViewer(QWidget *pParent = nullptr);

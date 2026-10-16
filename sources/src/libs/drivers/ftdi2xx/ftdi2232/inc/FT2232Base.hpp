@@ -49,7 +49,8 @@
  * Reference: FTDI AN_108 — Command Processor for MPSSE and MCU Host Bus
  *            FTDI AN_255 — USB to I2C Example using the FT232H and FT201X
  */
-class FT2232Base {
+class FT2232Base
+{
     public:
         using Status                                           = ICommDriver::Status;
 
@@ -69,7 +70,8 @@ class FT2232Base {
          * Determines which PID is used, which channels have MPSSE, and which
          * clock base frequency is applied in the MPSSE init sequence.
          */
-        enum class Variant : uint8_t {
+        enum class Variant : uint8_t
+        {
             FT2232H = 0, ///< High-speed (60 MHz, channels A+B, PID 0x6010)
             FT2232D = 1, ///< Full-speed (6 MHz,  channel A only, PID 0x6001)
         };
@@ -81,7 +83,8 @@ class FT2232Base {
          * FT2232H: both A and B are MPSSE-capable.
          * FT2232D: only A has MPSSE; passing B returns INVALID_PARAM.
          */
-        enum class Channel : uint8_t {
+        enum class Channel : uint8_t
+        {
             A = 0,
             B = 1
         };

@@ -31,7 +31,8 @@
  *   To switch back to FIFO operation, close this driver and open an FT245Sync
  *   instance on the same device index.
  */
-class FT245GPIO : public FT245Base {
+class FT245GPIO : public FT245Base
+{
     public:
         using Status = ICommDriver::Status;
 
@@ -41,7 +42,8 @@ class FT245GPIO : public FT245Base {
          * Direction mask: 1 = output, 0 = input.
          * Defaults: all pins as inputs (safe on open).
          */
-        struct GpioConfig {
+        struct GpioConfig
+        {
                 uint8_t dirMask      = 0x00u; ///< D0–D7 direction (1=out, 0=in)
                 uint8_t initialValue = 0x00u; ///< Initial output levels
                 Variant variant      = Variant::FT245BM;

@@ -47,8 +47,10 @@ static constexpr const char *kPluginNameForDump = "MODBUS";
 // class's receive() simply fails if nothing is pending, rather than
 // falling back to a "standalone receive" mode.
 // -----------------------------------------------------------------------
-namespace {
-    enum class PendingKind {
+namespace
+{
+    enum class PendingKind
+    {
         None,
         ReadBits,
         ReadRegs,

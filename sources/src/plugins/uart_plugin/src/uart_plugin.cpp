@@ -22,7 +22,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED UARTPlugin *pluginEntry()
     {
         return new UARTPlugin();

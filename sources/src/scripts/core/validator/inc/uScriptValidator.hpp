@@ -19,7 +19,8 @@ class IScriptCommandValidator;
 //                            PUBLIC INTERFACES                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-class ScriptValidator : public IScriptValidator<ScriptEntriesType> {
+class ScriptValidator : public IScriptValidator<ScriptEntriesType>
+{
     public:
         explicit ScriptValidator(std::shared_ptr<IScriptCommandValidator<Token>> shpCommandValidator)
             : m_shpCommandValidator(std::move(shpCommandValidator))

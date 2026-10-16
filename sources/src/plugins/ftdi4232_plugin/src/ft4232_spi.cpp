@@ -51,7 +51,7 @@
 #ifdef LOG_HDR
 #undef LOG_HDR
 #endif
-#define LT_HDR        "FT_SPI     |"
+#define LT_HDR        "FT_SPI      |"
 #define LOG_HDR       LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "SPI"

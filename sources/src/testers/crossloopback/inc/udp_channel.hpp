@@ -18,14 +18,18 @@
 
 #include <cerrno> // sockets/Winsock come in through common.hpp -> tester_platform.h
 
-namespace loopback {
+namespace loopback
+{
 
-    class UdpChannel : public IChannel {
+    class UdpChannel : public IChannel
+    {
         public:
-            struct ServerTag {
+            struct ServerTag
+            {
             };
 
-            struct ClientTag {
+            struct ClientTag
+            {
             };
 
             UdpChannel(ServerTag, std::string strBind_addr, int iPort)
@@ -71,7 +75,7 @@ namespace loopback {
                     socklen_t sender_len = sizeof(sender);
 
                     ssize_t n            = tp_recvfrom(fd_, buf, sizeof(buf), 0,
-                                                      reinterpret_cast<struct sockaddr *>(&sender), &sender_len);
+                                                       reinterpret_cast<struct sockaddr *>(&sender), &sender_len);
                     if (n < 0) {
                         if (tp_is_eintr(tp_last_error())) {
                             continue;
@@ -104,7 +108,7 @@ namespace loopback {
                         return false;
                     }
                     sent = tp_sendto(fd_, sMsg.data.data(), sMsg.data.size(), 0,
-                                    reinterpret_cast<struct sockaddr *>(&last_sender_), last_sender_len_);
+                                     reinterpret_cast<struct sockaddr *>(&last_sender_), last_sender_len_);
                 } else {
                     sent = tp_send(fd_, sMsg.data.data(), sMsg.data.size(), 0);
                 }

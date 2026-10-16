@@ -11,7 +11,8 @@
 #include <stop_token>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -30,7 +31,8 @@ namespace HydraHAL {
      * auto blk = mmc.read(0);    // read block 0
      * @endcode
      */
-    class MMC : public Protocol {
+    class MMC : public Protocol
+    {
         public:
             static constexpr size_t BLOCK_SIZE   = 512;
             static constexpr size_t REG_SIZE_STD = 16;  ///< CID / CSD

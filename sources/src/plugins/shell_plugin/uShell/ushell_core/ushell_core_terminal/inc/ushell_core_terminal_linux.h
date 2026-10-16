@@ -13,12 +13,14 @@
 #include <termios.h>
 #include <unistd.h>
 
-class TerminalRAII {
+class TerminalRAII
+{
     private:
         static struct termios original_config; // Defined inside the class
         bool initialized;
 
-        class ErrorLogger {
+        class ErrorLogger
+        {
             public:
                 static const char *getErrorMessage()
                 {

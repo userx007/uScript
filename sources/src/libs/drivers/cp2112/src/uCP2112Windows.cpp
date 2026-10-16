@@ -22,7 +22,8 @@
 #include <setupapi.h>
 #include <windows.h>
 #ifndef _MSC_VER
-extern "C" {
+extern "C"
+{
 #endif
 #include <hidsdi.h>
 #ifndef _MSC_VER
@@ -55,7 +56,8 @@ extern "C" {
 // Internal helper — device path enumeration
 // ============================================================================
 
-namespace {
+namespace
+{
 
     /**
      * @brief Find the device path of the n-th CP2112 on the system

@@ -16,7 +16,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED BuspiratePlugin *pluginEntry()
     {
         return new BuspiratePlugin();

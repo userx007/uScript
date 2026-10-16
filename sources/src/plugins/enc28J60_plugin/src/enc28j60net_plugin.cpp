@@ -21,7 +21,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED Enc28J60NetPlugin *pluginEntry()
     {
         return new Enc28J60NetPlugin();

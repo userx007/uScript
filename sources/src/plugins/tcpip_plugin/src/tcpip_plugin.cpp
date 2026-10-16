@@ -21,7 +21,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED TCPIPPlugin *pluginEntry()
     {
         return new TCPIPPlugin();

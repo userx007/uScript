@@ -65,7 +65,8 @@
  * is a CAN-hardware concept with no WebSocket equivalent. The plugin
  * surface is therefore INFO / CONFIG / CMD / SCRIPT / CYCLIC only.
  */
-class WEBSOCKETPlugin : public PluginInterface {
+class WEBSOCKETPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

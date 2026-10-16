@@ -47,7 +47,8 @@
  *   of the write buffer:  buffer[0] = slave_addr, buffer[1..N] = data.
  *   This convention is documented below and enforced in the implementation.
  */
-class I2CBridge : public ICommDriver {
+class I2CBridge : public ICommDriver
+{
 
     public:
         // ── Constants ─────────────────────────────────────────────────────────────
@@ -90,7 +91,8 @@ class I2CBridge : public ICommDriver {
          *   slave_addr → 7-bit target address
          *   read_len   → number of bytes to clock in
          */
-        struct I2CReadOptions : public ICommDriver::ReadOptions {
+        struct I2CReadOptions : public ICommDriver::ReadOptions
+        {
                 uint8_t slave_addr = 0x00; ///< 7-bit slave address
                 size_t read_len    = 0;    ///< Bytes to clock in (CMD_READ / CMD_WRITE_READ)
         };
@@ -98,7 +100,8 @@ class I2CBridge : public ICommDriver {
         /**
          * @brief Result of a bus scan operation.
          */
-        struct ScanResult {
+        struct ScanResult
+        {
                 Status status = Status::RETVAL_NOT_SET;
                 std::vector<uint8_t> addresses; ///< Found 7-bit slave addresses (1–126)
         };

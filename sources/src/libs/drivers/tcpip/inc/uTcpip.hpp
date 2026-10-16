@@ -65,7 +65,8 @@
  *   serialize access to here), but is_open()/open()/close() are still
  *   mutex-protected against concurrent use.
  */
-class TCPIP : public ICommDriver {
+class TCPIP : public ICommDriver
+{
     public:
         static constexpr size_t TCPIP_MAX_BUFLENGTH             = 256;  /**< Max assembled buffer length (delimiter/token modes). */
         static constexpr uint32_t TCPIP_READ_DEFAULT_TIMEOUT    = 5000; /**< Default read timeout in milliseconds.                */

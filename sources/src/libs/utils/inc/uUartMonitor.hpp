@@ -22,7 +22,8 @@
 #include <unistd.h>
 #endif
 
-namespace uart {
+namespace uart
+{
 
     ///////////////////////////////////////////////////////////////////
     //                      TYPE DEFINITIONS                         //
@@ -31,7 +32,8 @@ namespace uart {
     /**
      * @brief Enumeration for port operation types
      */
-    enum class OperationType {
+    enum class OperationType
+    {
         Insert,
         Remove
     };
@@ -39,7 +41,8 @@ namespace uart {
     /**
      * @brief Result type for wait operations
      */
-    enum class WaitResult {
+    enum class WaitResult
+    {
         Success, ///< Operation succeeded
         Timeout, ///< Operation timed out
         Stopped  ///< Monitoring was stopped
@@ -48,7 +51,8 @@ namespace uart {
     /**
      * @brief Port change event information
      */
-    struct PortEvent {
+    struct PortEvent
+    {
             std::string port_name;
             OperationType operation;
             std::chrono::system_clock::time_point timestamp;
@@ -64,7 +68,8 @@ namespace uart {
     /**
      * @brief Result structure for wait operations
      */
-    struct PortWaitResult {
+    struct PortWaitResult
+    {
             WaitResult result;
             std::string port_name;
 
@@ -82,7 +87,8 @@ namespace uart {
     /**
      * @brief Configuration for port scanning
      */
-    struct ScanConfig {
+    struct ScanConfig
+    {
             std::chrono::milliseconds polling_interval{100};
             std::chrono::milliseconds timeout{0}; // 0 means wait forever
 
@@ -104,13 +110,15 @@ namespace uart {
     //                    INTERNAL IMPLEMENTATION                    //
     ///////////////////////////////////////////////////////////////////
 
-    namespace detail {
+    namespace detail
+    {
 
         /**
          * @brief Internal state tracking for device handling
          * @details Efficient implementation using unordered_set for O(1) lookups
          */
-        class DeviceTracker {
+        class DeviceTracker
+        {
 
             public:
                 DeviceTracker() = default;
@@ -281,7 +289,8 @@ namespace uart {
      * @details Provides basic port detection and waiting functionality
      *          without threading complexity
      */
-    class SimplePortHandler {
+    class SimplePortHandler
+    {
 
         public:
             SimplePortHandler() = default;
@@ -409,7 +418,8 @@ namespace uart {
      * @details Provides continuous monitoring with event callbacks and
      *          condition variable-based waiting
      */
-    class PortMonitor {
+    class PortMonitor
+    {
 
         public:
             PortMonitor()

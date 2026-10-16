@@ -7,12 +7,14 @@
 #pragma warning(disable : 4710)
 #endif
 
-class TerminalRAII {
+class TerminalRAII
+{
     private:
         HANDLE hConsole;
 
         // Private class for error handling, only accessible inside TerminalRAII
-        class WindowsError {
+        class WindowsError
+        {
             public:
                 static const char *getErrorMessage()
                 {

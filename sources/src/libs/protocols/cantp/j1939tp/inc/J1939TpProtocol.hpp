@@ -37,7 +37,8 @@
  *   BAM: [0x20][TotalSize lo][TotalSize hi][TotalPackets][0xFF][PGN 3 bytes]
  *   TP.DT: [SequenceNumber 1..255][up to 7 data bytes]
  */
-class J1939TpProtocol final : public ITransportProtocol {
+class J1939TpProtocol final : public ITransportProtocol
+{
     public:
         explicit J1939TpProtocol(const TpConfig &sCfg = {})
             : m_cfg(sCfg)

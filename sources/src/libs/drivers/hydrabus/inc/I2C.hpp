@@ -11,7 +11,8 @@
 #include <stop_token>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -37,9 +38,11 @@ namespace HydraHAL {
      * i2c.stop();
      * @endcode
      */
-    class I2C : public Protocol {
+    class I2C : public Protocol
+    {
         public:
-            enum class Speed : uint8_t {
+            enum class Speed : uint8_t
+            {
                 I2C_50K  = 0b00,
                 I2C_100K = 0b01,
                 I2C_400K = 0b10,

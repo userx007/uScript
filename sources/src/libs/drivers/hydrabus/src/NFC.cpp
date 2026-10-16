@@ -2,7 +2,8 @@
 
 #include <utility>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 } // namespace HydraHAL
 
@@ -24,7 +25,8 @@ namespace HydraHAL {
 //                         NAMESPACE IMPLEMENTATION                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace HydraHAL {
+namespace HydraHAL
+{
 
     NFC::NFC(std::shared_ptr<Hydrabus> shpHydrabus)
         : Protocol(std::move(shpHydrabus), "NFC1", "NFC-Reader", 0x0C)

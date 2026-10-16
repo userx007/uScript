@@ -69,7 +69,8 @@ static constexpr std::string_view kPrintPrefix = "PRINT ";
 // semantics doc comment in uScriptDataTypes.hpp for the formulas themselves.  //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
 
     // Per-thread waveform state, seeded by the caller on every GENERATOR
     // (re)launch (see the GeneratorStatement launch code in m_executeCommand):
@@ -78,7 +79,8 @@ namespace {
     // arrIndex/arrDirection are the array-source equivalent of current/direction,
     // used only by nextGeneratorArraySample(). rng backs RANDOM, in both the
     // range form (nextGeneratorSample) and the array form (nextGeneratorArraySample).
-    struct GeneratorSampleState {
+    struct GeneratorSampleState
+    {
             double current        = 0.0;              // SAWTOOTH/TRIANGLE/SQUARE: last emitted value. EXP/LOG: normalised [0,1) phase carrier.
             int direction         = 1;                // TRIANGLE ping-pong: +1 rising, -1 falling
             double phaseDeg       = 0.0;              // SINE: accumulated phase, degrees, wrapped at 360
@@ -534,7 +536,8 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement &sCommand, 
 {
     const char *pszKind = sCommand.bByteMode ? "BYTESTREAM" : "BITSTREAM";
 
-    struct ResolvedField {
+    struct ResolvedField
+    {
             uint64_t offset;
             uint64_t length;
             uint64_t value;
@@ -701,8 +704,8 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement &sCom
         }
         if (!numeric::str2uint64(strExpanded, out)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
-                          LOG_STRING(pszKind); LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
-                          LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
+                      LOG_STRING(pszKind); LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
+                      LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
             return false;
         }
         return true;
@@ -838,9 +841,9 @@ bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayState
         }
         if (!numeric::str2uint64(strExpanded, out)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr.data());
-                          LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
-                          LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
-                          LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
+                      LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                      LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
+                      LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
             return false;
         }
         return true;

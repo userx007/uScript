@@ -37,7 +37,8 @@
  *   divisor = (30,000,000 / clockHz) - 1
  *   Example: 100 kHz → divisor = 299, 400 kHz → divisor = 74
  */
-class FT4232I2C : public FT4232Base, public ICommDriver {
+class FT4232I2C : public FT4232Base, public ICommDriver
+{
     public:
         // Resolve ambiguity: both FT4232Base and ICommDriver introduce 'Status'
         using Status = ICommDriver::Status;

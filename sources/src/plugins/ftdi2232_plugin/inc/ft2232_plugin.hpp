@@ -95,7 +95,8 @@ struct PluginDataSet;
  *   FT2232.GPIO close
  */
 
-class FT2232Plugin : public PluginInterface {
+class FT2232Plugin : public PluginInterface
+{
 
     public:
         FT2232Plugin()
@@ -254,7 +255,8 @@ class FT2232Plugin : public PluginInterface {
 
         // INI accessor
 
-        struct IniValues {
+        struct IniValues
+        {
                 std::string strArtefactsPath;
                 uint8_t u8DeviceIndex{0};
                 FT2232Base::Variant eDefaultVariant{FT2232Base::Variant::FT2232H};
@@ -343,7 +345,8 @@ class FT2232Plugin : public PluginInterface {
     private:
         // Pending configuration (updated by cfg, applied by open)
 
-        struct SpiPendingCfg {
+        struct SpiPendingCfg
+        {
                 uint32_t clockHz{1000000u};
                 FT2232SPI::SpiMode mode{FT2232SPI::SpiMode::Mode0};
                 FT2232SPI::BitOrder bitOrder{FT2232SPI::BitOrder::MsbFirst};
@@ -353,14 +356,16 @@ class FT2232Plugin : public PluginInterface {
                 FT2232Base::Channel channel{FT2232Base::Channel::A};
         };
 
-        struct I2cPendingCfg {
+        struct I2cPendingCfg
+        {
                 uint8_t address{0x50u};
                 uint32_t clockHz{100000u};
                 FT2232Base::Variant variant{FT2232Base::Variant::FT2232H};
                 FT2232Base::Channel channel{FT2232Base::Channel::A};
         };
 
-        struct GpioPendingCfg {
+        struct GpioPendingCfg
+        {
                 FT2232Base::Variant variant{FT2232Base::Variant::FT2232H};
                 FT2232Base::Channel channel{FT2232Base::Channel::B};
                 uint8_t lowDirMask{0x00u};

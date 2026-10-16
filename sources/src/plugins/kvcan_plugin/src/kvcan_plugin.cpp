@@ -36,7 +36,8 @@
 /**
  * \brief The plugin's entry points
  */
-extern "C" {
+extern "C"
+{
     EXPORTED KVCANPlugin *pluginEntry()
     {
         return new KVCANPlugin();
@@ -414,7 +415,8 @@ bool KVCANPlugin::m_KVCAN_CYCLIC(const std::string &strArgs, std::stop_token st)
 
 // DRIVER DECORATOR
 
-namespace {
+namespace
+{
     /**
      * \brief Thin ICommDriver decorator that reports every physical tout_write()/
      *        tout_read() call to the GUI comm-dump panel before returning.
@@ -434,7 +436,8 @@ namespace {
      *        to exactly one physical frame, so KVCANPlugin::m_Send()/m_Receive()
      *        dump directly instead of paying for a decorator.
      */
-    class DumpingDriver : public ICommDriver {
+    class DumpingDriver : public ICommDriver
+    {
         public:
             DumpingDriver(std::shared_ptr<const ICommDriver> shpInner, std::string strPluginName)
                 : m_shpInner(std::move(shpInner))

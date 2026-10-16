@@ -34,7 +34,8 @@
  * @tparam TDriver Type of communication driver
  */
 template <typename TScriptEntries, typename TDriver = void>
-class CommScriptRunner : public ScriptRunner<TScriptEntries> {
+class CommScriptRunner : public ScriptRunner<TScriptEntries>
+{
     public:
         /**
          * @brief Construct a communication-enabled script runner

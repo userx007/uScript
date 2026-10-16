@@ -42,7 +42,8 @@
  *            plain assignment, nothing to validate, always accepted.
  */
 template <typename T>
-struct KVSetterEntry {
+struct KVSetterEntry
+{
         const char *key;
         bool (T::*boolSetter)(const std::string &) const = nullptr;
         void (T::*voidSetter)(const std::string &) const = nullptr;

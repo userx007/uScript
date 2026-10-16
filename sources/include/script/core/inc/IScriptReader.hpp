@@ -5,7 +5,8 @@
 
 #include <vector>
 
-class IScriptReader {
+class IScriptReader
+{
     public:
         virtual bool readScript(std::vector<ScriptRawLine> &vRawLines) = 0;
 

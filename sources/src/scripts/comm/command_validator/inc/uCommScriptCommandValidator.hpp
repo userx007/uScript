@@ -56,7 +56,8 @@
  *   "hello"          - Delimited string
  *   raw_string       - Raw string (no quotes)
  */
-class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
+class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
+{
     public:
         bool validateCommand(int iLineNumber, const std::string &strCommand, CommCommand &sToken) noexcept override
         {
@@ -78,7 +79,8 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand> {
         }
 
     private:
-        class ItemParser {
+        class ItemParser
+        {
             public:
                 /**
                  * @brief Parse and validate a command command

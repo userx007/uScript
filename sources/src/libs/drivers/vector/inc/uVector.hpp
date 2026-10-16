@@ -173,14 +173,16 @@ constexpr uint32_t VECTOR_FD_DEFAULT_DATA_BITRATE = 2000000;
  * rule entirely: this type is complete (NSDMIs and all) long before class
  * Vector even starts.
  */
-struct VectorFdOptions {
+struct VectorFdOptions
+{
         uint32_t u32DataBitrate = VECTOR_FD_DEFAULT_DATA_BITRATE; ///< Data-phase bitrate in bps.
         bool bIso               = true;                           ///< true = ISO 11898-1:2015, false = Bosch/non-ISO.
         bool bBrs               = true;                           ///< true = outgoing FD frames use the bitrate switch.
         uint8_t u8PaddingByte   = 0x00;                           ///< Fill byte for short fragments (see Vector::canFdLenToDlc()).
 };
 
-class Vector : public ICommDriver {
+class Vector : public ICommDriver
+{
 
     public:
         // ------------------------------------------------------------------ //
@@ -247,7 +249,8 @@ class Vector : public ICommDriver {
          * @brief One XL-API channel as reported by xlGetDriverConfig(), independent
          *        of any Vector Hardware Config application assignment.
          */
-        struct ChannelInfo {
+        struct ChannelInfo
+        {
                 std::string strName;              ///< XL-API channel name, e.g. "VN1610 Channel 1".
                 uint32_t u32HwType = 0;           ///< XL_HWTYPE_* raw value.
                 std::string strHwType;            ///< Human-readable name (see hwTypeToString()), or "HWTYPE_<n>" if unknown.
@@ -272,7 +275,8 @@ class Vector : public ICommDriver {
          *        strChannelName must be set, or every CAN-capable channel in the
          *        system would match and openDirect() would refuse as ambiguous.
          */
-        struct DeviceSelector {
+        struct DeviceSelector
+        {
                 int32_t i32HwType        = -1; ///< XL_HWTYPE_* value, or parse via hwTypeFromString(). -1 = don't care.
                 uint32_t u32SerialNumber = 0;  ///< 0 = don't care.
                 std::string strChannelName;    ///< Exact XL-API channel name match. Empty = don't care.
@@ -571,7 +575,8 @@ class Vector : public ICommDriver {
          *        is written once against this struct and never touches the
          *        raw XL-API event types itself.
          */
-        struct VectorRxFrame {
+        struct VectorRxFrame
+        {
                 uint32_t u32Id = 0; ///< Raw CAN identifier (11 or 29 bit, EXT flag already stripped).
                 bool bExtended = false;
                 uint8_t u8Len  = 0; ///< Actual payload length in bytes (0-8 classic, 0-64 FD).
@@ -749,7 +754,8 @@ class Vector : public ICommDriver {
          * cancellable via the STOP button; only the non-TP read/write path
          * (the common case) is.
          */
-        class RawIo final : public ICommDriver {
+        class RawIo final : public ICommDriver
+        {
             public:
                 explicit RawIo(const Vector &owner)
                     : m_owner(owner)

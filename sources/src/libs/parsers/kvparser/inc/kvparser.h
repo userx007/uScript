@@ -31,13 +31,15 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-typedef enum {
+typedef enum
+{
     KV_SCALAR,
     KV_OBJECT,
     KV_ARRAY
 } KvKind;
 
-typedef struct KvNode {
+typedef struct KvNode
+{
         KvKind kind;
         char *key;                /* NULL for array elements */
         char *scalar;             /* KV_SCALAR only, NUL-terminated */

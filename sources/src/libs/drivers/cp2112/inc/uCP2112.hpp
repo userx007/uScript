@@ -22,7 +22,8 @@
  *
  * Maximum single I²C read request: 512 bytes.
  */
-class CP2112 : public CP2112Base, public ICommDriver {
+class CP2112 : public CP2112Base, public ICommDriver
+{
     public:
         /**
          * Both CP2112Base and IGpioDriver introduce a 'Status' name.

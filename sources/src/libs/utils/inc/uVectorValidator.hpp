@@ -29,14 +29,16 @@
 //                     CLASS IMPLEMENTATION                      //
 ///////////////////////////////////////////////////////////////////
 
-enum class eValidateType {
+enum class eValidateType
+{
     STRING,
     NUMBER,
     VERSION,
     BOOLEAN
 };
 
-enum class ComparisonOp {
+enum class ComparisonOp
+{
     EQ, // ==, EQ, eq  (case-sensitive)
     NE, // !=, NE, ne  (case-sensitive)
     LT, // <
@@ -46,7 +48,8 @@ enum class ComparisonOp {
     UNKNOWN
 };
 
-class VectorValidator {
+class VectorValidator
+{
     public:
         VectorValidator() = default;
 

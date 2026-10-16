@@ -111,7 +111,8 @@
  * higher-level protocol (e.g. UDP via the codebase's own udp_plugin, running
  * over this channel's own IP stack if the peer has one) if you need one.
  */
-class VectorEth : public ICommDriver {
+class VectorEth : public ICommDriver
+{
     public:
         // ------------------------------------------------------------------ //
         //  Constants                                                           //
@@ -286,7 +287,8 @@ class VectorEth : public ICommDriver {
          *        non-default value here is silently ignored (with a one-time
          *        warning) on Linux.
          */
-        struct PhyConfig {
+        struct PhyConfig
+        {
                 unsigned int u32Speed     = XL_ETH_MODE_SPEED_AUTO_100_1000;
                 unsigned int u32Duplex    = XL_ETH_MODE_DUPLEX_AUTO;
                 unsigned int u32Connector = XL_ETH_MODE_CONNECTOR_DONT_CARE;
@@ -311,7 +313,8 @@ class VectorEth : public ICommDriver {
         }
 
     private:
-        struct VectorEthRxFrame {
+        struct VectorEthRxFrame
+        {
                 MacAddress destMac{};
                 MacAddress srcMac{};
                 uint16_t u16EtherType = 0;

@@ -33,7 +33,8 @@ class QTextDocument;
  *  # ; comment              #6272a4   slate       italic
  *  ──────────────────────────────────────────────────────────────────────
  */
-class IniHighlighter : public QSyntaxHighlighter {
+class IniHighlighter : public QSyntaxHighlighter
+{
         Q_OBJECT
     public:
         explicit IniHighlighter(QTextDocument *pParent = nullptr);

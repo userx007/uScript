@@ -39,7 +39,8 @@
  * @tparam TScriptEntries Type representing script entries/commands
  */
 template <typename TScriptEntries>
-class ScriptRunner : public IScriptRunner {
+class ScriptRunner : public IScriptRunner
+{
     public:
         /**
          * @brief Construct a basic script runner

@@ -30,7 +30,8 @@
 //                     IMPLEMENTATION                            //
 ///////////////////////////////////////////////////////////////////
 
-namespace eval {
+namespace eval
+{
 
     inline bool string2bool(std::string_view token, bool &bResult)
     {
@@ -100,7 +101,8 @@ namespace eval {
 
     inline bool validateVectorBooleans(const std::string &strBoolString, const std::string &strRule, bool &bOutResult)
     {
-        enum class BoolRule {
+        enum class BoolRule
+        {
             OR,
             AND
         };

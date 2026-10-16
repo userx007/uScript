@@ -33,8 +33,10 @@
 // since these three "*Net" drivers don't otherwise share a translation unit
 // with uTcpip/uUdp.
 
-namespace {
-    class WinsockGuard {
+namespace
+{
+    class WinsockGuard
+    {
         public:
             WinsockGuard()
             {

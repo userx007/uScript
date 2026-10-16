@@ -81,7 +81,8 @@
  * Thread safety:
  *   All public methods are protected by an internal mutex.
  */
-class UDP : public ICommDriver {
+class UDP : public ICommDriver
+{
     public:
         static constexpr size_t UDP_MAX_DGRAM_LEN             = 65507; /**< Max UDP payload (IPv4 theoretical ceiling: 65535 - 8-byte UDP hdr - 20-byte IP hdr). */
         static constexpr size_t UDP_SAFE_PAYLOAD              = 1472;  /**< Payload that fits a standard 1500-byte-MTU Ethernet link without IP fragmentation. Advisory only — not enforced. */

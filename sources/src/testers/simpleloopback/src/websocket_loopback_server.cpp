@@ -49,7 +49,8 @@
 #include <string>
 #include <vector>
 
-namespace {
+namespace
+{
     constexpr int DEFAULT_PORT         = 5100;
     constexpr const char *DEFAULT_BIND = "::";
     constexpr int LISTEN_BACKLOG       = 8;

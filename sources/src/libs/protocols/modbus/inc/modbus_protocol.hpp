@@ -29,7 +29,8 @@
  * to build a request, hands the resulting bytes to the real driver's
  * send, reads the response ADU back, and asks this class to decode it.
  */
-class ModbusProtocol {
+class ModbusProtocol
+{
     public:
         // Function codes this class supports — the eight most commonly used
         // Modbus TCP operations.
@@ -51,12 +52,14 @@ class ModbusProtocol {
         static constexpr uint16_t kMaxWriteBits          = 1968;
         static constexpr uint16_t kMaxWriteRegisters     = 123;
 
-        struct ReadBitsResult {
+        struct ReadBitsResult
+        {
                 bool ok = false; // false: malformed response (see ExceptionResult for a broker/slave-reported exception)
                 std::vector<bool> values;
         };
 
-        struct ReadRegsResult {
+        struct ReadRegsResult
+        {
                 bool ok = false;
                 std::vector<uint16_t> values;
         };

@@ -17,7 +17,8 @@
 #include <sys/types.h>
 #include <utility>
 
-namespace {
+namespace
+{
     constexpr quintptr kTopLevelSentinel = static_cast<quintptr>(-1);
 
     QString hexByte(unsigned char b)

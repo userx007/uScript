@@ -19,7 +19,8 @@
 /**
  * @brief Network Driver that communicates with a remote W5500 board.
  */
-class W5500Net : public ICommDriver {
+class W5500Net : public ICommDriver
+{
     public:
         static constexpr uint32_t W5500NET_TIMEOUT_MS = 2000; // Network latency is higher than SPI
 

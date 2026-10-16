@@ -48,7 +48,8 @@
 //                          PLUGIN INTERFACE                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-class Lan8720NetPlugin : public PluginInterface {
+class Lan8720NetPlugin : public PluginInterface
+{
     public:
         Lan8720NetPlugin()
             : m_strVersion(LAN8720NET_PLUGIN_VERSION)

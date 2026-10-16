@@ -53,7 +53,8 @@ struct PluginDataSet;
 //                          PLUGIN INTERFACE                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-class UartmonPlugin : public PluginInterface {
+class UartmonPlugin : public PluginInterface
+{
     public:
         UartmonPlugin()
             : m_strVersion(UARTMON_PLUGIN_VERSION)

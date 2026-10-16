@@ -76,7 +76,8 @@ class StatusLed;
  *   Enter in path   → loads into the active tab
  *   RUN             → runs the script shown in the active tab
  */
-class MainWindow : public QMainWindow {
+class MainWindow : public QMainWindow
+{
         Q_OBJECT
     public:
         explicit MainWindow(QWidget *pParent = nullptr);
@@ -187,7 +188,8 @@ class MainWindow : public QMainWindow {
         ScriptViewer *m_w2;               // comm script (MAIN tab, tid 0 / sequential)
         QTabWidget *m_commTabs = nullptr; // wraps m_w2's "MAIN" tab + one closable tab per thread
 
-        struct CommThreadTab {
+        struct CommThreadTab
+        {
                 ScriptViewer *viewer = nullptr;
                 QString baseLabel; // "<filename> #<tid>", without the "● " live prefix
         };

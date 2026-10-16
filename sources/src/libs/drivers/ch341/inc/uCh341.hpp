@@ -28,7 +28,8 @@
  * (uUart.hpp / uUartLinux.cpp / uUartCommon.cpp) so the two drivers stay
  * consistent and interchangeable behind ICommDriver.
  */
-class CH341 : public ICommDriver {
+class CH341 : public ICommDriver
+{
     public:
         static constexpr size_t CH341_MAX_BUFLENGTH           = 256;  /**< Maximum CH341 buffer length. */
         static constexpr uint32_t CH341_READ_DEFAULT_TIMEOUT  = 5000; /**< Default CH341 read timeout in milliseconds. */

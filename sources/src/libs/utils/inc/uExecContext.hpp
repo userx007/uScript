@@ -48,9 +48,11 @@
 // or threaded, is unaffected by this mechanism entirely.
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace uexec {
+namespace uexec
+{
 
-    namespace detail {
+    namespace detail
+    {
         inline thread_local bool t_bDryRun = false;
     }
 
@@ -75,7 +77,8 @@ namespace uexec {
      *        on early return or exception unwind from the guarded call), so
      *        nested use is always safe.
      */
-    class DryRunScope {
+    class DryRunScope
+    {
         public:
             explicit DryRunScope(bool bDryRun)
                 : m_bPrev(detail::t_bDryRun)
@@ -117,7 +120,8 @@ namespace uexec {
     // (an empty std::function => publishCapture() is a no-op) to every other
     // thread and to every plugin call made without a capture destination.
     // -------------------------------------------------------------------------
-    namespace detail {
+    namespace detail
+    {
         // Function-local thread_local behind an accessor instead of an
         // `inline thread_local std::function` variable: a thread_local with a
         // non-trivial constructor makes GCC emit a "TLS init function" per
@@ -131,7 +135,7 @@ namespace uexec {
             static thread_local std::function<void(const std::string &)> s_sink;
             return s_sink;
         }
-    }
+    } // namespace detail
 
     /**
      * \brief Hands strValue to the calling thread's capture sink, if any (see
@@ -149,7 +153,8 @@ namespace uexec {
      * \brief RAII scope guard installing the calling thread's capture sink for
      *        its lifetime and restoring the previous one on destruction.
      */
-    class CaptureScope {
+    class CaptureScope
+    {
         public:
             explicit CaptureScope(std::function<void(const std::string &)> sink)
                 : m_prev(std::move(detail::captureSink()))
@@ -216,9 +221,11 @@ namespace uexec {
 // by the GUI's hard-kill fallback.
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace uexec {
+namespace uexec
+{
 
-    namespace detail {
+    namespace detail
+    {
         inline std::string t_strStopFlagPath;
 
         // Backs getStopToken(). Requested from the watcher thread below the

@@ -21,7 +21,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED W5500NetPlugin *pluginEntry()
     {
         return new W5500NetPlugin();

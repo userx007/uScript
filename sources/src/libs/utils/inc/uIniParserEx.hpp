@@ -32,7 +32,8 @@
  * - Circular reference detection
  * - Zero-copy string operations where possible
  */
-class IniParserEx {
+class IniParserEx
+{
     public:
         using KeyValueMap = std::unordered_map<std::string, std::string>;
         using SectionMap  = std::unordered_map<std::string, KeyValueMap>;

@@ -166,7 +166,7 @@ set(SPLUGIN_TARGETS_COMMON
 )
 
 set(SPLUGIN_TARGETS_LINUX_ONLY
-#    kcan_plugin
+    kcan_plugin
     ki2c_plugin
     kspi_plugin
     kvcan_plugin

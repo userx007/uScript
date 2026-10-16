@@ -22,7 +22,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED FT232HPlugin *pluginEntry()
     {
         return new FT232HPlugin();

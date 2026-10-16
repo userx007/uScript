@@ -59,7 +59,8 @@ struct SpiConfig {
  * Configuration:
  *   @see SpiConfig
  */
-class KSPI : public ICommDriver {
+class KSPI : public ICommDriver
+{
     public:
         static constexpr size_t KSPI_MAX_BUFLENGTH           = 256;  /**< Maximum KSPI buffer length.                  */
         static constexpr uint32_t KSPI_READ_DEFAULT_TIMEOUT  = 5000; /**< Default KSPI read timeout in milliseconds.   */

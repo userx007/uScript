@@ -45,7 +45,8 @@
 // convention (see uEnc28J60Net.hpp) without scattering platform casts across
 // receive_packet()/send_command() below.
 // ============================================================================
-namespace {
+namespace
+{
     inline long net_recv(int iSocketFd, void *pvBuf, size_t szLen, int iFlags)
     {
 #ifdef _WIN32

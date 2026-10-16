@@ -29,9 +29,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-namespace loopback {
+namespace loopback
+{
 
-    class CanChannel : public IChannel {
+    class CanChannel : public IChannel
+    {
         public:
             // fixed_id: arbitration ID to use on TX, from the spec (e.g.
             // "kvcan:vcan0/0x100"). If absent, TX falls back to the ID carried in

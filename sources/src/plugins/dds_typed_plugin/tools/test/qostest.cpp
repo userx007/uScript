@@ -46,7 +46,8 @@ static void cmd(DdsTypedDriver &d, const std::string &text)
     d.send(1000, s, "", std::stop_token{});
 }
 
-struct EpQos {
+struct EpQos
+{
         bool found  = false;
         bool writer = false;
         int rel = -1, dur = -1, dord = -1;

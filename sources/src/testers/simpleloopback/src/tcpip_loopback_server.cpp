@@ -49,7 +49,8 @@
 #include <signal.h>
 #include <string>
 
-namespace {
+namespace
+{
     constexpr int DEFAULT_PORT         = 5000;
     constexpr const char *DEFAULT_BIND = "::";
     constexpr size_t RECV_CHUNK_SIZE   = 4096;
@@ -257,9 +258,9 @@ int main(int iArgc, char **ppstrArgv)
             break;
         }
 
-        const tp_socket_t clientFd          = ::accept(listenFd,
-                                                       reinterpret_cast<struct sockaddr *>(&sClientAddr),
-                                                       &szClientLen);
+        const tp_socket_t clientFd = ::accept(listenFd,
+                                              reinterpret_cast<struct sockaddr *>(&sClientAddr),
+                                              &szClientLen);
         if (clientFd == TP_INVALID_SOCKET) {
             if (tp_is_eintr(tp_last_error())) {
                 continue; // likely our own signal handler firing

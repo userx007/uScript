@@ -53,7 +53,8 @@
  * @tparam TDriver The concrete driver type (must derive from ICommDriver)
  */
 template <typename TDriver>
-class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCommand, TDriver> {
+class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCommand, TDriver>
+{
     public:
         using SendFunc = SendFunction<TDriver>;
         using RecvFunc = RecvFunction<TDriver>;
@@ -281,14 +282,16 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          * script text, so cache size tracks script size, not iteration count -
          * safe to leave unbounded (no eviction) across REPEAT loops.
          */
-        struct CachedRegex {
+        struct CachedRegex
+        {
                 std::shared_ptr<std::regex> compiled; ///< null if `pattern` failed to compile
                 std::string error;                    ///< populated only when compiled == null
         };
 
         std::unordered_map<std::string, CachedRegex> m_regexCache;
 
-        struct DataCacheKey {
+        struct DataCacheKey
+        {
                 CommCommandTokenType type;
                 std::string value;
 
@@ -298,7 +301,8 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                 }
         };
 
-        struct DataCacheKeyHash {
+        struct DataCacheKeyHash
+        {
                 size_t operator()(const DataCacheKey &k) const noexcept
                 {
                     return std::hash<std::string>{}(k.value) ^ (std::hash<int>{}(static_cast<int>(k.type)) << 1);

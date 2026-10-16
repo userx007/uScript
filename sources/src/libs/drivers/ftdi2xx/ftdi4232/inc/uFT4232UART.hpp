@@ -46,7 +46,8 @@
  *        Status::INVALID_PARAM.  For MPSSE-based protocols on A/B use
  *        FT4232SPI, FT4232I2C, or FT4232GPIO.
  */
-class FT4232UART : public ICommDriver {
+class FT4232UART : public ICommDriver
+{
     public:
         using Status                                                = ICommDriver::Status;
 
@@ -73,7 +74,8 @@ class FT4232UART : public ICommDriver {
          *   3 = mark
          *   4 = space
          */
-        struct UartConfig {
+        struct UartConfig
+        {
                 uint32_t baudRate{115200u};                          ///< Baud rate in bps
                 uint8_t dataBits{8u};                                ///< Data bits per frame (7 or 8)
                 uint8_t stopBits{0u};                                ///< 0=1bit, 1=1.5bits, 2=2bits

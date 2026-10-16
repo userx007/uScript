@@ -19,7 +19,6 @@
 // same as a real Modbus TCP gateway multiplexing several masters onto one
 // slave.
 #include "modbus_datastore.hpp"
-
 #include "tester_platform.h" // POSIX sockets / Winsock portability (must come first on Windows)
 
 #include <atomic>
@@ -31,7 +30,8 @@
 #include <thread>
 #include <vector>
 
-namespace {
+namespace
+{
     // Function codes — same eight as modbus_plugin's ModbusProtocol.
     constexpr uint8_t kReadCoils                = 0x01;
     constexpr uint8_t kReadDiscreteInputs       = 0x02;

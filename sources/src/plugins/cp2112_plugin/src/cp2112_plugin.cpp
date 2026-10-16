@@ -20,7 +20,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED CP2112Plugin *pluginEntry()
     {
         return new CP2112Plugin();

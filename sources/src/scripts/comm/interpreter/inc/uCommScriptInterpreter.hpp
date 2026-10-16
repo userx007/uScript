@@ -37,7 +37,8 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 template <typename TDriver>
-class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TDriver> {
+class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TDriver>
+{
     public:
         using SendFunc = typename CommScriptCommandInterpreter<TDriver>::SendFunc;
         using RecvFunc = typename CommScriptCommandInterpreter<TDriver>::RecvFunc;

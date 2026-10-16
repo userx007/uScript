@@ -146,7 +146,8 @@ static uShellInst_s sShellInstance = {
     .vstrPrompt    = {0},
     .iPromptLength = 0};
 
-extern "C" {
+extern "C"
+{
 
 /******************************************************************************/
 /**

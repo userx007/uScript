@@ -37,12 +37,14 @@
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-namespace hexutils {
+namespace hexutils
+{
 
     /**
      * @brief Configuration for hexdump output colors and formatting
      */
-    struct HexDumpConfig {
+    struct HexDumpConfig
+    {
             bool useColors                            = true;
             bool showSpaces                           = true;
             bool showAscii                            = true;
@@ -96,7 +98,8 @@ namespace hexutils {
      * @brief Internal helper functions for hexdump
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    namespace internal {
+    namespace internal
+    {
         // Lookup table for hex digits
         constexpr char HEX_DIGITS[] = "0123456789ABCDEF";
 

@@ -17,7 +17,8 @@
  * NONE maps every tout_write()/tout_read() call 1:1 to a single physical
  * frame; payloads above the frame's max DLC are rejected by the driver.
  */
-enum class TpProtocol : uint8_t {
+enum class TpProtocol : uint8_t
+{
     NONE                 = 0, /**< Raw single-frame framing, no segmentation.                      */
     ISO_TP               = 1, /**< ISO 15765-2 — automotive diagnostics / general purpose.         */
     J1939_TP             = 2, /**< SAE J1939-21 — BAM (broadcast) and RTS/CTS (peer-to-peer).       */
@@ -42,7 +43,8 @@ enum class TpProtocol : uint8_t {
  *     protocols use it to address the frames they build (SF/FF/CF on txId,
  *     Flow-Control / TP.CM / TP.DT on the matching id).
  */
-class ITransportProtocol {
+class ITransportProtocol
+{
     public:
         virtual ~ITransportProtocol() = default;
 

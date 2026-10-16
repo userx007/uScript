@@ -31,7 +31,8 @@
 class PluginInterface;
 struct PluginDataType;
 
-class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
+class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
+{
 
     public:
         explicit ScriptInterpreter(IniCfgLoader &&loader, std::string strScriptDir = {})
@@ -71,7 +72,8 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // Intermediate END_REPEAT nodes encountered during CONTINUE/BREAK skip
         // (those belonging to inner loops being unwound) are popped transparently.
         // -------------------------------------------------------------------------
-        enum class SkipReason {
+        enum class SkipReason
+        {
             NONE,
             GOTO,
             CONTINUE_LOOP,
@@ -89,7 +91,8 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // the same name shadows an outer-loop macro for the duration of the inner
         // loop, then the outer value becomes visible again on pop.
         // -------------------------------------------------------------------------
-        struct LoopState {
+        struct LoopState
+        {
                 std::string strLabel;        // loop label (matches the REPEAT node)
                 size_t szBeginIndex;         // index in vCommands of the REPEAT node
                 bool bIsUntil;               // true → REPEAT UNTIL  |  false → REPEAT range
@@ -135,7 +138,8 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // bIsInteger selects which of the integer/double triples is authoritative;
         // both are always populated (double mirrors the integer value) so callers
         // may use whichever is convenient without re-checking the flag everywhere.
-        struct ResolvedRepeatRange {
+        struct ResolvedRepeatRange
+        {
                 bool bIsInteger;
                 long long llBegin, llEnd, llStep;
                 double dBegin, dEnd, dStep;
@@ -270,7 +274,8 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // LOG). When bIsArraySource is true, vArrayValues holds every resolved
         // element (>= 1) and dBegin/dEnd/dStep are unused; otherwise
         // dBegin/dEnd/dStep are meaningful and vArrayValues is empty.
-        struct ResolvedGeneratorRange {
+        struct ResolvedGeneratorRange
+        {
                 bool bIsArraySource;
                 double dBegin, dEnd, dStep;
                 std::vector<double> vArrayValues;
@@ -309,7 +314,8 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // Attempting to launch a second thread for the same instance is rejected so
         // that plugin code does not need to be re-entrant.
         // -------------------------------------------------------------------------
-        struct ThreadEntry {
+        struct ThreadEntry
+        {
                 std::jthread thread;
                 std::shared_ptr<std::atomic<bool>> done;
                 std::string strVarMacroName;
@@ -367,7 +373,8 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType> {
         // "KILL name" goes through m_killVolatileMacro(), which looks in both - the
         // script author only ever deals in volatile macro names.
         // -------------------------------------------------------------------------
-        struct GeneratorThreadEntry {
+        struct GeneratorThreadEntry
+        {
                 std::jthread thread;
                 std::shared_ptr<std::atomic<bool>> done;
         };

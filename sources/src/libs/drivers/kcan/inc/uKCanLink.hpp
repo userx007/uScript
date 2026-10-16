@@ -31,10 +31,12 @@
  *   kind, skips the bit-timing part and only makes sure the link is up, so
  *   the same configuration works against both real and virtual interfaces.
  */
-namespace kcan {
+namespace kcan
+{
 
     /** @brief CAN controller mode flags (identical values to linux/can/netlink.h CAN_CTRLMODE_*). */
-    enum CtrlMode : uint32_t {
+    enum CtrlMode : uint32_t
+    {
         CTRLMODE_LOOPBACK        = 0x01, ///< controller-internal loopback (no bus needed - handy for self tests)
         CTRLMODE_LISTEN_ONLY     = 0x02, ///< silent mode: never transmits, never ACKs
         CTRLMODE_TRIPLE_SAMPLING = 0x04, ///< sample every bit three times
@@ -46,7 +48,8 @@ namespace kcan {
     };
 
     /** @brief What the caller wants the interface to look like. 0 / empty = "leave as is". */
-    struct LinkConfig {
+    struct LinkConfig
+    {
             uint32_t bitrate         = 0; ///< nominal bitrate in bit/s (e.g. 125000, 250000, 500000, 1000000); 0 = untouched
             uint32_t samplePoint     = 0; ///< nominal sample point in permille (875 = 87.5 %); 0 = kernel default
             uint32_t dataBitrate     = 0; ///< CAN FD data-phase bitrate in bit/s; 0 = untouched
@@ -64,7 +67,8 @@ namespace kcan {
     };
 
     /** @brief Snapshot of an interface as reported by the kernel. */
-    struct LinkStatus {
+    struct LinkStatus
+    {
             bool exists = false;
             std::string kind;             ///< "can", "vcan", "" (e.g. a slcan tty netdev) ...
             bool isCan           = false; ///< kind == "can" (bit-timing settable)

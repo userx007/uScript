@@ -11,7 +11,8 @@
 #include <stop_token>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -37,10 +38,12 @@ namespace HydraHAL {
      * auto response = uart.read(3);
      * @endcode
      */
-    class UART : public Protocol {
+    class UART : public Protocol
+    {
 
         public:
-            enum class Parity : uint8_t {
+            enum class Parity : uint8_t
+            {
                 None = 0b00,
                 Even = 0b01,
                 Odd  = 0b10,

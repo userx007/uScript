@@ -63,9 +63,11 @@
  * (which resets the driver, same convention as every other plugin in
  * this codebase) if a customer plugin needs to change.
  */
-class DdsTypedDriver : public ICommDriver {
+class DdsTypedDriver : public ICommDriver
+{
     public:
-        struct Config {
+        struct Config
+        {
                 uint32_t domainId        = 0;
                 uint32_t participantId   = 0; // see DdsDriver::Config::participantId's doc comment — identical mapping
                 bool useIpv6             = false;
@@ -144,13 +146,15 @@ class DdsTypedDriver : public ICommDriver {
                 uint32_t maxSubscriptions = 64;
         };
 
-        struct DiscoveredParticipantView {
+        struct DiscoveredParticipantView
+        {
                 std::string guidHex;
                 std::string name;
                 double ageSec = 0.0;
         };
 
-        struct DiscoveredEndpointView {
+        struct DiscoveredEndpointView
+        {
                 std::string guidHex;
                 std::string topic;
                 std::string typeName;
@@ -228,13 +232,15 @@ class DdsTypedDriver : public ICommDriver {
         // or <dds/dds.h>) — the .cpp casts back to `const DdsTypeEntry*`.
         using OpaqueTypeEntry = const void *;
 
-        struct LocalWriter {
+        struct LocalWriter
+        {
                 DdsEntity topic           = kInvalidEntity;
                 DdsEntity writer          = kInvalidEntity;
                 OpaqueTypeEntry typeEntry = nullptr;
         };
 
-        struct LocalReader {
+        struct LocalReader
+        {
                 DdsEntity topic           = kInvalidEntity;
                 DdsEntity reader          = kInvalidEntity;
                 OpaqueTypeEntry typeEntry = nullptr;
@@ -293,7 +299,8 @@ class DdsTypedDriver : public ICommDriver {
         std::shared_ptr<const ResolvedQos> m_defaultQos;
         std::string m_strDefaultQosName;
 
-        struct QosRule {
+        struct QosRule
+        {
                 std::string topicGlob;
                 std::string profileName;
                 std::shared_ptr<const ResolvedQos> qos;

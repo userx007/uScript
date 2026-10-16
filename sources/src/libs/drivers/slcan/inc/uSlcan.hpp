@@ -57,7 +57,8 @@ class UART;
 /**
  * @brief CAN frame type tag.
  */
-enum class CanFrameType : uint8_t {
+enum class CanFrameType : uint8_t
+{
     DataFrame,  ///< Data frame
     RemoteFrame ///< Remote (RTR) frame
 };
@@ -65,7 +66,8 @@ enum class CanFrameType : uint8_t {
 /**
  * @brief CAN-FD Bit Rate Switch flag.
  */
-enum class CanFdBrs : uint8_t {
+enum class CanFdBrs : uint8_t
+{
     Disabled, ///< No BRS
     Enabled   ///< BRS enabled (data phase at higher bit rate)
 };
@@ -73,7 +75,8 @@ enum class CanFdBrs : uint8_t {
 /**
  * @brief Nominal CAN bit rate presets (S command).
  */
-enum class CanBitrate : uint8_t {
+enum class CanBitrate : uint8_t
+{
     BR_10K  = 0x00, ///< S0 — 10 kbit/s
     BR_20K  = 0x01, ///< S1 — 20 kbit/s
     BR_50K  = 0x02, ///< S2 — 50 kbit/s
@@ -93,7 +96,8 @@ enum class CanBitrate : uint8_t {
 /**
  * @brief CAN-FD data segment bit rate presets (Y command).
  */
-enum class CanFdDataRate : uint8_t {
+enum class CanFdDataRate : uint8_t
+{
     FD_1M = 0x01, ///< Y1 — 1 Mbit/s
     FD_2M = 0x02, ///< Y2 — 2 Mbit/s  (adapter default)
     FD_3M = 0x03, ///< Y3 — 3 Mbit/s
@@ -104,7 +108,8 @@ enum class CanFdDataRate : uint8_t {
 /**
  * @brief Bus mode (M command).
  */
-enum class CanMode : uint8_t {
+enum class CanMode : uint8_t
+{
     Normal = 0, ///< M0 — normal (default)
     Silent = 1, ///< M1 — listen-only / silent
 };
@@ -112,7 +117,8 @@ enum class CanMode : uint8_t {
 /**
  * @brief Auto-retransmission (A command).
  */
-enum class CanAutoRetx : uint8_t {
+enum class CanAutoRetx : uint8_t
+{
     Disabled = 0, ///< A0 — off (default)
     Enabled  = 1, ///< A1 — on (not recommended)
 };
@@ -120,7 +126,8 @@ enum class CanAutoRetx : uint8_t {
 /**
  * @brief SLCAN Enhance mode (H command).
  */
-enum class SlcanEnhance : uint8_t {
+enum class SlcanEnhance : uint8_t
+{
     Disabled = 0, ///< H0 — ASCII mode (default)
     Enabled  = 1, ///< H1 — binary enhance mode
 };
@@ -148,7 +155,8 @@ enum class SlcanEnhance : uint8_t {
  * @note Channel configuration (bitrate, mode, open/close) must be done before
  *       sending frames.  The channel must be open before send_frame() is called.
  */
-class SLCAN : public ICommDriver {
+class SLCAN : public ICommDriver
+{
     public:
         // ------------------------------------------------------------------
         // Constants

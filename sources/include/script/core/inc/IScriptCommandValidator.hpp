@@ -4,7 +4,8 @@
 #include <string>
 
 template <typename TCommand>
-class IScriptCommandValidator {
+class IScriptCommandValidator
+{
     public:
         IScriptCommandValidator()                                                                    = default;
         virtual ~IScriptCommandValidator()                                                           = default;

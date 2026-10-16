@@ -19,14 +19,15 @@
 #undef LOG_HDR
 #endif
 
-#define LT_HDR  "VECTORETH_DRV|"
+#define LT_HDR  "VECT_ETH_DRV|"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
     /** Ethernet frames carry EtherType/length fields in network (big-endian) byte
      *  order; every XL-API host this driver targets (x86-64 Windows and Linux)
      *  is little-endian, so this swap is unconditional - there is no htons()

@@ -48,7 +48,8 @@ typedef SSIZE_T ssize_t;
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-namespace numeric {
+namespace numeric
+{
 
     /*--------------------------------------------------------------------------------------------------------*/
     /**
@@ -56,7 +57,8 @@ namespace numeric {
      * @brief Type constraints for numeric conversions
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    namespace concepts {
+    namespace concepts
+    {
         template <typename T>
         concept SignedInteger = std::is_integral_v<T> && std::is_signed_v<T>;
 
@@ -74,7 +76,8 @@ namespace numeric {
      * @brief Contains internal helper functions for numeric utilities.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    namespace internal {
+    namespace internal
+    {
 
         /*--------------------------------------------------------------------------------------------------------*/
         /**
@@ -159,7 +162,8 @@ namespace numeric {
      * `body` contains only the digits to be handed to std::from_chars — no sign, no base prefix.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    struct PrefixInfo {
+    struct PrefixInfo
+    {
             bool bNegative = false;
             int iBase      = 10;
             std::string_view body;

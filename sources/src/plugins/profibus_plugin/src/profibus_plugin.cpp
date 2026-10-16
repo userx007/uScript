@@ -14,7 +14,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED ProfibusPlugin *pluginEntry()
     {
         return new ProfibusPlugin();

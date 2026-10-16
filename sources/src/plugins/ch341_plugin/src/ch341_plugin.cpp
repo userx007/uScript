@@ -27,7 +27,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED CH341Plugin *pluginEntry()
     {
         return new CH341Plugin();

@@ -37,7 +37,8 @@
 /**
  * \brief The plugin's entry points
  */
-extern "C" {
+extern "C"
+{
     EXPORTED KCANPlugin *pluginEntry()
     {
         return new KCANPlugin();
@@ -573,7 +574,8 @@ bool KCANPlugin::m_KCAN_RESTART(const std::string &strArgs, std::stop_token st) 
 
 // DRIVER DECORATOR
 
-namespace {
+namespace
+{
     /**
      * \brief Thin ICommDriver decorator that reports every physical tout_write()/
      *        tout_read() call to the GUI comm-dump panel before returning.
@@ -593,7 +595,8 @@ namespace {
      *        to exactly one physical frame, so KCANPlugin::m_Send()/m_Receive()
      *        dump directly instead of paying for a decorator.
      */
-    class DumpingDriver : public ICommDriver {
+    class DumpingDriver : public ICommDriver
+    {
         public:
             DumpingDriver(std::shared_ptr<const KCAN> shpInner, std::string strPluginName)
                 : m_shpInner(std::move(shpInner))

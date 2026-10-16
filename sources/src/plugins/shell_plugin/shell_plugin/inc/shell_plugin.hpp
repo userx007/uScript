@@ -54,7 +54,8 @@
 //                          PLUGIN INTERFACE                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-class ShellPlugin : public PluginInterface {
+class ShellPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

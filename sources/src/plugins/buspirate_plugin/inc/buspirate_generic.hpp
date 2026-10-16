@@ -30,7 +30,7 @@
 #undef LOG_HDR
 #endif
 
-#define LT_HDR                  "BP_GENERIC_H|"
+#define LT_HDR                  "BP_GENERIC  |"
 #define LOG_HDR                 LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////

@@ -1,7 +1,8 @@
 #ifndef I_SCRIPT_RUNNER_HPP
 #define I_SCRIPT_RUNNER_HPP
 
-class IScriptRunner {
+class IScriptRunner
+{
     public:
         virtual bool runScript(const char *pstrCallCtx, bool bRealExec, bool bUseDryRun) = 0;
 

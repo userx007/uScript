@@ -42,7 +42,8 @@
  * Reference: FTDI AN_108 — Command Processor for MPSSE and MCU Host Bus
  *            FTDI AN_255 — USB to I2C Example using the FT232H and FT201X
  */
-class FT232HBase {
+class FT232HBase
+{
     public:
         using Status                                           = ICommDriver::Status;
 

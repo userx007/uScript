@@ -213,11 +213,13 @@
 #define _D_ALLOC_NAMLEN(p) ((PATH_MAX) + 1)
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
     /* Wide-character version */
-    struct _wdirent {
+    struct _wdirent
+    {
             /* Always zero */
             long d_ino;
 
@@ -238,7 +240,8 @@ extern "C" {
     };
     typedef struct _wdirent _wdirent;
 
-    struct _WDIR {
+    struct _WDIR
+    {
             /* Current directory entry */
             struct _wdirent ent;
 
@@ -257,7 +260,8 @@ extern "C" {
     typedef struct _WDIR _WDIR;
 
     /* Multi-byte character version */
-    struct dirent {
+    struct dirent
+    {
             /* Always zero */
             long d_ino;
 
@@ -278,7 +282,8 @@ extern "C" {
     };
     typedef struct dirent dirent;
 
-    struct DIR {
+    struct DIR
+    {
             struct dirent ent;
             struct _WDIR *wdirp;
     };

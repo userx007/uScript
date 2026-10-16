@@ -23,7 +23,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED FT245Plugin *pluginEntry()
     {
         return new FT245Plugin();

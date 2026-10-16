@@ -12,7 +12,8 @@
 #include <thread>
 #include <vector>
 
-namespace {
+namespace
+{
     constexpr const char *kIdAtoB = "A2B";
     constexpr const char *kIdBtoA = "B2A";
 
@@ -52,7 +53,8 @@ namespace {
                      pstrArgv0);
     }
 
-    struct Args {
+    struct Args
+    {
             std::string protocol;
             bool verbose       = false;
             uint32_t timeoutMs = 5000;
@@ -183,7 +185,8 @@ namespace {
     // download call, which is why the two run_canopen_case() calls above
     // pass kIdAtoB/kIdBtoA in opposite argument positions.
 
-    struct ProtocolPlan {
+    struct ProtocolPlan
+    {
             TpProtocol proto;
             std::vector<size_t> sizes;
             std::string note;

@@ -82,7 +82,8 @@ int main(int argc, char **argv)
             continue;
         }
 
-        struct {
+        struct
+        {
                 dds_qos_kind_t k;
                 const char *n;
                 dds_qos_t *b;

@@ -25,7 +25,8 @@
  *
  * All pins are 3.3 V logic; NOT 5 V tolerant.
  */
-class CP2112Gpio : public CP2112Base, public IGpioDriver {
+class CP2112Gpio : public CP2112Base, public IGpioDriver
+{
     public:
         /**
          * Both CP2112Base and IGpioDriver introduce a 'Status' name.

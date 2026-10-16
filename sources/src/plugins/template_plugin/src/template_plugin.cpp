@@ -11,7 +11,8 @@
 /**
  * \brief The plugin's entry points
  */
-extern "C" {
+extern "C"
+{
     EXPORTED TemplatePlugin *pluginEntry()
     {
         return new TemplatePlugin();

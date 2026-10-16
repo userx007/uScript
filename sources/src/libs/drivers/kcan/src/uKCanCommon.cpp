@@ -29,7 +29,7 @@
 #undef LOG_HDR
 #endif
 
-#define LT_HDR  "KCAN_DRV   |"
+#define LT_HDR  "KCAN_DRV    |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -279,10 +279,10 @@ KCAN::WriteResult KCAN::tout_write(uint32_t u32WriteTimeout,
                                            : CAN_SFF_MASK;
 
         const bool bAlreadyCovered   = m_vFilters.empty() ||
-                                     std::any_of(m_vFilters.begin(), m_vFilters.end(),
-                                                 [&](const CanFilter &f) {
+                                       std::any_of(m_vFilters.begin(), m_vFilters.end(),
+                                                   [&](const CanFilter &f) {
                                                      return f.can_id == u32EffectiveTxId && f.can_mask == u32FilterMask;
-                                                 });
+                                                   });
 
         if (!bAlreadyCovered) {
             std::vector<CanFilter> vWidened = m_vFilters;

@@ -3,7 +3,8 @@
 #include <algorithm>
 #include <cstring>
 
-namespace {
+namespace
+{
     // ---- Client Command Specifiers (byte0 bits 7-5), sent BY US as client ----
     constexpr uint8_t kCcsDlSegment         = 0; // Download segment
     constexpr uint8_t kCcsDlInitiate        = 1; // Initiate download (expedited or normal)

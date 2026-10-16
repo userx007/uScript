@@ -35,7 +35,8 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 template <typename TDriver>
-class CommScriptClient {
+class CommScriptClient
+{
     public:
         using SendFunc = typename CommScriptInterpreter<TDriver>::SendFunc;
         using RecvFunc = typename CommScriptInterpreter<TDriver>::RecvFunc;

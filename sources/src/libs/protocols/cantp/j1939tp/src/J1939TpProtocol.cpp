@@ -6,7 +6,8 @@
 #include <cstring>
 #include <thread>
 
-namespace {
+namespace
+{
     constexpr size_t kFrameLen              = 8;
     constexpr size_t kDtMaxLen              = 7; // TP.DT: 1 sequence byte + up to 7 data bytes
 

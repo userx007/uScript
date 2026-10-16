@@ -50,9 +50,11 @@
 #include <stdexcept>
 #include <vector>
 
-namespace loopback {
+namespace loopback
+{
 
-    namespace detail {
+    namespace detail
+    {
 
         inline std::string toLower(std::string strS)
         {
@@ -124,7 +126,8 @@ namespace loopback {
 
     // Thrown on a malformed spec string; loopback.cpp catches this and prints
     // usage.
-    struct SpecError : std::runtime_error {
+    struct SpecError : std::runtime_error
+    {
             explicit SpecError(const std::string &strMsg)
                 : std::runtime_error(strMsg)
             {

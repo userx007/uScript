@@ -14,9 +14,11 @@
 #include <memory>
 #include <string>
 
-namespace loopback {
+namespace loopback
+{
 
-    class IChannel {
+    class IChannel
+    {
         public:
             virtual ~IChannel()                      = default;
 

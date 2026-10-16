@@ -32,7 +32,8 @@
 #undef uSHELL_COMMANDS_TABLE_END
 
 #define uSHELL_COMMANDS_TABLE_BEGIN \
-    typedef union fctype_u_ {
+    typedef union fctype_u_         \
+    {
 #undef uSHELL_COMMAND_PARAMS_PATTERN
 #define uSHELL_COMMAND_PARAMS_PATTERN(t) t##_fctptr_t t##_fct;
 #define uSHELL_COMMAND(a, b, c)
@@ -45,7 +46,9 @@
 #undef uSHELL_COMMAND
 #undef uSHELL_COMMANDS_TABLE_END
 
-#define uSHELL_COMMANDS_TABLE_BEGIN typedef enum fctype_e_ {
+#define uSHELL_COMMANDS_TABLE_BEGIN \
+    typedef enum fctype_e_          \
+    {
 #undef uSHELL_COMMAND_PARAMS_PATTERN
 #define uSHELL_COMMAND_PARAMS_PATTERN(t) t##_type,
 #define uSHELL_COMMAND(a, b, c)
@@ -60,7 +63,8 @@
 #undef uSHELL_COMMANDS_TABLE_END
 
 /** \brief local data types */
-typedef struct fctDefEx_s_ {
+typedef struct fctDefEx_s_
+{
         fctype_u uFctType;
         fctype_e eParamType;
 } fctDefEx_s;

@@ -60,7 +60,8 @@
 #include <stdexcept>
 #include <string>
 
-class CH347Device {
+class CH347Device
+{
     public:
         // -----------------------------------------------------------------------
         // Construction / destruction

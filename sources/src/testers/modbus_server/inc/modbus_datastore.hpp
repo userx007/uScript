@@ -18,7 +18,8 @@
  * data address, 3 = illegal data value) rather than throwing, since that's
  * exactly what the caller needs to build a Modbus exception response.
  */
-class ModbusDataStore {
+class ModbusDataStore
+{
     public:
         static constexpr uint8_t kExceptionNone           = 0x00;
         static constexpr uint8_t kExceptionIllegalAddress = 0x02;

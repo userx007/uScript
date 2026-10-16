@@ -32,18 +32,20 @@
 #undef LOG_HDR
 #endif
 
-#define LT_HDR  "KCAN_DRV   |"
+#define LT_HDR  "KCAN_DRV    |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
     /** @brief Human readable list of the CAN_ERR_* classes set in an error frame's can_id. */
     std::string describe_error_class(canid_t id)
     {
-        static const struct {
+        static const struct
+        {
                 canid_t bit;
                 const char *name;
         } kClasses[] = {

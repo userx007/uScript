@@ -43,6 +43,7 @@ uscript_add_subdirectory(USCRIPT_PLUGIN_GRPC        grpc_plugin)
 uscript_add_subdirectory(USCRIPT_PLUGIN_KI2C        ki2c_plugin)
 uscript_add_subdirectory(USCRIPT_PLUGIN_KSPI        kspi_plugin)
 uscript_add_subdirectory(USCRIPT_PLUGIN_KVCAN       kvcan_plugin)
+uscript_add_subdirectory(USCRIPT_PLUGIN_KCAN        kcan_plugin)
 uscript_add_subdirectory(USCRIPT_PLUGIN_RAWETH      raweth_plugin)
 uscript_add_subdirectory(USCRIPT_PLUGIN_SYSTEC      systec_plugin)
 

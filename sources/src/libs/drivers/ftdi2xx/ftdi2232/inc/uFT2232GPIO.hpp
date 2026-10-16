@@ -31,11 +31,13 @@
  *     Do not use this class. Instead drive the spare ADBUS4–7 / ACBUS pins
  *     directly with SET_BITS_LOW commands interleaved in the protocol traffic.
  */
-class FT2232GPIO : public FT2232Base {
+class FT2232GPIO : public FT2232Base
+{
     public:
         using Status = ICommDriver::Status;
 
-        enum class Bank : uint8_t {
+        enum class Bank : uint8_t
+        {
             Low  = 0,
             High = 1
         };
@@ -46,7 +48,8 @@ class FT2232GPIO : public FT2232Base {
          * Direction bits: 1 = output, 0 = input.
          * Defaults: all pins as inputs (safe on open).
          */
-        struct GpioConfig {
+        struct GpioConfig
+        {
                 uint8_t lowDirMask  = 0x00u; ///< ADBUS direction
                 uint8_t lowValue    = 0x00u; ///< ADBUS initial output levels
                 uint8_t highDirMask = 0x00u; ///< ACBUS direction

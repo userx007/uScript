@@ -40,7 +40,8 @@
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
     // RFC 6455 s.1.3 - fixed GUID concatenated with the client's Sec-WebSocket-Key
     // nonce, SHA-1 hashed, then base64 encoded, to derive Sec-WebSocket-Accept.
     constexpr const char *WS_GUID          = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";

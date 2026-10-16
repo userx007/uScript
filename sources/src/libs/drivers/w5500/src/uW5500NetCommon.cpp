@@ -25,14 +25,15 @@
 #ifdef LT_HDR
 #undef LT_HDR
 #endif
-#define LT_HDR  "W5500_NET_DRV"
+#define LT_HDR  "W5500NET_DRV|"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
     inline long net_recv(int iSocketFd, void *pvBuf, size_t szLen, int iFlags)
     {
 #ifdef _WIN32

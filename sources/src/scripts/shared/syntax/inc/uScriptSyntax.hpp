@@ -6,7 +6,8 @@
 #include <regex>
 #include <string>
 
-namespace usyntax {
+namespace usyntax
+{
 
     // validate a load plugin expression
     // Supports plain names (UART) and instanced names (UART:1, UART:2, …).

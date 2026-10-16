@@ -53,7 +53,8 @@
  * .../pruefsumme.html) — cited in the relevant functions below rather than
  * repeated in full here.
  */
-class ProfibusProtocol {
+class ProfibusProtocol
+{
     public:
         // Start/end delimiters — identical across every open PROFIBUS
         // reference (see e.g. https://www.felser.ch/profibus-manual/telegrammformate.html).
@@ -90,7 +91,8 @@ class ProfibusProtocol {
         static constexpr uint8_t kRspDataNotReceivedLow  = 0x0C;
         static constexpr uint8_t kRspDataNotReceivedHigh = 0x0D;
 
-        enum class TelegramKind : uint8_t {
+        enum class TelegramKind : uint8_t
+        {
             SD1,
             SD2,
             SD3,
@@ -99,7 +101,8 @@ class ProfibusProtocol {
             Malformed
         };
 
-        struct DecodedTelegram {
+        struct DecodedTelegram
+        {
                 TelegramKind kind = TelegramKind::Malformed;
                 uint8_t da        = 0;   // Destination Address (SD1/SD2/SD3/SD4 only)
                 uint8_t sa        = 0;   // Source Address (SD1/SD2/SD3/SD4 only)
@@ -109,7 +112,8 @@ class ProfibusProtocol {
         };
 
         // Decoded meaning of a RESPONSE FC byte (see decodeResponseFc()).
-        struct ResponseFc {
+        struct ResponseFc
+        {
                 bool isRequestFrame = false; // true would mean this FC actually belongs to a request, not a response — caller error
                 uint8_t stationType = 0;     // 0=Slave, 1=Master not ready, 2=Master ready without token, 3=Master ready in token ring
                 uint8_t statusCode  = 0;     // one of the kRsp* constants above

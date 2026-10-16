@@ -59,7 +59,8 @@
  *
  * @note Only channels A and B of the FT4232H have MPSSE.
  */
-class FT4232SPI : public FT4232Base, public ICommDriver {
+class FT4232SPI : public FT4232Base, public ICommDriver
+{
     public:
         // Resolve ambiguity: both FT4232Base and ICommDriver introduce 'Status'
         using Status = ICommDriver::Status;
@@ -67,7 +68,8 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
         // ── SPI configuration ────────────────────────────────────────────────
 
         /** Standard SPI clock/phase mode */
-        enum class SpiMode : uint8_t {
+        enum class SpiMode : uint8_t
+        {
             Mode0 = 0,
             Mode1 = 1,
             Mode2 = 2,
@@ -75,13 +77,15 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
         };
 
         /** Bit transmission order */
-        enum class BitOrder : uint8_t {
+        enum class BitOrder : uint8_t
+        {
             MsbFirst = 0,
             LsbFirst = 1
         };
 
         /** Chip-select active polarity */
-        enum class CsPolarity : uint8_t {
+        enum class CsPolarity : uint8_t
+        {
             ActiveLow  = 0,
             ActiveHigh = 1
         };
@@ -92,7 +96,8 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
          * Pass this to open() to set all bus parameters in one call.
          * Defaults produce a safe, widely-compatible 1 MHz Mode-0 bus.
          */
-        struct SpiConfig {
+        struct SpiConfig
+        {
                 uint32_t clockHz      = 1000000u;              ///< SCK frequency in Hz
                 SpiMode mode          = SpiMode::Mode0;        ///< Clock polarity/phase
                 BitOrder bitOrder     = BitOrder::MsbFirst;    ///< Transmission order
@@ -103,7 +108,8 @@ class FT4232SPI : public FT4232Base, public ICommDriver {
 
         // ── Result type for spi_transfer ─────────────────────────────────────
 
-        struct TransferResult {
+        struct TransferResult
+        {
                 Status status       = Status::RETVAL_NOT_SET;
                 size_t bytes_xfered = 0; ///< Bytes successfully exchanged
         };

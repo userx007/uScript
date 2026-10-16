@@ -65,7 +65,8 @@
  *   FILTER — installs KVCAN hardware acceptance filters at runtime
  *             without reopening the socket.
  */
-class KVCANPlugin : public PluginInterface {
+class KVCANPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

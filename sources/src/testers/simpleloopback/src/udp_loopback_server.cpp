@@ -51,7 +51,8 @@
 #include <signal.h>
 #include <string>
 
-namespace {
+namespace
+{
     constexpr int DEFAULT_PORT         = 5000;
     constexpr const char *DEFAULT_BIND = "::";
     // Matches UDP_MAX_DGRAM_LEN in uUdp.hpp — the IPv4 theoretical payload
@@ -192,9 +193,9 @@ int main(int iArgc, char **ppstrArgv)
             break;
         }
 
-        const ssize_t nRecv                 = tp_recvfrom(sockFd, buffer, sizeof(buffer), 0,
-                                                         reinterpret_cast<struct sockaddr *>(&sSenderAddr),
-                                                         &szSenderLen);
+        const ssize_t nRecv = tp_recvfrom(sockFd, buffer, sizeof(buffer), 0,
+                                          reinterpret_cast<struct sockaddr *>(&sSenderAddr),
+                                          &szSenderLen);
         if (nRecv < 0) {
             if (tp_is_eintr(tp_last_error())) {
                 continue; // likely our own signal handler firing
@@ -207,8 +208,8 @@ int main(int iArgc, char **ppstrArgv)
         print_datagram("RX", strPeer, buffer, static_cast<size_t>(nRecv));
 
         const ssize_t nSent = tp_sendto(sockFd, buffer, static_cast<size_t>(nRecv), 0,
-                                       reinterpret_cast<struct sockaddr *>(&sSenderAddr),
-                                       szSenderLen);
+                                        reinterpret_cast<struct sockaddr *>(&sSenderAddr),
+                                        szSenderLen);
         if (nSent < 0) {
             // Log and keep serving — a single bad send (e.g. an async ICMP
             // "port unreachable" from an earlier datagram to a since-gone

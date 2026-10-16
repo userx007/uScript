@@ -86,7 +86,8 @@
  * RawIo indirection are shared, unmodified, across every CAN plugin in this
  * codebase.
  */
-class VectorPlugin : public PluginInterface {
+class VectorPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

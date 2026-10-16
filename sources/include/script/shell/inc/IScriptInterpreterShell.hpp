@@ -15,7 +15,8 @@
  * @tparam TDriver Type of communication driver
  */
 template <typename TScriptEntries>
-class IScriptInterpreterShell : public IScriptInterpreter<TScriptEntries> {
+class IScriptInterpreterShell : public IScriptInterpreter<TScriptEntries>
+{
     public:
         virtual ~IScriptInterpreterShell()                                                  = default;
 

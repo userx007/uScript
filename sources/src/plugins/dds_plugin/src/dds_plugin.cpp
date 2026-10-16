@@ -14,7 +14,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED DdsPlugin *pluginEntry()
     {
         return new DdsPlugin();

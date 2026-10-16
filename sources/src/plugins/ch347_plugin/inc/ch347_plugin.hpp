@@ -106,7 +106,8 @@ struct PluginDataSet;
  *   CH347.JTAG close
  */
 
-class CH347Plugin : public PluginInterface {
+class CH347Plugin : public PluginInterface
+{
 
     public:
         CH347Plugin()
@@ -255,7 +256,8 @@ class CH347Plugin : public PluginInterface {
 
         // INI accessor
 
-        struct IniValues {
+        struct IniValues
+        {
                 std::string strArtefactsPath;
                 std::string strDevicePath{
 #ifdef _WIN32
@@ -319,24 +321,28 @@ class CH347Plugin : public PluginInterface {
     private:
         // Pending configuration structs
 
-        struct SpiPendingCfg {
+        struct SpiPendingCfg
+        {
                 mSpiCfgS cfg{};
                 SpiXferOptions xferOpts{};
                 bool cfgDirty{true};
         };
 
-        struct I2cPendingCfg {
+        struct I2cPendingCfg
+        {
                 I2cSpeed speed{I2cSpeed::Fast};
                 uint8_t address{0x50u};
         };
 
-        struct GpioPendingCfg {
+        struct GpioPendingCfg
+        {
                 uint8_t enableMask{0xFFu};
                 uint8_t dirMask{0x00u}; // default all inputs
                 uint8_t dataValue{0x00u};
         };
 
-        struct JtagPendingCfg {
+        struct JtagPendingCfg
+        {
                 uint8_t clockRate{2u};
                 JtagRegister lastReg{JtagRegister::DR};
         };

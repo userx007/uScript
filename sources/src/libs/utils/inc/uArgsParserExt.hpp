@@ -10,9 +10,11 @@
 #include <unordered_map>
 #include <vector>
 
-class CommandLineParser {
+class CommandLineParser
+{
     public:
-        struct ParseResult {
+        struct ParseResult
+        {
                 bool success = true;
                 std::vector<std::string> errors;
 
@@ -22,7 +24,8 @@ class CommandLineParser {
                 }
         };
 
-        enum class OptionType {
+        enum class OptionType
+        {
             String,
             Flag,
             Int,
@@ -293,7 +296,8 @@ class CommandLineParser {
         }
 
     private:
-        struct OptionConfig {
+        struct OptionConfig
+        {
                 std::string long_flag;
                 std::string short_flag;
                 std::string help;

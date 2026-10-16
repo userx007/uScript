@@ -13,7 +13,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-namespace {
+namespace
+{
     // Legacy fixed ids kept only so any old caller still spelling out "A2B"/"B2A"
     // keeps working; every other xtra_params value is parsed as a CAN id below.
     constexpr uint32_t kIdA2B_CAN = 0x100;

@@ -32,7 +32,8 @@
  *
  *   Examples: 100 kHz → 299,   400 kHz → 74,   1 MHz → 29,   3.4 MHz → 7
  */
-class FT232HI2C : public FT232HBase, public ICommDriver {
+class FT232HI2C : public FT232HBase, public ICommDriver
+{
     public:
         using Status = ICommDriver::Status;
 

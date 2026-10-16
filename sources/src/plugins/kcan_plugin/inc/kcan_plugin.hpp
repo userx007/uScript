@@ -1,5 +1,6 @@
 #ifndef KCAN_PLUGIN_HPP
 #define KCAN_PLUGIN_HPP
+
 #include "ICommDriver.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
@@ -84,7 +85,8 @@
  * Changing bitrate / link state needs CAP_NET_ADMIN (root, or
  * `setcap cap_net_admin+ep <binary>`); plain frame I/O does not.
  */
-class KCANPlugin : public PluginInterface {
+class KCANPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

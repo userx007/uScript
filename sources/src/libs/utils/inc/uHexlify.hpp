@@ -21,12 +21,14 @@
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-namespace hexutils {
+namespace hexutils
+{
 
     /**
      * @brief Enumeration for specifying endianness.
      */
-    enum class Endianness : uint8_t {
+    enum class Endianness : uint8_t
+    {
         Little, /**< Little-endian format */
         Big     /**< Big-endian format */
     };
@@ -37,7 +39,8 @@ namespace hexutils {
      * @brief Contains internal helper functions for hexutils.
      */
     /*--------------------------------------------------------------------------------------------------------*/
-    namespace internal {
+    namespace internal
+    {
         // Lookup tables for fast hex conversion
         constexpr char g_hexDigitsUpper[] = "0123456789ABCDEF";
         constexpr char g_hexDigitsLower[] = "0123456789abcdef";

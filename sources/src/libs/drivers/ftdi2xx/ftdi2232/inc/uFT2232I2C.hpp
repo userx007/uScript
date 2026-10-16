@@ -40,7 +40,8 @@
  * @note Only channels A and B of the FT2232H have MPSSE.
  *       For the FT2232D, only channel A supports MPSSE.
  */
-class FT2232I2C : public FT2232Base, public ICommDriver {
+class FT2232I2C : public FT2232Base, public ICommDriver
+{
     public:
         using Status = ICommDriver::Status;
 

@@ -8,7 +8,8 @@
  * configuration surface stays uniform; fields a given protocol does not
  * use are simply ignored by that protocol's implementation.
  */
-struct TpConfig {
+struct TpConfig
+{
         // ---- ISO-TP (ISO 15765-2) -------------------------------------------------
         uint8_t blockSize               = 0;    /**< BS sent in our Flow Control frames (0 = no limit). */
         uint8_t stMin                   = 0;    /**< STmin sent in our Flow Control frames (raw encoded byte). */

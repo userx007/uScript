@@ -11,7 +11,8 @@
 #include <stop_token>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -32,7 +33,8 @@ namespace HydraHAL {
      * ow.write({0xCC, 0x44});   // SKIP ROM + CONVERT T
      * @endcode
      */
-    class OneWire : public Protocol {
+    class OneWire : public Protocol
+    {
         public:
             explicit OneWire(std::shared_ptr<Hydrabus> shpHydrabus);
 

@@ -47,7 +47,8 @@
 #include <string>
 #include <thread>
 
-namespace loopback {
+namespace loopback
+{
     volatile sig_atomic_t g_stop = 0;
 
     static void onSignal(int /*sig*/)
@@ -82,7 +83,8 @@ namespace loopback {
     }
 } // namespace loopback
 
-namespace {
+namespace
+{
 
     void printUsage(const char *pstrArgv0)
     {

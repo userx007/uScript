@@ -30,7 +30,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED DSPKi2cPlugin *pluginEntry()
     {
         return new DSPKi2cPlugin();

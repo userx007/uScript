@@ -27,7 +27,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED CandlelightPlugin *pluginEntry()
     {
         return new CandlelightPlugin();

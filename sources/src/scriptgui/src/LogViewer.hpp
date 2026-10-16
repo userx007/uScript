@@ -27,7 +27,8 @@ class QWidget;
 //  ScriptViewer.  Line numbers are therefore never part of the document text,
 //  so mouse selection never picks them up.
 // ─────────────────────────────────────────────────────────────────────────────
-class LogEdit : public QPlainTextEdit {
+class LogEdit : public QPlainTextEdit
+{
         Q_OBJECT
     public:
         explicit LogEdit(QWidget *pParent = nullptr);
@@ -66,7 +67,8 @@ class LogEdit : public QPlainTextEdit {
 //    ERROR  → red
 //    bare   → light-grey (LOG_EMPTY lines from the interpreter)
 // ─────────────────────────────────────────────────────────────────────────────
-class LogViewer : public QFrame {
+class LogViewer : public QFrame
+{
         Q_OBJECT
     public:
         explicit LogViewer(QWidget *pParent = nullptr);

@@ -92,7 +92,8 @@ struct PluginDataSet;
  *   FT232H.GPIO read low
  *   FT232H.GPIO close
  */
-class FT232HPlugin : public PluginInterface {
+class FT232HPlugin : public PluginInterface
+{
     public:
         FT232HPlugin()
             : m_strVersion(FT232H_PLUGIN_VERSION)
@@ -249,7 +250,8 @@ class FT232HPlugin : public PluginInterface {
 
         // INI accessor
 
-        struct IniValues {
+        struct IniValues
+        {
                 std::string strArtefactsPath;
                 uint8_t u8DeviceIndex{0};
                 uint32_t u32SpiClockHz{1000000u};
@@ -309,7 +311,8 @@ class FT232HPlugin : public PluginInterface {
     private:
         // Pending configuration
 
-        struct SpiPendingCfg {
+        struct SpiPendingCfg
+        {
                 uint32_t clockHz{1000000u};
                 FT232HSPI::SpiMode mode{FT232HSPI::SpiMode::Mode0};
                 FT232HSPI::BitOrder bitOrder{FT232HSPI::BitOrder::MsbFirst};
@@ -317,12 +320,14 @@ class FT232HPlugin : public PluginInterface {
                 FT232HSPI::CsPolarity csPolarity{FT232HSPI::CsPolarity::ActiveLow};
         };
 
-        struct I2cPendingCfg {
+        struct I2cPendingCfg
+        {
                 uint8_t address{0x50u};
                 uint32_t clockHz{100000u};
         };
 
-        struct GpioPendingCfg {
+        struct GpioPendingCfg
+        {
                 uint8_t lowDirMask{0x00u};
                 uint8_t lowValue{0x00u};
                 uint8_t highDirMask{0x00u};

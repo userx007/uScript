@@ -55,9 +55,11 @@ class TCPIP;
  * ModbusDriver>::SendFunc`/`RecvFunc` exactly, so the plugin's lambdas are
  * one-liners with no plugin state captured at all — see modbus_plugin.cpp.
  */
-class ModbusDriver : public ICommDriver {
+class ModbusDriver : public ICommDriver
+{
     public:
-        struct Config {
+        struct Config
+        {
                 std::string host;
                 uint16_t port              = 502;
                 uint32_t connectTimeoutMs  = 5000;

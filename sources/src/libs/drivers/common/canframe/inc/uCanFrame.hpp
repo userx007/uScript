@@ -10,7 +10,8 @@
 /**
  * @brief Decoded CAN / CAN-FD receive frame.
  */
-struct CanFrame {
+struct CanFrame
+{
         bool is_extended = false;       ///< True → 29-bit extended ID
         bool is_remote   = false;       ///< True → RTR frame
         bool is_canfd    = false;       ///< True → CAN-FD frame
@@ -21,7 +22,8 @@ struct CanFrame {
         std::array<uint8_t, 64> data{}; ///< Payload bytes
 };
 
-namespace ucanframe {
+namespace ucanframe
+{
 
     // DLC ↔ length tables  (CAN-FD ISO 11898-1)
     static constexpr std::array<uint8_t, 16> DLC_TO_LEN_TABLE = {

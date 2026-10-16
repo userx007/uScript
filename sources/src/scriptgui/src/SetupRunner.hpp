@@ -31,7 +31,8 @@ class QTimer;
  *   With credentials: PowerShell Start-Process -Credential (secondary logon),
  *   output captured through redirect files that are tailed while it runs.
  */
-class SetupRunner : public QObject {
+class SetupRunner : public QObject
+{
         Q_OBJECT
     public:
         explicit SetupRunner(QObject *pParent = nullptr);

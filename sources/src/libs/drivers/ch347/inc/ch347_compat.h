@@ -126,7 +126,8 @@ static constexpr CH347_HANDLE CH347_INVALID_HANDLE = static_cast<CH347_HANDLE>(-
 // ============================================================================
 // Internal helpers – NOT part of the public API
 // ============================================================================
-namespace ch347_compat_detail {
+namespace ch347_compat_detail
+{
 
     /// Convert Linux (ignoreCS, iChipSelect) pair into the single Windows
     /// iChipSelect ULONG.  Windows bit7=0 → ignore CS; bit7=1 → assert CS.
@@ -524,7 +525,8 @@ static inline bool CH347GPIO_IRQ_Set(CH347_HANDLE idx,
 //   [4]  tck_state : last TCK phase marker  (0x00 or 0x10)
 //   [8]  flag      : set to 1 after CH347Jtag_ClockTms
 //   [12] base_pins : persistent pin-state byte (TDI etc.)
-struct CH347_JtagPinState_t {
+struct CH347_JtagPinState_t
+{
         uint32_t tms_state = 0;
         uint32_t tck_state = 0;
         uint32_t flag      = 0;

@@ -10,7 +10,8 @@
 #include <stop_token>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -35,7 +36,8 @@ namespace HydraHAL {
      * @endcode
      */
 
-    class RawWire : public Protocol {
+    class RawWire : public Protocol
+    {
 
         public:
             explicit RawWire(std::shared_ptr<Hydrabus> shpHydrabus);

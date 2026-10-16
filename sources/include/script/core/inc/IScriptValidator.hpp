@@ -6,7 +6,8 @@
 #include <vector>
 
 template <typename TScriptEntries>
-class IScriptValidator {
+class IScriptValidator
+{
     public:
         IScriptValidator()                                                                                 = default;
         virtual ~IScriptValidator()                                                                        = default;

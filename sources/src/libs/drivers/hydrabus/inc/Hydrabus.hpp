@@ -13,7 +13,8 @@
 
 class ICommDriver;
 
-namespace HydraHAL {
+namespace HydraHAL
+{
 
     /**
      * @brief Core HydraBus communication wrapper.
@@ -34,7 +35,8 @@ namespace HydraHAL {
      * hb->enter_bbio();
      * @endcode
      */
-    class Hydrabus {
+    class Hydrabus
+    {
         public:
             static constexpr uint32_t DEFAULT_TIMEOUT_MS = 1000u;
             static constexpr uint32_t SHORT_TIMEOUT_MS   = 10u;

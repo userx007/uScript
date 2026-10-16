@@ -47,7 +47,8 @@ using MFP = bool (T::*)(const std::string &, std::stop_token) const;
  * bBlocking = false → command always returns in finite time (default).
  */
 template <typename T>
-struct PluginCommandEntry {
+struct PluginCommandEntry
+{
         MFP<T> handler;
         bool bBlocking;
 };

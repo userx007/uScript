@@ -37,7 +37,8 @@ class ICommDriver;
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED HydrabusPlugin *pluginEntry()
     {
         return new HydrabusPlugin();

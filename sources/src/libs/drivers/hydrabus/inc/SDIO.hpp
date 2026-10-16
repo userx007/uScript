@@ -11,7 +11,8 @@
 #include <stop_token>
 #include <vector>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -34,7 +35,8 @@ namespace HydraHAL {
      * @endcode
      */
 
-    class SDIO : public Protocol {
+    class SDIO : public Protocol
+    {
 
         public:
             static constexpr size_t BLOCK_SIZE = 512;

@@ -73,13 +73,15 @@
 // the whole process no matter how many separate images include this header.
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace uvolatile {
+namespace uvolatile
+{
 
     /**
      * \brief Process-wide, thread-safe mirror of every "?=" variable macro's
      *        most recently assigned value.
      */
-    class VolatileMacroStore {
+    class VolatileMacroStore
+    {
         public:
             /** \brief Returns the single, process-wide instance. Defined exactly once,
              *        out-of-line, in uVolatileMacroStore.cpp (part of the

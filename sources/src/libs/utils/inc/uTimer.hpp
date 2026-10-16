@@ -27,9 +27,11 @@
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace utime {
+namespace utime
+{
 
-    class Timer {
+    class Timer
+    {
         public:
             using Clock     = std::chrono::high_resolution_clock;
             using TimePoint = std::chrono::time_point<Clock>;
@@ -276,7 +278,8 @@ namespace utime {
     };
 
     // RAII timer that auto-logs (original behavior)
-    class ScopedTimer : public Timer {
+    class ScopedTimer : public Timer
+    {
         public:
             explicit ScopedTimer(const std::string &strContext = "")
                 : Timer(strContext, true, true) // auto-start, auto-log

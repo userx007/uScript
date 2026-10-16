@@ -28,9 +28,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-namespace loopback {
+namespace loopback
+{
 
-    class RawEthChannel : public IChannel {
+    class RawEthChannel : public IChannel
+    {
         public:
             static constexpr size_t MAC_LEN = 6;
 

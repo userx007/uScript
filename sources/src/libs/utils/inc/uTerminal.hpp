@@ -9,7 +9,8 @@
 #include <unistd.h>
 #endif
 
-class TerminalRAII {
+class TerminalRAII
+{
     public:
         TerminalRAII()
         {

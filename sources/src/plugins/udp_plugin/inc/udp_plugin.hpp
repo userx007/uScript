@@ -73,7 +73,8 @@
  * there is no per-plugin acceptance-filter table to manage as there is on
  * a CAN socket.
  */
-class UDPPlugin : public PluginInterface {
+class UDPPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

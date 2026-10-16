@@ -32,9 +32,11 @@
 //                     CLASS IMPLEMENTATION                      //
 ///////////////////////////////////////////////////////////////////
 
-class VectorMath {
+class VectorMath
+{
     public:
-        enum class IntOp {
+        enum class IntOp
+        {
             Add,
             Sub,
             Mul,
@@ -48,7 +50,8 @@ class VectorMath {
             Invalid
         };
 
-        enum class DoubleOp {
+        enum class DoubleOp
+        {
             Add,
             Sub,
             Mul,

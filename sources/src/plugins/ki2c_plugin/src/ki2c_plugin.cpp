@@ -27,7 +27,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED KI2CPlugin *pluginEntry()
     {
         return new KI2CPlugin();

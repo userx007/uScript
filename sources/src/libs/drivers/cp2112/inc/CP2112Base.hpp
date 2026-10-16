@@ -37,7 +37,8 @@
  *
  * Not intended to be instantiated directly — use CP2112 or CP2112Gpio.
  */
-class CP2112Base {
+class CP2112Base
+{
     public:
         using Status                                           = ICommDriver::Status;
 

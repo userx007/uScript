@@ -5,7 +5,8 @@
 
 #include <utility>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 } // namespace HydraHAL
 
@@ -27,7 +28,8 @@ namespace HydraHAL {
 //                         NAMESPACE IMPLEMENTATION                            //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace HydraHAL {
+namespace HydraHAL
+{
 
     MMC::MMC(std::shared_ptr<Hydrabus> shpHydrabus)
         : Protocol(std::move(shpHydrabus), "MMC1", "eMMC", 0x0D)

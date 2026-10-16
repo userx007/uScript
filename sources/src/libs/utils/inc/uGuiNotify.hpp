@@ -93,23 +93,25 @@
 #if defined(_WIN32)
 struct _SECURITY_ATTRIBUTES; // tag used by SECURITY_ATTRIBUTES / LPSECURITY_ATTRIBUTES
 
-namespace gui_tls_detail {
+namespace gui_tls_detail
+{
     // SIZE_T == ULONG_PTR: 64 bit on Win64, 32 bit (unsigned long) on Win32.
     using win_size_t = std::conditional_t<sizeof(void *) == 8, unsigned long long, unsigned long>;
 } // namespace gui_tls_detail
 
-extern "C" {
-__declspec(dllimport) unsigned long __stdcall TlsAlloc(void);
-__declspec(dllimport) int __stdcall TlsFree(unsigned long dwTlsIndex);
-__declspec(dllimport) void *__stdcall TlsGetValue(unsigned long dwTlsIndex);
-__declspec(dllimport) int __stdcall TlsSetValue(unsigned long dwTlsIndex, void *lpTlsValue);
-__declspec(dllimport) unsigned long __stdcall GetCurrentProcessId(void);
-__declspec(dllimport) void *__stdcall CreateFileMappingA(void *hFile, _SECURITY_ATTRIBUTES *lpAttributes,
-                                                         unsigned long flProtect, unsigned long dwMaximumSizeHigh,
-                                                         unsigned long dwMaximumSizeLow, const char *lpName);
-__declspec(dllimport) void *__stdcall MapViewOfFile(void *hFileMappingObject, unsigned long dwDesiredAccess,
-                                                    unsigned long dwFileOffsetHigh, unsigned long dwFileOffsetLow,
-                                                    gui_tls_detail::win_size_t dwNumberOfBytesToMap);
+extern "C"
+{
+    __declspec(dllimport) unsigned long __stdcall TlsAlloc(void);
+    __declspec(dllimport) int __stdcall TlsFree(unsigned long dwTlsIndex);
+    __declspec(dllimport) void *__stdcall TlsGetValue(unsigned long dwTlsIndex);
+    __declspec(dllimport) int __stdcall TlsSetValue(unsigned long dwTlsIndex, void *lpTlsValue);
+    __declspec(dllimport) unsigned long __stdcall GetCurrentProcessId(void);
+    __declspec(dllimport) void *__stdcall CreateFileMappingA(void *hFile, _SECURITY_ATTRIBUTES *lpAttributes,
+                                                             unsigned long flProtect, unsigned long dwMaximumSizeHigh,
+                                                             unsigned long dwMaximumSizeLow, const char *lpName);
+    __declspec(dllimport) void *__stdcall MapViewOfFile(void *hFileMappingObject, unsigned long dwDesiredAccess,
+                                                        unsigned long dwFileOffsetHigh, unsigned long dwFileOffsetLow,
+                                                        gui_tls_detail::win_size_t dwNumberOfBytesToMap);
 }
 #else
 #include <pthread.h>
@@ -170,7 +172,8 @@ inline bool g_gui_mode = false; /**< true  → GUI front-end mode (structured st
 
 #if defined(_WIN32)
 
-namespace gui_tls_detail {
+namespace gui_tls_detail
+{
 
     constexpr unsigned long kTlsOutOfIndexes = 0xFFFFFFFFul; // TLS_OUT_OF_INDEXES
 
@@ -258,7 +261,8 @@ inline void set_gui_comm_tid(int iTid) noexcept
 
 #else // POSIX — original implementation, unchanged
 
-namespace gui_tls_detail {
+namespace gui_tls_detail
+{
 
     inline pthread_key_t g_tid_key;
     inline pthread_once_t g_tid_once = PTHREAD_ONCE_INIT;

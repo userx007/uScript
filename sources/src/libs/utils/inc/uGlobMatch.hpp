@@ -24,9 +24,11 @@
  * results except for such malformed collating-symbol brackets.)
  * Matching is byte-wise and case sensitive (the "C" locale behaviour of fnmatch).
  */
-namespace uglob {
+namespace uglob
+{
 
-    namespace detail {
+    namespace detail
+    {
 
         inline bool classMatch(const std::string &strName, unsigned char c)
         {
@@ -73,71 +75,71 @@ namespace uglob {
         inline bool matchElement(const char *&p, unsigned char c)
         {
             switch (*p) {
-                case '?':
-                    ++p;
-                    return true;
+            case '?':
+                ++p;
+                return true;
 
-                case '[': {
-                    const char *q = p + 1;
-                    bool bNegate  = false;
-                    if (*q == '!' || *q == '^') {
-                        bNegate = true;
+            case '[': {
+                const char *q = p + 1;
+                bool bNegate  = false;
+                if (*q == '!' || *q == '^') {
+                    bNegate = true;
+                    ++q;
+                }
+                bool bMatched = false;
+                bool bFirst   = true;
+                for (;;) {
+                    if (*q == '\0') { // no closing ']': '[' is an ordinary character
+                        ++p;
+                        return c == '[';
+                    }
+                    if (*q == ']' && !bFirst) {
+                        ++q;
+                        break;
+                    }
+                    bFirst = false;
+
+                    if (*q == '[' && q[1] == ':') {
+                        const char *pEnd = std::strstr(q + 2, ":]");
+                        if (pEnd != nullptr) {
+                            if (classMatch(std::string(q + 2, pEnd), c)) {
+                                bMatched = true;
+                            }
+                            q = pEnd + 2;
+                            continue;
+                        }
+                    }
+
+                    if (*q == '\\' && q[1] != '\0') {
                         ++q;
                     }
-                    bool bMatched = false;
-                    bool bFirst   = true;
-                    for (;;) {
-                        if (*q == '\0') { // no closing ']': '[' is an ordinary character
-                            ++p;
-                            return c == '[';
-                        }
-                        if (*q == ']' && !bFirst) {
-                            ++q;
-                            break;
-                        }
-                        bFirst = false;
-
-                        if (*q == '[' && q[1] == ':') {
-                            const char *pEnd = std::strstr(q + 2, ":]");
-                            if (pEnd != nullptr) {
-                                if (classMatch(std::string(q + 2, pEnd), c)) {
-                                    bMatched = true;
-                                }
-                                q = pEnd + 2;
-                                continue;
-                            }
-                        }
-
+                    const unsigned char lo = static_cast<unsigned char>(*q++);
+                    unsigned char hi       = lo;
+                    if (*q == '-' && q[1] != '\0' && q[1] != ']') {
+                        ++q;
                         if (*q == '\\' && q[1] != '\0') {
                             ++q;
                         }
-                        const unsigned char lo = static_cast<unsigned char>(*q++);
-                        unsigned char hi       = lo;
-                        if (*q == '-' && q[1] != '\0' && q[1] != ']') {
-                            ++q;
-                            if (*q == '\\' && q[1] != '\0') {
-                                ++q;
-                            }
-                            hi = static_cast<unsigned char>(*q++);
-                        }
-                        if (lo <= c && c <= hi) {
-                            bMatched = true;
-                        }
+                        hi = static_cast<unsigned char>(*q++);
                     }
-                    p = q;
-                    return bMatched != bNegate;
+                    if (lo <= c && c <= hi) {
+                        bMatched = true;
+                    }
                 }
+                p = q;
+                return bMatched != bNegate;
+            }
 
-                case '\\':
-                    if (p[1] != '\0') {
-                        ++p; // match the escaped character literally
-                    }
-                    [[fallthrough]];
-                default: {
-                    const bool bEq = static_cast<unsigned char>(*p) == c;
-                    ++p;
-                    return bEq;
+            case '\\':
+                if (p[1] != '\0') {
+                    ++p; // match the escaped character literally
                 }
+                [[fallthrough]];
+            default: {
+                const bool bEq = static_cast<unsigned char>(*p) == c;
+                ++p;
+                return bEq;
+            }
             }
         }
 

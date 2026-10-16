@@ -111,7 +111,8 @@
 #define M_E 2.71828182845904523536
 #endif
 
-class Calculator {
+class Calculator
+{
     public:
         // -------------------------------------------------------------------------
         // Public API

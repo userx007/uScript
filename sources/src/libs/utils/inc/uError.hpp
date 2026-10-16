@@ -8,7 +8,8 @@
 #include <windows.h>
 #endif
 
-namespace uerror {
+namespace uerror
+{
 
 #ifdef _WIN32
     /*

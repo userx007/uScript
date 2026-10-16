@@ -17,7 +17,8 @@ struct PluginDataGet;
 //                     ABSTRACT PLUGIN INTERFACE                 //
 ///////////////////////////////////////////////////////////////////
 
-class PluginInterface {
+class PluginInterface
+{
     public:
         /**< class destructor */
         virtual ~PluginInterface()                             = default;

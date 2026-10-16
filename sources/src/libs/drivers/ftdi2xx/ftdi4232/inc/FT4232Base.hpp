@@ -27,7 +27,8 @@
  * engine. Passing Channel::C or Channel::D to open_device() will return
  * INVALID_PARAM. Use FT4232UART for those channels.
  */
-class FT4232Base {
+class FT4232Base
+{
     public:
         using Status                                           = ICommDriver::Status;
 
@@ -52,7 +53,8 @@ class FT4232Base {
          * Passing C or D to FT4232Base::open_device() returns INVALID_PARAM;
          * passing A or B to FT4232UART::open() returns INVALID_PARAM.
          */
-        enum class Channel : uint8_t {
+        enum class Channel : uint8_t
+        {
             A = 0,
             B = 1,
             C = 2,

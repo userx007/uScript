@@ -31,7 +31,8 @@
  * functions read a stream or ask "is there more coming"; that framing
  * question belongs to whoever is doing the actual reading (MqttPlugin).
  */
-class MqttProtocol {
+class MqttProtocol
+{
     public:
         // Fixed-header first byte for each control packet type. PUBLISH's low
         // nibble additionally carries DUP/QoS/RETAIN and so varies per message —
@@ -51,7 +52,8 @@ class MqttProtocol {
         static constexpr uint8_t kPingResp    = 0xD0;
         static constexpr uint8_t kDisconnect  = 0xE0;
 
-        struct ConnectParams {
+        struct ConnectParams
+        {
                 std::string clientId;
                 std::string username;  // empty => CONNECT carries no credentials at all
                 std::string password;  // ignored if username is empty (not a valid MQTT 3.1.1 combination)
@@ -63,7 +65,8 @@ class MqttProtocol {
                 uint16_t keepAlive = 60; // seconds
         };
 
-        struct ConnAckResult {
+        struct ConnAckResult
+        {
                 bool sessionPresent = false;
                 uint8_t returnCode  = 0xFF; // 0 = accepted; see MQTT 3.1.1 §3.2.2.3 for the other values
 
@@ -73,7 +76,8 @@ class MqttProtocol {
                 }
         };
 
-        struct SubAckResult {
+        struct SubAckResult
+        {
                 uint16_t packetId  = 0;
                 uint8_t returnCode = 0x80; // granted QoS (0-2), or 0x80 = subscription refused
 
@@ -83,7 +87,8 @@ class MqttProtocol {
                 }
         };
 
-        struct PublishMessage {
+        struct PublishMessage
+        {
                 std::string topic;
                 std::string payload;
                 uint8_t qos       = 0;

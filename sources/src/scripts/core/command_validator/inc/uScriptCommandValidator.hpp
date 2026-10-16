@@ -28,7 +28,8 @@
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
 
-class ScriptCommandValidator : public IScriptCommandValidator<Token> {
+class ScriptCommandValidator : public IScriptCommandValidator<Token>
+{
     public:
         bool validateCommand(int iLineNumber, const std::string &strCommand, Token &eToken) noexcept override
         {

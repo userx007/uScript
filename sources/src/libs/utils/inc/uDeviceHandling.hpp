@@ -6,15 +6,18 @@
 #include <string>
 #include <vector>
 
-enum class OperationType {
+enum class OperationType
+{
     Insert,
     Remove
 };
 
-class DeviceHandling {
+class DeviceHandling
+{
 
     private:
-        struct DeviceEntry {
+        struct DeviceEntry
+        {
                 std::string name;
                 bool isRemoved = false; // renamed for clarity
         };

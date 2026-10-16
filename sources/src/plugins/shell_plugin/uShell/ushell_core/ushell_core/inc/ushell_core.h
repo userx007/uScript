@@ -16,7 +16,8 @@ MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
             MICROSHELL CLASS DEFINITION
 ==============================================================================*/
 
-class Microshell {
+class Microshell
+{
     public:
         static Microshell *getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt);
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
@@ -204,8 +205,10 @@ class Microshell {
         static constexpr const char *m_pstrTokenSeparator = " ";
 
         /* data types related */
-#define uSHELL_DATA_TYPES_TABLE_BEGIN enum typemarks_e {
-#define uSHELL_DATA_TYPE(a, b)        uSHELL_TYPE_##a,
+#define uSHELL_DATA_TYPES_TABLE_BEGIN \
+    enum typemarks_e                  \
+    {
+#define uSHELL_DATA_TYPE(a, b) uSHELL_TYPE_##a,
 #define uSHELL_DATA_TYPES_TABLE_END \
     uSHELL_TYPE_LAST                \
     }                               \
@@ -222,7 +225,9 @@ class Microshell {
 
         /* prompt related */
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
-#define uSHELL_PROMPT_TABLE_BEGIN   enum prompti_e {
+#define uSHELL_PROMPT_TABLE_BEGIN \
+    enum prompti_e                \
+    {
 #define uSHELL_PROMPT_CELL(a, b, c) uSHELL_PROMPTI_##a,
 #define uSHELL_PROMPT_TABLE_END \
     uSHELL_PROMPTI_LAST         \

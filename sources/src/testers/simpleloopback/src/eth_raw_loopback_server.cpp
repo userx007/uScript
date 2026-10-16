@@ -67,7 +67,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-namespace {
+namespace
+{
     constexpr size_t FRAME_BUF_SIZE = 65536; // generous; covers jumbo frames too
     constexpr size_t ETH_HDR_LEN    = 14;    // dst(6) + src(6) + ethertype(2)
     constexpr size_t MAC_LEN        = 6;

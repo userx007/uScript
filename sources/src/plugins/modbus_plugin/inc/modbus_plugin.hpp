@@ -96,7 +96,8 @@
  * this is purely a "keep the socket open across calls" optimisation rather
  * than something any command's correctness depends on.
  */
-class ModbusPlugin : public PluginInterface {
+class ModbusPlugin : public PluginInterface
+{
     public:
         ModbusPlugin()
             : m_strVersion(MODBUS_PLUGIN_VERSION)

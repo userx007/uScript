@@ -56,7 +56,8 @@
 /**
  * \brief Buspirate plugin class definition
  */
-class BuspiratePlugin : public PluginInterface {
+class BuspiratePlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor
@@ -286,7 +287,8 @@ class BuspiratePlugin : public PluginInterface {
         struct sIniValues; // Forward declaration
 
     private:
-        mutable struct IniValues {
+        mutable struct IniValues
+        {
                 std::string strArtefactsPath{""};
                 std::string strUartPort{""};
                 uint32_t u32UartBaudrate{0};
@@ -335,7 +337,8 @@ class BuspiratePlugin : public PluginInterface {
             return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
         }
 
-        struct mode_s {
+        struct mode_s
+        {
                 const uint8_t iRequest;
                 const uint8_t iRepetition;
                 const std::string strAnswer;
@@ -546,7 +549,8 @@ class BuspiratePlugin : public PluginInterface {
         friend bool getEnabledStatus(const BuspiratePlugin &obj);
 
     public:
-        class I2C_CommDriver : public ICommDriver {
+        class I2C_CommDriver : public ICommDriver
+        {
             public:
                 explicit I2C_CommDriver(const BuspiratePlugin &outer)
                     : m_Buspirate(outer)
@@ -599,7 +603,8 @@ class BuspiratePlugin : public PluginInterface {
         };
 
         // wrapper driver to be used with the script interpreter
-        class SPI_CommDriver : ICommDriver {
+        class SPI_CommDriver : ICommDriver
+        {
             public:
                 explicit SPI_CommDriver(const BuspiratePlugin &outer)
                     : m_Buspirate(outer)
@@ -639,7 +644,8 @@ class BuspiratePlugin : public PluginInterface {
         };
 
         // wrapper driver to be used with the script interpreter
-        class ONEWIRE_CommDriver : ICommDriver {
+        class ONEWIRE_CommDriver : ICommDriver
+        {
             public:
                 explicit ONEWIRE_CommDriver(const BuspiratePlugin &outer)
                     : m_Buspirate(outer)
@@ -682,7 +688,8 @@ class BuspiratePlugin : public PluginInterface {
         };
 
         // wrapper driver to be used with the script interpreter
-        class RAWWIRE_CommDriver : ICommDriver {
+        class RAWWIRE_CommDriver : ICommDriver
+        {
             public:
                 explicit RAWWIRE_CommDriver(const BuspiratePlugin &outer)
                     : m_Buspirate(outer)
@@ -725,7 +732,8 @@ class BuspiratePlugin : public PluginInterface {
         };
 
         // wrapper driver to be used with the script interpreter
-        class UART_CommDriver : ICommDriver {
+        class UART_CommDriver : ICommDriver
+        {
             public:
                 explicit UART_CommDriver(const BuspiratePlugin &outer)
                     : m_Buspirate(outer)

@@ -44,10 +44,12 @@
 //                            CLASS DEFINITION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace ufile {
+namespace ufile
+{
 
     template <typename TDriver>
-    class FileChunkReader {
+    class FileChunkReader
+    {
         public:
             using ChunkHandler = std::function<bool(std::span<const uint8_t>, std::shared_ptr<const TDriver>)>;
 

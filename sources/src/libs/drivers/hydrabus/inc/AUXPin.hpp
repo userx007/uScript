@@ -4,7 +4,8 @@
 #include <cstdint>
 #include <memory>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
 
     class Hydrabus; // forward declaration
 
@@ -21,9 +22,11 @@ namespace HydraHAL {
      * int v = spi.aux(1).get_value();
      * @endcode
      */
-    class AUXPin {
+    class AUXPin
+    {
         public:
-            enum class Direction : uint8_t {
+            enum class Direction : uint8_t
+            {
                 Output = 0,
                 Input  = 1
             };

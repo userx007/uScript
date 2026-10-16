@@ -24,14 +24,18 @@
 
 #include <cerrno> // sockets/Winsock come in through common.hpp -> tester_platform.h
 
-namespace loopback {
+namespace loopback
+{
 
-    class TcpChannel : public IChannel {
+    class TcpChannel : public IChannel
+    {
         public:
-            struct ServerTag {
+            struct ServerTag
+            {
             };
 
-            struct ClientTag {
+            struct ClientTag
+            {
             };
 
             // Server: listen on bind_addr:port.

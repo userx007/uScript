@@ -40,7 +40,8 @@ static constexpr const char *kPluginNameForDump = "GRPC";
 // (grpc_driver.hpp) for why thread_local, not a plain member; the same
 // reasoning as MqttDriver's tl_bAwaitingAck/tl_pendingAckType.
 // -----------------------------------------------------------------------
-namespace {
+namespace
+{
     thread_local bool tl_bResponsePending = false;
     thread_local std::string tl_strPendingResponseJson;
 } // namespace
@@ -50,7 +51,8 @@ GrpcDriver::GrpcDriver(Config sConfig)
 {
 }
 
-namespace {
+namespace
+{
     bool readFileIntoString(const std::string &strPath, std::string &strOut)
     {
         if (strPath.empty()) {

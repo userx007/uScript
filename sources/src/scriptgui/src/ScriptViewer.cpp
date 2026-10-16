@@ -49,7 +49,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //  LineNumberArea
 // ─────────────────────────────────────────────────────────────────────────────
-class LineNumberArea : public QWidget {
+class LineNumberArea : public QWidget
+{
     public:
         explicit LineNumberArea(CodeEditor *pEditor)
             : QWidget(pEditor)

@@ -63,7 +63,8 @@
  *     return sSettings.Apply(psSetParams->mapSettings);
  * \endcode
  */
-class PluginSettingsBinder {
+class PluginSettingsBinder
+{
     public:
         using Setter = std::function<bool(const std::string &)>;
 
@@ -177,7 +178,8 @@ class PluginSettingsBinder {
         } /* Apply() */
 
     private:
-        struct Entry {
+        struct Entry
+        {
                 std::string strKey;
                 Target target;
         };

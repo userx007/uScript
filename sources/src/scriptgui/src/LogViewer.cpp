@@ -110,7 +110,8 @@ static QColor sgrCodeToColor(int iCode)
 
 // Decomposes an ANSI-coloured string into a list of (text, QTextCharFormat)
 // segments.  Returns one segment per colour run.
-struct Segment {
+struct Segment
+{
         QString text;
         QTextCharFormat fmt;
 };
@@ -169,7 +170,8 @@ static QList<Segment> ansiToSegments(const QString &input,
 // ─────────────────────────────────────────────────────────────────────────────
 //  LogLineNumberArea  –  thin companion widget painted by LogEdit
 // ─────────────────────────────────────────────────────────────────────────────
-class LogLineNumberArea : public QWidget {
+class LogLineNumberArea : public QWidget
+{
     public:
         explicit LogLineNumberArea(LogEdit *pEditor)
             : QWidget(pEditor)

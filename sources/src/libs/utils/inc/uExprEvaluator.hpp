@@ -101,7 +101,8 @@
 //                     IMPLEMENTATION                            //
 ///////////////////////////////////////////////////////////////////
 
-class EvalExprEvaluator {
+class EvalExprEvaluator
+{
     public:
         // -----------------------------------------------------------------------
         // evaluate()
@@ -280,7 +281,8 @@ class EvalExprEvaluator {
         // Returns a view of the remainder (everything after the atom, trimmed).
         // ─────────────────────────────────────────────────────────────────────
 
-        struct Atom {
+        struct Atom
+        {
                 std::string_view lhs;
                 std::string op;
                 std::string_view rhs;

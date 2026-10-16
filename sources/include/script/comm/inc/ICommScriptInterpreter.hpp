@@ -18,7 +18,8 @@
  * @tparam TDriver Type of communication driver
  */
 template <typename TScriptEntries, typename TDriver>
-class ICommScriptInterpreter : public IScriptInterpreter<TScriptEntries> {
+class ICommScriptInterpreter : public IScriptInterpreter<TScriptEntries>
+{
     public:
         using SendFunc                    = SendFunction<TDriver>;
         using RecvFunc                    = RecvFunction<TDriver>;

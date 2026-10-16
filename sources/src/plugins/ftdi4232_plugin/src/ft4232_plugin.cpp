@@ -33,7 +33,8 @@
 #define LT_HDR  "FT4232      |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
-extern "C" {
+extern "C"
+{
     EXPORTED FT4232Plugin *pluginEntry()
     {
         return new FT4232Plugin();

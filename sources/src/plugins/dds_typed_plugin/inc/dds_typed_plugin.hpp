@@ -95,7 +95,8 @@ struct PluginDataSet;
  * generic string-topic model remains the right tool for ad-hoc
  * publish/subscribe/bridging where no fixed struct is required.
  */
-class DdsTypedPlugin : public PluginInterface {
+class DdsTypedPlugin : public PluginInterface
+{
     public:
         DdsTypedPlugin()
             : m_strVersion(DDS_TYPED_PLUGIN_VERSION)

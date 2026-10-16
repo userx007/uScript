@@ -36,7 +36,8 @@
  *     separately; the caller-supplied overall timeout is used for every
  *     blocking receive instead.
  */
-class IsoTpProtocol final : public ITransportProtocol {
+class IsoTpProtocol final : public ITransportProtocol
+{
     public:
         explicit IsoTpProtocol(const TpConfig &sCfg = {})
             : m_cfg(sCfg)

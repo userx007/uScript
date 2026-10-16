@@ -41,14 +41,16 @@
  *
  *   Examples: 1 MHz → 29,   6 MHz → 4,   30 MHz → 0
  */
-class FT232HSPI : public FT232HBase, public ICommDriver {
+class FT232HSPI : public FT232HBase, public ICommDriver
+{
     public:
         using Status = ICommDriver::Status;
 
         // ── SPI configuration ────────────────────────────────────────────────
 
         /** Standard SPI clock/phase mode */
-        enum class SpiMode : uint8_t {
+        enum class SpiMode : uint8_t
+        {
             Mode0 = 0,
             Mode1 = 1,
             Mode2 = 2,
@@ -56,13 +58,15 @@ class FT232HSPI : public FT232HBase, public ICommDriver {
         };
 
         /** Bit transmission order */
-        enum class BitOrder : uint8_t {
+        enum class BitOrder : uint8_t
+        {
             MsbFirst = 0,
             LsbFirst = 1
         };
 
         /** Chip-select active polarity */
-        enum class CsPolarity : uint8_t {
+        enum class CsPolarity : uint8_t
+        {
             ActiveLow  = 0,
             ActiveHigh = 1
         };
@@ -73,7 +77,8 @@ class FT232HSPI : public FT232HBase, public ICommDriver {
          * Defaults produce a safe, widely-compatible 1 MHz Mode-0 bus.
          * No channel field — the FT232H has only one MPSSE interface.
          */
-        struct SpiConfig {
+        struct SpiConfig
+        {
                 uint32_t clockHz      = 1000000u;              ///< SCK frequency in Hz (max 30 MHz)
                 SpiMode mode          = SpiMode::Mode0;        ///< Clock polarity/phase
                 BitOrder bitOrder     = BitOrder::MsbFirst;    ///< Transmission order
@@ -83,7 +88,8 @@ class FT232HSPI : public FT232HBase, public ICommDriver {
 
         // ── Full-duplex result ────────────────────────────────────────────────
 
-        struct TransferResult {
+        struct TransferResult
+        {
                 Status status       = Status::RETVAL_NOT_SET;
                 size_t bytes_xfered = 0;
         };

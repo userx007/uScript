@@ -49,7 +49,8 @@
 /**
  * \brief KI2C plugin class definition
  */
-class KI2CPlugin : public PluginInterface {
+class KI2CPlugin : public PluginInterface
+{
     public:
         /**
          * \brief class constructor

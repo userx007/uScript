@@ -18,7 +18,7 @@
 #undef LOG_HDR
 #endif
 
-#define LT_HDR                   "KCAN_P     |"
+#define LT_HDR                   "KCAN_P      |"
 #define LOG_HDR                  LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////

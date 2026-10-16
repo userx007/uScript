@@ -35,7 +35,8 @@
 // All output goes through LOG_PRINT(LOG_EMPTY) so it appears in the
 // standard log stream rather than bypassing it via std::cout.
 
-class CheckContinue {
+class CheckContinue
+{
     public:
         // label    — optional context string printed in the prompt (e.g. script label)
         // pbSkip   — when non-null, Space sets *pbSkip = true and continues normally

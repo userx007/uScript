@@ -43,7 +43,8 @@
 #endif
 
 /** FTDI chip type */
-enum ftdi_chip_type {
+enum ftdi_chip_type
+{
     TYPE_AM    = 0,
     TYPE_BM    = 1,
     TYPE_2232C = 2,
@@ -55,7 +56,8 @@ enum ftdi_chip_type {
 };
 
 /** Parity mode for ftdi_set_line_property() */
-enum ftdi_parity_type {
+enum ftdi_parity_type
+{
     NONE  = 0,
     ODD   = 1,
     EVEN  = 2,
@@ -64,26 +66,30 @@ enum ftdi_parity_type {
 };
 
 /** Number of stop bits for ftdi_set_line_property() */
-enum ftdi_stopbits_type {
+enum ftdi_stopbits_type
+{
     STOP_BIT_1  = 0,
     STOP_BIT_15 = 1,
     STOP_BIT_2  = 2
 };
 
 /** Number of bits for ftdi_set_line_property() */
-enum ftdi_bits_type {
+enum ftdi_bits_type
+{
     BITS_7 = 7,
     BITS_8 = 8
 };
 
 /** Break type for ftdi_set_line_property2() */
-enum ftdi_break_type {
+enum ftdi_break_type
+{
     BREAK_OFF = 0,
     BREAK_ON  = 1
 };
 
 /** MPSSE bitbang modes */
-enum ftdi_mpsse_mode {
+enum ftdi_mpsse_mode
+{
     BITMODE_RESET   = 0x00, /**< switch off bitbang mode, back to regular serial/FIFO */
     BITMODE_BITBANG = 0x01, /**< classical asynchronous bitbang mode, introduced with B-type chips */
     BITMODE_MPSSE   = 0x02, /**< MPSSE mode, available on 2232x chips */
@@ -97,7 +103,8 @@ enum ftdi_mpsse_mode {
 };
 
 /** Port interface for chips with multiple interfaces */
-enum ftdi_interface {
+enum ftdi_interface
+{
     INTERFACE_ANY = 0,
     INTERFACE_A   = 1,
     INTERFACE_B   = 2,
@@ -106,52 +113,53 @@ enum ftdi_interface {
 };
 
 /** Automatic loading / unloading of kernel modules */
-enum ftdi_module_detach_mode {
+enum ftdi_module_detach_mode
+{
     AUTO_DETACH_SIO_MODULE         = 0,
     DONT_DETACH_SIO_MODULE         = 1,
     AUTO_DETACH_REATACH_SIO_MODULE = 2
 };
 
 /* Shifting commands IN MPSSE Mode*/
-#define MPSSE_WRITE_NEG      0x01 /* Write TDI/DO on negative TCK/SK edge*/
-#define MPSSE_BITMODE        0x02 /* Write bits, not bytes */
-#define MPSSE_READ_NEG       0x04 /* Sample TDO/DI on negative TCK/SK edge */
-#define MPSSE_LSB            0x08 /* LSB first */
-#define MPSSE_DO_WRITE       0x10 /* Write TDI/DO */
-#define MPSSE_DO_READ        0x20 /* Read TDO/DI */
-#define MPSSE_WRITE_TMS      0x40 /* Write TMS/CS */
+#define MPSSE_WRITE_NEG               0x01 /* Write TDI/DO on negative TCK/SK edge*/
+#define MPSSE_BITMODE                 0x02 /* Write bits, not bytes */
+#define MPSSE_READ_NEG                0x04 /* Sample TDO/DI on negative TCK/SK edge */
+#define MPSSE_LSB                     0x08 /* LSB first */
+#define MPSSE_DO_WRITE                0x10 /* Write TDI/DO */
+#define MPSSE_DO_READ                 0x20 /* Read TDO/DI */
+#define MPSSE_WRITE_TMS               0x40 /* Write TMS/CS */
 
 /* FTDI MPSSE commands */
-#define SET_BITS_LOW         0x80
+#define SET_BITS_LOW                  0x80
 /*BYTE DATA*/
 /*BYTE Direction*/
-#define SET_BITS_HIGH        0x82
+#define SET_BITS_HIGH                 0x82
 /*BYTE DATA*/
 /*BYTE Direction*/
-#define GET_BITS_LOW         0x81
-#define GET_BITS_HIGH        0x83
-#define LOOPBACK_START       0x84
-#define LOOPBACK_END         0x85
-#define TCK_DIVISOR          0x86
+#define GET_BITS_LOW                  0x81
+#define GET_BITS_HIGH                 0x83
+#define LOOPBACK_START                0x84
+#define LOOPBACK_END                  0x85
+#define TCK_DIVISOR                   0x86
 /* H Type specific commands */
-#define DIS_DIV_5            0x8a
-#define EN_DIV_5             0x8b
-#define EN_3_PHASE           0x8c
-#define DIS_3_PHASE          0x8d
-#define CLK_BITS             0x8e
-#define CLK_BYTES            0x8f
-#define CLK_WAIT_HIGH        0x94
-#define CLK_WAIT_LOW         0x95
-#define EN_ADAPTIVE          0x96
-#define DIS_ADAPTIVE         0x97
-#define CLK_BYTES_OR_HIGH    0x9c
-#define CLK_BYTES_OR_LOW     0x9d
+#define DIS_DIV_5                     0x8a
+#define EN_DIV_5                      0x8b
+#define EN_3_PHASE                    0x8c
+#define DIS_3_PHASE                   0x8d
+#define CLK_BITS                      0x8e
+#define CLK_BYTES                     0x8f
+#define CLK_WAIT_HIGH                 0x94
+#define CLK_WAIT_LOW                  0x95
+#define EN_ADAPTIVE                   0x96
+#define DIS_ADAPTIVE                  0x97
+#define CLK_BYTES_OR_HIGH             0x9c
+#define CLK_BYTES_OR_LOW              0x9d
 /*FT232H specific commands */
-#define DRIVE_OPEN_COLLECTOR 0x9e
+#define DRIVE_OPEN_COLLECTOR          0x9e
 /* Value Low */
 /* Value HIGH */ /*rate is 12000000/((1+value)*2) */
-#define DIV_VALUE(rate)      (rate > 6000000) ? 0 : ((6000000 / rate - 1) > 0xffff) ? 0xffff \
-                                                                                    : (6000000 / rate - 1)
+#define DIV_VALUE(rate)               (rate > 6000000) ? 0 : ((6000000 / rate - 1) > 0xffff) ? 0xffff \
+                                                                                             : (6000000 / rate - 1)
 
 /* Commands in MPSSE and Host Emulation Mode */
 #define SEND_IMMEDIATE                0x87
@@ -269,7 +277,8 @@ enum ftdi_module_detach_mode {
 #endif
 #endif
 
-struct ftdi_transfer_control {
+struct ftdi_transfer_control
+{
         int completed;
         unsigned char *buf;
         int size;
@@ -283,7 +292,8 @@ struct ftdi_transfer_control {
 
     Do not access directly if possible.
 */
-struct ftdi_context {
+struct ftdi_context
+{
         /* USB specific */
         /** libusb's context */
         struct libusb_context *usb_ctx;
@@ -340,7 +350,8 @@ struct ftdi_context {
 /**
  List all handled EEPROM values.
    Append future new values only at the end to provide API/ABI stability*/
-enum ftdi_eeprom_value {
+enum ftdi_eeprom_value
+{
     VENDOR_ID           = 0,
     PRODUCT_ID          = 1,
     SELF_POWERED        = 2,
@@ -404,7 +415,8 @@ enum ftdi_eeprom_value {
 /**
     \brief list of usb devices created by ftdi_usb_find_all()
 */
-struct ftdi_device_list {
+struct ftdi_device_list
+{
         /** pointer to next entry */
         struct ftdi_device_list *next;
         /** pointer to libusb's usb_device */
@@ -418,7 +430,8 @@ struct ftdi_device_list {
 
 #define USE_SERIAL_NUM        0x08
 
-enum ftdi_cbus_func {
+enum ftdi_cbus_func
+{
     CBUS_TXDEN   = 0,
     CBUS_PWREN   = 1,
     CBUS_RXLED   = 2,
@@ -434,7 +447,8 @@ enum ftdi_cbus_func {
     CBUS_BB_RD   = 0xc
 };
 
-enum ftdi_cbush_func {
+enum ftdi_cbush_func
+{
     CBUSH_TRISTATE = 0,
     CBUSH_TXLED    = 1,
     CBUSH_RXLED    = 2,
@@ -450,7 +464,8 @@ enum ftdi_cbush_func {
     CBUSH_CLK7_5   = 12
 };
 
-enum ftdi_cbusx_func {
+enum ftdi_cbusx_func
+{
     CBUSX_TRISTATE       = 0,
     CBUSX_TXLED          = 1,
     CBUSX_RXLED          = 2,
@@ -523,7 +538,8 @@ enum ftdi_cbusx_func {
 /**
     \brief Progress Info for streaming read
 */
-struct size_and_time {
+struct size_and_time
+{
         uint64_t totalBytes;
         struct timeval time;
 };
@@ -549,7 +565,8 @@ typedef int(FTDIStreamCallback)(uint8_t *buffer, int length,
  * version_str: Version as (static) string
  * snapshot_str: Git snapshot version if known. Otherwise "unknown" or empty string.
  */
-struct ftdi_version_info {
+struct ftdi_version_info
+{
         int major;
         int minor;
         int micro;
@@ -558,7 +575,8 @@ struct ftdi_version_info {
 };
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
     int ftdi_init(struct ftdi_context *ftdi);

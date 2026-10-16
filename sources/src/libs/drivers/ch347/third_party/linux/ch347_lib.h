@@ -16,7 +16,8 @@
 #define IRQ_TYPE_EDGE_BOTH    (IRQ_TYPE_EDGE_FALLING | IRQ_TYPE_EDGE_RISING)
 
 #ifndef ENUM_EEPROM_TYPE
-typedef enum _EEPROM_TYPE {
+typedef enum _EEPROM_TYPE
+{
     ID_24C01,
     ID_24C02,
     ID_24C04,
@@ -36,7 +37,8 @@ typedef enum _EEPROM_TYPE {
 #endif
 
 #ifndef ENUM_CHIP_TYPE
-typedef enum _CHIP_TYPE {
+typedef enum _CHIP_TYPE
+{
     CHIP_CH341  = 0,
     CHIP_CH347T = 1,
     CHIP_CH347F = 2,
@@ -48,7 +50,8 @@ typedef enum _CHIP_TYPE {
 #endif
 
 #ifndef ENUM_FUNCTYPE
-typedef enum {
+typedef enum
+{
     TYPE_TTY = 0,
     TYPE_HID,
     TYPE_VCP,
@@ -58,7 +61,8 @@ typedef enum {
 #endif
 
 /* SPI setting structure */
-typedef struct _SPI_CONFIG {
+typedef struct _SPI_CONFIG
+{
         uint8_t iMode;                  /* 0-3: SPI Mode0/1/2/3 */
         uint8_t iClock;                 /* 0: 60MHz, 1: 30MHz, 2: 15MHz, 3: 7.5MHz, 4: 3.75MHz, 5: 1.875MHz, 6: 937.5KHz，7: 468.75KHz */
         uint8_t iByteOrder;             /* 0: LSB, 1: MSB */
@@ -73,7 +77,8 @@ typedef struct _SPI_CONFIG {
 } mSpiCfgS, *mPSpiCfgS;
 
 /* SPI Init structure definition */
-typedef struct _SPI_InitTypeDef {
+typedef struct _SPI_InitTypeDef
+{
         uint16_t SPI_Direction;         /* Specifies the SPI unidirectional or bidirectional data mode.
                                                This parameter can be a value of @ref SPI_data_direction */
         uint16_t SPI_Mode;              /* Specifies the SPI operating mode.
@@ -97,7 +102,8 @@ typedef struct _SPI_InitTypeDef {
         uint16_t SPI_CRCPolynomial;     /* Specifies the polynomial used for the CRC calculation. */
 } SPI_InitTypeDef;
 
-typedef struct _StreamUSBCFG {
+typedef struct _StreamUSBCFG
+{
         SPI_InitTypeDef SPIInitCfg;
         uint16_t SpiWriteReadInterval; /* SPI read and write interval, unit: us */
         uint8_t SpiOutDefaultData;     /* SPI output data by default while read */
@@ -111,7 +117,8 @@ typedef struct _StreamUSBCFG {
         uint8_t Reserved[4];           /* reserved */
 } StreamHwCfgS, *PStreamHwCfgS;
 
-typedef struct _DEV_INFOR {
+typedef struct _DEV_INFOR
+{
         int fd;                      /* device file descriptor */
         FUNCTYPE FuncType;           /* 0: TTY uart device(/dev/tty*), 1: HID device(/dev/hidraw*), 2: Vendor device(/dev/ch34xpis*) */
         char DeviceID[64];           /* USB\VID_xxxx&PID_xxxx */
@@ -144,7 +151,8 @@ typedef struct _DEV_INFOR {
 #pragma pack()
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
     /**

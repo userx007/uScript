@@ -93,7 +93,8 @@ struct PluginDataSet;
  * IPv6 are no longer this plugin's own concern — Cyclone DDS handles all
  * of that as a real, interoperable DDSI-RTPS implementation.
  */
-class DdsPlugin : public PluginInterface {
+class DdsPlugin : public PluginInterface
+{
     public:
         DdsPlugin()
             : m_strVersion(DDS_PLUGIN_VERSION)

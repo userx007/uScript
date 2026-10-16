@@ -7,7 +7,8 @@
  * @tparam TCommand Type representing a single script command
  */
 template <typename TCommand = void>
-class IScriptCommandInterpreter {
+class IScriptCommandInterpreter
+{
     public:
         virtual ~IScriptCommandInterpreter()                                           = default;
 

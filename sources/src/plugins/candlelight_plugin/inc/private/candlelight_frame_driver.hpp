@@ -77,7 +77,8 @@
 #include <string_view>
 #include <vector>
 
-class CandlelightFrameDriver : public ICommDriver {
+class CandlelightFrameDriver : public ICommDriver
+{
     public:
         /// SocketCAN canid_t convention, shared by the TX id and the xtra_params
         /// override parsing in both tout_write() and tout_read() — same
@@ -88,7 +89,8 @@ class CandlelightFrameDriver : public ICommDriver {
         static constexpr uint32_t CAN_SFF_MASK = 0x000007FFU;
 
         /// One software acceptance-filter entry — see set_filters().
-        struct FilterEntry {
+        struct FilterEntry
+        {
                 uint32_t id;
                 uint32_t mask;
                 bool is_extended;
@@ -553,7 +555,8 @@ class CandlelightFrameDriver : public ICommDriver {
          *        Never stores state of its own — just forwards to the owning
          *        CandlelightFrameDriver — so it's cheap to keep as a permanent member.
          */
-        class RawIo final : public ICommDriver {
+        class RawIo final : public ICommDriver
+        {
             public:
                 explicit RawIo(const CandlelightFrameDriver &owner)
                     : m_owner(owner)

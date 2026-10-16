@@ -7,7 +7,8 @@
 #include <stdint.h>
 #include <stop_token>
 
-namespace HydraHAL {
+namespace HydraHAL
+{
     class Hydrabus;
 
     /**
@@ -31,7 +32,8 @@ namespace HydraHAL {
      * @endcode
      */
 
-    class SWD : public RawWire {
+    class SWD : public RawWire
+    {
 
         public:
             explicit SWD(std::shared_ptr<Hydrabus> shpHydrabus);

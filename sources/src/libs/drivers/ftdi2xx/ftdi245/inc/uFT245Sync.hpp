@@ -37,12 +37,14 @@
  *   tout_read  → blocking read  from RX FIFO, up to u32ReadTimeout  ms
  *                ReadMode::Exact / UntilDelimiter / UntilToken all supported
  */
-class FT245Sync : public FT245Base, public ICommDriver {
+class FT245Sync : public FT245Base, public ICommDriver
+{
     public:
         using Status = ICommDriver::Status;
 
         // ── Device configuration ──────────────────────────────────────────────
-        struct SyncConfig {
+        struct SyncConfig
+        {
                 Variant variant   = Variant::FT245BM; ///< FT245BM or FT245R
                 FifoMode fifoMode = FifoMode::Async;  ///< Async (both) or Sync (BM only)
         };

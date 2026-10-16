@@ -43,7 +43,8 @@
  * 0x04: CLOSE (Close the current TCP connection)
  * 0x05: GET_STATUS (Get current TCP state)
  */
-class Enc28J60Net : public ICommDriver {
+class Enc28J60Net : public ICommDriver
+{
     public:
         static constexpr uint32_t ENC28J60NET_TIMEOUT_MS = 2000;
         static constexpr size_t ENC28J60NET_MAX_BUF      = 1460; // MTU - Header overhead

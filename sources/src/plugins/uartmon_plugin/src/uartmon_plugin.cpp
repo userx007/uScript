@@ -15,7 +15,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED UartmonPlugin *pluginEntry()
     {
         return new UartmonPlugin();

@@ -72,7 +72,8 @@
  * every field optional (or none at all, e.g. `google.protobuf.Empty`) may
  * omit the JSON body entirely: `GRPC.CMD > 'CALL pkg.Health/Check'`.
  */
-class GrpcProtocol {
+class GrpcProtocol
+{
     public:
         GrpcProtocol() = default;
 

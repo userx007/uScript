@@ -22,7 +22,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED RawEthPlugin *pluginEntry()
     {
         return new RawEthPlugin();
@@ -40,7 +41,8 @@ extern "C" {
 //                  PLUGIN INTERNALS                                           //
 /////////////////////////////////////////////////////////////////////////////////
 
-namespace {
+namespace
+{
     /**
      * \brief Format a MacAddr as "AA:BB:CC:DD:EE:FF" for the INFO command.
      */

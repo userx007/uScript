@@ -28,7 +28,8 @@
 //                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-extern "C" {
+extern "C"
+{
     EXPORTED PCANPlugin *pluginEntry()
     {
         return new PCANPlugin();

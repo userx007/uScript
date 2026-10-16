@@ -13,7 +13,8 @@
 #include <string_view>
 #include <sys/socket.h>
 
-class RealCommDriver : public ICommDriver {
+class RealCommDriver : public ICommDriver
+{
     public:
         explicit RealCommDriver(const std::string &strInterfaceName);
         ~RealCommDriver() override;

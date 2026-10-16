@@ -99,7 +99,8 @@
 #include <stop_token>
 #include <string_view>
 
-class SLCANFrameDriver : public ICommDriver {
+class SLCANFrameDriver : public ICommDriver
+{
     public:
         /// SocketCAN canid_t convention, shared by the TX id and the xtra_params
         /// override parsing in both tout_write() and tout_read().
@@ -558,7 +559,8 @@ class SLCANFrameDriver : public ICommDriver {
          *        Never stores state of its own — just forwards to the owning
          *        SLCANFrameDriver — so it's cheap to keep as a permanent member.
          */
-        class RawIo final : public ICommDriver {
+        class RawIo final : public ICommDriver
+        {
             public:
                 explicit RawIo(const SLCANFrameDriver &owner)
                     : m_owner(owner)
