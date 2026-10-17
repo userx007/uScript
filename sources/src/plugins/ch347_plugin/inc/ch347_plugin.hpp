@@ -110,6 +110,7 @@ class CH347Plugin : public PluginInterface
 {
 
     public:
+        /** Registers the plugin's commands and default settings. */
         CH347Plugin()
             : m_strVersion(CH347_PLUGIN_VERSION)
             , m_strInstanceName(CH347_PLUGIN_NAME)
@@ -180,37 +181,44 @@ class CH347Plugin : public PluginInterface
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled() const override
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psPs)
         {
             bool ok = generic_setparams<CH347Plugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
             return ok && m_LocalSetParams(psPs);
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psPg) const
         {
             generic_getparams<CH347Plugin>(this, psPg);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<CH347Plugin> *getMap() const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion() const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData() const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData() const
         {
             m_strResultData.clear();
@@ -218,30 +226,36 @@ class CH347Plugin : public PluginInterface
 
         bool doInit(void *pvUserData);
 
+        /** Enables the plugin. */
         bool doEnable()
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
             return generic_dispatch<CH347Plugin>(this, strCmd, strParams, st);
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup();
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant() const override
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged() const override
         {
             return false;
         }
 
+        /** Sets the fault tolerant setting. */
         void setFaultTolerant()
         {
             m_bIsFaultTolerant = true;
@@ -250,8 +264,10 @@ class CH347Plugin : public PluginInterface
         // Module-map accessors
 
         ModuleCommandsMap<CH347Plugin> *getModuleCmdsMap(const std::string &m) const;
+        /** Returns the speed table of module @p m, or nullptr if the module is unknown. */
         ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
+        /** Sets the speed in Hz for @p strModule; returns false if the module or value is invalid. */
         bool setModuleSpeed(const std::string &strModule, size_t hz) const;
 
         // INI accessor
@@ -350,8 +366,11 @@ class CH347Plugin : public PluginInterface
         // Driver instance accessors
 
         CH347SPI *m_spi() const;
+        /** Returns the I2C module object (nullptr if unavailable). */
         CH347I2C *m_i2c() const;
+        /** Returns the GPIO module object (nullptr if unavailable). */
         CH347GPIO *m_gpio() const;
+        /** Returns the JTAG module object (nullptr if unavailable). */
         CH347JTAG *m_jtag() const;
 
         // WrRd callbacks
@@ -423,13 +442,16 @@ class CH347Plugin : public PluginInterface
         ModuleSpeedMap m_mapSpeed_SPI;
         ModuleSpeedMap m_mapSpeed_I2C;
 
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         //  Parse helpers
         static bool parseI2cSpeed(const std::string &strS, I2cSpeed &eOut);
+        /** Parses spi params from @p strArgs; returns false if invalid. */
         static bool parseSpiParams(const std::string &strArgs,
                                    SpiPendingCfg &sCfg,
                                    std::string *pstrDeviceIndexOut = nullptr);
+        /** Parses i2c params from @p strArgs; returns false if invalid. */
         static bool parseI2cParams(const std::string &strArgs,
                                    I2cPendingCfg &sCfg,
                                    std::string *pstrDevPathOut = nullptr);

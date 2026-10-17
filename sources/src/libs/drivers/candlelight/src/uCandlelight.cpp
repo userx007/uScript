@@ -44,6 +44,7 @@ namespace
     constexpr uint8_t USB_DIR_OUT_VENDOR_IFACE = 0x41; // OUT | VENDOR | RECIPIENT_INTERFACE
     constexpr uint8_t USB_DIR_IN_VENDOR_IFACE  = 0xC1; // IN  | VENDOR | RECIPIENT_INTERFACE
 
+    /** Maps a libusb error code to a Status. */
     ICommDriver::Status libusb_err_to_status(int iRc)
     {
         switch (iRc) {
@@ -78,6 +79,7 @@ namespace
         pu8P[3] = static_cast<uint8_t>((u32V >> 24) & 0xFF);
     }
 
+    /** Reads a little-endian 32-bit value. */
     inline uint32_t get_u32le(const uint8_t *pu8P)
     {
         return static_cast<uint32_t>(pu8P[0]) | (static_cast<uint32_t>(pu8P[1]) << 8) | (static_cast<uint32_t>(pu8P[2]) << 16) | (static_cast<uint32_t>(pu8P[3]) << 24);
@@ -93,6 +95,7 @@ namespace
         }
     }
 
+    /** Converts @p count little-endian 32-bit fields to host order. */
     void deserialize_u32_struct(const uint8_t *pu8In, uint32_t *pu32Fields, size_t count)
     {
         for (size_t i = 0; i < count; ++i) {

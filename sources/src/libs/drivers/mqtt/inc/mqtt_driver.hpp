@@ -96,6 +96,7 @@ class MqttDriver : public ICommDriver
                 std::string strInstanceName;
         };
 
+        /** Creates the driver or protocol object from its configuration. */
         explicit MqttDriver(Config sConfig);
         ~MqttDriver();
 
@@ -107,6 +108,7 @@ class MqttDriver : public ICommDriver
          * succeeded.
          */
         bool open();
+        /** Closes the device. */
         void close();
 
         // ---- ICommDriver ----
@@ -120,10 +122,13 @@ class MqttDriver : public ICommDriver
         // the real TCPIP driver for exactly that reason — completeness, not
         // an alternate code path this class relies on.
         bool is_open() const override;
+        /** Describes this connection for the communication dump. */
         CommDetails describeConnection(std::string_view xtra_params = {}) const override;
+        /** Writes @p buffer, waiting at most the write timeout. */
         ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
                                             std::string_view xtra_params = {},
                                             std::stop_token stop_tok     = {}) const override;
+        /** Reads into @p buffer, waiting at most the read timeout. */
         ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                           const ICommDriver::ReadOptions &options,
                                           std::string_view xtra_params = {},
@@ -170,6 +175,7 @@ class MqttDriver : public ICommDriver
         // Physical I/O: routes through SSL if set up, otherwise straight to
         // m_pTcpip->tout_write()/tout_read().
         ICommDriver::Status m_PhysicalSend(std::span<const uint8_t> data, uint32_t u32TimeoutMs) const;
+        /** Receives raw bytes from the transport, waiting up to @p u32TimeoutMs. */
         ICommDriver::Status m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t u32TimeoutMs, size_t &outBytesRead, std::stop_token stop_tok = {}) const;
 
         // Sends one complete MQTT packet (built by MqttProtocol) via
@@ -223,8 +229,11 @@ class MqttDriver : public ICommDriver
         // receive()'s doc comment). Returns false on bad arguments or a send
         // failure.
         bool m_HandleSubscribe(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles the UNSUBSCRIBE command. */
         bool m_HandleUnsubscribe(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles the PING command. */
         bool m_HandlePing(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles the PUBLISH command. */
         bool m_HandlePublish(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
 
         using MqttSubCmdHandler = bool (MqttDriver::*)(const std::vector<std::string> &, std::string_view) const;

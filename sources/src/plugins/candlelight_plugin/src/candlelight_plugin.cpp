@@ -29,11 +29,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED CandlelightPlugin *pluginEntry()
     {
         return new CandlelightPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(CandlelightPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

@@ -109,6 +109,7 @@ class FT245Plugin : public PluginInterface
 {
 
     public:
+        /** Registers the plugin's commands and default settings. */
         FT245Plugin()
             : m_strVersion(FT245_PLUGIN_VERSION)
             , m_strInstanceName(FT245_PLUGIN_NAME)
@@ -156,37 +157,44 @@ class FT245Plugin : public PluginInterface
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled() const override
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psPs)
         {
             bool ok = generic_setparams<FT245Plugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
             return ok && m_LocalSetParams(psPs);
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psPg) const
         {
             generic_getparams<FT245Plugin>(this, psPg);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<FT245Plugin> *getMap() const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion() const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData() const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData() const
         {
             m_strResultData.clear();
@@ -194,30 +202,36 @@ class FT245Plugin : public PluginInterface
 
         bool doInit(void *pvUserData);
 
+        /** Enables the plugin. */
         bool doEnable()
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
             return generic_dispatch<FT245Plugin>(this, strCmd, strParams, st);
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup();
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant() const override
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged() const override
         {
             return false;
         }
 
+        /** Sets the fault tolerant setting. */
         void setFaultTolerant()
         {
             m_bIsFaultTolerant = true;
@@ -226,6 +240,7 @@ class FT245Plugin : public PluginInterface
         // Module-map accessors
 
         ModuleCommandsMap<FT245Plugin> *getModuleCmdsMap(const std::string &m) const;
+        /** Returns the speed table of module @p m, or nullptr if the module is unknown. */
         ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
         /**
@@ -278,6 +293,9 @@ class FT245Plugin : public PluginInterface
             return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
         }
 
+        /** Gives helper code access to the plugin's ini values. */
+        /** Gives helper code access to the plugin's ini values. */
+        /** Gives helper code access to the plugin's ini values. */
         friend const IniValues *getAccessIniValues(const FT245Plugin &obj);
 
     private:
@@ -299,6 +317,7 @@ class FT245Plugin : public PluginInterface
         // Driver instance accessors
 
         FT245Sync *m_fifo() const;
+        /** Returns the GPIO module object (nullptr if unavailable). */
         FT245GPIO *m_gpio() const;
 
         // WrRd callback
@@ -352,16 +371,20 @@ class FT245Plugin : public PluginInterface
         ModuleCommandsMap<FT245Plugin> m_mapCmds_FIFO;
         ModuleCommandsMap<FT245Plugin> m_mapCmds_GPIO;
 
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         // Parse helpers
         static bool parseVariant(const std::string &strS, FT245Base::Variant &out);
+        /** Parses the fifo mode name; returns false if unknown. */
         static bool parseFifoMode(const std::string &strS, FT245Base::FifoMode &out);
 
+        /** Parses fifo params from @p strArgs; returns false if invalid. */
         static bool parseFifoParams(const std::string &strArgs,
                                     FifoPendingCfg &sCfg,
                                     uint8_t *pu8DeviceIndexOut = nullptr);
 
+        /** Parses gpio params from @p strArgs; returns false if invalid. */
         static bool parseGpioParams(const std::string &strArgs,
                                     GpioPendingCfg &sCfg,
                                     uint8_t *pu8DeviceIndexOut = nullptr);

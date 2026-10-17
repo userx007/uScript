@@ -381,6 +381,7 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t &bytesRead, uint
     return Status::SUCCESS;
 }
 
+/** Polls until the pending transfer completes or the timeout expires. */
 CP2112::Status CP2112::poll_transfer_done(uint32_t u32TimeoutMs, std::stop_token stop_tok) const
 {
     uint8_t reqBuf[HID_REPORT_SIZE] = {0};
@@ -430,6 +431,7 @@ CP2112::Status CP2112::poll_transfer_done(uint32_t u32TimeoutMs, std::stop_token
     return Status::WRITE_TIMEOUT;
 }
 
+/** Cancels the pending transfer. */
 CP2112::Status CP2112::cancel_transfer() const
 {
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Cancel transfer ..."));

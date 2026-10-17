@@ -56,6 +56,7 @@ class CP2112Gpio : public CP2112Base, public IGpioDriver
          */
         Status open(uint8_t u8DeviceIndex = 0u);
 
+        /** Returns whether the device is open. */
         bool is_open() const override
         {
             return CP2112Base::is_open();

@@ -25,11 +25,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED FT245Plugin *pluginEntry()
     {
         return new FT245Plugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(FT245Plugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -92,6 +94,7 @@ FT245Sync *FT245Plugin::m_fifo() const
     return m_pFIFO.get();
 }
 
+/** Returns the GPIO module object (nullptr if unavailable). */
 FT245GPIO *FT245Plugin::m_gpio() const
 {
     if (!m_pGPIO || !m_pGPIO->is_open()) {
@@ -113,6 +116,7 @@ FT245Plugin::getModuleCmdsMap(const std::string &m) const
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
+/** Returns the speed table of module @p m, or nullptr if the module is unknown. */
 ModuleSpeedMap *
 FT245Plugin::getModuleSpeedsMap(const std::string &m) const
 {
@@ -148,11 +152,13 @@ bool FT245Plugin::m_FT245_FIFO(const std::string &strArgs, std::stop_token st) c
     return generic_module_dispatch<FT245Plugin>(this, "FIFO", strArgs, st);
 }
 
+/** Dispatches a GPIO sub-command to its handler. */
 bool FT245Plugin::m_FT245_GPIO(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<FT245Plugin>(this, "GPIO", strArgs, st);
 }
 
+/** Handles `INFO`: reports the device information. */
 bool FT245Plugin::m_FT245_INFO(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;

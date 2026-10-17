@@ -179,6 +179,7 @@ void uShellUserHandleShortcut_Dot(const char *pstrArgs)
 } /* uShellUserHandleShortcut_Dot() */
 
 /******************************************************************************/
+/** User shortcut handler for `/` (not implemented; logs a warning). */
 void uShellUserHandleShortcut_Slash(const char *pstrArgs)
 {
     uSHELL_LOG(ULOG_WARNING, "[/] registered but not implemented | args[%s] ", pstrArgs);

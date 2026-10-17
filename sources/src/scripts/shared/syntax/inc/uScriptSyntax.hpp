@@ -128,6 +128,7 @@ namespace usyntax
         return std::regex_match(strExpression, pattern);
     }
 
+    /** Returns whether the expression is a BYTESTREAM statement. */
     inline bool m_isBytestreamStmt(const std::string &strExpression)
     {
         static const std::string tok =
@@ -179,6 +180,7 @@ namespace usyntax
         return std::regex_match(strExpression, pattern);
     }
 
+    /** Returns whether the expression is a BYTESTREAMVAL statement. */
     inline bool m_isBytestreamValStmt(const std::string &strExpression)
     {
         static const std::string tok =
@@ -227,6 +229,7 @@ namespace usyntax
         return std::regex_match(strExpression, pattern);
     }
 
+    /** Returns whether the expression is a BYTESTREAMVAL array statement. */
     inline bool m_isBytestreamValArrayStmt(const std::string &strExpression)
     {
         static const std::string tok =

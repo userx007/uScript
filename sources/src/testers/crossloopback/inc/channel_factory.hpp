@@ -56,12 +56,14 @@ namespace loopback
     namespace detail
     {
 
+        /** Returns the string lower-cased. */
         inline std::string toLower(std::string strS)
         {
             std::transform(strS.begin(), strS.end(), strS.begin(), [](unsigned char c) { return std::tolower(c); });
             return strS;
         }
 
+        /** Splits @p s at `/`. */
         inline std::vector<std::string> splitSlash(const std::string &s)
         {
             std::vector<std::string> tokens;
@@ -78,6 +80,7 @@ namespace loopback
             return tokens;
         }
 
+        /** Returns whether the string is non-empty and all digits. */
         inline bool isAllDigits(const std::string &strS)
         {
             if (strS.empty()) {
@@ -86,6 +89,7 @@ namespace loopback
             return std::all_of(strS.begin(), strS.end(), [](unsigned char c) { return std::isdigit(c); });
         }
 
+        /** Returns whether the string has the form aa:bb:cc:dd:ee:ff. */
         inline bool looksLikeMac(const std::string &strS)
         {
             if (strS.size() != 17) {
@@ -103,6 +107,7 @@ namespace loopback
             return true;
         }
 
+        /** Parses a decimal, hex (0x) or octal number. */
         inline uint32_t parseNumber(const std::string &strS)
         {
             return static_cast<uint32_t>(std::strtoul(strS.c_str(), nullptr, 0)); // 0x prefix or decimal
@@ -134,6 +139,7 @@ namespace loopback
             }
     };
 
+    /** Creates the channel described by @p strSpec (e.g. `tcpip:server/5000`). */
     inline ChannelPtr createChannel(const std::string &strSpec)
     {
         std::string type, rest;

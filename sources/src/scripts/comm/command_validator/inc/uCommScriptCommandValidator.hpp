@@ -59,6 +59,7 @@
 class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 {
     public:
+        /** Validates one command line, filling @p type; returns false (and logs) if it is invalid. */
         bool validateCommand(int iLineNumber, const std::string &strCommand, CommCommand &sToken) noexcept override
         {
             ItemParser itemParser;

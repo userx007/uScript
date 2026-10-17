@@ -28,6 +28,7 @@ class ScriptClient
         {
         }
 
+        /** Dry run (@p bRealExec false): reads and validates the script without device I/O. Real run: executes it. */
         bool execute(bool bRealExec)
         {
             static const char *pstrCtx = "CORE script";

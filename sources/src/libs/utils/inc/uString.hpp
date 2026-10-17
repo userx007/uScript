@@ -37,16 +37,19 @@ namespace ustring
         return std::isspace(static_cast<unsigned char>(ch));
     }
 
+    /** Locale-independent isdigit() that is safe for negative char values. */
     inline bool is_digit(char ch) noexcept
     {
         return std::isdigit(static_cast<unsigned char>(ch));
     }
 
+    /** Locale-independent isalpha() that is safe for negative char values. */
     inline bool is_alpha(char ch) noexcept
     {
         return std::isalpha(static_cast<unsigned char>(ch));
     }
 
+    /** Locale-independent isalnum() that is safe for negative char values. */
     inline bool is_alnum(char ch) noexcept
     {
         return std::isalnum(static_cast<unsigned char>(ch));

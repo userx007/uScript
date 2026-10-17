@@ -57,6 +57,7 @@
 
 static volatile int running = 1;
 
+/** Signal handler: stops the main loop. */
 static void sig_handler(int iSig)
 {
     (void)iSig;

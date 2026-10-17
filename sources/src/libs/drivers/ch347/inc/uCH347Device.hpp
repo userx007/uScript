@@ -122,16 +122,19 @@ class CH347Device
             return *m_spi;
         }
 
+        /** Returns the I2C interface. */
         CH347I2C &i2c()
         {
             return *m_i2c;
         }
 
+        /** Returns the GPIO interface. */
         CH347GPIO &gpio()
         {
             return *m_gpio;
         }
 
+        /** Returns the JTAG interface. */
         CH347JTAG &jtag()
         {
             return *m_jtag;
@@ -142,16 +145,19 @@ class CH347Device
             return *m_spi;
         }
 
+        /** Returns the I2C interface. */
         const CH347I2C &i2c() const
         {
             return *m_i2c;
         }
 
+        /** Returns the GPIO interface. */
         const CH347GPIO &gpio() const
         {
             return *m_gpio;
         }
 
+        /** Returns the JTAG interface. */
         const CH347JTAG &jtag() const
         {
             return *m_jtag;

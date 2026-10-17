@@ -87,6 +87,7 @@ class VectorNotifyWaiter
         /** Force wait() to return WaitResult::SIGNALLED at the next opportunity - see class comment. */
         void forceWake() const;
 
+        /** Closes the device. */
         void close();
 
     private:

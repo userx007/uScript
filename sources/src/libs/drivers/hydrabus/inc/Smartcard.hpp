@@ -39,6 +39,7 @@ namespace HydraHAL
     {
 
         public:
+            /** Creates the smartcard handler on @p shpHydrabus. */
             explicit Smartcard(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------
@@ -85,15 +86,21 @@ namespace HydraHAL
             // -------------------------------------------------------------------------
 
             uint32_t get_baud() const;
+            /** Sets the baud rate. */
             bool set_baud(uint32_t u32Baud);
 
+            /** Returns the clock prescaler. */
             uint8_t get_prescaler() const;
+            /** Sets the clock prescaler. */
             bool set_prescaler(uint8_t u8Value);
 
+            /** Returns the guard time. */
             uint8_t get_guardtime() const;
+            /** Sets the guard time. */
             bool set_guardtime(uint8_t u8Value);
 
             bool get_pullup() const;
+            /** Enables or disables the pull-up. */
             bool set_pullup(bool bEnable);
 
         private:

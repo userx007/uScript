@@ -23,11 +23,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED UDPPlugin *pluginEntry()
     {
         return new UDPPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(UDPPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

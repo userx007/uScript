@@ -38,6 +38,7 @@ namespace
     class WinsockGuard
     {
         public:
+            /** Initialises Winsock (WSAStartup) and records the outcome. */
             WinsockGuard()
             {
                 WSADATA wsaData;
@@ -54,6 +55,7 @@ namespace
                 }
             }
 
+            /** Returns whether Winsock initialised successfully. */
             bool ok() const
             {
                 return m_bOk;
@@ -63,6 +65,7 @@ namespace
             bool m_bOk = false;
     };
 
+    /** Returns the process-wide Winsock initialiser. */
     WinsockGuard &winsock()
     {
         static WinsockGuard sInstance;

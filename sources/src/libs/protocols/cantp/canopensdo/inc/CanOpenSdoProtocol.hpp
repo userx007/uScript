@@ -49,6 +49,7 @@
 class CanOpenSdoProtocol final : public ITransportProtocol
 {
     public:
+        /** Creates the driver or protocol object from its configuration. */
         explicit CanOpenSdoProtocol(const TpConfig &sCfg = {})
             : m_cfg(sCfg)
         {
@@ -68,6 +69,7 @@ class CanOpenSdoProtocol final : public ITransportProtocol
             std::string_view rxId,
             std::string_view txId = {}) const override;
 
+        /** Returns the transport protocol identifier. */
         TpProtocol id() const override
         {
             return TpProtocol::CANOPEN_SDO;
@@ -81,14 +83,17 @@ class CanOpenSdoProtocol final : public ITransportProtocol
         // ---- send() (download) helpers ----
         ICommDriver::WriteResult sendExpedited(const ICommDriver &, uint32_t, std::span<const uint8_t>,
                                                std::string_view, std::string_view) const;
+        /** Sends the data as an SDO segmented transfer. */
         ICommDriver::WriteResult sendSegmented(const ICommDriver &, uint32_t, std::span<const uint8_t>,
                                                std::string_view, std::string_view) const;
+        /** Sends the data as an SDO block transfer. */
         ICommDriver::WriteResult sendBlock(const ICommDriver &, uint32_t, std::span<const uint8_t>,
                                            std::string_view, std::string_view) const;
 
         // ---- receive() (upload) helpers ----
         ICommDriver::ReadResult receiveNormal(const ICommDriver &, uint32_t, std::span<uint8_t>,
                                               std::string_view, std::string_view) const;
+        /** Receives data via an SDO block transfer. */
         ICommDriver::ReadResult receiveBlock(const ICommDriver &, uint32_t, std::span<uint8_t>,
                                              std::string_view, std::string_view) const;
         /** Finishes an upload given an already-received Initiate-Upload-style response
@@ -99,6 +104,7 @@ class CanOpenSdoProtocol final : public ITransportProtocol
 
         // ---- shared wire-format helpers ----
         void packIndex(Frame &sF) const;
+        /** Sends an SDO abort frame. */
         static void sendAbort(const ICommDriver &driver, uint32_t u32Timeout, std::string_view txId,
                               const Frame &sCtx, uint32_t u32AbortCode);
 };

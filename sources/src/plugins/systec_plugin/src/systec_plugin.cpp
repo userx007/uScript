@@ -40,11 +40,13 @@
  */
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED SYSTECPlugin *pluginEntry()
     {
         return new SYSTECPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(SYSTECPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

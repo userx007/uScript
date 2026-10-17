@@ -25,11 +25,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED CH347Plugin *pluginEntry()
     {
         return new CH347Plugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(CH347Plugin *pP)
     {
         delete pP;
@@ -59,11 +61,13 @@ CH347I2C *CH347Plugin::m_i2c() const
     return m_pI2C.get();
 }
 
+/** Returns the GPIO module object (nullptr if unavailable). */
 CH347GPIO *CH347Plugin::m_gpio() const
 {
     return m_pGPIO.get();
 }
 
+/** Returns the JTAG module object (nullptr if unavailable). */
 CH347JTAG *CH347Plugin::m_jtag() const
 {
     return m_pJTAG.get();
@@ -143,6 +147,7 @@ ModuleCommandsMap<CH347Plugin> *CH347Plugin::getModuleCmdsMap(const std::string 
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
+/** Returns the speed table of module @p m, or nullptr if the module is unknown. */
 ModuleSpeedMap *CH347Plugin::getModuleSpeedsMap(const std::string &m) const
 {
     auto it = m_mapSpeedsMaps.find(m);
@@ -430,21 +435,25 @@ bool CH347Plugin::m_CH347_INFO(const std::string &strArgs, std::stop_token st) c
     return true;
 }
 
+/** Dispatches a SPI sub-command to its handler. */
 bool CH347Plugin::m_CH347_SPI(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "SPI", strArgs, st);
 }
 
+/** Dispatches a I2C sub-command to its handler. */
 bool CH347Plugin::m_CH347_I2C(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "I2C", strArgs, st);
 }
 
+/** Dispatches a GPIO sub-command to its handler. */
 bool CH347Plugin::m_CH347_GPIO(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "GPIO", strArgs, st);
 }
 
+/** Dispatches a JTAG sub-command to its handler. */
 bool CH347Plugin::m_CH347_JTAG(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "JTAG", strArgs, st);

@@ -24,11 +24,13 @@ static int g_fail    = 0;
         }                                 \
     } while (0)
 
+/** Returns the test-data path @p f below the base directory U. */
 static std::string P(const char *f)
 {
     return std::string(U) + f;
 }
 
+/** Returns a driver configuration for the QoS test (domain 42, instance @p name). */
 static DdsTypedDriver::Config baseCfg(const std::string &name)
 {
     DdsTypedDriver::Config c;
@@ -40,6 +42,7 @@ static DdsTypedDriver::Config baseCfg(const std::string &name)
     return c;
 }
 
+/** Sends @p text to the driver as a command line. */
 static void cmd(DdsTypedDriver &d, const std::string &text)
 {
     std::span<const uint8_t> s(reinterpret_cast<const uint8_t *>(text.data()), text.size());
@@ -85,6 +88,7 @@ static EpQos lookup(dds_entity_t rd, const char *topic, bool wantWriter)
     return r;
 }
 
+/** Reads and discards all samples currently queued on reader @p rd. */
 static void drain(dds_entity_t rd)
 {
     void *s[16] = {};

@@ -62,6 +62,7 @@ namespace
     thread_local uint8_t tl_pendingFromSa   = 0;
 } // namespace
 
+/** Creates the driver or protocol object from its configuration. */
 ProfibusDriver::ProfibusDriver(Config sConfig)
     : m_config(std::move(sConfig))
 {

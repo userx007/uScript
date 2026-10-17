@@ -149,6 +149,7 @@ class ProfibusProtocol
         // "Function code" page, Frame Count Bit section).
         std::vector<uint8_t> buildFdlStatusRequest(uint8_t da, uint8_t sa, bool highPriority = false) const;
 
+        /** Builds a four-byte MQTT acknowledgement packet. */
         static std::vector<uint8_t> buildShortAck()
         {
             return {kSC};

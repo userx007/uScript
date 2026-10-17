@@ -23,11 +23,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED Lan8720NetPlugin *pluginEntry()
     {
         return new Lan8720NetPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(Lan8720NetPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -167,6 +169,7 @@ bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string &strArgs, std::stop_to
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
+/** Handles `SCRIPT`: runs a script file using the plugin's driver. */
 bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;

@@ -80,6 +80,7 @@ namespace uexec
     class DryRunScope
     {
         public:
+            /** Sets the thread-local dry-run flag to @p bDryRun until destruction. */
             explicit DryRunScope(bool bDryRun)
                 : m_bPrev(detail::t_bDryRun)
             {
@@ -156,6 +157,7 @@ namespace uexec
     class CaptureScope
     {
         public:
+            /** Redirects captured output to @p sink until destruction. */
             explicit CaptureScope(std::function<void(const std::string &)> sink)
                 : m_prev(std::move(detail::captureSink()))
             {

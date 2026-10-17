@@ -902,6 +902,7 @@ namespace numeric
         return std::span<const uint8_t>{buffer, length};
     }
 
+    /** Views a string literal as a byte span, excluding the terminating NUL. */
     template <size_t N>
     [[nodiscard]] constexpr std::span<const uint8_t> cstr2span(const char (&str)[N]) noexcept
     {

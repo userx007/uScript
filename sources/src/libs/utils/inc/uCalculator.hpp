@@ -167,12 +167,14 @@ class Calculator
             }
         }
 
+        /** Returns the character @p offset positions ahead of the cursor, or `\0` past the end. */
         char peek(size_t offset = 0) const
         {
             size_t i = m_pos + offset;
             return (i < m_expr.size()) ? m_expr[i] : '\0';
         }
 
+        /** Consumes @p pstrS if the input continues with it; returns whether it matched. */
         bool match(const char *pstrS)
         {
             size_t len = 0;

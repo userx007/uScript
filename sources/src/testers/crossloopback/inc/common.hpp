@@ -40,6 +40,7 @@ namespace loopback
     // the next byte/frame/datagram arrives.
     extern volatile sig_atomic_t g_stop;
 
+    /** Installs SIGINT/SIGTERM handlers that set the global stop flag. */
     void install_signal_handlers();
 
     // A single logical unit of data moving from the input channel to the
@@ -67,12 +68,14 @@ namespace loopback
         std::fflush(stdout);
     }
 
+    /** Prints a warning for @p strTag to stderr. */
     inline void log_warn(const std::string &strTag, const std::string &strMsg)
     {
         std::fprintf(stderr, "[%s] WARNING: %s\n", strTag.c_str(), strMsg.c_str());
         std::fflush(stderr);
     }
 
+    /** Prints an error for @p strTag to stderr. */
     inline void log_err(const std::string &strTag, const std::string &strMsg)
     {
         std::fprintf(stderr, "[%s] ERROR: %s\n", strTag.c_str(), strMsg.c_str());

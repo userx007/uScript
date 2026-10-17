@@ -156,6 +156,7 @@ inline void tp_close(tp_socket_t s)
 #endif
 }
 
+/** Portable setsockopt(). */
 inline int tp_setsockopt(tp_socket_t s, int iLevel, int iName, const void *pVal, socklen_t len)
 {
     return ::setsockopt(s, iLevel, iName, static_cast<const char *>(pVal), len);
@@ -192,6 +193,7 @@ inline void tp_udp_disable_connreset(tp_socket_t s)
 #endif
 }
 
+/** Portable send(). */
 inline ssize_t tp_send(tp_socket_t s, const void *pBuf, size_t len, int iFlags)
 {
 #if defined(_WIN32)
@@ -201,6 +203,7 @@ inline ssize_t tp_send(tp_socket_t s, const void *pBuf, size_t len, int iFlags)
 #endif
 }
 
+/** Portable recv(). */
 inline ssize_t tp_recv(tp_socket_t s, void *pBuf, size_t len, int iFlags)
 {
 #if defined(_WIN32)
@@ -210,6 +213,7 @@ inline ssize_t tp_recv(tp_socket_t s, void *pBuf, size_t len, int iFlags)
 #endif
 }
 
+/** Portable sendto(). */
 inline ssize_t tp_sendto(tp_socket_t s, const void *pBuf, size_t len, int iFlags, const struct sockaddr *pTo,
                          socklen_t toLen)
 {
@@ -220,6 +224,7 @@ inline ssize_t tp_sendto(tp_socket_t s, const void *pBuf, size_t len, int iFlags
 #endif
 }
 
+/** Portable recvfrom(). */
 inline ssize_t tp_recvfrom(tp_socket_t s, void *pBuf, size_t len, int iFlags, struct sockaddr *pFrom,
                            socklen_t *pFromLen)
 {
@@ -303,6 +308,7 @@ inline bool tp_wait_readable(tp_socket_t s, const volatile std::sig_atomic_t *pS
     return tp_wait_readable_until(s, [pStop] { return *pStop != 0; });
 }
 
+/** Sleeps for @p uMs milliseconds. */
 inline void tp_sleep_ms(unsigned uMs)
 {
 #if defined(_WIN32)

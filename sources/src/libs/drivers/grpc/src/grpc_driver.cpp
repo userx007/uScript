@@ -46,6 +46,7 @@ namespace
     thread_local std::string tl_strPendingResponseJson;
 } // namespace
 
+/** Creates the driver or protocol object from its configuration. */
 GrpcDriver::GrpcDriver(Config sConfig)
     : m_config(std::move(sConfig))
 {
@@ -53,6 +54,7 @@ GrpcDriver::GrpcDriver(Config sConfig)
 
 namespace
 {
+    /** Reads the whole file into @p strOut; returns false on failure. */
     bool readFileIntoString(const std::string &strPath, std::string &strOut)
     {
         if (strPath.empty()) {

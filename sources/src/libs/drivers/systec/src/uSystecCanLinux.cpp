@@ -365,11 +365,13 @@ SYSTECCAN::Status SYSTECCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
 namespace
 {
 
+    /** Returns the sysfs path of attribute @p pstrPszAttr of the device behind @p strIface. */
     std::string sysfs_device_path(const std::string &strIface, const char *pstrPszAttr)
     {
         return "/sys/class/net/" + strIface + "/device/" + pstrPszAttr;
     }
 
+    /** Returns the sysfs path of attribute @p pstrPszAttr of network interface @p strIface. */
     std::string sysfs_iface_path(const std::string &strIface, const char *pstrPszAttr)
     {
         return "/sys/class/net/" + strIface + "/" + pstrPszAttr;

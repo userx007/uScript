@@ -30,11 +30,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED PCANPlugin *pluginEntry()
     {
         return new PCANPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(PCANPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

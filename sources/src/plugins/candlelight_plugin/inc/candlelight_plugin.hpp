@@ -466,54 +466,63 @@ class CandlelightPlugin : public PluginInterface
             return numeric::str2uint32(strVal, m_u32PropSeg);
         }
 
+        /** Sets the can phase seg1 from its string form; returns false if the value is invalid. */
         bool setCanPhaseSeg1(const std::string &strVal) const
         {
             m_bRawTimingSet = true;
             return numeric::str2uint32(strVal, m_u32PhaseSeg1);
         }
 
+        /** Sets the can phase seg2 from its string form; returns false if the value is invalid. */
         bool setCanPhaseSeg2(const std::string &strVal) const
         {
             m_bRawTimingSet = true;
             return numeric::str2uint32(strVal, m_u32PhaseSeg2);
         }
 
+        /** Sets the can sjw from its string form; returns false if the value is invalid. */
         bool setCanSjw(const std::string &strVal) const
         {
             m_bRawTimingSet = true;
             return numeric::str2uint32(strVal, m_u32Sjw);
         }
 
+        /** Sets the can brp from its string form; returns false if the value is invalid. */
         bool setCanBrp(const std::string &strVal) const
         {
             m_bRawTimingSet = true;
             return numeric::str2uint32(strVal, m_u32Brp);
         }
 
+        /** Sets the can fd prop seg from its string form; returns false if the value is invalid. */
         bool setCanFdPropSeg(const std::string &strVal) const
         {
             m_bFdRawTimingSet = true;
             return numeric::str2uint32(strVal, m_u32FdPropSeg);
         }
 
+        /** Sets the can fd phase seg1 from its string form; returns false if the value is invalid. */
         bool setCanFdPhaseSeg1(const std::string &strVal) const
         {
             m_bFdRawTimingSet = true;
             return numeric::str2uint32(strVal, m_u32FdPhaseSeg1);
         }
 
+        /** Sets the can fd phase seg2 from its string form; returns false if the value is invalid. */
         bool setCanFdPhaseSeg2(const std::string &strVal) const
         {
             m_bFdRawTimingSet = true;
             return numeric::str2uint32(strVal, m_u32FdPhaseSeg2);
         }
 
+        /** Sets the can fd sjw from its string form; returns false if the value is invalid. */
         bool setCanFdSjw(const std::string &strVal) const
         {
             m_bFdRawTimingSet = true;
             return numeric::str2uint32(strVal, m_u32FdSjw);
         }
 
+        /** Sets the can fd brp from its string form; returns false if the value is invalid. */
         bool setCanFdBrp(const std::string &strVal) const
         {
             m_bFdRawTimingSet = true;
@@ -649,109 +658,130 @@ class CandlelightPlugin : public PluginInterface
             return numeric::str2uint8(strVal, m_sTpConfig.blockSize);
         }
 
+        /** Sets the tp st min from its string form; returns false if the value is invalid. */
         bool setTpStMin(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.stMin);
         }
 
+        /** Sets the tp pad frames from its string form; returns false if the value is invalid. */
         bool setTpPadFrames(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.padFrames);
         }
 
+        /** Sets the tp padding byte from its string form; returns false if the value is invalid. */
         bool setTpPaddingByte(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.paddingByte);
         }
 
+        /** Sets the tp timeout nbs from its string form; returns false if the value is invalid. */
         bool setTpTimeoutNBs(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutNBs_ms);
         }
 
+        /** Sets the tp timeout ncr from its string form; returns false if the value is invalid. */
         bool setTpTimeoutNCr(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutNCr_ms);
         }
 
+        /** Sets the tp max message len from its string form; returns false if the value is invalid. */
         bool setTpMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.maxMessageLen);
         }
 
+        /** Sets the j1939 use bam from its string form; returns false if the value is invalid. */
         bool setJ1939UseBam(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.j1939UseBam);
         }
 
+        /** Sets the j1939 max packets from its string form; returns false if the value is invalid. */
         bool setJ1939MaxPackets(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.j1939MaxPackets);
         }
 
+        /** Sets the tp timeout t1 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT1(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT1_ms);
         }
 
+        /** Sets the tp timeout t2 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT2(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT2_ms);
         }
 
+        /** Sets the tp timeout t3 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT3(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT3_ms);
         }
 
+        /** Sets the tp timeout th from its string form; returns false if the value is invalid. */
         bool setTpTimeoutTh(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutTh_ms);
         }
 
+        /** Sets the j1939 max message len from its string form; returns false if the value is invalid. */
         bool setJ1939MaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.j1939MaxMessageLen);
         }
 
+        /** Sets the can open index from its string form; returns false if the value is invalid. */
         bool setCanOpenIndex(const std::string &strVal) const
         {
             return numeric::str2uint16(strVal, m_sTpConfig.canOpenIndex);
         }
 
+        /** Sets the can open sub index from its string form; returns false if the value is invalid. */
         bool setCanOpenSubIndex(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.canOpenSubIndex);
         }
 
+        /** Sets the can open use block from its string form; returns false if the value is invalid. */
         bool setCanOpenUseBlock(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.canOpenUseBlock);
         }
 
+        /** Sets the can open block size from its string form; returns false if the value is invalid. */
         bool setCanOpenBlockSize(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.canOpenBlockSize);
         }
 
+        /** Sets the tp timeout sdo from its string form; returns false if the value is invalid. */
         bool setTpTimeoutSdo(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutSdo_ms);
         }
 
+        /** Sets the can open max message len from its string form; returns false if the value is invalid. */
         bool setCanOpenMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.canOpenMaxMessageLen);
         }
 
+        /** Sets the tp timeout fp inter frame from its string form; returns false if the value is invalid. */
         bool setTpTimeoutFpInterFrame(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutFpInterFrame_ms);
         }
 
+        /** Sets the fp max message len from its string form; returns false if the value is invalid. */
         bool setFpMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.fastPacketMaxMessageLen);

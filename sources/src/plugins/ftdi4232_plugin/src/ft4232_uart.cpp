@@ -81,6 +81,7 @@ static bool parseParity(const std::string &strS, uint8_t &u8Out)
     return false;
 }
 
+/** Parses uart params from @p strArgs; returns false if invalid. */
 bool FT4232Plugin::parseUartParams(const std::string &strArgs, UartPendingCfg &cfg,
                                    uint8_t *pu8DeviceIndexOut)
 {

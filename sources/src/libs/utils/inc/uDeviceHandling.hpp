@@ -25,6 +25,7 @@ class DeviceHandling
         std::vector<DeviceEntry> deviceList;
         static constexpr std::size_t MaxListSize = 100;
 
+        /** Returns the index of @p strItem in the device list, or -1 if absent. */
         int findItemIndex(const std::string &strItem) const
         {
             auto it = std::find_if(deviceList.begin(), deviceList.end(),
@@ -38,6 +39,7 @@ class DeviceHandling
             return -1;
         }
 
+        /** Adds @p strItem unless already present or the list is full (MaxListSize); returns whether it was added. */
         bool insertItem(const std::string &strItem)
         {
             if (findItemIndex(strItem) == -1 && deviceList.size() < MaxListSize) {
@@ -48,11 +50,13 @@ class DeviceHandling
         }
 
     public:
+        /** Clears the device list. */
         void init()
         {
             deviceList.clear();
         }
 
+        /** Applies an insert or remove event for @p strInput; returns true only if a new item was inserted (echoed in @p strOutput). */
         bool process(const std::string &strInput, std::string &strOutput, OperationType eOpType)
         {
             bool updated = false;
@@ -72,6 +76,7 @@ class DeviceHandling
             return updated;
         }
 
+        /** Pops the next removed device name into @p strOutput; returns false if none is pending. */
         bool getRemoved(std::string &strOutput)
         {
             auto it = std::find_if(deviceList.begin(), deviceList.end(),
@@ -88,6 +93,7 @@ class DeviceHandling
             return false;
         }
 
+        /** Pops the next added device name into @p strOutput; returns false if none is pending. */
         bool getAdded(std::string &strOutput)
         {
             auto it = std::find_if(deviceList.begin(), deviceList.end(),
@@ -104,6 +110,7 @@ class DeviceHandling
             return false;
         }
 
+        /** Clears the removed flag on every entry. */
         void resetAllFlags()
         {
             for (auto &entry : deviceList) {

@@ -24,11 +24,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED RawEthPlugin *pluginEntry()
     {
         return new RawEthPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(RawEthPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

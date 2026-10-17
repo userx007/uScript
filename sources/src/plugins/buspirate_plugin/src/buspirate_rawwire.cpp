@@ -193,6 +193,7 @@ bool BuspiratePlugin::m_handle_rawwire_read(const std::string &strArgs, std::sto
 
 ============================================================================================ */
 
+/** Handles `write` on the raw-wire module. */
 bool BuspiratePlugin::m_handle_rawwire_write(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_data(this, strArgs, &BuspiratePlugin::generic_wire_write_data, st);

@@ -67,6 +67,7 @@ static bool parseBank(const std::string &strS, FT232HGPIO::Bank &out)
     return false;
 }
 
+/** Parses a hex byte; returns false if invalid. */
 static bool parseHexByte(const std::string &strS, uint8_t &u8Out)
 {
     return numeric::str2uint8(strS, u8Out);
@@ -367,6 +368,7 @@ bool FT232HPlugin::m_handle_gpio_set(const std::string &strArgs, std::stop_token
     return true;
 }
 
+/** Handles `clear` on the GPIO module: drives the masked pins low. */
 bool FT232HPlugin::m_handle_gpio_clear(const std::string &strArgs, std::stop_token /*st*/) const
 {
     if (strArgs == "help") {
@@ -408,6 +410,7 @@ bool FT232HPlugin::m_handle_gpio_clear(const std::string &strArgs, std::stop_tok
     return true;
 }
 
+/** Handles `toggle` on the GPIO module: toggles the masked pins. */
 bool FT232HPlugin::m_handle_gpio_toggle(const std::string &strArgs, std::stop_token /*st*/) const
 {
     if (strArgs == "help") {

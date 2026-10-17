@@ -107,6 +107,7 @@ class FT2232UART : public ICommDriver
          */
         Status close();
 
+        /** Returns whether the device is open. */
         bool is_open() const override;
 
         /**

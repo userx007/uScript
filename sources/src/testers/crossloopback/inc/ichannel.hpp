@@ -26,6 +26,7 @@ namespace loopback
             // false (after logging the reason) on failure.
             virtual bool open()                      = 0;
 
+            /** Closes the channel. */
             virtual void close()                     = 0;
 
             // Block until one message (a CAN frame's payload, or one chunk of
@@ -68,6 +69,7 @@ namespace loopback
             // fail or fight over the same fd/port.
             virtual std::string identity() const     = 0;
 
+            /** Returns whether this is a CAN channel. */
             virtual bool isCan() const
             {
                 return false;

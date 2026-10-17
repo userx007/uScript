@@ -23,11 +23,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED Enc28J60NetPlugin *pluginEntry()
     {
         return new Enc28J60NetPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(Enc28J60NetPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -123,6 +125,7 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string &strArgs, std::stop
     return true;
 }
 
+/** Handles `CONFIG`: sets driver parameters from the arguments. */
 bool Enc28J60NetPlugin::m_ENC28J60NET_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
@@ -130,6 +133,7 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_CONFIG(const std::string &strArgs, std::st
     return generic_enc28j60net_set_params(this, strArgs);
 }
 
+/** Handles `CMD`: sends a command through the driver. */
 bool Enc28J60NetPlugin::m_ENC28J60NET_CMD(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;
@@ -142,6 +146,7 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_CMD(const std::string &strArgs, std::stop_
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
+/** Handles `SCRIPT`: runs a script file using the plugin's driver. */
 bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;

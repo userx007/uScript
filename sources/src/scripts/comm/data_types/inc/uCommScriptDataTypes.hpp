@@ -101,6 +101,7 @@ inline const char *getDirectionName(CommCommandDirection dir)
     }
 }
 
+/** Returns the name of a command token type. */
 inline const char *getTokenTypeName(CommCommandTokenType type)
 {
     switch (type) {

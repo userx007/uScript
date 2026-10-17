@@ -18,11 +18,13 @@
  */
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED ModbusPlugin *pluginEntry()
     {
         return new ModbusPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(ModbusPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

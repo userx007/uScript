@@ -154,6 +154,7 @@ bool CH347Plugin::m_handle_spi_cfg(const std::string &strArgs, std::stop_token /
 //                       CS                                      //
 ///////////////////////////////////////////////////////////////////
 
+/** Handles `cs` on the SPI module: controls chip select. */
 bool CH347Plugin::m_handle_spi_cs(const std::string &strArgs, std::stop_token /*st*/) const
 {
     if (strArgs == "help") {
@@ -299,12 +300,14 @@ bool CH347Plugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) cons
     return true;
 }
 
+/** Handles `wrrd`: writes hex data on the SPI bus, then reads back the requested length. */
 bool CH347Plugin::m_handle_spi_wrrd(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return generic_write_read_data<CH347Plugin>(
         this, strArgs, &CH347Plugin::m_spi_wrrd_cb);
 }
 
+/** Handles `wrrdf`: like `wrrd`, with write data and read result taken from/stored to files. */
 bool CH347Plugin::m_handle_spi_wrrdf(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return generic_write_read_file<CH347Plugin>(

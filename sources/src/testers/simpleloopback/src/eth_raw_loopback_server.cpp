@@ -80,11 +80,13 @@ namespace
 
     volatile sig_atomic_t g_stop    = 0;
 
+    /** Signal handler: requests shutdown. */
     void on_signal(int /*sig*/)
     {
         g_stop = 1;
     }
 
+    /** Formats a MAC address as aa:bb:cc:dd:ee:ff. */
     std::string mac_to_string(const uint8_t *pu8Mac)
     {
         char sz[18];
@@ -93,6 +95,7 @@ namespace
         return std::string(sz);
     }
 
+    /** Returns whether two MAC addresses are equal. */
     bool mac_equal(const uint8_t *pu8A, const uint8_t *pu8B)
     {
         return std::memcmp(pu8A, pu8B, MAC_LEN) == 0;
@@ -162,6 +165,7 @@ namespace
         return true;
     }
 
+    /** Enables promiscuous mode on interface @p iIfindex; false on failure. */
     bool enable_promiscuous(int iFd, int iIfindex)
     {
         struct packet_mreq sMreq = {};

@@ -129,6 +129,7 @@ namespace HydraHAL
              *        that do not specify an explicit timeout.
              */
             void set_timeout(uint32_t u32Timeout_ms);
+            /** Returns the I/O timeout in milliseconds. */
             uint32_t get_timeout() const;
 
             /**

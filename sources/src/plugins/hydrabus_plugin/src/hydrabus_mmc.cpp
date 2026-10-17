@@ -53,6 +53,7 @@ bool HydrabusPlugin::m_handle_mmc_help(const std::string &, std::stop_token /*st
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
 
+/** Handles `cfg` on the MMC module: configures the module. */
 bool HydrabusPlugin::m_handle_mmc_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
     auto *p = m_mmc();
@@ -90,6 +91,7 @@ bool HydrabusPlugin::m_handle_mmc_cfg(const std::string &strArgs, std::stop_toke
     return true;
 }
 
+/** Handles `cid` on the MMC module: reads the card CID register. */
 bool HydrabusPlugin::m_handle_mmc_cid(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -107,6 +109,7 @@ bool HydrabusPlugin::m_handle_mmc_cid(const std::string &strArgs, std::stop_toke
     return true;
 }
 
+/** Handles `csd` on the MMC module: reads the card CSD register. */
 bool HydrabusPlugin::m_handle_mmc_csd(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -124,6 +127,7 @@ bool HydrabusPlugin::m_handle_mmc_csd(const std::string &strArgs, std::stop_toke
     return true;
 }
 
+/** Handles `ext_csd` on the MMC module: reads the EXT_CSD register. */
 bool HydrabusPlugin::m_handle_mmc_ext_csd(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -141,6 +145,7 @@ bool HydrabusPlugin::m_handle_mmc_ext_csd(const std::string &strArgs, std::stop_
     return true;
 }
 
+/** Handles `read` on the MMC module: reads data. */
 bool HydrabusPlugin::m_handle_mmc_read(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -204,6 +209,7 @@ bool HydrabusPlugin::m_handle_mmc_write(const std::string &strArgs, std::stop_to
     return p->write(data, blk, st);
 }
 
+/** Handles `aux` on the MMC module: controls the AUX pin. */
 bool HydrabusPlugin::m_handle_mmc_aux(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(strArgs, m_mmc());

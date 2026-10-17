@@ -58,6 +58,7 @@ namespace
 
     volatile sig_atomic_t g_stop       = 0;
 
+    /** Signal handler: requests shutdown. */
     void on_signal(int /*sig*/)
     {
         g_stop = 1;
@@ -130,6 +131,7 @@ namespace
         }
     }
 
+    /** Encodes bytes as Base64. */
     std::string base64_encode(const uint8_t *pu8Data, size_t len)
     {
         static const char *tbl = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -159,6 +161,7 @@ namespace
         return out;
     }
 
+    /** Computes the Sec-WebSocket-Accept value for @p strKey. */
     std::string compute_accept(const std::string &strKey)
     {
         const std::string concat = strKey + WS_GUID;
@@ -192,6 +195,7 @@ namespace
         return true;
     }
 
+    /** Sends all @p len bytes, retrying on partial sends; false on error. */
     bool send_all(tp_socket_t iFd, const uint8_t *pu8Data, size_t len)
     {
         size_t sent = 0;
@@ -208,6 +212,7 @@ namespace
         return true;
     }
 
+    /** Formats a socket address as host:port. */
     std::string peer_to_string(const struct sockaddr_storage &addr, socklen_t addrLen)
     {
         char host[NI_MAXHOST] = "?", port[NI_MAXSERV] = "?";
@@ -304,6 +309,7 @@ namespace
         send_all(iFd, frame.data(), frame.size());
     }
 
+    /** Handles the WebSocket handshake and echoes frames for one client. */
     void serve_client(tp_socket_t iFd, const std::string &strPeer)
     {
         if (!do_handshake(iFd)) {

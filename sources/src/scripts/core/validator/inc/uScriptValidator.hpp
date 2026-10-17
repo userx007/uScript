@@ -30,31 +30,44 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool validateScript(std::vector<ScriptRawLine> &vRawLines, ScriptEntriesType &sScriptEntries) override;
 
     private:
+        /** Validates every raw line and collects the resulting script entries. */
         bool m_validateScriptStatements(std::vector<ScriptRawLine> &vRawLines) noexcept;
+        /** Validates a load plugin statement and records it in the script entries. */
         bool m_HandleLoadPlugin(const ScriptRawLine &sRawLine) noexcept;
+        /** Validates a constant macro statement and records it in the script entries. */
         bool m_HandleConstantMacro(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleArrayMacro(const ScriptRawLine &sRawLine) noexcept;
+        /** Validates a variable macro statement and records it in the script entries. */
         bool m_HandleVariableMacro(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleVarMacroInit(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleFormatStmt(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleMathStmt(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleBitstreamStmt(const ScriptRawLine &sRawLine) noexcept;
+        /** Validates a bytestream statement and records it in the script entries. */
         bool m_HandleBytestreamStmt(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleBitstreamValStmt(const ScriptRawLine &sRawLine) noexcept;
+        /** Validates a bytestream val statement and records it in the script entries. */
         bool m_HandleBytestreamValStmt(const ScriptRawLine &sRawLine) noexcept;
+        /** Validates a BITSTREAMVAL/BYTESTREAMVAL statement (@p strKeyword, @p bByteMode) and records it. */
         bool m_HandleStreamValStmt(const ScriptRawLine &sRawLine, const std::string &strKeyword, bool bByteMode) noexcept;
         bool m_HandleBitstreamValArrayStmt(const ScriptRawLine &sRawLine) noexcept;
+        /** Validates a bytestream val array statement and records it in the script entries. */
         bool m_HandleBytestreamValArrayStmt(const ScriptRawLine &sRawLine) noexcept;
+        /** Validates a BITSTREAMVAL/BYTESTREAMVAL array statement and records it. */
         bool m_HandleStreamValArrayStmt(const ScriptRawLine &sRawLine, const std::string &strKeyword, bool bByteMode) noexcept;
 
         // Shared implementation behind both of the above (see uStreamStatementParser.hpp).
         bool m_HandleStreamStmt(const ScriptRawLine &sRawLine, const std::string &strKeyword, bool bByteMode) noexcept;
+        /** Validates a command statement and records it in the script entries. */
         bool m_HandleCommand(const ScriptRawLine &sRawLine) noexcept;
+        /** Validates an IF condition with its GOTO label and records it. */
         bool m_HandleCondition(const ScriptRawLine &sRawLine) noexcept;
+        /** Validates a label statement and records it in the script entries. */
         bool m_HandleLabel(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleRepeat(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleEndRepeat(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleBreak(const ScriptRawLine &sRawLine) noexcept;
+        /** Validates a continue statement and records it in the script entries. */
         bool m_HandleContinue(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandlePrint(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleDelay(const ScriptRawLine &sRawLine) noexcept;
@@ -62,9 +75,12 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleKill(const ScriptRawLine &sRawLine) noexcept;
 
+        /** Handles the statements that other statements depend on (macros, plugin loads) in a first pass. */
         bool m_preprocessScriptStatements(const ScriptRawLine &sRawLine, const Token eToken) noexcept;
+        /** Checks that IF/GOTO conditions and labels are consistent. */
         bool m_validateConditions() noexcept;
         bool m_validateLoops() noexcept;
+        /** Checks that the plugins used by commands are loaded, and that NAME.SIZE array references exist. */
         bool m_validatePlugins() noexcept;
 
         // Scans every compiled command's raw $macro templates for NAME.SIZE
@@ -93,6 +109,7 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         // m_validateScriptStatements() so the full command list already exists.
         bool m_validateKillTargets() noexcept;
 
+        /** Logs the collected plugins, macros and commands. */
         bool m_ListStatements() noexcept;
 
         // Parses a comma-separated element list (the part after [=).

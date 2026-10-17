@@ -78,11 +78,13 @@ static bool parseCmdArgs(const std::vector<std::string> &vParts,
 
 ///////////////////////////////////////////////////////////////////
 
+/** Handles `help` on the SDIO module: prints usage. */
 bool HydrabusPlugin::m_handle_sdio_help(const std::string &, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
 
+/** Handles `cfg` on the SDIO module: configures the module. */
 bool HydrabusPlugin::m_handle_sdio_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
     auto *p = m_sdio();
@@ -127,6 +129,7 @@ bool HydrabusPlugin::m_handle_sdio_cfg(const std::string &strArgs, std::stop_tok
     return true;
 }
 
+/** Handles `send_no` on the SDIO module: sends a command with no response. */
 bool HydrabusPlugin::m_handle_sdio_send_no(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -152,6 +155,7 @@ bool HydrabusPlugin::m_handle_sdio_send_no(const std::string &strArgs, std::stop
     return p->send_no(cmd_id, cmd_arg, st);
 }
 
+/** Handles `send_short` on the SDIO module: sends a command with a short response. */
 bool HydrabusPlugin::m_handle_sdio_send_short(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -183,6 +187,7 @@ bool HydrabusPlugin::m_handle_sdio_send_short(const std::string &strArgs, std::s
     return true;
 }
 
+/** Handles `send_long` on the SDIO module: sends a command with a long response. */
 bool HydrabusPlugin::m_handle_sdio_send_long(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -214,6 +219,7 @@ bool HydrabusPlugin::m_handle_sdio_send_long(const std::string &strArgs, std::st
     return true;
 }
 
+/** Handles `read` on the SDIO module: reads data. */
 bool HydrabusPlugin::m_handle_sdio_read(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -281,6 +287,7 @@ bool HydrabusPlugin::m_handle_sdio_write(const std::string &strArgs, std::stop_t
     return p->write(cmd_id, cmd_arg, data, st);
 }
 
+/** Handles `aux` on the SDIO module: controls the AUX pin. */
 bool HydrabusPlugin::m_handle_sdio_aux(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(strArgs, m_sdio());

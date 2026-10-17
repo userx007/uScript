@@ -27,20 +27,25 @@ class StatusLed : public QWidget
             Error
         };
 
+        /** Creates a 14x14 LED. */
         explicit StatusLed(QWidget *pParent = nullptr);
 
+        /** Sets the LED state (starting or stopping the blink timer). */
         void setState(State eS);
 
+        /** Returns the LED state. */
         State state() const
         {
             return m_state;
         }
 
+        /** Returns the fixed LED size. */
         QSize sizeHint() const override
         {
             return {14, 14};
         }
 
+        /** Returns the fixed LED size. */
         QSize minimumSizeHint() const override
         {
             return {14, 14};
@@ -48,6 +53,7 @@ class StatusLed : public QWidget
 
     protected:
         void paintEvent(QPaintEvent *) override;
+        /** Toggles the blink phase. */
         void timerEvent(QTimerEvent *) override;
 
     private:

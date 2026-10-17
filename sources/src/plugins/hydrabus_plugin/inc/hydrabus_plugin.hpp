@@ -107,6 +107,7 @@ struct PluginDataSet;
 class HydrabusPlugin : public PluginInterface
 {
     public:
+        /** Registers the plugin's commands and default settings. */
         HydrabusPlugin()
             : m_strVersion(HYDRABUS_PLUGIN_VERSION)
             , m_strInstanceName(HYDRABUS_PLUGIN_NAME)
@@ -233,37 +234,44 @@ class HydrabusPlugin : public PluginInterface
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled() const override
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psPs)
         {
             bool ok = generic_setparams<HydrabusPlugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
             return ok && m_LocalSetParams(psPs);
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psPg) const
         {
             generic_getparams<HydrabusPlugin>(this, psPg);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<HydrabusPlugin> *getMap() const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion() const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData() const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData() const
         {
             m_strResultData.clear();
@@ -271,30 +279,36 @@ class HydrabusPlugin : public PluginInterface
 
         bool doInit(void *pvUserData);
 
+        /** Enables the plugin. */
         bool doEnable()
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
             return generic_dispatch<HydrabusPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup();
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant() const override
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged() const override
         {
             return false;
         }
 
+        /** Sets the fault tolerant setting. */
         void setFaultTolerant()
         {
             m_bIsFaultTolerant = true;
@@ -303,6 +317,7 @@ class HydrabusPlugin : public PluginInterface
         // Module-map accessors (used by generic helpers)
 
         ModuleCommandsMap<HydrabusPlugin> *getModuleCmdsMap(const std::string &m) const;
+        /** Returns the speed table of module @p m, or nullptr if the module is unknown. */
         ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
         /**
@@ -410,14 +425,23 @@ class HydrabusPlugin : public PluginInterface
         // Protocol instance helpers (const because called from const handlers)
 
         HydraHAL::SPI *m_spi() const;
+        /** Returns the I2C module object (nullptr if unavailable). */
         HydraHAL::I2C *m_i2c() const;
+        /** Returns the UART module object (nullptr if unavailable). */
         HydraHAL::UART *m_uart() const;
+        /** Returns the onewire module handler. */
         HydraHAL::OneWire *m_onewire() const;
+        /** Returns the rawwire module handler. */
         HydraHAL::RawWire *m_rawwire() const;
+        /** Returns the swd module handler. */
         HydraHAL::SWD *m_swd() const;
+        /** Returns the smartcard module handler. */
         HydraHAL::Smartcard *m_smartcard() const;
+        /** Returns the nfc module handler. */
         HydraHAL::NFC *m_nfc() const;
+        /** Returns the mmc module handler. */
         HydraHAL::MMC *m_mmc() const;
+        /** Returns the sdio module handler. */
         HydraHAL::SDIO *m_sdio() const;
 
         // WrRd callbacks (for generic_write_read_data / _file)
@@ -432,6 +456,7 @@ class HydrabusPlugin : public PluginInterface
         // Top-level command handlers (INFO, MODE)
 
         bool m_Buspirate_INFO(const std::string &strArgs) const; // kept name pattern for macro
+        /** Handles `MODE`: switches the Bus Pirate binary mode. */
         bool m_Buspirate_MODE(const std::string &strArgs) const;
 
         // Protocols dispatch through the generic macro-generated inline
@@ -554,6 +579,7 @@ class HydrabusPlugin : public PluginInterface
         ModuleSpeedMap m_mapSpeed_MMC;
         ModuleSpeedMap m_mapSpeed_SDIO;
 
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 };
 

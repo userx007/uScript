@@ -51,6 +51,7 @@ class FT245GPIO : public FT245Base
 
         FT245GPIO() = default;
 
+        /** Creates the driver or protocol object from its configuration. */
         explicit FT245GPIO(const GpioConfig &sConfig, uint8_t u8DeviceIndex = 0u)
         {
             this->open(sConfig, u8DeviceIndex);
@@ -72,6 +73,7 @@ class FT245GPIO : public FT245Base
         /** @copydoc FT245Base::close — drives all output pins low before closing */
         Status close() override;
 
+        /** Returns whether the device is open. */
         bool is_open() const
         {
             return FT245Base::is_open();

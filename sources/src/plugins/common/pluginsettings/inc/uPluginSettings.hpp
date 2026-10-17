@@ -188,33 +188,39 @@ class PluginSettingsBinder
         // break-on-first-failure behaviour matches the original per-plugin ordering
         std::vector<Entry> m_vectEntries;
 
+        /** Converts @p strVal to the target type; returns false if it is invalid. */
         static bool Convert(const std::string &strVal, std::string &strOut)
         {
             strOut = strVal;
             return true;
         }
 
+        /** Converts @p strVal to the target type; returns false if it is invalid. */
         static bool Convert(const std::string &strVal, bool &bOut)
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, bOut);
         }
 
+        /** Converts @p strVal to the target type; returns false if it is invalid. */
         static bool Convert(const std::string &strVal, uint8_t &u8Out)
         {
             return numeric::str2uint8(strVal, u8Out);
         }
 
+        /** Converts @p strVal to the target type; returns false if it is invalid. */
         static bool Convert(const std::string &strVal, uint16_t &u16Out)
         {
             return numeric::str2uint16(strVal, u16Out);
         }
 
+        /** Converts @p strVal to the target type; returns false if it is invalid. */
         static bool Convert(const std::string &strVal, uint32_t &u32Out)
         {
             return numeric::str2uint32(strVal, u32Out);
         }
 
+        /** Converts @p strVal to the target type; returns false if it is invalid. */
         static bool Convert(const std::string &strVal, size_t &out)
         {
             return numeric::str2sizet(strVal, out);

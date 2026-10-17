@@ -30,11 +30,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED SLCANPlugin *pluginEntry()
     {
         return new SLCANPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(SLCANPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

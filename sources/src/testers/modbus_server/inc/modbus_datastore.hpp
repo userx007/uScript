@@ -33,30 +33,35 @@ class ModbusDataStore
         {
         }
 
+        /** Reads @p u16Qty coils from @p u16Addr; returns 0 or a Modbus exception code. */
         uint8_t readCoils(uint16_t u16Addr, uint16_t u16Qty, std::vector<bool> &vOut) const
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_readBits(m_coils, u16Addr, u16Qty, vOut);
         }
 
+        /** Reads discrete inputs; returns 0 or a Modbus exception code. */
         uint8_t readDiscreteInputs(uint16_t u16Addr, uint16_t u16Qty, std::vector<bool> &vOut) const
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_readBits(m_discreteInputs, u16Addr, u16Qty, vOut);
         }
 
+        /** Reads holding registers; returns 0 or a Modbus exception code. */
         uint8_t readHoldingRegisters(uint16_t u16Addr, uint16_t u16Qty, std::vector<uint16_t> &vOut) const
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_readRegs(m_holdingRegisters, u16Addr, u16Qty, vOut);
         }
 
+        /** Reads input registers; returns 0 or a Modbus exception code. */
         uint8_t readInputRegisters(uint16_t u16Addr, uint16_t u16Qty, std::vector<uint16_t> &vOut) const
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_readRegs(m_inputRegisters, u16Addr, u16Qty, vOut);
         }
 
+        /** Writes one coil; returns 0 or a Modbus exception code. */
         uint8_t writeSingleCoil(uint16_t u16Addr, bool bValue)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -67,6 +72,7 @@ class ModbusDataStore
             return kExceptionNone;
         }
 
+        /** Writes one holding register; returns 0 or a Modbus exception code. */
         uint8_t writeSingleRegister(uint16_t u16Addr, uint16_t u16Value)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -77,6 +83,7 @@ class ModbusDataStore
             return kExceptionNone;
         }
 
+        /** Writes several coils; returns 0 or a Modbus exception code. */
         uint8_t writeMultipleCoils(uint16_t u16Addr, const std::vector<bool> &vValues)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -89,6 +96,7 @@ class ModbusDataStore
             return kExceptionNone;
         }
 
+        /** Writes several holding registers; returns 0 or a Modbus exception code. */
         uint8_t writeMultipleRegisters(uint16_t u16Addr, const std::vector<uint16_t> &vValues)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -110,6 +118,7 @@ class ModbusDataStore
             }
         }
 
+        /** Presets coils starting at @p u16Addr (test setup). */
         void seedCoils(uint16_t u16Addr, const std::vector<bool> &vValues)
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -119,6 +128,7 @@ class ModbusDataStore
         }
 
     private:
+        /** Reads bits from @p vTable with range checking; returns 0 or a Modbus exception code. */
         static uint8_t m_readBits(const std::vector<bool> &vTable, uint16_t u16Addr, uint16_t u16Qty, std::vector<bool> &vOut)
         {
             if (u16Qty == 0 || static_cast<size_t>(u16Addr) + u16Qty > vTable.size()) {
@@ -128,6 +138,7 @@ class ModbusDataStore
             return kExceptionNone;
         }
 
+        /** Reads registers from @p vTable with range checking; returns 0 or a Modbus exception code. */
         static uint8_t m_readRegs(const std::vector<uint16_t> &vTable, uint16_t u16Addr, uint16_t u16Qty, std::vector<uint16_t> &vOut)
         {
             if (u16Qty == 0 || static_cast<size_t>(u16Addr) + u16Qty > vTable.size()) {

@@ -30,6 +30,7 @@ std::vector<uint8_t> ModbusProtocol::buildReadCoils(uint8_t unitId, uint16_t sta
     return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
+/** Builds a request for Modbus function 0x02 (read discrete inputs). */
 std::vector<uint8_t> ModbusProtocol::buildReadDiscreteInputs(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId)
 {
     std::vector<uint8_t> pdu{kReadDiscreteInputs,
@@ -38,6 +39,7 @@ std::vector<uint8_t> ModbusProtocol::buildReadDiscreteInputs(uint8_t unitId, uin
     return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
+/** Builds a request for Modbus function 0x03 (read holding registers). */
 std::vector<uint8_t> ModbusProtocol::buildReadHoldingRegisters(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId)
 {
     std::vector<uint8_t> pdu{kReadHoldingRegisters,
@@ -46,6 +48,7 @@ std::vector<uint8_t> ModbusProtocol::buildReadHoldingRegisters(uint8_t unitId, u
     return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
+/** Builds a request for Modbus function 0x04 (read input registers). */
 std::vector<uint8_t> ModbusProtocol::buildReadInputRegisters(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId)
 {
     std::vector<uint8_t> pdu{kReadInputRegisters,
@@ -54,6 +57,7 @@ std::vector<uint8_t> ModbusProtocol::buildReadInputRegisters(uint8_t unitId, uin
     return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
+/** Builds a request for Modbus function 0x05 (write single coil). */
 std::vector<uint8_t> ModbusProtocol::buildWriteSingleCoil(uint8_t unitId, uint16_t addr, bool value, uint16_t *pOutTxnId)
 {
     const uint16_t wireValue = value ? 0xFF00 : 0x0000; // Modbus's own encoding for a single coil write
@@ -63,6 +67,7 @@ std::vector<uint8_t> ModbusProtocol::buildWriteSingleCoil(uint8_t unitId, uint16
     return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
+/** Builds a request for Modbus function 0x06 (write single register). */
 std::vector<uint8_t> ModbusProtocol::buildWriteSingleRegister(uint8_t unitId, uint16_t addr, uint16_t value, uint16_t *pOutTxnId)
 {
     std::vector<uint8_t> pdu{kWriteSingleRegister,
@@ -71,6 +76,7 @@ std::vector<uint8_t> ModbusProtocol::buildWriteSingleRegister(uint8_t unitId, ui
     return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
+/** Builds a request for Modbus function 0x0F (write multiple coils). */
 std::vector<uint8_t> ModbusProtocol::buildWriteMultipleCoils(uint8_t unitId, uint16_t startAddr,
                                                              const std::vector<bool> &values, uint16_t *pOutTxnId)
 {
@@ -96,6 +102,7 @@ std::vector<uint8_t> ModbusProtocol::buildWriteMultipleCoils(uint8_t unitId, uin
     return m_buildRequest(unitId, pdu, pOutTxnId);
 }
 
+/** Builds a request for Modbus function 0x10 (write multiple registers). */
 std::vector<uint8_t> ModbusProtocol::buildWriteMultipleRegisters(uint8_t unitId, uint16_t startAddr,
                                                                  const std::vector<uint16_t> &values, uint16_t *pOutTxnId)
 {
@@ -135,6 +142,7 @@ uint16_t ModbusProtocol::decodeTransactionId(const std::vector<uint8_t> &vAdu)
     return static_cast<uint16_t>((vAdu[0] << 8) | vAdu[1]);
 }
 
+/** Returns the Modbus function code of a response (exception bit cleared). */
 uint8_t ModbusProtocol::decodeFunctionCode(const std::vector<uint8_t> &vAdu)
 {
     // MBAP header is 7 bytes (Transaction Id(2) + Protocol Id(2) + Length(2) + Unit Id(1));
@@ -145,6 +153,7 @@ uint8_t ModbusProtocol::decodeFunctionCode(const std::vector<uint8_t> &vAdu)
     return vAdu[7];
 }
 
+/** Returns the exception code of a Modbus exception response. */
 uint8_t ModbusProtocol::decodeExceptionCode(const std::vector<uint8_t> &vAdu)
 {
     if (vAdu.size() < 9) {
@@ -172,6 +181,7 @@ ModbusProtocol::ReadBitsResult ModbusProtocol::decodeReadBitsResponse(const std:
     return result;
 }
 
+/** Decodes the register values of a Modbus read-registers response. */
 ModbusProtocol::ReadRegsResult ModbusProtocol::decodeReadRegsResponse(const std::vector<uint8_t> &vAdu) const
 {
     ReadRegsResult result;

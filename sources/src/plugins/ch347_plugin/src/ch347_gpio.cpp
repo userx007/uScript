@@ -59,6 +59,7 @@ static bool parseHexByte(const std::string &strS, uint8_t &u8Out)
     return numeric::str2uint8(strS, u8Out);
 }
 
+/** Formats a byte as an 8-digit binary string. */
 static std::string fmtBinary8(uint8_t u8V)
 {
     std::string s;

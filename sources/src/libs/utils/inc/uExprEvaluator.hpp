@@ -170,11 +170,13 @@ class EvalExprEvaluator
             return ci(v, "true", 4) || ci(v, "false", 5) || ci(v, "!true", 5) || ci(v, "!false", 6);
         }
 
+        /** True if @p v is non-empty and all digits. */
         static bool m_isNumericLiteral(std::string_view v)
         {
             return !v.empty() && std::all_of(v.begin(), v.end(), ::isdigit);
         }
 
+        /** True if @p v looks like a version (N.N[.N[.N]], 1-3 dots, components of at most 9 digits). */
         static bool m_isVersionLiteral(std::string_view v)
         {
             // A canonical version string has the form N.N[.N[.N]] where every
@@ -235,6 +237,7 @@ class EvalExprEvaluator
             return true;
         }
 
+        /** Infers the comparison type from both operands (priority: BOOL > NUM > VER > STR). */
         static eValidateType m_inferType(std::string_view lhs, std::string_view rhs)
         {
             // Both operands must agree for a reliable inference.
@@ -251,6 +254,7 @@ class EvalExprEvaluator
             return eValidateType::STRING;
         }
 
+        /** Maps a type suffix (STR, NUM, VER, ...) to its eValidateType. */
         static eValidateType m_typeFromSuffix(const std::string &strSuffix)
         {
             if (strSuffix == "STR") {
@@ -523,6 +527,7 @@ class EvalExprEvaluator
             return true;
         }
 
+        /** Parses an `||` chain of `&&` groups. */
         bool m_parseOr(std::string_view &sv, bool &bResult) const
         {
             bool lhs;
@@ -550,6 +555,7 @@ class EvalExprEvaluator
             return true;
         }
 
+        /** Parses an `&&` chain of atoms, evaluating each one. */
         bool m_parseAnd(std::string_view &sv, bool &bResult) const
         {
             Atom atom;

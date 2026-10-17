@@ -39,11 +39,13 @@
  */
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED KCANPlugin *pluginEntry()
     {
         return new KCANPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(KCANPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

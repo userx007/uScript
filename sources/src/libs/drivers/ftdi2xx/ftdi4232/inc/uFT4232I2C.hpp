@@ -85,6 +85,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver
         /** @copydoc FT4232Base::close — also sends I²C STOP before closing */
         Status close() override;
 
+        /** Returns whether the device is open. */
         bool is_open() const override
         {
             return FT4232Base::is_open();

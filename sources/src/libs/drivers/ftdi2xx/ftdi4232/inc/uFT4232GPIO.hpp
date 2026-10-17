@@ -107,6 +107,7 @@ class FT4232GPIO : public FT4232Base
         /** @copydoc FT4232Base::close — drives all output pins low before closing */
         Status close() override;
 
+        /** Returns whether the device is open. */
         bool is_open() const
         {
             return FT4232Base::is_open();

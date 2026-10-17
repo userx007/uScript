@@ -23,11 +23,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED TCPIPPlugin *pluginEntry()
     {
         return new TCPIPPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(TCPIPPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

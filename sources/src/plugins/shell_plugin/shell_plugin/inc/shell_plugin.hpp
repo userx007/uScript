@@ -216,6 +216,7 @@ class ShellPlugin : public PluginInterface
         }
 
     private:
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams)
         {
             if (true == psSetParams->mapSettings.empty()) {

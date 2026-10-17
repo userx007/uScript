@@ -240,6 +240,7 @@ namespace gui_tls_detail
 
 } // namespace gui_tls_detail
 
+/** Returns the calling thread's GUI comm id (Windows TLS, with a fallback when no TLS slot is available). */
 inline int get_gui_comm_tid() noexcept
 {
     const unsigned long idx = gui_tls_detail::tls_index();
@@ -249,6 +250,7 @@ inline int get_gui_comm_tid() noexcept
     return static_cast<int>(reinterpret_cast<std::intptr_t>(::TlsGetValue(idx)));
 }
 
+/** Sets the calling thread's GUI comm id (Windows TLS, with a fallback when no TLS slot is available). */
 inline void set_gui_comm_tid(int iTid) noexcept
 {
     const unsigned long idx = gui_tls_detail::tls_index();
@@ -267,6 +269,7 @@ namespace gui_tls_detail
     inline pthread_key_t g_tid_key;
     inline pthread_once_t g_tid_once = PTHREAD_ONCE_INIT;
 
+    /** Creates the pthread key that stores the per-thread GUI comm id. */
     inline void make_tid_key() noexcept
     {
         pthread_key_create(&g_tid_key, nullptr);
@@ -274,6 +277,7 @@ namespace gui_tls_detail
 
 } // namespace gui_tls_detail
 
+/** Returns the calling thread's GUI comm id (POSIX). */
 inline int get_gui_comm_tid() noexcept
 {
     pthread_once(&gui_tls_detail::g_tid_once, gui_tls_detail::make_tid_key);
@@ -281,6 +285,7 @@ inline int get_gui_comm_tid() noexcept
         pthread_getspecific(gui_tls_detail::g_tid_key)));
 }
 
+/** Sets the calling thread's GUI comm id (POSIX). */
 inline void set_gui_comm_tid(int iTid) noexcept
 {
     pthread_once(&gui_tls_detail::g_tid_once, gui_tls_detail::make_tid_key);

@@ -95,6 +95,7 @@ struct PluginDataSet;
 class FT232HPlugin : public PluginInterface
 {
     public:
+        /** Registers the plugin's commands and default settings. */
         FT232HPlugin()
             : m_strVersion(FT232H_PLUGIN_VERSION)
             , m_strInstanceName(FT232H_PLUGIN_NAME)
@@ -169,37 +170,44 @@ class FT232HPlugin : public PluginInterface
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled() const override
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psPs)
         {
             bool ok = generic_setparams<FT232HPlugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
             return ok && m_LocalSetParams(psPs);
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psPg) const
         {
             generic_getparams<FT232HPlugin>(this, psPg);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<FT232HPlugin> *getMap() const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion() const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData() const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData() const
         {
             m_strResultData.clear();
@@ -207,30 +215,36 @@ class FT232HPlugin : public PluginInterface
 
         bool doInit(void *pvUserData);
 
+        /** Enables the plugin. */
         bool doEnable()
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
             return generic_dispatch<FT232HPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup();
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant() const override
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged() const override
         {
             return false;
         }
 
+        /** Sets the fault tolerant setting. */
         void setFaultTolerant()
         {
             m_bIsFaultTolerant = true;
@@ -239,6 +253,7 @@ class FT232HPlugin : public PluginInterface
         // Module-map accessors
 
         ModuleCommandsMap<FT232HPlugin> *getModuleCmdsMap(const std::string &m) const;
+        /** Returns the speed table of module @p m, or nullptr if the module is unknown. */
         ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
         /**
@@ -337,8 +352,11 @@ class FT232HPlugin : public PluginInterface
         // Driver instance accessors
 
         FT232HSPI *m_spi() const;
+        /** Returns the I2C module object (nullptr if unavailable). */
         FT232HI2C *m_i2c() const;
+        /** Returns the GPIO module object (nullptr if unavailable). */
         FT232HGPIO *m_gpio() const;
+        /** Returns the UART module object (nullptr if unavailable). */
         FT232HUART *m_uart() const;
 
         // WrRd callbacks
@@ -413,12 +431,14 @@ class FT232HPlugin : public PluginInterface
         ModuleSpeedMap m_mapSpeed_I2C;
         ModuleSpeedMap m_mapSpeed_UART;
 
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         // Parse helpers
         static bool parseSpiParams(const std::string &strArgs,
                                    SpiPendingCfg &sCfg,
                                    uint8_t *pu8DeviceIndexOut = nullptr);
+        /** Parses uart params from @p strArgs; returns false if invalid. */
         static bool parseUartParams(const std::string &strArgs, UartPendingCfg &cfg,
                                     uint8_t *pu8DeviceIndexOut = nullptr);
 };

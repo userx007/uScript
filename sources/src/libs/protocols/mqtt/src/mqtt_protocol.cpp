@@ -120,11 +120,13 @@ std::vector<uint8_t> MqttProtocol::buildConnect(const ConnectParams &params) con
     return packet;
 }
 
+/** Builds an MQTT DISCONNECT packet. */
 std::vector<uint8_t> MqttProtocol::buildDisconnect() const
 {
     return {kDisconnect, 0x00};
 }
 
+/** Builds an MQTT PINGREQ packet. */
 std::vector<uint8_t> MqttProtocol::buildPingReq() const
 {
     return {kPingReq, 0x00};
@@ -167,21 +169,25 @@ std::vector<uint8_t> MqttProtocol::buildPubAck(uint16_t packetId) const
     return {kPubAck, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
+/** Builds an MQTT PUBREC packet (QoS 2). */
 std::vector<uint8_t> MqttProtocol::buildPubRec(uint16_t packetId) const
 {
     return {kPubRec, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
+/** Builds an MQTT PUBREL packet (QoS 2). */
 std::vector<uint8_t> MqttProtocol::buildPubRel(uint16_t packetId) const
 {
     return {kPubRel, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
+/** Builds an MQTT PUBCOMP packet (QoS 2). */
 std::vector<uint8_t> MqttProtocol::buildPubComp(uint16_t packetId) const
 {
     return {kPubComp, 0x02, static_cast<uint8_t>((packetId >> 8) & 0xFF), static_cast<uint8_t>(packetId & 0xFF)};
 }
 
+/** Builds an MQTT SUBSCRIBE packet. */
 std::vector<uint8_t> MqttProtocol::buildSubscribe(const std::string &topic, uint8_t qos, uint16_t *pOutPacketId)
 {
     const uint16_t packetId = m_allocatePacketId();
@@ -206,6 +212,7 @@ std::vector<uint8_t> MqttProtocol::buildSubscribe(const std::string &topic, uint
     return packet;
 }
 
+/** Builds an MQTT UNSUBSCRIBE packet. */
 std::vector<uint8_t> MqttProtocol::buildUnsubscribe(const std::string &topic, uint16_t *pOutPacketId)
 {
     const uint16_t packetId = m_allocatePacketId();
@@ -250,6 +257,7 @@ MqttProtocol::ConnAckResult MqttProtocol::decodeConnAck(const std::vector<uint8_
     return result;
 }
 
+/** Decodes an MQTT SUBACK packet. */
 MqttProtocol::SubAckResult MqttProtocol::decodeSubAck(const std::vector<uint8_t> &vPacket) const
 {
     SubAckResult result;
@@ -280,6 +288,7 @@ bool MqttProtocol::decodeSimpleAck(const std::vector<uint8_t> &vPacket, uint16_t
     return true;
 }
 
+/** Decodes an MQTT PUBLISH packet. */
 MqttProtocol::PublishMessage MqttProtocol::decodePublish(const std::vector<uint8_t> &vPacket) const
 {
     PublishMessage msg;

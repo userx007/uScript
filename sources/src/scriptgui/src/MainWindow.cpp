@@ -2257,6 +2257,7 @@ void MainWindow::onResetErrorBars()
     m_resetBtn->setEnabled(false);
 }
 
+/** Re-reads every open script/INI from disk. */
 void MainWindow::onReloadAll()
 {
     // Every ScriptViewer that currently has a real file on disk: all the
@@ -2353,6 +2354,7 @@ QString MainWindow::activeScriptPath() const
     return (!p.isEmpty() && QFileInfo::exists(p)) ? p : QString();
 }
 
+/** Updates label and enabled state of the Config and Setup buttons. */
 void MainWindow::refreshProjectButtons()
 {
     if (!m_configBtn || !m_setupOpenBtn || !m_setupRunBtn) {
@@ -2392,6 +2394,7 @@ void MainWindow::refreshProjectButtons()
                                          : QString("Run %1").arg(m_setupPath));
 }
 
+/** Shows the running state of the setup button. */
 void MainWindow::setSetupRunning(bool bOn)
 {
     m_setupRunBtn->setProperty("running", bOn);
@@ -2400,6 +2403,7 @@ void MainWindow::setSetupRunning(bool bOn)
     refreshProjectButtons();
 }
 
+/** Opens @p filePath in a tab, or activates the tab already showing it. */
 void MainWindow::openOrSwitchToFile(const QString &filePath)
 {
     const QString canon = QFileInfo(filePath).canonicalFilePath();
@@ -2449,6 +2453,7 @@ void MainWindow::onConfigButton()
     refreshProjectButtons();
 }
 
+/** Opens the setup script of the active script, offering to create it if missing. */
 void MainWindow::onSetupOpenButton()
 {
     const QString script = activeScriptPath();
@@ -2476,6 +2481,7 @@ void MainWindow::onSetupOpenButton()
     refreshProjectButtons();
 }
 
+/** Updates the setup state after a tab was saved. */
 void MainWindow::onViewerSaved(const QString &filePath)
 {
     if (m_setupUnsaved.remove(QFileInfo(filePath).canonicalFilePath())) {
@@ -2483,6 +2489,7 @@ void MainWindow::onViewerSaved(const QString &filePath)
     }
 }
 
+/** Runs the setup script, asking for a sudo/admin password if needed. */
 void MainWindow::runSetupScript()
 {
     const QString path = m_setupPath;
@@ -2881,6 +2888,7 @@ void MainWindow::onCommScriptRequested(const QString &scriptName)
         QString("Preview: %1").arg(QFileInfo(resolved).fileName()));
 }
 
+/** Opens a file clicked in an INCLUDE line (ignored while a script runs). */
 void MainWindow::onIncludeFileRequested(const QString &resolvedPath)
 {
     // Don't interfere while the interpreter is running.

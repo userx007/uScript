@@ -121,6 +121,7 @@ class ProfibusDriver : public ICommDriver
                 std::string strInstanceName;
         };
 
+        /** Creates the driver or protocol object from its configuration. */
         explicit ProfibusDriver(Config sConfig);
         ~ProfibusDriver();
 
@@ -133,6 +134,7 @@ class ProfibusDriver : public ICommDriver
          * port IS the whole of "opening" this driver.
          */
         bool open();
+        /** Closes the device. */
         void close();
 
         // ---- ICommDriver ----
@@ -145,10 +147,13 @@ class ProfibusDriver : public ICommDriver
         // thin passthroughs to the real UART driver for exactly that reason —
         // completeness, not an alternate code path this class relies on.
         bool is_open() const override;
+        /** Describes this connection for the communication dump. */
         CommDetails describeConnection(std::string_view xtra_params = {}) const override;
+        /** Writes @p buffer, waiting at most the write timeout. */
         ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
                                             std::string_view xtra_params = {},
                                             std::stop_token stop_tok     = {}) const override;
+        /** Reads into @p buffer, waiting at most the read timeout. */
         ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                           const ICommDriver::ReadOptions &options,
                                           std::string_view xtra_params = {},
@@ -195,6 +200,7 @@ class ProfibusDriver : public ICommDriver
         // even though there is no TLS layer here to make the indirection
         // otherwise necessary).
         ICommDriver::Status m_PhysicalSend(std::span<const uint8_t> data, uint32_t u32TimeoutMs) const;
+        /** Receives raw bytes from the transport, waiting up to @p u32TimeoutMs. */
         ICommDriver::Status m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t u32TimeoutMs, size_t &outBytesRead, std::stop_token stop_tok = {}) const;
 
         // Blocks until at least (33 bit-times at m_config.baud) have elapsed
@@ -241,6 +247,7 @@ class ProfibusDriver : public ICommDriver
         // Parses a hex-digit string ("AABBCC") into raw bytes. Returns false
         // (and logs) on an odd-length string or a non-hex-digit character.
         static bool m_ParseHexBytes(const std::string &strHex, std::vector<uint8_t> &vOutBytes);
+        /** Formats @p vBytes as hex text. */
         static std::string m_BytesToHex(const std::vector<uint8_t> &vBytes);
 
         // FDL sub-command handlers (the "specific callback associated to that
@@ -250,8 +257,11 @@ class ProfibusDriver : public ICommDriver
         // for next (see receive()'s doc comment). Returns false on bad
         // arguments or a send failure.
         bool m_HandleSdn(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles SDA (send data with acknowledge). */
         bool m_HandleSda(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles SRD (send and request data). */
         bool m_HandleSrd(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles the STATUS command. */
         bool m_HandleStatus(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
 
         using ProfibusSubCmdHandler = bool (ProfibusDriver::*)(const std::vector<std::string> &, std::string_view) const;
@@ -269,6 +279,7 @@ class ProfibusDriver : public ICommDriver
         // driver returns through receive()'s buffer — e.g. "AABBCC" for a data
         // reply, "ACK" for a bare SC, "SLAVE:DATA_LOW" for an FDL-Status reply.
         static std::string m_FormatTelegramResult(const ProfibusProtocol::DecodedTelegram &t, bool bWasStatusQuery);
+        /** Returns the name of a station type code. */
         static const char *m_StationTypeName(uint8_t stationType);
 };
 

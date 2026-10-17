@@ -30,6 +30,7 @@
 #endif
 
 static void* VehicleState_alloc(void) { return simple_VehicleState__alloc(); }
+/** Frees a sample; @p op selects what is freed (see dds_free_op_t). */
 static void  VehicleState_free(void* pvD, dds_free_op_t op) { simple_VehicleState_free((simple_VehicleState*)pvD, op); }
 
 /* "id=1,label=truck-07,speed=27.5" -> simple_VehicleState */
@@ -91,7 +92,9 @@ static const DdsTypeEntry kTypes[] = {
     },
 };
 
+/** Returns the number of topic types exported by this adapter. */
 static size_t get_type_count(void) { return sizeof(kTypes) / sizeof(kTypes[0]); }
+/** Returns the topic type entry at @p index, or NULL if out of range. */
 static const DdsTypeEntry* get_type(size_t index) { return (index < get_type_count()) ? &kTypes[index] : NULL; }
 
 static const DdsTypePlugin kPlugin = {
@@ -101,4 +104,5 @@ static const DdsTypePlugin kPlugin = {
     .get_type = get_type,
 };
 
+/** Plugin entry point: returns this adapter's type table. */
 const DdsTypePlugin* dds_type_plugin_get(void) { return &kPlugin; }

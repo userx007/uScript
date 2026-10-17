@@ -16,11 +16,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED ProfibusPlugin *pluginEntry()
     {
         return new ProfibusPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(ProfibusPlugin *pPlugin)
     {
         delete pPlugin;
@@ -247,6 +249,7 @@ bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string &strArgs, std::stop_token 
         st);
 }
 
+/** Handles `SCRIPT`: runs a script file using the plugin's driver. */
 bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     resetData();

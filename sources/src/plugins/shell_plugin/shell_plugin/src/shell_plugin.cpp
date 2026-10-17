@@ -14,11 +14,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED ShellPlugin *pluginEntry()
     {
         return new ShellPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(ShellPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

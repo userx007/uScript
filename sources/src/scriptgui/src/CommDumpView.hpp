@@ -79,27 +79,38 @@ class CommDumpView : public QFrame
         void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool bIsTx,
                        const QByteArray &bytes);
 
+        /** Clears the dump. */
         void clear();
+        /** Sets the font of the dump tree. */
         void setDumpFont(const QFont &font);
 
     public slots:
 
+        /** Enables or disables scrolling to the newest record. */
         void setAutoScroll(bool bOn)
         {
             m_autoScroll = bOn;
         }
 
+        /** Sets the tree font and recomputes the full-dump font size. */
         void setTreeFont(const QFont &font);
 
     private slots:
         void onSaveAll();
+        /** Saves only the records that pass the current filters. */
         void onSaveFilteredOnly();
+        /** Prompts for a trace file and loads it. */
         void onLoadTriggered();
+        /** Re-applies the filters after a plugin filter toggle. */
         void onPluginActionToggled(bool bChecked);
+        /** Copies the selected records to the clipboard. */
         void onCopySelected();
         void onSelectAllRows();
+        /** Expands all records. */
         void onExpandAll();
+        /** Collapses all records. */
         void onCollapseAll();
+        /** Shows the context menu at @p pos. */
         void onTreeContextMenuRequested(const QPoint &pos);
         // Coalesced-flush timer target — see m_pendingQueue / m_flushTimer.
         void flushPending();
@@ -116,9 +127,12 @@ class CommDumpView : public QFrame
         // regardless of which display mode is currently active (see
         // saveToFile()/rawRecordPassesFilters()).
         bool recordPassesFilters(const CommDumpModel::Record &rec) const;
+        /** Re-evaluates every filter and hides non-matching rows. */
         void reapplyAllFilters();
         void rebuildPluginMenuFromModel();
+        /** Saves the trace to a file chosen by the user; @p bFilteredOnly limits it to visible records. */
         void saveToFile(bool bFilteredOnly);
+        /** Recomputes the full-dump font size from the tree font. */
         void updateFullDumpFontSize();
         // Applies filter-visibility to exactly the rows CommDumpModel::
         // IngestResult::touchedRows says one addRecords() batch actually
@@ -149,6 +163,7 @@ class CommDumpView : public QFrame
         // hex+ASCII dump (via CommDumpModel::fullDumpForRow()) regardless of
         // whether that row happens to be expanded on screen right now.
         QList<int> selectedRecordRows() const;
+        /** Builds the clipboard text for the given rows. */
         QString buildCopyText(const QList<int> &rows) const;
 
         // ── Coalesced ingestion (see class comment) ────────────────────────────

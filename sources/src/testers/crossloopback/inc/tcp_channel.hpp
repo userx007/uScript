@@ -157,6 +157,7 @@ namespace loopback
             }
 
         private:
+            /** Opens the listening socket. */
             bool openServer()
             {
                 struct addrinfo hints;
@@ -210,6 +211,7 @@ namespace loopback
                 return true;
             }
 
+            /** Connects to the server. */
             bool openClient()
             {
                 struct addrinfo hints;
@@ -290,6 +292,7 @@ namespace loopback
                 return false;
             }
 
+            /** Closes the current client connection. */
             void dropClient()
             {
                 if (client_fd_ != TP_INVALID_SOCKET) {
@@ -298,6 +301,7 @@ namespace loopback
                 }
             }
 
+            /** Formats a socket address as host:port. */
             static std::string peerToString(const struct sockaddr_storage &addr, socklen_t addr_len)
             {
                 char host[NI_MAXHOST] = "?";

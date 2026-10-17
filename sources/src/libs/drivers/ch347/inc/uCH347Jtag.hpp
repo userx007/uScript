@@ -111,7 +111,9 @@ class CH347JTAG : public ICommDriver
         // -----------------------------------------------------------------------
 
         Status open(const std::string &strDevice, uint8_t u8ClockRate = 2);
+        /** Closes the device. */
         Status close();
+        /** Returns whether the device is open. */
         bool is_open() const override;
 
         /**

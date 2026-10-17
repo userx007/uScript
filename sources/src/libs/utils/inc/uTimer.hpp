@@ -76,6 +76,7 @@ namespace utime
                 other.auto_log_   = false; // Prevent moved-from object from logging
             }
 
+            /** Move-assigns the timer state from @p other. */
             Timer &operator=(Timer &&other) noexcept
             {
                 if (this != &other) {
@@ -152,16 +153,19 @@ namespace utime
                 return (accumulated_time_ + getCurrentElapsed()).count();
             }
 
+            /** Returns the elapsed time in milliseconds. */
             double elapsed_milliseconds() const
             {
                 return elapsed_seconds() * 1000.0;
             }
 
+            /** Returns the elapsed time in microseconds. */
             double elapsed_microseconds() const
             {
                 return elapsed_seconds() * 1000000.0;
             }
 
+            /** Returns the elapsed time in nanoseconds. */
             double elapsed_nanoseconds() const
             {
                 return elapsed_seconds() * 1000000000.0;
@@ -173,6 +177,7 @@ namespace utime
                 return laps_;
             }
 
+            /** Returns the number of recorded laps. */
             size_t lap_count() const
             {
                 return laps_.size();
@@ -184,16 +189,19 @@ namespace utime
                 return is_running_;
             }
 
+            /** Returns whether the timer has been started. */
             bool has_started() const
             {
                 return has_started_;
             }
 
+            /** Returns the context label used in log output. */
             const std::string &context() const
             {
                 return context_;
             }
 
+            /** Sets the context label used in log output. */
             void set_context(const std::string &strCtx)
             {
                 context_ = strCtx;
@@ -295,6 +303,7 @@ namespace utime
         }
     }
 
+    /** Sleeps the calling thread for @p microseconds. */
     inline void delay_us(size_t microseconds)
     {
         if (microseconds > 0) {
@@ -302,6 +311,7 @@ namespace utime
         }
     }
 
+    /** Sleeps the calling thread for @p seconds. */
     inline void delay_seconds(size_t seconds)
     {
         if (seconds > 0) {

@@ -123,6 +123,7 @@ CH341::Status CH341::close()
     return Status::SUCCESS;
 }
 
+/** Discards pending input and/or output data, as selected. */
 CH341::Status CH341::purge(bool bInput, bool bOutput) const
 {
     HANDLE hCom        = (HANDLE)_get_osfhandle(m_iHandle);

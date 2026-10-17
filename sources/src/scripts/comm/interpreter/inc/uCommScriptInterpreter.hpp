@@ -86,6 +86,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
         {
         }
 
+        /** Interprets (or, if @p bRealExec is false, only dry-runs) the validated script entries. */
         bool interpretScript(CommCommandsType &sScriptEntries, bool bRealExec) override
         {
             bool bRetVal = true;

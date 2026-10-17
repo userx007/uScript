@@ -30,6 +30,7 @@ namespace uglob
     namespace detail
     {
 
+        /** Tests @p c against the POSIX character class named @p strName (e.g. "alpha"). */
         inline bool classMatch(const std::string &strName, unsigned char c)
         {
             if (strName == "alpha") {
@@ -187,6 +188,7 @@ namespace uglob
         }
     }
 
+    /** Returns whether @p strStr matches the glob @p strPattern. */
     inline bool match(const std::string &strPattern, const std::string &strStr)
     {
         return match(strPattern.c_str(), strStr.c_str());

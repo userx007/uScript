@@ -31,6 +31,7 @@
 class ScriptCommandValidator : public IScriptCommandValidator<Token>
 {
     public:
+        /** Validates one command line, filling @p type; returns false (and logs) if it is invalid. */
         bool validateCommand(int iLineNumber, const std::string &strCommand, Token &eToken) noexcept override
         {
             bool bRetVal = true;

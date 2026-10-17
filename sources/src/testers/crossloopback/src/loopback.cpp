@@ -51,6 +51,7 @@ namespace loopback
 {
     volatile sig_atomic_t g_stop = 0;
 
+    /** Signal handler: requests shutdown. */
     static void onSignal(int /*sig*/)
     {
         g_stop = 1;
@@ -86,6 +87,7 @@ namespace loopback
 namespace
 {
 
+    /** Prints the command-line usage. */
     void printUsage(const char *pstrArgv0)
     {
         std::fprintf(stderr,
@@ -108,6 +110,7 @@ namespace
                      pstrArgv0, pstrArgv0, pstrArgv0, pstrArgv0);
     }
 
+    /** Sleeps for @p iDelay_ms milliseconds, waking early when stop is requested. */
     void sleepInterruptible(int iDelay_ms)
     {
         const int step_ms = 20;

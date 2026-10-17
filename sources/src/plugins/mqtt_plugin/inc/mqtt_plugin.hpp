@@ -79,6 +79,7 @@
 class MqttPlugin : public PluginInterface
 {
     public:
+        /** Registers the plugin's commands and default settings. */
         MqttPlugin()
             : m_strVersion(MQTT_PLUGIN_VERSION)
             , m_strInstanceName(MQTT_PLUGIN_NAME)
@@ -112,16 +113,19 @@ class MqttPlugin : public PluginInterface
 
         ~MqttPlugin() = default;
 
+        /** Returns whether doInit() has succeeded. */
         bool isInitialized(void) const
         {
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled(void) const
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psSetParams)
         {
             bool bRetVal = false;
@@ -133,31 +137,37 @@ class MqttPlugin : public PluginInterface
             return bRetVal;
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psGetParams) const
         {
             generic_getparams<MqttPlugin>(this, psGetParams);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<MqttPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion(void) const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData(void) const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData(void) const
         {
             m_strResultData.clear();
         }
 
+        /** Initialises the plugin. */
         bool doInit(void *pvUserData)
         {
             (void)pvUserData;
@@ -165,17 +175,20 @@ class MqttPlugin : public PluginInterface
             return true;
         }
 
+        /** Enables the plugin. */
         bool doEnable(void)
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
         {
             return generic_dispatch<MqttPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup(void)
         {
             m_bIsInitialized = false;
@@ -184,11 +197,13 @@ class MqttPlugin : public PluginInterface
             m_pDriver.reset(); // ~MqttDriver() sends a clean DISCONNECT and closes the connection
         }
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant(void) const
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged(void) const
         {
             return m_bIsPrivileged;
@@ -210,11 +225,13 @@ class MqttPlugin : public PluginInterface
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
+        /** Sets the port from its string form; returns false if the value is invalid. */
         bool setPort(const std::string &strPort) const
         {
             return numeric::str2uint16(strPort, m_u16Port);
         }
 
+        /** Sets the qos from its string form; returns false if the value is invalid. */
         bool setQos(const std::string &strQos) const
         {
             if (!numeric::str2uint8(strQos, m_u8Qos) || m_u8Qos > 2) {
@@ -224,16 +241,19 @@ class MqttPlugin : public PluginInterface
             return true;
         }
 
+        /** Sets the read timeout from its string form; returns false if the value is invalid. */
         bool setReadTimeout(const std::string &strTimeout) const
         {
             return numeric::str2uint32(strTimeout, m_u32ReadTimeout);
         }
 
+        /** Sets the keep alive seconds from its string form; returns false if the value is invalid. */
         bool setKeepAliveSeconds(const std::string &strTimeout) const
         {
             return numeric::str2uint16(strTimeout, m_u16KeepAliveSeconds);
         }
 
+        /** Sets the will qos from its string form; returns false if the value is invalid. */
         bool setWillQos(const std::string &strQos) const
         {
             if (!numeric::str2uint8(strQos, m_u8WillQos) || m_u8WillQos > 2) {
@@ -249,171 +269,204 @@ class MqttPlugin : public PluginInterface
             return m_strHost;
         }
 
+        /** Sets the host setting. */
         void setHost(const std::string &strHost) const
         {
             m_strHost = strHost;
         }
 
+        /** Returns the port setting. */
         uint16_t getPort(void) const
         {
             return m_u16Port;
         }
 
+        /** Returns whether tls enabled. */
         bool isTlsEnabled(void) const
         {
             return m_bUseTls;
         }
 
+        /** Sets the tls enabled from its string form; returns false if the value is invalid. */
         bool setTlsEnabled(const std::string &strValue) const
         {
             BoolExprEvaluator e;
             return e.evaluate(strValue, m_bUseTls);
         }
 
+        /** Returns the qos setting. */
         uint8_t getQos(void) const
         {
             return m_u8Qos;
         }
 
+        /** Returns the retain setting. */
         bool getRetain(void) const
         {
             return m_bRetain;
         }
 
+        /** Sets the retain from its string form; returns false if the value is invalid. */
         bool setRetain(const std::string &strValue) const
         {
             BoolExprEvaluator e;
             return e.evaluate(strValue, m_bRetain);
         }
 
+        /** Returns the tls cert path setting. */
         const std::string &getTlsCertPath(void) const
         {
             return m_strTlsCertPath;
         }
 
+        /** Sets the tls cert path setting. */
         void setTlsCertPath(const std::string &strPath) const
         {
             m_strTlsCertPath = strPath;
         }
 
+        /** Returns the tls key path setting. */
         const std::string &getTlsKeyPath(void) const
         {
             return m_strTlsKeyPath;
         }
 
+        /** Sets the tls key path setting. */
         void setTlsKeyPath(const std::string &strPath) const
         {
             m_strTlsKeyPath = strPath;
         }
 
+        /** Returns the tls ca path setting. */
         const std::string &getTlsCaPath(void) const
         {
             return m_strTlsCaPath;
         }
 
+        /** Sets the tls ca path setting. */
         void setTlsCaPath(const std::string &strPath) const
         {
             m_strTlsCaPath = strPath;
         }
 
+        /** Returns the read timeout setting. */
         uint32_t getReadTimeout(void) const
         {
             return m_u32ReadTimeout;
         }
 
+        /** Returns the read buffer size setting. */
         uint32_t getReadBufferSize(void) const
         {
             return m_u32ReadBufferSize;
         }
 
+        /** Returns the receive include topic setting. */
         bool getReceiveIncludeTopic(void) const
         {
             return m_bReceiveIncludeTopic;
         }
 
+        /** Sets the receive include topic from its string form; returns false if the value is invalid. */
         bool setReceiveIncludeTopic(const std::string &strValue) const
         {
             BoolExprEvaluator e;
             return e.evaluate(strValue, m_bReceiveIncludeTopic);
         }
 
+        /** Returns the username setting. */
         const std::string &getUsername(void) const
         {
             return m_strUsername;
         }
 
+        /** Sets the username setting. */
         void setUsername(const std::string &strVal) const
         {
             m_strUsername = strVal;
         }
 
+        /** Returns the password setting. */
         const std::string &getPassword(void) const
         {
             return m_strPassword;
         }
 
+        /** Sets the password setting. */
         void setPassword(const std::string &strVal) const
         {
             m_strPassword = strVal;
         }
 
+        /** Returns the will topic setting. */
         const std::string &getWillTopic(void) const
         {
             return m_strWillTopic;
         }
 
+        /** Sets the will topic setting. */
         void setWillTopic(const std::string &strVal) const
         {
             m_strWillTopic = strVal;
         }
 
+        /** Returns the will payload setting. */
         const std::string &getWillPayload(void) const
         {
             return m_strWillPayload;
         }
 
+        /** Sets the will payload setting. */
         void setWillPayload(const std::string &strVal) const
         {
             m_strWillPayload = strVal;
         }
 
+        /** Returns the will qos setting. */
         uint8_t getWillQos(void) const
         {
             return m_u8WillQos;
         }
 
+        /** Returns the will retain setting. */
         bool getWillRetain(void) const
         {
             return m_bWillRetain;
         }
 
+        /** Sets the will retain from its string form; returns false if the value is invalid. */
         bool setWillRetain(const std::string &strValue) const
         {
             BoolExprEvaluator e;
             return e.evaluate(strValue, m_bWillRetain);
         }
 
+        /** Returns the clean session setting. */
         bool getCleanSession(void) const
         {
             return m_bCleanSession;
         }
 
+        /** Sets the clean session from its string form; returns false if the value is invalid. */
         bool setCleanSession(const std::string &strValue) const
         {
             BoolExprEvaluator e;
             return e.evaluate(strValue, m_bCleanSession);
         }
 
+        /** Returns the client id setting. */
         const std::string &getClientId(void) const
         {
             return m_strClientId;
         }
 
+        /** Sets the client id setting. */
         void setClientId(const std::string &strVal) const
         {
             m_strClientId = strVal;
         }
 
+        /** Sets the read buffer size from its string form; returns false if the value is invalid. */
         bool setReadBufferSize(const std::string &strBufSize) const
         {
             return numeric::str2uint32(strBufSize, m_u32ReadBufferSize, /*bFailOnZero=*/true);
@@ -428,6 +481,7 @@ class MqttPlugin : public PluginInterface
         // long as it's still open; see class doc comment's "Session lifetime".
         std::shared_ptr<MqttDriver> m_OpenDriver(void) const;
 
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         // Members

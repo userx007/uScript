@@ -131,7 +131,9 @@ class CH347GPIO : public ICommDriver
         // -----------------------------------------------------------------------
 
         Status open(const std::string &strDevice);
+        /** Closes the device. */
         Status close();
+        /** Returns whether the device is open. */
         bool is_open() const override;
 
         /**

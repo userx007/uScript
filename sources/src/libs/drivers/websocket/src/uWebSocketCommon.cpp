@@ -140,6 +140,7 @@ namespace
         }
     }
 
+    /** Generates a random Sec-WebSocket-Key. */
     std::string generate_websocket_key()
     {
         std::vector<uint8_t> nonce(16);
@@ -147,6 +148,7 @@ namespace
         return commdump_base64_encode(nonce);
     }
 
+    /** Computes the Sec-WebSocket-Accept value for @p strClientKey. */
     std::string compute_accept_key(const std::string &strClientKey)
     {
         const std::string strConcat = strClientKey + WS_GUID;
@@ -155,6 +157,7 @@ namespace
         return commdump_base64_encode(std::vector<uint8_t>(digest.begin(), digest.end()));
     }
 
+    /** Returns the string lower-cased. */
     std::string to_lower(std::string_view sv)
     {
         std::string s(sv);
@@ -162,6 +165,7 @@ namespace
         return s;
     }
 
+    /** Case-insensitive substring test. */
     bool ci_contains(std::string_view haystack, std::string_view needle)
     {
         return to_lower(haystack).find(to_lower(needle)) != std::string::npos;

@@ -23,11 +23,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED WEBSOCKETPlugin *pluginEntry()
     {
         return new WEBSOCKETPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(WEBSOCKETPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

@@ -128,7 +128,9 @@ class CH347I2C : public ICommDriver
         // -----------------------------------------------------------------------
 
         Status open(const std::string &strDevice, I2cSpeed eSpeed = I2cSpeed::Fast);
+        /** Closes the device. */
         Status close();
+        /** Returns whether the device is open. */
         bool is_open() const override;
 
         /**

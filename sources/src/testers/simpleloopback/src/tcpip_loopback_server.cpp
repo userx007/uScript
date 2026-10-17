@@ -63,6 +63,7 @@ namespace
 
     volatile sig_atomic_t g_stop       = 0;
 
+    /** Signal handler: requests shutdown. */
     void on_signal(int /*sig*/)
     {
         g_stop = 1;

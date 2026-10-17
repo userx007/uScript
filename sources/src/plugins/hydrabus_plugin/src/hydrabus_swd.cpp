@@ -147,6 +147,7 @@ static bool parseU32(const std::string &strS, uint32_t &u32Out)
     return numeric::str2uint32(strS, u32Out);
 }
 
+/** Parses an unsigned 8-bit value; returns false if invalid. */
 static bool parseU8(const std::string &strS, uint8_t &u8Out)
 {
     uint32_t v = 0;

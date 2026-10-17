@@ -57,6 +57,7 @@ namespace
 
 #if defined(_WIN32)
 
+    /** Loads the shared library at @p pszPath. */
     void *plat_dlopen(const char *pszPath)
     {
         // LOAD_WITH_ALTERED_SEARCH_PATH: resolve the plugin's own dependent DLLs from ITS directory,
@@ -66,11 +67,13 @@ namespace
         return reinterpret_cast<void *>(::LoadLibraryExW(path.wstring().c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH));
     }
 
+    /** Resolves symbol @p pszName in library @p pHandle. */
     void *plat_dlsym(void *pHandle, const char *pszName)
     {
         return reinterpret_cast<void *>(::GetProcAddress(reinterpret_cast<HMODULE>(pHandle), pszName));
     }
 
+    /** Unloads the shared library. */
     void plat_dlclose(void *pHandle)
     {
         ::FreeLibrary(reinterpret_cast<HMODULE>(pHandle));
@@ -92,6 +95,7 @@ namespace
         return s_szMsg;
     }
 
+    /** Returns whether @p pszTopic matches the glob @p pszGlob. */
     bool plat_topic_glob(const char *pszGlob, const char *pszTopic)
     {
         return uglob::match(pszGlob, pszTopic);
@@ -99,16 +103,19 @@ namespace
 
 #else // POSIX
 
+    /** Loads the shared library at @p pszPath. */
     void *plat_dlopen(const char *pszPath)
     {
         return dlopen(pszPath, RTLD_NOW);
     }
 
+    /** Resolves symbol @p pszName in library @p pHandle. */
     void *plat_dlsym(void *pHandle, const char *pszName)
     {
         return dlsym(pHandle, pszName);
     }
 
+    /** Unloads the shared library. */
     void plat_dlclose(void *pHandle)
     {
         dlclose(pHandle);
@@ -119,6 +126,7 @@ namespace
         return dlerror();
     }
 
+    /** Returns whether @p pszTopic matches the glob @p pszGlob. */
     bool plat_topic_glob(const char *pszGlob, const char *pszTopic)
     {
         return fnmatch(pszGlob, pszTopic, 0) == 0;
@@ -138,6 +146,7 @@ namespace
     constexpr uint32_t kBuiltinReadBatch     = 64;
     constexpr size_t kEncodeBufCap           = 4096; // see DdsTypeEntry::encode()'s doc comment — generous, fixed, stack-resident
 
+    /** Formats a DDS GUID as lower-case hex. */
     std::string guidToHex(const dds_guid_t &g)
     {
         std::ostringstream oss;
@@ -148,6 +157,7 @@ namespace
         return oss.str();
     }
 
+    /** Escapes XML special characters in the input. */
     std::string xmlEscape(const std::string &strIn)
     {
         std::string out;
@@ -177,11 +187,13 @@ namespace
         return out;
     }
 
+    /** Returns whether the string looks like an IP address literal. */
     bool looksLikeIpLiteral(const std::string &strS)
     {
         return strS.find(':') != std::string::npos || strS.find('.') != std::string::npos;
     }
 
+    /** Casts an opaque pointer to a DdsTypeEntry. */
     inline const DdsTypeEntry *asTypeEntry(const void *p)
     {
         return static_cast<const DdsTypeEntry *>(p);
@@ -234,6 +246,7 @@ std::optional<std::string> DdsTypedDriver::m_WaitPopOne(LocalReader &reader, uin
 }
 
 // ---------------------------------------------------------------------------
+/** Creates the driver or protocol object from its configuration. */
 DdsTypedDriver::DdsTypedDriver(Config sConfig)
     : m_config(std::move(sConfig))
 {
@@ -611,6 +624,7 @@ namespace
         return true;
     }
 
+    /** Resolves @p strPath to an absolute path; false if it is not a regular file. */
     bool absoluteRegularFile(const std::string &strPath, std::string &strAbsOut)
     {
         namespace fs = std::filesystem;
@@ -650,6 +664,7 @@ namespace qosxml
             std::string text; // concatenated character data (untrimmed)
             std::vector<Node> children;
 
+            /** Returns the first child element named @p n, or nullptr. */
             const Node *child(const char *n) const
             {
                 for (const auto &c : children) {
@@ -660,11 +675,13 @@ namespace qosxml
                 return nullptr;
             }
 
+            /** Returns the element text without surrounding whitespace. */
             std::string trimmedText() const
             {
                 return ustring::trim(text);
             }
 
+            /** Returns attribute @p k, or an empty string if absent. */
             std::string attr(const char *k) const
             {
                 auto it = attrs.find(k);
@@ -685,6 +702,7 @@ namespace qosxml
         Topic
     };
 
+    /** Decodes XML character entities. */
     inline std::string decodeEntities(const std::string &in)
     {
         std::string out;
@@ -724,6 +742,7 @@ namespace qosxml
         return c == std::string::npos ? n : n.substr(c + 1);
     }
 
+    /** Parses XML text @p s into @p root; on failure sets @p err and returns false. */
     inline bool parseDocument(const std::string &s, Node &root, std::string &err)
     {
         Node holder; // its only child becomes the root
@@ -889,6 +908,7 @@ namespace qosxml
         return true;
     }
 
+    /** Reads and parses the XML file @p strPath into @p doc. */
     inline bool loadFile(const std::string &strPath, Document &doc, std::string &err)
     {
         std::ifstream in(strPath, std::ios::binary);
@@ -915,6 +935,7 @@ namespace qosxml
             int value;
     };
 
+    /** Converts the element text to one of @p items (default @p def); sets @p err on failure. */
     inline bool toEnum(const Node *n, const EnumItem *items, size_t count, int def, const char *what, int &out, std::string &err)
     {
         const std::string t = n ? n->trimmedText() : std::string();
@@ -985,6 +1006,7 @@ namespace qosxml
         return true;
     }
 
+    /** Converts the element text to a bool (default @p def); sets @p err on failure. */
     inline bool toBool(const Node *n, bool def, bool &out, std::string &err)
     {
         const std::string t = n ? n->trimmedText() : std::string();

@@ -127,6 +127,7 @@ class IniParserEx
             return true;
         }
 
+        /** Parses INI content from @p strContent; returns false on failure. */
         [[nodiscard]] bool loadFromString(const std::string &strContent)
         {
             std::istringstream stream(strContent);
@@ -146,6 +147,7 @@ class IniParserEx
             return saveToStream(file);
         }
 
+        /** Writes all sections and keys to @p stream; returns false on failure. */
         [[nodiscard]] bool saveToStream(std::ostream &stream) const
         {
             for (const auto &[section, kvMap] : iniData) {
@@ -186,6 +188,7 @@ class IniParserEx
             return resolveVariables(keyIt->second, strSection, iMaxDepth);
         }
 
+        /** Returns the value of @p key in @p section, optionally expanding `${...}` variables; nullopt if absent. */
         [[nodiscard]] std::optional<std::string> getValueOpt(const std::string &section,
                                                              const std::string &key,
                                                              bool resolve = true) const
@@ -206,6 +209,7 @@ class IniParserEx
             return keyIt->second;
         }
 
+        /** Returns the value without variable expansion; nullopt if absent. */
         [[nodiscard]] std::optional<std::string> getRawValue(const std::string &section,
                                                              const std::string &key) const
         {
@@ -238,6 +242,7 @@ class IniParserEx
             return true;
         }
 
+        /** Copies @p strSection into @p outMap with variables resolved (up to @p iMaxDepth levels); false if the section is missing. */
         [[nodiscard]] bool getResolvedSection(const std::string &strSection,
                                               KeyValueMap &outMap,
                                               int iMaxDepth = 10) const
@@ -256,11 +261,13 @@ class IniParserEx
             return true;
         }
 
+        /** Returns whether @p strSection exists. */
         [[nodiscard]] bool sectionExists(const std::string &strSection) const noexcept
         {
             return iniData.find(strSection) != iniData.end();
         }
 
+        /** Returns whether @p strKey exists in @p strSection. */
         [[nodiscard]] bool keyExists(const std::string &strSection,
                                      const std::string &strKey) const noexcept
         {
@@ -271,6 +278,7 @@ class IniParserEx
             return secIt->second.find(strKey) != secIt->second.end();
         }
 
+        /** Returns all section names. */
         [[nodiscard]] std::vector<std::string> getSections() const
         {
             std::vector<std::string> sections;
@@ -281,6 +289,7 @@ class IniParserEx
             return sections;
         }
 
+        /** Returns all key names of @p section. */
         [[nodiscard]] std::vector<std::string> getKeys(const std::string &section) const
         {
             std::vector<std::string> keys;
@@ -294,11 +303,13 @@ class IniParserEx
             return keys;
         }
 
+        /** Removes @p strSection; returns whether it existed. */
         bool removeSection(const std::string &strSection)
         {
             return iniData.erase(strSection) > 0;
         }
 
+        /** Removes @p strKey from @p strSection; returns whether it existed. */
         bool removeKey(const std::string &strSection, const std::string &strKey)
         {
             auto it = iniData.find(strSection);
@@ -312,27 +323,32 @@ class IniParserEx
         //  Misc
         // -----------------------------------------------------------------------
 
+        /** Removes all sections and keys. */
         void clear() noexcept
         {
             iniData.clear();
         }
 
+        /** Returns the number of sections. */
         [[nodiscard]] size_t sectionCount() const noexcept
         {
             return iniData.size();
         }
 
+        /** Returns the number of keys in @p strSection. */
         [[nodiscard]] size_t keyCount(const std::string &strSection) const noexcept
         {
             auto it = iniData.find(strSection);
             return (it != iniData.end()) ? it->second.size() : 0;
         }
 
+        /** Returns true if there are no sections. */
         [[nodiscard]] bool empty() const noexcept
         {
             return iniData.empty();
         }
 
+        /** Returns the underlying section map. */
         [[nodiscard]] const SectionMap &data() const noexcept
         {
             return iniData;
@@ -423,6 +439,7 @@ class IniParserEx
             }
         }
 
+        /** Trims leading and trailing whitespace. */
         [[nodiscard]] static constexpr std::string_view trim(std::string_view str) noexcept
         {
             size_t first = 0;
@@ -475,6 +492,7 @@ class IniParserEx
             return str;
         }
 
+        /** Expands `${...}` references in @p strValue relative to @p strCurrentSection, up to @p iMaxDepth levels. */
         [[nodiscard]] std::string resolveVariables(const std::string &strValue,
                                                    const std::string &strCurrentSection,
                                                    int iMaxDepth) const
@@ -538,6 +556,7 @@ class IniParserEx
     return parser;
 }
 
+/** Parses @p content into an IniParserEx; nullopt on failure. */
 [[nodiscard]] inline std::optional<IniParserEx> parseIniString(const std::string &content)
 {
     IniParserEx parser;

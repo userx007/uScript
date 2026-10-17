@@ -35,6 +35,7 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
         {
         }
 
+        /** Validates all raw script lines and fills @p sScriptEntries; returns false if any line is invalid. */
         bool validateScript(std::vector<ScriptRawLine> &vRawLines, CommCommandsType &sScriptEntries) override
         {
             CommCommand token;

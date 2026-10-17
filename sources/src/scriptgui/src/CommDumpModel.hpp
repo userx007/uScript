@@ -166,6 +166,7 @@ class CommDumpModel : public QAbstractItemModel
                 int rowsAppended = 0;
         };
 
+        /** Creates an empty model. */
         explicit CommDumpModel(QObject *pParent = nullptr);
 
         // Appends one record. timestampUs is the producer's own timestamp
@@ -186,6 +187,7 @@ class CommDumpModel : public QAbstractItemModel
         // empty/zeroed if `pending` is empty.
         IngestResult addRecords(const QVector<PendingRecord> &pending);
 
+        /** Removes all records. */
         void clear();
 
         // Row count of whichever storage is CURRENTLY ACTIVE for display —
@@ -211,6 +213,7 @@ class CommDumpModel : public QAbstractItemModel
         // every single insert. 0 = unlimited (the previous, default behaviour).
         void setMaxRecords(int iMax);
 
+        /** Returns the maximum number of retained records. */
         int maxRecords() const
         {
             return m_maxRecords;
@@ -250,6 +253,7 @@ class CommDumpModel : public QAbstractItemModel
         //  are the only rows a view is allowed to assume currently exist.
         void setCollapsedMode(bool bOn);
 
+        /** Returns whether consecutive records are shown collapsed. */
         bool collapsedMode() const
         {
             return m_collapsedMode;
@@ -264,6 +268,7 @@ class CommDumpModel : public QAbstractItemModel
             return m_records.size();
         }
 
+        /** Returns the record at source row @p row, or nullptr if out of range. */
         const Record *rawRecordAt(int row) const;
 
         // Number of distinct (plugin, details) keys ever observed — monotonic,
@@ -282,6 +287,7 @@ class CommDumpModel : public QAbstractItemModel
         // toggling it off actually avoids the per-row work, not just hides it.
         void setShowAscii(bool bOn);
 
+        /** Returns whether the ASCII column is shown. */
         bool showAscii() const
         {
             return m_showAscii;
@@ -292,6 +298,7 @@ class CommDumpModel : public QAbstractItemModel
         // fully reversible, including after a trace has been reloaded from disk.
         void setTimeFormat(TimeFormat eFmt);
 
+        /** Returns the timestamp display format. */
         TimeFormat timeFormat() const
         {
             return m_timeFormat;
@@ -304,6 +311,7 @@ class CommDumpModel : public QAbstractItemModel
         // stored data. Any other value is ignored (kept at the current setting).
         void setDumpBytesPerLine(int iN);
 
+        /** Returns the number of bytes shown per dump line. */
         int dumpBytesPerLine() const
         {
             return m_dumpBytesPerLine;
@@ -316,6 +324,7 @@ class CommDumpModel : public QAbstractItemModel
         // asked to reinterpret its own stored size as a proportion again.
         void setFullDumpFontSize(double dPointSize);
 
+        /** Returns the font size used for the full dump. */
         double fullDumpFontSize() const
         {
             return m_fullDumpFontSize;
@@ -332,14 +341,20 @@ class CommDumpModel : public QAbstractItemModel
 
         // QAbstractItemModel
         QModelIndex index(int iRow, int iColumn, const QModelIndex &parent = {}) const override;
+        /** Returns the parent index (QAbstractItemModel). */
         QModelIndex parent(const QModelIndex &child) const override;
+        /** Returns the number of child rows of @p parent (QAbstractItemModel). */
         int rowCount(const QModelIndex &parent = {}) const override;
+        /** Returns the number of columns (QAbstractItemModel). */
         int columnCount(const QModelIndex &parent = {}) const override;
+        /** Returns the display data for @p index and @p iRole (QAbstractItemModel). */
         QVariant data(const QModelIndex &index, int iRole = Qt::DisplayRole) const override;
+        /** Returns the column header text (QAbstractItemModel). */
         QVariant headerData(int iSection, Qt::Orientation orientation, int iRole = Qt::DisplayRole) const override;
 
         // Row-level access used by the view's item delegate.
         bool isChildRow(const QModelIndex &index) const;
+        /** Returns the record behind @p index, or nullptr. */
         const Record *recordForIndex(const QModelIndex &index) const;
 
         // Full hex+ASCII dump text for the record at `row`, built (and cached)
@@ -354,6 +369,7 @@ class CommDumpModel : public QAbstractItemModel
         static QString formatDurationSecUs(qint64 deltaUs); // "S.uuuuuu" duration, e.g. "0.785645" / "99999.445678"
 
     private:
+        /** Serialises a record to JSON for saving a trace. */
         QJsonObject recordToJson(const Record &sR) const;
 
         // If m_records.size() exceeds m_maxRecords (hard cap), removes the

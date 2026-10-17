@@ -59,10 +59,14 @@ const KvNode *kv_get(const KvNode *node, const char *key);
  * `node` is NULL or not a KV_SCALAR, or the text doesn't parse as that
  * type. */
 bool kv_as_i64(const KvNode *psNode, long long *out);
+/** Converts a scalar node to double; returns false if not convertible. */
 bool kv_as_double(const KvNode *psNode, double *pOut);
+/** Converts a scalar node to bool; returns false if not convertible. */
 bool kv_as_bool(const KvNode *psNode, bool *pbOut);
+/** Returns the scalar text, or NULL if the node is not a scalar. */
 const char *kv_as_str(const KvNode *node); /* NULL if not KV_SCALAR */
 
+/** Frees a node and its children. */
 void kv_free(KvNode *psNode);
 
 /* --- Printing (encode-side) ------------------------------------------- */

@@ -18,11 +18,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED VectorPlugin *pluginEntry()
     {
         return new VectorPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(VectorPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

@@ -146,6 +146,7 @@ class FT4232SPI : public FT4232Base, public ICommDriver
         /** @copydoc FT4232Base::close — deasserts CS before closing */
         Status close() override;
 
+        /** Returns whether the device is open. */
         bool is_open() const override
         {
             return FT4232Base::is_open();

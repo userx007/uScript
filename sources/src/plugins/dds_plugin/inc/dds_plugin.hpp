@@ -96,6 +96,7 @@ struct PluginDataSet;
 class DdsPlugin : public PluginInterface
 {
     public:
+        /** Registers the plugin's commands and default settings. */
         DdsPlugin()
             : m_strVersion(DDS_PLUGIN_VERSION)
             , m_strInstanceName(DDS_PLUGIN_NAME)
@@ -134,26 +135,31 @@ class DdsPlugin : public PluginInterface
 
         ~DdsPlugin() = default;
 
+        /** Returns whether doInit() has succeeded. */
         bool isInitialized(void) const
         {
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled(void) const
         {
             return m_bIsEnabled;
         }
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant(void) const
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged(void) const
         {
             return m_bIsPrivileged;
         }
 
+        /** Initialises the plugin. */
         bool doInit(void *pvUserData)
         {
             (void)pvUserData;
@@ -161,6 +167,7 @@ class DdsPlugin : public PluginInterface
             return true;
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup(void)
         {
             m_bIsInitialized = false;
@@ -169,6 +176,7 @@ class DdsPlugin : public PluginInterface
             m_pDriver.reset(); // ~DdsDriver() closes this instance's Cyclone DDS participant (see dds_driver.hpp's close() doc comment)
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psSetParams)
         {
             bool bRetVal = false;
@@ -180,47 +188,56 @@ class DdsPlugin : public PluginInterface
             return bRetVal;
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psGetParams) const
         {
             generic_getparams<DdsPlugin>(this, psGetParams);
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
         {
             return generic_dispatch<DdsPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Enables the plugin. */
         bool doEnable(void)
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Sets the raw-result flag from its string form; returns false if invalid. */
         bool setRawResult(const std::string &strValue) const
         {
             return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
         }
 
+        /** Sets the cyclic-cached flag from its string form; returns false if invalid. */
         bool setCyclicCached(const std::string &strValue) const
         {
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<DdsPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion(void) const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData(void) const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData(void) const
         {
             m_strResultData.clear();
@@ -232,77 +249,92 @@ class DdsPlugin : public PluginInterface
             return m_u32DomainId;
         }
 
+        /** Sets the domain id from its string form; returns false if the value is invalid. */
         bool setDomainId(const std::string &strV) const
         {
             return numeric::str2uint32(strV, m_u32DomainId);
         }
 
+        /** Returns the participant id setting. */
         uint32_t getParticipantId(void) const
         {
             return m_u32ParticipantId;
         }
 
+        /** Sets the participant id from its string form; returns false if the value is invalid. */
         bool setParticipantId(const std::string &strV) const
         {
             return numeric::str2uint32(strV, m_u32ParticipantId);
         }
 
+        /** Returns the use ipv6 setting. */
         bool getUseIpv6(void) const
         {
             return m_bUseIpv6;
         }
 
+        /** Sets the use ipv6 from its string form; returns false if the value is invalid. */
         bool setUseIpv6(const std::string &strV) const
         {
             BoolExprEvaluator e;
             return e.evaluate(strV, m_bUseIpv6);
         }
 
+        /** Returns the iface setting. */
         const std::string &getIface(void) const
         {
             return m_strIface;
         }
 
+        /** Sets the iface setting. */
         void setIface(const std::string &strV) const
         {
             m_strIface = strV;
         }
 
+        /** Returns the mcast iface setting. */
         const std::string &getMcastIface(void) const
         {
             return m_strMcastIface;
         }
 
+        /** Sets the mcast iface setting. */
         void setMcastIface(const std::string &strV) const
         {
             m_strMcastIface = strV;
         }
 
+        /** Returns the spdp mcast group setting. */
         const std::string &getSpdpMcastGroup(void) const
         {
             return m_strSpdpMcastGroup;
         }
 
+        /** Sets the spdp mcast group setting. */
         void setSpdpMcastGroup(const std::string &strV) const
         {
             m_strSpdpMcastGroup = strV;
         }
 
+        /** Returns the participant name setting. */
         const std::string &getParticipantName(void) const
         {
             return m_strParticipantName;
         }
 
+        /** Sets the participant name setting. */
         void setParticipantName(const std::string &strV) const
         {
             m_strParticipantName = strV;
         }
 
+        /** Returns the ttl setting. */
         uint8_t getTtl(void) const
         {
             return m_u8Ttl;
         }
 
+        /** Sets the ttl from its string form; returns false if the value is invalid. */
         bool setTtl(const std::string &strV) const
         {
             uint32_t ttl = 0;
@@ -313,82 +345,98 @@ class DdsPlugin : public PluginInterface
             return true;
         }
 
+        /** Returns the spdp period ms setting. */
         uint32_t getSpdpPeriodMs(void) const
         {
             return m_u32SpdpPeriodMs;
         }
 
+        /** Sets the spdp period ms from its string form; returns false if the value is invalid. */
         bool setSpdpPeriodMs(const std::string &strV) const
         {
             return numeric::str2uint32(strV, m_u32SpdpPeriodMs);
         }
 
+        /** Returns the lease duration sec setting. */
         uint32_t getLeaseDurationSec(void) const
         {
             return m_u32LeaseDurationSec;
         }
 
+        /** Sets the lease duration sec from its string form; returns false if the value is invalid. */
         bool setLeaseDurationSec(const std::string &strV) const
         {
             return numeric::str2uint32(strV, m_u32LeaseDurationSec);
         }
 
+        /** Returns the reliable setting. */
         bool getReliable(void) const
         {
             return m_bReliable;
         }
 
+        /** Sets the reliable from its string form; returns false if the value is invalid. */
         bool setReliable(const std::string &strV) const
         {
             BoolExprEvaluator e;
             return e.evaluate(strV, m_bReliable);
         }
 
+        /** Returns the heartbeat period ms setting. */
         uint32_t getHeartbeatPeriodMs(void) const
         {
             return m_u32HeartbeatPeriodMs;
         }
 
+        /** Sets the heartbeat period ms from its string form; returns false if the value is invalid. */
         bool setHeartbeatPeriodMs(const std::string &strV) const
         {
             return numeric::str2uint32(strV, m_u32HeartbeatPeriodMs);
         }
 
+        /** Returns the history depth setting. */
         uint32_t getHistoryDepth(void) const
         {
             return m_u32HistoryDepth;
         }
 
+        /** Sets the history depth from its string form; returns false if the value is invalid. */
         bool setHistoryDepth(const std::string &strV) const
         {
             return numeric::str2uint32(strV, m_u32HistoryDepth);
         }
 
+        /** Returns the fragment threshold bytes setting. */
         uint32_t getFragmentThresholdBytes(void) const
         {
             return m_u32FragmentThresholdBytes;
         }
 
+        /** Sets the fragment threshold bytes from its string form; returns false if the value is invalid. */
         bool setFragmentThresholdBytes(const std::string &strV) const
         {
             return numeric::str2uint32(strV, m_u32FragmentThresholdBytes);
         }
 
+        /** Returns the read timeout setting. */
         uint32_t getReadTimeout(void) const
         {
             return m_u32ReadTimeout;
         }
 
+        /** Sets the read timeout from its string form; returns false if the value is invalid. */
         bool setReadTimeout(const std::string &strV) const
         {
             return numeric::str2uint32(strV, m_u32ReadTimeout);
         }
 
+        /** Returns the read buffer size setting. */
         uint32_t getReadBufferSize(void) const
         {
             return m_u32ReadBufferSize;
         }
 
+        /** Sets the read buffer size from its string form; returns false if the value is invalid. */
         bool setReadBufferSize(const std::string &strV) const
         {
             uint32_t sz = 0;
@@ -407,6 +455,7 @@ class DdsPlugin : public PluginInterface
             return m_u32MaxSubscriptions;
         }
 
+        /** Sets the max subscriptions from its string form; returns false if the value is invalid. */
         bool setMaxSubscriptions(const std::string &strV) const
         {
             return numeric::str2uint32(strV, m_u32MaxSubscriptions);
@@ -420,6 +469,7 @@ class DdsPlugin : public PluginInterface
         // first use. See class doc comment's "Session lifetime".
         std::shared_ptr<DdsDriver> m_OpenDriver(void) const;
 
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         PluginCommandsMap<DdsPlugin> m_mapCmds;

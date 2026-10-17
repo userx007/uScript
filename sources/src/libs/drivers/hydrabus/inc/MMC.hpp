@@ -38,6 +38,7 @@ namespace HydraHAL
             static constexpr size_t REG_SIZE_STD = 16;  ///< CID / CSD
             static constexpr size_t REG_SIZE_EXT = 512; ///< EXT_CSD
 
+            /** Creates the eMMC handler on @p shpHydrabus. */
             explicit MMC(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------

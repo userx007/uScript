@@ -81,6 +81,7 @@ class FT245Sync : public FT245Base, public ICommDriver
         /** @copydoc FT245Base::close — purges FIFO before closing */
         Status close() override;
 
+        /** Returns whether the device is open. */
         bool is_open() const override
         {
             return FT245Base::is_open();

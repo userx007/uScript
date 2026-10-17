@@ -276,6 +276,7 @@ class KCAN : public ICommDriver
         mutable std::atomic<uint32_t> m_u32LastRxId{0}; /**< CAN id (+EFF flag) of the last data frame returned by timeout_read(). */
 
         // -----------------------------------------------------------------------
+        /** Returns the TX id given in @p xtra_params, or the default. */
         uint32_t resolveTxId(std::string_view xtra_params) const;
         // Internal transport primitives
         // -----------------------------------------------------------------------

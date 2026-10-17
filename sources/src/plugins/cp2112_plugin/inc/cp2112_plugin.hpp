@@ -93,6 +93,7 @@ class CP2112Plugin : public PluginInterface
 {
 
     public:
+        /** Registers the plugin's commands and default settings. */
         CP2112Plugin()
             : m_strVersion(CP2112_PLUGIN_VERSION)
             , m_strInstanceName(CP2112_PLUGIN_NAME)
@@ -137,42 +138,50 @@ class CP2112Plugin : public PluginInterface
 
         ~CP2112Plugin() = default;
 
+        /** Returns whether doInit() has succeeded. */
         bool isInitialized() const override
         {
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled() const override
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psPs)
         {
             bool ok = generic_setparams<CP2112Plugin>(this, psPs, &m_bIsFaultTolerant, &m_bIsPrivileged);
             return ok && m_LocalSetParams(psPs);
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psPg) const
         {
             generic_getparams<CP2112Plugin>(this, psPg);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<CP2112Plugin> *getMap() const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion() const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData() const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData() const
         {
             m_strResultData.clear();
@@ -180,36 +189,43 @@ class CP2112Plugin : public PluginInterface
 
         bool doInit(void *pvUserData);
 
+        /** Enables the plugin. */
         bool doEnable()
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
             return generic_dispatch<CP2112Plugin>(this, strCmd, strParams, st);
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup();
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant() const override
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged() const override
         {
             return false;
         }
 
+        /** Sets the fault tolerant setting. */
         void setFaultTolerant()
         {
             m_bIsFaultTolerant = true;
         }
 
         ModuleCommandsMap<CP2112Plugin> *getModuleCmdsMap(const std::string &m) const;
+        /** Returns the speed table of module @p m, or nullptr if the module is unknown. */
         ModuleSpeedMap *getModuleSpeedsMap(const std::string &m) const;
 
         // Re-open I2C at a new clock frequency while keeping the same address
@@ -282,6 +298,7 @@ class CP2112Plugin : public PluginInterface
         // Driver instance accessors
 
         CP2112 *m_i2c() const;
+        /** Returns the GPIO module object (nullptr if unavailable). */
         CP2112Gpio *m_gpio() const;
 
         // WrRd callback
@@ -342,6 +359,7 @@ class CP2112Plugin : public PluginInterface
 
         ModuleSpeedMap m_mapSpeed_I2C;
 
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 };
 

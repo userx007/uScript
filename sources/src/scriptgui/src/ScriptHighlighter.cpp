@@ -78,6 +78,7 @@ static constexpr auto C_BOOL_FALSE   = "#CB2C2A"; // red       — FALSE (matche
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
+/** Builds the highlighting rules for the script language. */
 ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
     : ScriptHighlighterBase(pParent)
 {

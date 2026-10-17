@@ -87,12 +87,15 @@ class MainWindow : public QMainWindow
         void closeEvent(QCloseEvent *pEv) override;
         void dragEnterEvent(QDragEnterEvent *pEv) override;
         bool eventFilter(QObject *pObj, QEvent *pEv) override;
+        /** Opens dropped files. */
         void dropEvent(QDropEvent *pEv) override;
 
     private slots:
         void onBrowse();
+        /** Starts the interpreter on the current script, or terminates the running one. */
         void onStartStop();
         void onTabCloseRequested(int iIndex);
+        /** Updates path field and buttons when the current tab changes. */
         void onCurrentTabChanged(int iIndex);
         void onCommScriptRequested(const QString &scriptName);
         void onIncludeFileRequested(const QString &resolvedPath); // INCLUDE "file" clicked in editor
@@ -102,25 +105,36 @@ class MainWindow : public QMainWindow
         void onSetupOpenButton(); // Open / Create setup.sh|bat
         void runSetupScript();    // runs m_setupPath, asking for a sudo/admin password if needed
 
+        /** Handles interpreter stdout: feeds the log or terminal. */
         void onProcessOutput();
+        /** Handles interpreter stderr. */
         void onProcessError();
+        /** Flushes pending output and updates the UI when the interpreter exits. */
         void onProcessFinished(int iExitCode, QProcess::ExitStatus status);
         void onProcessStarted();
 
     private:
         // ── GUI construction ───────────────────────────────────────────────────
         QFrame *buildToolbar();
+        /** Builds the central widget (script tabs and log panels). */
         QWidget *buildCentralWidget();
+        /** Builds the status bar. */
         QFrame *buildStatusBar();
 
         // ── Tab helpers ────────────────────────────────────────────────────────
         ScriptViewer *addTab(const QString &filePath = {}); // empty path = blank tab
+        /** Returns the viewer of the current tab. */
         ScriptViewer *currentViewer() const;
+        /** Returns the viewer of the tab whose script is running, or nullptr. */
         ScriptViewer *runningViewer() const;
+        /** Loads @p filePath into tab @p iIndex. */
         void loadIntoTab(int iIndex, const QString &filePath);
+        /** Loads @p filePath into the current tab if it is empty, otherwise into a new tab. */
         void loadIntoCurrentTab(const QString &filePath);
+        /** Shows the path of tab @p iTabIndex in the path field. */
         void syncPathEdit(int iTabIndex);
         void saveCurrentTab();
+        /** Saves all modified tabs. */
         void saveAllTabs();
         void updateTabModifiedState(ScriptViewer *pViewer);
 
@@ -128,6 +142,7 @@ class MainWindow : public QMainWindow
         QString activeScriptPath() const;                 // script that RUN would execute (ignores ini / setup tabs)
         void refreshProjectButtons();                     // re-evaluate labels / enabled state of Config + Setup buttons
         void openOrSwitchToFile(const QString &filePath); // open in a tab, or activate the tab already showing it
+        /** Creates @p filePath with @p content; shows a message box and returns false on failure. */
         bool createFile(const QString &filePath, const QByteArray &content);
         void onViewerSaved(const QString &filePath); // a tab was written to disk
         void setSetupRunning(bool bOn);              // visual "running" state of the Run button
@@ -156,6 +171,7 @@ class MainWindow : public QMainWindow
         void setRunning(bool bOn);
         void onResetErrorBars(); // clear all error markers without clearing content
         void onReloadAll();      // re-read every open script/INI (tabs + comm window) from disk
+        /** Sets the status message and refreshes the timestamp. */
         void setStatus(const QString &msg);
 
         // ── Process lifetime ───────────────────────────────────────────────────
@@ -166,6 +182,7 @@ class MainWindow : public QMainWindow
 
         // ── Font scaling (Ctrl++ / Ctrl+- / Ctrl+0) ───────────────────────────
         void adjustFontSize(int iDelta);
+        /** Applies the selected font size to all viewers and terminals. */
         void applyFontSize();
 
         // ── UI elements ────────────────────────────────────────────────────────

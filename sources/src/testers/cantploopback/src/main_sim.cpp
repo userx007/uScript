@@ -62,6 +62,7 @@ namespace
             size_t customSize  = 0;
     };
 
+    /** Parses the command line into @p sOut; returns false on bad usage. */
     bool parse_args(int iArgc, char **ppstrArgv, Args &sOut)
     {
         if (iArgc < 2) {
@@ -192,6 +193,7 @@ namespace
             std::string note;
     };
 
+    /** Returns the protocol and default configuration for the protocol named @p strName. */
     ProtocolPlan plan_for(const std::string &strName, TpConfig &sCfg)
     {
         if (strName == "isotp") {

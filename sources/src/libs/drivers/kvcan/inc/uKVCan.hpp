@@ -220,6 +220,7 @@ class KVCAN : public ICommDriver
         std::string m_strIdentityLabel;            /**< GUI comm-dump display label, see describeConnection(). */
 
         // -----------------------------------------------------------------------
+        /** Returns the TX id given in @p xtra_params, or the default. */
         uint32_t resolveTxId(std::string_view xtra_params) const;
         // Internal transport primitives
         // -----------------------------------------------------------------------

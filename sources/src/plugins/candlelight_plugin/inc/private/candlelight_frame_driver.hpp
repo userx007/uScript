@@ -386,17 +386,20 @@ class CandlelightFrameDriver : public ICommDriver
             return m_candle.set_bitrate(u32BitrateBps, dSamplePoint, u32Timeout);
         }
 
+        /** Sets the classic CAN bit timing (segments, SJW, prescaler). */
         ICommDriver::Status set_bittiming(uint32_t u32PropSeg, uint32_t u32PhaseSeg1, uint32_t u32PhaseSeg2,
                                           uint32_t u32Sjw, uint32_t u32Brp, uint32_t u32Timeout)
         {
             return m_candle.set_bittiming(u32PropSeg, u32PhaseSeg1, u32PhaseSeg2, u32Sjw, u32Brp, u32Timeout);
         }
 
+        /** Sets the CAN-FD data-phase bitrate and sample point. */
         ICommDriver::Status set_fd_data_bitrate(uint32_t u32BitrateBps, double dSamplePoint, uint32_t u32Timeout)
         {
             return m_candle.set_fd_data_bitrate(u32BitrateBps, dSamplePoint, u32Timeout);
         }
 
+        /** Sets the CAN-FD data-phase bit timing. */
         ICommDriver::Status set_fd_data_bittiming(uint32_t u32PropSeg, uint32_t u32PhaseSeg1, uint32_t u32PhaseSeg2,
                                                   uint32_t u32Sjw, uint32_t u32Brp, uint32_t u32Timeout)
         {
@@ -422,6 +425,7 @@ class CandlelightFrameDriver : public ICommDriver
             m_filters = std::move(vFilters);
         }
 
+        /** Returns whether the adapter supports CAN-FD. */
         bool is_fd_supported() const
         {
             return m_candle.is_fd_supported();

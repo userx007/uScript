@@ -86,7 +86,9 @@ extern "C"
             const char *topic_name;
             const dds_topic_descriptor_t *descriptor; /* from idlc — passed straight to dds_create_topic() */
 
+            /** Allocates a new sample of this type. */
             void *(*alloc_sample)(void);
+            /** Frees a sample; @p op selects what is freed (see dds_free_op_t). */
             void (*free_sample)(void *sample, dds_free_op_t op);
 
             /**
@@ -119,7 +121,9 @@ extern "C"
     {
             uint32_t abi_version;
             const char *customer_name;
+            /** Returns the number of topic types in the plugin. */
             size_t (*get_type_count)(void);
+            /** Returns the type entry at @p index, or NULL if out of range. */
             const DdsTypeEntry *(*get_type)(size_t index);
     } DdsTypePlugin;
 

@@ -42,6 +42,7 @@ static constexpr auto C_FILE_PFX   = "#ff79c6"; // pink   — F  (file resource)
 static constexpr auto C_XTRA_PARAM = "#ff79c6"; // pink   — param values (same family as := / F)
 
 // ─────────────────────────────────────────────────────────────────────────────
+/** Sets up the block-comment patterns shared by the highlighters. */
 ScriptHighlighterBase::ScriptHighlighterBase(QTextDocument *pParent)
     : QSyntaxHighlighter(pParent)
 {

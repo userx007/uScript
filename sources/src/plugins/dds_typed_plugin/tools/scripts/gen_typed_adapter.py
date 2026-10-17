@@ -514,11 +514,13 @@ def gen_enum_helpers(registry: TypeRegistry, e: EnumDecl) -> str:
         f'        case {e.module}_{v}: return "{v}";' for v in e.values
     )
     return f"""
+/** Parses an enumerator name into @p out; returns false if the name is unknown. */
 static bool {e.module}_{e.name}_from_string(const char* s, {e.module}_{e.name}* out) {{
 {from_lines}
     return false;
 }}
 
+/** Returns the enumerator name for @p v, or "?" if unrecognised. */
 static const char* {e.module}_{e.name}_to_string({e.module}_{e.name} v) {{
     switch (v) {{
 {to_lines}
@@ -885,10 +887,12 @@ def gen_struct_helpers(registry: TypeRegistry, sd: StructDecl) -> str:
         encode_body.append(gen_encode_field(registry, f, f"v->{f.name}", "    ", i == len(sd.fields) - 1, sd.module))
 
     return f"""
+/** Fills @p out from the nested KV @p node. */
 static void {ctype}_decode_fields(const KvNode* node, {ctype}* out) {{
 {chr(10).join(decode_body) if decode_body else "    (void)node; (void)out;"}
 }}
 
+/** Writes @p v as nested KV fields to @p w. */
 static void {ctype}_encode_fields(const {ctype}* v, KvWriter* w) {{
 {chr(10).join(encode_body) if encode_body else "    (void)v; (void)w;"}
 }}
@@ -921,9 +925,12 @@ def gen_topic_entry(registry: TypeRegistry, sd: StructDecl, topic_names: Optiona
         topic_name_comment = "  /* TODO: placeholder — set the real wire topic name */"
 
     return f"""
+/** Allocates a new sample of this topic type. */
 static void* {sd.module}_{sd.name}_sample_alloc(void) {{ return {ctype}__alloc(); }}
+/** Frees a sample; @p op selects what is freed (see dds_free_op_t). */
 static void  {sd.module}_{sd.name}_sample_free(void* d, dds_free_op_t op) {{ {ctype}_free(({ctype}*)d, op); }}
 
+/** Parses KV @p text into @p out_sample; returns false if it cannot be parsed. */
 static bool {sd.module}_{sd.name}_decode(const char* text, void* out_sample) {{
     {ctype}* v = ({ctype}*)out_sample;
     KvNode* root = kv_parse(text);
@@ -933,6 +940,7 @@ static bool {sd.module}_{sd.name}_decode(const char* text, void* out_sample) {{
     return true;
 }}
 
+/** Serialises @p sample as KV text into @p out_buf; returns false on overflow. */
 static bool {sd.module}_{sd.name}_encode(const void* sample, char* out_buf, size_t out_cap) {{
     const {ctype}* v = (const {ctype}*)sample;
     KvWriter writer;
@@ -1008,7 +1016,9 @@ static const DdsTypeEntry kTypes[] = {{
 {chr(10).join(kTypes_lines)}
 }};
 
+/** Returns the number of topic types exported by this adapter. */
 static size_t get_type_count(void) {{ return sizeof(kTypes) / sizeof(kTypes[0]); }}
+/** Returns the topic type entry at @p index, or NULL if out of range. */
 static const DdsTypeEntry* get_type(size_t index) {{ return (index < get_type_count()) ? &kTypes[index] : NULL; }}
 
 static const DdsTypePlugin kPlugin = {{
@@ -1018,6 +1028,7 @@ static const DdsTypePlugin kPlugin = {{
     .get_type = get_type,
 }};
 
+/** Plugin entry point: returns this adapter's type table. */
 const DdsTypePlugin* dds_type_plugin_get(void) {{ return &kPlugin; }}
 """)
     return "\n".join(out)

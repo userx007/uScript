@@ -55,7 +55,9 @@ class Lan8720Net : public ICommDriver
         }
 
         Status open(const std::string &strIpAddr, uint16_t u16Port = 5000);
+        /** Closes the device. */
         Status close();
+        /** Returns whether the device is open. */
         bool is_open() const override;
 
         /**
@@ -78,6 +80,7 @@ class Lan8720Net : public ICommDriver
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
+        /** Writes @p buffer, waiting at most the write timeout. */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
                                std::string_view xtra_params = {},
@@ -92,6 +95,7 @@ class Lan8720Net : public ICommDriver
         std::string m_strIdentityLabel; /**< GUI comm-dump display label, see describeConnection(). */
 
         Status receive_packet(std::span<uint8_t> response_buffer, size_t max_len, size_t &bytes_read) const;
+        /** Sends command @p u8Cmd_id with the given payload to the device. */
         Status send_command(uint8_t u8Cmd_id, const uint8_t *pu8Payload, size_t payload_len) const;
 };
 

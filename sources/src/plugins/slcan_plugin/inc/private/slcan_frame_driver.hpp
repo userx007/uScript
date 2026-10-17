@@ -417,36 +417,43 @@ class SLCANFrameDriver : public ICommDriver
             return m_slcan.set_bitrate(eBitrate, u32Timeout);
         }
 
+        /** Selects the CAN-FD data-phase rate. */
         ICommDriver::Status set_fd_data_rate(CanFdDataRate eRate, uint32_t u32Timeout)
         {
             return m_slcan.set_fd_data_rate(eRate, u32Timeout);
         }
 
+        /** Sets the CAN operating mode. */
         ICommDriver::Status set_mode(CanMode eMode, uint32_t u32Timeout)
         {
             return m_slcan.set_mode(eMode, u32Timeout);
         }
 
+        /** Enables or disables automatic retransmission. */
         ICommDriver::Status set_auto_retx(CanAutoRetx eRetx, uint32_t u32Timeout)
         {
             return m_slcan.set_auto_retx(eRetx, u32Timeout);
         }
 
+        /** Sets an acceptance filter for standard (11-bit) IDs. */
         ICommDriver::Status set_std_filter(uint16_t u16Id, uint16_t u16Mask, uint32_t u32Timeout)
         {
             return m_slcan.set_std_filter(u16Id, u16Mask, u32Timeout);
         }
 
+        /** Sets an acceptance filter for extended (29-bit) IDs. */
         ICommDriver::Status set_ext_filter(uint32_t u32Id, uint32_t u32Mask, uint32_t u32Timeout)
         {
             return m_slcan.set_ext_filter(u32Id, u32Mask, u32Timeout);
         }
 
+        /** Clears all acceptance filters. */
         ICommDriver::Status clear_filters(uint32_t u32Timeout)
         {
             return m_slcan.clear_filters(u32Timeout);
         }
 
+        /** Opens the CAN channel. */
         ICommDriver::Status open_channel(uint32_t u32Timeout)
         {
             return m_slcan.open_channel(u32Timeout);
