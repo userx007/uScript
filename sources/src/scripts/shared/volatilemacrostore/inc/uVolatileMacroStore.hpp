@@ -45,7 +45,7 @@
 // code that never sees the interpreter itself.
 //
 // IMPORTANT - why instance() is NOT defined inline in this header anymore:
-// every CYCLIC-capable plugin (kvcan_plugin, pcan_plugin, slcan_plugin, ...)
+// every CYCLIC-capable plugin (kcan_plugin, pcan_plugin, slcan_plugin, ...)
 // is built as its own SHARED library, dlopen()'d at runtime by the main
 // "uscript" executable via LOAD_PLUGIN, while uScriptInterpreter (the writer
 // side, via m_setRuntimeVarMacro()) is a STATIC library baked directly into

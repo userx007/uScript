@@ -17,11 +17,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED UartmonPlugin *pluginEntry()
     {
         return new UartmonPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(UartmonPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -122,6 +124,7 @@ bool UartmonPlugin::m_Uartmon_CONFIG(const std::string &strArgs, std::stop_token
     return generic_uartmon_set_params(this, strArgs);
 }
 
+/** Lists the currently available UART ports. */
 bool UartmonPlugin::m_Uartmon_LIST_PORTS(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
@@ -159,16 +162,19 @@ bool UartmonPlugin::m_Uartmon_LIST_PORTS(const std::string &strArgs, std::stop_t
     return bRetVal;
 }
 
+/** Waits until a UART port is inserted (or the timeout expires). */
 bool UartmonPlugin::m_Uartmon_WAIT_INSERT(const std::string &strArgs, std::stop_token st) const
 {
     return m_GenericWaitFor(strArgs, true /*insert*/, st);
 }
 
+/** Waits until a UART port is removed (or the timeout expires). */
 bool UartmonPlugin::m_Uartmon_WAIT_REMOVE(const std::string &strArgs, std::stop_token st) const
 {
     return m_GenericWaitFor(strArgs, false /*remove*/, st);
 }
 
+/** Starts the background port monitor. */
 bool UartmonPlugin::m_Uartmon_START(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
@@ -196,6 +202,7 @@ bool UartmonPlugin::m_Uartmon_START(const std::string &strArgs, std::stop_token 
     return bRetVal;
 }
 
+/** Stops the background port monitor. */
 bool UartmonPlugin::m_Uartmon_STOP(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;

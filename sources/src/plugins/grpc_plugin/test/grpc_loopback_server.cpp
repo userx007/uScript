@@ -65,6 +65,7 @@ namespace
 
     std::unique_ptr<grpc::Server> g_server;
 
+    /** Signal handler: shuts the server down. */
     void on_signal(int /*sig*/)
     {
         // Server::Shutdown() is safe to call from a signal handler's
@@ -79,6 +80,7 @@ namespace
     class LoopbackServiceImpl final : public loopback::LoopbackService::Service
     {
         public:
+            /** RPC handler: echoes the request text back. */
             grpc::Status Echo(grpc::ServerContext *, const loopback::EchoRequest *pRequest,
                               loopback::EchoResponse *pResponse) override
             {
@@ -89,6 +91,7 @@ namespace
                 return grpc::Status::OK;
             }
 
+            /** RPC handler: replies with ok = true. */
             grpc::Status Ping(grpc::ServerContext *, const loopback::PingRequest *,
                               loopback::PingResponse *pResponse) override
             {
@@ -97,6 +100,7 @@ namespace
                 return grpc::Status::OK;
             }
 
+            /** RPC handler: streams the text back @c count times. */
             grpc::Status EchoStream(grpc::ServerContext *, const loopback::EchoStreamRequest *pRequest,
                                     grpc::ServerWriter<loopback::EchoResponse> *writer) override
             {
@@ -111,6 +115,7 @@ namespace
                 return grpc::Status::OK;
             }
 
+            /** RPC handler: collects a client stream and replies with the joined text. */
             grpc::Status EchoCollect(grpc::ServerContext *, grpc::ServerReader<loopback::EchoRequest> *reader,
                                      loopback::EchoResponse *pResponse) override
             {
@@ -132,6 +137,7 @@ namespace
                 return grpc::Status::OK;
             }
 
+            /** RPC handler: echoes each message of a bidirectional stream. */
             grpc::Status EchoChat(grpc::ServerContext *,
                                   grpc::ServerReaderWriter<loopback::EchoResponse, loopback::EchoRequest> *stream) override
             {

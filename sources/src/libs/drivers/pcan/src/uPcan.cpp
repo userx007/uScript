@@ -605,7 +605,7 @@ ICommDriver::ReadResult PCAN::readOneFrame_locked(uint32_t u32TimeoutMs,
     while (true) {
         // TODO(stop-token): readOneFrame_locked() is invoked as a callback
         // through the transport-protocol interface (RawIo), which doesn't
-        // carry a stop_token — same gap as KVCAN's ISO-TP path. A segmented
+        // carry a stop_token — same gap as KCAN's ISO-TP path. A segmented
         // PCAN transfer is therefore not yet cancellable via the STOP button.
         Status s = recvFrame(u32TimeoutMs, msg, ts);
         if (s != Status::SUCCESS) {
@@ -707,7 +707,7 @@ ICommDriver::ReadResult PCAN::tout_read(uint32_t u32ReadTimeout,
 
     // Delimiter/token reads are an ASCII-stream concept that a segmented
     // binary transport has no notion of, so they always take the legacy
-    // path regardless of m_eTpProtocol — same rule KVCAN/SLCAN apply.
+    // path regardless of m_eTpProtocol — same rule KCAN/SLCAN apply.
     if (m_eTpProtocol == TpProtocol::NONE || sOptions.mode != ReadMode::Exact) {
         return readDispatch_locked(u32ReadTimeout, buffer, sOptions, xtra_params, stop_tok);
     }

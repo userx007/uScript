@@ -1,0 +1,6 @@
+debian/.debhelper
+debian/files
+debian/*.log
+debian/*.debhelper
+debian/*.substvars
+debian/tty0tty-dkms/

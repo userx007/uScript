@@ -205,7 +205,7 @@ class Vector : public ICommDriver
         using FdOptions                                              = VectorFdOptions;
 
         /// SocketCAN canid_t convention used by every CAN plugin in this
-        /// codebase (KVCAN, SLCAN, PCAN, Vector) for TX ids, RX filter ids,
+        /// codebase (KCAN, SLCAN, PCAN, Vector) for TX ids, RX filter ids,
         /// and xtra_params overrides: bit 31 set -> 29-bit extended frame.
         /// XL-API's own XLcanMsg::id field has no such flag bit — extended-
         /// ness is carried by the XL_CAN_EXT_MSG_ID bit already OR'd into the
@@ -449,6 +449,7 @@ class Vector : public ICommDriver
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
+        /** Writes @p buffer, waiting at most the write timeout. */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
                                std::string_view xtra_params = {},
@@ -463,26 +464,31 @@ class Vector : public ICommDriver
             m_u32DefaultTxId = u32Id;
         }
 
+        /** Sets the default RX filter id. */
         void setDefaultRxFilterId(uint32_t u32Id)
         {
             m_u32DefaultRxFilterId = u32Id;
         }
 
+        /** Selects extended (29-bit) ids. */
         void setExtendedId(bool bExt)
         {
             m_bExtendedId = bExt;
         }
 
+        /** Returns the default TX id. */
         uint32_t getDefaultTxId() const
         {
             return m_u32DefaultTxId;
         }
 
+        /** Returns the default RX filter id. */
         uint32_t getDefaultRxFilterId() const
         {
             return m_u32DefaultRxFilterId;
         }
 
+        /** Returns whether CAN-FD is enabled. */
         bool isFD() const
         {
             return m_bFD;
@@ -504,6 +510,7 @@ class Vector : public ICommDriver
             m_u32FdDataBitrate = u32DataBitrate;
         }
 
+        /** Returns the CAN-FD data bitrate. */
         uint32_t getFdDataBitrate() const
         {
             return m_u32FdDataBitrate;
@@ -515,6 +522,7 @@ class Vector : public ICommDriver
             m_bFdIso = bIso;
         }
 
+        /** Returns whether ISO CAN-FD is selected. */
         bool getFdIso() const
         {
             return m_bFdIso;
@@ -526,6 +534,7 @@ class Vector : public ICommDriver
             m_bFdBrs = bBrs;
         }
 
+        /** Returns whether bit-rate switching is enabled. */
         bool getFdBrs() const
         {
             return m_bFdBrs;
@@ -537,6 +546,7 @@ class Vector : public ICommDriver
             m_u8FdPaddingByte = u8Byte;
         }
 
+        /** Returns the CAN-FD padding byte. */
         uint8_t getFdPaddingByte() const
         {
             return m_u8FdPaddingByte;
@@ -551,11 +561,13 @@ class Vector : public ICommDriver
             m_eTpProtocol = eProto;
         }
 
+        /** Sets the transport-protocol configuration. */
         void setTpConfig(const TpConfig &sCfg)
         {
             m_sTpConfig = sCfg;
         }
 
+        /** Sets the transport-protocol RX id. */
         void setTpRxId(uint32_t u32Id)
         {
             m_u32TpRxId  = u32Id;
@@ -649,10 +661,14 @@ class Vector : public ICommDriver
 
         static bool parseUint32(std::string_view sv, uint32_t &u32Out);
 
+        /** Returns the TX id given in @p xtra_params, or the default. */
         uint32_t resolveTxId(std::string_view xtra_params) const;
+        /** Returns the RX filter id given in @p xtra_params, or the default. */
         uint32_t resolveRxId(std::string_view xtra_params) const;
+        /** Returns the transport-protocol RX id given in @p xtra_params, or the default. */
         uint32_t resolveTpRxId(std::string_view xtra_params) const;
 
+        /** Reports a frame to the communication dump. */
         void dumpFrame(CommDir eDir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
 
         /** Check whether a received frame matches an RX filter id (SocketCAN canid_t convention). */
@@ -704,18 +720,20 @@ class Vector : public ICommDriver
         Status sendFrame(uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
 
         // ------------------------------------------------------------------ //
-        //  Read-mode implementations (identical structure to PCAN/KVCAN)       //
+        //  Read-mode implementations (identical structure to PCAN/KCAN)       //
         // ------------------------------------------------------------------ //
 
         Status readExact(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
                          size_t &szBytesRead, uint32_t u32RxFilterId,
                          std::stop_token stop_tok = {}) const;
 
+        /** Reads until the delimiter byte is seen, the buffer is full or the timeout expires. */
         Status readUntilDelimiter(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
                                   uint8_t u8CDelimiter, size_t &szBytesRead,
                                   uint32_t u32RxFilterId,
                                   std::stop_token stop_tok = {}) const;
 
+        /** Reads until @p token has been seen or the timeout expires. */
         Status readUntilToken(uint32_t u32TimeoutMs,
                               std::span<const uint8_t> token,
                               uint32_t u32RxFilterId,
@@ -731,6 +749,7 @@ class Vector : public ICommDriver
                                            std::span<const uint8_t> buffer,
                                            std::string_view xtra_params) const;
 
+        /** Receives data; the caller holds the receive lock. */
         ReadResult readDispatch_locked(uint32_t u32ReadTimeout,
                                        std::span<uint8_t> buffer,
                                        const ReadOptions &sOptions,

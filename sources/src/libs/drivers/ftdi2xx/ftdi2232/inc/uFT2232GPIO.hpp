@@ -60,6 +60,7 @@ class FT2232GPIO : public FT2232Base
 
         FT2232GPIO() = default;
 
+        /** Creates the driver or protocol object from its configuration. */
         explicit FT2232GPIO(const GpioConfig &sConfig, uint8_t u8DeviceIndex = 0u)
         {
             this->open(sConfig, u8DeviceIndex);
@@ -75,6 +76,7 @@ class FT2232GPIO : public FT2232Base
         /** @copydoc FT2232Base::close — drives all output pins low before closing */
         Status close() override;
 
+        /** Returns whether the device is open. */
         bool is_open() const
         {
             return FT2232Base::is_open();
@@ -90,8 +92,11 @@ class FT2232GPIO : public FT2232Base
 
         // ── Output control ───────────────────────────────────────────────────
         Status write(Bank eBank, uint8_t u8Value);
+        /** Drives the masked pins of @p eBank high. */
         Status set_pins(Bank eBank, uint8_t u8PinMask);
+        /** Drives the masked pins of @p eBank low. */
         Status clear_pins(Bank eBank, uint8_t u8PinMask);
+        /** Toggles the masked pins of @p eBank. */
         Status toggle_pins(Bank eBank, uint8_t u8PinMask);
 
         // ── Input reading ────────────────────────────────────────────────────
@@ -108,6 +113,7 @@ class FT2232GPIO : public FT2232Base
 
         Status configure_mpsse_gpio(const GpioConfig &sConfig);
         Status apply_low(uint8_t u8Value, uint8_t u8Dir) const;
+        /** Applies output value and direction to the high-byte bank. */
         Status apply_high(uint8_t u8Value, uint8_t u8Dir) const;
 };
 

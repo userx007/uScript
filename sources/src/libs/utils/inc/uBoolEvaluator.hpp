@@ -27,6 +27,7 @@
 class BoolExprEvaluator
 {
     public:
+        /** Evaluates a boolean expression (TRUE/FALSE with !, &&, ||, parentheses); returns false if it is malformed or not fully consumed. */
         bool evaluate(std::string_view input, bool &bResult) const
         {
             try {
@@ -43,6 +44,7 @@ class BoolExprEvaluator
         }
 
     private:
+        /** Parses an `||` chain of terms. */
         bool parseExpression(std::string_view &expr, bool &bResult) const
         {
             bool lhs;
@@ -67,6 +69,7 @@ class BoolExprEvaluator
             return true;
         }
 
+        /** Parses an `&&` chain of factors. */
         bool parseTerm(std::string_view &expr, bool &bResult) const
         {
             bool lhs;
@@ -91,6 +94,7 @@ class BoolExprEvaluator
             return true;
         }
 
+        /** Parses a `!` negation, a parenthesised expression or a TRUE/FALSE literal. */
         bool parseFactor(std::string_view &expr, bool &bResult) const
         {
             skipWhitespace(expr);
@@ -133,6 +137,7 @@ class BoolExprEvaluator
             return false; // Unexpected token
         }
 
+        /** Drops leading whitespace from @p expr. */
         void skipWhitespace(std::string_view &expr) const
         {
             while (!expr.empty() && std::isspace(static_cast<unsigned char>(expr.front()))) {

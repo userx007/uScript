@@ -58,12 +58,14 @@ class LineNumberArea : public QWidget
         {
         }
 
+        /** Returns the width of the line-number gutter. */
         QSize sizeHint() const override
         {
             return {m_editor->lineNumberAreaWidth(), 0};
         }
 
     protected:
+        /** Delegates painting to the editor's line-number renderer. */
         void paintEvent(QPaintEvent *pEv) override
         {
             m_editor->lineNumberAreaPaintEvent(pEv);
@@ -155,6 +157,7 @@ void CodeEditor::resizeEvent(QResizeEvent *pEv)
     m_lineNumberArea->setGeometry(cr.left(), cr.top(), lineNumberAreaWidth(), cr.height());
 }
 
+/** Draws the execution banner on the viewport paint event. */
 bool CodeEditor::eventFilter(QObject *pObj, QEvent *pEv)
 {
     // Intercept paint events on the viewport child widget so we can draw the
@@ -387,6 +390,7 @@ void CodeEditor::setErrorLine(int iLineNo)
     m_lineNumberArea->update();
 }
 
+/** Removes all error markers. */
 void CodeEditor::clearErrorLines()
 {
     if (m_errorLines.isEmpty()) {
@@ -408,6 +412,7 @@ void CodeEditor::addThreadLine(int iLineNo)
     m_lineNumberArea->update();
 }
 
+/** Removes the thread marker of line @p iLineNo (thread joined). */
 void CodeEditor::removeThreadLine(int iLineNo)
 {
     if (!m_threadLines.remove(iLineNo)) {
@@ -417,6 +422,7 @@ void CodeEditor::removeThreadLine(int iLineNo)
     m_lineNumberArea->update();
 }
 
+/** Removes all thread markers. */
 void CodeEditor::clearThreadLines()
 {
     if (m_threadLines.isEmpty()) {
@@ -450,6 +456,7 @@ void CodeEditor::mouseDoubleClickEvent(QMouseEvent *pEv)
     }
 }
 
+/** Highlights all occurrences of @p word. */
 void CodeEditor::highlightOccurrences(const QString &word)
 {
     if (word.trimmed().isEmpty()) {
@@ -493,6 +500,7 @@ void CodeEditor::clearWordHighlights()
     setExtraSelections(m_wordHighlights);
 }
 
+/** On cursor move, emits a request if the line references a COMM script. */
 void CodeEditor::checkCurrentLineForCommScript()
 {
     const int currentLine = textCursor().blockNumber();
@@ -596,6 +604,7 @@ void CodeEditor::setCommHighlighting(bool bOn)
     }
 }
 
+/** Switches the INI highlighter on or off. */
 void CodeEditor::setIniHighlighting(bool bOn)
 {
     // Remove all other highlighters — only one may be active at a time
@@ -803,6 +812,7 @@ QString ScriptViewer::lineText(int iLineNo) const
     return block.isValid() ? block.text() : QString{};
 }
 
+/** Returns the number of lines. */
 int ScriptViewer::lineCount() const
 {
     return m_editor->document()->blockCount();
@@ -827,6 +837,7 @@ void ScriptViewer::setErrorLine(int iLineNo)
     m_editor->setErrorLine(iLineNo);
 }
 
+/** Removes all error markers. */
 void ScriptViewer::clearErrorLines()
 {
     m_editor->clearErrorLines();
@@ -843,11 +854,13 @@ void ScriptViewer::addThreadLine(int iLineNo)
     m_editor->addThreadLine(iLineNo);
 }
 
+/** Removes the thread marker of line @p iLineNo (thread joined). */
 void ScriptViewer::removeThreadLine(int iLineNo)
 {
     m_editor->removeThreadLine(iLineNo);
 }
 
+/** Removes all thread markers. */
 void ScriptViewer::clearThreadLines()
 {
     m_editor->clearThreadLines();
@@ -872,11 +885,13 @@ void ScriptViewer::setEditorFont(const QFont &font)
     m_editor->viewport()->update();
 }
 
+/** Enables or disables script highlighting. */
 void ScriptViewer::enableHighlighting(bool bOn)
 {
     m_editor->setHighlighting(bOn);
 }
 
+/** Enables or disables COMM-script highlighting. */
 void ScriptViewer::enableCommHighlighting(bool bOn)
 {
     m_editor->setCommHighlighting(bOn);
@@ -901,6 +916,7 @@ bool ScriptViewer::save()
     return writeFile(m_currentFile);
 }
 
+/** Asks for a file name and saves to it. */
 bool ScriptViewer::saveAs()
 {
     const QString start = m_currentFile.isEmpty()

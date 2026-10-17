@@ -10,7 +10,7 @@ if(WIN32)
 elseif(UNIX)
     # Plain BSD sockets (socket/connect/poll/getaddrinfo)
     # platform-specific headers required, so this builds on Linux and macOS
-    # alike, unlike uKVCan which is Linux-only (linux/can.h).
+    # alike, unlike uKCan which is Linux-only (linux/can.h).
     list(APPEND SOURCES src/uTcpipPosix.cpp)
 else()
     message(FATAL_ERROR "uTcpip only ships POSIX and Winsock socket backends "

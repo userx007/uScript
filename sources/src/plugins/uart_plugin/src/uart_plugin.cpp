@@ -24,11 +24,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED UARTPlugin *pluginEntry()
     {
         return new UARTPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(UARTPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

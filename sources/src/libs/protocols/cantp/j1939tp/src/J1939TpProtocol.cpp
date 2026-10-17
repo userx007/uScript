@@ -21,6 +21,7 @@ namespace
     // commonly-used 50ms floor when the caller hasn't tuned timeouts).
     constexpr uint32_t kBamInterPacketGapMs = 50;
 
+    /** Packs the control byte, message size, packet count and PGN into a TP.CM frame. */
     inline void pack_size_pgn(std::array<uint8_t, kFrameLen> &f, uint8_t u8Ctrl,
                               size_t totalSize, uint8_t u8TotalPackets, uint8_t u8Byte4)
     {

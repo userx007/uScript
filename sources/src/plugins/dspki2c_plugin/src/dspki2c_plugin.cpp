@@ -32,11 +32,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED DSPKi2cPlugin *pluginEntry()
     {
         return new DSPKi2cPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(DSPKi2cPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

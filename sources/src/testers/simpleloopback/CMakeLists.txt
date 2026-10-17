@@ -56,12 +56,13 @@ if(USCRIPT_PLUGIN_WEBSOCKET)
 endif()
 
 
-# --- KVCAN ---
-# kvcan_loopback — plain C, SocketCAN raw sockets (see kvcan_plugin/test/)
-# (USCRIPT_PLUGIN_KVCAN is forced OFF on non-Linux platforms)
-if(USCRIPT_PLUGIN_KVCAN)
-    add_executable(kvcan_loopback
-        src/kvcan_loopback.c
+# --- KCAN (virtual + real SocketCAN) ---
+# kcan_loopback — plain C, SocketCAN raw sockets: mirrors every frame it receives on vcan0
+# (or any canN); used by the scripts in testers/scripts.
+# (USCRIPT_PLUGIN_KCAN is forced OFF on non-Linux platforms)
+if(USCRIPT_PLUGIN_KCAN)
+    add_executable(kcan_loopback
+        src/kcan_loopback.c
     )
 endif()
 

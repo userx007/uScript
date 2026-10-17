@@ -41,6 +41,7 @@ namespace HydraHAL
         public:
             static constexpr size_t BLOCK_SIZE = 512;
 
+            /** Creates the SDIO handler on @p shpHydrabus. */
             explicit SDIO(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------

@@ -1,0 +1,1 @@
+savedcmd_/media/userx/HDEXT/Workarea/uScript/firmware/uart_emulation/tty0tty/module/modules.order := {   echo /media/userx/HDEXT/Workarea/uScript/firmware/uart_emulation/tty0tty/module/tty0tty.o; :; } > /media/userx/HDEXT/Workarea/uScript/firmware/uart_emulation/tty0tty/module/modules.order

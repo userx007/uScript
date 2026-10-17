@@ -162,18 +162,23 @@ class DdsTypedDriver : public ICommDriver
                 bool reliable = false;
         };
 
+        /** Creates the driver or protocol object from its configuration. */
         explicit DdsTypedDriver(Config sConfig);
         ~DdsTypedDriver() override;
 
         bool open();
+        /** Closes the device. */
         void close();
 
         // ---- ICommDriver ---- (thin passthroughs — see DdsDriver's identical rationale)
         bool is_open() const override;
+        /** Describes this connection for the communication dump. */
         CommDetails describeConnection(std::string_view xtra_params = {}) const override;
+        /** Writes @p buffer, waiting at most the write timeout. */
         ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
                                             std::string_view xtra_params = {},
                                             std::stop_token stop_tok     = {}) const override;
+        /** Reads into @p buffer, waiting at most the read timeout. */
         ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                           const ICommDriver::ReadOptions &options,
                                           std::string_view xtra_params = {},
@@ -211,6 +216,7 @@ class DdsTypedDriver : public ICommDriver
                                         std::stop_token stop_tok = {}) const;
 
         std::vector<DiscoveredParticipantView> listParticipants() const;
+        /** Lists the discovered DDS endpoints. */
         std::vector<DiscoveredEndpointView> listEndpoints() const;
 
     private:
@@ -308,11 +314,16 @@ class DdsTypedDriver : public ICommDriver
 
         std::vector<QosRule> m_qosRules; // written only by open()/close(), read-only in between
         DdsEntity m_EnsureLocalWriter(const std::string &strTopic) const;
+        /** Returns the local reader for @p topic, creating it if needed. */
         std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;
 
+        /** Publishes the payload to @p strTopic; returns false on failure. */
         bool m_Publish(const std::string &strTopic, const std::string &strText) const;
+        /** Subscribes to @p strTopic; returns false on failure. */
         bool m_Subscribe(const std::string &strTopic) const;
+        /** Unsubscribes from @p strTopic; returns false on failure. */
         bool m_Unsubscribe(const std::string &strTopic) const;
+        /** Builds the text returned by the LIST command. */
         std::string m_BuildListText() const;
 
         /// Shared body of receive()'s multiplexed (xtra_params empty, 2+
@@ -326,6 +337,7 @@ class DdsTypedDriver : public ICommDriver
         static std::optional<std::string> m_WaitPopOne(LocalReader &reader, uint32_t u32ReadTimeout,
                                                        std::stop_token stop_tok);
 
+        /** DDS listener callback: signals that data is available on @p reader. */
         static void m_OnReaderDataAvailable(DdsEntity reader, void *pvArg);
 };
 

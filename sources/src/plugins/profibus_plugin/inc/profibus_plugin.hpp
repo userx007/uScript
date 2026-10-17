@@ -58,7 +58,7 @@
  *     `m_PROFIBUS_SCRIPT()`/`m_PROFIBUS_CYCLIC()` hand that driver to
  *     `ucmdexec::generic_cmd()`/`generic_script()`/`generic_send_cyclic()` — the same
  *     shared mechanism every other comm-
- *     driver plugin (UART, TCPIP, KVCAN, MQTT, ...) uses — supplying
+ *     driver plugin (UART, TCPIP, KCAN, MQTT, ...) uses — supplying
  *     `ProfibusDriver::send()`/`receive()` directly as the `pfsend`/`pfrecv`
  *     override (see profibus_driver.hpp's class doc comment for why that's
  *     needed for accurate GUI comm-dump reporting). Note the lambdas below
@@ -84,6 +84,7 @@
 class ProfibusPlugin : public PluginInterface
 {
     public:
+        /** Registers the plugin's commands and default settings. */
         ProfibusPlugin()
             : m_strVersion(PROFIBUS_PLUGIN_VERSION)
             , m_strInstanceName(PROFIBUS_PLUGIN_NAME)
@@ -111,16 +112,19 @@ class ProfibusPlugin : public PluginInterface
 
         ~ProfibusPlugin() = default;
 
+        /** Returns whether doInit() has succeeded. */
         bool isInitialized(void) const
         {
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled(void) const
         {
             return m_bIsEnabled;
         }
 
+        /** Initialises the plugin. */
         bool doInit(void *pvUserData)
         {
             (void)pvUserData;
@@ -128,6 +132,7 @@ class ProfibusPlugin : public PluginInterface
             return true;
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup(void)
         {
             m_bIsInitialized = false;
@@ -136,6 +141,7 @@ class ProfibusPlugin : public PluginInterface
             m_pDriver.reset(); // ~ProfibusDriver() closes the serial port
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psSetParams)
         {
             bool bRetVal = false;
@@ -147,31 +153,37 @@ class ProfibusPlugin : public PluginInterface
             return bRetVal;
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psGetParams) const
         {
             generic_getparams<ProfibusPlugin>(this, psGetParams);
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
         {
             return generic_dispatch<ProfibusPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<ProfibusPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion(void) const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData(void) const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData(void) const
         {
             m_strResultData.clear();
@@ -193,17 +205,20 @@ class ProfibusPlugin : public PluginInterface
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
+        /** Enables the plugin. */
         bool doEnable(void)
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant(void) const
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged(void) const
         {
             return m_bIsPrivileged;
@@ -215,11 +230,13 @@ class ProfibusPlugin : public PluginInterface
             return m_strDevice;
         }
 
+        /** Sets the device setting. */
         void setDevice(const std::string &strDevice) const
         {
             m_strDevice = strDevice;
         }
 
+        /** Returns the baud setting. */
         uint32_t getBaud(void) const
         {
             return m_u32Baud;
@@ -231,6 +248,7 @@ class ProfibusPlugin : public PluginInterface
         // outright here rather than silently mis-configured.
         bool setBaud(const std::string &strBaud) const;
 
+        /** Returns the own address setting. */
         uint8_t getOwnAddress(void) const
         {
             return m_u8OwnAddress;
@@ -241,32 +259,38 @@ class ProfibusPlugin : public PluginInterface
         // address for this master's own identity.
         bool setOwnAddress(const std::string &strAddr) const;
 
+        /** Returns the response timeout setting. */
         uint32_t getResponseTimeout(void) const
         {
             return m_u32ResponseTimeout;
         }
 
+        /** Sets the response timeout from its string form; returns false if the value is invalid. */
         bool setResponseTimeout(const std::string &strTimeout) const
         {
             return numeric::str2uint32(strTimeout, m_u32ResponseTimeout);
         }
 
+        /** Returns the default high priority setting. */
         bool getDefaultHighPriority(void) const
         {
             return m_bDefaultHighPriority;
         }
 
+        /** Sets the default high priority from its string form; returns false if the value is invalid. */
         bool setDefaultHighPriority(const std::string &strValue) const
         {
             BoolExprEvaluator e;
             return e.evaluate(strValue, m_bDefaultHighPriority);
         }
 
+        /** Returns the read buffer size setting. */
         uint32_t getReadBufferSize(void) const
         {
             return m_u32ReadBufferSize;
         }
 
+        /** Sets the read buffer size from its string form; returns false if the value is invalid. */
         bool setReadBufferSize(const std::string &strBufSize) const
         {
             return numeric::str2uint32(strBufSize, m_u32ReadBufferSize, /*bFailOnZero=*/true);
@@ -281,6 +305,7 @@ class ProfibusPlugin : public PluginInterface
         // as it's still open; see class doc comment's "Session lifetime".
         std::shared_ptr<ProfibusDriver> m_OpenDriver(void) const;
 
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         // Members

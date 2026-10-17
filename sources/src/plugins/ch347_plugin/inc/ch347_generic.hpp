@@ -82,6 +82,7 @@ inline uint8_t spiHzToClockIndex(uint32_t u32Hz)
     return 7; // 468.75 kHz (minimum)
 }
 
+/** Maps a SPI clock divider index to its frequency in Hz. */
 inline uint32_t spiClockIndexToHz(uint8_t u8Idx)
 {
     static const uint32_t kTable[] = {
@@ -215,6 +216,7 @@ bool generic_module_set_speed(const T *pOwner,
 template <typename T>
 using WriteCbk = bool (T::*)(std::span<const uint8_t>) const;
 
+/** Handles `write`: sends the hex bytes given in the arguments. */
 template <typename T>
 bool generic_write_data(const T *pOwner, const std::string &strArgs, WriteCbk<T> cbk)
 {
@@ -246,6 +248,7 @@ bool generic_write_data(const T *pOwner, const std::string &strArgs, WriteCbk<T>
 template <typename T>
 using WrRdCbk = bool (T::*)(std::span<const uint8_t>, size_t) const;
 
+/** Handles `wrrd` with `[hexdata][:rdlen]`: optionally writes hex data, then reads @c rdlen bytes. */
 template <typename T>
 bool generic_write_read_data(const T *pOwner, const std::string &strArgs, WrRdCbk<T> cbk)
 {

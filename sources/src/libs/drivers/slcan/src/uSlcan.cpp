@@ -85,6 +85,7 @@ static inline char nibble_to_hex(uint8_t u8V)
     return (u8V < 10) ? ('0' + u8V) : ('A' + u8V - 10);
 }
 
+/** Converts a hex digit to its value, or -1 if invalid. */
 static inline int hex_to_nibble(char c)
 {
     if (c >= '0' && c <= '9') {

@@ -55,7 +55,7 @@
 
 // ── LOAD_PLUGIN's plugin-type name ───────────────────────────────────────────
 // Deliberately narrower than SCRIPT_RX_IDENT: the first character must be a
-// letter — a plugin *type* name (UART, KVCAN, ...) never starts with '_',
+// letter — a plugin *type* name (UART, KCAN, ...) never starts with '_',
 // unlike a macro/label name.
 //   uScriptSyntax.hpp : m_isLoadPlugin
 //   frontend          : LOAD_PLUGIN argument highlighter — this fragment

@@ -68,7 +68,7 @@ systec_plugin/
     └── systec_plugin.cpp   # Entry points, command handlers, init/cleanup, send/receive
 ```
 
-The plugin sits on top of a dedicated driver library, `uSystecCan` (`sources/src/lib/drivers/systec/`), which wraps the raw SocketCAN socket API plus SYS TEC's hardware-specific sysfs controls — analogous to how `kvcan_plugin` sits on `uKVCan` and `pcan_plugin` sits on `uPcan`.
+The plugin sits on top of a dedicated driver library, `uSystecCan` (`sources/src/lib/drivers/systec/`), which wraps the raw SocketCAN socket API plus SYS TEC's hardware-specific sysfs controls — analogous to how `kcan_plugin` sits on `uKCan` and `pcan_plugin` sits on `uPcan`.
 
 ---
 
@@ -375,7 +375,7 @@ SYSTEC.SCRIPT uds_session.txt 10
 
 ## Why Classic CAN Only
 
-Unlike `kvcan_plugin` (which enables `CAN_RAW_FD_FRAMES` and supports up to 64-byte payloads), this plugin never enables CAN FD. That mirrors a hardware/driver fact, not a plugin limitation: `systec_can.c` sets
+Unlike `kcan_plugin` (which enables `CAN_RAW_FD_FRAMES` and supports up to 64-byte payloads), this plugin never enables CAN FD. That mirrors a hardware/driver fact, not a plugin limitation: `systec_can.c` sets
 
 ```c
 chan->can.ctrlmode_supported = CAN_CTRLMODE_3_SAMPLES | CAN_CTRLMODE_LISTENONLY;

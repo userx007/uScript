@@ -36,19 +36,19 @@
 //                            IMPLEMENTATION                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
-bool KVCAN::is_open() const
+bool KCAN::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_iHandle >= 0;
 }
 
-void KVCAN::set_tx_id(uint32_t u32Id)
+void KCAN::set_tx_id(uint32_t u32Id)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_u32TxId = u32Id;
 }
 
-KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
+KCAN::ReadResult KCAN::tout_read(uint32_t u32ReadTimeout,
                                    std::span<uint8_t> buffer,
                                    const ReadOptions &sOptions,
                                    std::string_view xtra_params,
@@ -208,7 +208,7 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
     return result;
 }
 
-uint32_t KVCAN::resolveTxId(std::string_view xtra_params) const
+uint32_t KCAN::resolveTxId(std::string_view xtra_params) const
 {
     if (xtra_params.empty()) {
         return m_u32TxId;
@@ -222,7 +222,7 @@ uint32_t KVCAN::resolveTxId(std::string_view xtra_params) const
     return m_u32TxId;
 }
 
-KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
+KCAN::WriteResult KCAN::tout_write(uint32_t u32WriteTimeout,
                                      std::span<const uint8_t> buffer,
                                      std::string_view xtra_params,
                                      std::stop_token /*stop_tok*/) const
@@ -323,7 +323,7 @@ KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
 // PRIVATE LEGACY IMPLEMENTATION (INTERNAL USE ONLY)
 // ============================================================================
 
-KVCAN::Status KVCAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
+KCAN::Status KCAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                             std::span<const uint8_t> token,
                                             bool bUseBuffer,
                                             std::stop_token stop_tok) const
@@ -344,14 +344,14 @@ KVCAN::Status KVCAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
     return kmp_stream_match(token, viLps, u32Timeout, bReturnOnTimeout, bUseBuffer, stop_tok);
 }
 
-void KVCAN::build_kmp_table(std::span<const uint8_t> pattern,
+void KCAN::build_kmp_table(std::span<const uint8_t> pattern,
                             size_t szLength,
                             std::vector<int> &vViLps) const
 {
     ukmp::build_kmp_table(pattern, szLength, vViLps);
 }
 
-KVCAN::Status KVCAN::kmp_stream_match(std::span<const uint8_t> token,
+KCAN::Status KCAN::kmp_stream_match(std::span<const uint8_t> token,
                                       const std::vector<int> &vViLps,
                                       uint32_t u32Timeout,
                                       bool bReturnOnTimeout,
@@ -359,7 +359,7 @@ KVCAN::Status KVCAN::kmp_stream_match(std::span<const uint8_t> token,
                                       std::stop_token stop_tok) const
 {
     // Receive frames and feed their payload bytes one-by-one into KMP.
-    // A scratch buffer sized to one max KVCAN FD payload is sufficient because
+    // A scratch buffer sized to one max KCAN FD payload is sufficient because
     // timeout_read() fills it with exactly one frame's DLC bytes at a time.
     // The ring buffer (used only when useBuffer) is sized independently, to
     // the driver's overall max buffer length rather than a single frame.
@@ -369,7 +369,7 @@ KVCAN::Status KVCAN::kmp_stream_match(std::span<const uint8_t> token,
         /*szChunkBufferSize=*/CAN_DRV_MAX_DLEN, /*szRingBufferSize=*/CAN_DRV_MAX_BUFLENGTH);
 }
 
-KVCAN::Status KVCAN::timeout_read_until(uint32_t u32ReadTimeout,
+KCAN::Status KCAN::timeout_read_until(uint32_t u32ReadTimeout,
                                         std::span<uint8_t> buffer,
                                         uint8_t u8CDelimiter,
                                         size_t &szBytesRead,
@@ -382,7 +382,7 @@ KVCAN::Status KVCAN::timeout_read_until(uint32_t u32ReadTimeout,
     }
 
     szBytesRead                                        = 0;
-    KVCAN::Status eResult                              = Status::RETVAL_NOT_SET;
+    KCAN::Status eResult                              = Status::RETVAL_NOT_SET;
 
     std::array<uint8_t, CAN_DRV_MAX_DLEN> framePayload = {};
 
@@ -393,9 +393,9 @@ KVCAN::Status KVCAN::timeout_read_until(uint32_t u32ReadTimeout,
             return Status::BUFFER_OVERFLOW;
         }
 
-        // Receive one KVCAN frame worth of payload.
+        // Receive one KCAN frame worth of payload.
         size_t frameBytes = 0;
-        const KVCAN::Status readResult =
+        const KCAN::Status readResult =
             timeout_read(u32ReadTimeout,
                          std::span<uint8_t>(framePayload.data(), framePayload.size()),
                          frameBytes, stop_tok);

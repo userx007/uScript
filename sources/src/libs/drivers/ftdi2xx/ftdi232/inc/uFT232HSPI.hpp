@@ -124,6 +124,7 @@ class FT232HSPI : public FT232HBase, public ICommDriver
 
         Status close() override;
 
+        /** Returns whether the device is open. */
         bool is_open() const override
         {
             return FT232HBase::is_open();
@@ -183,16 +184,20 @@ class FT232HSPI : public FT232HBase, public ICommDriver
         uint8_t m_pinDir   = 0x0Bu; ///< ADBUS direction: SCK+MOSI+CS = outputs, MISO = input
 
         Status configure_mpsse_spi(const SpiConfig &sConfig);
+        /** Asserts chip select. */
         Status cs_assert() const;
+        /** Deasserts chip select. */
         Status cs_deassert() const;
         Status apply_pin_state(bool bCsActive) const;
 
         Status spi_write_raw(std::span<const uint8_t> data,
                              size_t &bytesWritten) const;
+        /** Reads raw bytes from the SPI bus into @p data. */
         Status spi_read_raw(std::span<uint8_t> data,
                             size_t &bytesRead,
                             uint32_t u32TimeoutMs,
                             std::stop_token stop_tok = {}) const;
+        /** Full-duplex transfer: sends @p txBuf and captures the reply in @p rxBuf. */
         Status spi_xfer_raw(std::span<const uint8_t> txBuf,
                             std::span<uint8_t> rxBuf,
                             size_t &bytesXferd,

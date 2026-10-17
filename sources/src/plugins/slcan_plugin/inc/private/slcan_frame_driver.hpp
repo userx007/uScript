@@ -40,13 +40,13 @@
  *                   any frame that doesn't match, until one with this id
  *                   arrives or time runs out.
  * An empty (or unparsable) xtra_params falls back to the driver defaults,
- * exactly like KVCAN.
+ * exactly like KCAN.
  *
- * Unlike KVCAN, this id check on the RX side is done entirely in software,
+ * Unlike KCAN, this id check on the RX side is done entirely in software,
  * AFTER the adapter's own std/ext acceptance filter has already let the
  * frame through — the adapter's f/F filter commands can only be sent while
  * the CAN channel is closed (see uSlcan.cpp), so there is no way to
- * transiently install/restore a filter per call the way KVCAN::tout_read()
+ * transiently install/restore a filter per call the way KCAN::tout_read()
  * does on an already-open SocketCAN socket. Practically: an xtra_params id
  * that isn't already covered by whichever filter is active for this channel
  * (see SLCANPlugin::setCanTxId() / the FILTER command) will simply never be
@@ -85,7 +85,7 @@
 
 // Generic, driver-independent multi-frame transport library (see
 // can_tp/README.md). Only depends on ICommDriver, so it's reused verbatim
-// here — the same headers/objects already back the KVCAN plugin.
+// here — the same headers/objects already back the KCAN plugin.
 #include "ITransportProtocol.hpp"
 #include "TpConfig.hpp"
 #include "TpFactory.hpp"
@@ -165,7 +165,7 @@ class SLCANFrameDriver : public ICommDriver
          *        frame only — it is never persisted back to m_u32TxId.  An empty
          *        (or unparsable) xtra_params falls back to m_u32TxId.
          *
-         *        \note Unlike KVCAN, this override never needs to touch an
+         *        \note Unlike KCAN, this override never needs to touch an
          *        acceptance filter to be safely transmitted: the adapter places
          *        no restriction on which id we transmit with. Whether a REPLY on
          *        that id can be received back is a separate concern — see
@@ -275,11 +275,11 @@ class SLCANFrameDriver : public ICommDriver
          *        entirely and returns the first frame received, exactly as
          *        before.
          *
-         *        \note Hardware limitation vs KVCAN: the adapter's f/F acceptance
+         *        \note Hardware limitation vs KCAN: the adapter's f/F acceptance
          *        filters can only be changed while the CAN channel is closed (see
          *        set_std_filter()/set_ext_filter() and uSlcan.cpp), so there is no
          *        way to transiently (re)install a filter for this one call the
-         *        way KVCAN::tout_read() does. The id check above is therefore
+         *        way KCAN::tout_read() does. The id check above is therefore
          *        done entirely in software AFTER the adapter's own filter has
          *        already let the frame through. If the requested id is not
          *        already covered by whichever std/ext filter is active for this
@@ -417,36 +417,43 @@ class SLCANFrameDriver : public ICommDriver
             return m_slcan.set_bitrate(eBitrate, u32Timeout);
         }
 
+        /** Selects the CAN-FD data-phase rate. */
         ICommDriver::Status set_fd_data_rate(CanFdDataRate eRate, uint32_t u32Timeout)
         {
             return m_slcan.set_fd_data_rate(eRate, u32Timeout);
         }
 
+        /** Sets the CAN operating mode. */
         ICommDriver::Status set_mode(CanMode eMode, uint32_t u32Timeout)
         {
             return m_slcan.set_mode(eMode, u32Timeout);
         }
 
+        /** Enables or disables automatic retransmission. */
         ICommDriver::Status set_auto_retx(CanAutoRetx eRetx, uint32_t u32Timeout)
         {
             return m_slcan.set_auto_retx(eRetx, u32Timeout);
         }
 
+        /** Sets an acceptance filter for standard (11-bit) IDs. */
         ICommDriver::Status set_std_filter(uint16_t u16Id, uint16_t u16Mask, uint32_t u32Timeout)
         {
             return m_slcan.set_std_filter(u16Id, u16Mask, u32Timeout);
         }
 
+        /** Sets an acceptance filter for extended (29-bit) IDs. */
         ICommDriver::Status set_ext_filter(uint32_t u32Id, uint32_t u32Mask, uint32_t u32Timeout)
         {
             return m_slcan.set_ext_filter(u32Id, u32Mask, u32Timeout);
         }
 
+        /** Clears all acceptance filters. */
         ICommDriver::Status clear_filters(uint32_t u32Timeout)
         {
             return m_slcan.clear_filters(u32Timeout);
         }
 
+        /** Opens the CAN channel. */
         ICommDriver::Status open_channel(uint32_t u32Timeout)
         {
             return m_slcan.open_channel(u32Timeout);
@@ -480,7 +487,7 @@ class SLCANFrameDriver : public ICommDriver
          *        a segmented transport protocol is active. If never called,
          *        resolveRxId() mirrors the tx id (see setCanTxId()'s note on the
          *        plugin side) — the same "single id, both directions" default
-         *        KVCAN uses.
+         *        KCAN uses.
          */
         void set_rx_id(uint32_t u32RxId)
         {
@@ -495,7 +502,7 @@ class SLCANFrameDriver : public ICommDriver
          * applies — so the label always reflects the CAN ID actually used,
          * including any per-call xtra_params override. (The RX-side match in
          * tout_read() can differ per the software-filter caveat documented
-         * above; this reflects the TX-id resolution, same as PCAN/KVCAN.)
+         * above; this reflects the TX-id resolution, same as PCAN/KCAN.)
          */
         CommDetails describeConnection(std::string_view xtra_params = {}) const override
         {
@@ -526,7 +533,7 @@ class SLCANFrameDriver : public ICommDriver
                     u32EffectiveTxId = u32Override;
                 }
                 // else: xtra_params wasn't a valid CAN id — silently fall back to
-                // the configured default, same convention as KVCAN::tout_write().
+                // the configured default, same convention as KCAN::tout_write().
             }
 
             return u32EffectiveTxId;

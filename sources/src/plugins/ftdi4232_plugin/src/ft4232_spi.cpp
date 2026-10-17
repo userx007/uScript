@@ -271,6 +271,7 @@ bool FT4232Plugin::m_handle_spi_cfg(const std::string &strArgs, std::stop_token 
 //                       CS                                      //
 ///////////////////////////////////////////////////////////////////
 
+/** Handles `cs` on the SPI module: controls chip select. */
 bool FT4232Plugin::m_handle_spi_cs(const std::string &strArgs, std::stop_token /*st*/) const
 {
     if (strArgs == "help") {
@@ -417,12 +418,14 @@ bool FT4232Plugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
     return true;
 }
 
+/** Handles `wrrd`: writes hex data on the SPI bus, then reads back the requested length. */
 bool FT4232Plugin::m_handle_spi_wrrd(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_data<FT4232Plugin>(
         this, strArgs, &FT4232Plugin::m_spi_wrrd_cb, st);
 }
 
+/** Handles `wrrdf`: like `wrrd`, with write data and read result taken from/stored to files. */
 bool FT4232Plugin::m_handle_spi_wrrdf(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_file<FT4232Plugin>(

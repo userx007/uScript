@@ -57,6 +57,7 @@ class ScriptRunner : public IScriptRunner
         {
         }
 
+        /** Runs the script: read, validate and dry-interpret (@p bRealExec false), or interpret for real (true). */
         bool runScript(const char *pstrCallCtx, bool bRealExec, bool bUseDryRun) override
         {
             bool bRetVal = false;

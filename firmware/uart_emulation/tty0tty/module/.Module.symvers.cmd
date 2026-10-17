@@ -1,0 +1,1 @@
+savedcmd_/media/userx/HDEXT/Workarea/uScript/firmware/uart_emulation/tty0tty/module/Module.symvers :=  scripts/mod/modpost -M -m       -o /media/userx/HDEXT/Workarea/uScript/firmware/uart_emulation/tty0tty/module/Module.symvers -n -T /media/userx/HDEXT/Workarea/uScript/firmware/uart_emulation/tty0tty/module/modules.order -i Module.symvers -e 

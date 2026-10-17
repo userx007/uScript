@@ -40,6 +40,7 @@
 class J1939TpProtocol final : public ITransportProtocol
 {
     public:
+        /** Creates the driver or protocol object from its configuration. */
         explicit J1939TpProtocol(const TpConfig &sCfg = {})
             : m_cfg(sCfg)
         {
@@ -59,6 +60,7 @@ class J1939TpProtocol final : public ITransportProtocol
             std::string_view rxId,
             std::string_view txId = {}) const override;
 
+        /** Returns the transport protocol identifier. */
         TpProtocol id() const override
         {
             return TpProtocol::J1939_TP;
@@ -67,18 +69,22 @@ class J1939TpProtocol final : public ITransportProtocol
     private:
         TpConfig m_cfg;
 
+        /** Sends the data as a J1939 broadcast (BAM) transfer. */
         ICommDriver::WriteResult send_bam(
             const ICommDriver &driver, uint32_t u32Timeout,
             std::span<const uint8_t> data, std::string_view txId) const;
 
+        /** Sends the data as a J1939 RTS/CTS transfer. */
         ICommDriver::WriteResult send_rts_cts(
             const ICommDriver &driver, uint32_t u32Timeout,
             std::span<const uint8_t> data, std::string_view txId, std::string_view rxId) const;
 
+        /** Receives a J1939 broadcast (BAM) transfer. */
         ICommDriver::ReadResult receive_bam(
             const ICommDriver &driver, uint32_t u32Timeout,
             std::span<uint8_t> buffer, std::string_view rxId, const uint8_t firstFrame[8]) const;
 
+        /** Receives a J1939 RTS/CTS transfer. */
         ICommDriver::ReadResult receive_rts_cts(
             const ICommDriver &driver, uint32_t u32Timeout,
             std::span<uint8_t> buffer, std::string_view rxId, std::string_view txId,

@@ -7,6 +7,7 @@
 
 namespace
 {
+    /** Prints a bus frame (direction, id and bytes) to stderr. */
     void print_frame(const char *pstrDir, const std::string &strId, std::span<const uint8_t> bytes)
     {
         std::fprintf(stderr, "  [bus] %s id=%-12s len=%2zu  ", pstrDir, strId.c_str(), bytes.size());

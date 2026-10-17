@@ -74,7 +74,7 @@ SYSTECCAN::Status SYSTECCAN::open(const std::string &strIface)
         return Status::PORT_ACCESS;
     }
 
-    // NOTE: unlike uKVCan, CAN_RAW_FD_FRAMES is deliberately NOT enabled here.
+    // NOTE: unlike uKCan, CAN_RAW_FD_FRAMES is deliberately NOT enabled here.
     // systec_can.ko never sets CAN_CTRLMODE_FD (see systec_can_probe() /
     // ctrlmode_supported in systec_can.c) and never raises netdev->mtu past
     // CAN_MTU, so a USB-CANmodul channel can only ever exchange classic
@@ -365,11 +365,13 @@ SYSTECCAN::Status SYSTECCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
 namespace
 {
 
+    /** Returns the sysfs path of attribute @p pstrPszAttr of the device behind @p strIface. */
     std::string sysfs_device_path(const std::string &strIface, const char *pstrPszAttr)
     {
         return "/sys/class/net/" + strIface + "/device/" + pstrPszAttr;
     }
 
+    /** Returns the sysfs path of attribute @p pstrPszAttr of network interface @p strIface. */
     std::string sysfs_iface_path(const std::string &strIface, const char *pstrPszAttr)
     {
         return "/sys/class/net/" + strIface + "/" + pstrPszAttr;

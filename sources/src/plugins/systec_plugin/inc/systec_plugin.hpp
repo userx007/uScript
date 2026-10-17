@@ -60,7 +60,7 @@
  *
  * Wraps the uSystecCan SocketCAN driver (for SYS TEC electronic USB-CANmodul
  * devices, kernel module systec_can.ko) and exposes it through the standard
- * PluginInterface dispatch model.  Works with any SocketKVCAN interface
+ * PluginInterface dispatch model.  Works with any SocketCAN interface
  * (physical canN or virtual vcanN).
  *
  * Extra command vs UART/I2C/SPI plugins:
@@ -253,7 +253,7 @@ class SYSTECPlugin : public PluginInterface
         }
 
         /**
-         * \brief get SocketKVCAN interface name
+         * \brief get SocketCAN interface name
          */
         const char *getCanIface(void) const
         {
@@ -261,7 +261,7 @@ class SYSTECPlugin : public PluginInterface
         }
 
         /**
-         * \brief set SocketKVCAN interface name (e.g. "vcan0", "can1")
+         * \brief set SocketCAN interface name (e.g. "vcan0", "can1")
          */
         void setCanIface(const std::string &strCanIface) const
         {
@@ -566,7 +566,7 @@ class SYSTECPlugin : public PluginInterface
         /**
          * \brief set SYSTEC read buffer size
          * \note Valid range is 1–8 bytes: systec_can.ko is classic-CAN only
-         *       (see uSystecCan.hpp / CAN_DRV_MAX_DLEN), unlike the KVCAN
+         *       (see uSystecCan.hpp / CAN_DRV_MAX_DLEN), unlike the KCAN
          *       plugin's 64-byte CAN FD ceiling.
          */
         bool setCanReadBufferSize(const std::string &strReadBufferSize) const
@@ -693,7 +693,7 @@ class SYSTECPlugin : public PluginInterface
         std::string m_strArtefactsPath;
 
         /**
-         * \brief SocketKVCAN interface name (e.g. "vcan0", "can1")
+         * \brief SocketCAN interface name (e.g. "vcan0", "can1")
          */
         mutable std::string m_strCanIface;
 

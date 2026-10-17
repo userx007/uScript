@@ -303,6 +303,7 @@ bool strings_equal_trimmed(const char *pstrS1, const char *pstrS2)
 }
 
 /*----------------------------------------------------------------------------*/
+/** Copies @p pstrInput to @p pstrOutput (at most @p output_size bytes) without leading and trailing whitespace. */
 void trim_whitespace(const char *pstrInput, char *pstrOutput, size_t output_size)
 {
     if (output_size == 0) {

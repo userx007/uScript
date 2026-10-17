@@ -22,11 +22,13 @@ namespace
     constexpr uint8_t kFsWait        = 0x1;
     constexpr uint8_t kFsOverflow    = 0x2;
 
+    /** Returns the ISO-TP PCI type nibble of byte 0. */
     inline uint8_t pci_type(uint8_t u8B0)
     {
         return static_cast<uint8_t>((u8B0 & 0xF0) >> 4);
     }
 
+    /** Fills the unused frame bytes with @p u8PadByte when @p bPad is set. */
     inline void fill_padding(std::array<uint8_t, kFrameLen> &frame, size_t usedLen,
                              bool bPad, uint8_t u8PadByte)
     {

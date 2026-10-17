@@ -41,6 +41,7 @@
 // ============================================================================
 namespace
 {
+    /** recv() wrapper that casts the socket for Windows. */
     inline long net_recv(int iSocketFd, void *pvBuf, size_t szLen, int iFlags)
     {
 #ifdef _WIN32
@@ -51,6 +52,7 @@ namespace
 #endif
     }
 
+    /** send() wrapper that casts the socket for Windows. */
     inline long net_send(int iSocketFd, const void *pvBuf, size_t szLen, int iFlags)
     {
 #ifdef _WIN32

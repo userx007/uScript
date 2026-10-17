@@ -11,7 +11,7 @@
 #
 # Drivers, protocols, the CAN-TP stack, the FTDI SDK and the loopback testers
 # are enabled automatically from the plugins you select here.
-# Plugins not supported on the platform (KI2C/KSPI/KVCAN/RAWETH/SYSTEC off
+# Plugins not supported on the platform (KI2C/KSPI/KCAN/RAWETH/SYSTEC off
 # Linux, VECTOR* off Windows/Linux) are ignored with a warning.
 # =============================================================================
 
@@ -38,8 +38,7 @@ set(USCRIPT_PLUGIN_CANDLELIGHT ON  CACHE BOOL "")
 set(USCRIPT_PLUGIN_PCAN        ON  CACHE BOOL "")
 set(USCRIPT_PLUGIN_VECTOR      ON  CACHE BOOL "")   # Windows / Linux only
 set(USCRIPT_PLUGIN_VECTOR_ETH  ON  CACHE BOOL "")   # Windows / Linux only
-set(USCRIPT_PLUGIN_KCAN        ON  CACHE BOOL "")   # Linux only
-set(USCRIPT_PLUGIN_KVCAN       ON  CACHE BOOL "")   # Linux only
+set(USCRIPT_PLUGIN_KCAN        ON  CACHE BOOL "")   # Linux only: SocketCAN, virtual (vcan0) + real (canN)
 set(USCRIPT_PLUGIN_SYSTEC      ON  CACHE BOOL "")   # Linux only
 
 # ---- Ethernet / network ------------------------------------------------------

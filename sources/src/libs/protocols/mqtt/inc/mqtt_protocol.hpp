@@ -104,7 +104,9 @@ class MqttProtocol
         // argument shape before calling; these assume well-formed input.)
 
         std::vector<uint8_t> buildConnect(const ConnectParams &params) const;
+        /** Builds an MQTT DISCONNECT packet. */
         std::vector<uint8_t> buildDisconnect() const;
+        /** Builds an MQTT PINGREQ packet. */
         std::vector<uint8_t> buildPingReq() const;
 
         // Assigns a fresh packet id for qos > 0 (written to *pOutPacketId; left
@@ -118,11 +120,16 @@ class MqttProtocol
         // side below): PUBACK for QoS 1, PUBREC/PUBCOMP bracketing the
         // broker's own PUBREL for QoS 2.
         std::vector<uint8_t> buildPubAck(uint16_t packetId) const;
+        /** Builds an MQTT PUBREC packet (QoS 2). */
         std::vector<uint8_t> buildPubRec(uint16_t packetId) const;
+        /** Builds an MQTT PUBREL packet (QoS 2). */
         std::vector<uint8_t> buildPubRel(uint16_t packetId) const;
+        /** Builds an MQTT PUBCOMP packet (QoS 2). */
         std::vector<uint8_t> buildPubComp(uint16_t packetId) const;
 
+        /** Builds an MQTT SUBSCRIBE packet. */
         std::vector<uint8_t> buildSubscribe(const std::string &topic, uint8_t qos, uint16_t *pOutPacketId);
+        /** Builds an MQTT UNSUBSCRIBE packet. */
         std::vector<uint8_t> buildUnsubscribe(const std::string &topic, uint16_t *pOutPacketId);
 
         // ---- Decoders: pure decode of one already-complete raw packet ----
@@ -132,12 +139,14 @@ class MqttProtocol
             return vPacket.empty() ? 0 : vPacket[0];
         }
 
+        /** Returns whether @p packet is a PUBLISH packet. */
         static bool isPublish(const std::vector<uint8_t> &vPacket)
         {
             return (packetType(vPacket) & 0xF0) == kPublish;
         }
 
         ConnAckResult decodeConnAck(const std::vector<uint8_t> &vPacket) const;
+        /** Decodes an MQTT SUBACK packet. */
         SubAckResult decodeSubAck(const std::vector<uint8_t> &vPacket) const;
 
         // PUBACK / PUBREC / PUBREL / PUBCOMP / UNSUBACK all share one shape —
@@ -146,6 +155,7 @@ class MqttProtocol
         // short to contain a Packet Identifier.
         static bool decodeSimpleAck(const std::vector<uint8_t> &vPacket, uint16_t *pu16OutPacketId);
 
+        /** Decodes an MQTT PUBLISH packet. */
         PublishMessage decodePublish(const std::vector<uint8_t> &vPacket) const;
 
         // ---- Variable Byte Integer helpers ----
@@ -163,6 +173,7 @@ class MqttProtocol
         // returns the value.
         static uint32_t decodeVarInt(const std::vector<uint8_t> &vData, size_t &offset);
 
+        /** Restarts MQTT packet-id allocation. */
         void resetPacketIdSequence()
         {
             m_nextPacketId = 1;
@@ -173,6 +184,7 @@ class MqttProtocol
         // the MQTT spec (they all draw from the same per-session id space).
         // 0 is never a valid MQTT packet id, so the sequence wraps past it.
         uint16_t m_nextPacketId = 1;
+        /** Returns the next packet id. */
         uint16_t m_allocatePacketId();
 };
 

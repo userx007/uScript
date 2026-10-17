@@ -42,7 +42,7 @@
 // OPEN / CLOSE
 // ============================================================================
 
-KVCAN::Status KVCAN::open(const std::string &strIface)
+KCAN::Status KCAN::open(const std::string &strIface)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -73,15 +73,15 @@ KVCAN::Status KVCAN::open(const std::string &strIface)
         return Status::PORT_ACCESS;
     }
 
-    // Enable KVCAN FD frames so the socket can handle both classic (8-byte) and
+    // Enable KCAN FD frames so the socket can handle both classic (8-byte) and
     // FD (up to 64-byte) frames transparently.
     int canfd_on = 1;
     if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FD_FRAMES,
                      &canfd_on, sizeof(canfd_on)) < 0) {
-        // Not fatal — the interface may not support KVCAN FD.
+        // Not fatal — the interface may not support KCAN FD.
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                  LOG_STRING("KVCAN FD not supported on "); LOG_STRING(strIface.c_str());
-                  LOG_STRING(", falling back to classic KVCAN"));
+                  LOG_STRING("KCAN FD not supported on "); LOG_STRING(strIface.c_str());
+                  LOG_STRING(", falling back to classic KCAN"));
     }
 
     // Bind the socket to the interface.
@@ -129,7 +129,7 @@ KVCAN::Status KVCAN::open(const std::string &strIface)
     }
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("KVCAN socket opened on "); LOG_STRING(strIface.c_str());
+              LOG_STRING("KCAN socket opened on "); LOG_STRING(strIface.c_str());
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
 
     m_vFilters.clear(); // a freshly bound socket has no filters installed yet
@@ -137,14 +137,14 @@ KVCAN::Status KVCAN::open(const std::string &strIface)
     return Status::SUCCESS;
 }
 
-KVCAN::Status KVCAN::close()
+KCAN::Status KCAN::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     if (m_iHandle >= 0) {
         ::close(m_iHandle);
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                  LOG_STRING("KVCAN socket closed, handle:"); LOG_INT(m_iHandle));
+                  LOG_STRING("KCAN socket closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
 
@@ -157,7 +157,7 @@ KVCAN::Status KVCAN::close()
 // FILTER CONFIGURATION
 // ============================================================================
 
-KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter> &vFilters)
+KCAN::Status KCAN::set_filters(const std::vector<CanFilter> &vFilters)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -220,18 +220,18 @@ KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter> &vFilters)
                            // transient-filter snapshot/restore stays accurate
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("KVCAN filters set, count:"); LOG_UINT32(static_cast<uint32_t>(vFilters.size())));
+              LOG_STRING("KCAN filters set, count:"); LOG_UINT32(static_cast<uint32_t>(vFilters.size())));
 
     return Status::SUCCESS;
 }
 
 // ============================================================================
 // INTERNAL READ PRIMITIVE
-// Receives one KVCAN / KVCAN FD frame and copies its payload into buffer.
+// Receives one KCAN / KCAN FD frame and copies its payload into buffer.
 // bytes_read is set to the actual DLC / len field of the received frame.
 // ============================================================================
 
-KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
+KCAN::Status KCAN::timeout_read(uint32_t u32ReadTimeout,
                                   std::span<uint8_t> buffer,
                                   size_t &szBytesRead,
                                   std::stop_token stop_tok) const
@@ -281,7 +281,7 @@ KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
         }
     }
 
-    // Try to receive a KVCAN FD frame first; fall back to classic can_frame size
+    // Try to receive a KCAN FD frame first; fall back to classic can_frame size
     // if the read returns CAN_MTU bytes.
     struct canfd_frame frame = {};
     const ssize_t nbytes     = ::read(m_iHandle, &frame, sizeof(frame));
@@ -311,12 +311,12 @@ KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
 
 // ============================================================================
 // INTERNAL WRITE PRIMITIVE
-// Packs buffer into a KVCAN / KVCAN FD frame payload and transmits it.
+// Packs buffer into a KCAN / KCAN FD frame payload and transmits it.
 // u32TxId is the resolved CAN ID (already chosen by the caller from either
 // the xtra_params override or the default m_u32TxId).
 // ============================================================================
 
-KVCAN::Status KVCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
+KCAN::Status KCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
                                    std::span<const uint8_t> buffer,
                                    size_t &szBytesWritten,
                                    uint32_t u32TxId) const
@@ -330,7 +330,7 @@ KVCAN::Status KVCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
     szBytesWritten = 0;
 
     // Choose frame type based on payload size.
-    // Classic KVCAN: ≤ 8 bytes; KVCAN FD: 9–64 bytes.
+    // Classic KCAN: ≤ 8 bytes; KCAN FD: 9–64 bytes.
     if (buffer.size() <= CAN_MAX_DLEN) {
         struct can_frame frame = {};
         frame.can_id           = u32TxId;
@@ -346,7 +346,7 @@ KVCAN::Status KVCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
         }
     } else {
         struct canfd_frame frame = {};
-        // KVCAN FD frames require a 29-bit extended ID field in the frame header.
+        // KCAN FD frames require a 29-bit extended ID field in the frame header.
         // CAN_EFF_FLAG is therefore OR-ed in unconditionally here, regardless of
         // whether u32TxId (from set_tx_id() or an xtra_params override) already
         // carries it.  Callers that intend a standard 11-bit ID on an FD-sized

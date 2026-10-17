@@ -41,6 +41,7 @@ class CommScriptClient
         using SendFunc = typename CommScriptInterpreter<TDriver>::SendFunc;
         using RecvFunc = typename CommScriptInterpreter<TDriver>::RecvFunc;
 
+        /** Creates a client for the COMM script at @p strScriptPathName, using @p shpDriver for I/O. */
         explicit CommScriptClient(
             const std::string &strScriptPathName,
             std::shared_ptr<const TDriver> shpDriver,
@@ -61,6 +62,7 @@ class CommScriptClient
         {
         }
 
+        /** Dry run (@p bRealExec false): reads and validates the script without device I/O. Real run: executes it. */
         bool execute(bool bRealExec)
         {
             static const char *pstrCtx = "COMM script";

@@ -112,7 +112,7 @@ bool Vector::frameMatchesFilter(const VectorRxFrame &sFrame, uint32_t u32RxFilte
     }
 
     // Normalise the SocketCAN canid_t convention (bit 31 = CAN_EFF_FLAG) the
-    // same way PCAN/KVCAN/SLCAN do.
+    // same way PCAN/KCAN/SLCAN do.
     const bool bWantExtended = (u32RxFilterId & CAN_EFF_FLAG) != 0U ||
                                ((u32RxFilterId & CAN_EFF_MASK) > CAN_SFF_MASK);
     const uint32_t u32WantId = u32RxFilterId & (bWantExtended ? CAN_EFF_MASK : CAN_SFF_MASK);

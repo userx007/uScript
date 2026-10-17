@@ -62,6 +62,7 @@ void StatusLed::timerEvent(QTimerEvent *pEv)
     update();
 }
 
+/** Draws the LED. */
 void StatusLed::paintEvent(QPaintEvent *)
 {
     QPainter p(this);

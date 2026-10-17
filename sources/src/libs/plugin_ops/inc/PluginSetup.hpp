@@ -45,7 +45,9 @@ template <typename T>
 struct KVSetterEntry
 {
         const char *key;
+        /** Setter returning false if the value is invalid (nullptr if unused). */
         bool (T::*boolSetter)(const std::string &) const = nullptr;
+        /** Setter for values that cannot be invalid (nullptr if unused). */
         void (T::*voidSetter)(const std::string &) const = nullptr;
 };
 

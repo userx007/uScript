@@ -41,7 +41,9 @@ class CodeEditor : public QPlainTextEdit
 
         void highlightLine(int iLineNo); // 1-based; 0 = clear
         void clearHighlight();
+        /** Switches the script highlighter on or off. */
         void setHighlighting(bool bOn);
+        /** Switches the COMM-script highlighter on or off. */
         void setCommHighlighting(bool bOn);
         void setIniHighlighting(bool bOn); // switch to INI highlighter (clears others)
 
@@ -49,6 +51,7 @@ class CodeEditor : public QPlainTextEdit
         void setErrorLine(int iLineNo); // 1-based; accumulates (call once per error line)
         void clearErrorLines();         // clear all error markers
 
+        /** Returns whether any error marker is set. */
         bool hasErrorLines() const
         {
             return !m_errorLines.isEmpty();
@@ -59,11 +62,13 @@ class CodeEditor : public QPlainTextEdit
         void removeThreadLine(int iLineNo); // remove rectangle when thread joins
         void clearThreadLines();            // clear all (called on script finish)
 
+        /** Returns whether the script highlighter is active. */
         bool hasScriptHighlighter() const
         {
             return m_highlighter != nullptr;
         }
 
+        /** Returns whether the INI highlighter is active. */
         bool hasIniHighlighter() const
         {
             return m_iniHighlighter != nullptr;
@@ -79,6 +84,7 @@ class CodeEditor : public QPlainTextEdit
 
         // Gutter (called by LineNumberArea)
         int lineNumberAreaWidth() const;
+        /** Paints the line-number gutter. */
         void lineNumberAreaPaintEvent(QPaintEvent *pEv);
 
         // Call after a font change to recalculate gutter width and repaint.
@@ -90,6 +96,7 @@ class CodeEditor : public QPlainTextEdit
         void clearWordHighlights();
 
     signals:
+        /** Emitted when a line naming COMM script @p scriptName is clicked. */
         void commScriptLineClicked(const QString &scriptName);
 
         // Emitted when the cursor lands on an  INCLUDE "path"  line.
@@ -99,14 +106,18 @@ class CodeEditor : public QPlainTextEdit
         void includeFileClicked(const QString &rawPath);
 
     protected:
+        /** Keeps the gutter geometry in sync with the editor. */
         void resizeEvent(QResizeEvent *pEv) override;
         void keyPressEvent(QKeyEvent *pEv) override;
         void mousePressEvent(QMouseEvent *pEv) override;
+        /** Selects the word and highlights its other occurrences. */
         void mouseDoubleClickEvent(QMouseEvent *pEv) override;
         bool eventFilter(QObject *pObj, QEvent *pEv) override;
 
     private slots:
+        /** Reserves the viewport margin for the line-number gutter. */
         void updateLineNumberAreaWidth(int iNewBlockCount);
+        /** Scrolls or repaints the gutter after the editor changed. */
         void updateLineNumberArea(const QRect &rect, int iDy);
         void checkCurrentLineForCommScript(); // fires on every cursor move
 
@@ -144,7 +155,9 @@ class ScriptViewer : public QFrame
 
         // ── Loading ──────────────────────────────────────────────────────────
         void loadScript(const QString &filePath);
+        /** Replaces the editor content and resets modification and highlights. */
         void loadText(const QString &text);
+        /** Clears the editor and the current file association. */
         void clear();
 
         // ── Execution marker ─────────────────────────────────────────────────
@@ -156,6 +169,7 @@ class ScriptViewer : public QFrame
         void setEditorFont(const QFont &font);
         void enableHighlighting(bool bOn);     // use ScriptHighlighter
         void enableCommHighlighting(bool bOn); // use CommScriptHighlighter
+        /** Makes the editor read-only or editable. */
         void setReadOnly(bool bRo);
 
         // ── Persistence ───────────────────────────────────────────────────────
@@ -169,6 +183,7 @@ class ScriptViewer : public QFrame
             return m_currentFile;
         }
 
+        /** Returns whether the current file has an .ini extension. */
         bool isIniFile() const
         {
             return m_currentFile.endsWith(".ini", Qt::CaseInsensitive);
@@ -202,6 +217,7 @@ class ScriptViewer : public QFrame
         void infoChanged(const QString &info); // filename + current line text for external display
 
     private slots:
+        /** Refreshes the info text and forwards the modification state. */
         void onModificationChanged(bool bModified);
         void onCommScriptLineClicked(const QString &scriptName);
 
@@ -211,6 +227,7 @@ class ScriptViewer : public QFrame
 
     private:
         void updateInfo();
+        /** Writes the content to @p path atomically; shows a message box and returns false on failure. */
         bool writeFile(const QString &path);
 
         CodeEditor *m_editor;

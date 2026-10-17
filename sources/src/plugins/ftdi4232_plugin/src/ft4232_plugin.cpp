@@ -35,11 +35,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED FT4232Plugin *pluginEntry()
     {
         return new FT4232Plugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(FT4232Plugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -352,16 +354,19 @@ bool FT4232Plugin::m_FT4232_SPI(const std::string &strArgs, std::stop_token st) 
     return generic_module_dispatch<FT4232Plugin>(this, "SPI", strArgs, st);
 }
 
+/** Dispatches a I2C sub-command to its handler. */
 bool FT4232Plugin::m_FT4232_I2C(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "I2C", strArgs, st);
 }
 
+/** Dispatches a GPIO sub-command to its handler. */
 bool FT4232Plugin::m_FT4232_GPIO(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "GPIO", strArgs, st);
 }
 
+/** Dispatches a UART sub-command to its handler. */
 bool FT4232Plugin::m_FT4232_UART(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "UART", strArgs, st);

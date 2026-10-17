@@ -22,11 +22,13 @@
  */
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED GrpcPlugin *pluginEntry()
     {
         return new GrpcPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(GrpcPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

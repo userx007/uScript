@@ -112,7 +112,9 @@ class CH347SPI : public ICommDriver
         // -----------------------------------------------------------------------
 
         Status open(const std::string &strDevice, const mSpiCfgS &cfg);
+        /** Closes the device. */
         Status close();
+        /** Returns whether the device is open. */
         bool is_open() const override;
 
         /**

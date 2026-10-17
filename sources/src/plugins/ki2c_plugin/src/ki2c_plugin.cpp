@@ -29,11 +29,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED KI2CPlugin *pluginEntry()
     {
         return new KI2CPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(KI2CPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

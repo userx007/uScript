@@ -269,12 +269,14 @@ bool FT245Plugin::m_fifo_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
     return true;
 }
 
+/** Handles `wrrd`: writes hex data on the FIFO bus, then reads back the requested length. */
 bool FT245Plugin::m_handle_fifo_wrrd(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_data<FT245Plugin>(
         this, strArgs, &FT245Plugin::m_fifo_wrrd_cb, st);
 }
 
+/** Handles `wrrdf`: like `wrrd`, with write data and read result taken from/stored to files. */
 bool FT245Plugin::m_handle_fifo_wrrdf(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_file<FT245Plugin>(

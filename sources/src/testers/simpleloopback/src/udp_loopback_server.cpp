@@ -35,7 +35,7 @@
 //     datagram out.
 //   - Dumps every datagram, both RX (as received) and TX (as echoed back)
 //     in a candump-like table — see print_datagram() — same DIR/.../DATA
-//     layout kvcan_loopback.c uses for CAN frames, with PEER (host:port)
+//     layout kcan_loopback.c uses for CAN frames, with PEER (host:port)
 //     in place of CAN's ID/DLC.
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current
 //     recvfrom() call returns.
@@ -67,6 +67,7 @@ namespace
 
     volatile sig_atomic_t g_stop       = 0;
 
+    /** Signal handler: requests shutdown. */
     void on_signal(int /*sig*/)
     {
         g_stop = 1;
@@ -88,9 +89,9 @@ namespace
 
     /** Print one UDP datagram in a candump-like table row: DIR, PEER
      *  (host:port), LEN, and a hex dump of the data — the UDP analogue of
-     *  kvcan_loopback.c's print_frame(), with the peer address in place of
+     *  kcan_loopback.c's print_frame(), with the peer address in place of
      *  CAN's ID/DLC. Called for both the as-received RX datagram and the TX
-     *  datagram as it's echoed back, same as kvcan's print_frame(prefix,
+     *  datagram as it's echoed back, same as kcan's print_frame(prefix,
      *  &frame) being called on both sides of the loopback.
      */
     void print_datagram(const char *pstrPrefix, const std::string &strPeer, const uint8_t *pu8Data, size_t len)

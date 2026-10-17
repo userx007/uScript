@@ -69,14 +69,14 @@
  * Wraps the SLCAN driver (WeActStudio USB2CANFDV1 ASCII protocol over UART)
  * and exposes it through the standard PluginInterface dispatch model.
  *
- * Unlike the SocketCAN-backed KVCAN plugin — where the kernel already knows
+ * Unlike the SocketCAN-backed KCAN plugin — where the kernel already knows
  * the bus bit rate and a single setsockopt() call installs filters on a
  * socket that is always "open" at the OS level — an SLCAN adapter only
  * learns its bit rate, FD data rate, bus mode, auto-retransmission setting
  * and acceptance filters from ASCII commands sent over the same serial
  * link, and only while the CAN channel itself is closed. CONFIG therefore
  * carries several extra keys (bit rate, FD data rate, mode, auto-retx,
- * BRS) that have no KVCAN equivalent, and every CMD/SCRIPT call re-applies
+ * BRS) that have no KCAN equivalent, and every CMD/SCRIPT call re-applies
  * all of them before opening the channel.
  *
  * Extra command vs UART/I2C/SPI plugins:
@@ -84,10 +84,10 @@
  *             (one slot each — see m_ParseFilters) before the next open.
  *
  * TX/RX id defaults and per-call overrides (see also SLCANFrameDriver):
- *   As with KVCAN, setCanTxId() (the CONFIG command's "x=" key) sets both
+ *   As with KCAN, setCanTxId() (the CONFIG command's "x=" key) sets both
  *   the default TX id and a matching default RX filter, and a CMD/SCRIPT's
  *   "~ id" xtra_params suffix overrides that id for a single call. Unlike
- *   KVCAN, though, the RX-side override cannot be enforced by transiently
+ *   KCAN, though, the RX-side override cannot be enforced by transiently
  *   reprogramming a hardware filter — the adapter's f/F commands require the
  *   channel to be closed — so SLCANFrameDriver::tout_read() matches the
  *   requested id in software instead, after the adapter's own (fixed for
@@ -410,7 +410,7 @@ class SLCANPlugin : public PluginInterface
          *        Accepts decimal or 0x-prefixed hex strings.
          *
          *        The stored value follows the SocketCAN canid_t convention so it stays
-         *        identical to the KVCAN plugin's setCanTxId:
+         *        identical to the KCAN plugin's setCanTxId:
          *          - 11-bit standard IDs (<=0x7FF): stored as-is.
          *          - 29-bit extended IDs (>0x7FF) : CAN_EFF_FLAG (0x80000000)
          *            is set automatically if the caller did not set it already,
@@ -421,16 +421,16 @@ class SLCANPlugin : public PluginInterface
          *        command's "x:" key or from the CAN_TX_ID ini entry — the filter
          *        slot matching this id's frame type (std or ext) is replaced with
          *        an exact-match filter, and the OTHER slot is cleared (reset to
-         *        "accept all" for that frame type), mirroring the KVCAN plugin's
+         *        "accept all" for that frame type), mirroring the KCAN plugin's
          *        "replace the whole filter set with one entry" behaviour.
          *
-         *        \note Unlike KVCAN's socket filters — which can be changed at any
+         *        \note Unlike KCAN's socket filters — which can be changed at any
          *        time on an already-open socket — the adapter's f/F filter commands
          *        can only be sent while the CAN channel is closed (see uSlcan.cpp).
          *        So this pair (m_u32CanTxId / m_oStdFilter or m_oExtFilter) is only
          *        pushed to the adapter the next time a channel is opened by
          *        m_OpenAndConfigure() (i.e. the next CMD/SCRIPT) — there is no
-         *        equivalent of KVCAN's "apply to the already-open socket" here.
+         *        equivalent of KCAN's "apply to the already-open socket" here.
          *        A per-call xtra_params id override in tout_read()/tout_write()
          *        (see SLCANFrameDriver) can only succeed for an id that is already
          *        covered by whichever filter is active for that channel; issue an
@@ -556,7 +556,7 @@ class SLCANPlugin : public PluginInterface
         }
 
         // ---- TpConfig tuning parameters -----------------------------------------
-        // Same field set / semantics as the KVCAN/PCAN plugins (see kvcan_plugin.hpp
+        // Same field set / semantics as the KCAN/PCAN plugins (see kcan_plugin.hpp
         // for the full per-field doc); tunes whichever protocol setCanTpProtocol()
         // selected above. A field a given protocol doesn't use is ignored by it.
 
@@ -565,109 +565,130 @@ class SLCANPlugin : public PluginInterface
             return numeric::str2uint8(strVal, m_sTpConfig.blockSize);
         }
 
+        /** Sets the tp st min from its string form; returns false if the value is invalid. */
         bool setTpStMin(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.stMin);
         }
 
+        /** Sets the tp pad frames from its string form; returns false if the value is invalid. */
         bool setTpPadFrames(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.padFrames);
         }
 
+        /** Sets the tp padding byte from its string form; returns false if the value is invalid. */
         bool setTpPaddingByte(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.paddingByte);
         }
 
+        /** Sets the tp timeout nbs from its string form; returns false if the value is invalid. */
         bool setTpTimeoutNBs(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutNBs_ms);
         }
 
+        /** Sets the tp timeout ncr from its string form; returns false if the value is invalid. */
         bool setTpTimeoutNCr(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutNCr_ms);
         }
 
+        /** Sets the tp max message len from its string form; returns false if the value is invalid. */
         bool setTpMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.maxMessageLen);
         }
 
+        /** Sets the j1939 use bam from its string form; returns false if the value is invalid. */
         bool setJ1939UseBam(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.j1939UseBam);
         }
 
+        /** Sets the j1939 max packets from its string form; returns false if the value is invalid. */
         bool setJ1939MaxPackets(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.j1939MaxPackets);
         }
 
+        /** Sets the tp timeout t1 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT1(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT1_ms);
         }
 
+        /** Sets the tp timeout t2 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT2(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT2_ms);
         }
 
+        /** Sets the tp timeout t3 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT3(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT3_ms);
         }
 
+        /** Sets the tp timeout th from its string form; returns false if the value is invalid. */
         bool setTpTimeoutTh(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutTh_ms);
         }
 
+        /** Sets the j1939 max message len from its string form; returns false if the value is invalid. */
         bool setJ1939MaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.j1939MaxMessageLen);
         }
 
+        /** Sets the can open index from its string form; returns false if the value is invalid. */
         bool setCanOpenIndex(const std::string &strVal) const
         {
             return numeric::str2uint16(strVal, m_sTpConfig.canOpenIndex);
         }
 
+        /** Sets the can open sub index from its string form; returns false if the value is invalid. */
         bool setCanOpenSubIndex(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.canOpenSubIndex);
         }
 
+        /** Sets the can open use block from its string form; returns false if the value is invalid. */
         bool setCanOpenUseBlock(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.canOpenUseBlock);
         }
 
+        /** Sets the can open block size from its string form; returns false if the value is invalid. */
         bool setCanOpenBlockSize(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.canOpenBlockSize);
         }
 
+        /** Sets the tp timeout sdo from its string form; returns false if the value is invalid. */
         bool setTpTimeoutSdo(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutSdo_ms);
         }
 
+        /** Sets the can open max message len from its string form; returns false if the value is invalid. */
         bool setCanOpenMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.canOpenMaxMessageLen);
         }
 
+        /** Sets the tp timeout fp inter frame from its string form; returns false if the value is invalid. */
         bool setTpTimeoutFpInterFrame(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutFpInterFrame_ms);
         }
 
+        /** Sets the fp max message len from its string form; returns false if the value is invalid. */
         bool setFpMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.fastPacketMaxMessageLen);

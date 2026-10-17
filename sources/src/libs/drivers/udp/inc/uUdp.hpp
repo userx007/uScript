@@ -17,7 +17,7 @@
  * connect()s a UDP socket to a default peer host:port and exposes the same
  * ICommDriver read/write surface used by the UART, I2C, SPI, CAN and TCP
  * (ETH) drivers. UDP is datagram-based and message-preserving, like CAN and
- * unlike the byte-stream TCP driver, so the mapping mirrors uKVCan's more
+ * unlike the byte-stream TCP driver, so the mapping mirrors uKCan's more
  * closely than uEth's:
  *
  *   tout_write()

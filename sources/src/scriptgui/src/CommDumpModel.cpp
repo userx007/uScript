@@ -21,11 +21,13 @@ namespace
 {
     constexpr quintptr kTopLevelSentinel = static_cast<quintptr>(-1);
 
+    /** Formats a byte as two upper-case hex digits. */
     QString hexByte(unsigned char b)
     {
         return QString("%1").arg(b, 2, 16, QChar('0')).toUpper();
     }
 
+    /** Returns the printable ASCII character for @p b, or `.`. */
     char asciiOrDot(unsigned char b)
     {
         return (b >= 0x20 && b < 0x7F) ? char(b) : '.';

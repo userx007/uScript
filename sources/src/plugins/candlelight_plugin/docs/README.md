@@ -1,6 +1,6 @@
 # Candlelight Plugin
 
-A C++ shared-library plugin that exposes a **Candlelight** (a.k.a. **gs_usb**) adapter — a native-USB CAN/CAN-FD adapter protocol used by CANable, candleLight-fw, and Elmue's CANable 2.5 firmware (https://github.com/Elmue/CANable-2.5-firmware-Slcan-and-Candlelight), among others — through the same unified command dispatcher used by the KVCAN, SLCAN and UCAN plugins. Unlike those three, there is no serial link underneath at all: the adapter enumerates as its own USB device, configuration goes over USB control transfers, and CAN frames travel over a bulk IN/OUT endpoint pair. See `uCandlelight.hpp` (in `sources/src/lib/drivers/candlelight/inc/`) for the full protocol reference this plugin implements.
+A C++ shared-library plugin that exposes a **Candlelight** (a.k.a. **gs_usb**) adapter — a native-USB CAN/CAN-FD adapter protocol used by CANable, candleLight-fw, and Elmue's CANable 2.5 firmware (https://github.com/Elmue/CANable-2.5-firmware-Slcan-and-Candlelight), among others — through the same unified command dispatcher used by the KCAN, SLCAN and UCAN plugins. Unlike those three, there is no serial link underneath at all: the adapter enumerates as its own USB device, configuration goes over USB control transfers, and CAN frames travel over a bulk IN/OUT endpoint pair. See `uCandlelight.hpp` (in `sources/src/lib/drivers/candlelight/inc/`) for the full protocol reference this plugin implements.
 
 **Compatibility note:** this driver speaks the "legacy Geschwister Schneider protocol" — the original, standard gs_usb wire format that the Linux kernel's own `gs_usb` driver and every candleLight-fw derivative implement. Elmue's CANable 2.5 firmware's own User & Developer Manual documents keeping this mode available on USB interface 0 specifically for backward compatibility, alongside that project's own extended "ElmüSoft" protocol (per-frame USB overhead reduction, multi-frame "blob" packing, on-device hardware filters, bus-load reporting, and more). This driver does not speak that extended protocol — see `uCandlelight.hpp`'s "Compatibility with Elmue's CANable 2.5 firmware" section for the two real interop details (little-endian-always framing, a possibly-short `DEVICE_CONFIG` reply) confirmed against that firmware's manual and the upstream kernel driver's history.
 
@@ -84,7 +84,7 @@ pluginExit(ptr)         -> deletes the CandlelightPlugin instance
 
 ### Command Dispatch Model
 
-Commands are registered via a single-level `std::map` (`m_mapCmds`) populated in the constructor through an X-macro expansion -- identical in shape to the KVCAN, SLCAN and UCAN plugins:
+Commands are registered via a single-level `std::map` (`m_mapCmds`) populated in the constructor through an X-macro expansion -- identical in shape to the KCAN, SLCAN and UCAN plugins:
 
 ```cpp
 #define CANDLELIGHT_PLUGIN_COMMANDS_CONFIG_TABLE    \
@@ -121,7 +121,7 @@ CANDLELIGHT_PLUGIN_CMD_RECORD( CYCLIC             )
 
 ### CommScriptClient Integration
 
-This plugin uses the same `CommScriptCommandInterpreter<TDriver>` / `CommScriptClient<TDriver>` stack as the KVCAN, SLCAN and UCAN plugins. `CMD`, `SCRIPT` and `CYCLIC` all hand the open driver directly to these shared components.
+This plugin uses the same `CommScriptCommandInterpreter<TDriver>` / `CommScriptClient<TDriver>` stack as the KCAN, SLCAN and UCAN plugins. `CMD`, `SCRIPT` and `CYCLIC` all hand the open driver directly to these shared components.
 
 The bridge is **`CandlelightFrameDriver`** (`inc/private/candlelight_frame_driver.hpp`), which inherits from `ICommDriver` and holds a `Candlelight` instance by composition:
 
@@ -272,7 +272,7 @@ CANDLELIGHT.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
 
 ## CMD Expression Syntax
 
-Identical grammar to the KVCAN/SLCAN/UCAN plugins -- direction operators (`>` send, `<` receive), data formats (plain string, quoted string, `H"..."` hex stream, `F"..."` file), and composite `send | expect` / `receive | respond` expressions. See the UCAN or SLCAN plugin's README for the full syntax reference.
+Identical grammar to the KCAN/SLCAN/UCAN plugins -- direction operators (`>` send, `<` receive), data formats (plain string, quoted string, `H"..."` hex stream, `F"..."` file), and composite `send | expect` / `receive | respond` expressions. See the UCAN or SLCAN plugin's README for the full syntax reference.
 
 ---
 

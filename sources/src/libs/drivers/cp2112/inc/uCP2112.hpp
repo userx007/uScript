@@ -72,6 +72,7 @@ class CP2112 : public CP2112Base, public ICommDriver
         /** @copydoc CP2112Base::close — also cancels any in-flight I²C transfer */
         Status close() override;
 
+        /** Returns whether the device is open. */
         bool is_open() const override
         {
             return CP2112Base::is_open();
@@ -133,12 +134,15 @@ class CP2112 : public CP2112Base, public ICommDriver
                                uint32_t u32TimeoutMs,
                                std::stop_token stop_tok = {}) const;
 
+        /** Reads from the I2C bus into @p data. */
         Status i2c_read(std::span<uint8_t> data,
                         size_t &bytesRead,
                         uint32_t u32TimeoutMs,
                         std::stop_token stop_tok = {}) const;
 
+        /** Polls until the pending transfer completes or the timeout expires. */
         Status poll_transfer_done(uint32_t u32TimeoutMs, std::stop_token stop_tok = {}) const;
+        /** Cancels the pending transfer. */
         Status cancel_transfer() const;
 };
 

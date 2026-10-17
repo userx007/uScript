@@ -1,7 +1,7 @@
 # pcan_plugin
 
 CAN bus plugin backed by the **PEAK-System PCAN-Basic** API (`PCANBasic.h`).  
-Command set is intentionally **identical** to `kvcan_plugin` and `slcan_plugin` so scripts are portable across all three plugins with minimal changes.
+Command set is intentionally **identical** to `kcan_plugin` and `slcan_plugin` so scripts are portable across all three plugins with minimal changes.
 
 ---
 
@@ -82,7 +82,7 @@ PCAN.CONFIG b=250000
 ---
 
 ### `PCAN.FILTER`
-Set software acceptance filters. Syntax is **identical** to `KVCAN.FILTER`.
+Set software acceptance filters. Syntax is **identical** to `KCAN.FILTER`.
 
 ```
 PCAN.FILTER <id>:<mask>[,<id>:<mask>…]
@@ -122,23 +122,23 @@ PCAN.SCRIPT scriptfile.txt
 PCAN.SCRIPT scriptfile.txt 10          ← 10 ms delay between commands
 ```
 
-Script syntax is the same as for `KVCAN.SCRIPT` and `SLCAN.SCRIPT`.
+Script syntax is the same as for `KCAN.SCRIPT` and `SLCAN.SCRIPT`.
 
 ---
 
-## Portability vs KVCAN / SLCAN
+## Portability vs KCAN / SLCAN
 
-| Feature              | KVCAN                   | SLCAN                       | PCAN                        |
+| Feature              | KCAN                   | SLCAN                       | PCAN                        |
 |----------------------|-------------------------|-----------------------------|-----------------------------|
 | `i:` key             | SocketCAN iface (`can0`) | UART device (`/dev/ttyACM0`) | PCAN channel (`0x51`)      |
 | `b:` key             | *(not used)*            | CAN bitrate preset (0–13)   | CAN bitrate in bps          |
 | `x:` TX ID           | ✓ same syntax           | ✓ same syntax               | ✓ same syntax               |
 | `r/w/s` timeouts     | ✓ same syntax           | ✓ same syntax               | ✓ same syntax               |
-| FILTER syntax        | ✓ identical             | one slot per format         | ✓ identical to KVCAN        |
+| FILTER syntax        | ✓ identical             | one slot per format         | ✓ identical to KCAN        |
 | CMD / SCRIPT grammar | ✓ identical             | ✓ identical                 | ✓ identical                 |
 
-To migrate a KVCAN script to PCAN, change only the CONFIG line:
+To migrate a KCAN script to PCAN, change only the CONFIG line:
 ```
-# KVCAN:  KVCAN.CONFIG i=can0 x=0x123
+# KCAN:  KCAN.CONFIG i=can0 x=0x123
 # PCAN:   PCAN.CONFIG  i=0x51 b=500000 x=0x123
 ```

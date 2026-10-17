@@ -39,11 +39,13 @@ class ICommDriver;
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED HydrabusPlugin *pluginEntry()
     {
         return new HydrabusPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(HydrabusPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -588,6 +590,7 @@ bool HydrabusPlugin::m_Hydrabus_CONFIG(const std::string &strArgs, std::stop_tok
     return generic_hydrabus_set_params(this, strArgs);
 }
 
+/** Handles `MODE`: switches the Hydrabus binary mode. */
 bool HydrabusPlugin::m_Hydrabus_MODE(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs.empty()) {
@@ -759,6 +762,7 @@ HydrabusPlugin::getModuleCmdsMap(const std::string &m) const
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
+/** Returns the speed table of module @p m, or nullptr if the module is unknown. */
 ModuleSpeedMap *
 HydrabusPlugin::getModuleSpeedsMap(const std::string &m) const
 {
@@ -866,6 +870,7 @@ bool HydrabusPlugin::m_handle_aux_common(const std::string &strArgs,
     return true;
 }
 
+/** Returns the enabled status setting. */
 bool getEnabledStatus(const HydrabusPlugin &obj)
 {
     return obj.m_bIsEnabled;

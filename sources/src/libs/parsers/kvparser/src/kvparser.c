@@ -10,8 +10,10 @@ typedef struct {
     const char* p;
 } Cursor;
 
+/** Advances the cursor past whitespace. */
 static void skip_ws(Cursor* pC) { while (*pC->p == ' ' || *pC->p == '\t') pC->p++; }
 
+/** Returns a heap copy of [start, end) with surrounding blanks trimmed. */
 static char* dup_trimmed(const char* start, const char* end) {
     while (start < end && (*start == ' ' || *start == '\t')) start++;
     while (end > start && (end[-1] == ' ' || end[-1] == '\t')) end--;
@@ -23,12 +25,14 @@ static char* dup_trimmed(const char* start, const char* end) {
     return s;
 }
 
+/** Allocates a zeroed node of @p kind. */
 static KvNode* new_node(KvKind kind) {
     KvNode* n = (KvNode*)calloc(1, sizeof(KvNode));
     if (n) n->kind = kind;
     return n;
 }
 
+/** Appends @p psChild to @p psParent; returns false on allocation failure. */
 static bool push_child(KvNode* psParent, KvNode* psChild) {
     KvNode** grown = (KvNode**)realloc(psParent->children, (psParent->n_children + 1) * sizeof(KvNode*));
     if (!grown) return false;
@@ -37,8 +41,10 @@ static bool push_child(KvNode* psParent, KvNode* psChild) {
     return true;
 }
 
+/** Parses one value at the cursor. */
 static KvNode* parse_value(Cursor* c);
 
+/** Parses key/value pairs up to @p terminator. */
 static KvNode* parse_pairs(Cursor* c, char terminator) {
     KvNode* obj = new_node(KV_OBJECT);
     if (!obj) return NULL;
@@ -65,6 +71,7 @@ static KvNode* parse_pairs(Cursor* c, char terminator) {
     return obj;
 }
 
+/** Parses an array at the cursor. */
 static KvNode* parse_array(Cursor* c) {
     KvNode* arr = new_node(KV_ARRAY);
     if (!arr) return NULL;
@@ -83,6 +90,7 @@ static KvNode* parse_array(Cursor* c) {
     return arr;
 }
 
+/** Parses one value at the cursor. */
 static KvNode* parse_value(Cursor* c) {
     skip_ws(c);
     if (*c->p == '{') {

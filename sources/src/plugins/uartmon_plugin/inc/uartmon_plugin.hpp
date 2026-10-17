@@ -56,6 +56,7 @@ struct PluginDataSet;
 class UartmonPlugin : public PluginInterface
 {
     public:
+        /** Registers the plugin's commands and default settings. */
         UartmonPlugin()
             : m_strVersion(UARTMON_PLUGIN_VERSION)
             , m_bIsInitialized(false)
@@ -82,16 +83,19 @@ class UartmonPlugin : public PluginInterface
             }
         }
 
+        /** Returns whether doInit() has succeeded. */
         bool isInitialized(void) const
         {
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled(void) const
         {
             return m_bIsEnabled;
         }
 
+        /** Initialises the plugin. */
         bool doInit(void *pvUserData)
         {
             m_bIsInitialized = m_UartMonitor.setPollingInterval(m_u32PollingInterval);
@@ -103,6 +107,7 @@ class UartmonPlugin : public PluginInterface
             return m_bIsInitialized;
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup(void)
         {
             if (m_isRunning) {
@@ -114,12 +119,14 @@ class UartmonPlugin : public PluginInterface
             m_bIsEnabled     = false;
         }
 
+        /** Enables the plugin. */
         bool doEnable(void)
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psSetParams)
         {
             bool bRetVal = false;
@@ -131,42 +138,50 @@ class UartmonPlugin : public PluginInterface
             return bRetVal;
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psGetParams) const
         {
             generic_getparams<UartmonPlugin>(this, psGetParams);
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams,
                         std::stop_token st = {}) const
         {
             return generic_dispatch<UartmonPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<UartmonPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion(void) const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData(void) const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData(void) const
         {
             m_strResultData.clear();
         }
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant(void) const
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged(void) const
         {
             return m_bIsPrivileged;
@@ -179,6 +194,7 @@ class UartmonPlugin : public PluginInterface
         }
 
     private:
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
         PluginCommandsMap<UartmonPlugin> m_mapCmds;
         std::string m_strVersion;

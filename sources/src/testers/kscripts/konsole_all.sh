@@ -7,12 +7,12 @@ sudo modprobe vcan
 sudo ip link add dev vcan0 type vcan
 sudo ip link set up vcan0
 
-#konsole -e "bash -c './can_single_frame_kvcan_run.sh; exec bash'" &
-konsole -e "bash -c './cantp_canopen_kvcan_run.sh; exec bash'" &
-konsole -e "bash -c './cantp_isotp_kvcan_run.sh; exec bash'" &
-konsole -e "bash -c './cantp_j1939_bam_kvcan_run.sh; exec bash'" &
-konsole -e "bash -c './cantp_j1939_rtscts_kvcan_run.sh; exec bash'" &
-konsole -e "bash -c './cantp_nmea2000_kvcan_run.sh; exec bash'" &
+#konsole -e "bash -c './can_single_frame_kcan_run.sh; exec bash'" &
+konsole -e "bash -c './cantp_canopen_kcan_run.sh; exec bash'" &
+konsole -e "bash -c './cantp_isotp_kcan_run.sh; exec bash'" &
+konsole -e "bash -c './cantp_j1939_bam_kcan_run.sh; exec bash'" &
+konsole -e "bash -c './cantp_j1939_rtscts_kcan_run.sh; exec bash'" &
+konsole -e "bash -c './cantp_nmea2000_kcan_run.sh; exec bash'" &
 konsole -e "bash -c './konsole_all.sh; exec bash'" &
 konsole -e "bash -c './raweth_run.sh; exec bash'" &
 konsole -e "bash -c './tcpip_run.sh; exec bash'" &

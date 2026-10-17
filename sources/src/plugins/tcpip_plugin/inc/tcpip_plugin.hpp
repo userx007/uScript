@@ -57,7 +57,7 @@
  * PluginInterface dispatch model. Connects to a single remote host:port
  * over TCP (see uTcpip.hpp).
  *
- * Unlike KVCAN, TCPIP is a byte stream rather than frame based, so there
+ * Unlike KCAN, TCPIP is a byte stream rather than frame based, so there
  * is no FILTER command here: acceptance filtering is a CAN-hardware
  * concept with no TCP-stream equivalent. The plugin surface is therefore
  * INFO / CONFIG / CMD / SCRIPT only.
@@ -140,7 +140,7 @@ class TCPIPPlugin : public PluginInterface
         /**
          * \brief perform the initialization of modules used by the plugin.
          *
-         * Unlike KVCAN — where doInit() has nothing to open (the SocketKVCAN
+         * Unlike KCAN — where doInit() has nothing to open (the SocketCAN
          * interface is opened lazily, per command, against m_strCanIface) — TCPIP
          * follows the same lazy-open convention: doInit() only records the plugin
          * as ready to accept setParams()/dispatch() calls. The actual TCP connect
@@ -351,8 +351,8 @@ class TCPIPPlugin : public PluginInterface
          * \brief helper: open a fresh TCPIP driver instance against the
          *        configured host/port, using the configured connect timeout.
          *        Returns nullptr (and logs) on failure, mirroring the way
-         *        m_KVCAN_CMD/m_KVCAN_SCRIPT open a socket per invocation
-         *        in the KVCAN plugin.
+         *        m_KCAN_CMD/m_KCAN_SCRIPT open a socket per invocation
+         *        in the KCAN plugin.
          * \note  Returns the concrete TCPIP type (rather than ICommDriver)
          *        so it can be handed directly to
          *        CommScriptCommandInterpreter<TCPIP> / CommScriptClient<TCPIP>,

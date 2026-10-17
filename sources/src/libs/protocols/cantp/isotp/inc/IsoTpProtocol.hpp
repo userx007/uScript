@@ -39,6 +39,7 @@
 class IsoTpProtocol final : public ITransportProtocol
 {
     public:
+        /** Creates the driver or protocol object from its configuration. */
         explicit IsoTpProtocol(const TpConfig &sCfg = {})
             : m_cfg(sCfg)
         {
@@ -58,6 +59,7 @@ class IsoTpProtocol final : public ITransportProtocol
             std::string_view rxId,
             std::string_view txId = {}) const override;
 
+        /** Returns the transport protocol identifier. */
         TpProtocol id() const override
         {
             return TpProtocol::ISO_TP;

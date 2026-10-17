@@ -13,11 +13,13 @@
  */
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED TemplatePlugin *pluginEntry()
     {
         return new TemplatePlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(TemplatePlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -96,6 +98,7 @@ bool TemplatePlugin::m_Template_DUMMY1(const std::string &strArgs, std::stop_tok
     return bRetVal;
 }
 
+/** Example command of the template plugin. */
 bool TemplatePlugin::m_Template_DUMMY2(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;
@@ -125,6 +128,7 @@ bool TemplatePlugin::m_Template_DUMMY2(const std::string &strArgs, std::stop_tok
     return bRetVal;
 }
 
+/** Example command of the template plugin. */
 bool TemplatePlugin::m_Template_DUMMY3(const std::string &strArgs, std::stop_token st) const
 {
     bool bRetVal = false;

@@ -18,11 +18,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED BuspiratePlugin *pluginEntry()
     {
         return new BuspiratePlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(BuspiratePlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -475,6 +477,7 @@ const BuspiratePlugin::IniValues *getAccessIniValues(const BuspiratePlugin &obj)
 
 } /* getAccessIniValues() */
 
+/** Returns the enabled status setting. */
 bool getEnabledStatus(const BuspiratePlugin &obj)
 {
     return obj.m_bIsEnabled;

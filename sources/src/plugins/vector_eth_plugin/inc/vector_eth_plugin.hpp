@@ -126,16 +126,19 @@ class VectorEthPlugin : public PluginInterface
 
         ~VectorEthPlugin() = default;
 
+        /** Returns whether doInit() has succeeded. */
         bool isInitialized(void) const
         {
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled(void) const
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psSetParams)
         {
             bool bRetVal = false;
@@ -149,69 +152,82 @@ class VectorEthPlugin : public PluginInterface
             return bRetVal;
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psGetParams) const
         {
             generic_getparams<VectorEthPlugin>(this, psGetParams);
         }
 
+        /** Initialises the plugin. */
         bool doInit(void *pvUserData)
         {
             m_bIsInitialized = true;
             return m_bIsInitialized;
         }
 
+        /** Enables the plugin. */
         bool doEnable(void)
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup(void)
         {
             m_bIsInitialized = false;
             m_bIsEnabled     = false;
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st = {}) const
         {
             return generic_dispatch<VectorEthPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<VectorEthPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion(void) const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData(void) const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData(void) const
         {
             m_strResultData.clear();
         }
 
+        /** Sets the raw-result flag from its string form; returns false if invalid. */
         bool setRawResult(const std::string &strValue) const
         {
             return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
         }
 
+        /** Sets the cyclic-cached flag from its string form; returns false if invalid. */
         bool setCyclicCached(const std::string &strValue) const
         {
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant(void) const
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged(void) const
         {
             return m_bIsPrivileged;
@@ -263,11 +279,13 @@ class VectorEthPlugin : public PluginInterface
             return true;
         }
 
+        /** Sets the device serial from its string form; returns false if the value is invalid. */
         bool setDeviceSerial(const std::string &strSerial) const
         {
             return numeric::str2uint32(strSerial, m_u32DeviceSerial);
         }
 
+        /** Sets the device name. */
         bool setDeviceName(const std::string &strName) const
         {
             if (strName.empty()) {
@@ -278,6 +296,7 @@ class VectorEthPlugin : public PluginInterface
             return true;
         }
 
+        /** Sets the device hw index from its string form; returns false if the value is invalid. */
         bool setDeviceHwIndex(const std::string &strHwIndex) const
         {
             if (false == numeric::str2uint32(strHwIndex, m_u32DeviceHwIndex)) {
@@ -287,6 +306,7 @@ class VectorEthPlugin : public PluginInterface
             return true;
         }
 
+        /** Sets the device hw channel from its string form; returns false if the value is invalid. */
         bool setDeviceHwChannel(const std::string &strHwChannel) const
         {
             if (false == numeric::str2uint32(strHwChannel, m_u32DeviceHwChannel)) {
@@ -296,6 +316,7 @@ class VectorEthPlugin : public PluginInterface
             return true;
         }
 
+        /** Returns whether using direct selection. */
         bool isUsingDirectSelection(void) const
         {
             return m_bDeviceHwSet || (m_u32DeviceSerial != 0U) || !m_strDeviceName.empty();
@@ -463,11 +484,13 @@ class VectorEthPlugin : public PluginInterface
             return false;
         }
 
+        /** Sets the eth read timeout from its string form; returns false if the value is invalid. */
         bool setEthReadTimeout(const std::string &strReadTimeout) const
         {
             return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
         }
 
+        /** Sets the eth write timeout from its string form; returns false if the value is invalid. */
         bool setEthWriteTimeout(const std::string &strWriteTimeout) const
         {
             return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
@@ -493,6 +516,7 @@ class VectorEthPlugin : public PluginInterface
         }
 
     private:
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         /** case-insensitive string compare helper (avoids pulling in a whole locale-aware comparator for this) */

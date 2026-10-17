@@ -289,7 +289,9 @@ class GrpcDriver : public ICommDriver
          */
         bool open();
 
+        /** Returns whether the device is open. */
         bool is_open() const override;
+        /** Describes this connection for the communication dump. */
         CommDetails describeConnection(std::string_view xtra_params = {}) const override;
 
         // Thin stubs — see class doc comment. Never used by GrpcPlugin, which
@@ -300,6 +302,7 @@ class GrpcDriver : public ICommDriver
         ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
                                             std::string_view xtra_params = {},
                                             std::stop_token stop_tok     = {}) const override;
+        /** Reads into @p buffer, waiting at most the read timeout. */
         ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                           const ICommDriver::ReadOptions &options,
                                           std::string_view xtra_params = {},
@@ -317,20 +320,26 @@ class GrpcDriver : public ICommDriver
                                         std::stop_token stop_tok     = {}) const;
 
     private:
+        /** Splits @p dataSpan into argument tokens. */
         static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string> &vOutTokens);
 
+        /** Performs a unary RPC. */
         ICommDriver::WriteResult m_CallUnary(const google::protobuf::MethodDescriptor *pMethod,
                                              const std::string &strMethodPath, const std::string &strJsonBody,
                                              std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+        /** Performs a server-streaming RPC. */
         ICommDriver::WriteResult m_CallServerStreaming(const google::protobuf::MethodDescriptor *pMethod,
                                                        const std::string &strMethodPath, const std::string &strJsonBody,
                                                        std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+        /** Performs a client-streaming RPC. */
         ICommDriver::WriteResult m_CallClientStreaming(const google::protobuf::MethodDescriptor *pMethod,
                                                        const std::string &strMethodPath, const std::string &strJsonBody,
                                                        std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+        /** Performs a bidirectional-streaming RPC. */
         ICommDriver::WriteResult m_CallBidiStreaming(const google::protobuf::MethodDescriptor *pMethod,
                                                      const std::string &strMethodPath, const std::string &strJsonBody,
                                                      std::string_view xtra_params, std::stop_token stop_tok = {}) const;
+        /** Finishes the active streaming call. */
         ICommDriver::WriteResult m_Finish(std::string_view xtra_params) const;
 
         // Caller must already hold m_streamMutex. Best-effort — cancels/closes

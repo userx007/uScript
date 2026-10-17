@@ -18,11 +18,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED VectorPlugin *pluginEntry()
     {
         return new VectorPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(VectorPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -232,7 +234,7 @@ bool VectorPlugin::m_VECTOR_CONFIG(const std::string &strArgs, std::stop_token s
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * \brief FILTER command implementation; install software acceptance filters.
- *        Identical grammar/semantics to PCAN.FILTER / KVCAN.FILTER.
+ *        Identical grammar/semantics to PCAN.FILTER / KCAN.FILTER.
  *
  * \note Usage example:
  *       VECTOR.FILTER 0x100:0x7FF
@@ -347,7 +349,7 @@ bool VectorPlugin::m_VECTOR_SCRIPT(const std::string &strArgs, std::stop_token s
  * \brief CYCLIC command implementation; send one or more periodic Vector messages.
  *
  * \note The Vector channel is opened once for the whole CYCLIC session (like SCRIPT) and closed
- *       automatically on return (RAII). Same argument grammar as PCAN.CYCLIC/KVCAN.CYCLIC.
+ *       automatically on return (RAII). Same argument grammar as PCAN.CYCLIC/KCAN.CYCLIC.
  *
  * \note Usage example:
  *       VECTOR.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200

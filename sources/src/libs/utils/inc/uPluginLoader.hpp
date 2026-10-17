@@ -41,6 +41,7 @@ class LibraryHandle
             other.handle_ = nullptr;
         }
 
+        /** Move-assigns, closing any library currently held. */
         LibraryHandle &operator=(LibraryHandle &&other) noexcept
         {
             if (this != &other) {
@@ -55,11 +56,13 @@ class LibraryHandle
         LibraryHandle(const LibraryHandle &)            = delete;
         LibraryHandle &operator=(const LibraryHandle &) = delete;
 
+        /** Returns the raw library handle without releasing ownership. */
         LibHandle get() const noexcept
         {
             return handle_;
         }
 
+        /** Releases ownership and returns the raw handle; the caller must close it. */
         LibHandle release() noexcept
         {
             LibHandle h = handle_;
@@ -73,6 +76,7 @@ class LibraryHandle
         }
 
     private:
+        /** Unloads the library, if any, and resets the handle. */
         void close() noexcept
         {
             if (handle_) {
@@ -176,6 +180,7 @@ class PluginPathGenerator
         std::string pluginPrefix_;
         std::string pluginExtension_;
 
+        /** Returns @p strInput lower-cased. */
         static std::string tolowercase(const std::string &strInput)
         {
             std::string result;
@@ -185,6 +190,7 @@ class PluginPathGenerator
             return result;
         }
 
+        /** Appends a path separator to @p strPath if it does not end with one. */
         static std::string ensureTrailingSeparator(std::string strPath)
         {
             if (!strPath.empty() && strPath.back() != '/' && strPath.back() != '\\') {
@@ -193,6 +199,7 @@ class PluginPathGenerator
             return strPath;
         }
 
+        /** Prepends a `.` to @p strExt if missing. */
         static std::string ensureLeadingDot(std::string strExt)
         {
             // Only prepend '.' when the extension contains no dot at all (e.g. "so" → ".so").
@@ -242,11 +249,13 @@ class PluginEntryPointResolver
             return {entry, exit};
         }
 
+        /** Returns the plugin entry-point symbol name. */
         const std::string &getEntryName() const noexcept
         {
             return entryName_;
         }
 
+        /** Returns the plugin exit-point symbol name. */
         const std::string &getExitName() const noexcept
         {
             return exitName_;
@@ -264,6 +273,7 @@ class PluginEntryPointResolver
 namespace detail
 {
 
+    /** Loads the shared library at @p path; returns nullptr on failure. */
     inline LibHandle loadLibrary(const std::filesystem::path &path) noexcept
     {
 #ifdef _WIN32
@@ -273,6 +283,7 @@ namespace detail
 #endif
     }
 
+    /** Returns the last dlopen/LoadLibrary error as text. */
     inline std::string getLastLoadError()
     {
 #ifdef _WIN32
@@ -319,6 +330,7 @@ class PluginLoaderFunctor
         {
         }
 
+        /** Loads @p pluginName and resolves its entry/exit symbols; failures are reported in the result's error rather than thrown. */
         PluginResult<PluginHandle> loadWithError(const std::string &pluginName) const
         {
             PluginHandle resultHandle{nullptr, nullptr};

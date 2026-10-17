@@ -165,6 +165,7 @@ namespace loopback
             }
 
         private:
+            /** Returns the text of the last Windows error. */
             static std::string lastError()
             {
                 return tp_errstr(static_cast<int>(::GetLastError()));
@@ -328,6 +329,7 @@ namespace loopback
                     speed_t flag;
             };
 
+            /** Maps a baud rate to the termios speed constant; false if unsupported. */
             static bool baudToFlag(long baud, speed_t &out)
             {
                 static const BaudEntry table[] = {

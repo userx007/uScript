@@ -16,11 +16,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED DdsPlugin *pluginEntry()
     {
         return new DdsPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(DdsPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

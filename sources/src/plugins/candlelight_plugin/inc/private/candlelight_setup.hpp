@@ -43,7 +43,7 @@
 #define READ_BUF_SIZE            "READ_BUF_SIZE"
 #define CAN_TP_PROTOCOL          "CAN_TP_PROTOCOL"
 
-// ---- TpConfig tuning parameters (same INI key names as KVCAN/PCAN/SLCAN/UCAN) ----
+// ---- TpConfig tuning parameters (same INI key names as KCAN/PCAN/SLCAN/UCAN) ----
 #define TP_BLOCK_SIZE            "TP_BLOCK_SIZE"
 #define TP_ST_MIN                "TP_ST_MIN"
 #define TP_PAD_FRAMES            "TP_PAD_FRAMES"
@@ -163,7 +163,7 @@ bool CandlelightPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
  *                     r=read_tout  w=write_tout  s=recv_bufsize  t=tp_protocol, plus raw bit-timing
  *                     override: ps, p1, p2, sw, bp and CAN-FD data-phase equivalents dps, dp1, dp2,
  *                     dsw, dbp - see uCandlelight.hpp's GsDeviceBittiming; and TpConfig tuning keys
- *                     - same set as kvcan_setup.hpp/pcan_setup.hpp: bs, stmin, pad, padb, nbs, ncr,
+ *                     - same set as kcan_setup.hpp/pcan_setup.hpp: bs, stmin, pad, padb, nbs, ncr,
  *                     maxlen, bam, maxpkt, t1, t2, t3, th, jmaxlen, coidx, cosub, coblk, coblksz,
  *                     sdotout, comaxlen, fpinter, fpmaxlen)
  * \return true if processing succeeded, false otherwise

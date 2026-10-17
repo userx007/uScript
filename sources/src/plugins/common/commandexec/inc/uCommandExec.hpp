@@ -25,7 +25,7 @@
 
 /**
  * \brief Shared CMD/SCRIPT command-handler bodies used by the comm-driver
- *        plugins (UART, KI2C, KSPI, CH341, KVCAN, DSPKI2C, DSPKSPI, PCAN,
+ *        plugins (UART, KI2C, KSPI, CH341, KCAN, DSPKI2C, DSPKSPI, PCAN,
  *        SLCAN, TCPIP, UDP, LAN8720NET, W5500NET, ENC28J60NET, RawEth,
  *        MQTT, ...).
  *
@@ -48,7 +48,7 @@
  *        The only thing that actually differs between plugins is *how* a
  *        driver instance gets opened/configured - constructor arguments,
  *        is_open() vs. an open()+Status check, extra one-time setup like
- *        KVCAN's set_tx_id()/set_filters(). That single difference is
+ *        KCAN's set_tx_id()/set_filters(). That single difference is
  *        captured by a caller-supplied "open" callable, the same
  *        dependency-injection approach uKmpMatch.hpp uses for the
  *        driver-level KMP token matching (there: inject how to read a
@@ -463,7 +463,7 @@ namespace ucmdexec
      *        start is (re-)sent through sendFn(driver, id, val) - id being whatever strId
      *        parseCyclicArray() extracted for that entry, or an empty string if that entry's
      *        optional id was omitted (a plugin whose sendFn ignores id entirely, e.g. UART/KSPI,
-     *        is unaffected either way; a plugin that does use id, e.g. KVCAN/KI2C/UDP, should
+     *        is unaffected either way; a plugin that does use id, e.g. KCAN/KI2C/UDP, should
      *        treat an empty id the same way its CMD/SCRIPT commands already treat an absent
      *        override - falling back to whatever destination is configured via CONFIG).
      *

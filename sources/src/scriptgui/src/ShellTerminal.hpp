@@ -61,18 +61,23 @@ class TermView : public QAbstractScrollArea
         void setTermFont(const QFont &font);
         void processBytes(const QByteArray &bytes);
         void clearAll();
+        /** Clears the history but keeps the current prompt line and cursor column. */
         void clearKeepPrompt();
 
     protected:
         void paintEvent(QPaintEvent *) override;
+        /** Updates the scrollbar for the new size. */
         void resizeEvent(QResizeEvent *) override;
         void keyPressEvent(QKeyEvent *pEv) override;
         void mousePressEvent(QMouseEvent *pEv) override;
+        /** Extends the selection while dragging. */
         void mouseMoveEvent(QMouseEvent *pEv) override;
+        /** Ends the selection. */
         void mouseReleaseEvent(QMouseEvent *pEv) override;
         void contextMenuEvent(QContextMenuEvent *pEv) override;
 
     signals:
+        /** Emitted with the bytes produced by a key press. */
         void keyBytesReady(const QByteArray &bytes);
 
     private slots:
@@ -80,10 +85,15 @@ class TermView : public QAbstractScrollArea
 
     private:
         void ensureLine(int iRow);
+        /** Returns the cell at (@p row, @p col), growing the grid as needed. */
         TermCell &cell(int row, int col);
+        /** Writes @p c at the cursor using the current colours. */
         void putChar(QChar c);
+        /** Moves the cursor to the start of the next line. */
         void newline();
+        /** Erases from the cursor to the end of the line. */
         void eraseToEndOfLine();
+        /** Applies ANSI SGR (colour/attribute) parameters. */
         void applySgr(const QList<int> &params);
         static QColor sgrColor(int iCode);
         void updateScrollbar();
@@ -101,9 +111,13 @@ class TermView : public QAbstractScrollArea
         // Normalise anchor/end so that "start" is always top-left of selection.
         std::pair<QPoint, QPoint> normSel() const;
 
+        /** Returns whether text is selected. */
         bool hasSelection() const;
+        /** Clears the selection. */
         void clearSelection();
+        /** Returns the selected text. */
         QString selectedText() const;
+        /** Copies the selection to the clipboard. */
         void copySelectionToClipboard() const;
 
         // Reads plain text off the system clipboard and sends it to the shell
@@ -175,16 +189,21 @@ class ShellTerminal : public QFrame
     public:
         explicit ShellTerminal(QWidget *pParent = nullptr);
 
+        /** Marks the terminal as accepting input or not. */
         void setActive(bool bActive);
+        /** Feeds raw interpreter output to the terminal view. */
         void processRawBytes(const QByteArray &bytes);
+        /** Sets the terminal font. */
         void setTerminalFont(const QFont &font);
         void clear();       // full wipe (used on new session)
         void clearPrompt(); // wipe history, keep current prompt line + cursor
 
     signals:
+        /** Emitted with the bytes produced by a key press. */
         void keyBytesReady(const QByteArray &bytes);
 
     private:
+        /** Updates the header label to ACTIVE or inactive. */
         void updateHeaderState();
 
         QLabel *m_titleLabel;

@@ -100,7 +100,7 @@ CANcardX/XL and CANcaseXL/CANboardXL lines) — pass the raw numeric
 `XL_HWTYPE_*` value to `hw=` for anything newer than this repo's copy of the
 lookup table in `uVector.cpp`.
 
-## Differences from `pcan_plugin` / `kvcan_plugin`
+## Differences from `pcan_plugin` / `kcan_plugin`
 
 | Key | PCAN                         | Vector                                          |
 |-----|-------------------------------|--------------------------------------------------|

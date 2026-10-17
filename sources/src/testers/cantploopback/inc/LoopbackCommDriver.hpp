@@ -45,11 +45,13 @@ class LoopbackCommDriver final : public ICommDriver
         {
         }
 
+        /** Queues @p data for readers of the id given in @p xtra_params. */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> data,
                                std::string_view xtra_params,
                                std::stop_token stop_tok = {}) const override;
 
+        /** Pops the next queued frame of the requested id into @p buffer. */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
                              const ReadOptions &sOpts,
@@ -59,6 +61,7 @@ class LoopbackCommDriver final : public ICommDriver
         /** Drops every queued-but-unread frame on every id. Call between test cases. */
         void reset() const;
 
+        /** Describes this loopback as a CAN connection. */
         CommDetails describeConnection(std::string_view xtra_params = {}) const
         {
             CommDetails det = {
@@ -67,6 +70,7 @@ class LoopbackCommDriver final : public ICommDriver
             return det;
         }
 
+        /** Always true: the loopback has no device to open. */
         bool is_open() const
         {
             return true;

@@ -9,7 +9,7 @@ ip link show                         # a "canN" appears when the adapter is plug
 ```
 
 Bitrate/up either via KCAN (`KCAN.CONFIG i=can0 b=500000`, privileged) or externally
-(`testers/scripts/kcan_setup.sh can0 500000`).
+(`testers/scripts/kcan_setup_p.sh can0 500000`).
 
 Unprivileged use: let the system do the setup, e.g. `/etc/systemd/network/80-can0.network`
 

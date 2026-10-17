@@ -356,12 +356,14 @@ bool CP2112Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
     return true;
 }
 
+/** Handles `wrrd`: writes hex data on the I2C bus, then reads back the requested length. */
 bool CP2112Plugin::m_handle_i2c_wrrd(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_data<CP2112Plugin>(
         this, strArgs, &CP2112Plugin::m_i2c_wrrd_cb, st);
 }
 
+/** Handles `wrrdf`: like `wrrd`, with write data and read result taken from/stored to files. */
 bool CP2112Plugin::m_handle_i2c_wrrdf(const std::string &strArgs, std::stop_token st) const
 {
     return generic_write_read_file<CP2112Plugin>(

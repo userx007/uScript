@@ -109,6 +109,7 @@ class VectorValidator
             return m;
         }
 
+        /** Returns the comparison-operator lookup table for numeric rules. */
         static const std::unordered_map<std::string, ComparisonOp> &numericRules()
         {
             static const std::unordered_map<std::string, ComparisonOp> m = {
@@ -122,6 +123,7 @@ class VectorValidator
             return m;
         }
 
+        /** Maps @p strRule (surrounding blanks ignored) to a ComparisonOp for @p eType, or ComparisonOp::UNKNOWN. */
         ComparisonOp parseRule(const std::string &strRule, eValidateType eType) const
         {
             std::string_view sv(strRule);
@@ -145,6 +147,7 @@ class VectorValidator
             }
         }
 
+        /** Compares two values as @p eType with @p eOp; returns false on any conversion error. */
         bool compare(const std::string &strA, const std::string &strB,
                      ComparisonOp eOp, eValidateType eType) const
         {
@@ -171,6 +174,7 @@ class VectorValidator
             }
         }
 
+        /** Compares two strings with @p eOp. */
         bool compareStrings(const std::string &strA, const std::string &strB, ComparisonOp eOp) const
         {
             // All string comparisons are case-sensitive: "Hello" != "hello".
@@ -187,6 +191,7 @@ class VectorValidator
             }
         }
 
+        /** Compares two values as doubles with @p eOp. */
         bool compareDouble(const std::string &strA, const std::string &strB, ComparisonOp eOp) const
         {
             double na = parseDouble(strA);
@@ -194,6 +199,7 @@ class VectorValidator
             return applyComparison(na, nb, eOp);
         }
 
+        /** Parses @p strS as a double; throws std::invalid_argument if it is not a valid number. */
         double parseDouble(const std::string &strS) const
         {
             if (strS.empty()) {
@@ -220,6 +226,7 @@ class VectorValidator
             return value;
         }
 
+        /** Compares two dotted versions component-wise, padding the shorter one with zeros. */
         bool compareVersions(const std::string &strA, const std::string &strB, ComparisonOp eOp) const
         {
             std::vector<int> va = parseVersion(strA);
@@ -245,6 +252,7 @@ class VectorValidator
             return applyComparison(cmp, 0, eOp);
         }
 
+        /** Compares two booleans; only == and != are supported (throws otherwise). */
         bool compareBooleans(const std::string &strA, const std::string &strB, ComparisonOp eOp) const
         {
             if (eOp != ComparisonOp::EQ && eOp != ComparisonOp::NE) {
@@ -278,6 +286,7 @@ class VectorValidator
             }
         }
 
+        /** Splits a dotted version string into its numeric components. */
         std::vector<int> parseVersion(const std::string &v) const
         {
             if (v.empty()) {
@@ -320,6 +329,7 @@ class VectorValidator
             return result.empty() ? std::vector<int>{0} : result;
         }
 
+        /** Case-insensitive comparison of @p strS against the lower-case literal @p pstrLiteral of length @p len. */
         static bool iequal(const std::string &strS, const char *pstrLiteral, size_t len)
         {
             if (strS.size() != len) {
@@ -333,6 +343,7 @@ class VectorValidator
             return true;
         }
 
+        /** Parses true/false, 1/0, yes/no, on/off (any case) and !true/!false; throws std::invalid_argument otherwise. */
         bool parseBool(const std::string &strVal) const
         {
             if (strVal.empty()) {
@@ -357,6 +368,7 @@ class VectorValidator
             throw std::invalid_argument("Invalid boolean format: \"" + strVal + "\"");
         }
 
+        /** Returns the rule's result for two empty vectors (true for ==, <=, >=; false for !=, <, >). */
         bool evaluateEmptyVectors(const std::string &strRule) const
         {
             // Empty vectors are equal

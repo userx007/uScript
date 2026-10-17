@@ -232,6 +232,7 @@ namespace loopback
             static constexpr uint16_t kDefaultTxEthertype                  = 0x88B5; // IEEE 802 "local experimental"
             static inline const std::array<uint8_t, MAC_LEN> kBroadcastMac = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
+            /** Looks up the interface index and MAC address. */
             bool resolveInterface()
             {
                 struct ifreq ifr;
@@ -254,6 +255,7 @@ namespace loopback
                 return true;
             }
 
+            /** Formats a MAC address as aa:bb:cc:dd:ee:ff. */
             static std::string macToString(const uint8_t *pu8Mac)
             {
                 char sz[18];

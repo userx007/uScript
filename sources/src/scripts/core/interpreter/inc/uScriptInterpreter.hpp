@@ -35,6 +35,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
 {
 
     public:
+        /** Creates an interpreter using @p loader for the ini configuration and @p strScriptDir for relative paths. */
         explicit ScriptInterpreter(IniCfgLoader &&loader, std::string strScriptDir = {})
             : m_IniCfgLoader(std::move(loader))
             , m_strScriptDir(std::move(strScriptDir))
@@ -51,11 +52,16 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
             }
         }
 
+        /** Interprets (or, if @p bRealExec is false, only dry-runs) the validated script entries. */
         bool interpretScript(ScriptEntriesType &sScriptEntries, bool bRealExec);
 
+        /** Prints the defined macros and loaded plugins. */
         bool listMacrosPlugins();
+        /** Prints the commands of all loaded plugins. */
         bool listCommands();
+        /** Loads plugin @p strPluginName; @p bInitEnable also initialises and enables it. */
         bool loadPlugin(const std::string &strPluginName, bool bInitEnable);
+        /** Executes a single command given as text (interactive use). */
         bool executeCmd(const std::string &strCommand);
 
     private:
@@ -145,13 +151,18 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
                 double dBegin, dEnd, dStep;
         };
 
+        /** Loads one plugin and registers its entry point; @p bInitEnable also initialises and enables it. */
         bool m_loadPlugin(PluginDataType &sCommand, bool bInitEnable);
+        /** Loads all plugins declared in the script. */
         bool m_loadPlugins() noexcept;
         // Scan vCommands for PLUGIN:N references whose base PLUGIN is loaded but
         // the instance is not yet registered; create a fresh entry for each one.
         void m_autoInstantiatePlugins() noexcept;
+        /** Verifies that every script command exists in its plugin. */
         bool m_crossCheckCommands() noexcept;
+        /** Initialises all loaded plugins. */
         bool m_initPlugins() noexcept;
+        /** Enables all loaded plugins. */
         bool m_enablePlugins() noexcept;
         // Expands every $macro reference in-place (regular macros, $NAME.$idx /
         // $NAME.N array element access, $NAME.SIZE array size access).
@@ -174,7 +185,9 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
         // always uses whatever a background thread most recently wrote via a threaded
         // "VAL ?= PLUGIN.CMD args &" - see uVolatileMacroStore.hpp's rationale).
         bool m_replaceVariableMacros(std::string &strInput, bool bDeferRuntimeVarMacros = false);
+        /** Reads the script-level settings from the validated entries. */
         bool m_retrieveScriptSettings() noexcept;
+        /** Runs the script entries in order. */
         bool m_executeScript() noexcept;
 
         // Executes a BITSTREAM/BYTESTREAM statement: expands every field's
@@ -188,6 +201,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
         bool m_buildStreamStatement(const StreamStatement &sCommand, const std::string &strLineNr,
                                     std::string &strResultHex) noexcept;
 
+        /** Executes a BITSTREAMVAL/BYTESTREAMVAL statement and returns the decimal result in @p strResultDecimal; false (logged) on error. */
         bool m_buildStreamValStatement(const StreamValStatement &sCommand, const std::string &strLineNr,
                                        std::string &strResultDecimal) noexcept;
 
@@ -212,6 +226,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
         // to implement backward jumps.
         bool m_executeCommand(ScriptLine &sData, bool bRealExec, size_t &iIndex) noexcept;
         bool m_executeCommands(bool bRealExec) noexcept;
+        /** Returns whether plugin @p strPluginName is already loaded. */
         bool m_pluginIsLoaded(const std::string &strPluginName) noexcept;
 
         // Unified condition evaluator — handles both plain boolean expressions

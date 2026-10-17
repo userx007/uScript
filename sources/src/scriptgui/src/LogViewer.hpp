@@ -38,19 +38,25 @@ class LogEdit : public QPlainTextEdit
 
         // Gutter geometry/paint – called by LogLineNumberArea
         int lineNumberAreaWidth() const;
+        /** Paints the line-number gutter. */
         void lineNumberAreaPaintEvent(QPaintEvent *pEv);
 
     protected:
+        /** Keeps the gutter geometry in sync with the editor. */
         void resizeEvent(QResizeEvent *pEv) override;
+        /** Selects the word and highlights its other occurrences. */
         void mouseDoubleClickEvent(QMouseEvent *pEv) override;
         void mousePressEvent(QMouseEvent *pEv) override;
 
     private slots:
+        /** Reserves the viewport margin for the line-number gutter. */
         void updateLineNumberAreaWidth(int iNewBlockCount);
+        /** Scrolls or repaints the gutter after the editor changed. */
         void updateLineNumberArea(const QRect &rect, int iDy);
 
     private:
         void applyWordHighlights(const QString &word);
+        /** Removes the word-occurrence highlights. */
         void clearWordHighlights();
 
         LogLineNumberArea *m_lineNumberArea;
@@ -79,7 +85,9 @@ class LogViewer : public QFrame
         // Append a plain status message (rendered in dim italic, not from interpreter).
         void appendStatus(const QString &msg);
 
+        /** Clears the log. */
         void clear();
+        /** Saves the log to a file; does nothing if there is nothing new. */
         void saveLog();
         void setScriptPath(const QString &scriptPath); // called on tab switch / load
         // Set the font used in the log text area (called by MainWindow for Ctrl+/-).
@@ -94,6 +102,7 @@ class LogViewer : public QFrame
         // Nestable; only the outermost begin/end pair takes effect. Safe to
         // call endBatch() with nothing appended in between (no-op).
         void beginBatch();
+        /** Ends a batch started with beginBatch(); unbalanced calls are ignored. */
         void endBatch();
 
         // Returns the numeric enum value of the selected log level (0=WERBOSE …
@@ -102,6 +111,7 @@ class LogViewer : public QFrame
 
     public slots:
 
+        /** Enables or disables scrolling to the newest line. */
         void setAutoScroll(bool bOn)
         {
             m_autoScroll = bOn;
@@ -115,6 +125,7 @@ class LogViewer : public QFrame
         }
 
     private:
+        /** Appends one line of HTML to the log. */
         void appendFormattedLine(const QString &html);
         void markDirty(); // enable save button + clear "saved" label on first new content
 

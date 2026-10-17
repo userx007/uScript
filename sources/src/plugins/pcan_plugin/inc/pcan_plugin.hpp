@@ -62,20 +62,20 @@
  * Wraps the PCAN-Basic driver (PEAK-System PCAN hardware) and exposes it
  * through the standard PluginInterface dispatch model.
  *
- * The command set is intentionally identical to the KVCAN and SLCAN plugins
+ * The command set is intentionally identical to the KCAN and SLCAN plugins
  * at the command level (INFO / CONFIG / FILTER / CMD / SCRIPT) so that
  * scripts written for those plugins can be reused with minimal changes —
  * only the CONFIG key "i=" changes meaning (PCAN channel handle instead of
  * SocketCAN interface name or serial device path).
  *
- * Key differences vs KVCAN / SLCAN:
+ * Key differences vs KCAN / SLCAN:
  *   - "i=" accepts a PCAN channel handle in decimal or 0x-hex format
  *     (e.g. "0x51" = PCAN_USBBUS1, "81" = same value in decimal).
  *   - "b=" sets the CAN bitrate in bps (e.g. "500000" for 500 kbps).
  *   - "e=" forces 29-bit extended frame format (0 = auto, 1 = force EFF).
  *   - "f=" enables CAN FD mode (0 = classic CAN, 1 = CAN FD).
  *   - FILTER accepts the same comma-separated "<id>:<mask>" syntax as
- *     KVCAN.FILTER, but — unlike KVCAN's arbitrary-length kernel filter
+ *     KCAN.FILTER, but — unlike KCAN's arbitrary-length kernel filter
  *     list — only the FIRST entry is actually enforced: the driver
  *     (PCAN::frameMatchesFilter()) tracks a single active RX filter id,
  *     checked in software against every frame PCAN_Read() already
@@ -84,16 +84,16 @@
  *     effect; see m_ParseFilters()'s doc comment.
  *
  * TX/RX id defaults and per-call overrides (see also uPcan.cpp):
- *   As with KVCAN, setCanTxId() (the CONFIG command's "x=" key) replaces
+ *   As with KCAN, setCanTxId() (the CONFIG command's "x=" key) replaces
  *   the whole filter list with one entry matching the new TX id, so the
  *   default RX id always mirrors the default TX id unless overridden by
  *   an explicit FILTER command. Because PCAN::resolveTxId()/resolveRxId()
  *   recompute fresh from xtra_params on every tout_write()/tout_read()
  *   call — nothing is ever persisted mid-call — a CMD/SCRIPT's "~ id"
  *   xtra_params override is inherently transient and race-free: unlike
- *   KVCAN's SocketCAN kernel filter or SLCAN's adapter-side filter, there
+ *   KCAN's SocketCAN kernel filter or SLCAN's adapter-side filter, there
  *   is no hardware/kernel gate that could silently drop a frame before a
- *   filter change takes effect, so no KVCAN-style "arm before write" or
+ *   filter change takes effect, so no KCAN-style "arm before write" or
  *   SLCAN-style "channel must be closed" workaround is needed here.
  *
  * Extra command vs UART/I2C/SPI plugins:
@@ -361,7 +361,7 @@ class PCANPlugin : public PluginInterface
          *        Accepts decimal or 0x-prefixed hex strings.
          *
          *        The stored value follows the SocketCAN canid_t convention so it stays
-         *        identical to the KVCAN and SLCAN plugin's setCanTxId:
+         *        identical to the KCAN and SLCAN plugin's setCanTxId:
          *          - 11-bit standard IDs (<=0x7FF): stored as-is.
          *          - 29-bit extended IDs (>0x7FF) : CAN_EFF_FLAG (0x80000000)
          *            is set automatically if the caller did not set it already,
@@ -371,16 +371,16 @@ class PCANPlugin : public PluginInterface
          *        Every time the TX id is (re)configured — whether from the CONFIG
          *        command's "x:" key or from the CAN_TX_ID ini entry — m_vFilters is
          *        replaced with a single entry matching this same id, mirroring the
-         *        KVCAN plugin's "replace the whole filter set with one entry"
+         *        KCAN plugin's "replace the whole filter set with one entry"
          *        behaviour. m_OpenAndConfigure() forwards that entry's id to the
          *        driver's single RX filter slot (see PCAN::setDefaultRxFilterId())
          *        the next time a channel is opened by CMD/SCRIPT.
          *
-         *        \note Unlike KVCAN's arbitrary-length kernel filter list, PCAN-Basic
+         *        \note Unlike KCAN's arbitrary-length kernel filter list, PCAN-Basic
          *        (as wired up here) only ever acts on ONE active RX filter id at a
          *        time — see m_OpenAndConfigure(), which forwards only the first
          *        m_vFilters entry to the driver. A CONFIG's "x=" therefore always
-         *        replaces the whole list with that one entry (matching KVCAN's
+         *        replaces the whole list with that one entry (matching KCAN's
          *        behaviour exactly), but an explicit FILTER command with several
          *        "id:mask" entries will still only have its first entry actually
          *        enforced — see FILTER's own doc comment for details. A per-call
@@ -500,7 +500,7 @@ class PCANPlugin : public PluginInterface
         }
 
         // ---- TpConfig tuning parameters -----------------------------------------
-        // Same field set / semantics as the KVCAN plugin (see its kvcan_plugin.hpp
+        // Same field set / semantics as the KCAN plugin (see its kcan_plugin.hpp
         // for the full per-field doc); tunes whichever protocol setCanTpProtocol()
         // selected above. A field a given protocol doesn't use is ignored by it.
 
@@ -509,109 +509,130 @@ class PCANPlugin : public PluginInterface
             return numeric::str2uint8(strVal, m_sTpConfig.blockSize);
         }
 
+        /** Sets the tp st min from its string form; returns false if the value is invalid. */
         bool setTpStMin(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.stMin);
         }
 
+        /** Sets the tp pad frames from its string form; returns false if the value is invalid. */
         bool setTpPadFrames(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.padFrames);
         }
 
+        /** Sets the tp padding byte from its string form; returns false if the value is invalid. */
         bool setTpPaddingByte(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.paddingByte);
         }
 
+        /** Sets the tp timeout nbs from its string form; returns false if the value is invalid. */
         bool setTpTimeoutNBs(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutNBs_ms);
         }
 
+        /** Sets the tp timeout ncr from its string form; returns false if the value is invalid. */
         bool setTpTimeoutNCr(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutNCr_ms);
         }
 
+        /** Sets the tp max message len from its string form; returns false if the value is invalid. */
         bool setTpMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.maxMessageLen);
         }
 
+        /** Sets the j1939 use bam from its string form; returns false if the value is invalid. */
         bool setJ1939UseBam(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.j1939UseBam);
         }
 
+        /** Sets the j1939 max packets from its string form; returns false if the value is invalid. */
         bool setJ1939MaxPackets(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.j1939MaxPackets);
         }
 
+        /** Sets the tp timeout t1 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT1(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT1_ms);
         }
 
+        /** Sets the tp timeout t2 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT2(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT2_ms);
         }
 
+        /** Sets the tp timeout t3 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT3(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT3_ms);
         }
 
+        /** Sets the tp timeout th from its string form; returns false if the value is invalid. */
         bool setTpTimeoutTh(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutTh_ms);
         }
 
+        /** Sets the j1939 max message len from its string form; returns false if the value is invalid. */
         bool setJ1939MaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.j1939MaxMessageLen);
         }
 
+        /** Sets the can open index from its string form; returns false if the value is invalid. */
         bool setCanOpenIndex(const std::string &strVal) const
         {
             return numeric::str2uint16(strVal, m_sTpConfig.canOpenIndex);
         }
 
+        /** Sets the can open sub index from its string form; returns false if the value is invalid. */
         bool setCanOpenSubIndex(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.canOpenSubIndex);
         }
 
+        /** Sets the can open use block from its string form; returns false if the value is invalid. */
         bool setCanOpenUseBlock(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.canOpenUseBlock);
         }
 
+        /** Sets the can open block size from its string form; returns false if the value is invalid. */
         bool setCanOpenBlockSize(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.canOpenBlockSize);
         }
 
+        /** Sets the tp timeout sdo from its string form; returns false if the value is invalid. */
         bool setTpTimeoutSdo(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutSdo_ms);
         }
 
+        /** Sets the can open max message len from its string form; returns false if the value is invalid. */
         bool setCanOpenMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.canOpenMaxMessageLen);
         }
 
+        /** Sets the tp timeout fp inter frame from its string form; returns false if the value is invalid. */
         bool setTpTimeoutFpInterFrame(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutFpInterFrame_ms);
         }
 
+        /** Sets the fp max message len from its string form; returns false if the value is invalid. */
         bool setFpMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.fastPacketMaxMessageLen);
@@ -664,7 +685,7 @@ class PCANPlugin : public PluginInterface
          *        Each entry has the form "<id>:<mask>" (hex or decimal).
          *        Example: "0x100:0x7FF,0x18DAF100:0x1FFFFFFF"
          *
-         *        CAN_EFF_FLAG auto-correction mirrors the KVCAN plugin's m_ParseFilters:
+         *        CAN_EFF_FLAG auto-correction mirrors the KCAN plugin's m_ParseFilters:
          *        an id > 0x7FF without CAN_EFF_FLAG set triggers a warning and the flag
          *        is added automatically.
          *
@@ -673,7 +694,7 @@ class PCANPlugin : public PluginInterface
          *        RX filter id, forwarded from m_vFilters.front() by m_OpenAndConfigure().
          *        Additional comma-separated entries are accepted and stored here (e.g. so
          *        a FILTER command roundtrips through getParams()/setParams() unchanged),
-         *        but are NOT currently matched against incoming frames — unlike KVCAN,
+         *        but are NOT currently matched against incoming frames — unlike KCAN,
          *        which supports an arbitrary-length kernel filter list. Multi-id filtering
          *        would require extending PCAN::tout_read()/resolveRxId() to accept more
          *        than one id; flagging this here rather than silently relying on entries

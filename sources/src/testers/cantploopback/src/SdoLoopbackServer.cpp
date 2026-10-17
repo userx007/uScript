@@ -21,6 +21,7 @@ namespace
     constexpr uint8_t kScsUlInitiate = 2;
     constexpr uint8_t kScsDlInitiate = 3;
 
+    /** Reads one frame from @p bus on @p rxId within the timeout. */
     bool read_frame(const ICommDriver &bus, uint32_t u32TimeoutMs, std::string_view rxId, Frame &sOut)
     {
         ICommDriver::ReadOptions opts;
@@ -29,6 +30,7 @@ namespace
         return rr.status == ICommDriver::Status::SUCCESS;
     }
 
+    /** Writes frame @p sF to @p bus on @p txId within the timeout. */
     bool write_frame(const ICommDriver &bus, uint32_t u32TimeoutMs, std::string_view txId, const Frame &sF)
     {
         auto wr = bus.tout_write(u32TimeoutMs, std::span<const uint8_t>(sF.data(), sF.size()), txId);

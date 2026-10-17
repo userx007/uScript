@@ -29,11 +29,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED CH341Plugin *pluginEntry()
     {
         return new CH341Plugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(CH341Plugin *pPlugin)
     {
         if (nullptr != pPlugin) {

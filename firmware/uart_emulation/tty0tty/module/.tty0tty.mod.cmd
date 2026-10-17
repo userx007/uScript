@@ -1,0 +1,1 @@
+savedcmd_/media/userx/HDEXT/Workarea/uScript/firmware/uart_emulation/tty0tty/module/tty0tty.mod := printf '%s\n'   tty0tty.o | awk '!x[$$0]++ { print("/media/userx/HDEXT/Workarea/uScript/firmware/uart_emulation/tty0tty/module/"$$0) }' > /media/userx/HDEXT/Workarea/uScript/firmware/uart_emulation/tty0tty/module/tty0tty.mod

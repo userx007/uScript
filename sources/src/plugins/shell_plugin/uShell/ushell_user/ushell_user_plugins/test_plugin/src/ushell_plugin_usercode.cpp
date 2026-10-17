@@ -30,6 +30,7 @@ int vtest(void)
 }
 
 /*---------------------------------------------------------------*/
+/** Test command: hexlifies a fixed 16-byte buffer and logs the result. */
 int vhexlify(void)
 {
     int iRetVal = SHELLFCT_RETVAL_ERR;
@@ -57,6 +58,7 @@ int vhexlify(void)
 }
 
 /*---------------------------------------------------------------*/
+/** Test command: logs one integer argument. */
 int itest(uint32_t u32I)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> itest()");
@@ -66,6 +68,7 @@ int itest(uint32_t u32I)
 }
 
 /*---------------------------------------------------------------*/
+/** Test command: logs one string argument. */
 int stest(char *pstrS)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> stest()");
@@ -75,6 +78,7 @@ int stest(char *pstrS)
 }
 
 /*---------------------------------------------------------------*/
+/** Test command: unhexlifies the string argument and logs the bytes. */
 int sunhexlify(char *pstrS)
 {
     int iRetVal = SHELLFCT_RETVAL_ERR;
@@ -108,6 +112,7 @@ int sunhexlify(char *pstrS)
 }
 
 /*---------------------------------------------------------------*/
+/** Test command: logs two integer arguments. */
 int iitest(uint32_t u32I1, uint32_t u32I2)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> iitest()");
@@ -118,6 +123,7 @@ int iitest(uint32_t u32I1, uint32_t u32I2)
 }
 
 /*---------------------------------------------------------------*/
+/** Test command: logs an integer and a string argument. */
 int istest(uint32_t u32I, char *pstrS)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> istest()");
@@ -128,6 +134,7 @@ int istest(uint32_t u32I, char *pstrS)
 }
 
 /*---------------------------------------------------------------*/
+/** Test command: logs two string arguments. */
 int sstest(char *pstrS1, char *pstrS2)
 {
     uSHELL_LOG(ULOG_VERBOSE, "--> sstest()");
@@ -138,6 +145,7 @@ int sstest(char *pstrS1, char *pstrS2)
 }
 
 /*---------------------------------------------------------------*/
+/** Test command: prints a 64-bit integer, an integer and a bool argument. */
 int liotest(uint64_t u64L, uint32_t u32I, bool bO)
 {
     uSHELL_PRINTF("--> liotest()\n");
@@ -167,6 +175,7 @@ void uShellUserHandleShortcut_Slash(const char *pstrArgs)
 } /* uShellUserHandleShortcut_Dot() */
 
 /*----------------------------------------------------------------------------*/
+/** User shortcut handler for `.` (not implemented; logs a warning). */
 void uShellUserHandleShortcut_Dot(const char *pstrArgs)
 {
     uSHELL_LOG(ULOG_VERBOSE, "[.] shortcut handler | args [%s] called..", pstrArgs);

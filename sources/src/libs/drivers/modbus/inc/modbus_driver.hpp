@@ -71,12 +71,14 @@ class ModbusDriver : public ICommDriver
                 std::string strInstanceName;
         };
 
+        /** Creates the driver or protocol object from its configuration. */
         explicit ModbusDriver(Config sConfig);
         ~ModbusDriver();
 
         /// Opens the real TCPIP connection. No session handshake beyond that —
         /// see class doc comment.
         bool open();
+        /** Closes the device. */
         void close();
 
         // ---- ICommDriver ----
@@ -88,10 +90,13 @@ class ModbusDriver : public ICommDriver
         // describeConnection() for its own bookkeeping regardless of pfsend/
         // pfrecv being set.
         bool is_open() const override;
+        /** Describes this connection for the communication dump. */
         CommDetails describeConnection(std::string_view xtra_params = {}) const override;
+        /** Writes @p buffer, waiting at most the write timeout. */
         ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
                                             std::string_view xtra_params = {},
                                             std::stop_token stop_tok     = {}) const override;
+        /** Reads into @p buffer, waiting at most the read timeout. */
         ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                           const ICommDriver::ReadOptions &options,
                                           std::string_view xtra_params = {},
@@ -158,12 +163,19 @@ class ModbusDriver : public ICommDriver
         // should wait for and how to decode it. Returns false on bad arguments
         // or a send failure.
         bool m_HandleReadCoils(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles Modbus function 0x02 (read discrete inputs). */
         bool m_HandleReadDiscreteInputs(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles Modbus function 0x03 (read holding registers). */
         bool m_HandleReadHoldingRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles Modbus function 0x04 (read input registers). */
         bool m_HandleReadInputRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles Modbus function 0x05 (write single coil). */
         bool m_HandleWriteSingleCoil(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles Modbus function 0x06 (write single register). */
         bool m_HandleWriteSingleRegister(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles Modbus function 0x0F (write multiple coils). */
         bool m_HandleWriteMultipleCoils(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
+        /** Handles Modbus function 0x10 (write multiple registers). */
         bool m_HandleWriteMultipleRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const;
 
         // Shared by the four read handlers: parses "<unit_id> <start_addr>

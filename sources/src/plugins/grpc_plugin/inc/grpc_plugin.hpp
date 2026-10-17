@@ -83,6 +83,7 @@
 class GrpcPlugin : public PluginInterface
 {
     public:
+        /** Registers the plugin's commands and default settings. */
         GrpcPlugin()
             : m_strVersion(GRPC_PLUGIN_VERSION)
             , m_strInstanceName(GRPC_PLUGIN_NAME)
@@ -111,16 +112,19 @@ class GrpcPlugin : public PluginInterface
 
         ~GrpcPlugin() = default;
 
+        /** Returns whether doInit() has succeeded. */
         bool isInitialized(void) const
         {
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled(void) const
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psSetParams)
         {
             bool bRetVal = false;
@@ -132,31 +136,37 @@ class GrpcPlugin : public PluginInterface
             return bRetVal;
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psGetParams) const
         {
             generic_getparams<GrpcPlugin>(this, psGetParams);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<GrpcPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion(void) const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData(void) const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData(void) const
         {
             m_strResultData.clear();
         }
 
+        /** Initialises the plugin. */
         bool doInit(void *pvUserData)
         {
             (void)pvUserData;
@@ -164,17 +174,20 @@ class GrpcPlugin : public PluginInterface
             return true;
         }
 
+        /** Enables the plugin. */
         bool doEnable(void)
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
         {
             return generic_dispatch<GrpcPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup(void)
         {
             m_bIsInitialized = false;
@@ -183,11 +196,13 @@ class GrpcPlugin : public PluginInterface
             m_pDriver.reset();
         }
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant(void) const
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged(void) const
         {
             return m_bIsPrivileged;
@@ -209,26 +224,31 @@ class GrpcPlugin : public PluginInterface
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
+        /** Sets the port from its string form; returns false if the value is invalid. */
         bool setPort(const std::string &strPort) const
         {
             return numeric::str2uint16(strPort, m_u16Port);
         }
 
+        /** Sets the call timeout from its string form; returns false if the value is invalid. */
         bool setCallTimeout(const std::string &strTimeout) const
         {
             return numeric::str2uint32(strTimeout, m_u32CallTimeout);
         }
 
+        /** Sets the connect timeout from its string form; returns false if the value is invalid. */
         bool setConnectTimeout(const std::string &strConnectTimeout) const
         {
             return numeric::str2uint32(strConnectTimeout, m_u32ConnectTimeout);
         }
 
+        /** Sets the read timeout from its string form; returns false if the value is invalid. */
         bool setReadTimeout(const std::string &strTimeout) const
         {
             return numeric::str2uint32(strTimeout, m_u32ReadTimeout);
         }
 
+        /** Sets the read buffer size from its string form; returns false if the value is invalid. */
         bool setReadBufferSize(const std::string &strBufSize) const
         {
             return numeric::str2uint32(strBufSize, m_u32ReadBufferSize, /*bFailOnZero=*/true);
@@ -240,92 +260,110 @@ class GrpcPlugin : public PluginInterface
             return m_strHost;
         }
 
+        /** Sets the host setting. */
         void setHost(const std::string &strHost) const
         {
             m_strHost = strHost;
         }
 
+        /** Returns the port setting. */
         uint16_t getPort(void) const
         {
             return m_u16Port;
         }
 
+        /** Returns whether tls enabled. */
         bool isTlsEnabled(void) const
         {
             return m_bUseTls;
         }
 
+        /** Sets the tls enabled from its string form; returns false if the value is invalid. */
         bool setTlsEnabled(const std::string &strValue) const
         {
             BoolExprEvaluator e;
             return e.evaluate(strValue, m_bUseTls);
         }
 
+        /** Returns the tls ca path setting. */
         const std::string &getTlsCaPath(void) const
         {
             return m_strTlsCaPath;
         }
 
+        /** Sets the tls ca path setting. */
         void setTlsCaPath(const std::string &strPath) const
         {
             m_strTlsCaPath = strPath;
         }
 
+        /** Returns the tls cert path setting. */
         const std::string &getTlsCertPath(void) const
         {
             return m_strTlsCertPath;
         }
 
+        /** Sets the tls cert path setting. */
         void setTlsCertPath(const std::string &strPath) const
         {
             m_strTlsCertPath = strPath;
         }
 
+        /** Returns the tls key path setting. */
         const std::string &getTlsKeyPath(void) const
         {
             return m_strTlsKeyPath;
         }
 
+        /** Sets the tls key path setting. */
         void setTlsKeyPath(const std::string &strPath) const
         {
             m_strTlsKeyPath = strPath;
         }
 
+        /** Returns the descriptor set path setting. */
         const std::string &getDescriptorSetPath(void) const
         {
             return m_strDescriptorSetPath;
         }
 
+        /** Sets the descriptor set path setting. */
         void setDescriptorSetPath(const std::string &strPath) const
         {
             m_strDescriptorSetPath = strPath;
         }
 
+        /** Returns the auth token setting. */
         const std::string &getAuthToken(void) const
         {
             return m_strAuthToken;
         }
 
+        /** Sets the auth token setting. */
         void setAuthToken(const std::string &strVal) const
         {
             m_strAuthToken = strVal;
         }
 
+        /** Returns the call timeout setting. */
         uint32_t getCallTimeout(void) const
         {
             return m_u32CallTimeout;
         }
 
+        /** Returns the connect timeout setting. */
         uint32_t getConnectTimeout(void) const
         {
             return m_u32ConnectTimeout;
         }
 
+        /** Returns the read timeout setting. */
         uint32_t getReadTimeout(void) const
         {
             return m_u32ReadTimeout;
         }
 
+        /** Returns the read buffer size setting. */
         uint32_t getReadBufferSize(void) const
         {
             return m_u32ReadBufferSize;
@@ -340,6 +378,7 @@ class GrpcPlugin : public PluginInterface
         // "Session lifetime".
         std::shared_ptr<GrpcDriver> m_OpenDriver(void) const;
 
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         // Members

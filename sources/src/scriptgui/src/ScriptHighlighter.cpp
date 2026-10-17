@@ -78,6 +78,7 @@ static constexpr auto C_BOOL_FALSE   = "#CB2C2A"; // red       — FALSE (matche
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
+/** Builds the highlighting rules for the script language. */
 ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
     : ScriptHighlighterBase(pParent)
 {
@@ -717,7 +718,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
 
     // ── 15. xtra_params  ~ param | param2  ───────────────────────────────
     //  Comm-script xtra_params syntax can appear on main-script lines too
-    //  (e.g.  KVCAN.CMD > H"AA" | H"BB" ~ 0x21 | 0x22).
+    //  (e.g.  KCAN.CMD > H"AA" | H"BB" ~ 0x21 | 0x22).
     //  Must be last so capture-group rules paint over any numeric colour.
     addXtraParamRules();
 

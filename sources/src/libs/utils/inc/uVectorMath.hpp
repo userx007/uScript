@@ -182,6 +182,7 @@ class VectorMath
         std::unordered_map<std::string, IntOp> int_ops_;
         std::unordered_map<std::string, DoubleOp> double_ops_;
 
+        /** Fills the operator-string to IntOp/DoubleOp lookup tables. */
         void initializeOperatorMaps()
         {
             // Integer operations (both forms map to same operation)
@@ -203,12 +204,14 @@ class VectorMath
             double_ops_["/"] = double_ops_["/="] = DoubleOp::Div;
         }
 
+        /** Maps @p strRule to an IntOp, or IntOp::Invalid. */
         IntOp parseIntOp(const std::string &strRule) const
         {
             auto it = int_ops_.find(strRule);
             return (it != int_ops_.end()) ? it->second : IntOp::Invalid;
         }
 
+        /** Maps @p strRule to a DoubleOp, or DoubleOp::Invalid. */
         DoubleOp parseDoubleOp(const std::string &strRule) const
         {
             auto it = double_ops_.find(strRule);
@@ -237,6 +240,7 @@ class VectorMath
             return val;
         }
 
+        /** Parses @p strS as a finite double; throws std::invalid_argument on empty, trailing-garbage or non-finite input. */
         double parseDouble(const std::string &strS) const
         {
             if (strS.empty()) {
@@ -268,6 +272,7 @@ class VectorMath
             return std::to_string(u64Val);
         }
 
+        /** Formats @p dVal with @p iPrecision significant digits. */
         std::string formatDouble(double dVal, int iPrecision) const
         {
             std::ostringstream oss;

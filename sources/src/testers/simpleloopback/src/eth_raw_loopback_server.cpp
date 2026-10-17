@@ -47,7 +47,7 @@
 //     server would echo its own echoes forever.
 //   - Dumps every frame, both RX (as received) and TX (as echoed back, with
 //     addresses already swapped) in a candump-like table — see
-//     print_frame() — same DIR/.../DATA layout kvcan_loopback.c uses for
+//     print_frame() — same DIR/.../DATA layout kcan_loopback.c uses for
 //     CAN frames, with SRC MAC/DST MAC/ETHERTYPE in place of CAN's ID/DLC.
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current
 //     recvfrom() call returns.
@@ -80,11 +80,13 @@ namespace
 
     volatile sig_atomic_t g_stop    = 0;
 
+    /** Signal handler: requests shutdown. */
     void on_signal(int /*sig*/)
     {
         g_stop = 1;
     }
 
+    /** Formats a MAC address as aa:bb:cc:dd:ee:ff. */
     std::string mac_to_string(const uint8_t *pu8Mac)
     {
         char sz[18];
@@ -93,6 +95,7 @@ namespace
         return std::string(sz);
     }
 
+    /** Returns whether two MAC addresses are equal. */
     bool mac_equal(const uint8_t *pu8A, const uint8_t *pu8B)
     {
         return std::memcmp(pu8A, pu8B, MAC_LEN) == 0;
@@ -101,12 +104,12 @@ namespace
     /** Print one Ethernet frame in a candump-like table row: DIR, SRC MAC,
      *  DST MAC, ETHERTYPE, LEN, and a hex dump of the payload (the bytes
      *  after the 14-byte header) — the raw-Ethernet analogue of
-     *  kvcan_loopback.c's print_frame(), with CAN's ID/DLC swapped out for
+     *  kcan_loopback.c's print_frame(), with CAN's ID/DLC swapped out for
      *  the fields that actually identify an Ethernet frame. Reads the
      *  frame straight out of the wire buffer (`frame`/`frameLen`) rather
      *  than taking the header fields as separate arguments, so the exact
      *  same call works for both the as-received RX frame and the
-     *  address-swapped TX frame that gets echoed back — same as kvcan's
+     *  address-swapped TX frame that gets echoed back — same as kcan's
      *  print_frame(prefix, &frame) being called before AND after the frame
      *  is reused for the echoed reply.
      */
@@ -162,6 +165,7 @@ namespace
         return true;
     }
 
+    /** Enables promiscuous mode on interface @p iIfindex; false on failure. */
     bool enable_promiscuous(int iFd, int iIfindex)
     {
         struct packet_mreq sMreq = {};

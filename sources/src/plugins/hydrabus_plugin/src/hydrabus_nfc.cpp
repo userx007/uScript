@@ -47,6 +47,7 @@ bool HydrabusPlugin::m_handle_nfc_help(const std::string &, std::stop_token /*st
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
 
+/** Handles `mode` on the NFC module: selects the mode. */
 bool HydrabusPlugin::m_handle_nfc_mode(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -70,6 +71,7 @@ bool HydrabusPlugin::m_handle_nfc_mode(const std::string &strArgs, std::stop_tok
     return true;
 }
 
+/** Handles `rf` on the NFC module: controls the RF field. */
 bool HydrabusPlugin::m_handle_nfc_rf(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -169,6 +171,7 @@ bool HydrabusPlugin::m_handle_nfc_write_bits(const std::string &strArgs, std::st
     return true;
 }
 
+/** Handles `aux` on the NFC module: controls the AUX pin. */
 bool HydrabusPlugin::m_handle_nfc_aux(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(strArgs, m_nfc());

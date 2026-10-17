@@ -846,6 +846,7 @@ inline void setLogger(std::shared_ptr<LogBuffer> shpLogger) noexcept
     }
 }
 
+/** Prints a separator line in @p pstrColor (as a GUI log message in GUI mode). */
 inline void log_separator(const char *pstrColor = "\033[95m") noexcept
 {
     if (gui_mode_active()) {

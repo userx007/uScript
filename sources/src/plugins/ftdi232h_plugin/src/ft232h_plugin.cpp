@@ -24,11 +24,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED FT232HPlugin *pluginEntry()
     {
         return new FT232HPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(FT232HPlugin *pP)
     {
         delete pP;
@@ -314,21 +316,25 @@ bool FT232HPlugin::m_FT232H_INFO(const std::string &strArgs, std::stop_token st)
     return true;
 }
 
+/** Dispatches a SPI sub-command to its handler. */
 bool FT232HPlugin::m_FT232H_SPI(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "SPI", strArgs, st);
 }
 
+/** Dispatches a I2C sub-command to its handler. */
 bool FT232HPlugin::m_FT232H_I2C(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "I2C", strArgs, st);
 }
 
+/** Dispatches a GPIO sub-command to its handler. */
 bool FT232HPlugin::m_FT232H_GPIO(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "GPIO", strArgs, st);
 }
 
+/** Dispatches a UART sub-command to its handler. */
 bool FT232HPlugin::m_FT232H_UART(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "UART", strArgs, st);
@@ -446,6 +452,7 @@ static bool parseParity_ft232h(const std::string &strS, uint8_t &u8Out)
     return false;
 }
 
+/** Parses uart params from @p strArgs; returns false if invalid. */
 bool FT232HPlugin::parseUartParams(const std::string &strArgs, UartPendingCfg &cfg,
                                    uint8_t *pu8DeviceIndexOut)
 {

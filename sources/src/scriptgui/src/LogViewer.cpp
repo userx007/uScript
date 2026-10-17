@@ -116,6 +116,7 @@ struct Segment
         QTextCharFormat fmt;
 };
 
+/** Splits @p input at ANSI colour sequences into formatted text segments, starting from @p base. */
 static QList<Segment> ansiToSegments(const QString &input,
                                      const QTextCharFormat &base)
 {
@@ -179,12 +180,14 @@ class LogLineNumberArea : public QWidget
         {
         }
 
+        /** Returns the width of the line-number gutter. */
         QSize sizeHint() const override
         {
             return {m_editor->lineNumberAreaWidth(), 0};
         }
 
     protected:
+        /** Delegates painting to the editor's line-number renderer. */
         void paintEvent(QPaintEvent *pEv) override
         {
             m_editor->lineNumberAreaPaintEvent(pEv);
@@ -349,6 +352,7 @@ void LogEdit::mouseDoubleClickEvent(QMouseEvent *pEv)
     applyWordHighlights(word);
 }
 
+/** Clears word highlights on a plain click. */
 void LogEdit::mousePressEvent(QMouseEvent *pEv)
 {
     // A plain single-click clears highlights; if this becomes a double-click,
@@ -585,6 +589,7 @@ void LogViewer::clear()
     m_countLabel->setText("");
 }
 
+/** Sets the script path; its directory is used as the default save location. */
 void LogViewer::setScriptPath(const QString &scriptPath)
 {
     m_scriptDir = scriptPath.isEmpty()

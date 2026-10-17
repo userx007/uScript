@@ -68,6 +68,7 @@
 
 static volatile int running = 1;
 
+/** Signal handler: stops the main loop. */
 static void sig_handler(int iSig)
 {
     (void)iSig;
@@ -91,6 +92,7 @@ static __s32 i2c_smbus_access(int iFd, char read_write, __u8 command,
     return ioctl(iFd, I2C_SMBUS, &args);
 }
 
+/** Writes @p value to register @p reg via an SMBus byte transfer. */
 static int smbus_write_byte(int iFd, __u8 reg, __u8 value)
 {
     union i2c_smbus_data data;
@@ -99,6 +101,7 @@ static int smbus_write_byte(int iFd, __u8 reg, __u8 value)
                              I2C_SMBUS_BYTE_DATA, &data);
 }
 
+/** Reads register @p reg into @p pValue via an SMBus byte transfer. */
 static int smbus_read_byte(int iFd, __u8 reg, __u8 *pValue)
 {
     union i2c_smbus_data data;
@@ -141,6 +144,7 @@ static int parse_hex_line(char *pstrLine, unsigned char *out, int iMax_out)
     return count;
 }
 
+/** Opens /dev/i2c-<iBus_num> and selects slave @p iAddress; returns the fd or -1. */
 static int open_i2c_bus(int iBus_num, int iAddress)
 {
     char path[32];

@@ -1,7 +1,7 @@
 // loopback.cpp
 //
 // Unified loopback/bridge tool. Replaces the five standalone testers
-// (uart_loopback, kvcan_loopback/vcan_mirror, eth_loopback_server,
+// (uart_loopback, kcan_loopback/vcan_mirror, eth_loopback_server,
 // udp_loopback_server, eth_raw_loopback_server) with one program that can
 // mirror a channel to itself (their original behaviour, unchanged) or
 // bridge any supported transport to any other.
@@ -20,7 +20,7 @@
 //
 // Spec syntax (see channel_factory.hpp for the full grammar):
 //   uart:<device>[/<baud>]                 e.g. uart:/dev/tnt0/115200
-//   kvcan:<iface>[/<can_id>]                e.g. kvcan:vcan0/0x100
+//   kcan:<iface>[/<can_id>]                e.g. kcan:vcan0/0x100
 //   tcpip:[server/]<port>[/<bindaddr>]      e.g. tcpip:5000
 //   tcpip:client/<host>/<port>              e.g. tcpip:client/10.0.0.5/5000
 //   udp:[server/]<port>[/<bindaddr>]        e.g. udp:5000
@@ -29,9 +29,9 @@
 //
 // Examples:
 //   loopback -i uart:/dev/tnt0/115200                       (UART -> UART, mirror)
-//   loopback -i kvcan:vcan0                                  (CAN  -> CAN,  mirror)
-//   loopback -i uart:/dev/tnt0/115200 -o kvcan:vcan0/0x100 -t 500
-//   loopback -i kvcan:can0 -o tcpip:client/10.0.0.5/6000 -t 100
+//   loopback -i kcan:vcan0                                  (CAN  -> CAN,  mirror)
+//   loopback -i uart:/dev/tnt0/115200 -o kcan:vcan0/0x100 -t 500
+//   loopback -i kcan:can0 -o tcpip:client/10.0.0.5/6000 -t 100
 //
 // Every RX and every TX is dumped to stdout, CAN frames in candump-like
 // "ID [DLC] bytes" form, everything else as "[len] hex bytes" - matching
@@ -51,6 +51,7 @@ namespace loopback
 {
     volatile sig_atomic_t g_stop = 0;
 
+    /** Signal handler: requests shutdown. */
     static void onSignal(int /*sig*/)
     {
         g_stop = 1;
@@ -86,6 +87,7 @@ namespace loopback
 namespace
 {
 
+    /** Prints the command-line usage. */
     void printUsage(const char *pstrArgv0)
     {
         std::fprintf(stderr,
@@ -96,18 +98,19 @@ namespace
                      "  -t   delay in ms between RX and the mirrored/forwarded TX (default: 0)\n"
                      "\n"
                      "  spec := uart:<device>[/<baud>]\n"
-                     "        | kvcan:<iface>[/<can_id>]\n"
+                     "        | kcan:<iface>[/<can_id>]\n"
                      "        | tcpip:[server/]<port>[/<bindaddr>] | tcpip:client/<host>/<port>\n"
                      "        | udp:[server/]<port>[/<bindaddr>]   | udp:client/<host>/<port>\n"
                      "        | raweth:<ifname>[/<ethertype>][/promisc]\n"
                      "\n"
                      "Examples:\n"
                      "  %s -i uart:/dev/tnt0/115200\n"
-                     "  %s -i kvcan:vcan0\n"
-                     "  %s -i uart:/dev/tnt0/115200 -o kvcan:vcan0/0x100 -t 500\n",
+                     "  %s -i kcan:vcan0\n"
+                     "  %s -i uart:/dev/tnt0/115200 -o kcan:vcan0/0x100 -t 500\n",
                      pstrArgv0, pstrArgv0, pstrArgv0, pstrArgv0);
     }
 
+    /** Sleeps for @p iDelay_ms milliseconds, waking early when stop is requested. */
     void sleepInterruptible(int iDelay_ms)
     {
         const int step_ms = 20;
@@ -166,8 +169,8 @@ int main(int iArgc, char *argv[])
         } else {
             auto candidate_output = loopback::createChannel(out_spec);
             if (candidate_output->identity() == input_channel->identity()) {
-                // Same underlying endpoint (e.g. "-i kvcan:vcan0 -o
-                // kvcan:vcan0"): collapse to one shared channel instead of
+                // Same underlying endpoint (e.g. "-i kcan:vcan0 -o
+                // kcan:vcan0"): collapse to one shared channel instead of
                 // opening the resource twice. For CAN in particular this
                 // also avoids an echo storm between two sockets on the
                 // same interface (see can_channel.hpp).

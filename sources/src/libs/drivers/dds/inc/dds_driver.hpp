@@ -148,6 +148,7 @@ class DdsDriver : public ICommDriver
         /// config.domainId), creates this driver's DDS participant plus the
         /// three built-in discovery readers DDS.CMD > LIST reads from.
         bool open();
+        /** Closes the device. */
         void close();
 
         // ---- ICommDriver ----
@@ -156,10 +157,13 @@ class DdsDriver : public ICommDriver
         // drives it through send()/receive() below instead — these three are
         // thin passthroughs for interface completeness.
         bool is_open() const override;
+        /** Describes this connection for the communication dump. */
         CommDetails describeConnection(std::string_view xtra_params = {}) const override;
+        /** Writes @p buffer, waiting at most the write timeout. */
         ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
                                             std::string_view xtra_params = {},
                                             std::stop_token stop_tok     = {}) const override;
+        /** Reads into @p buffer, waiting at most the read timeout. */
         ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                           const ICommDriver::ReadOptions &options,
                                           std::string_view xtra_params = {},
@@ -219,6 +223,7 @@ class DdsDriver : public ICommDriver
         /// builtin discovery topics (DCPSParticipant / DCPSPublication /
         /// DCPSSubscription) rather than a hand-maintained map. Thread-safe.
         std::vector<DiscoveredParticipantView> listParticipants() const;
+        /** Lists the discovered DDS endpoints. */
         std::vector<DiscoveredEndpointView> listEndpoints() const;
 
     private:
@@ -291,11 +296,16 @@ class DdsDriver : public ICommDriver
         // ---- helpers (implemented in dds_driver.cpp) ----
         std::string m_BuildDomainConfigXml() const;
         DdsEntity m_EnsureLocalWriter(const std::string &strTopic) const;
+        /** Returns the local reader for @p topic, creating it if needed. */
         std::shared_ptr<LocalReader> m_EnsureLocalReader(const std::string &topic) const;
 
+        /** Publishes the payload to @p strTopic; returns false on failure. */
         bool m_Publish(const std::string &strTopic, const std::string &strPayload) const;
+        /** Subscribes to @p strTopic; returns false on failure. */
         bool m_Subscribe(const std::string &strTopic) const;
+        /** Unsubscribes from @p strTopic; returns false on failure. */
         bool m_Unsubscribe(const std::string &strTopic) const;
+        /** Builds the text returned by the LIST command. */
         std::string m_BuildListText() const;
 
         /// Shared body of receive()'s multiplexed (xtra_params empty, 2+

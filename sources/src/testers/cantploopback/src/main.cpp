@@ -36,6 +36,7 @@ namespace
 {
     std::atomic<bool> g_running{true};
 
+    /** Signal handler: requests shutdown. */
     void on_signal(int /*sig*/)
     {
         g_running = false;
@@ -87,6 +88,7 @@ namespace
             bool verbose       = false;
     };
 
+    /** Parses an unsigned decimal number; returns false if invalid. */
     bool parse_uint(const char *pstrS, uint32_t &u32Out)
     {
         try {
@@ -97,6 +99,7 @@ namespace
         }
     }
 
+    /** Parses the command line into @p sOut; returns false on bad usage. */
     bool parse_args(int iArgc, char **ppstrArgv, Args &sOut)
     {
         if (iArgc < 6) {
@@ -139,6 +142,7 @@ namespace
         return true;
     }
 
+    /** Prints a received/sent frame when @p bVerbose is set. */
     void log_frame(bool bVerbose, const char *pstrDir, const std::string &strRxId, const std::string &strTxId,
                    const std::vector<uint8_t> &vData)
     {
@@ -152,6 +156,7 @@ namespace
         std::fprintf(stderr, "\n");
     }
 
+    /** Sleeps for @p u32DelayMs milliseconds (no-op if 0). */
     void sleep_delay(uint32_t u32DelayMs)
     {
         if (u32DelayMs > 0) {

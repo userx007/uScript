@@ -118,7 +118,7 @@ class PCAN : public ICommDriver
         static constexpr uint32_t PCAN_DEFAULT_TX_ID         = 0x7FF; ///< Default TX CAN ID.
         static constexpr uint32_t PCAN_DEFAULT_RX_FILTER_ID  = 0x000; ///< 0 = accept all (open filter).
 
-        /// SocketCAN canid_t convention used by every CAN plugin (KVCAN, SLCAN,
+        /// SocketCAN canid_t convention used by every CAN plugin (KCAN, SLCAN,
         /// PCAN) for TX ids, RX filter ids, and xtra_params overrides: bit 31
         /// set → 29-bit extended frame. PCANBasic's own TPCANMsg::ID field has
         /// no such flag bit (extended-ness lives in MSGTYPE instead), so any
@@ -316,7 +316,7 @@ class PCAN : public ICommDriver
          * Set the id expected for incoming response/handshake frames when a
          * segmented transport protocol is active. If never called, the
          * effective rx id mirrors the default TX id (see resolveTpRxId()) —
-         * the same "single id, both directions" default KVCAN/SLCAN use.
+         * the same "single id, both directions" default KCAN/SLCAN use.
          * Distinct from setDefaultRxFilterId(): that one still governs the
          * legacy naive-fragmentation read path (0 = accept-all); this one
          * only affects TpProtocol::ISO_TP / ::J1939_TP.
@@ -379,7 +379,7 @@ class PCAN : public ICommDriver
          * belonging to an incoming message: xtra_params when present and
          * parseable, else m_u32TpRxId if setTpRxId() was called, else the
          * default TX id (mirrors setCanTxId()'s single-id default on the
-         * KVCAN/SLCAN plugins). Deliberately distinct from resolveRxId():
+         * KCAN/SLCAN plugins). Deliberately distinct from resolveRxId():
          * that one defaults to accept-all (0) for the legacy fragmentation
          * path, which would be the wrong default for a protocol that needs
          * a specific peer response id, not "everything".

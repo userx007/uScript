@@ -144,6 +144,7 @@ namespace loopback
             }
 
         private:
+            /** Opens the listening socket. */
             bool openServer()
             {
                 struct addrinfo hints;
@@ -192,6 +193,7 @@ namespace loopback
                 return true;
             }
 
+            /** Connects to the server. */
             bool openClient()
             {
                 struct addrinfo hints;
@@ -236,6 +238,7 @@ namespace loopback
                 return true;
             }
 
+            /** Formats a socket address as host:port. */
             static std::string peerToString(const struct sockaddr_storage &addr, socklen_t addr_len)
             {
                 char host[NI_MAXHOST] = "?";

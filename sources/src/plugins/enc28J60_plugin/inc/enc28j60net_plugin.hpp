@@ -51,6 +51,7 @@
 class Enc28J60NetPlugin : public PluginInterface
 {
     public:
+        /** Registers the plugin's commands and default settings. */
         Enc28J60NetPlugin()
             : m_strVersion(ENC28J60NET_PLUGIN_VERSION)
             , m_strInstanceName(ENC28J60NET_PLUGIN_NAME)
@@ -76,16 +77,19 @@ class Enc28J60NetPlugin : public PluginInterface
 
         ~Enc28J60NetPlugin() = default;
 
+        /** Returns whether doInit() has succeeded. */
         bool isInitialized(void) const
         {
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled(void) const
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psSetParams)
         {
             bool bRetVal = false;
@@ -97,31 +101,37 @@ class Enc28J60NetPlugin : public PluginInterface
             return bRetVal;
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psGetParams) const
         {
             generic_getparams<Enc28J60NetPlugin>(this, psGetParams);
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st = {}) const
         {
             return generic_dispatch<Enc28J60NetPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<Enc28J60NetPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion(void) const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData(void) const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData(void) const
         {
             m_strResultData.clear();
@@ -143,43 +153,51 @@ class Enc28J60NetPlugin : public PluginInterface
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant(void) const
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged(void) const
         {
             return m_bIsPrivileged;
         }
 
+        /** Enables the plugin. */
         bool doEnable(void)
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Returns the server ip setting. */
         const char *getServerIp(void) const
         {
             return m_strServerIp.c_str();
         }
 
+        /** Sets the server ip. */
         void setServerIp(const std::string &strServerIp) const
         {
             m_strServerIp.assign(strServerIp);
         }
 
+        /** Returns the server port setting. */
         uint16_t getServerPort(void) const
         {
             return m_u16ServerPort;
         }
 
+        /** Initialises the plugin. */
         bool doInit(void *pvUserData)
         {
             m_bIsInitialized = true;
             return m_bIsInitialized;
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup(void)
         {
             m_bIsInitialized = false;
@@ -187,6 +205,7 @@ class Enc28J60NetPlugin : public PluginInterface
             m_strResultData.clear();
         }
 
+        /** Sets the server port from its string form; returns false if the value is invalid. */
         bool setServerPort(const std::string &strServerPort) const
         {
             static constexpr uint32_t TCP_PORT_MAX = 65535U;
@@ -202,16 +221,19 @@ class Enc28J60NetPlugin : public PluginInterface
             return true;
         }
 
+        /** Sets the read timeout from its string form; returns false if the value is invalid. */
         bool setReadTimeout(const std::string &strReadTimeout) const
         {
             return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
         }
 
+        /** Sets the write timeout from its string form; returns false if the value is invalid. */
         bool setWriteTimeout(const std::string &strWriteTimeout) const
         {
             return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
         }
 
+        /** Sets the read buffer size from its string form; returns false if the value is invalid. */
         bool setReadBufferSize(const std::string &strReadBufferSize) const
         {
             static constexpr uint32_t MAX_BUF = 1460U;
@@ -228,6 +250,7 @@ class Enc28J60NetPlugin : public PluginInterface
         }
 
     private:
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
         std::shared_ptr<Enc28J60Net> m_OpenDriver(void) const;
 

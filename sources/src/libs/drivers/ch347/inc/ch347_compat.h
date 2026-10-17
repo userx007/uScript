@@ -164,6 +164,7 @@ static inline CH347_HANDLE CH347_OpenDevice_Compat(const char *pstrDevice) noexc
     return idx;
 }
 
+/** Compatibility wrapper for the vendor CH347_CloseDevice call; returns false on failure. */
 static inline bool CH347_CloseDevice_Compat(CH347_HANDLE idx) noexcept
 {
     return ::CH347CloseDevice(idx) != FALSE;
@@ -248,6 +249,7 @@ static inline bool CH347SPI_Init_Compat(CH347_HANDLE idx, mSpiCfgS *pCfg) noexce
 
 #define CH347SPI_Init CH347SPI_Init_Compat
 
+/** Compatibility wrapper for the vendor CH347SPI_GetCfg call; returns false on failure. */
 static inline bool CH347SPI_GetCfg_Compat(CH347_HANDLE idx, mSpiCfgS *pCfg) noexcept
 {
     return ::CH347SPI_GetCfg(idx, pCfg) != FALSE;
@@ -255,6 +257,7 @@ static inline bool CH347SPI_GetCfg_Compat(CH347_HANDLE idx, mSpiCfgS *pCfg) noex
 
 #define CH347SPI_GetCfg CH347SPI_GetCfg_Compat
 
+/** Compatibility wrapper for the vendor CH347SPI_SetFrequency call; returns false on failure. */
 static inline bool CH347SPI_SetFrequency_Compat(CH347_HANDLE idx,
                                                 uint32_t u32Hz) noexcept
 {
@@ -263,6 +266,7 @@ static inline bool CH347SPI_SetFrequency_Compat(CH347_HANDLE idx,
 
 #define CH347SPI_SetFrequency CH347SPI_SetFrequency_Compat
 
+/** Compatibility wrapper for the vendor CH347SPI_SetDataBits call; returns false on failure. */
 static inline bool CH347SPI_SetDataBits_Compat(CH347_HANDLE idx,
                                                uint8_t u8DataBits) noexcept
 {
@@ -289,6 +293,7 @@ static inline bool CH347SPI_SetAutoCS(CH347_HANDLE /*idx*/,
     return true; // no-op – see doxygen above
 }
 
+/** Compatibility wrapper for the vendor CH347SPI_ChangeCS call; returns false on failure. */
 static inline bool CH347SPI_ChangeCS_Compat(CH347_HANDLE idx,
                                             uint8_t u8Status) noexcept
 {
@@ -333,11 +338,13 @@ static inline bool CH347SPI_WriteRead(CH347_HANDLE idx,
 // ============================================================================
 // I2C
 // ============================================================================
+/** Compatibility wrapper for the vendor CH347I2C_Set call; returns false on failure. */
 static inline bool CH347I2C_Set(CH347_HANDLE idx, int iMode) noexcept
 {
     return ::CH347I2C_Set(idx, static_cast<ULONG>(iMode)) != FALSE;
 }
 
+/** Compatibility wrapper for the vendor CH347I2C_SetStretch call; returns false on failure. */
 static inline bool CH347I2C_SetStretch(CH347_HANDLE idx, bool bEnable) noexcept
 {
     return ::CH347I2C_SetStretch(idx, bEnable ? TRUE : FALSE) != FALSE;
@@ -353,6 +360,7 @@ static inline bool CH347I2C_SetDriveMode(CH347_HANDLE idx,
     return ::CH347I2C_SetDriverMode(idx, static_cast<UCHAR>(u8Mode)) != FALSE;
 }
 
+/** Compatibility wrapper for the vendor CH347I2C_SetIgnoreNack call; returns false on failure. */
 static inline bool CH347I2C_SetIgnoreNack_Compat(CH347_HANDLE idx,
                                                  uint8_t u8Mode) noexcept
 {
@@ -361,11 +369,13 @@ static inline bool CH347I2C_SetIgnoreNack_Compat(CH347_HANDLE idx,
 
 #define CH347I2C_SetIgnoreNack CH347I2C_SetIgnoreNack_Compat
 
+/** Compatibility wrapper for the vendor CH347I2C_SetDelaymS call; returns false on failure. */
 static inline bool CH347I2C_SetDelaymS(CH347_HANDLE idx, int iDelay) noexcept
 {
     return ::CH347I2C_SetDelaymS(idx, static_cast<ULONG>(iDelay)) != FALSE;
 }
 
+/** Compatibility wrapper for the vendor CH347I2C_SetAckClk_DelayuS call; returns false on failure. */
 static inline bool CH347I2C_SetAckClk_DelayuS(CH347_HANDLE idx,
                                               int iDelay) noexcept
 {
@@ -373,6 +383,7 @@ static inline bool CH347I2C_SetAckClk_DelayuS(CH347_HANDLE idx,
                                         static_cast<ULONG>(iDelay)) != FALSE;
 }
 
+/** Compatibility wrapper for the vendor CH347StreamI2C call; returns false on failure. */
 static inline bool CH347StreamI2C(CH347_HANDLE idx,
                                   int iWriteLength,
                                   void *pvWriteBuffer,
@@ -408,6 +419,7 @@ static inline bool CH347StreamI2C_RetAck(CH347_HANDLE idx,
     return ok;
 }
 
+/** Compatibility wrapper for the vendor CH347ReadEEPROM call; returns false on failure. */
 static inline bool CH347ReadEEPROM(CH347_HANDLE idx,
                                    EEPROM_TYPE iEepromID,
                                    int iAddr,
@@ -420,6 +432,7 @@ static inline bool CH347ReadEEPROM(CH347_HANDLE idx,
                              pu8OBuffer) != FALSE;
 }
 
+/** Compatibility wrapper for the vendor CH347WriteEEPROM call; returns false on failure. */
 static inline bool CH347WriteEEPROM(CH347_HANDLE idx,
                                     EEPROM_TYPE iEepromID,
                                     int iAddr,
@@ -454,6 +467,7 @@ static inline bool CH347GPIO_Get_Compat(CH347_HANDLE idx,
 
 #define CH347GPIO_Get CH347GPIO_Get_Compat
 
+/** Compatibility wrapper for the vendor CH347GPIO_Set call; returns false on failure. */
 static inline bool CH347GPIO_Set_Compat(CH347_HANDLE idx,
                                         uint8_t u8Enable,
                                         uint8_t u8SetDirOut,
@@ -580,6 +594,7 @@ static inline bool CH347Jtag_INIT_Compat(CH347_HANDLE idx,
 
 #define CH347Jtag_INIT CH347Jtag_INIT_Compat
 
+/** Compatibility wrapper for the vendor CH347Jtag_GetCfg call; returns false on failure. */
 static inline bool CH347Jtag_GetCfg_Compat(CH347_HANDLE idx,
                                            uint8_t *pu8ClockRate) noexcept
 {
@@ -633,6 +648,7 @@ static inline bool CH347Jtag_SwitchTapState(CH347_HANDLE idx,
                                         static_cast<UCHAR>(u8TapState)) != FALSE;
 }
 
+/** Compatibility wrapper for the vendor CH347Jtag_TmsChange call; returns false on failure. */
 static inline bool CH347Jtag_TmsChange_Compat(CH347_HANDLE idx,
                                               uint8_t *pu8TmsValue,
                                               uint32_t u32Step,
@@ -666,6 +682,7 @@ static inline bool CH347Jtag_IoScanT_Compat(CH347_HANDLE idx,
 
 #define CH347Jtag_IoScanT CH347Jtag_IoScanT_Compat
 
+/** Compatibility wrapper for the vendor CH347Jtag_ByteWriteDR call; returns false on failure. */
 static inline bool CH347Jtag_ByteWriteDR_Compat(CH347_HANDLE idx,
                                                 int iWriteLength,
                                                 void *pvWriteBuffer) noexcept
@@ -677,6 +694,7 @@ static inline bool CH347Jtag_ByteWriteDR_Compat(CH347_HANDLE idx,
 
 #define CH347Jtag_ByteWriteDR CH347Jtag_ByteWriteDR_Compat
 
+/** Compatibility wrapper for the vendor CH347Jtag_ByteReadDR call; returns false on failure. */
 static inline bool CH347Jtag_ByteReadDR_Compat(CH347_HANDLE idx,
                                                uint32_t *pu32OReadLength,
                                                void *pvOReadBuffer) noexcept
@@ -691,6 +709,7 @@ static inline bool CH347Jtag_ByteReadDR_Compat(CH347_HANDLE idx,
 
 #define CH347Jtag_ByteReadDR CH347Jtag_ByteReadDR_Compat
 
+/** Compatibility wrapper for the vendor CH347Jtag_ByteWriteIR call; returns false on failure. */
 static inline bool CH347Jtag_ByteWriteIR_Compat(CH347_HANDLE idx,
                                                 int iWriteLength,
                                                 void *pvWriteBuffer) noexcept
@@ -702,6 +721,7 @@ static inline bool CH347Jtag_ByteWriteIR_Compat(CH347_HANDLE idx,
 
 #define CH347Jtag_ByteWriteIR CH347Jtag_ByteWriteIR_Compat
 
+/** Compatibility wrapper for the vendor CH347Jtag_ByteReadIR call; returns false on failure. */
 static inline bool CH347Jtag_ByteReadIR_Compat(CH347_HANDLE idx,
                                                uint32_t *pu32OReadLength,
                                                void *pvOReadBuffer) noexcept
@@ -716,6 +736,7 @@ static inline bool CH347Jtag_ByteReadIR_Compat(CH347_HANDLE idx,
 
 #define CH347Jtag_ByteReadIR CH347Jtag_ByteReadIR_Compat
 
+/** Compatibility wrapper for the vendor CH347Jtag_WriteRead call; returns false on failure. */
 static inline bool CH347Jtag_WriteRead_Compat(CH347_HANDLE idx,
                                               bool bIsDR,
                                               int iWriteBitLength,
@@ -737,6 +758,7 @@ static inline bool CH347Jtag_WriteRead_Compat(CH347_HANDLE idx,
 
 #define CH347Jtag_WriteRead CH347Jtag_WriteRead_Compat
 
+/** Compatibility wrapper for the vendor CH347Jtag_WriteRead_Fast call; returns false on failure. */
 static inline bool CH347Jtag_WriteRead_Fast_Compat(CH347_HANDLE idx,
                                                    bool bIsDR,
                                                    int iWriteLength,

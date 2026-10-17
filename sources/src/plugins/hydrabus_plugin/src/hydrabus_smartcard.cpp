@@ -52,6 +52,7 @@ bool HydrabusPlugin::m_handle_smartcard_help(const std::string &, std::stop_toke
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
 
+/** Handles `cfg` on the SMARTCARD module: configures the module. */
 bool HydrabusPlugin::m_handle_smartcard_cfg(const std::string &strArgs, std::stop_token /*st*/) const
 {
     auto *p = m_smartcard();
@@ -89,6 +90,7 @@ bool HydrabusPlugin::m_handle_smartcard_cfg(const std::string &strArgs, std::sto
     return true;
 }
 
+/** Handles `rst` on the SMARTCARD module: resets the card. */
 bool HydrabusPlugin::m_handle_smartcard_rst(const std::string &strArgs, std::stop_token /*st*/) const
 {
     if (strArgs == "help") {
@@ -108,6 +110,7 @@ bool HydrabusPlugin::m_handle_smartcard_rst(const std::string &strArgs, std::sto
     return p->set_rst(v);
 }
 
+/** Handles `baud` on the SMARTCARD module: sets the baud rate. */
 bool HydrabusPlugin::m_handle_smartcard_baud(const std::string &strArgs, std::stop_token /*st*/) const
 {
     if (strArgs == "help") {
@@ -126,6 +129,7 @@ bool HydrabusPlugin::m_handle_smartcard_baud(const std::string &strArgs, std::st
     return p->set_baud(baud);
 }
 
+/** Handles `prescaler` on the SMARTCARD module: sets the clock prescaler. */
 bool HydrabusPlugin::m_handle_smartcard_prescaler(const std::string &strArgs, std::stop_token /*st*/) const
 {
     if (strArgs == "help") {
@@ -144,6 +148,7 @@ bool HydrabusPlugin::m_handle_smartcard_prescaler(const std::string &strArgs, st
     return p->set_prescaler(v);
 }
 
+/** Handles `guardtime` on the SMARTCARD module: sets the guard time. */
 bool HydrabusPlugin::m_handle_smartcard_guardtime(const std::string &strArgs, std::stop_token /*st*/) const
 {
     if (strArgs == "help") {
@@ -162,6 +167,7 @@ bool HydrabusPlugin::m_handle_smartcard_guardtime(const std::string &strArgs, st
     return p->set_guardtime(v);
 }
 
+/** Handles `write` on the SMARTCARD module: writes data. */
 bool HydrabusPlugin::m_handle_smartcard_write(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -180,6 +186,7 @@ bool HydrabusPlugin::m_handle_smartcard_write(const std::string &strArgs, std::s
     return p->write(data, st);
 }
 
+/** Handles `read` on the SMARTCARD module: reads data. */
 bool HydrabusPlugin::m_handle_smartcard_read(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -201,6 +208,7 @@ bool HydrabusPlugin::m_handle_smartcard_read(const std::string &strArgs, std::st
     return true;
 }
 
+/** Handles `atr` on the SMARTCARD module: reads the ATR. */
 bool HydrabusPlugin::m_handle_smartcard_atr(const std::string &strArgs, std::stop_token st) const
 {
     if (strArgs == "help") {
@@ -218,6 +226,7 @@ bool HydrabusPlugin::m_handle_smartcard_atr(const std::string &strArgs, std::sto
     return true;
 }
 
+/** Handles `aux` on the SMARTCARD module: controls the AUX pin. */
 bool HydrabusPlugin::m_handle_smartcard_aux(const std::string &strArgs, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(strArgs, m_smartcard());

@@ -50,6 +50,7 @@ namespace
     bool g_verbose                              = false;
     std::atomic<bool> g_running{true};
 
+    /** Prints @p vData under @p pstrLabel when verbose output is on. */
     void hexdump(const char *pstrLabel, const std::vector<uint8_t> &vData)
     {
         if (!g_verbose) {
@@ -78,6 +79,7 @@ namespace
         return true;
     }
 
+    /** Sends all @p len bytes, retrying on partial sends; false on error. */
     bool writeFull(tp_socket_t iFd, const uint8_t *pu8Buf, size_t len)
     {
         size_t sent = 0;
@@ -91,11 +93,13 @@ namespace
         return true;
     }
 
+    /** Reads a big-endian 16-bit value. */
     uint16_t be16(const uint8_t *pu8P)
     {
         return static_cast<uint16_t>((pu8P[0] << 8) | pu8P[1]);
     }
 
+    /** Appends a big-endian 16-bit value. */
     void putBe16(std::vector<uint8_t> &vOut, uint16_t u16V)
     {
         vOut.push_back(static_cast<uint8_t>((u16V >> 8) & 0xFF));
@@ -116,6 +120,7 @@ namespace
         return adu;
     }
 
+    /** Builds a Modbus exception response PDU. */
     std::vector<uint8_t> buildExceptionPdu(uint8_t functionCode, uint8_t exceptionCode)
     {
         return {static_cast<uint8_t>(functionCode | kExceptionFlag), exceptionCode};
@@ -277,6 +282,7 @@ namespace
         }
     }
 
+    /** Serves one Modbus TCP client until it disconnects. */
     void handleClient(tp_socket_t iClientFd, std::string strPeerLabel, ModbusDataStore *pStore)
     {
         std::printf("[+] client connected: %s\n", strPeerLabel.c_str());
@@ -324,6 +330,7 @@ namespace
         tp_close(iClientFd);
     }
 
+    /** Signal handler: requests shutdown. */
     void onSignal(int)
     {
         g_running = false;

@@ -88,7 +88,7 @@
  * Requirements:
  *   AF_PACKET raw sockets require CAP_NET_RAW (or root). This driver is
  *   Linux-only; there is no portable BSD sockets equivalent of AF_PACKET,
- *   so — like uKVCan — it does not ship a macOS backend.
+ *   so — like uKCan — it does not ship a macOS backend.
  */
 class RawEth : public ICommDriver
 {

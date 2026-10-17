@@ -1,11 +1,11 @@
-// can_channel.hpp - SocketCAN ("kvcan") driver.
+// can_channel.hpp - SocketCAN ("kcan") driver.
 //
 // Mirror mode (this same channel object is used as both input and output,
-// i.e. "-i kvcan:vcan0" with no "-o", or "-o kvcan:vcan0" identical to the
+// i.e. "-i kcan:vcan0" with no "-o", or "-o kcan:vcan0" identical to the
 // input spec) reproduces vcan_mirror.c exactly: a single socket with
 // CAN_RAW_RECV_OWN_MSGS=0, relying on CAN_RAW_LOOPBACK staying on (the
 // default) so the frame we write is still delivered to every other local
-// socket - just not back to ourselves. See kvcan_loopback.c's header
+// socket - just not back to ourselves. See kcan_loopback.c's header
 // comment for the full rationale; it is not repeated here.
 //
 // Bridge mode (a *different* CanChannel object, e.g. a different
@@ -36,7 +36,7 @@ namespace loopback
     {
         public:
             // fixed_id: arbitration ID to use on TX, from the spec (e.g.
-            // "kvcan:vcan0/0x100"). If absent, TX falls back to the ID carried in
+            // "kcan:vcan0/0x100"). If absent, TX falls back to the ID carried in
             // the Message (i.e. whatever a CAN *input* channel last received),
             // and finally to kDefaultId.
             CanChannel(std::string strIfname, std::optional<uint32_t> fixed_id)
@@ -174,7 +174,7 @@ namespace loopback
 
             std::string name() const override
             {
-                std::string s = "kvcan:" + ifname_;
+                std::string s = "kcan:" + ifname_;
                 if (fixed_id_) {
                     char buf[16];
                     std::snprintf(buf, sizeof(buf), "/0x%X", *fixed_id_);
@@ -189,7 +189,7 @@ namespace loopback
             // between them (see the file header comment).
             std::string identity() const override
             {
-                return "kvcan:" + ifname_;
+                return "kcan:" + ifname_;
             }
 
             bool isCan() const override
@@ -199,7 +199,7 @@ namespace loopback
 
             void dump(const char *pstrDir, const Message &sMsg) const override
             {
-                dump_can("kvcan:" + ifname_, pstrDir, sMsg.can_id, sMsg.data.data(), sMsg.data.size());
+                dump_can("kcan:" + ifname_, pstrDir, sMsg.can_id, sMsg.data.data(), sMsg.data.size());
             }
 
         private:

@@ -59,7 +59,7 @@ KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
      * that could "miss" a reply while the address is being changed — I2C is
      * a synchronous point-to-point exchange on this same fd — so it is
      * enough to install the override before the read and restore m_u8Addr
-     * immediately after. m_mutex is held for the whole call (unlike KVCAN,
+     * immediately after. m_mutex is held for the whole call (unlike KCAN,
      * which releases it before blocking I/O), so no other tout_read()/
      * tout_write() call on this instance can interleave a different address
      * in between.
@@ -154,7 +154,7 @@ KI2C::WriteResult KI2C::tout_write(uint32_t u32WriteTimeout,
     WriteResult result;
 
     // See tout_read() above for why a plain install-before/restore-after is
-    // sufficient here and doesn't need KVCAN's snapshot/restore machinery.
+    // sufficient here and doesn't need KCAN's snapshot/restore machinery.
     bool bTransientAddr = false;
 
     if (!xtra_params.empty()) {

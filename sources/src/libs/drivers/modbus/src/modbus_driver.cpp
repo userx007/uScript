@@ -63,6 +63,7 @@ namespace
     thread_local uint16_t tl_pendingQuantity    = 0; // ReadBits only — see ModbusProtocol::decodeReadBitsResponse()
 } // namespace
 
+/** Creates the driver or protocol object from its configuration. */
 ModbusDriver::ModbusDriver(Config sConfig)
     : m_config(std::move(sConfig))
 {
@@ -483,6 +484,7 @@ bool ModbusDriver::m_HandleReadCoils(const std::vector<std::string> &vArgs, std:
     return true;
 }
 
+/** Handles Modbus function 0x02 (read discrete inputs). */
 bool ModbusDriver::m_HandleReadDiscreteInputs(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     uint8_t unitId;
@@ -504,6 +506,7 @@ bool ModbusDriver::m_HandleReadDiscreteInputs(const std::vector<std::string> &vA
     return true;
 }
 
+/** Handles Modbus function 0x03 (read holding registers). */
 bool ModbusDriver::m_HandleReadHoldingRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     uint8_t unitId;
@@ -524,6 +527,7 @@ bool ModbusDriver::m_HandleReadHoldingRegisters(const std::vector<std::string> &
     return true;
 }
 
+/** Handles Modbus function 0x04 (read input registers). */
 bool ModbusDriver::m_HandleReadInputRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     uint8_t unitId;
@@ -544,6 +548,7 @@ bool ModbusDriver::m_HandleReadInputRegisters(const std::vector<std::string> &vA
     return true;
 }
 
+/** Handles Modbus function 0x05 (write single coil). */
 bool ModbusDriver::m_HandleWriteSingleCoil(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     if (vArgs.size() != 3) {
@@ -577,6 +582,7 @@ bool ModbusDriver::m_HandleWriteSingleCoil(const std::vector<std::string> &vArgs
     return true;
 }
 
+/** Handles Modbus function 0x06 (write single register). */
 bool ModbusDriver::m_HandleWriteSingleRegister(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     if (vArgs.size() != 3) {
@@ -609,6 +615,7 @@ bool ModbusDriver::m_HandleWriteSingleRegister(const std::vector<std::string> &v
     return true;
 }
 
+/** Handles Modbus function 0x0F (write multiple coils). */
 bool ModbusDriver::m_HandleWriteMultipleCoils(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     if (vArgs.size() < 3) {
@@ -651,6 +658,7 @@ bool ModbusDriver::m_HandleWriteMultipleCoils(const std::vector<std::string> &vA
     return true;
 }
 
+/** Handles Modbus function 0x10 (write multiple registers). */
 bool ModbusDriver::m_HandleWriteMultipleRegisters(const std::vector<std::string> &vArgs, std::string_view xtra_params) const
 {
     if (vArgs.size() < 3) {

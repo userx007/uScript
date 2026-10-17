@@ -23,11 +23,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED TCPIPPlugin *pluginEntry()
     {
         return new TCPIPPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(TCPIPPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -46,8 +48,8 @@ extern "C"
  *        host/port, honouring the configured connect timeout.
  *
  * Opened per-invocation (from m_TCPIP_CMD / m_TCPIP_SCRIPT) rather than
- * held open for the plugin's lifetime, the same pattern the KVCAN plugin
- * uses for its SocketKVCAN handle: this keeps a single command's failure
+ * held open for the plugin's lifetime, the same pattern the KCAN plugin
+ * uses for its SocketCAN handle: this keeps a single command's failure
  * (e.g. an unreachable peer) from poisoning the state of the next one.
  */
 /*--------------------------------------------------------------------------------------------------------*/

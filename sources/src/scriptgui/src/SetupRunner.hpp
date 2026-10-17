@@ -62,6 +62,7 @@ class SetupRunner : public QObject
         // receives sudo's message.  Windows: not verifiable up front, returns true.
         static bool verifyPassword(const QString &password, QString *pError = nullptr);
 
+        /** Returns whether the setup process is running. */
         bool isRunning() const;
 
         // Start the script.  `user` is only used on Windows (empty = no
@@ -73,20 +74,32 @@ class SetupRunner : public QObject
         void stop();
 
     signals:
+        /** Emitted for each complete line of output. */
         void outputLine(const QString &text, bool isError);
+        /** Emitted when the setup process has started. */
         void started();
+        /** Emitted when the process ends; @p crashed tells whether it crashed. */
         void finished(int exitCode, bool crashed);
 
     private:
         void onReadyOut();
+        /** Reads pending stderr. */
         void onReadyErr();
+        /** Drains remaining output, stops the timers and emits finished(). */
         void onProcessFinished(int exitCode, int exitStatus);
+        /** Appends @p chunk to the stdout/stderr buffer and emits every complete line. */
         void feed(const QByteArray &chunk, bool isError);
+        /** Emits any unterminated trailing line. */
         void flushPartial(bool isError);
+        /** Strips the line ending and emits the line. */
         void emitLine(QByteArray raw, bool isError);
+        /** Stops the timers and removes the temporary helper files. */
         void cleanup();
+        /** Runs @p scriptPath via sudo, feeding @p password through an askpass helper. */
         void startPosix(const QString &scriptPath, const QString &password);
+        /** Runs @p scriptPath as @p user with @p password. */
         void startWindows(const QString &scriptPath, const QString &user, const QString &password);
+        /** Reads new output from the redirected stdout/stderr files. */
         void pollTailFiles();
 
         QProcess *m_proc = nullptr;

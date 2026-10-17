@@ -20,11 +20,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED DdsTypedPlugin *pluginEntry()
     {
         return new DdsTypedPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(DdsTypedPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -265,6 +267,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &strArgs, std::stop_toke
     return true;
 }
 
+/** Handles `CONFIG`: sets driver parameters from the arguments. */
 bool DdsTypedPlugin::m_DDS_TYPED_CONFIG(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;

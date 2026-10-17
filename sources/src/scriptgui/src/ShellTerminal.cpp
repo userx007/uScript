@@ -961,6 +961,7 @@ void ShellTerminal::clear()
     m_view->clearAll();
 }
 
+/** Clears the history but keeps the current prompt line. */
 void ShellTerminal::clearPrompt()
 {
     m_view->clearKeepPrompt();

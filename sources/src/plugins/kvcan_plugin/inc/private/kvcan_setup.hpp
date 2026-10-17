@@ -1,7 +1,7 @@
 #ifndef KVCAN_SETUP_HPP
 #define KVCAN_SETUP_HPP
 #include "PluginSetup.hpp"
-#include "kvcan_plugin.hpp"
+#include "kcan_plugin.hpp"
 #include "uCommandExec.hpp"
 #include "uPluginSettings.hpp"
 
@@ -35,7 +35,7 @@
 #define READ_BUF_SIZE            "READ_BUF_SIZE"
 #define CAN_TP_PROTOCOL          "CAN_TP_PROTOCOL"
 
-// ---- TpConfig tuning parameters (see setCanTpProtocol() family in kvcan_plugin.hpp) ----
+// ---- TpConfig tuning parameters (see setCanTpProtocol() family in kcan_plugin.hpp) ----
 #define TP_BLOCK_SIZE            "TP_BLOCK_SIZE"
 #define TP_ST_MIN                "TP_ST_MIN"
 #define TP_PAD_FRAMES            "TP_PAD_FRAMES"

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.25)
-project(kvcan_plugin)
+project(kcan_plugin)
 
 add_library(${PROJECT_NAME}
     SHARED
-        src/kvcan_plugin.cpp
+        src/kcan_plugin.cpp
 )
 
 target_include_directories(${PROJECT_NAME}

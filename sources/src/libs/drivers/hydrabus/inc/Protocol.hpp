@@ -98,13 +98,20 @@ namespace HydraHAL
             // -------------------------------------------------------------------------
 
             bool _write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
+            /** Writes one byte. */
             bool _write_byte(uint8_t u8B, std::stop_token stop_tok = {});
+            /** Writes a 16-bit value, big-endian. */
             bool _write_u16_be(uint16_t u16V, std::stop_token stop_tok = {});
+            /** Writes a 32-bit value, big-endian. */
             bool _write_u32_be(uint32_t u32V, std::stop_token stop_tok = {});
+            /** Writes a 32-bit value, little-endian. */
             bool _write_u32_le(uint32_t u32V, std::stop_token stop_tok = {});
 
+            /** Reads @p n bytes. */
             std::vector<uint8_t> _read(size_t n, std::stop_token stop_tok = {});
+            /** Reads @p n bytes, waiting at most @p timeout_ms. */
             std::vector<uint8_t> _read_with_timeout(size_t n, uint32_t timeout_ms, std::stop_token stop_tok = {});
+            /** Reads one byte. */
             uint8_t _read_byte(std::stop_token stop_tok = {});
 
             /**

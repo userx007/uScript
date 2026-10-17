@@ -90,6 +90,7 @@ static inline Status accessStatus(bool bOk, const char *pstrOp)
     return bOk ? Status::SUCCESS : Status::PORT_ACCESS;
 }
 
+/** Maps a vendor call result to a read Status, logging @p pstrOp on failure. */
 static inline Status readStatus(bool bOk, const char *pstrOp)
 {
     if (!bOk) {
@@ -98,6 +99,7 @@ static inline Status readStatus(bool bOk, const char *pstrOp)
     return bOk ? Status::SUCCESS : Status::READ_ERROR;
 }
 
+/** Maps a vendor call result to a write Status, logging @p pstrOp on failure. */
 static inline Status writeStatus(bool bOk, const char *pstrOp)
 {
     if (!bOk) {

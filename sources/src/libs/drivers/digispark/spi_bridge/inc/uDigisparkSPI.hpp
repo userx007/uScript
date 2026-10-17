@@ -137,6 +137,7 @@ class SPIBridge : public ICommDriver
 
         Status open(uint16_t u16Vid = SPI_DIGISPARK_VID,
                     uint16_t u16Pid = SPI_DIGISPARK_PID);
+        /** Closes the device. */
         Status close();
 
         /**
@@ -284,8 +285,10 @@ class SPIBridge : public ICommDriver
         // ── Private command implementations (called with m_mutex held) ───────────
         ReadResult priv_cmd_transfer(uint32_t u32Timeout, std::span<uint8_t> buffer,
                                      const SPIReadOptions &sOpts, std::stop_token stop_tok = {}) const;
+        /** Sends a read command to the bridge. */
         ReadResult priv_cmd_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
                                  size_t szLen, std::stop_token stop_tok = {}) const;
+        /** Sends a write command to the bridge. */
         WriteResult priv_cmd_write(uint32_t u32Timeout,
                                    std::span<const uint8_t> data, std::stop_token stop_tok = {}) const;
 };

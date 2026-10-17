@@ -98,6 +98,7 @@ namespace uart
 
             constexpr ScanConfig() noexcept = default;
 
+            /** Creates a config with the given polling interval and wait timeout. */
             constexpr ScanConfig(std::chrono::milliseconds poll_interval,
                                  std::chrono::milliseconds wait_timeout = std::chrono::milliseconds{0}) noexcept
                 : polling_interval(poll_interval)
@@ -395,11 +396,13 @@ namespace uart
                 }
             }
 
+            /** Replaces the scan configuration. */
             void set_config(ScanConfig sConfig) noexcept
             {
                 config_ = std::move(sConfig);
             }
 
+            /** Returns the scan configuration. */
             [[nodiscard]] const ScanConfig &get_config() const noexcept
             {
                 return config_;
@@ -619,6 +622,7 @@ namespace uart
 
             detail::DeviceTracker tracker_;
 
+            /** Background thread body: polls for port changes and reports them until monitoring stops. */
             void monitorLoop()
             {
                 try {

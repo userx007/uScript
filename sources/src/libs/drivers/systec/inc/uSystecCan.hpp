@@ -22,9 +22,9 @@
  * this indistinguishable from any other SocketCAN interface at the socket
  * level). The driver opens a raw PF_CAN socket, binds it to the requested
  * interface, and exposes the same ICommDriver read/write surface used by the
- * UART, I2C, SPI and KVCAN drivers.
+ * UART, I2C, SPI and KCAN drivers.
  *
- * @note Unlike uKVCan's SocketCAN wrapper, this driver does NOT enable
+ * @note Unlike uKCan's SocketCAN wrapper, this driver does NOT enable
  *       CAN_RAW_FD_FRAMES / emit canfd_frame: systec_can.ko never sets
  *       CAN_CTRLMODE_FD on the netdev (see systec_can.c — ctrlmode_supported
  *       is only CAN_CTRLMODE_3_SAMPLES | CAN_CTRLMODE_LISTENONLY [|
@@ -243,17 +243,26 @@ class SYSTECCAN : public ICommDriver
 
         /** @brief Device-scoped (shared across both channels of a dual-channel unit). */
         static Status hw_get_devicenr(const std::string &strIface, uint32_t &u32DeviceNr);
+        /** Sets the device number of the adapter behind @p strIface. */
         static Status hw_set_devicenr(const std::string &strIface, uint32_t u32DeviceNr); ///< valid range 0-254
+        /** Resets the adapter hardware. */
         static Status hw_reset(const std::string &strIface);                              ///< USBCAN_CMD_RESET_HW — write-only trigger
+        /** Reports whether the adapter has two channels. */
         static Status hw_get_dual_channel(const std::string &strIface, bool &bDualChannel);
+        /** Reads the status timeout. */
         static Status hw_get_status_timeout(const std::string &strIface, uint32_t &u32TimeoutMs);
+        /** Sets the status timeout. */
         static Status hw_set_status_timeout(const std::string &strIface, uint32_t u32TimeoutMs);
+        /** Reads the high-performance mode flag. */
         static Status hw_get_high_performance(const std::string &strIface, bool &bHighPerformance);
+        /** Sets the high-performance mode flag. */
         static Status hw_set_high_performance(const std::string &strIface, bool bHighPerformance);
 
         /** @brief Channel-scoped (this netdev only). */
         static Status hw_get_channel(const std::string &strIface, uint32_t &u32ChanNo);
+        /** Reads the TX timeout in milliseconds. */
         static Status hw_get_tx_timeout_ms(const std::string &strIface, uint32_t &u32TimeoutMs);
+        /** Sets the TX timeout in milliseconds. */
         static Status hw_set_tx_timeout_ms(const std::string &strIface, uint32_t u32TimeoutMs); ///< dual-channel units only (ENOSYS otherwise)
 
     private:
@@ -268,6 +277,7 @@ class SYSTECCAN : public ICommDriver
         std::string m_strIdentityLabel;            /**< GUI comm-dump display label, see describeConnection(). */
 
         // -----------------------------------------------------------------------
+        /** Returns the TX id given in @p xtra_params, or the default. */
         uint32_t resolveTxId(std::string_view xtra_params) const;
         // Internal transport primitives
         // -----------------------------------------------------------------------
@@ -311,7 +321,7 @@ class SYSTECCAN : public ICommDriver
                              uint32_t u32TxId) const;
 
         // -----------------------------------------------------------------------
-        // KMP helpers (identical strategy to UART / I2C / SPI / KVCAN drivers)
+        // KMP helpers (identical strategy to UART / I2C / SPI / KCAN drivers)
         // -----------------------------------------------------------------------
 
         /** @brief Run KMP stream matching over CAN frame payload bytes. */

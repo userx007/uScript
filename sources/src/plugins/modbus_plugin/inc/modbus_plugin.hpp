@@ -58,7 +58,7 @@
  *     `m_MODBUS_SCRIPT()`/`m_MODBUS_CYCLIC()` hand that driver to
  *     `ucmdexec::generic_cmd()`/`generic_script()`/`generic_send_cyclic()`
  *     — the same shared mechanism every other comm-
- *     driver plugin (UART, TCPIP, KVCAN, MQTT, ...) uses — supplying
+ *     driver plugin (UART, TCPIP, KCAN, MQTT, ...) uses — supplying
  *     `ModbusDriver::send()`/`receive()` directly as the `pfsend`/`pfrecv`
  *     override. The lambdas below capture nothing from this plugin at
  *     all — everything they need comes through the driver parameter.
@@ -99,6 +99,7 @@
 class ModbusPlugin : public PluginInterface
 {
     public:
+        /** Registers the plugin's commands and default settings. */
         ModbusPlugin()
             : m_strVersion(MODBUS_PLUGIN_VERSION)
             , m_strInstanceName(MODBUS_PLUGIN_NAME)
@@ -124,16 +125,19 @@ class ModbusPlugin : public PluginInterface
 
         ~ModbusPlugin() = default;
 
+        /** Returns whether doInit() has succeeded. */
         bool isInitialized(void) const
         {
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled(void) const
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psSetParams)
         {
             bool bRetVal = false;
@@ -145,31 +149,37 @@ class ModbusPlugin : public PluginInterface
             return bRetVal;
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psGetParams) const
         {
             generic_getparams<ModbusPlugin>(this, psGetParams);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<ModbusPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion(void) const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData(void) const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData(void) const
         {
             m_strResultData.clear();
         }
 
+        /** Initialises the plugin. */
         bool doInit(void *pvUserData)
         {
             (void)pvUserData;
@@ -177,17 +187,20 @@ class ModbusPlugin : public PluginInterface
             return true;
         }
 
+        /** Enables the plugin. */
         bool doEnable(void)
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st) const
         {
             return generic_dispatch<ModbusPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup(void)
         {
             m_bIsInitialized = false;
@@ -196,11 +209,13 @@ class ModbusPlugin : public PluginInterface
             m_pDriver.reset();
         }
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant(void) const
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged(void) const
         {
             return m_bIsPrivileged;
@@ -222,6 +237,7 @@ class ModbusPlugin : public PluginInterface
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
+        /** Sets the port from its string form; returns false if the value is invalid. */
         bool setPort(const std::string &strPort) const
         {
             return numeric::str2uint16(strPort, m_u16Port);
@@ -236,11 +252,13 @@ class ModbusPlugin : public PluginInterface
             return true;
         }
 
+        /** Sets the read timeout from its string form; returns false if the value is invalid. */
         bool setReadTimeout(const std::string &strTimeout) const
         {
             return numeric::str2uint32(strTimeout, m_u32ReadTimeout);
         }
 
+        /** Sets the read buffer size from its string form; returns false if the value is invalid. */
         bool setReadBufferSize(const std::string &strBufSize) const
         {
             return numeric::str2uint32(strBufSize, m_u32ReadBufferSize, /*bFailOnZero=*/true);
@@ -255,6 +273,7 @@ class ModbusPlugin : public PluginInterface
         // long as it's still open; see class doc comment's "Session lifetime".
         std::shared_ptr<ModbusDriver> m_OpenDriver(void) const;
 
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         // Members

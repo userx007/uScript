@@ -10,7 +10,7 @@
 /**
  * \brief Shared Knuth-Morris-Pratt (KMP) token-matching helpers used by the
  *        byte/frame/datagram-oriented comm drivers (UART, KI2C, KSPI, CH341,
- *        TCPIP, UDP, KVCAN, RawEth, ...).
+ *        TCPIP, UDP, KCAN, RawEth, ...).
  *
  *        Every one of these drivers implements the same "wait until a token
  *        byte-sequence is seen on the wire" primitive: build a KMP failure
@@ -69,7 +69,7 @@ namespace ukmp
      *        is: readFn(timeout, span<uint8_t> scratch, size_t& bytesRead) -> Status.
      *        Byte-oriented drivers (UART, KI2C, KSPI, CH341) pass a 1-byte
      *        scratch buffer, matching their original one-byte-at-a-time reads;
-     *        packet-oriented drivers (TCPIP, UDP, KVCAN, RawEth) pass their
+     *        packet-oriented drivers (TCPIP, UDP, KCAN, RawEth) pass their
      *        natural chunk/datagram/frame-payload size and this function walks
      *        every byte of each chunk through the state machine - the KMP match
      *        doesn't care whether a chunk boundary splits the token.

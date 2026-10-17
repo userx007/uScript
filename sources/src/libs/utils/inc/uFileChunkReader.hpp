@@ -53,6 +53,7 @@ namespace ufile
         public:
             using ChunkHandler = std::function<bool(std::span<const uint8_t>, std::shared_ptr<const TDriver>)>;
 
+            /** Reads @p strFilename in chunks of @p chunkSize, passing each to @p handler; picks the platform-specific reader. Returns false on failure. */
             static bool read(const std::string &strFilename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
             {
                 if (!handler) {
@@ -77,6 +78,7 @@ namespace ufile
         private:
 #if defined(_WIN32)
 
+            /** Windows implementation of read() (Win32 file API). */
             static bool readWindows(const std::string &strFilename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
             {
                 HANDLE hFile = CreateFileA(strFilename.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
@@ -126,6 +128,7 @@ namespace ufile
 
 #if defined(__unix__) || defined(__APPLE__)
 
+            /** POSIX implementation of read() (open/read). */
             static bool readPosix(const std::string &strFilename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
             {
                 int fd = open(strFilename.c_str(), O_RDONLY);
@@ -168,6 +171,7 @@ namespace ufile
 
 #endif // defined(__unix__) || defined(__APPLE__)
 
+            /** Portable implementation of read() using std::ifstream. */
             static bool readFallback(const std::string &strFilename, std::size_t chunkSize, const ChunkHandler &handler, std::shared_ptr<const TDriver> shpDriver)
             {
                 std::ifstream file(strFilename, std::ios::binary);

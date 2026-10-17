@@ -203,9 +203,12 @@ class VectorEth : public ICommDriver
          */
         Status openDirect(const Vector::DeviceSelector &sel);
 
+        /** Closes the device. */
         Status close();
+        /** Returns whether the device is open. */
         bool is_open() const override;
 
+        /** Describes this connection for the communication dump. */
         CommDetails describeConnection(std::string_view xtra_params = {}) const override
         {
             MacAddress mac;
@@ -228,6 +231,7 @@ class VectorEth : public ICommDriver
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
+        /** Writes @p buffer, waiting at most the write timeout. */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
                                std::string_view xtra_params = {},
@@ -242,6 +246,7 @@ class VectorEth : public ICommDriver
             m_defaultDestMac = mac;
         }
 
+        /** Sets the default EtherType. */
         void setDefaultEtherType(uint16_t u16Val)
         {
             m_u16DefaultEtherType = u16Val;
@@ -253,16 +258,19 @@ class VectorEth : public ICommDriver
             m_strIdentityLabel = strLabel;
         }
 
+        /** Sets the instance name. */
         void setInstanceName(const std::string &strName)
         {
             m_strInstanceName = strName.empty() ? "VectorEth" : strName;
         }
 
+        /** Returns the default destination MAC. */
         MacAddress getDefaultDestMac() const
         {
             return m_defaultDestMac;
         }
 
+        /** Returns the default EtherType. */
         uint16_t getDefaultEtherType() const
         {
             return m_u16DefaultEtherType;
@@ -307,6 +315,7 @@ class VectorEth : public ICommDriver
                 }
         };
 
+        /** Sets the PHY configuration. */
         void setPhyConfig(const PhyConfig &sCfg)
         {
             m_phyConfig = sCfg;
@@ -387,20 +396,26 @@ class VectorEth : public ICommDriver
 #endif
 
         Status recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame &sOut, std::stop_token stop_tok = {}) const;
+        /** Sends an Ethernet frame to @p destMac. */
         Status sendFrame(const MacAddress &destMac, uint16_t u16EtherType, std::span<const uint8_t> data) const;
 
+        /** Returns whether @p sFrame passes the RX filter. */
         bool frameMatchesFilter(const VectorEthRxFrame &sFrame) const;
+        /** Reports a frame to the communication dump. */
         void dumpFrame(CommDir eDir, const MacAddress &peerMac, uint16_t u16EtherType, std::span<const uint8_t> data) const;
 
         static Status mapXlError(XLstatus sts);
 
+        /** Reads exactly buffer.size() bytes or fails on timeout. */
         Status readExact(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
                          size_t &szBytesRead, std::stop_token stop_tok = {}) const;
 
+        /** Reads until the delimiter byte is seen, the buffer is full or the timeout expires. */
         Status readUntilDelimiter(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
                                   uint8_t u8CDelimiter, size_t &szBytesRead,
                                   std::stop_token stop_tok = {}) const;
 
+        /** Reads until @p token has been seen or the timeout expires. */
         Status readUntilToken(uint32_t u32TimeoutMs, std::span<const uint8_t> token,
                               std::stop_token stop_tok = {}) const;
 

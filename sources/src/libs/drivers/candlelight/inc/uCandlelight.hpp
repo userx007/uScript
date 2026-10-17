@@ -318,9 +318,12 @@ class Candlelight : public ICommDriver
         /// Opens the USB device and runs the probe() sequence (HOST_FORMAT →
         /// DEVICE_CONFIG → BT_CONST [→ BT_CONST_EXT if FD-capable]).
         Status open(uint16_t u16Vendor_id, uint16_t u16Product_id, unsigned device_index);
+        /** Closes the device. */
         Status close();
+        /** Returns whether the device is open. */
         bool is_open() const override;
 
+        /** Describes this connection for the communication dump. */
         CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
         {
             return commdump_details(CommFamily::CAN,
@@ -334,26 +337,31 @@ class Candlelight : public ICommDriver
             return m_devConfig;
         }
 
+        /** Returns the device's bit-timing constants. */
         const GsDeviceBtConst &bt_const() const
         {
             return m_btConst;
         }
 
+        /** Returns the extended (CAN-FD) bit-timing constants. */
         const GsDeviceBtConstExtended &bt_const_ext() const
         {
             return m_btConstExt;
         }
 
+        /** Returns whether the device supports CAN-FD. */
         bool is_fd_supported() const
         {
             return (m_btConst.feature & GS_CAN_FEATURE_FD) != 0;
         }
 
+        /** Returns whether the device can report its bus state. */
         bool is_get_state_supported() const
         {
             return (m_btConst.feature & GS_CAN_FEATURE_GET_STATE) != 0;
         }
 
+        /** Returns whether the device has software-controlled bus termination. */
         bool is_termination_supported() const
         {
             return (m_btConst.feature & GS_CAN_FEATURE_TERMINATION) != 0;
@@ -365,6 +373,7 @@ class Candlelight : public ICommDriver
 
         Status set_bittiming(uint32_t u32Prop_seg, uint32_t u32Phase_seg1, uint32_t u32Phase_seg2,
                              uint32_t u32Sjw, uint32_t u32Brp, uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        /** Sets the CAN-FD data-phase bit timing. */
         Status set_data_bittiming(uint32_t u32Prop_seg, uint32_t u32Phase_seg1, uint32_t u32Phase_seg2,
                                   uint32_t u32Sjw, uint32_t u32Brp, uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
@@ -394,6 +403,7 @@ class Candlelight : public ICommDriver
         ///                    triple-sample, one-shot, FD, pad-to-max, berr-reporting)
         Status open_channel(uint32_t u32Mode_flags = GS_CAN_MODE_NORMAL,
                             uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+        /** Closes the CAN channel. */
         Status close_channel(uint32_t u32Timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
 
         // ------------------------------------------------------------------
@@ -504,6 +514,7 @@ class Candlelight : public ICommDriver
         Status probe();
 
         Status ctrl_out(GsUsbBreq eReq, uint16_t u16Value, const void *pvData, uint16_t u16Len, uint32_t u32Timeout_ms);
+        /** Performs a control IN transfer for request @p eReq. */
         Status ctrl_in(GsUsbBreq eReq, uint16_t u16Value, void *pvData, uint16_t u16Len, uint32_t u32Timeout_ms);
 
         Status bulk_write_frame(uint32_t u32Echo_id, const CanFrame &sFrame, uint32_t u32Timeout_ms);

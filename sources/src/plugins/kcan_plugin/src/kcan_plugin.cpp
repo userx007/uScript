@@ -39,11 +39,13 @@
  */
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED KCANPlugin *pluginEntry()
     {
         return new KCANPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(KCANPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -51,6 +53,23 @@ extern "C"
         }
     }
 }
+
+
+namespace
+{
+    /** Replaces the literal plugin name in help text ("KCAN." / "[KCAN]") by the instance name the script used (KCAN, KCAN:1 ...). */
+    std::string withInstance(const char *pszText, const std::string &strName)
+    {
+        std::string str(pszText);
+        for (const auto &[from, to] : {std::pair<std::string, std::string>{"KCAN.", strName + "."},
+                                       std::pair<std::string, std::string>{"[KCAN]", "[" + strName + "]"}}) {
+            for (size_t pos = str.find(from); pos != std::string::npos; pos = str.find(from, pos + to.size())) {
+                str.replace(pos, from.size(), to);
+            }
+        }
+        return str;
+    }
+} // namespace
 
 /////////////////////////////////////////////////////////////////////////////////
 //                 PLUGIN TOP LEVEL COMMANDS                                   //
@@ -89,18 +108,18 @@ bool KCANPlugin::m_KCAN_INFO(const std::string &strArgs, std::stop_token st) con
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(KCAN_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with REAL CAN adapters via SocketCAN (can0, can1 ... e.g. PEAK PCAN-USB"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("             in SocketCAN mode) incl. bus speed setup; also works on vcan0"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: SocketCAN - virtual (vcan0) and real adapters (can0, can1 ... e.g. peak_usb, gs_usb, kvaser_usb)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("             incl. bus speed setup for real adapters."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set interface, bus speed, TX/RX ID, transport and transfer parameters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i=iface] [b=bitrate] [sp=sample_point] [x=tx_id] [y=rx_id] [r=read_tout]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [w=write_tout] [s=recv_bufsize] [t=tp_protocol]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [db=data_bitrate] [dsp=data_sample_point] [fd=on|off] [lo=on|off] [lb=on|off]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [os=on|off] [ts=on|off] [berr=on|off] [rs=restart_ms] [auto=on|off] [e=err_mask]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KCAN.CONFIG i=can0 b=500000 x=0x123 r=2000 w=2000 s=8"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KCAN.CONFIG i=can0 b=250k sp=0.875 x=0x18DAF100"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KCAN.CONFIG i=can0 b=500k fd=on db=2M      (CAN FD)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KCAN.CONFIG x=0x7E0 y=0x7E8 t=isotp"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.CONFIG i=can0 b=500000 x=0x123 r=2000 w=2000 s=8", m_strInstanceName)));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("         KCAN.CONFIG i=can0 b=250k sp=0.875 x=0x18DAF100", m_strInstanceName)));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("         KCAN.CONFIG i=can0 b=500k fd=on db=2M      (CAN FD)", m_strInstanceName)));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("         KCAN.CONFIG x=0x7E0 y=0x7E8 t=isotp", m_strInstanceName)));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : b=bitrate in bit/s (500000, 500k, 1M); sp=sample point (0.875, 87.5 or 875 = 87.5%)."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         Bitrate / modes are applied to the adapter on first use (auto=on, default) or by"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         UP; needs root or CAP_NET_ADMIN, unless the interface is already up with those settings."));
@@ -121,49 +140,49 @@ bool KCANPlugin::m_KCAN_INFO(const std::string &strArgs, std::stop_token st) con
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("UP     : apply the configured bus speed / modes to the adapter and bring it up"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [same key=value tokens as CONFIG]  (optional)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KCAN.UP"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KCAN.UP i=can0 b=500000"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.UP", m_strInstanceName)));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("         KCAN.UP i=can0 b=500000", m_strInstanceName)));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : briefly takes the link down if it has to change the bit-timing; does nothing"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         when the interface is already up with the requested settings"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("DOWN   : bring the interface down (e.g. before handing the adapter to another tool)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KCAN.DOWN"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.DOWN", m_strInstanceName)));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("STATUS : show the interface state; also returned as the command result"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KCAN.STATUS"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.STATUS", m_strInstanceName)));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Result : can0: kind=can up=1 carrier=1 mtu=16 state=ERROR-ACTIVE bitrate=500000 ..."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("RESTART: recover a controller from BUS-OFF (needs rs=0 and the interface up)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KCAN.RESTART"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.RESTART", m_strInstanceName)));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FILTER : install hardware acceptance filters on the open socket"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : <id:mask>[,<id:mask>…]  (empty string clears all filters)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KCAN.FILTER 0x100:0x7FF"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KCAN.FILTER 0x100:0x7FF,0x200:0x7FF"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KCAN.FILTER"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.FILTER 0x100:0x7FF", m_strInstanceName)));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("         KCAN.FILTER 0x100:0x7FF,0x200:0x7FF", m_strInstanceName)));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("         KCAN.FILTER", m_strInstanceName)));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x=tx_id"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KCAN.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.SCRIPT script.txt", m_strInstanceName)));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KCAN.CMD > H\"AABBCCDD\" | H\"06\""));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KCAN.CMD < \"Ready\" | \"Go!\""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.CMD > H\"AABBCCDD\" | H\"06\"", m_strInstanceName)));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("         KCAN.CMD < \"Ready\" | \"Go!\"", m_strInstanceName)));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic CAN) or <= 64 bytes (CAN FD),"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         unless t=tp_protocol selects a segmented transport (see CONFIG)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200", m_strInstanceName)));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("         KCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &", m_strInstanceName)));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : id is optional; when omitted, falls back to the TX id set via CONFIG"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("[KCAN]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("[KCAN]", m_strInstanceName)));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH           =        # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CAN_IFACE                = can0   # SocketCAN interface name (can0, can1, vcan0 ...)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CAN_BITRATE              =        # bus speed in bit/s (500000, 500k, 1M); empty = leave the interface as configured by the system"));
@@ -877,9 +896,13 @@ ICommDriver::WriteResult KCANPlugin::m_Send(uint32_t u32WriteTimeout, std::span<
     }
 
     if (result.status != ICommDriver::Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed:");
-                  LOG_STRING(ICommDriver::to_string(result.status));
-                  LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
+        if (stop_tok.stop_requested()) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Write cancelled (stop requested)"));
+        } else {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed:");
+                      LOG_STRING(ICommDriver::to_string(result.status));
+                      LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
+        }
     }
 
     return result;
@@ -944,9 +967,15 @@ ICommDriver::ReadResult KCANPlugin::m_Receive(uint32_t u32ReadTimeout, std::span
     }
 
     if (result.status != ICommDriver::Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:");
-                  LOG_STRING(ICommDriver::to_string(result.status));
-                  LOG_STRING("Bytes read:"); LOG_SIZET(result.bytes_read));
+        if (stop_tok.stop_requested()) {
+            // The driver reports a requested stop (end of script, STOP button, KILL) through the same
+            // status as a real timeout; that is a deliberate cancellation, not a failed read.
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Read cancelled (stop requested)"));
+        } else {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:");
+                      LOG_STRING(ICommDriver::to_string(result.status));
+                      LOG_STRING("Bytes read:"); LOG_SIZET(result.bytes_read));
+        }
     }
 
     return result;

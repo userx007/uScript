@@ -55,8 +55,8 @@
  *
  * Wraps the UDP datagram-client driver (see uUdp.hpp) and exposes it
  * through the standard PluginInterface dispatch model. UDP is datagram
- * based and message-preserving, like KVCAN and unlike the byte-stream
- * TCPIP plugin, so this plugin's shape mirrors the KVCAN plugin more
+ * based and message-preserving, like KCAN and unlike the byte-stream
+ * TCPIP plugin, so this plugin's shape mirrors the KCAN plugin more
  * closely than the TCPIP one:
  *
  * Extra behaviour vs the TCPIP plugin:
@@ -65,7 +65,7 @@
  *   the payload, the plugin-level equivalent of uUdp.hpp's per-call
  *   xtra_params destination override. Without it, the datagram goes to the
  *   default peer set by CONFIG's h=/p= keys — the same "default unless
- *   overridden for one call" pattern the KVCAN plugin uses for its default
+ *   overridden for one call" pattern the KCAN plugin uses for its default
  *   RX filter vs a per-call xtra_params override.
  *
  * No FILTER command: like TCPIP, source filtering of incoming datagrams is
@@ -300,7 +300,7 @@ class UDPPlugin : public PluginInterface
 
         /**
          * \brief set UDP connect timeout (milliseconds, 0 = use driver default)
-         * \note Accepted for API/CONFIG-grammar symmetry with TCPIP/KVCAN;
+         * \note Accepted for API/CONFIG-grammar symmetry with TCPIP/KCAN;
          *       connect()ing a UDP socket does not handshake, so this is not
          *       expected to matter in practice (see uUdp.hpp class docs).
          */
@@ -359,8 +359,8 @@ class UDPPlugin : public PluginInterface
          * \brief helper: open a fresh UDP driver instance against the
          *        configured host/port, using the configured connect timeout.
          *        Returns nullptr (and logs) on failure, mirroring the way
-         *        m_KVCAN_CMD/m_KVCAN_SCRIPT open a socket per invocation
-         *        in the KVCAN plugin.
+         *        m_KCAN_CMD/m_KCAN_SCRIPT open a socket per invocation
+         *        in the KCAN plugin.
          * \note  Returns the concrete TCPIP type (rather than ICommDriver)
          *        so it can be handed directly to
          *        CommScriptCommandInterpreter<UDP> / CommScriptClient<UDP>,

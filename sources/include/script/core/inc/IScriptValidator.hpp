@@ -12,6 +12,7 @@ class IScriptValidator
         IScriptValidator()                                                                                 = default;
         virtual ~IScriptValidator()                                                                        = default;
 
+        /** Validates all raw script lines and fills @p sScriptEntries; returns false if any line is invalid. */
         virtual bool validateScript(std::vector<ScriptRawLine> &vRawLines, TScriptEntries &sScriptEntries) = 0;
 };
 

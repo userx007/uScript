@@ -23,11 +23,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED W5500NetPlugin *pluginEntry()
     {
         return new W5500NetPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(W5500NetPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -148,6 +150,7 @@ bool W5500NetPlugin::m_W5500NET_CMD(const std::string &strArgs, std::stop_token 
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
+/** Handles `SCRIPT`: runs a script file using the plugin's driver. */
 bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     (void)st;

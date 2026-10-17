@@ -26,6 +26,7 @@ namespace loopback
             // false (after logging the reason) on failure.
             virtual bool open()                      = 0;
 
+            /** Closes the channel. */
             virtual void close()                     = 0;
 
             // Block until one message (a CAN frame's payload, or one chunk of
@@ -56,7 +57,7 @@ namespace loopback
             virtual bool writeMessage(Message &sMsg) = 0;
 
             // Short human-readable identity used in banners and dump lines, e.g.
-            // "uart:/dev/tnt0@115200" or "kvcan:vcan0".
+            // "uart:/dev/tnt0@115200" or "kcan:vcan0".
             virtual std::string name() const         = 0;
 
             // A coarser identity used only to detect "the -i and -o spec refer to
@@ -68,6 +69,7 @@ namespace loopback
             // fail or fight over the same fd/port.
             virtual std::string identity() const     = 0;
 
+            /** Returns whether this is a CAN channel. */
             virtual bool isCan() const
             {
                 return false;

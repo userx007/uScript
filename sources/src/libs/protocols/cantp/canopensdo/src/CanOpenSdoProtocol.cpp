@@ -27,6 +27,7 @@ namespace
     constexpr uint32_t kAbortLengthMismatch = 0x06070010u; // data length does not match
     constexpr uint32_t kAbortGeneralError   = 0x08000000u;
 
+    /** Builds the SDO command byte from a 3-bit specifier and 5 flag bits. */
     inline uint8_t cmdByte0(uint8_t u8Specifier3, uint8_t u8Rest5)
     {
         return static_cast<uint8_t>((u8Specifier3 << 5) | (u8Rest5 & 0x1F));

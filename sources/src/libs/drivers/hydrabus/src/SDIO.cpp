@@ -146,6 +146,7 @@ namespace HydraHAL
         return _configure_port();
     }
 
+    /** Sends the current port configuration to the Hydrabus; returns false if it is not acknowledged. */
     bool SDIO::_configure_port()
     {
         uint8_t cmd = static_cast<uint8_t>(0b10000000 | (_config & 0x7F));

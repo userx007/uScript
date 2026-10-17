@@ -19,11 +19,13 @@
  */
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED MqttPlugin *pluginEntry()
     {
         return new MqttPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(MqttPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -219,6 +221,7 @@ bool MqttPlugin::m_MQTT_CMD(const std::string &strArgs, std::stop_token st) cons
         st);
 }
 
+/** Handles `SCRIPT`: runs a script file using the plugin's driver. */
 bool MqttPlugin::m_MQTT_SCRIPT(const std::string &strArgs, std::stop_token st) const
 {
     resetData();

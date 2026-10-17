@@ -13,6 +13,7 @@ static int fails = 0;
         }                              \
     } while (0)
 
+/** Parses @p xml and builds the reader, writer and topic QoS of profile @p prof. */
 static bool build(const std::string &xml, const char *prof, dds_qos_t *&r, dds_qos_t *&w, dds_qos_t *&t, std::vector<std::string> &warn, std::string &err)
 {
     qosxml::Document d;

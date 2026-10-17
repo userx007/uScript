@@ -182,7 +182,6 @@ uscript_lib(VECTOR          TARGETS uVector            DEPENDS CANTP)
 uscript_lib(KI2C            TARGETS uKI2C              DEPENDS KMPMATCH)
 uscript_lib(KSPI            TARGETS uKSpi              DEPENDS KMPMATCH)
 uscript_lib(KCAN            TARGETS uKCan              DEPENDS KMPMATCH)
-uscript_lib(KVCAN           TARGETS uKVCan             DEPENDS KMPMATCH)
 uscript_lib(RAWETH          TARGETS uRawEth            DEPENDS KMPMATCH)
 uscript_lib(SYSTEC          TARGETS uSystecCan         DEPENDS KMPMATCH)
 
@@ -221,7 +220,8 @@ uscript_lib(GRPC            TARGETS uGrpcDriver        DEPENDS PROTO_GRPC)
 #   non-Linux platform because it talks to a Linux-specific kernel ABI with no
 #   Windows equivalent:
 #       KI2C    -> linux/i2c-dev.h                 KSPI   -> linux/spi/spidev.h
-#       KVCAN   -> linux/can.h, linux/can/raw.h    RAWETH -> linux/if_packet.h
+#       KCAN    -> linux/can.h, linux/can/raw.h,   RAWETH -> linux/if_packet.h
+#                  linux/rtnetlink.h (vcan0 AND real canN)
 #       SYSTEC  -> linux/can.h + systec_can.ko sysfs layout
 #   (message(FATAL_ERROR) is not skippable, so an unguarded add_subdirectory()
 #   would abort the configure of the whole project on Windows.)
@@ -269,8 +269,9 @@ uscript_plugin(GRPC         LIBS GRPC)
 
 uscript_plugin(KI2C         LIBS KI2C   PLATFORM ${_USCRIPT_LINUX_ONLY})
 uscript_plugin(KSPI         LIBS KSPI   PLATFORM ${_USCRIPT_LINUX_ONLY})
+# KCAN: SocketCAN plugin for virtual (vcan0) AND real (can0, can1, ... exposed by peak_usb,
+# gs_usb, kvaser_usb, mcp251xfd, ...) interfaces.
 uscript_plugin(KCAN         LIBS KCAN CANTP PLATFORM ${_USCRIPT_LINUX_ONLY})
-uscript_plugin(KVCAN        LIBS KVCAN CANTP PLATFORM ${_USCRIPT_LINUX_ONLY})
 uscript_plugin(RAWETH       LIBS RAWETH PLATFORM ${_USCRIPT_LINUX_ONLY})
 uscript_plugin(SYSTEC       LIBS SYSTEC CANTP PLATFORM ${_USCRIPT_LINUX_ONLY})
 

@@ -66,6 +66,7 @@ class ScriptReader : public IScriptReader
         {
         }
 
+        /** Reads the script (following includes) into @p vRawLines. */
         bool readScript(std::vector<ScriptRawLine> &vRawLines) override
         {
             std::unordered_set<std::string> setVisitedPaths;

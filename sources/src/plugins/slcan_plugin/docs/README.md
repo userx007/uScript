@@ -1,6 +1,6 @@
 # SLCAN Plugin
 
-A C++ shared-library plugin that exposes a WeActStudio USB2CANFDV1-style SLCAN adapter (ASCII protocol over UART) through the same unified command dispatcher used by the KVCAN plugin. The plugin supports sending and receiving data over the CAN bus reachable through the adapter, using inline command expressions or external script files, and provides runtime reconfiguration of the UART device, CAN bus parameters and acceptance filters without reloading the plugin.
+A C++ shared-library plugin that exposes a WeActStudio USB2CANFDV1-style SLCAN adapter (ASCII protocol over UART) through the same unified command dispatcher used by the KCAN plugin. The plugin supports sending and receiving data over the CAN bus reachable through the adapter, using inline command expressions or external script files, and provides runtime reconfiguration of the UART device, CAN bus parameters and acceptance filters without reloading the plugin.
 
 **Version:** 1.0.0.0
 
@@ -91,7 +91,7 @@ pluginExit(ptr)         → deletes the SLCANPlugin instance
 
 ### Command Dispatch Model
 
-Commands are registered via a single-level `std::map` (`m_mapCmds`) populated in the constructor through an X-macro expansion — identical in shape to the KVCAN plugin:
+Commands are registered via a single-level `std::map` (`m_mapCmds`) populated in the constructor through an X-macro expansion — identical in shape to the KCAN plugin:
 
 ```cpp
 #define SLCAN_PLUGIN_COMMANDS_CONFIG_TABLE    \
@@ -134,7 +134,7 @@ All of these values can also be overridden at runtime using `CONFIG` or `FILTER`
 
 ### CommScriptClient Integration
 
-This plugin uses the same `CommScriptCommandInterpreter<TDriver>` / `CommScriptClient<TDriver>` stack as the KVCAN plugin. Both `CMD` and `SCRIPT` hand the open driver directly to these shared components — no bespoke expression parser lives inside the plugin.
+This plugin uses the same `CommScriptCommandInterpreter<TDriver>` / `CommScriptClient<TDriver>` stack as the KCAN plugin. Both `CMD` and `SCRIPT` hand the open driver directly to these shared components — no bespoke expression parser lives inside the plugin.
 
 The bridge that makes this possible is **`SLCANFrameDriver`** (`inc/private/slcan_frame_driver.hpp`), a thin adapter class that inherits from `ICommDriver` and holds an `SLCAN` instance by composition:
 
@@ -259,7 +259,7 @@ SLCAN.FILTER
 
 Executes a single send/receive operation over the CAN bus. The UART is opened, bus parameters and filters are pushed, and the channel is opened for the duration of the call — everything closes automatically when the command completes (RAII).
 
-The expression is parsed by `CommScriptCommandValidator` and executed by `CommScriptCommandInterpreter<SLCANFrameDriver>`, the same components used by the KVCAN plugin.
+The expression is parsed by `CommScriptCommandValidator` and executed by `CommScriptCommandInterpreter<SLCANFrameDriver>`, the same components used by the KCAN plugin.
 
 Payload size constraints are enforced by the adapter: classic CAN frames carry at most **8 bytes**; CAN-FD frames carry at most **64 bytes**. The frame type (classic vs. FD) and standard-vs-extended addressing are both selected automatically — by payload size and by the configured TX ID, respectively.
 
@@ -306,7 +306,7 @@ SLCAN.SCRIPT fw_update.txt 50
 
 ## CMD Expression Syntax
 
-The `CMD` command (and each line of a `SCRIPT` file) uses the expression grammar defined by `CommScriptCommandValidator` and interpreted by `CommScriptCommandInterpreter` — identical to the KVCAN plugin.
+The `CMD` command (and each line of a `SCRIPT` file) uses the expression grammar defined by `CommScriptCommandValidator` and interpreted by `CommScriptCommandInterpreter` — identical to the KCAN plugin.
 
 ### Direction Operators
 

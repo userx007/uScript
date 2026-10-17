@@ -59,6 +59,7 @@
 class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 {
     public:
+        /** Validates one command line, filling @p type; returns false (and logs) if it is invalid. */
         bool validateCommand(int iLineNumber, const std::string &strCommand, CommCommand &sToken) noexcept override
         {
             ItemParser itemParser;
@@ -295,7 +296,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                  * Either side of the '|' may legitimately be empty (e.g. '~ | 0x22' or
                  * '~ 0x21 |'), matching the fact that an empty xtra_param is itself a
                  * meaningful value downstream — every driver treats it as "no override,
-                 * fall back to the connection's configured default" (see e.g. the KVCAN
+                 * fall back to the connection's configured default" (see e.g. the KCAN
                  * plugin's tout_write()/tout_read() docs) rather than as an error. So
                  * '~ | 0x22' ("use the default for the send, but 0x22 for the receive")
                  * is exactly as valid as '~ 0x21 |' ("use 0x21 for the send, default for

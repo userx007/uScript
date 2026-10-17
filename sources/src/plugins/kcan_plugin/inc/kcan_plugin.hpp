@@ -17,6 +17,7 @@
 #include "uNumeric.hpp"
 #include "uSharedConfig.hpp"
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <span>
@@ -63,24 +64,29 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
- * \brief KCAN plugin class definition.
+ * \brief KCAN plugin class definition - the single SocketCAN plugin.
  *
- * Talks to REAL CAN adapters that the Linux kernel exposes as SocketCAN network
- * interfaces (can0, can1 ... - e.g. a PEAK PCAN-USB running the in-kernel
- * peak_usb driver in "SocketCAN mode"), and to virtual ones (vcan0).
+ * Talks to ANY Linux SocketCAN network interface:
+ *   - virtual ones (vcan0 ...), and
+ *   - REAL adapters that a kernel driver exposes as can0, can1 ... (PEAK PCAN-USB via peak_usb,
+ *     candleLight / gs_usb, Kvaser via kvaser_usb, mcp251x/mcp251xfd on SPI, slcan via slcand ...).
  *
- * It is the KVCAN plugin plus the part a real bus needs and a virtual one does not:
- * the BUS SPEED. The interface has to be given a bitrate (and optionally sample
- * point, CAN FD data rate, listen-only / loopback / ... mode) and be brought up
- * before frames flow - the `ip link set can0 type can bitrate 500000` /
- * `ip link set can0 up` step. KCAN does that itself, over rtnetlink:
+ * Commands: CMD / SCRIPT / CYCLIC / FILTER, with the same TX/RX ids and the ISO-TP / J1939 /
+ * CANopen / NMEA2000 transport options on virtual and real interfaces alike. What a REAL bus
+ * needs and a virtual one does not is the BUS SPEED:
+ * the interface has to be given a bitrate (and optionally sample point, CAN FD data rate,
+ * listen-only / loopback / ... mode) and be brought up before frames flow - the
+ * `ip link set can0 type can bitrate 500000` / `ip link set can0 up` step. KCAN does that itself,
+ * over rtnetlink, and only when asked to (CONFIG b=... / UP); without a bitrate the interface is
+ * used exactly as the system configured it, which is also the behaviour on vcan0:
  *
  *   KCAN.CONFIG i=can0 b=500000 x=0x123      // remember interface + bitrate + TX id
  *   KCAN.CMD > H"AABB" | H"06"               // first use applies the bitrate and brings can0 up
  *
- * or explicitly, with UP/DOWN/STATUS/RESTART. When the interface is already up
- * with the requested settings nothing is touched (so it works unprivileged on an
- * interface that was set up by the system, e.g. systemd-networkd).
+ * or explicitly, with UP/DOWN/STATUS/RESTART. When the interface is already up with the requested
+ * settings nothing is touched (so it works unprivileged on an interface that was set up by the
+ * system, e.g. systemd-networkd). On a non-"can" link kind (vcan, slcan ...) there is no bit-timing
+ * to program: the bitrate keys are accepted and ignored, so one script/ini can target either.
  *
  * Changing bitrate / link state needs CAP_NET_ADMIN (root, or
  * `setcap cap_net_admin+ep <binary>`); plain frame I/O does not.
@@ -922,8 +928,10 @@ class KCANPlugin : public PluginInterface
 
         /**
          * \brief true when m_sLinkCfg / the interface name changed since it was last applied to the kernel
+         * \note  atomic: read by m_OpenDriver() outside m_mtxLink (every CMD/SCRIPT/CYCLIC start, including
+         *        concurrent CYCLIC '&' threads) while m_ApplyLink() clears it under the mutex.
          */
-        mutable bool m_bLinkDirty     = false;
+        mutable std::atomic<bool> m_bLinkDirty{false};
 
         /**
          * \brief apply the link configuration automatically before first use (see setCanAutoLink())

@@ -30,11 +30,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED PCANPlugin *pluginEntry()
     {
         return new PCANPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(PCANPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -109,7 +111,7 @@ bool PCANPlugin::m_PCAN_INFO(const std::string &strArgs, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.FILTER 0x100:0x7FF,0x18DAF100:0x1FFFFFFF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.FILTER"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : only the FIRST id:mask entry is actually enforced today — the"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         driver tracks one active RX filter id, unlike KVCAN's full list"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         driver tracks one active RX filter id, unlike KCAN's full list"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x=tx_id"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
@@ -208,7 +210,7 @@ bool PCANPlugin::m_PCAN_CONFIG(const std::string &strArgs, std::stop_token st) c
  *
  * \note Filters are stored in m_vFilters and applied inside the driver's receive loop
  *       on every CMD or SCRIPT call. Calling FILTER with an empty argument clears all
- *       filters (accept everything).  Syntax is identical to KVCAN.FILTER.
+ *       filters (accept everything).  Syntax is identical to KCAN.FILTER.
  *
  * \note Usage example:
  *       PCAN.FILTER 0x100:0x7FF
@@ -336,7 +338,7 @@ bool PCANPlugin::m_PCAN_SCRIPT(const std::string &strArgs, std::stop_token st) c
  *       falls back to the default TX id) and "val" is the payload as a plain hex string
  *       (e.g. "AABBCCDD"), <= 8 bytes classic CAN / <= 64 bytes CAN FD.
  *
- * \note This bypasses TP-segmented transport on purpose — same rationale as KVCAN's CYCLIC: a
+ * \note This bypasses TP-segmented transport on purpose — same rationale as KCAN's CYCLIC: a
  *       cyclic message is by definition a single, self-contained frame per tick.
  *
  * \note Usage example:
@@ -371,7 +373,7 @@ bool PCANPlugin::m_PCAN_CYCLIC(const std::string &strArgs, std::stop_token st) c
  *        Both id and mask fields accept decimal or 0x-prefixed hex values.
  *        Example: "0x100:0x7FF,0x18DAF100:0x1FFFFFFF"
  *
- *        CAN_EFF_FLAG auto-correction mirrors the KVCAN plugin's m_ParseFilters exactly.
+ *        CAN_EFF_FLAG auto-correction mirrors the KCAN plugin's m_ParseFilters exactly.
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
@@ -417,7 +419,7 @@ bool PCANPlugin::m_ParseFilters(const std::string &strFilters,
             return false;
         }
 
-        // ── EFF / SFF flag fixup (mirrors KVCAN plugin m_ParseFilters) ──────────
+        // ── EFF / SFF flag fixup (mirrors KCAN plugin m_ParseFilters) ──────────
         const uint32_t flagsInId = can_id & (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG);
         can_mask |= flagsInId;
 
@@ -454,7 +456,7 @@ bool PCANPlugin::m_ParseFilters(const std::string &strFilters,
  *       software-only comparison done per received frame inside PCAN::frameMatchesFilter();
  *       PCAN-Basic itself is not asked to filter anything at the hardware/driver level.
  *       setCanTxId() keeps this in sync automatically: every CONFIG "x=" (or CAN_TX_ID ini
- *       entry) replaces m_vFilters with one entry matching the new TX id, mirroring KVCAN's
+ *       entry) replaces m_vFilters with one entry matching the new TX id, mirroring KCAN's
  *       "RX default == TX default" behaviour.
  *
  *        Returns nullptr if the channel could not be opened (already logged by the driver).

@@ -71,6 +71,7 @@ static bool parseBank(const std::string &strS, FT2232GPIO::Bank &out)
     return false;
 }
 
+/** Parses a hex byte; returns false if invalid. */
 static bool parseHexByte(const std::string &strS, uint8_t &u8Out)
 {
     return numeric::str2uint8(strS, u8Out);

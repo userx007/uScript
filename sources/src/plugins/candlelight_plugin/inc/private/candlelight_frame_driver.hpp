@@ -62,7 +62,7 @@
 
 // Generic, driver-independent multi-frame transport library (see
 // can_tp/README.md). Only depends on ICommDriver, so it's reused verbatim
-// here — the same headers/objects already back the KVCAN/SLCAN/UCAN plugins.
+// here — the same headers/objects already back the KCAN/SLCAN/UCAN plugins.
 #include "ITransportProtocol.hpp"
 #include "TpConfig.hpp"
 #include "TpFactory.hpp"
@@ -250,7 +250,7 @@ class CandlelightFrameDriver : public ICommDriver
          *
          *        xtra_params, when non-empty, is parsed the same way as in
          *        raw_tout_write() and, if it parses, is the ONLY criterion
-         *        applied (an exact single-id match, same as UCAN/KVCAN) — it
+         *        applied (an exact single-id match, same as UCAN/KCAN) — it
          *        supersedes m_filters for this one call. An empty (or
          *        unparsable) xtra_params falls back to m_filters (see
          *        set_filters()); an empty filter set accepts every frame, same
@@ -386,17 +386,20 @@ class CandlelightFrameDriver : public ICommDriver
             return m_candle.set_bitrate(u32BitrateBps, dSamplePoint, u32Timeout);
         }
 
+        /** Sets the classic CAN bit timing (segments, SJW, prescaler). */
         ICommDriver::Status set_bittiming(uint32_t u32PropSeg, uint32_t u32PhaseSeg1, uint32_t u32PhaseSeg2,
                                           uint32_t u32Sjw, uint32_t u32Brp, uint32_t u32Timeout)
         {
             return m_candle.set_bittiming(u32PropSeg, u32PhaseSeg1, u32PhaseSeg2, u32Sjw, u32Brp, u32Timeout);
         }
 
+        /** Sets the CAN-FD data-phase bitrate and sample point. */
         ICommDriver::Status set_fd_data_bitrate(uint32_t u32BitrateBps, double dSamplePoint, uint32_t u32Timeout)
         {
             return m_candle.set_fd_data_bitrate(u32BitrateBps, dSamplePoint, u32Timeout);
         }
 
+        /** Sets the CAN-FD data-phase bit timing. */
         ICommDriver::Status set_fd_data_bittiming(uint32_t u32PropSeg, uint32_t u32PhaseSeg1, uint32_t u32PhaseSeg2,
                                                   uint32_t u32Sjw, uint32_t u32Brp, uint32_t u32Timeout)
         {
@@ -422,6 +425,7 @@ class CandlelightFrameDriver : public ICommDriver
             m_filters = std::move(vFilters);
         }
 
+        /** Returns whether the adapter supports CAN-FD. */
         bool is_fd_supported() const
         {
             return m_candle.is_fd_supported();
@@ -455,7 +459,7 @@ class CandlelightFrameDriver : public ICommDriver
          * \brief Set the id expected for incoming response/handshake frames when
          *        a segmented transport protocol is active. If never called,
          *        resolveRxId() mirrors the tx id — the same "single id, both
-         *        directions" default KVCAN/UCAN use.
+         *        directions" default KCAN/UCAN use.
          */
         void set_rx_id(uint32_t u32RxId)
         {

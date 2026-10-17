@@ -47,6 +47,7 @@
 #include <algorithm>
 #include <utility>
 
+/** Builds the dump panel (toolbar, filters and tree). */
 CommDumpView::CommDumpView(QWidget *parent)
     : QFrame(parent)
 {
@@ -892,6 +893,7 @@ void CommDumpView::onLoadTriggered()
     }
 }
 
+/** Tracks tree font changes. */
 bool CommDumpView::eventFilter(QObject *pWatched, QEvent *pEvent)
 {
     if (pWatched == m_tree && pEvent->type() == QEvent::FontChange) {

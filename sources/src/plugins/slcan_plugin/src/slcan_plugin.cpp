@@ -30,11 +30,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED SLCANPlugin *pluginEntry()
     {
         return new SLCANPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(SLCANPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -119,7 +121,7 @@ bool SLCANPlugin::m_SLCAN_INFO(const std::string &strArgs, std::stop_token st) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a '~ id' xtra_params suffix overrides the tx/rx id for that one"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         CMD only. RX-side matching is done in software: an id not"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         already covered by the active std/ext filter will time out —"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         unlike KVCAN, this adapter's filters can't be changed while the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         unlike KCAN, this adapter's filters can't be changed while the"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         channel is open, so widen FILTER beforehand if needed"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
@@ -208,7 +210,7 @@ bool SLCANPlugin::m_SLCAN_CONFIG(const std::string &strArgs, std::stop_token st)
  *
  * \note Filters are stored in m_oStdFilter/m_oExtFilter and (re)applied every time a CMD
  *       or SCRIPT opens a new channel — they must be sent while the channel is closed, so
- *       there is no equivalent of KVCAN's "apply to the already-open socket" here. Calling
+ *       there is no equivalent of KCAN's "apply to the already-open socket" here. Calling
  *       FILTER with an empty argument clears both slots (accept everything).
  *
  * \note Usage example:
@@ -333,7 +335,7 @@ bool SLCANPlugin::m_SLCAN_SCRIPT(const std::string &strArgs, std::stop_token st)
  *       empty id falls back to the TX id set via CONFIG) and "val" is the payload as a plain
  *       hex string (e.g. "AABBCCDD").
  *
- * \note This bypasses TP-segmented transport on purpose — same rationale as KVCAN's CYCLIC: a
+ * \note This bypasses TP-segmented transport on purpose — same rationale as KCAN's CYCLIC: a
  *       cyclic message is by definition a single, self-contained frame per tick.
  *
  * \note Usage example:

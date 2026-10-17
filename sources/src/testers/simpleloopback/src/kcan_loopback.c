@@ -1,11 +1,11 @@
 /*
- * vcan_mirror.c - Mirrors CAN frames received on a vcan interface back to the same interface.
+ * kcan_loopback.c - Mirrors CAN frames received on a vcan interface back to the same interface.
  *
  * Build:
- *   gcc -o vcan_mirror vcan_mirror.c
+ *   gcc -o kcan_loopback kcan_loopback.c
  *
  * Usage:
- *   ./vcan_mirror [interface]   (default: vcan0)
+ *   ./kcan_loopback [interface]   (default: vcan0)
  *
  * Setup:
  *   sudo modprobe vcan
@@ -57,6 +57,7 @@
 
 static volatile int running = 1;
 
+/** Signal handler: stops the main loop. */
 static void sig_handler(int iSig)
 {
     (void)iSig;

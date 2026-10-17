@@ -217,6 +217,7 @@ extern "C"
 #else
 EXPORTED uShellPluginInterface *uShellPluginEntry(void);
 #endif /*(1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)*/
+    /** Plugin exit point, called when the plugin is unloaded. */
     EXPORTED void uShellPluginExit(uShellPluginInterface *pPlugin);
 
 #ifdef __cplusplus

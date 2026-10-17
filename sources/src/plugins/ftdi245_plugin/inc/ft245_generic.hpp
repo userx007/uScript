@@ -174,6 +174,7 @@ bool generic_module_set_speed(const T *pOwner,
 template <typename T>
 using WriteCbk = bool (T::*)(std::span<const uint8_t>) const;
 
+/** Handles `write`: sends the hex bytes given in the arguments. */
 template <typename T>
 bool generic_write_data(const T *pOwner, const std::string &strArgs, WriteCbk<T> cbk)
 {
@@ -205,6 +206,7 @@ bool generic_write_data(const T *pOwner, const std::string &strArgs, WriteCbk<T>
 template <typename T>
 using WrRdCbk = bool (T::*)(std::span<const uint8_t>, size_t, std::stop_token) const;
 
+/** Handles `wrrd` with `[hexdata][:rdlen]`: optionally writes hex data, then reads @c rdlen bytes. */
 template <typename T>
 bool generic_write_read_data(const T *pOwner, const std::string &strArgs, WrRdCbk<T> cbk, std::stop_token st = {})
 {

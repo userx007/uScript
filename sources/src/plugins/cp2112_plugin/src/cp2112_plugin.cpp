@@ -22,11 +22,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED CP2112Plugin *pluginEntry()
     {
         return new CP2112Plugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(CP2112Plugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -229,11 +231,13 @@ bool CP2112Plugin::m_CP2112_CONFIG(const std::string &strArgs, std::stop_token s
     return generic_cp2112_set_params(this, strArgs);
 }
 
+/** Dispatches a I2C sub-command to its handler. */
 bool CP2112Plugin::m_CP2112_I2C(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<CP2112Plugin>(this, "I2C", strArgs);
 }
 
+/** Dispatches a GPIO sub-command to its handler. */
 bool CP2112Plugin::m_CP2112_GPIO(const std::string &strArgs, std::stop_token st) const
 {
     return generic_module_dispatch<CP2112Plugin>(this, "GPIO", strArgs);
@@ -268,6 +272,7 @@ CP2112 *CP2112Plugin::m_i2c() const
     return nullptr;
 }
 
+/** Returns the GPIO module object (nullptr if unavailable). */
 CP2112Gpio *CP2112Plugin::m_gpio() const
 {
     if (m_bIsEnabled) {
@@ -291,6 +296,7 @@ CP2112Plugin::getModuleCmdsMap(const std::string &m) const
     return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
 }
 
+/** Returns the speed table of module @p m, or nullptr if the module is unknown. */
 ModuleSpeedMap *
 CP2112Plugin::getModuleSpeedsMap(const std::string &m) const
 {

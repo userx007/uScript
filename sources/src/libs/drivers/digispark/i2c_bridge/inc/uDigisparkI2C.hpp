@@ -130,6 +130,7 @@ class I2CBridge : public ICommDriver
 
         Status open(uint16_t u16Vid = I2C_DIGISPARK_VID,
                     uint16_t u16Pid = I2C_DIGISPARK_PID);
+        /** Closes the device. */
         Status close();
 
         /** @copydoc ICommDriver::is_open() */
@@ -250,9 +251,12 @@ class I2CBridge : public ICommDriver
         // ── Private command implementations (called with m_mutex held) ───────────
         ReadResult priv_cmd_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
                                  const I2CReadOptions &opts, std::stop_token stop_tok = {}) const;
+        /** Sends a write-then-read command to the bridge. */
         ReadResult priv_cmd_write_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
                                        const I2CReadOptions &opts, std::stop_token stop_tok = {}) const;
+        /** Scans the I2C bus for responding slave addresses. */
         ReadResult priv_cmd_scan(uint32_t u32Timeout, std::span<uint8_t> buffer, std::stop_token stop_tok = {}) const;
+        /** Sends a write command to the bridge. */
         WriteResult priv_cmd_write(uint32_t u32Timeout, uint8_t u8SlaveAddr,
                                    std::span<const uint8_t> data, std::stop_token stop_tok = {}) const;
 };

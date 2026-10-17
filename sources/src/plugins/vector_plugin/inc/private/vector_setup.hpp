@@ -48,7 +48,7 @@
 #define READ_BUF_SIZE            "READ_BUF_SIZE"
 #define VECTOR_TP_PROTOCOL       "CAN_TP_PROTOCOL"
 
-// ---- TpConfig tuning parameters (same INI key names as PCAN/KVCAN, for compatibility) ----
+// ---- TpConfig tuning parameters (same INI key names as PCAN/KCAN, for compatibility) ----
 #define TP_BLOCK_SIZE            "TP_BLOCK_SIZE"
 #define TP_ST_MIN                "TP_ST_MIN"
 #define TP_PAD_FRAMES            "TP_PAD_FRAMES"
@@ -226,7 +226,7 @@ bool VectorPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
  *                     r=read_tout  w=write_tout  s=recv_bufsize  e=extended  f=fd
  *                     d=fd_data_bitrate  iso=fd_iso  brs=fd_brs  padb=fd_padding_byte
  *                     t=tp_protocol, plus TpConfig tuning keys - same set as
- *                     pcan_setup.hpp/kvcan_setup.hpp: bs, stmin, pad, padb, nbs, ncr,
+ *                     pcan_setup.hpp/kcan_setup.hpp: bs, stmin, pad, padb, nbs, ncr,
  *                     maxlen, bam, maxpkt, t1, t2, t3, th, jmaxlen, coidx, cosub, coblk,
  *                     coblksz, sdotout, comaxlen, fpinter, fpmaxlen)
  * \return true if processing succeeded, false otherwise

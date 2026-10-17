@@ -92,6 +92,7 @@ class FT2232I2C : public FT2232Base, public ICommDriver
         /** @copydoc FT2232Base::close — sends I²C STOP before closing */
         Status close() override;
 
+        /** Returns whether the device is open. */
         bool is_open() const override
         {
             return FT2232Base::is_open();
@@ -144,18 +145,23 @@ class FT2232I2C : public FT2232Base, public ICommDriver
         Status configure_mpsse_i2c(uint32_t u32ClockHz) const;
 
         static void push_pin_state(std::vector<uint8_t> &vBuf, bool bScl, bool bDrive_sda_low);
+        /** Appends the MPSSE commands that sample SDA to @p vBuf. */
         static void push_read_sda(std::vector<uint8_t> &vBuf);
 
         Status i2c_start() const;
+        /** Generates a repeated START condition. */
         Status i2c_repeated_start() const;
+        /** Generates a STOP condition. */
         Status i2c_stop() const;
 
         Status i2c_write_byte(uint8_t u8Byte, bool &bAck) const;
+        /** Reads one byte, answering with ACK if @p bSendAck is set. */
         Status i2c_read_byte(uint8_t &u8Byte, bool bSendAck, std::stop_token stop_tok = {}) const;
 
         Status i2c_write(std::span<const uint8_t> data,
                          uint32_t u32TimeoutMs, size_t &bytesWritten) const;
 
+        /** Reads from the I2C bus into @p data. */
         Status i2c_read(std::span<uint8_t> data,
                         size_t &bytesRead, uint32_t u32TimeoutMs,
                         std::stop_token stop_tok = {}) const;

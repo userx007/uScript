@@ -42,6 +42,7 @@ namespace HydraHAL
                 ISO_15693  = 1,
             };
 
+            /** Creates the NFC handler on @p shpHydrabus. */
             explicit NFC(std::shared_ptr<Hydrabus> shpHydrabus);
 
             // -------------------------------------------------------------------------

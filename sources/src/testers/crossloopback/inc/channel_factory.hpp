@@ -1,13 +1,13 @@
 // channel_factory.hpp - turns a "-i"/"-o" spec string into a channel.
 //
 // Grammar (type separator may be ':' or '/', matching both forms seen in
-// the requested examples - "uart:/dev/tnt0/115200" and "kvcan/vcan0/0x100"):
+// the requested examples - "uart:/dev/tnt0/115200" and "kcan/vcan0/0x100"):
 //
 //   uart<:|/><device>[/<baud>]
 //       device  e.g. /dev/ttyUSB0, /dev/tnt0        (required)
 //       baud    e.g. 115200                          (default: 115200)
 //
-//   kvcan<:|/><iface>[/<can_id>]           (aliases: can)
+//   kcan<:|/><iface>[/<can_id>]           (aliases: can)
 //       iface    e.g. vcan0, can0                    (required)
 //       can_id   hex ("0x100") or decimal, used on TX (default: passthrough
 //                from a CAN input, else 0x100)
@@ -56,12 +56,14 @@ namespace loopback
     namespace detail
     {
 
+        /** Returns the string lower-cased. */
         inline std::string toLower(std::string strS)
         {
             std::transform(strS.begin(), strS.end(), strS.begin(), [](unsigned char c) { return std::tolower(c); });
             return strS;
         }
 
+        /** Splits @p s at `/`. */
         inline std::vector<std::string> splitSlash(const std::string &s)
         {
             std::vector<std::string> tokens;
@@ -78,6 +80,7 @@ namespace loopback
             return tokens;
         }
 
+        /** Returns whether the string is non-empty and all digits. */
         inline bool isAllDigits(const std::string &strS)
         {
             if (strS.empty()) {
@@ -86,6 +89,7 @@ namespace loopback
             return std::all_of(strS.begin(), strS.end(), [](unsigned char c) { return std::isdigit(c); });
         }
 
+        /** Returns whether the string has the form aa:bb:cc:dd:ee:ff. */
         inline bool looksLikeMac(const std::string &strS)
         {
             if (strS.size() != 17) {
@@ -103,6 +107,7 @@ namespace loopback
             return true;
         }
 
+        /** Parses a decimal, hex (0x) or octal number. */
         inline uint32_t parseNumber(const std::string &strS)
         {
             return static_cast<uint32_t>(std::strtoul(strS.c_str(), nullptr, 0)); // 0x prefix or decimal
@@ -134,6 +139,7 @@ namespace loopback
             }
     };
 
+    /** Creates the channel described by @p strSpec (e.g. `tcpip:server/5000`). */
     inline ChannelPtr createChannel(const std::string &strSpec)
     {
         std::string type, rest;
@@ -164,11 +170,11 @@ namespace loopback
             return std::make_shared<UartChannel>(device, baud);
         }
 
-        if (type == "kvcan" || type == "can") {
+        if (type == "kcan" || type == "can") {
 #if LOOPBACK_HAVE_CAN
             auto tokens = detail::splitSlash(rest);
             if (tokens.empty() || tokens[0].empty()) {
-                throw SpecError("kvcan spec requires an interface, e.g. kvcan:vcan0/0x100");
+                throw SpecError("kcan spec requires an interface, e.g. kcan:vcan0/0x100");
             }
 
             std::optional<uint32_t> fixed_id;
@@ -178,7 +184,7 @@ namespace loopback
 
             return std::make_shared<CanChannel>(tokens[0], fixed_id);
 #else
-            throw SpecError("the 'kvcan' channel (SocketCAN) is only available on Linux");
+            throw SpecError("the 'kcan' channel (SocketCAN) is only available on Linux");
 #endif
         }
 
@@ -276,7 +282,7 @@ namespace loopback
 #endif
         }
 
-        throw SpecError("unknown channel type '" + type + "' (expected uart, kvcan, tcpip, udp, or raweth)");
+        throw SpecError("unknown channel type '" + type + "' (expected uart, kcan, tcpip, udp, or raweth)");
     }
 
 } // namespace loopback

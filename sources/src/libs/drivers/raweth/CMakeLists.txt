@@ -6,7 +6,7 @@ set(SOURCES src/uRawEthCommon.cpp)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # AF_PACKET raw sockets (socket/bind/recvfrom/sendto on netpacket/packet.h)
     # are a Linux-specific facility, not portable BSD sockets — unlike
-    # uTcpip, which builds on Linux and macOS alike. Like uKVCan, this
+    # uTcpip, which builds on Linux and macOS alike. Like uKCan, this
     # driver is Linux-only.
     list(APPEND SOURCES src/uRawEthLinux.cpp)
 else()

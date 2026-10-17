@@ -26,7 +26,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #define KVCAN_PLUGIN_VERSION "1.0.0.0"
-#define KVCAN_PLUGIN_NAME    "KVCAN"
+#define KVCAN_PLUGIN_NAME    "KCAN"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN MACROS                                      //
@@ -55,14 +55,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
- * \brief KVCAN plugin class definition.
+ * \brief KCAN plugin class definition.
  *
- * Wraps the KVCAN SocketKVCAN driver and exposes it through the standard
+ * Wraps the KCAN SocketKVCAN driver and exposes it through the standard
  * PluginInterface dispatch model.  Works with any SocketKVCAN interface
  * (physical canN or virtual vcanN).
  *
  * Extra command vs UART/I2C/SPI plugins:
- *   FILTER — installs KVCAN hardware acceptance filters at runtime
+ *   FILTER — installs KCAN hardware acceptance filters at runtime
  *             without reopening the socket.
  */
 class KVCANPlugin : public PluginInterface
@@ -263,7 +263,7 @@ class KVCANPlugin : public PluginInterface
         }
 
         /**
-         * \brief set the KVCAN ID stamped on outgoing frames, and mirror it onto
+         * \brief set the KCAN ID stamped on outgoing frames, and mirror it onto
          *        the default RX acceptance filter.
          *        Accepts decimal or 0x-prefixed hex strings.
          *
@@ -317,7 +317,7 @@ class KVCANPlugin : public PluginInterface
             // acceptance filter that matches exactly this CAN ID (same EFF/SFF
             // convention as m_ParseFilters), and make it the new default,
             // replacing whatever filter set was previously in effect.
-            KVCAN::CanFilter sRxFilter = {};
+            KCAN::CanFilter sRxFilter = {};
             sRxFilter.can_id           = u32Id;
             sRxFilter.can_mask         = (u32Id & CAN_EFF_FLAG) ? (CAN_EFF_FLAG | CAN_EFF_MASK)
                                                                 : CAN_SFF_MASK;
@@ -389,7 +389,7 @@ class KVCANPlugin : public PluginInterface
         {
             TpProtocol eProto = TpProtocol::NONE;
             if (false == tp_protocol_from_string(strProtocol, eProto)) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING("KVCAN |");
+                LOG_PRINT(LOG_ERROR, LOG_STRING("KCAN |");
                           LOG_STRING("Unknown CAN transport protocol:"); LOG_STRING(strProtocol.c_str()));
                 return false;
             }
@@ -542,7 +542,7 @@ class KVCANPlugin : public PluginInterface
         }
 
         /**
-         * \brief set KVCAN read timeout
+         * \brief set KCAN read timeout
          */
         bool setCanReadTimeout(const std::string &strReadTimeout) const
         {
@@ -550,7 +550,7 @@ class KVCANPlugin : public PluginInterface
         }
 
         /**
-         * \brief set KVCAN write timeout
+         * \brief set KCAN write timeout
          */
         bool setCanWriteTimeout(const std::string &strWriteTimeout) const
         {
@@ -558,7 +558,7 @@ class KVCANPlugin : public PluginInterface
         }
 
         /**
-         * \brief set KVCAN read buffer size
+         * \brief set KCAN read buffer size
          * \note Valid range is 1–64 bytes (maximum CAN FD payload).
          */
         bool setCanReadBufferSize(const std::string &strReadBufferSize) const
@@ -569,7 +569,7 @@ class KVCANPlugin : public PluginInterface
                 return false;
             }
             if (u32Size == 0U || u32Size > CAN_FD_MAX_DLEN) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING("KVCAN |");
+                LOG_PRINT(LOG_ERROR, LOG_STRING("KCAN |");
                           LOG_STRING("ReadBufSize out of range [1-64]:"); LOG_UINT32(u32Size));
                 return false;
             }
@@ -579,7 +579,7 @@ class KVCANPlugin : public PluginInterface
 
     private:
         /**
-         * \brief message sender — matches PFSEND<KVCAN> (see ICommDriver.hpp) so it can be
+         * \brief message sender — matches PFSEND<KCAN> (see ICommDriver.hpp) so it can be
          *        handed directly to CommScriptCommandInterpreter/CommScriptClient as a pfsend
          *        override (see m_KVCAN_CMD/m_KVCAN_SCRIPT). Dispatches on m_eTpProtocol:
          *        TpProtocol::NONE keeps today's exact one-call-one-frame behaviour; any other
@@ -588,17 +588,17 @@ class KVCANPlugin : public PluginInterface
          *        a segmented send shows every physical frame it actually put on the wire.
          */
         ICommDriver::WriteResult m_Send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                        std::shared_ptr<const KVCAN> shpDriver, std::string_view xtra_params,
+                                        std::shared_ptr<const KCAN> shpDriver, std::string_view xtra_params,
                                         std::stop_token stop_tok = {}) const;
 
         /**
-         * \brief message receiver — matches PFRECV<KVCAN>, same idea as m_Send() above.
+         * \brief message receiver — matches PFRECV<KCAN>, same idea as m_Send() above.
          *        UntilDelimiter/UntilToken reads always fall back to the driver's legacy
          *        framing (see body) since segmented binary transports have no such concept.
          */
         ICommDriver::ReadResult m_Receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
                                           const ICommDriver::ReadOptions &options,
-                                          std::shared_ptr<const KVCAN> shpDriver, std::string_view xtra_params,
+                                          std::shared_ptr<const KCAN> shpDriver, std::string_view xtra_params,
                                           std::stop_token stop_tok = {}) const;
 
         /**
@@ -607,7 +607,7 @@ class KVCANPlugin : public PluginInterface
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         /**
-         * \brief helper: parse a comma-separated filter list string into KVCAN::CanFilter entries.
+         * \brief helper: parse a comma-separated filter list string into KCAN::CanFilter entries.
          *        Each entry has the form "<id>:<mask>" (hex or decimal).
          *        Example: "0x100:0x7FF,0x200:0x7FF"
          *
@@ -617,7 +617,7 @@ class KVCANPlugin : public PluginInterface
          *        An id > 0x7FF without CAN_EFF_FLAG set triggers a warning and the
          *        flag is added automatically.
          */
-        bool m_ParseFilters(const std::string &strFilters, std::vector<KVCAN::CanFilter> &vFilters) const;
+        bool m_ParseFilters(const std::string &strFilters, std::vector<KCAN::CanFilter> &vFilters) const;
 
         /**
          * \brief map with association between the command string and the execution function
@@ -631,7 +631,7 @@ class KVCANPlugin : public PluginInterface
 
         /**
          * \brief runtime instance identity used for the GUI comm-dump panel
-         *        (e.g. "KVCAN" or "KVCAN:1" -- see PluginDataSet::strInstanceName).
+         *        (e.g. "KCAN" or "KCAN:1" -- see PluginDataSet::strInstanceName).
          *        Falls back to the fixed plugin name macro when unset (e.g.
          *        standalone construction outside the script interpreter).
          */
@@ -690,7 +690,7 @@ class KVCANPlugin : public PluginInterface
         mutable std::string m_strCanIface;
 
         /**
-         * \brief KVCAN ID stamped on every outgoing frame
+         * \brief KCAN ID stamped on every outgoing frame
          */
         mutable uint32_t m_u32CanTxId;
 
@@ -718,24 +718,24 @@ class KVCANPlugin : public PluginInterface
         mutable TpConfig m_sTpConfig;
 
         /**
-         * \brief KVCAN read timeout in milliseconds
+         * \brief KCAN read timeout in milliseconds
          */
         mutable uint32_t m_u32ReadTimeout;
 
         /**
-         * \brief KVCAN write timeout in milliseconds
+         * \brief KCAN write timeout in milliseconds
          */
         mutable uint32_t m_u32WriteTimeout;
 
         /**
-         * \brief size of the buffer used for KVCAN read operations (max 64 bytes for KVCAN FD)
+         * \brief size of the buffer used for KCAN read operations (max 64 bytes for KCAN FD)
          */
         mutable uint32_t m_u32ReadBufferSize;
 
         /**
          * \brief acceptance filters applied to the open socket (empty = accept all)
          */
-        mutable std::vector<KVCAN::CanFilter> m_vFilters;
+        mutable std::vector<KCAN::CanFilter> m_vFilters;
 
 /**
  * \brief functions associated to the plugin commands

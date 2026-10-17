@@ -23,11 +23,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED UDPPlugin *pluginEntry()
     {
         return new UDPPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(UDPPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -46,8 +48,8 @@ extern "C"
  *        peer host/port.
  *
  * Opened per-invocation (from m_UDP_CMD / m_UDP_SCRIPT) rather than held
- * open for the plugin's lifetime — the same pattern the KVCAN plugin uses
- * for its SocketKVCAN handle and the UDP plugin uses for its TCP socket.
+ * open for the plugin's lifetime — the same pattern the KCAN plugin uses
+ * for its SocketCAN handle and the UDP plugin uses for its TCP socket.
  * connect()ing a UDP socket does not handshake, so unlike UDP this call
  * essentially never blocks on the network; it can still fail synchronously
  * (e.g. invalid address family, resolution failure).

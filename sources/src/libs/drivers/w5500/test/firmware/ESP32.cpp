@@ -25,6 +25,7 @@ void setup()
     server.begin();
 }
 
+/** Arduino loop: serves the connected client. */
 void loop()
 {
     WiFiClient client = server.available();

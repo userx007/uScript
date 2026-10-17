@@ -27,6 +27,7 @@ void example_01_list_ports()
     }
 }
 
+/** Example: counts the available UART ports. */
 void example_02_count_ports()
 {
     std::cout << "\n=== Example 2: Count Ports ===\n";
@@ -35,6 +36,7 @@ void example_02_count_ports()
     std::cout << "Number of available ports: " << count << "\n";
 }
 
+/** Example: waits for a port insertion (simple API). */
 void example_03_wait_insertion_simple()
 {
     std::cout << "\n=== Example 3: Wait for Insertion (Simple API) ===\n";
@@ -48,6 +50,7 @@ void example_03_wait_insertion_simple()
     }
 }
 
+/** Example: waits for a port removal (simple API). */
 void example_04_wait_removal_simple()
 {
     std::cout << "\n=== Example 4: Wait for Removal (Simple API) ===\n";
@@ -60,6 +63,7 @@ void example_04_wait_removal_simple()
     }
 }
 
+/** Example: uses a custom monitor configuration. */
 void example_05_custom_config()
 {
     std::cout << "\n=== Example 5: Custom Configuration (Simple API) ===\n";
@@ -123,6 +127,7 @@ void example_06_monitor_basic()
     }
 }
 
+/** Example: waits for an event and inspects the detailed result. */
 void example_07_wait_with_result()
 {
     std::cout << "\n=== Example 7: Wait with Detailed Results ===\n";
@@ -155,6 +160,7 @@ void example_07_wait_with_result()
     }
 }
 
+/** Example: monitors port changes continuously. */
 void example_08_continuous_monitoring()
 {
     std::cout << "\n=== Example 8: Continuous Monitoring ===\n";
@@ -205,6 +211,7 @@ void example_08_continuous_monitoring()
     }
 }
 
+/** Example: handles monitor errors. */
 void example_09_error_handling()
 {
     std::cout << "\n=== Example 9: Error Handling ===\n";
@@ -247,6 +254,7 @@ void example_09_error_handling()
     }
 }
 
+/** Example: uses the monitor from several threads. */
 void example_10_thread_safety()
 {
     std::cout << "\n=== Example 10: Thread Safety Demo ===\n";
@@ -374,6 +382,7 @@ void example_12_wait_for_specific_device()
     }
 }
 
+/** Example: re-opens a port automatically after it reappears. */
 void example_13_auto_reconnect()
 {
     std::cout << "\n=== Example 13: Auto-Reconnect Pattern ===\n";

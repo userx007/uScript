@@ -1,6 +1,6 @@
 # loopback — unified UART / CAN / TCP / UDP / raw-Ethernet bridge
 
-Replaces the five standalone testers (`uart_loopback`, `kvcan_loopback`
+Replaces the five standalone testers (`uart_loopback`, `kcan_loopback`
 a.k.a. `vcan_mirror`, `eth_loopback_server` (TCP), `udp_loopback_server`,
 `eth_raw_loopback_server`) with **one** tool that can:
 
@@ -16,7 +16,7 @@ make
 
 Produces `./loopback`. `raweth:` (raw Ethernet) needs `CAP_NET_RAW` to
 run — either run as root, or `sudo setcap cap_net_raw+ep ./loopback` once.
-`kvcan:` needs a SocketCAN interface (`vcan0`, `can0`, ...).
+`kcan:` needs a SocketCAN interface (`vcan0`, `can0`, ...).
 
 ## Usage
 
@@ -42,7 +42,7 @@ CAN frames in `candump`-style `ID  [DLC] bytes` form, everything else as
 
 ```
 uart:<device>[/<baud>]                        e.g. uart:/dev/tnt0/115200
-kvcan:<iface>[/<can_id>]                       e.g. kvcan:vcan0/0x100
+kcan:<iface>[/<can_id>]                       e.g. kcan:vcan0/0x100
 tcpip:[server/]<port>[/<bindaddr>]             e.g. tcpip:5000
 tcpip:client/<host>/<port>                     e.g. tcpip:client/10.0.0.5/5000
 udp:[server/]<port>[/<bindaddr>]               e.g. udp:5000
@@ -50,9 +50,9 @@ udp:client/<host>/<port>                       e.g. udp:client/10.0.0.5/5000
 raweth:<ifname>[/<ethertype>][/promisc][/<mac>] e.g. raweth:eth0/0x88b5
 ```
 
-`can` / `tcp` / `eth` are accepted as aliases for `kvcan` / `tcpip` /
+`can` / `tcp` / `eth` are accepted as aliases for `kcan` / `tcpip` /
 `raweth`. The type separator after the keyword may be `:` or `/` — both
-`uart:/dev/tnt0/115200` and `kvcan/vcan0/0x100` parse correctly.
+`uart:/dev/tnt0/115200` and `kcan/vcan0/0x100` parse correctly.
 
 **Server vs. client (TCP/UDP):** a bare port (`tcpip:5000`) listens —
 the natural mode for an *input* (the tool waits for a peer to connect and
@@ -65,16 +65,16 @@ UART traffic on to a remote TCP/UDP listener.
 ```sh
 # Original behaviours, unchanged:
 ./loopback -i uart:/dev/tnt0/115200          # UART -> UART mirror
-./loopback -i kvcan:vcan0                    # CAN  -> CAN  mirror
+./loopback -i kcan:vcan0                    # CAN  -> CAN  mirror
 ./loopback -i tcpip:5000                     # TCP  -> TCP  mirror (echo server)
 ./loopback -i udp:5000                       # UDP  -> UDP  mirror (echo server)
 ./loopback -i raweth:eth0                    # raw-Eth -> raw-Eth mirror
 
 # From your example:
-./loopback -i uart:/dev/tnt0/115200 -o kvcan:vcan0/0x100 -t 500
+./loopback -i uart:/dev/tnt0/115200 -o kcan:vcan0/0x100 -t 500
 
 # Any other combination works the same way:
-./loopback -i kvcan:can0 -o tcpip:client/10.0.0.5/6000 -t 100
+./loopback -i kcan:can0 -o tcpip:client/10.0.0.5/6000 -t 100
 ./loopback -i udp:6001   -o udp:client/127.0.0.1/6002
 ./loopback -i raweth:eth0/0x88b5 -o uart:/dev/ttyUSB0/115200
 ```
@@ -82,11 +82,11 @@ UART traffic on to a remote TCP/UDP listener.
 ## CAN 8-byte limit
 
 Classic CAN frames carry at most 8 bytes of payload. When the **output**
-channel is `kvcan:`/`can:` and the message being forwarded is longer than
+channel is `kcan:`/`can:` and the message being forwarded is longer than
 8 bytes, bytes 9 onward are dropped and a warning is logged, e.g.:
 
 ```
-[kvcan:vcan0] WARNING: message is 14 bytes, CAN payload is limited to 8 - dropping bytes 9..14
+[kcan:vcan0] WARNING: message is 14 bytes, CAN payload is limited to 8 - dropping bytes 9..14
 ```
 
 The TX dump line reflects only the 8 bytes that were actually put on the
@@ -96,7 +96,7 @@ naturally, never more than 8 bytes to begin with.
 ## Design notes
 
 * **Mirror mode reuses the exact original logic per transport:**
-  * `kvcan:` — one socket, `CAN_RAW_RECV_OWN_MSGS=0`, `CAN_RAW_LOOPBACK`
+  * `kcan:` — one socket, `CAN_RAW_RECV_OWN_MSGS=0`, `CAN_RAW_LOOPBACK`
     left on — identical trick to `vcan_mirror.c`, and the reason two
     channels naming the *same* CAN interface are always collapsed into a
     single shared channel (two separate sockets on the same interface

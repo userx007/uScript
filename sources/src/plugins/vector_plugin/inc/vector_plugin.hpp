@@ -63,7 +63,7 @@
  * Windows only — see uVector.hpp.
  *
  * The command set (INFO / CONFIG / FILTER / CMD / SCRIPT / CYCLIC) and the
- * CONFIG/FILTER argument grammar deliberately mirror the PCAN and KVCAN
+ * CONFIG/FILTER argument grammar deliberately mirror the PCAN and KCAN
  * plugins so scripts written for those can be reused with minimal changes.
  *
  * Key differences vs PCAN:
@@ -139,16 +139,19 @@ class VectorPlugin : public PluginInterface
 
         ~VectorPlugin() = default;
 
+        /** Returns whether doInit() has succeeded. */
         bool isInitialized(void) const
         {
             return m_bIsInitialized;
         }
 
+        /** Returns whether the plugin has been enabled. */
         bool isEnabled(void) const
         {
             return m_bIsEnabled;
         }
 
+        /** Applies the settings loaded from the ini file. */
         bool setParams(const PluginDataSet *psSetParams)
         {
             bool bRetVal = false;
@@ -162,69 +165,82 @@ class VectorPlugin : public PluginInterface
             return bRetVal;
         }
 
+        /** Fills @p psGetParams with the current settings. */
         void getParams(PluginDataGet *psGetParams) const
         {
             generic_getparams<VectorPlugin>(this, psGetParams);
         }
 
+        /** Initialises the plugin. */
         bool doInit(void *pvUserData)
         {
             m_bIsInitialized = true;
             return m_bIsInitialized;
         }
 
+        /** Enables the plugin. */
         bool doEnable(void)
         {
             m_bIsEnabled = true;
             return true;
         }
 
+        /** Releases the plugin's resources. */
         void doCleanup(void)
         {
             m_bIsInitialized = false;
             m_bIsEnabled     = false;
         }
 
+        /** Runs command @p strCmd with @p strParams; @p st requests early stop. */
         bool doDispatch(const std::string &strCmd, const std::string &strParams, std::stop_token st = {}) const
         {
             return generic_dispatch<VectorPlugin>(this, strCmd, strParams, st);
         }
 
+        /** Returns the command table. */
         const PluginCommandsMap<VectorPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
 
+        /** Returns the plugin version string. */
         const std::string &getVersion(void) const
         {
             return m_strVersion;
         }
 
+        /** Returns the result data of the last command. */
         const std::string &getData(void) const
         {
             return m_strResultData;
         }
 
+        /** Clears the stored result data. */
         void resetData(void) const
         {
             m_strResultData.clear();
         }
 
+        /** Sets the raw-result flag from its string form; returns false if invalid. */
         bool setRawResult(const std::string &strValue) const
         {
             return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
         }
 
+        /** Sets the cyclic-cached flag from its string form; returns false if invalid. */
         bool setCyclicCached(const std::string &strValue) const
         {
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
+        /** Returns the fault-tolerant flag. */
         bool isFaultTolerant(void) const
         {
             return m_bIsFaultTolerant;
         }
 
+        /** Returns whether the plugin needs privileged access. */
         bool isPrivileged(void) const
         {
             return m_bIsPrivileged;
@@ -516,126 +532,149 @@ class VectorPlugin : public PluginInterface
             return true;
         }
 
-        // ---- TpConfig tuning parameters -- identical field set/semantics to PCAN/KVCAN ----
+        // ---- TpConfig tuning parameters -- identical field set/semantics to PCAN/KCAN ----
 
         bool setTpBlockSize(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.blockSize);
         }
 
+        /** Sets the tp st min from its string form; returns false if the value is invalid. */
         bool setTpStMin(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.stMin);
         }
 
+        /** Sets the tp pad frames from its string form; returns false if the value is invalid. */
         bool setTpPadFrames(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.padFrames);
         }
 
+        /** Sets the tp padding byte from its string form; returns false if the value is invalid. */
         bool setTpPaddingByte(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.paddingByte);
         }
 
+        /** Sets the tp timeout nbs from its string form; returns false if the value is invalid. */
         bool setTpTimeoutNBs(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutNBs_ms);
         }
 
+        /** Sets the tp timeout ncr from its string form; returns false if the value is invalid. */
         bool setTpTimeoutNCr(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutNCr_ms);
         }
 
+        /** Sets the tp max message len from its string form; returns false if the value is invalid. */
         bool setTpMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.maxMessageLen);
         }
 
+        /** Sets the j1939 use bam from its string form; returns false if the value is invalid. */
         bool setJ1939UseBam(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.j1939UseBam);
         }
 
+        /** Sets the j1939 max packets from its string form; returns false if the value is invalid. */
         bool setJ1939MaxPackets(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.j1939MaxPackets);
         }
 
+        /** Sets the tp timeout t1 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT1(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT1_ms);
         }
 
+        /** Sets the tp timeout t2 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT2(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT2_ms);
         }
 
+        /** Sets the tp timeout t3 from its string form; returns false if the value is invalid. */
         bool setTpTimeoutT3(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutT3_ms);
         }
 
+        /** Sets the tp timeout th from its string form; returns false if the value is invalid. */
         bool setTpTimeoutTh(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutTh_ms);
         }
 
+        /** Sets the j1939 max message len from its string form; returns false if the value is invalid. */
         bool setJ1939MaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.j1939MaxMessageLen);
         }
 
+        /** Sets the can open index from its string form; returns false if the value is invalid. */
         bool setCanOpenIndex(const std::string &strVal) const
         {
             return numeric::str2uint16(strVal, m_sTpConfig.canOpenIndex);
         }
 
+        /** Sets the can open sub index from its string form; returns false if the value is invalid. */
         bool setCanOpenSubIndex(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.canOpenSubIndex);
         }
 
+        /** Sets the can open use block from its string form; returns false if the value is invalid. */
         bool setCanOpenUseBlock(const std::string &strVal) const
         {
             BoolExprEvaluator sEvaluator;
             return sEvaluator.evaluate(strVal, m_sTpConfig.canOpenUseBlock);
         }
 
+        /** Sets the can open block size from its string form; returns false if the value is invalid. */
         bool setCanOpenBlockSize(const std::string &strVal) const
         {
             return numeric::str2uint8(strVal, m_sTpConfig.canOpenBlockSize);
         }
 
+        /** Sets the tp timeout sdo from its string form; returns false if the value is invalid. */
         bool setTpTimeoutSdo(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutSdo_ms);
         }
 
+        /** Sets the can open max message len from its string form; returns false if the value is invalid. */
         bool setCanOpenMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.canOpenMaxMessageLen);
         }
 
+        /** Sets the tp timeout fp inter frame from its string form; returns false if the value is invalid. */
         bool setTpTimeoutFpInterFrame(const std::string &strVal) const
         {
             return numeric::str2uint32(strVal, m_sTpConfig.timeoutFpInterFrame_ms);
         }
 
+        /** Sets the fp max message len from its string form; returns false if the value is invalid. */
         bool setFpMaxMessageLen(const std::string &strVal) const
         {
             return numeric::str2sizet(strVal, m_sTpConfig.fastPacketMaxMessageLen);
         }
 
+        /** Sets the can read timeout from its string form; returns false if the value is invalid. */
         bool setCanReadTimeout(const std::string &strReadTimeout) const
         {
             return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
         }
 
+        /** Sets the can write timeout from its string form; returns false if the value is invalid. */
         bool setCanWriteTimeout(const std::string &strWriteTimeout) const
         {
             return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
@@ -664,12 +703,13 @@ class VectorPlugin : public PluginInterface
         }
 
     private:
+        /** Applies the ini settings to this plugin's configuration. */
         bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
         /**
          * \brief helper: parse a comma-separated filter list string into a list of id:mask pairs.
          *        Identical grammar/semantics to PCANPlugin::m_ParseFilters() /
-         *        KVCAN's m_ParseFilters(): only the FIRST parsed entry is
+         *        KCAN's m_ParseFilters(): only the FIRST parsed entry is
          *        actually enforced by the driver (uVector's single active
          *        RX filter id, checked in software).
          */

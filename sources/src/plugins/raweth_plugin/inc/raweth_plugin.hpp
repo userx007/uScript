@@ -58,8 +58,8 @@
  * the standard PluginInterface dispatch model. Sends/receives frames on a
  * single configured interface (see uRawEth.hpp).
  *
- * Like KVCAN, RawEth is frame based rather than stream based — but unlike
- * KVCAN there is no FILTER command here: the only acceptance filtering
+ * Like KCAN, RawEth is frame based rather than stream based — but unlike
+ * KCAN there is no FILTER command here: the only acceptance filtering
  * point is the bind() to interface + EtherType performed at open() time,
  * and the destination MAC / EtherType used for writes are configured the
  * same way TCPIP's host/port are, through CONFIG. The plugin surface is

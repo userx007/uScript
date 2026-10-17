@@ -48,6 +48,7 @@ class W5500Net : public ICommDriver
          */
         Status close();
 
+        /** Returns whether the device is open. */
         bool is_open() const override;
 
         /**
@@ -71,6 +72,7 @@ class W5500Net : public ICommDriver
                              std::string_view xtra_params = {},
                              std::stop_token stop_tok     = {}) const override;
 
+        /** Writes @p buffer, waiting at most the write timeout. */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
                                std::string_view xtra_params = {},

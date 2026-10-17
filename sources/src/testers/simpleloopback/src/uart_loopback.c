@@ -66,6 +66,7 @@ typedef ptrdiff_t ssize_t; /* MSVC has no ssize_t */
 
 static volatile int running = 1;
 
+/** Signal handler: stops the main loop. */
 static void sig_handler(int iSig)
 {
     (void)iSig;
@@ -100,6 +101,7 @@ static const struct baud_entry BAUD_TABLE[] = {
 #endif
 };
 
+/** Maps a baud rate to the termios speed constant; returns -1 if unsupported. */
 static int baud_to_flag(long baud, speed_t *pOut)
 {
     for (size_t i = 0; i < sizeof(BAUD_TABLE) / sizeof(BAUD_TABLE[0]); i++) {
@@ -135,6 +137,7 @@ static void report_error(const char *pstrWhat)
     fprintf(stderr, "%s: %s (error %lu)\n", pstrWhat, msg, (unsigned long)err);
 }
 
+/** Reads from the serial port. */
 static ssize_t port_read(port_t h, void *buf, size_t len)
 {
     DWORD got = 0;
@@ -143,6 +146,7 @@ static ssize_t port_read(port_t h, void *buf, size_t len)
     return (ssize_t)got;
 }
 
+/** Writes to the serial port. */
 static ssize_t port_write(port_t h, const void *buf, size_t len)
 {
     DWORD put = 0;
@@ -151,6 +155,7 @@ static ssize_t port_write(port_t h, const void *buf, size_t len)
     return (ssize_t)put;
 }
 
+/** Closes the serial port. */
 static void port_close(port_t h)
 {
     CloseHandle(h);
@@ -164,16 +169,19 @@ static void report_error(const char *pstrWhat)
     perror(pstrWhat);
 }
 
+/** Reads from the serial port. */
 static ssize_t port_read(port_t h, void *buf, size_t len)
 {
     return read(h, buf, len);
 }
 
+/** Writes to the serial port. */
 static ssize_t port_write(port_t h, const void *buf, size_t len)
 {
     return write(h, buf, len);
 }
 
+/** Closes the serial port. */
 static void port_close(port_t h)
 {
     close(h);
@@ -192,6 +200,7 @@ static void print_chunk(const char *pstrPrefix, const unsigned char *buf, ssize_
 
 #if defined(_WIN32)
 
+/** Opens and configures the serial port at @p baud. */
 static port_t open_serial_port(const char *pstrPath, long baud)
 {
     char full[300];
@@ -260,6 +269,7 @@ static port_t open_serial_port(const char *pstrPath, long baud)
 
 #else /* POSIX */
 
+/** Opens and configures the serial port at @p baud. */
 static port_t open_serial_port(const char *pstrPath, long baud)
 {
     speed_t speed;

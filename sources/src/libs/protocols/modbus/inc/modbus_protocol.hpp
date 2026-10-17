@@ -71,12 +71,19 @@ class ModbusProtocol
         // slave in its response's MBAP header, and how ModbusDriver matches a
         // response to the request that caused it).
         std::vector<uint8_t> buildReadCoils(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId);
+        /** Builds a request for Modbus function 0x02 (read discrete inputs). */
         std::vector<uint8_t> buildReadDiscreteInputs(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId);
+        /** Builds a request for Modbus function 0x03 (read holding registers). */
         std::vector<uint8_t> buildReadHoldingRegisters(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId);
+        /** Builds a request for Modbus function 0x04 (read input registers). */
         std::vector<uint8_t> buildReadInputRegisters(uint8_t unitId, uint16_t startAddr, uint16_t quantity, uint16_t *pOutTxnId);
+        /** Builds a request for Modbus function 0x05 (write single coil). */
         std::vector<uint8_t> buildWriteSingleCoil(uint8_t unitId, uint16_t addr, bool value, uint16_t *pOutTxnId);
+        /** Builds a request for Modbus function 0x06 (write single register). */
         std::vector<uint8_t> buildWriteSingleRegister(uint8_t unitId, uint16_t addr, uint16_t value, uint16_t *pOutTxnId);
+        /** Builds a request for Modbus function 0x0F (write multiple coils). */
         std::vector<uint8_t> buildWriteMultipleCoils(uint8_t unitId, uint16_t startAddr, const std::vector<bool> &values, uint16_t *pOutTxnId);
+        /** Builds a request for Modbus function 0x10 (write multiple registers). */
         std::vector<uint8_t> buildWriteMultipleRegisters(uint8_t unitId, uint16_t startAddr, const std::vector<uint16_t> &values, uint16_t *pOutTxnId);
 
         // ---- ADU framing helpers, used by ModbusDriver's read loop ----
@@ -90,19 +97,23 @@ class ModbusProtocol
 
         // ---- Decoders: pure decode of one already-complete ADU ----
         static uint16_t decodeTransactionId(const std::vector<uint8_t> &vAdu);
+        /** Returns the Modbus function code of a response (exception bit cleared). */
         static uint8_t decodeFunctionCode(const std::vector<uint8_t> &vAdu); // PDU function code, exception bit included if set
 
+        /** Returns whether the response is a Modbus exception. */
         static bool isException(const std::vector<uint8_t> &vAdu)
         {
             return (decodeFunctionCode(vAdu) & kExceptionFlag) != 0;
         }
 
+        /** Returns the exception code of a Modbus exception response. */
         static uint8_t decodeExceptionCode(const std::vector<uint8_t> &vAdu); // valid only if isException() is true
 
         // quantity: the same value passed to buildReadCoils()/buildReadDiscreteInputs()
         // for this request — needed because the response's byte-packed bits
         // don't self-describe how many of the last byte's bits are padding.
         ReadBitsResult decodeReadBitsResponse(const std::vector<uint8_t> &vAdu, uint16_t u16Quantity) const;
+        /** Decodes the register values of a Modbus read-registers response. */
         ReadRegsResult decodeReadRegsResponse(const std::vector<uint8_t> &vAdu) const;
 
         // Write responses (single or multiple, coil or register) all just echo
@@ -112,6 +123,7 @@ class ModbusProtocol
         // as much confirmation as Modbus itself provides.
         static bool isWriteAck(const std::vector<uint8_t> &vAdu, uint8_t u8ExpectedFunctionCode);
 
+        /** Restarts Modbus TCP transaction-id allocation. */
         void resetTransactionIdSequence()
         {
             m_nextTransactionId = 1;
@@ -124,11 +136,13 @@ class ModbusProtocol
         // MQTT packet ids) — no wraparound special-casing needed.
         uint16_t m_nextTransactionId = 1;
 
+        /** Returns the next transaction id. */
         uint16_t m_allocateTransactionId()
         {
             return m_nextTransactionId++;
         }
 
+        /** Wraps @p pdu in an MBAP header for @p unitId and returns the frame; the transaction id goes to @p pOutTxnId. */
         std::vector<uint8_t> m_buildRequest(uint8_t unitId, const std::vector<uint8_t> &pdu, uint16_t *pOutTxnId);
 };
 

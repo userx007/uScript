@@ -36,6 +36,7 @@ namespace
     constexpr const char *kPluginNameForDump = "DDS";
     constexpr uint32_t kBuiltinReadBatch     = 64; // see listParticipants()/listEndpoints()'s doc comment on this cap
 
+    /** Formats a DDS GUID as lower-case hex. */
     std::string guidToHex(const dds_guid_t &g)
     {
         std::ostringstream oss;

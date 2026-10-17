@@ -54,6 +54,7 @@
 class Nmea2000FastPacketProtocol final : public ITransportProtocol
 {
     public:
+        /** Creates the driver or protocol object from its configuration. */
         explicit Nmea2000FastPacketProtocol(const TpConfig &sCfg = {})
             : m_cfg(sCfg)
         {
@@ -73,6 +74,7 @@ class Nmea2000FastPacketProtocol final : public ITransportProtocol
             std::string_view rxId,
             std::string_view txId = {}) const override;
 
+        /** Returns the transport protocol identifier. */
         TpProtocol id() const override
         {
             return TpProtocol::NMEA2000_FAST_PACKET;

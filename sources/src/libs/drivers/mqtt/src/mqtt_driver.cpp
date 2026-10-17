@@ -90,6 +90,7 @@ namespace
     thread_local uint16_t tl_pendingPacketId = 0;
 } // namespace
 
+/** Creates the driver or protocol object from its configuration. */
 MqttDriver::MqttDriver(Config sConfig)
     : m_config(std::move(sConfig))
 {

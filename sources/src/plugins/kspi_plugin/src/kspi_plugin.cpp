@@ -29,11 +29,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED KSPIPlugin *pluginEntry()
     {
         return new KSPIPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(KSPIPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {

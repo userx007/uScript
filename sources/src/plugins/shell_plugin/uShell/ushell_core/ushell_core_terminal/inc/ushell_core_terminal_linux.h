@@ -29,6 +29,7 @@ class TerminalRAII
         };
 
     public:
+        /** Puts the terminal into raw mode, remembering the original settings; does nothing if stdin is not a TTY. */
         TerminalRAII()
             : initialized(false)
         {
@@ -66,6 +67,7 @@ class TerminalRAII
         }
 
     private:
+        /** Restores the terminal settings saved at construction. */
         static void restoreTerminal()
         {
             if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_config) == -1) {
@@ -74,6 +76,7 @@ class TerminalRAII
         }
 
     public:
+        /** Clears the screen and moves the cursor home. */
         void clear()
         {
             uSHELL_PRINTF("\033[H\033[J");

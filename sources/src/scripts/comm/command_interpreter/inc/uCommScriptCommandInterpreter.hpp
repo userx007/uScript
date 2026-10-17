@@ -77,7 +77,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
          *               transport protocol that turns one logical send into several
          *               physical frames) — this class stops emitting its own
          *               comm-dump row for that direction, trusting pfsend to report
-         *               whatever rows are accurate (see KVCANPlugin::m_Send()).
+         *               whatever rows are accurate (see KCANPlugin::m_Send()).
          * @param pfrecv Same idea as pfsend, for the read side (driver->tout_read()).
          * @param stop_tok Cooperative cancellation token forwarded verbatim into every
          *                 driver->tout_read()/tout_write() call this instance makes (both

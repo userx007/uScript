@@ -15,7 +15,7 @@
 #include <vector>
 
 /**
- * @brief Linux SocketCAN frame driver for REAL CAN adapters (can0, can1 ...), implementing ICommDriver.
+ * @brief Linux SocketCAN frame driver for virtual (vcan0 ...) AND real (can0, can1 ...) CAN interfaces, implementing ICommDriver.
  *
  * Works with any SocketCAN network interface - a physical adapter exposed by a
  * kernel driver (PEAK PCAN-USB via peak_usb, Kvaser, gs_usb/candleLight, on-board
@@ -23,7 +23,7 @@
  * binds it to the requested interface and exposes the same ICommDriver
  * read/write surface used by the UART, I2C and SPI drivers.
  *
- * What KCAN adds on top of the plain-socket KVCAN driver:
+ * Frame I/O is identical for virtual and real interfaces; what only a real bus needs is layered on top:
  *   - bus speed / link control: see uKCanLink.hpp (kcan::link_apply(), ...), which
  *     programs bitrate, sample point, CAN FD data bitrate, controller modes and
  *     brings the interface up/down over rtnetlink (the `ip link set can0 type can
@@ -276,6 +276,7 @@ class KCAN : public ICommDriver
         mutable std::atomic<uint32_t> m_u32LastRxId{0}; /**< CAN id (+EFF flag) of the last data frame returned by timeout_read(). */
 
         // -----------------------------------------------------------------------
+        /** Returns the TX id given in @p xtra_params, or the default. */
         uint32_t resolveTxId(std::string_view xtra_params) const;
         // Internal transport primitives
         // -----------------------------------------------------------------------

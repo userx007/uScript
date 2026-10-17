@@ -479,10 +479,20 @@ KCAN::Status KCAN::timeout_write(uint32_t u32WriteTimeout,
         const bool bWouldBlock = (nbytes < 0) && (err == EAGAIN || err == EWOULDBLOCK || err == ENOBUFS);
         if (!bWouldBlock) {
             if (nbytes >= 0 || err != EINTR) {
+                // Turn the two errnos people actually hit into an actionable hint.
+                const char *pszHint = "";
+                if (err == ENETDOWN) {
+                    pszHint = "(interface is down - bring it up / set the bitrate first)";
+                } else if (err == EINVAL && szFrame == CANFD_MTU) {
+                    // > 8 bytes goes out as a CAN FD frame, which the kernel only accepts on an
+                    // interface with mtu 72: a real adapter must be in FD mode, a vcan needs the mtu.
+                    pszHint = "(payload > 8 bytes is sent as a CAN FD frame but this interface is not CAN FD capable/enabled: "
+                              "real adapter -> fd=on db=<rate>; vcan -> 'ip link set <iface> mtu 72'; see STATUS mtu=)";
+                }
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("send() failed on "); LOG_STRING(m_strIface.c_str());
                           LOG_STRING("errno:"); LOG_INT(err);
-                          LOG_STRING(err == ENETDOWN ? "(interface is down - bring it up / set the bitrate first)" : ""));
+                          LOG_STRING(pszHint));
                 return Status::WRITE_ERROR;
             }
             continue; // EINTR

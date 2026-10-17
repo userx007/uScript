@@ -46,6 +46,7 @@ namespace kcan
         class NlRequest
         {
             public:
+                /** Starts a netlink request of type @p u16Type for interface @p iIfIndex. */
                 NlRequest(uint16_t u16Type, uint16_t u16Flags, int iIfIndex)
                 {
                     std::memset(m_buf, 0, sizeof(m_buf));
@@ -57,21 +58,25 @@ namespace kcan
                     ifi()->ifi_index  = iIfIndex;
                 }
 
+                /** Returns the netlink message header. */
                 nlmsghdr *hdr()
                 {
                     return reinterpret_cast<nlmsghdr *>(m_buf);
                 }
 
+                /** Returns the interface-info message. */
                 ifinfomsg *ifi()
                 {
                     return static_cast<ifinfomsg *>(NLMSG_DATA(hdr()));
                 }
 
+                /** Returns whether every attribute added so far fitted into the message buffer. */
                 bool ok() const
                 {
                     return m_ok;
                 }
 
+                /** Appends a netlink attribute. */
                 void addAttr(uint16_t u16Type, const void *pvData, size_t szLen)
                 {
                     rtattr *a = reserve(u16Type, szLen);
@@ -80,17 +85,20 @@ namespace kcan
                     }
                 }
 
+                /** Appends @p tValue as a netlink attribute. */
                 template <typename T>
                 void addValue(uint16_t u16Type, const T &tValue)
                 {
                     addAttr(u16Type, &tValue, sizeof(T));
                 }
 
+                /** Opens a nested netlink attribute. */
                 rtattr *nestBegin(uint16_t u16Type)
                 {
                     return reserve(u16Type, 0);
                 }
 
+                /** Closes the nested attribute @p pNest. */
                 void nestEnd(rtattr *pNest)
                 {
                     if (pNest != nullptr) {
@@ -99,11 +107,13 @@ namespace kcan
                 }
 
             private:
+                /** Returns the write position at the end of the message. */
                 uint8_t *tail()
                 {
                     return m_buf + NLMSG_ALIGN(hdr()->nlmsg_len);
                 }
 
+                /** Appends an attribute with room for @p szLen bytes and returns it. */
                 rtattr *reserve(uint16_t u16Type, size_t szLen)
                 {
                     if (!m_ok || NLMSG_ALIGN(hdr()->nlmsg_len) + RTA_SPACE(szLen) > sizeof(m_buf)) {
@@ -127,6 +137,7 @@ namespace kcan
         class NlSocket
         {
             public:
+                /** Opens a netlink route socket. */
                 NlSocket()
                 {
                     m_fd = ::socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE);
@@ -223,6 +234,7 @@ namespace kcan
                 uint32_t m_seq = 0;
         };
 
+        /** Returns the interface index of @p strIface, or 0 if unknown. */
         int ifindex_of(const std::string &strIface)
         {
             if (strIface.empty() || strIface.size() >= IFNAMSIZ) {
@@ -231,12 +243,14 @@ namespace kcan
             return static_cast<int>(::if_nametoindex(strIface.c_str()));
         }
 
+        /** Returns whether @p u32Actual is within @p u32TolPermille (per mille) of @p u32Wanted. */
         bool close_enough(uint32_t u32Actual, uint32_t u32Wanted, uint32_t u32TolPermille)
         {
             const uint64_t diff = (u32Actual > u32Wanted) ? (u32Actual - u32Wanted) : (u32Wanted - u32Actual);
             return diff * 1000ULL <= static_cast<uint64_t>(u32Wanted) * u32TolPermille;
         }
 
+        /** Parses the CAN attributes into @p s. */
         void parse_can_data(const rtattr *pData, LinkStatus &s)
         {
             int iLen = static_cast<int>(RTA_PAYLOAD(pData));
@@ -307,6 +321,7 @@ namespace kcan
             }
         }
 
+        /** Parses the link-info attributes into @p s. */
         void parse_linkinfo(const rtattr *pInfo, LinkStatus &s)
         {
             const rtattr *pData = nullptr;

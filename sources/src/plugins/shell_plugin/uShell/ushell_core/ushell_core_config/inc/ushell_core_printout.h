@@ -12,7 +12,9 @@ extern "C"
 #include <miniprintf.h>
 #include <stdarg.h>
     char uart_getchar(void);
+    /** Writes one character to the UART. */
     void uart_putchar(char data);
+    /** printf-style output to the UART. */
     int uart_printf(const char *pstrFormat, ...);
 #define uSHELL_PRINTF   uart_printf
 #define uSHELL_SNPRINTF mini_snprintf

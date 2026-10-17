@@ -29,11 +29,13 @@
 
 extern "C"
 {
+    /** Plugin entry point: creates the plugin instance. */
     EXPORTED CandlelightPlugin *pluginEntry()
     {
         return new CandlelightPlugin();
     }
 
+    /** Plugin exit point: destroys the instance. */
     EXPORTED void pluginExit(CandlelightPlugin *pPlugin)
     {
         if (nullptr != pPlugin) {
@@ -337,7 +339,7 @@ bool CandlelightPlugin::m_CANDLELIGHT_SCRIPT(const std::string &strArgs, std::st
  *       empty id falls back to the TX id set via CONFIG) and "val" is the payload as a plain
  *       hex string (e.g. "AABBCCDD").
  *
- * \note This bypasses TP-segmented transport on purpose — same rationale as KVCAN's CYCLIC: a
+ * \note This bypasses TP-segmented transport on purpose — same rationale as KCAN's CYCLIC: a
  *       cyclic message is by definition a single, self-contained frame per tick.
  *
  * \note Usage example:
