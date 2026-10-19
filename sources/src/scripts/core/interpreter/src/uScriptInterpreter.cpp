@@ -2453,7 +2453,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                 }
                             }
 
-                            utime::delay_ms(m_szDelay); /* delay between the commands execution */
+                            (void)uexec::sleepInterruptible(std::chrono::milliseconds(m_szDelay)); /* inter-command delay; a stop is picked up by the next loop check */
 
                         } else { // only for validation purposes
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
@@ -2786,20 +2786,26 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                           LOG_STRING(std::to_string(command.szValue));
                           LOG_STRING(strUnit));
 
+                // The sleeps below are all uexec::sleepInterruptible(): a GUI "Stop"
+                // wakes them at once instead of after the full requested duration
+                // (a plain sleep_for() would outlive the GUI's grace period, get the
+                // process SIGKILLed and leave drivers / DDS participants un-closed).
+                // false == interrupted -> abort the script like any failed command.
+                int64_t llRequestedUs = 0;
+                switch (command.eUnit) {
+                case DelayUnit::US:
+                    llRequestedUs = static_cast<int64_t>(command.szValue);
+                    break;
+                case DelayUnit::MS:
+                    llRequestedUs = static_cast<int64_t>(command.szValue) * 1000LL;
+                    break;
+                case DelayUnit::SEC:
+                    llRequestedUs = static_cast<int64_t>(command.szValue) * 1000000LL;
+                    break;
+                }
+
                 if (!m_loopStateStack.empty()) {
                     // Anchored delay — see LoopState::delayAnchorTime doc comment.
-                    int64_t llRequestedUs = 0;
-                    switch (command.eUnit) {
-                    case DelayUnit::US:
-                        llRequestedUs = static_cast<int64_t>(command.szValue);
-                        break;
-                    case DelayUnit::MS:
-                        llRequestedUs = static_cast<int64_t>(command.szValue) * 1000LL;
-                        break;
-                    case DelayUnit::SEC:
-                        llRequestedUs = static_cast<int64_t>(command.szValue) * 1000000LL;
-                        break;
-                    }
 
                     LoopState &loopState = m_loopStateStack.back();
                     loopState.llDelayAccumulatedUs += llRequestedUs;
@@ -2808,25 +2814,23 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                         std::chrono::microseconds(loopState.llDelayAccumulatedUs);
                     const auto now    = std::chrono::steady_clock::now();
                     if (target > now) {
-                        std::this_thread::sleep_for(target - now);
+                        if (!uexec::sleepInterruptible(std::chrono::duration_cast<std::chrono::microseconds>(target - now))) {
+                            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(lineNr.data());
+                                      LOG_STRING("DELAY interrupted by stop request - aborting script"));
+                            bRetVal = false;
+                            return;
+                        }
                     } else {
                         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                                   LOG_STRING("DELAY: loop running behind schedule by");
                                   LOG_STRING(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(now - target).count()));
                                   LOG_STRING("us — skipping sleep, not catching up in one jump"));
                     }
-                } else {
-                    switch (command.eUnit) {
-                    case DelayUnit::US:
-                        utime::delay_us(command.szValue);
-                        break;
-                    case DelayUnit::MS:
-                        utime::delay_ms(command.szValue);
-                        break;
-                    case DelayUnit::SEC:
-                        utime::delay_seconds(command.szValue);
-                        break;
-                    }
+                } else if (!uexec::sleepInterruptible(std::chrono::microseconds(llRequestedUs))) {
+                    LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("DELAY interrupted by stop request - aborting script"));
+                    bRetVal = false;
+                    return;
                 }
             }
 

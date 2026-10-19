@@ -9,6 +9,7 @@
 #include "uGuiNotify.hpp"
 #include "uLogger.hpp"
 #include "uSharedConfig.hpp"
+#include "uExecContext.hpp"
 #include "uTimer.hpp"
 
 #include <memory>
@@ -151,7 +152,12 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
                         bRetVal = false;
                         break;
                     }
-                    utime::delay_ms(m_szDelay);
+                    (void)uexec::sleepInterruptible(std::chrono::milliseconds(m_szDelay));
+                    if (uexec::isStopRequested()) { // no per-line poll exists in this loop
+                        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Stop requested by user - aborting comm script"));
+                        bRetVal = false;
+                        break;
+                    }
                 }
             }
 

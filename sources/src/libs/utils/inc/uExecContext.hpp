@@ -3,8 +3,10 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <filesystem>
 #include <functional>
+#include <mutex>
 #include <stop_token>
 #include <string>
 #include <thread>
@@ -304,6 +306,55 @@ namespace uexec
     inline std::stop_token getStopToken(void)
     {
         return detail::t_stopSource.get_token();
+    }
+
+    /**
+     * \brief Stop-aware replacement for std::this_thread::sleep_for() /
+     *        utime::delay_*(): sleeps for @p dur but returns early - within one
+     *        watcher-thread tick (~150 ms), not at the end of the delay - once
+     *        the GUI's stop request fires @p tok.
+     *
+     *        Why: a plain sleep_for() inside a DELAY statement is a blocking
+     *        call the per-line isStopRequested() poll cannot reach, so the GUI's
+     *        1.5 s grace period expires and the process is SIGKILLed with all
+     *        driver / DDS participants still open (no destructors run). Waiting
+     *        on a condition_variable_any with the stop_token wakes the thread the
+     *        instant request_stop() is called - no polling chunks needed, and
+     *        the sleep stays as precise as sleep_for() otherwise.
+     *
+     *        Very short sleeps (< 2 ms) skip the condition-variable machinery
+     *        and use a plain sleep_for(): a stop cannot be noticed any faster
+     *        than the ~150 ms watcher tick, so interruptibility is meaningless
+     *        there and the overhead would only hurt us-level precision.
+     *
+     * \param dur  how long to sleep
+     * \param tok  token to honour; defaults to the process-wide GUI stop token
+     *             (never requested when running standalone from the CLI, so the
+     *             call then behaves exactly like sleep_for()).
+     * \return true  the full duration elapsed;
+     *         false the sleep was cut short by a stop request - the caller
+     *               should abort the script (return failure) rather than carry on.
+     */
+    inline bool sleepInterruptible(std::chrono::microseconds dur,
+                                   std::stop_token tok = getStopToken())
+    {
+        if (tok.stop_requested()) {
+            return false;
+        }
+        if (dur <= std::chrono::microseconds(0)) {
+            return true;
+        }
+        if (dur < std::chrono::milliseconds(2)) {
+            std::this_thread::sleep_for(dur);
+            return true;
+        }
+
+        std::mutex mtx;
+        std::condition_variable_any cv;
+        std::unique_lock<std::mutex> lk(mtx);
+        // wait_for(lock, stop_token, dur, pred) returns pred(): true == stop requested.
+        const bool bStopped = cv.wait_for(lk, tok, dur, [&tok] { return tok.stop_requested(); });
+        return !bStopped;
     }
 
 } // namespace uexec

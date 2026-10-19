@@ -12,6 +12,7 @@
 #include "uNumeric.hpp"
 #include "uSharedConfig.hpp"
 #include "uString.hpp"
+#include "uExecContext.hpp"
 #include "uTimer.hpp"
 
 #include <filesystem>
@@ -192,16 +193,25 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
             } else if (sCommand.direction == CommCommandDirection::DELAY) {
                 size_t szDelay = 0;
                 if (numeric::str2sizet(sCommand.values.first, szDelay)) {
+                    // Stop-aware sleep (see uexec::sleepInterruptible): a GUI "Stop"
+                    // ends the delay at once and fails the command, which unwinds the
+                    // comm script and the calling plugin command instead of letting
+                    // the sleep outlive the GUI's grace period.
+                    std::chrono::microseconds dur{0};
                     if (sCommand.values.second == TIME_MICROSECONDS) {
-                        utime::delay_us(szDelay);
+                        dur = std::chrono::microseconds(szDelay);
                     } else if (sCommand.values.second == TIME_MILISECONDS) {
-                        utime::delay_ms(szDelay);
+                        dur = std::chrono::milliseconds(szDelay);
                     } else if (sCommand.values.second == TIME_SECONDS) {
-                        utime::delay_seconds(szDelay);
+                        dur = std::chrono::seconds(szDelay);
                     } else {
                         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No delay execution (invalid unit)"));
                     }
-                    result = true;
+                    result = uexec::sleepInterruptible(dur);
+                    if (!result) {
+                        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("DELAY interrupted by stop request"));
+                    }
                 }
             } else {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command type"));
