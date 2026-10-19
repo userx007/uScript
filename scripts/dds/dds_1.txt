@@ -3,23 +3,28 @@
 # ---------------------------------
 # konsole -e "bash -c 'sudo tcpdump -ni lo -s 0 -vv udp'" &
 
+# sudo ip link set lo multicast on
+# ip link show lo
 
 LOAD_PLUGIN DDS
 
-DDS:1.CONFIG d=99 pid=1 n=loopback_pub
-DDS:2.CONFIG d=99 pid=2 n=loopback_sub
+#DDS.INFO
+
+DDS:1.CONFIG d=0 pid=1 n=loopback_pub i=lo mi=lo
+DDS:2.CONFIG d=0 pid=2 n=loopback_sub i=lo mi=lo
 
 DDS:2.CMD > SUBSCRIBE selftest/ping
 received ?= DDS:2.CMD < &
 
 # Give SPDP+SEDP a moment to discover each other and match the topic
 # before publishing — see Gotchas for why this delay matters.
-DELAY 2500 ms
+DELAY 500 ms
 
 DDS:1.CMD > PUBLISH selftest/ping hello
 
-REPEAT wait_ping UNTIL EVAL $received != "" | STR
+i ?= REPEAT wait_ping UNTIL EVAL $received != "" | STR
   DELAY 100 ms
+  PRINT Attempt no: $i
 END_REPEAT wait_ping
 
 IF EVAL $received == "hello" | STR GOTO pass
@@ -30,3 +35,5 @@ LABEL pass
 PRINT DDS loopback self-test passed
 
 LABEL done
+
+DELAY 5 sec

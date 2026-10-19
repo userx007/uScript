@@ -16,11 +16,10 @@ recvval ?= $CANP.CMD < &
 
 i ?= REPEAT loop 10
     DELAY 1000 ms
-    snd ?= MATH $i | HEX_64_BE
+    snd ?= MATH $i | HEX_32_LE
     UART.CMD > H'$snd'
 END_REPEAT loop
 
-KILL recvval
-
 DELAY 1 sec
+KILL recvval
 
