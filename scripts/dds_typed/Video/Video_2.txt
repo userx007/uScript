@@ -1,0 +1,79 @@
+LOAD_PLUGIN DDSTY
+DDSTY.INFO
+
+
+DDSTY:1.CONFIG d=0 pid=1 n=loopback_pub i=lo mi=lo ms=128 qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Video__*__*=CommandPattern;Video__*_Specification=SpecificationPattern
+DDSTY:2.CONFIG d=0 pid=1 n=loopback_pub i=lo mi=lo ms=128 qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Video__*__*=CommandPattern;Video__*_Specification=SpecificationPattern
+
+DDSTY:1.CMD > LOAD ../../../uplugins/libVideoTypes.so 
+DDSTY:2.CMD > LOAD ../../../uplugins/libVideoTypes.so
+
+# Reader
+
+DDSTY:2.CMD > SUBSCRIBE \
+Video__Optical_Sensor \
+Video__Source_Zoom \
+Video__Video_Source_Specification \
+Video__Video_Source_FOV_Support \
+Video__Video_Source_Focus_Support \
+Video__Video_Source_Sensor_Support \
+Video__Video_Source_Zoom_Support \
+Video__IR_Band_Sensor \
+Video__Visual_Band_Sensor \
+Video__Actual_Video_Source \
+Video__Focus
+
+# Writer
+
+DDSTY:1.CMD > PUBLISH Video__Source_Zoom__setFoV \
+    A_recipientID={A_resourceId=537;A_instanceId=538};\
+    A_sourceID={A_resourceId=539;A_instanceId=540};\
+    A_referenceNum=541;\
+    A_timeOfDataGeneration={A_second=542;A_nanoseconds=543};\
+    A_verticalFoV=544.5;\
+    A_horizontalFoV=545.5
+
+DDSTY:1.CMD > PUBLISH Video__Source_Zoom__setZoomAbsolute \
+    A_recipientID={A_resourceId=554;A_instanceId=555};\
+    A_sourceID={A_resourceId=556;A_instanceId=557};\
+    A_referenceNum=558;\
+    A_timeOfDataGeneration={A_second=559;A_nanoseconds=560};\
+    A_zoomAbsolute=561.5
+
+DDSTY:1.CMD > PUBLISH Video__Source_Zoom__setStepSize \
+    A_recipientID={A_resourceId=562;A_instanceId=563};\
+    A_sourceID={A_resourceId=564;A_instanceId=565};\
+    A_referenceNum=566;\
+    A_timeOfDataGeneration={A_second=567;A_nanoseconds=568};\
+    A_stepSize=569.5
+
+DDSTY:1.CMD > PUBLISH Video__Source_Zoom__nudgeZoom \
+    A_recipientID={A_resourceId=546;A_instanceId=547};\
+    A_sourceID={A_resourceId=548;A_instanceId=549};\
+    A_referenceNum=550;\
+    A_timeOfDataGeneration={A_second=551;A_nanoseconds=552};\
+    A_numberOfSteps=553
+
+DDSTY:1.CMD > PUBLISH Video__Focus__nudgeFocus \
+    A_recipientID={A_resourceId=617;A_instanceId=618};\
+    A_sourceID={A_resourceId=619;A_instanceId=620};\
+    A_referenceNum=621;\
+    A_timeOfDataGeneration={A_second=622;A_nanoseconds=623};\
+    A_numberOfSteps=624
+
+DDSTY:1.CMD > PUBLISH Video__Focus__setStepSize \
+    A_recipientID={A_resourceId=633;A_instanceId=634};\
+    A_sourceID={A_resourceId=635;A_instanceId=636};\
+    A_referenceNum=637;\
+    A_timeOfDataGeneration={A_second=638;A_nanoseconds=639};\
+    A_stepSize=640.5
+
+DDSTY:1.CMD > PUBLISH Video__Focus__setFocusAbsolute \
+    A_recipientID={A_resourceId=625;A_instanceId=626};\
+    A_sourceID={A_resourceId=627;A_instanceId=628};\
+    A_referenceNum=629;\
+    A_timeOfDataGeneration={A_second=630;A_nanoseconds=631};\
+    A_focusAbsolute=632.5
+
+
+DELAY 5 sec

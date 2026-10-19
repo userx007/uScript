@@ -207,6 +207,6 @@ DDSTY:1.CMD > PUBLISH Alarms__Alarm_Category \
     A_alarmCategorySpecification_sourceID={A_resourceId=194;A_instanceId=195}
 
 
-DELAY 1 sec
+DELAY 40 sec
 
 DDSTY.INFO
