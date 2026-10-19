@@ -30,7 +30,7 @@ class QTextDocument;
 //                          own waveform post-processor keywords
 //   purple      #bd93f9  — label names
 //                          (same as base C_DEF_NAME — values share the colour)
-//   blue        #89a1ef  — numeric literals (hex/bin/oct/dec, signed) · version literals
+//   orange      #ff9e64  — numeric literals (hex/bin/oct/dec, signed) · version literals
 //   green       #0F956A  — TRUE boolean literal
 //   red2        #CB2C2A  — FALSE boolean literal (distinct from C_DEBUG/C_COMMAND red)
 //   yellow      #f1fa8c  — '...' string content  (RESERVED — defined in base)
@@ -50,7 +50,7 @@ static constexpr auto C_DEBUG        = "#ff5555"; // red        — BREAKPOINT
 static constexpr auto C_PLUGIN       = "#20a39e"; // green      — PLUGIN. namespace
 static constexpr auto C_COMMAND      = "#ff5555"; // red        — .COMMAND (green↔red complement)
 static constexpr auto C_STRING       = "#f1fa8c"; // yellow     — "..." (plain strings)
-static constexpr auto C_NUMBER       = "#89a1ef"; // blue       — numeric / version literals
+static constexpr auto C_NUMBER       = "#ff9e64"; // orange     — numeric / version literals (was blue #89a1ef: too close to the slate comment colour)
 static constexpr auto C_FORMAT       = "#ffb86c"; // amber      — %N format tokens
 static constexpr auto C_LABEL_NAME   = "#bd93f9"; // purple     — label name after LABEL keyword
 static constexpr auto C_STORAGE      = "#8be9fd"; // cyan       — |NUM |STR |VER |BOOL

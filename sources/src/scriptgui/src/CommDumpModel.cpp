@@ -997,6 +997,10 @@ QVariant CommDumpModel::data(const QModelIndex &index, int iRole) const
         if (index.column() == ColPlugin) {
             return QBrush(colorForPlugin(rec->plugin));
         }
+        if (index.column() == ColDetails) {
+            static const QBrush kDetailsFg{QColor("#ff9bf0")}; // light magenta — distinct from the plugin-name palette's pink (#ff79c6)
+            return kDetailsFg;
+        }
         if (index.column() == ColDir) {
             static const QBrush kTxFg{QColor("#50fa7b")};
             static const QBrush kRxFg{QColor("#4a9eff")};
