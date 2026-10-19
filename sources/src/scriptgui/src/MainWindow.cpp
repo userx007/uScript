@@ -41,6 +41,9 @@
 #include <QLatin1Char>
 #include <QLatin1String>
 #include <QLineEdit>
+#include <QMenu>
+#include <QAction>
+#include <QPoint>
 #include <QList>
 #include <QMessageBox>
 #include <QMimeData>
@@ -570,6 +573,9 @@ QWidget *MainWindow::buildCentralWidget()
             this, &MainWindow::onTabCloseRequested);
     connect(m_tabWidget, &QTabWidget::currentChanged,
             this, &MainWindow::onCurrentTabChanged);
+    m_tabWidget->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_tabWidget->tabBar(), &QWidget::customContextMenuRequested,
+            this, &MainWindow::onTabContextMenu);
 
     // ── Comm script viewer + log ──────────────────────────────────────────
     // Comm script panel — wrapper with its own save button bar
@@ -922,6 +928,109 @@ void MainWindow::syncPathEdit(int iTabIndex)
     }
 
     refreshProjectButtons();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Tab context menu / duplicate
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** True for a tab holding a µScript: not config.ini, not a setup/shell script (.sh/.bat). */
+static bool isDuplicableScript(const ScriptViewer *viewer)
+{
+    if (!viewer || viewer->currentFile().isEmpty()) {
+        return false;
+    }
+    const QString f = viewer->currentFile();
+    return !viewer->isIniFile() &&
+           !SetupRunner::isSetupFileName(f) &&
+           !f.endsWith(QLatin1String(".sh"), Qt::CaseInsensitive) &&
+           !f.endsWith(QLatin1String(".bat"), Qt::CaseInsensitive);
+}
+
+void MainWindow::onTabContextMenu(const QPoint &pos)
+{
+    const int idx = m_tabWidget->tabBar()->tabAt(pos);
+    if (idx < 0) {
+        return;
+    }
+    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(idx));
+    if (!isDuplicableScript(viewer)) {
+        return;
+    }
+
+    QMenu menu(this);
+    QAction *actDup = menu.addAction("Duplicate");
+    // Not while a script is running: the copy would be a distraction at best.
+    actDup->setEnabled(!m_running);
+    if (menu.exec(m_tabWidget->tabBar()->mapToGlobal(pos)) == actDup) {
+        duplicateTab(idx);
+    }
+}
+
+void MainWindow::duplicateTab(int iIndex)
+{
+    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(iIndex));
+    if (!isDuplicableScript(viewer)) {
+        return;
+    }
+
+    const QFileInfo srcInfo(viewer->currentFile());
+    const QDir dir      = srcInfo.absoluteDir();
+    const QString oName = srcInfo.fileName();
+
+    QDialog dlg(this);
+    dlg.setWindowTitle("Duplicate script");
+    auto *lay   = new QVBoxLayout(&dlg);
+    auto *label = new QLabel(QString("Save a copy of <b>%1</b> as:").arg(oName.toHtmlEscaped()), &dlg);
+    auto *edit  = new QLineEdit(oName, &dlg);
+    auto *hint  = new QLabel(&dlg);
+    hint->setStyleSheet("color:#ff5555;");
+    auto *box = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dlg);
+    lay->addWidget(label);
+    lay->addWidget(edit);
+    lay->addWidget(hint);
+    lay->addWidget(box);
+    dlg.setMinimumWidth(420);
+
+    QPushButton *saveBtn = box->button(QDialogButtonBox::Save);
+
+    // Save is enabled only for a valid name that differs from the original and
+    // does not already exist in the folder (never overwrite).
+    auto validate = [&]() {
+        const QString name = edit->text().trimmed();
+        QString err;
+        if (name.isEmpty()) {
+            err = "Enter a file name.";
+        } else if (name.contains(QLatin1Char('/')) || name.contains(QLatin1Char('\\'))) {
+            err = "The name must not contain a path.";
+        } else if (name == oName) {
+            err = "The name must differ from the original.";
+        } else if (QFileInfo::exists(dir.filePath(name))) {
+            err = "A file with this name already exists.";
+        }
+        hint->setText(err);
+        saveBtn->setEnabled(err.isEmpty());
+    };
+    connect(edit, &QLineEdit::textChanged, &dlg, validate);
+    connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    validate();
+
+    // Pre-select the base name (without extension) for quick editing.
+    edit->setFocus();
+    edit->setSelection(0, static_cast<int>(srcInfo.completeBaseName().size()));
+
+    if (dlg.exec() != QDialog::Accepted) {
+        return; // Cancel: nothing is created
+    }
+
+    const QString target = dir.filePath(edit->text().trimmed());
+    if (!QFile::copy(viewer->currentFile(), target)) {
+        QMessageBox::warning(this, "Duplicate failed",
+                             QString("Could not create:\n%1").arg(target));
+        return;
+    }
+    addTab(target); // opens the copy in a new tab (and makes it current)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -95,6 +95,8 @@ class MainWindow : public QMainWindow
         /** Starts the interpreter on the current script, or terminates the running one. */
         void onStartStop();
         void onTabCloseRequested(int iIndex);
+        /** Right-click on a main-script tab: offers "Duplicate" for µScript tabs. */
+        void onTabContextMenu(const QPoint &pos);
         /** Updates path field and buttons when the current tab changes. */
         void onCurrentTabChanged(int iIndex);
         void onCommScriptRequested(const QString &scriptName);
@@ -137,6 +139,8 @@ class MainWindow : public QMainWindow
         /** Saves all modified tabs. */
         void saveAllTabs();
         void updateTabModifiedState(ScriptViewer *pViewer);
+        /** Asks for a new name (dialog, same folder), copies tab @p iIndex's file under it and opens the copy in a new tab. */
+        void duplicateTab(int iIndex);
 
         // ── Config / setup buttons ─────────────────────────────────────────────
         QString activeScriptPath() const;                 // script that RUN would execute (ignores ini / setup tabs)
