@@ -12,6 +12,9 @@
 #include <Qt>
 
 class LineNumberArea;
+class QCheckBox;
+class QLabel;
+class QLineEdit;
 class QEvent;
 class QFont;
 class QObject;
@@ -229,6 +232,24 @@ class ScriptViewer : public QFrame
         void updateInfo();
         /** Writes the content to @p path atomically; shows a message box and returns false on failure. */
         bool writeFile(const QString &path);
+
+        // ── Minimal Find / Replace (Ctrl+F / Ctrl+H) ──────────────────────────
+        /** Shows the find bar, pre-filled with the selection, and focuses the right field. */
+        void showFindBar(bool bFocusReplace);
+        void hideFindBar();
+        /** Selects the next/previous match (wrapping around); false if there is none. */
+        bool findNext(bool bBackward);
+        /** Replaces the current match (if the selection is one) and moves to the next. */
+        void replaceOne();
+        /** Replaces every match as one undo step. */
+        void replaceAll();
+
+        QWidget *m_findBar       = nullptr;
+        QLineEdit *m_findEdit    = nullptr;
+        QLineEdit *m_replaceEdit = nullptr;
+        QCheckBox *m_caseChk     = nullptr;
+        QLabel *m_findStatus     = nullptr;
+        QWidget *m_replaceWidgets = nullptr; // replace field + buttons (disabled when read-only)
 
         CodeEditor *m_editor;
         QString m_currentFile;

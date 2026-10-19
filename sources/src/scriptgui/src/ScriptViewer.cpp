@@ -9,7 +9,14 @@
 #include <QAbstractTextDocumentLayout>
 #include <QChar>
 #include <QColor>
+#include <QCheckBox>
 #include <QDir>
+#include <QHBoxLayout>
+#include <QKeySequence>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QShortcut>
 #include <QEvent>
 #include <QFile>
 #include <QFileDialog>
@@ -728,6 +735,179 @@ ScriptViewer::ScriptViewer(QWidget *pParent)
             this, &ScriptViewer::onIncludeFileClicked);
 
     root->addWidget(m_editor, 1);
+
+    // ── Minimal Find / Replace bar (hidden until Ctrl+F / Ctrl+H) ─────────
+    m_findBar = new QWidget(this);
+    {
+        auto *h = new QHBoxLayout(m_findBar);
+        h->setContentsMargins(6, 3, 6, 3);
+        h->setSpacing(4);
+
+        m_findEdit = new QLineEdit(m_findBar);
+        m_findEdit->setPlaceholderText("Find");
+        m_findEdit->setClearButtonEnabled(true);
+        auto *prevBtn = new QPushButton("Prev", m_findBar);
+        auto *nextBtn = new QPushButton("Next", m_findBar);
+        m_caseChk     = new QCheckBox("Match case", m_findBar);
+
+        m_replaceWidgets = new QWidget(m_findBar);
+        auto *rh         = new QHBoxLayout(m_replaceWidgets);
+        rh->setContentsMargins(0, 0, 0, 0);
+        rh->setSpacing(4);
+        m_replaceEdit = new QLineEdit(m_replaceWidgets);
+        m_replaceEdit->setPlaceholderText("Replace with");
+        auto *repBtn    = new QPushButton("Replace", m_replaceWidgets);
+        auto *repAllBtn = new QPushButton("Replace all", m_replaceWidgets);
+        rh->addWidget(m_replaceEdit, 1);
+        rh->addWidget(repBtn);
+        rh->addWidget(repAllBtn);
+
+        m_findStatus   = new QLabel(m_findBar);
+        auto *closeBtn = new QPushButton("✕", m_findBar);
+        closeBtn->setFixedWidth(28);
+
+        h->addWidget(m_findEdit, 1);
+        h->addWidget(prevBtn);
+        h->addWidget(nextBtn);
+        h->addWidget(m_caseChk);
+        h->addWidget(m_replaceWidgets, 1);
+        h->addWidget(m_findStatus);
+        h->addWidget(closeBtn);
+
+        for (auto *b : {prevBtn, nextBtn, repBtn, repAllBtn, closeBtn}) {
+            b->setAutoDefault(false);
+            b->setFocusPolicy(Qt::TabFocus);
+        }
+
+        connect(nextBtn, &QPushButton::clicked, this, [this] { findNext(false); });
+        connect(prevBtn, &QPushButton::clicked, this, [this] { findNext(true); });
+        connect(repBtn, &QPushButton::clicked, this, [this] { replaceOne(); });
+        connect(repAllBtn, &QPushButton::clicked, this, [this] { replaceAll(); });
+        connect(closeBtn, &QPushButton::clicked, this, [this] { hideFindBar(); });
+        connect(m_findEdit, &QLineEdit::returnPressed, this, [this] { findNext(false); });
+        connect(m_replaceEdit, &QLineEdit::returnPressed, this, [this] { replaceOne(); });
+        connect(m_findEdit, &QLineEdit::textChanged, this, [this] {
+            m_findEdit->setStyleSheet(QString()); // clear the "not found" red
+            m_findStatus->clear();
+        });
+
+        // Esc closes the bar, but only while focus is inside it (the editor's own
+        // Esc handling is therefore left untouched).
+        auto *escSc = new QShortcut(QKeySequence(Qt::Key_Escape), m_findBar);
+        escSc->setContext(Qt::WidgetWithChildrenShortcut);
+        connect(escSc, &QShortcut::activated, this, [this] { hideFindBar(); });
+    }
+    m_findBar->hide();
+    root->addWidget(m_findBar, 0);
+
+    auto *findSc = new QShortcut(QKeySequence::Find, this);
+    findSc->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(findSc, &QShortcut::activated, this, [this] { showFindBar(false); });
+    auto *replSc = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_H), this);
+    replSc->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(replSc, &QShortcut::activated, this, [this] { showFindBar(true); });
+    auto *nextSc = new QShortcut(QKeySequence(Qt::Key_F3), this);
+    nextSc->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(nextSc, &QShortcut::activated, this, [this] { findNext(false); });
+    auto *prevSc = new QShortcut(QKeySequence(Qt::SHIFT | Qt::Key_F3), this);
+    prevSc->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(prevSc, &QShortcut::activated, this, [this] { findNext(true); });
+}
+
+// ── Minimal Find / Replace ─────────────────────────────────────────────────
+void ScriptViewer::showFindBar(bool bFocusReplace)
+{
+    const bool bRo = m_editor->isReadOnly();
+    m_replaceWidgets->setEnabled(!bRo);
+
+    // Pre-fill with a single-line selection.
+    const QString sel = m_editor->textCursor().selectedText();
+    if (!sel.isEmpty() && !sel.contains(QChar(0x2029))) { // U+2029 = paragraph separator
+        m_findEdit->setText(sel);
+    }
+    m_findBar->show();
+    QLineEdit *target = (bFocusReplace && !bRo) ? m_replaceEdit : m_findEdit;
+    target->setFocus();
+    target->selectAll();
+}
+
+void ScriptViewer::hideFindBar()
+{
+    m_findBar->hide();
+    m_findStatus->clear();
+    m_findEdit->setStyleSheet(QString());
+    m_editor->setFocus();
+}
+
+bool ScriptViewer::findNext(bool bBackward)
+{
+    const QString text = m_findEdit->text();
+    if (text.isEmpty()) {
+        return false;
+    }
+    QTextDocument::FindFlags flags;
+    if (bBackward) {
+        flags |= QTextDocument::FindBackward;
+    }
+    if (m_caseChk->isChecked()) {
+        flags |= QTextDocument::FindCaseSensitively;
+    }
+
+    const QTextCursor original = m_editor->textCursor();
+    bool bFound                = m_editor->find(text, flags);
+    if (!bFound) { // wrap around
+        QTextCursor c = m_editor->textCursor();
+        c.movePosition(bBackward ? QTextCursor::End : QTextCursor::Start);
+        m_editor->setTextCursor(c);
+        bFound = m_editor->find(text, flags);
+        if (!bFound) {
+            m_editor->setTextCursor(original);
+        }
+    }
+    m_findEdit->setStyleSheet(bFound ? QString() : QStringLiteral("QLineEdit { background:#5a2a2a; }"));
+    m_findStatus->setText(bFound ? QString() : QStringLiteral("Not found"));
+    return bFound;
+}
+
+void ScriptViewer::replaceOne()
+{
+    if (m_editor->isReadOnly() || m_findEdit->text().isEmpty()) {
+        return;
+    }
+    const Qt::CaseSensitivity cs = m_caseChk->isChecked() ? Qt::CaseSensitive : Qt::CaseInsensitive;
+    QTextCursor c                = m_editor->textCursor();
+    if (c.hasSelection() && c.selectedText().compare(m_findEdit->text(), cs) == 0) {
+        c.insertText(m_replaceEdit->text());
+        m_editor->setTextCursor(c);
+    }
+    findNext(false);
+}
+
+void ScriptViewer::replaceAll()
+{
+    const QString text = m_findEdit->text();
+    if (m_editor->isReadOnly() || text.isEmpty()) {
+        return;
+    }
+    QTextDocument::FindFlags flags;
+    if (m_caseChk->isChecked()) {
+        flags |= QTextDocument::FindCaseSensitively;
+    }
+    const QString rep = m_replaceEdit->text();
+
+    int n = 0;
+    QTextCursor edit(m_editor->document());
+    edit.beginEditBlock(); // one undo step for the whole operation
+    QTextCursor hit = m_editor->document()->find(text, 0, flags);
+    while (!hit.isNull()) {
+        hit.insertText(rep); // leaves the cursor after the inserted text, so
+        ++n;                 // a replacement containing the search text can't loop
+        hit = m_editor->document()->find(text, hit.position(), flags);
+    }
+    edit.endEditBlock();
+
+    m_findEdit->setStyleSheet(n > 0 ? QString() : QStringLiteral("QLineEdit { background:#5a2a2a; }"));
+    m_findStatus->setText(n > 0 ? QString("%1 replaced").arg(n) : QStringLiteral("Not found"));
 }
 
 // ── Loading ────────────────────────────────────────────────────────────────
