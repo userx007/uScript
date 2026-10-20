@@ -153,7 +153,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
                         break;
                     }
                     (void)uexec::sleepInterruptible(std::chrono::milliseconds(m_szDelay));
-                    if (uexec::isStopRequested()) { // no per-line poll exists in this loop
+                    if (m_shpCommandInterpreter->isStopRequested()) { // no per-line poll exists in this loop
                         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Stop requested by user - aborting comm script"));
                         bRetVal = false;
                         break;

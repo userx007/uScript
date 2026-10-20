@@ -2315,7 +2315,7 @@ void MainWindow::terminateProcess()
             flag.close();
 
             // Poll briefly for a clean exit, same style as the shell-exit wait above.
-            for (int waited = 0; waited < 1500 && m_process->state() == QProcess::Running; waited += 100) {
+            for (int waited = 0; waited < 5000 && m_process->state() == QProcess::Running; waited += 100) {
                 if (m_process->waitForFinished(100)) {
                     break;
                 }

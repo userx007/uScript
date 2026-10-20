@@ -207,7 +207,7 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
                     } else {
                         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No delay execution (invalid unit)"));
                     }
-                    result = uexec::sleepInterruptible(dur);
+                    result = uexec::sleepInterruptible(dur, m_stopTok); // the token handed in by the dispatcher, not a header-local global: this header is compiled into each plugin .so, which may hold its own copy of uexec's globals
                     if (!result) {
                         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(lineNr.data());
                                   LOG_STRING("DELAY interrupted by stop request"));
