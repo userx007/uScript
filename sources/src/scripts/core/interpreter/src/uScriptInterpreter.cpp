@@ -2817,7 +2817,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                         if (!uexec::sleepInterruptible(std::chrono::duration_cast<std::chrono::microseconds>(target - now))) {
                             LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(lineNr.data());
                                       LOG_STRING("DELAY interrupted by stop request - aborting script"));
-                            bRetVal = false;
+                            bRetVal = true;
                             return;
                         }
                     } else {
@@ -2829,7 +2829,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                 } else if (!uexec::sleepInterruptible(std::chrono::microseconds(llRequestedUs))) {
                     LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(lineNr.data());
                               LOG_STRING("DELAY interrupted by stop request - aborting script"));
-                    bRetVal = false;
+                    bRetVal = true;
                     return;
                 }
             }
