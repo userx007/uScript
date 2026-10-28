@@ -1,0 +1,40 @@
+LOAD_PLUGIN DDSTY
+LOAD_PLUGIN MQTT
+
+DDSTY:1.CONFIG d=0 pid=1 n=loopback_pub i=lo mi=lo ms=128 qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Video__*__*=CommandPattern;Video__*_Specification=SpecificationPattern
+DDSTY:2.CONFIG d=0 pid=1 n=loopback_pub i=lo mi=lo ms=128 qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Video__*__*=CommandPattern;Video__*_Specification=SpecificationPattern
+DDSTY:3.CONFIG d=0 pid=1 n=loopback_pub i=lo mi=lo ms=128 qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Video__*__*=CommandPattern;Video__*_Specification=SpecificationPattern
+
+DDSTY:1.CMD > LOAD ../../../uplugins/libVideoTypes.so 
+DDSTY:2.CMD > LOAD ../../../uplugins/libVideoTypes.so
+DDSTY:3.CMD > LOAD ../../../uplugins/libVideoTypes.so
+
+# DDS Reader
+DDSTY:2.CMD > SUBSCRIBE \
+Video__Source_Zoom__setFoV
+
+DDSTY:3.CMD > SUBSCRIBE \
+Video__Source_Zoom__setZoomAbsolute
+
+
+ddsty2 ?= DDSTY:2.CMD < &
+ddsty3 ?= DDSTY:3.CMD < &
+
+REPEAT loop 200
+    DDSTY:1.CMD > PUBLISH Video__Source_Zoom__setFoV \
+        A_recipientID={A_resourceId=1;A_instanceId=1};\
+        A_sourceID={A_resourceId=1;A_instanceId=1};\
+        A_referenceNum=541;\
+        A_timeOfDataGeneration={A_second=1;A_nanoseconds=543};\
+        A_verticalFoV=544.5;\
+        A_horizontalFoV=545.5
+
+    DDSTY:1.CMD > PUBLISH Video__Source_Zoom__setZoomAbsolute \
+        A_recipientID={A_resourceId=1;A_instanceId=1};\
+        A_sourceID={A_resourceId=1;A_instanceId=1};\
+        A_referenceNum=558;\
+        A_timeOfDataGeneration={A_second=559;A_nanoseconds=560};\
+        A_zoomAbsolute=561.9
+
+    DELAY 10 ms
+END_REPEAT loop

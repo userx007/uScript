@@ -18,6 +18,7 @@ Video__Focus__nudgeFocus \
 Video__Focus__setStepSize \
 Video__Focus__setFocusAbsolute
 
+x ?= DDSTY:2.CMD < &
 
 DDSTY:1.CMD > PUBLISH Video__Optical_Sensor \
     A_sourceID={A_resourceId=263;A_instanceId=264};\

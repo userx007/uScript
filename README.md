@@ -95,3 +95,11 @@ simply run:
 ```
 
 Alternatively, Visual Studio can be used to build Windows applications on Windows OS.
+
+### TO DO
+- define specific file formats:
+.main - main script
+.comm - comm script
+.ini  - config
+.sh   - bash scripts
+and add these as filters for editors, so one cannot open them in an unappropiate editor

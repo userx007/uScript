@@ -7,8 +7,8 @@ DDSTY:1.CMD > LOAD ../../../uplugins/libVideoTypes.so
 DDSTY:2.CMD > LOAD ../../../uplugins/libVideoTypes.so
 
 MQTT.CONFIG h=localhost p=1883 id=controller_1 rt=1000 q=0 cs=TRUE
-MQTT.CMD > SUBSCRIBE e/a/
-MQTT.CMD > SUBSCRIBE e/w/
+MQTT.CMD > SUBSCRIBE r/e/a/#
+MQTT.CMD > SUBSCRIBE r/e/w/#
 MQTT.CMD > SUBSCRIBE i/e/a/#
 MQTT.CMD > SUBSCRIBE w/e/a/#
 
@@ -24,11 +24,14 @@ Video__Video_Source_Zoom_Support \
 Video__IR_Band_Sensor \
 Video__Visual_Band_Sensor \
 Video__Actual_Video_Source \
-Video__Focus
+Video__Focus \
+Video__Source_Zoom__setFoV
 
 ddsty ?= DDSTY:2.CMD < &
 mqtt  ?= MQTT.CMD < &
 
+
+REPEAT loop 50
 # DDS Writer
 DDSTY:1.CMD > PUBLISH Video__Source_Zoom__setFoV \
     A_recipientID={A_resourceId=1;A_instanceId=1};\
@@ -79,13 +82,8 @@ DDSTY:1.CMD > PUBLISH Video__Focus__setFocusAbsolute \
     A_referenceNum=629;\
     A_timeOfDataGeneration={A_second=630;A_nanoseconds=631};\
     A_focusAbsolute=632.5
-
-DDSTY:1.CMD > PUBLISH Video__Focus__setFocusAbsolute \
-    A_recipientID={A_resourceId=2;A_instanceId=1};\
-    A_sourceID={A_resourceId=2;A_instanceId=1};\
-    A_referenceNum=629;\
-    A_timeOfDataGeneration={A_second=630;A_nanoseconds=631};\
-    A_focusAbsolute=632.5
+DELAY 1000 ms
+END_REPEAT loop
 
 
 DELAY 15 sec

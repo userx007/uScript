@@ -19,7 +19,7 @@ MQTT:1.CMD > PUBLISH 1 sensors/temp
 
 DELAY 1 ms
 
-i ?= REPEAT counter 10
+i ?= REPEAT counter 100
 
     # the device send pings
     MQTT:1.CMD > PING
@@ -41,3 +41,4 @@ i ?= REPEAT counter 10
 
 END_REPEAT counter
 
+DELAY 10 sec

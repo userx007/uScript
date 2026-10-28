@@ -20,19 +20,14 @@ LOAD_PLUGIN DDSTY
 DDSTY.INFO
 
 
-#DDSTY:1.CONFIG d=0 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
-#DDSTY:2.CONFIG d=0 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
+DDSTY:1.CONFIG d=0 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
+DDSTY:2.CONFIG d=0 cf=cyclonedds-loopback.xml qf=USER_QOS_PROFILES_Cyclone.xml qd=StatePattern qt=Alarms__*__*=CommandPattern;Alarms__*_Specification=SpecificationPattern
 
-DDSTY:1.CONFIG d=0 pid=1 n=loopback_pub i=lo mi=lo
-DDSTY:2.CONFIG d=0 pid=2 n=loopback_sub i=lo mi=lo
+#DDSTY:1.CONFIG d=0 pid=1 n=loopback_pub i=lo mi=lo
+#DDSTY:2.CONFIG d=0 pid=2 n=loopback_sub i=lo mi=lo
 
 DDSTY:1.CMD > LOAD ../../../uplugins/libAlarmsTypes.so 
 DDSTY:2.CMD > LOAD ../../../uplugins/libAlarmsTypes.so
-
-DDSTY:1.CMD > LIST
-list ?= DDSTY:1.CMD <   
-PRINT $list
-
 
 DDSTY:2.CMD > SUBSCRIBE Alarms__Crew_Role_In_Mission_State \
                         Alarms__Alarm_Category_Specification \
@@ -53,6 +48,7 @@ DDSTY:2.CMD > SUBSCRIBE Alarms__Crew_Role_In_Mission_State \
 
 received ?= DDSTY:2.CMD < &
 
+REPEAT loopend 5
 DDSTY:1.CMD > PUBLISH Alarms__Crew_Role_In_Mission_State \
     A_sourceID={A_resourceId=2;A_instanceId=3};\
     A_timeOfDataGeneration={A_second=4;A_nanoseconds=5};\
@@ -205,7 +201,7 @@ DDSTY:1.CMD > PUBLISH Alarms__Alarm_Category \
     A_unacknowledgedAlarmCount=189;\
     A_categorisedActualAlarm_sourceID=[{A_resourceId=190;A_instanceId=191},{A_resourceId=192;A_instanceId=193}];\
     A_alarmCategorySpecification_sourceID={A_resourceId=194;A_instanceId=195}
-
+END_REPEAT loopend
 
 DELAY 40 sec
 
