@@ -16,6 +16,7 @@
 
 class QByteArray;
 class QContextMenuEvent;
+class QEvent;
 class QKeyEvent;
 class QLabel;
 class QMouseEvent;
@@ -66,6 +67,10 @@ class TermView : public QAbstractScrollArea
 
     protected:
         void paintEvent(QPaintEvent *) override;
+        /** Lets the shell have Ctrl+W/T/S (otherwise window shortcuts steal them). */
+        bool event(QEvent *pEv) override;
+        /** Tab must reach the shell (completion), not move the focus. */
+        bool focusNextPrevChild(bool bNext) override;
         /** Updates the scrollbar for the new size. */
         void resizeEvent(QResizeEvent *) override;
         void keyPressEvent(QKeyEvent *pEv) override;
@@ -97,6 +102,7 @@ class TermView : public QAbstractScrollArea
         void applySgr(const QList<int> &params);
         static QColor sgrColor(int iCode);
         void updateScrollbar();
+        void ensureCursorColumnVisible();
         // Scrolls the viewport to the bottom, matching what every newline() used
         // to do individually — now called at most once per processBytes() batch
         // (see m_scrollToBottomPending).

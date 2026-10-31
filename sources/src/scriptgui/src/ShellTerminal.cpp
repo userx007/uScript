@@ -59,6 +59,24 @@ TermView::TermView(QWidget *parent)
     ensureLine(0);
 }
 
+bool TermView::focusNextPrevChild(bool)
+{
+    return false; // keep Tab / Shift+Tab for the shell
+}
+
+bool TermView::event(QEvent *pEv)
+{
+    if (pEv->type() == QEvent::ShortcutOverride) {
+        const auto *ke = static_cast<QKeyEvent *>(pEv);
+        if ((ke->modifiers() & Qt::ControlModifier) &&
+            (ke->key() == Qt::Key_W || ke->key() == Qt::Key_T || ke->key() == Qt::Key_S)) {
+            pEv->accept(); // deliver to keyPressEvent instead of the window shortcut
+            return true;
+        }
+    }
+    return QAbstractScrollArea::event(pEv);
+}
+
 // ── font ─────────────────────────────────────────────────────────────────────
 
 void TermView::setTermFont(const QFont &font)
@@ -238,6 +256,8 @@ void TermView::applySgr(const QList<int> &params)
 
 void TermView::processBytes(const QByteArray &bytes)
 {
+    // Follow new output only if the user was already at the bottom.
+    const bool wasAtBottom = verticalScrollBar()->value() >= verticalScrollBar()->maximum() - m_ch;
     for (int i = 0; i < bytes.size(); ++i) {
         const uchar c = static_cast<uchar>(bytes[i]);
 
@@ -355,7 +375,10 @@ void TermView::processBytes(const QByteArray &bytes)
                 for (const QString &p : parts) {
                     nums << (p.isEmpty() ? 0 : p.toInt());
                 }
-                const int n    = nums[0];
+                // Parameters come from the shell's output: clamp them so a stray or
+                // hostile sequence (ESC[2000000000B) cannot make the grid allocate GBs.
+                constexpr int k_maxRows = 5000, k_maxCols = 4096;
+                const int n    = qBound(0, nums[0], k_maxCols);
                 const int move = (n == 0) ? 1 : n; // cursor moves default to 1
 
                 switch (c) {
@@ -363,18 +386,18 @@ void TermView::processBytes(const QByteArray &bytes)
                     m_cursor.setY(qMax(0, m_cursor.y() - move));
                     break;
                 case 'B': // cursor down
-                    m_cursor.setY(m_cursor.y() + move);
+                    m_cursor.setY(qMin(m_cursor.y() + move, k_maxRows));
                     ensureLine(m_cursor.y());
                     break;
                 case 'C': // cursor right
-                    m_cursor.setX(m_cursor.x() + move);
+                    m_cursor.setX(qMin(m_cursor.x() + move, k_maxCols));
                     break;
                 case 'D': // cursor left
                     m_cursor.setX(qMax(0, m_cursor.x() - move));
                     break;
                 case 'H': { // cursor position ESC [ row ; col H
-                    const int row = (nums.size() > 0 ? nums[0] : 1) - 1;
-                    const int col = (nums.size() > 1 ? nums[1] : 1) - 1;
+                    const int row = qMin(nums.size() > 0 ? nums[0] : 1, k_maxRows) - 1;
+                    const int col = qMin(nums.size() > 1 ? nums[1] : 1, k_maxCols) - 1;
                     m_cursor.setY(qMax(0, row));
                     m_cursor.setX(qMax(0, col));
                     ensureLine(m_cursor.y());
@@ -423,7 +446,11 @@ void TermView::processBytes(const QByteArray &bytes)
     // lines it contained — see m_scrollToBottomPending.
     if (m_scrollToBottomPending) {
         m_scrollToBottomPending = false;
-        scrollToBottom();
+        updateScrollbar();
+        if (wasAtBottom) {
+            scrollToBottom();
+            ensureCursorColumnVisible();
+        }
     }
 
     viewport()->update();
@@ -457,8 +484,10 @@ void TermView::paintEvent(QPaintEvent *)
                               firstRow + viewport()->height() / m_ch + 1);
 
     // Character cells start after the gutter
-    const int xOff     = m_gutterW + 2;
+    const int scrollX  = horizontalScrollBar()->value();
+    const int xOff     = m_gutterW + 2 - scrollX;
     const int yOff     = -scrollY;
+    const QRect cellArea(m_gutterW, 0, viewport()->width() - m_gutterW, viewport()->height());
 
     // ── gutter background + separator ─────────────────────────────────────
     p.fillRect(0, 0, m_gutterW, viewport()->height(), gutterBg);
@@ -483,24 +512,16 @@ void TermView::paintEvent(QPaintEvent *)
         return gf;
     }();
 
+    p.setClipRect(cellArea); // scrolled text must never paint over the line-number gutter
     for (int row = firstRow; row <= lastRow; ++row) {
         const auto &line = m_grid[row];
         const int y      = yOff + row * m_ch;
 
-        // ── gutter: line number ───────────────────────────────────────────
-        {
-            p.setFont(gutterFont);
-            p.setPen(gutterFg);
-            const QString num = QString::number(row + 1);
-            // Right-align inside gutter, leaving 4px right padding
-            p.drawText(QRect(0, y, m_gutterW - 4, m_ch),
-                       Qt::AlignRight | Qt::AlignVCenter, num);
-            p.setFont(m_font);
-        }
-
         // ── character cells ───────────────────────────────────────────────
-        const int lineLen = line.size();
-        for (int col = 0; col < lineLen; ++col) {
+        const int lineLen  = line.size();
+        const int firstCol = qMax(0, scrollX / m_cw);
+        const int lastCol  = qMin(lineLen - 1, (scrollX + viewport()->width()) / m_cw + 1);
+        for (int col = firstCol; col <= lastCol; ++col) {
             const TermCell &tc = line[col];
             const int x        = xOff + col * m_cw;
 
@@ -535,6 +556,17 @@ void TermView::paintEvent(QPaintEvent *)
         }
     }
 
+    // ── gutter line numbers (fixed, unaffected by horizontal scrolling) ────
+    p.setClipping(false);
+    p.setFont(gutterFont);
+    p.setPen(gutterFg);
+    for (int row = firstRow; row <= lastRow; ++row) {
+        p.drawText(QRect(0, yOff + row * m_ch, m_gutterW - 4, m_ch),
+                   Qt::AlignRight | Qt::AlignVCenter, QString::number(row + 1));
+    }
+    p.setFont(m_font);
+    p.setClipRect(cellArea);
+
     // Draw cursor
     if (m_cursorVisible && m_cursorEnabled) {
         const int cx = xOff + m_cursor.x() * m_cw;
@@ -562,6 +594,30 @@ void TermView::updateScrollbar()
     verticalScrollBar()->setRange(0, qMax(0, total - visible));
     verticalScrollBar()->setPageStep(visible);
     verticalScrollBar()->setSingleStep(m_ch);
+
+    // Horizontal range from the longest line (and the cursor column): long output such
+    // as hex dumps used to be clipped with no way to reach the rest.
+    int maxCols = m_cursor.x() + 1;
+    for (const auto &line : std::as_const(m_grid)) {
+        maxCols = qMax(maxCols, static_cast<int>(line.size()));
+    }
+    const int visibleW = qMax(1, viewport()->width() - m_gutterW - 2);
+    horizontalScrollBar()->setRange(0, qMax(0, maxCols * m_cw + 4 - visibleW));
+    horizontalScrollBar()->setPageStep(visibleW);
+    horizontalScrollBar()->setSingleStep(m_cw);
+}
+
+void TermView::ensureCursorColumnVisible()
+{
+    const int visibleW = qMax(1, viewport()->width() - m_gutterW - 2);
+    const int curL     = m_cursor.x() * m_cw;
+    const int curR     = curL + m_cw;
+    QScrollBar *hb     = horizontalScrollBar();
+    if (curL < hb->value()) {
+        hb->setValue(curL);
+    } else if (curR > hb->value() + visibleW) {
+        hb->setValue(curR - visibleW);
+    }
 }
 
 void TermView::scrollToBottom()
@@ -719,7 +775,7 @@ QPoint TermView::pixToCell(const QPoint &vp) const
 {
     const int scrollY  = verticalScrollBar()->value();
     // Clamp x: positions inside the gutter resolve to col 0
-    const int contentX = qMax(0, vp.x() - m_gutterW - 2);
+    const int contentX = qMax(0, vp.x() - m_gutterW - 2 + horizontalScrollBar()->value());
     const int col      = contentX / m_cw;
     const int row      = qMax(0, (vp.y() + scrollY) / m_ch);
     return {col, qMin(row, static_cast<int>(m_grid.size()) - 1)};

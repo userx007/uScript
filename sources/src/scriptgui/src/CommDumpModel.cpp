@@ -132,14 +132,10 @@ void CommDumpModel::setFullDumpFontSize(double dPointSize)
         r.fullDumpCache.clear();
     }
 
-    const int n = recordCount();
-    for (int i = 0; i < n; ++i) {
-        const QModelIndex parentIdx = index(i, 0);            // Top level row
-        const QModelIndex childIdx  = index(0, 0, parentIdx); // Child row
-        if (childIdx.isValid()) {
-            emit dataChanged(childIdx, childIdx, {Qt::DisplayRole, Qt::FontRole});
-        }
-    }
+    // One relayout instead of one dataChanged per row (a zoom step used to emit
+    // hundreds of thousands of signals on a large trace). Row identity is unchanged.
+    emit layoutAboutToBeChanged();
+    emit layoutChanged();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -658,14 +654,8 @@ void CommDumpModel::setDumpBytesPerLine(int iN)
         r.fullDumpCache.clear();
     }
 
-    const int rows = recordCount();
-    for (int i = 0; i < rows; ++i) {
-        const QModelIndex parentIdx = index(i, 0);
-        const QModelIndex childIdx  = index(0, 0, parentIdx);
-        if (childIdx.isValid()) {
-            emit dataChanged(childIdx, childIdx, {Qt::DisplayRole});
-        }
-    }
+    emit layoutAboutToBeChanged();
+    emit layoutChanged();
     emit headerDataChanged(Qt::Horizontal, ColData, ColData);
 }
 
@@ -954,6 +944,8 @@ QVariant CommDumpModel::data(const QModelIndex &index, int iRole) const
                                                : 0);
             case TimeSinceCaptureStart:
                 return formatDurationSecUs(rec->timestampUs - captureStartTimestampUs());
+            case TimeFormatCount: // sentinel, never a real mode
+                break;
             }
             return {};
         case ColPlugin:

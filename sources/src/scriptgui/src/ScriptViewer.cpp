@@ -4,6 +4,7 @@
 #include "IniHighlighter.hpp"
 #include "ScriptHighlighter.hpp"
 #include "SetupRunner.hpp"
+#include "uSharedConfig.hpp"
 #include "uSharedScriptRegex.hpp"
 
 #include <QAbstractTextDocumentLayout>
@@ -46,6 +47,7 @@
 #include <QTextCursor>
 #include <QTextDocument>
 #include <QTextEdit>
+#include <QStringConverter>
 #include <QTextStream>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -143,6 +145,8 @@ void CodeEditor::refreshGutter()
     // drives updateLineNumberAreaWidth).
     updateLineNumberAreaWidth(0);
     m_lineNumberArea->update();
+    // Literal tab characters must follow the (zoomed) font, not the font at construction.
+    setTabStopDistance(TAB_WIDTH * QFontMetricsF(font()).horizontalAdvance(QLatin1Char(' ')));
 }
 
 void CodeEditor::updateLineNumberArea(const QRect &rect, int iDy)
@@ -449,6 +453,9 @@ void CodeEditor::mousePressEvent(QMouseEvent *pEv)
     // re-populates it if this press turns out to be a Ctrl+double-click.
     clearWordHighlights();
     QPlainTextEdit::mousePressEvent(pEv);
+    if (pEv->button() == Qt::LeftButton) {
+        emitIncludeForCursorLine();
+    }
 }
 
 void CodeEditor::mouseDoubleClickEvent(QMouseEvent *pEv)
@@ -508,6 +515,26 @@ void CodeEditor::clearWordHighlights()
 }
 
 /** On cursor move, emits a request if the line references a COMM script. */
+static const QRegularExpression &includeRegex()
+{
+    static const QRegularExpression re(
+        QString(R"re(^\s*%1\s+"([^"]+)")re").arg(QStringLiteral(SCRIPT_INCLUDE_KEYWORD)));
+    return re;
+}
+
+static bool isIncludeLine(const QString &line)
+{
+    return includeRegex().match(line).hasMatch();
+}
+
+void CodeEditor::emitIncludeForCursorLine()
+{
+    const QRegularExpressionMatch im = includeRegex().match(textCursor().block().text());
+    if (im.hasMatch()) {
+        emit includeFileClicked(im.captured(1));
+    }
+}
+
 void CodeEditor::checkCurrentLineForCommScript()
 {
     const int currentLine = textCursor().blockNumber();
@@ -521,24 +548,10 @@ void CodeEditor::checkCurrentLineForCommScript()
 
     const QString line   = textCursor().block().text();
 
-    // ── Pattern 1: INCLUDE "path"  ───────────────────────────────────────
-    // Recognised by the reader as a pre-IR directive. NOTE: the keyword is
-    // hardcoded as "INCLUDE" here (and identically in
-    // ScriptHighlighter's own INCLUDE rule) rather than sourced from a
-    // shared constant, so a rename would need updating both copies by hand.
-    // Clicking an INCLUDE line opens the named file in a new core-script tab
-    // (or switches to it when already open), just like .SCRIPT does for comm
-    // scripts — but routed through includeFileClicked → includeFileRequested
-    // → MainWindow::onIncludeFileRequested so it lands in the main tab widget.
-    {
-        const QString kw = QString::fromLatin1("INCLUDE");
-        const QRegularExpression includeRe(
-            QString(R"re(^\s*%1\s+"([^"]+)")re").arg(kw));
-        const QRegularExpressionMatch im = includeRe.match(line);
-        if (im.hasMatch()) {
-            emit includeFileClicked(im.captured(1));
-            return; // don't fall through to comm-script patterns
-        }
+    // INCLUDE "file" lines are opened by an explicit mouse click only (see
+    // mousePressEvent): arrow-key navigation or Find must not open tabs.
+    if (isIncludeLine(line)) {
+        return;
     }
 
     // ── Pattern 2: PLUGIN.SCRIPT <filename>   — "SCRIPT" must be uppercase
@@ -642,6 +655,27 @@ void CodeEditor::keyPressEvent(QKeyEvent *pEv)
 
     if (isReadOnly()) {
         QPlainTextEdit::keyPressEvent(pEv);
+        return;
+    }
+
+    if (pEv->key() == Qt::Key_Tab && textCursor().hasSelection() &&
+        document()->findBlock(textCursor().selectionStart()) != document()->findBlock(textCursor().selectionEnd())) {
+        // Multi-line selection: indent every selected line (never replace the selection).
+        QTextCursor cursor = textCursor();
+        QTextBlock first   = document()->findBlock(cursor.selectionStart());
+        QTextBlock last    = document()->findBlock(cursor.selectionEnd());
+        if (last != first && cursor.selectionEnd() == last.position()) {
+            last = last.previous(); // selection ends at column 0 of this line: leave it alone
+        }
+        // Block numbers stay valid while inserting (positions shift).
+        const int firstN = first.blockNumber();
+        const int lastN  = last.blockNumber();
+        cursor.beginEditBlock();
+        for (int n = firstN; n <= lastN; ++n) {
+            QTextCursor bc(document()->findBlockByNumber(n));
+            bc.insertText(QString(TAB_WIDTH, QLatin1Char(' ')));
+        }
+        cursor.endEditBlock();
         return;
     }
 
@@ -911,14 +945,38 @@ void ScriptViewer::replaceAll()
 }
 
 // ── Loading ────────────────────────────────────────────────────────────────
-void ScriptViewer::loadScript(const QString &filePath)
+bool ScriptViewer::loadScript(const QString &filePath)
 {
+    // Read raw bytes first: a file that cannot be read must never be bound to
+    // this viewer (a later Save would overwrite the real file with a placeholder).
+    QFile f(filePath);
+    if (!f.open(QIODevice::ReadOnly)) {
+        clear();
+        return false;
+    }
+    QByteArray raw = f.readAll();
+    f.close();
+
     m_currentFile = filePath;
+    m_bom         = raw.startsWith("\xEF\xBB\xBF");
+    if (m_bom) {
+        raw.remove(0, 3);
+    }
+    QStringDecoder utf8(QStringConverter::Utf8, QStringConverter::Flag::Stateless);
+    QString text = utf8(raw);
+    m_latin1     = utf8.hasError();
+    if (m_latin1) {
+        text = QString::fromLatin1(raw); // lossless byte-per-char fallback
+    }
+    const qsizetype crlf = text.count(QStringLiteral("\r\n"));
+    const qsizetype lf   = text.count(QLatin1Char('\n')) - crlf;
+    m_crlf               = crlf > 0 && crlf >= lf;
+    if (crlf > 0) {
+        text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+    }
 
     // ── swap highlighter only when the file type changes ─────────────────
     if (SetupRunner::isSetupFileName(filePath)) {
-        // setup.sh / setup.bat are shell scripts, not µScripts: plain text.
-        // (setHighlighting(false) detaches whichever highlighter is active.)
         m_editor->setHighlighting(false);
     } else if (filePath.endsWith(".ini", Qt::CaseInsensitive)) {
         if (!m_editor->hasIniHighlighter()) {
@@ -926,32 +984,20 @@ void ScriptViewer::loadScript(const QString &filePath)
         }
     } else {
         if (!m_editor->hasScriptHighlighter()) {
-            m_editor->setIniHighlighting(false); // tears down INI if set
+            m_editor->setIniHighlighting(false);
             m_editor->setHighlighting(true);
         }
     }
 
-    QFile f(filePath);
-    if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QTextStream ts(&f);
-        // Block signals while loading so we don't get a spurious modificationChanged
-        m_editor->setPlainText(ts.readAll());
-        // Mark clean AFTER setPlainText so the highlighter runs first;
-        // setModified(false) fires modificationChanged(false) → tab shows green.
-        m_editor->document()->setModified(false);
-    } else {
-        m_editor->setPlainText(QString("-- could not open: %1 --").arg(filePath));
-    }
-    // Reset the per-line emission guard: after a new file is loaded the cursor
-    // may land on the same line number as before, and the guard would silently
-    // suppress the commScriptLineClicked signal.  Clearing it here ensures the
-    // first click on any COMM-script line always shows the referenced file.
+    m_editor->setPlainText(text);
+    m_editor->document()->setModified(false);
     m_editor->resetCommScriptLineCache();
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
     m_editor->clearThreadLines();
     m_currentLine = 0;
     updateInfo();
+    return true;
 }
 
 void ScriptViewer::loadText(const QString &text)
@@ -969,6 +1015,7 @@ void ScriptViewer::loadText(const QString &text)
 void ScriptViewer::clear()
 {
     m_currentFile.clear();
+    m_crlf = m_latin1 = m_bom = false;
     m_currentLine = 0;
     // Use setPlainText("") instead of QPlainTextEdit::clear().
     // clear() replaces the internal QTextDocument with a brand-new instance,
@@ -1061,6 +1108,7 @@ void ScriptViewer::setEditorFont(const QFont &font)
                                 "}")
                                 .arg(info.family())
                                 .arg(font.pointSize()));
+    m_editor->ensurePolished(); // apply the stylesheet font before measuring it
     m_editor->refreshGutter();
     m_editor->viewport()->update();
 }
@@ -1108,24 +1156,41 @@ bool ScriptViewer::saveAs()
     if (path.isEmpty()) {
         return false;
     }
+    if (!writeFile(path)) {
+        return false;
+    }
     m_currentFile = path;
-    return writeFile(path);
+    updateInfo();
+    return true;
 }
 
 bool ScriptViewer::writeFile(const QString &path)
 {
     QSaveFile f(path);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+    if (!f.open(QIODevice::WriteOnly)) {
         QMessageBox::warning(this, "Save failed",
                              QString("Could not write to:\n%1\n\n%2")
                                  .arg(path, f.errorString()));
         return false;
     }
-    QTextStream ts(&f);
-    ts << m_editor->toPlainText();
-    if (!f.commit()) {
+    QString text = m_editor->toPlainText();
+    if (m_crlf) {
+        text.replace(QLatin1Char('\n'), QStringLiteral("\r\n"));
+    }
+    QByteArray bytes;
+    // Write back as Latin-1 only while every character still fits; otherwise UTF-8.
+    if (m_latin1 && QString::fromLatin1(text.toLatin1()) == text) {
+        bytes = text.toLatin1();
+    } else {
+        m_latin1 = false;
+        if (m_bom) {
+            bytes = "\xEF\xBB\xBF";
+        }
+        bytes += text.toUtf8();
+    }
+    if (f.write(bytes) != bytes.size() || !f.commit()) {
         QMessageBox::warning(this, "Save failed",
-                             QString("Could not commit:\n%1\n\n%2")
+                             QString("Could not write:\n%1\n\n%2")
                                  .arg(path, f.errorString()));
         return false;
     }

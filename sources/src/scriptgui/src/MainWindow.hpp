@@ -13,6 +13,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMainWindow>
+#include <QPointer>
 #include <QProcess>
 #include <QPushButton>
 #include <QSet>
@@ -20,6 +21,7 @@
 #include <QString>
 #include <QTabWidget>
 #include <QTimer>
+#include <memory>
 
 class CommDumpView;
 class LogViewer;
@@ -34,6 +36,7 @@ class QObject;
 class QPushButton;
 class QSplitter;
 class QTabWidget;
+class QTemporaryDir;
 class QTimer;
 class QWidget;
 class ScriptViewer;
@@ -137,7 +140,14 @@ class MainWindow : public QMainWindow
         void syncPathEdit(int iTabIndex);
         void saveCurrentTab();
         /** Saves all modified tabs. */
-        void saveAllTabs();
+        /** Saves every modified tab; returns false if any save failed or was cancelled. */
+        bool saveAllTabs();
+        /** Persists the open file list and the active tab to QSettings. */
+        void saveSession();
+        /** Writes the splitter layout to QSettings. */
+        void saveSplitterState();
+        /** Index of the tab whose script is running, or -1. */
+        int runningTabIndex() const;
         void updateTabModifiedState(ScriptViewer *pViewer);
         /** Asks for a new name (dialog, same folder), copies tab @p iIndex's file under it and opens the copy in a new tab. */
         void duplicateTab(int iIndex);
@@ -182,7 +192,16 @@ class MainWindow : public QMainWindow
         // Gracefully stops the interpreter.  If the shell terminal is active,
         // sends "#q\n" twice (to exit any nested shell) and waits briefly for
         // a clean exit before falling back to SIGTERM / SIGKILL.
-        void terminateProcess();
+        /** STOP button: non-blocking, timer-driven (shell exit → stop flag → kill). A second
+         *  press while stopping escalates to an immediate kill. */
+        void requestStop();
+        /** Synchronous variant, only for closeEvent (the app is exiting anyway). */
+        void terminateProcessBlocking();
+    private slots:
+        void onStopTimer();
+    private:
+        void sendShellQuit();
+        void beginGracefulStop();
 
         // ── Font scaling (Ctrl++ / Ctrl+- / Ctrl+0) ───────────────────────────
         void adjustFontSize(int iDelta);
@@ -223,6 +242,8 @@ class MainWindow : public QMainWindow
         ShellTerminal *m_w4           = nullptr;    // shell terminal (always present, active on SHELL_RUN)
         QSplitter *m_logShellSplit    = nullptr;    // vertical splitter: m_w3 / m_wCommDump / m_w4
         QLabel *m_commScriptNameLabel = nullptr;    // filename shown next to "COMM SCRIPT" title
+        QSplitter *m_hSplit           = nullptr;
+        QSplitter *m_vSplit           = nullptr;
         QTimer *m_splitterSaveTimer   = nullptr;    // debounce QSettings writes on splitter drag
 
         QLabel *m_statusText;
@@ -232,7 +253,13 @@ class MainWindow : public QMainWindow
         // ── Process ────────────────────────────────────────────────────────────
         QProcess *m_process;
         bool m_running   = false;
-        int m_runningTab = -1; // tab index that is currently executing
+        enum class StopStage { Idle, Shell, Graceful };
+        StopStage m_stopStage = StopStage::Idle;
+        QTimer *m_stopTimer   = nullptr;
+        int m_shellQuitPass   = 0;
+        int m_stopElapsedMs   = 0;
+        bool m_setupBusy = false; // a sudo probe is running on a worker thread
+        QPointer<ScriptViewer> m_runningViewer; // viewer whose script is executing (tabs are movable: never track by index)
         QString m_interpreterPath;
         QString m_iniPath; // -c argument for the interpreter (config.ini next to the active script, if any)
 
@@ -241,11 +268,12 @@ class MainWindow : public QMainWindow
         bool m_terminalMode         = false; // true while GUI:SHELL_RUN is active
         bool m_pendingCommHighlight = false; // loadScript() called this batch; defer EXEC_COMM setCurrentLine()
         bool m_stoppingByUser       = false; // set in terminateProcess(), cleared in onProcessFinished
+        std::unique_ptr<QTemporaryDir> m_stopFlagDir; // private (0700) folder holding the stop flag
         QString m_stopFlagPath;              // per-run graceful-stop flag file; child polls for its existence
                                              // (see uexec::isStopRequested()); written by terminateProcess()
                                              // before falling back to a hard kill(), removed in onProcessFinished().
         int m_pendingDrainCounter = 0;       // readyRead ticks since last gui_notify_flush_pending() drain
-        QSet<QString> m_threadedCommScripts; // canonical paths of comm scripts running in a '&' thread;
+        QHash<QString, int> m_threadedCommScripts; // refcount per path (several '&' threads may share one comm script); canonical paths of comm scripts running in a '&' thread;
                                              // EXEC_COMM/LOAD_COMM/ERROR_COMM are suppressed while the
                                              // loaded comm file is in this set
 

@@ -59,6 +59,9 @@
 #include <QStringList>
 #include <QStringLiteral>
 #include <QStringView>
+#include <QEventLoop>
+#include <QTemporaryDir>
+#include <QThread>
 #include <QStyle>
 #include <QTabBar>
 #include <QTabWidget>
@@ -109,6 +112,17 @@ static QFont buildEditorFont(int iPointSize)
     f.setPointSize(iPointSize);
     cache.insert(iPointSize, f);
     return f;
+}
+
+// Decodes one stdout/stderr line. Only trailing whitespace (CR, padding) is removed:
+// leading indentation of the interpreter's output (tables, macro dumps) is preserved.
+static QString decodeOutputLine(const QByteArray &raw)
+{
+    QString s = QString::fromUtf8(raw);
+    while (!s.isEmpty() && s.back().isSpace()) {
+        s.chop(1);
+    }
+    return s;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -243,6 +257,24 @@ MainWindow::MainWindow(QWidget *pParent)
     connect(m_process, &QProcess::readyReadStandardError, this, &MainWindow::onProcessError);
     connect(m_process, &QProcess::started, this, &MainWindow::onProcessStarted);
     connect(m_process, &QProcess::finished, this, &MainWindow::onProcessFinished);
+    m_stopTimer = new QTimer(this);
+    m_stopTimer->setSingleShot(true);
+    connect(m_stopTimer, &QTimer::timeout, this, &MainWindow::onStopTimer);
+    connect(m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError err) {
+        if (err != QProcess::FailedToStart) {
+            return; // crashes are reported through finished()
+        }
+        // No started()/finished() will follow: undo what onStartStop() prepared.
+        m_w3->appendStatus(QString("Could not start the interpreter: %1").arg(m_process->errorString()));
+        m_runningViewer = nullptr;
+        m_stoppingByUser = false;
+        m_stopFlagDir.reset();
+        m_stopFlagPath.clear();
+        m_led->setState(StatusLed::State::Error);
+        m_ledLabel->setText("ERROR");
+        onCurrentTabChanged(m_tabWidget->currentIndex());
+        setStatus("Interpreter could not be started");
+    });
 
     // ── Font-size shortcuts ───────────────────────────────────────────────
     auto *scPlus  = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Plus), this);
@@ -275,7 +307,7 @@ MainWindow::MainWindow(QWidget *pParent)
         m_tabWidget->setCurrentIndex((m_tabWidget->currentIndex() + n - 1) % n); });
 
     // ── Restore session ───────────────────────────────────────────────────
-    m_fontSize                 = cfg.value("session/fontSize", k_fontDefault).toInt();
+    m_fontSize                 = qBound(k_fontMin, cfg.value("session/fontSize", k_fontDefault).toInt(), k_fontMax);
     // Note: applyFontSize() is called AFTER tabs are restored below
 
     // Restore all previously open script tabs
@@ -774,14 +806,11 @@ QWidget *MainWindow::buildCentralWidget()
     {
         m_splitterSaveTimer = new QTimer(this);
         m_splitterSaveTimer->setSingleShot(true);
-        connect(m_splitterSaveTimer, &QTimer::timeout, this, [hSplit, vSplit, this] {
-            QSettings s;
-            s.setValue("window/hSplit", hSplit->saveState());
-            s.setValue("window/vSplit", vSplit->saveState());
-            if (m_terminalMode) {
-                s.setValue("window/logShellSplit", m_logShellSplit->saveState());
-            } });
+        m_hSplit = hSplit;
+        m_vSplit = vSplit;
+        connect(m_splitterSaveTimer, &QTimer::timeout, this, &MainWindow::saveSplitterState);
         connect(hSplit, &QSplitter::splitterMoved, this, [this] { m_splitterSaveTimer->start(300); });
+        connect(vSplit, &QSplitter::splitterMoved, this, [this] { m_splitterSaveTimer->start(300); });
     }
 
     return hSplit;
@@ -828,11 +857,18 @@ ScriptViewer *MainWindow::addTab(const QString &filePath)
     auto *viewer = new ScriptViewer(m_tabWidget);
     viewer->setEditorFont(buildEditorFont(m_fontSize));
 
-    const QString tabLabel = filePath.isEmpty()
-                                 ? "untitled"
-                                 : QFileInfo(filePath).fileName();
+    bool bLoaded = true;
+    if (!filePath.isEmpty()) {
+        bLoaded = viewer->loadScript(filePath);
+        if (!bLoaded) {
+            m_w3->appendStatus(QString("Could not open: %1").arg(filePath));
+        }
+    }
+    const QString tabLabel = viewer->currentFile().isEmpty()
+                                 ? QString("untitled")
+                                 : QFileInfo(viewer->currentFile()).fileName().replace('&', "&&");
     const int idx          = m_tabWidget->addTab(viewer, tabLabel);
-    m_tabWidget->setTabToolTip(idx, filePath.isEmpty() ? "(empty)" : filePath);
+    m_tabWidget->setTabToolTip(idx, viewer->currentFile().isEmpty() ? QString("(empty)") : viewer->currentFile());
 
     // Update tab title dot whenever this viewer's modified state changes
     connect(viewer, &ScriptViewer::modificationChanged, this, [this, viewer](bool) { updateTabModifiedState(viewer); });
@@ -848,10 +884,6 @@ ScriptViewer *MainWindow::addTab(const QString &filePath)
     connect(viewer, &ScriptViewer::includeFileRequested,
             this, &MainWindow::onIncludeFileRequested);
 
-    if (!filePath.isEmpty()) {
-        viewer->loadScript(filePath);
-    }
-
     m_tabWidget->setCurrentIndex(idx);
     // Set initial colour — light blue-gray = clean, will turn red if modified
     m_tabWidget->tabBar()->setTabTextColor(idx, QColor("#c8d0e0"));
@@ -865,10 +897,12 @@ ScriptViewer *MainWindow::currentViewer() const
 
 ScriptViewer *MainWindow::runningViewer() const
 {
-    if (m_runningTab < 0 || m_runningTab >= m_tabWidget->count()) {
-        return nullptr;
-    }
-    return qobject_cast<ScriptViewer *>(m_tabWidget->widget(m_runningTab));
+    return m_runningViewer.data();
+}
+
+int MainWindow::runningTabIndex() const
+{
+    return m_runningViewer ? m_tabWidget->indexOf(m_runningViewer.data()) : -1;
 }
 
 void MainWindow::loadIntoTab(int iIndex, const QString &filePath)
@@ -881,22 +915,15 @@ void MainWindow::loadIntoTab(int iIndex, const QString &filePath)
         return;
     }
 
-    viewer->loadScript(filePath);
-    const QString name = QFileInfo(filePath).fileName();
-    m_tabWidget->setTabText(iIndex, name);
-    m_tabWidget->setTabToolTip(iIndex, filePath);
-
-    QSettings cfg;
-    // Persist all tab paths
-    QStringList paths;
-    for (int i = 0; i < m_tabWidget->count(); ++i) {
-        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
-        if (v) {
-            paths << v->currentFile();
-        }
+    if (!viewer->loadScript(filePath)) {
+        m_w3->appendStatus(QString("Could not open: %1").arg(filePath));
+        setStatus("Could not open file");
+        return;
     }
-    cfg.setValue("session/tabPaths", paths);
-    cfg.setValue("session/activeTab", m_tabWidget->currentIndex());
+    const QString name = QFileInfo(filePath).fileName();
+    m_tabWidget->setTabText(iIndex, QString(name).replace('&', "&&"));
+    m_tabWidget->setTabToolTip(iIndex, filePath);
+    saveSession();
 
     m_w3->appendStatus(QString("Loaded: %1").arg(name));
     setStatus(QString("Script loaded: %1").arg(name));
@@ -1056,28 +1083,26 @@ void MainWindow::onTabCloseRequested(int iIndex)
     // Check for unsaved changes
     auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(iIndex));
     if (viewer && viewer->isModified()) {
-        QString name = m_tabWidget->tabText(iIndex);
-        if (name.startsWith("● ")) {
-            name = name.mid(2); // strip "● " only if present
-        }
+        const QString name = viewer->currentFile().isEmpty() ? QString("untitled")
+                                                             : QFileInfo(viewer->currentFile()).fileName();
 
         QMessageBox msgBox(this);
         msgBox.setWindowTitle("Unsaved changes");
         auto msg = QString("'%1' has unsaved changes.\nSave before closing?").arg(name);
         msgBox.setText(msg);
-        msgBox.setStandardButtons(QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel);
+        msgBox.setStandardButtons(QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
         msgBox.button(QMessageBox::Discard)->setText("Discard"); // override platform text
         const auto ans = msgBox.exec();
 
         if (ans == QMessageBox::Cancel) {
             return;
         }
-        if (ans == QMessageBox::SaveAll && !viewer->save()) {
+        if (ans == QMessageBox::Save && !viewer->save()) {
             return;
         }
     }
 
-    if (iIndex == m_runningTab) {
+    if (viewer && viewer == m_runningViewer) {
         const auto ans = QMessageBox::question(
             this, "Script running",
             "This tab's script is currently running.\nClose the tab anyway?",
@@ -1100,11 +1125,6 @@ void MainWindow::onTabCloseRequested(int iIndex)
         viewer->deleteLater();
     }
 
-    // Adjust running tab index if needed
-    if (m_runningTab > iIndex) {
-        --m_runningTab;
-    }
-
     syncPathEdit(m_tabWidget->currentIndex());
 }
 
@@ -1120,7 +1140,7 @@ void MainWindow::onCurrentTabChanged(int iIndex)
         QColor c;
         if (mod) {
             c = QColor("#ff5555"); // red   = modified
-        } else if (i == m_runningTab) {
+        } else if (i == runningTabIndex()) {
             c = QColor("#4a9eff"); // blue  = running
         } else {
             c = QColor("#c8d0e0"); // light blue-gray = clean
@@ -1152,7 +1172,7 @@ void MainWindow::onBrowse()
 void MainWindow::onStartStop()
 {
     if (m_running) {
-        terminateProcess();
+        requestStop();
         return;
     }
 
@@ -1203,11 +1223,11 @@ void MainWindow::onStartStop()
             QMessageBox dlg(this);
             dlg.setWindowTitle("Unsaved changes");
             dlg.setText("One or more open files have unsaved changes.\n\n"
-                        "Save all before running, discard the changes, or cancel the run?");
+                        "Save all before running, run the saved version on disk (keeping your edits in the editor), or cancel the run?");
             dlg.setIcon(QMessageBox::Question);
 
             auto *saveBtn    = dlg.addButton("Save All", QMessageBox::AcceptRole);
-            auto *discardBtn = dlg.addButton("Discard", QMessageBox::DestructiveRole);
+            auto *discardBtn = dlg.addButton("Run saved version", QMessageBox::DestructiveRole);
             /*cancelBtn*/ dlg.addButton("Cancel Run", QMessageBox::RejectRole);
             dlg.setDefaultButton(saveBtn);
             dlg.exec();
@@ -1246,12 +1266,11 @@ void MainWindow::onStartStop()
     }
     // ── End unsaved-changes guard ─────────────────────────────────────────────────────
 
+    // The field holds a plain path (spaces allowed); only strip optional surrounding quotes.
     QString interp = m_interpreterPath.trimmed();
-    if (!interp.isEmpty()) {
-        const QStringList parts = QProcess::splitCommand(interp);
-        if (!parts.isEmpty()) {
-            interp = parts.first();
-        }
+    if (interp.size() >= 2 && ((interp.startsWith('"') && interp.endsWith('"')) ||
+                               (interp.startsWith('\'') && interp.endsWith('\'')))) {
+        interp = interp.mid(1, interp.size() - 2);
     }
 
     // Nothing configured, or the configured path is stale (deploy folder
@@ -1289,7 +1308,7 @@ void MainWindow::onStartStop()
         }
     }
 
-    m_runningTab = m_tabWidget->currentIndex();
+    m_runningViewer = currentViewer();
 
     // Refresh all tab colours
     onCurrentTabChanged(m_tabWidget->currentIndex());
@@ -1324,9 +1343,13 @@ void MainWindow::onStartStop()
     // top-level script-loop iteration - see uexec::isStopRequested()) before
     // falling back to a hard kill(). Remove any stale leftover from a previous
     // run first so it can never cause an immediate spurious stop.
-    m_stopFlagPath = QDir(QDir::tempPath()).filePath(QString("uscript_stop_%1_%2.flag").arg(QCoreApplication::applicationPid()).arg(QDateTime::currentMSecsSinceEpoch()));
-    QFile::remove(m_stopFlagPath);
-    env.insert("SCRIPT_STOP_FLAG_FILE", m_stopFlagPath);
+    // Created inside a private 0700 temp folder so no other local user can pre-create
+    // (or symlink) the flag path.
+    m_stopFlagDir = std::make_unique<QTemporaryDir>();
+    m_stopFlagPath = m_stopFlagDir->isValid() ? m_stopFlagDir->filePath("stop.flag") : QString();
+    if (!m_stopFlagPath.isEmpty()) {
+        env.insert("SCRIPT_STOP_FLAG_FILE", m_stopFlagPath);
+    }
 
     const QString appDir = QCoreApplication::applicationDirPath();
     const QString libDir = QDir(appDir).filePath("lib");
@@ -1495,11 +1518,9 @@ void MainWindow::onProcessOutput()
         int start = 0;
         int nlPos;
         while ((nlPos = m_lineBuf.indexOf('\n', start)) != -1) {
-            const QString line = QString::fromUtf8(
-                                     m_lineBuf.sliced(start, nlPos - start))
-                                     .trimmed();
+            const QString line = decodeOutputLine(m_lineBuf.sliced(start, nlPos - start));
             start              = nlPos + 1;
-            if (!line.isEmpty()) {
+            if (!line.trimmed().isEmpty()) {
                 dispatchLine(line); // may set m_terminalMode = true
             }
 
@@ -1534,11 +1555,9 @@ void MainWindow::onProcessError()
     int start = 0;
     int nlPos;
     while ((nlPos = m_errBuf.indexOf('\n', start)) != -1) {
-        const QString line = QString::fromUtf8(
-                                 m_errBuf.sliced(start, nlPos - start))
-                                 .trimmed();
+        const QString line = decodeOutputLine(m_errBuf.sliced(start, nlPos - start));
         start              = nlPos + 1;
-        if (!line.isEmpty()) {
+        if (!line.trimmed().isEmpty()) {
             m_w3->appendLine(line);
         }
     }
@@ -1552,14 +1571,16 @@ void MainWindow::onProcessFinished(int iExitCode, QProcess::ExitStatus status)
 {
     // Flush any remaining buffered stdout (last line without trailing '\n')
     if (!m_lineBuf.isEmpty()) {
-        dispatchLine(QString::fromUtf8(m_lineBuf).trimmed());
+        if (const QString last = decodeOutputLine(m_lineBuf); !last.trimmed().isEmpty()) {
+            dispatchLine(last);
+        }
         m_lineBuf.clear();
     }
     // Flush any remaining buffered stderr (last partial line would otherwise be lost)
     if (!m_errBuf.isEmpty()) {
-        const QString lastErr = QString::fromUtf8(m_errBuf).trimmed();
+        const QString lastErr = decodeOutputLine(m_errBuf);
         m_errBuf.clear();
-        if (!lastErr.isEmpty()) {
+        if (!lastErr.trimmed().isEmpty()) {
             m_w3->appendLine(lastErr);
         }
     }
@@ -1579,10 +1600,10 @@ void MainWindow::onProcessFinished(int iExitCode, QProcess::ExitStatus status)
         }
     }
     m_threadedCommScripts.clear(); // reset: any threads still alive at crash/stop are gone
-    if (!m_stopFlagPath.isEmpty()) {
-        QFile::remove(m_stopFlagPath);
-        m_stopFlagPath.clear();
-    }
+    m_stopTimer->stop();
+    m_stopStage = StopStage::Idle;
+    m_stopFlagDir.reset(); // removes the private folder and the flag inside it
+    m_stopFlagPath.clear();
     setRunning(false);
     // Keep w2 loaded when it carries error markers so the red bar on the
     // failing comm-script line stays visible after the run ends.
@@ -1598,8 +1619,8 @@ void MainWindow::onProcessFinished(int iExitCode, QProcess::ExitStatus status)
         m_w2->clearHighlight();
     }
 
-    const int savedRunningTab = m_runningTab;
-    m_runningTab              = -1;
+    const int savedRunningTab = runningTabIndex();
+    m_runningViewer           = nullptr;
     onCurrentTabChanged(m_tabWidget->currentIndex()); // reset tab colour
 
     // Restore editors to read-write and clear execution highlights
@@ -1813,7 +1834,7 @@ void MainWindow::dispatchLine(const QString &raw)
             // and add it to the suppression set.
             const QString canon = threadedCommScriptForLine(v, lineNo);
             if (!canon.isEmpty()) {
-                m_threadedCommScripts.insert(canon);
+                ++m_threadedCommScripts[canon];
             }
         }
     } else if (payload.startsWith(QLatin1StringView("THREAD_DONE:"))) {
@@ -1825,11 +1846,15 @@ void MainWindow::dispatchLine(const QString &raw)
         if (v) {
             const QString canon = threadedCommScriptForLine(v, lineNo);
             if (!canon.isEmpty()) {
-                m_threadedCommScripts.remove(canon);
-                // If the viewer was showing this threaded file, clear it now
-                // so no stale content remains after the thread exits.
-                if (QFileInfo(m_w2->currentFile()).canonicalFilePath() == canon) {
-                    m_w2->clear();
+                // Several '&' threads may run the same comm script: only the last one releases it.
+                const auto it = m_threadedCommScripts.find(canon);
+                if (it != m_threadedCommScripts.end() && --it.value() <= 0) {
+                    m_threadedCommScripts.erase(it);
+                    // If the viewer was showing this threaded file, clear it now
+                    // so no stale content remains after the thread exits.
+                    if (QFileInfo(m_w2->currentFile()).canonicalFilePath() == canon) {
+                        m_w2->clear();
+                    }
                 }
             }
             v->removeThreadLine(lineNo);
@@ -2264,7 +2289,103 @@ bool MainWindow::isThreadedCommFile(const QString &filePath) const
 // ─────────────────────────────────────────────────────────────────────────────
 //  Process lifetime
 // ─────────────────────────────────────────────────────────────────────────────
-void MainWindow::terminateProcess()
+void MainWindow::sendShellQuit()
+{
+    if (m_process->state() != QProcess::Running) {
+        return;
+    }
+    // '#q' + line ending — same sequence as the shell's own STOP button.
+#ifdef Q_OS_WIN
+    m_process->write("#q\r\n");
+#else
+    m_process->write("#q\x0A");
+#endif
+    ++m_shellQuitPass;
+}
+
+void MainWindow::beginGracefulStop()
+{
+    m_stopStage = StopStage::Graceful;
+    m_stopElapsedMs = 0;
+    m_stoppingByUser = true;
+    // Graceful attempt first: the stop-flag file lets the interpreter's top-level loop
+    // unwind on its own (clean "stopped" message, background threads see their stop_token).
+    if (!m_stopFlagPath.isEmpty()) {
+        QFile flag(m_stopFlagPath);
+        (void)flag.open(QIODevice::WriteOnly); // content doesn't matter, only existence
+        flag.close();
+        m_stopTimer->start(100);
+        return;
+    }
+    m_stopStage = StopStage::Idle;
+    m_process->kill(); // no flag channel available: nothing graceful to wait for
+}
+
+void MainWindow::requestStop()
+{
+    if (m_process->state() == QProcess::NotRunning) {
+        return;
+    }
+    if (m_stopStage != StopStage::Idle) {
+        // Second press while a stop is in progress: stop waiting politely.
+        m_w3->appendStatus("Forcing the interpreter to stop");
+        m_stopTimer->stop();
+        m_stopStage = StopStage::Idle;
+        m_stoppingByUser = true;
+        m_process->kill();
+        return;
+    }
+    if (m_terminalMode) {
+        // Ask the shell to exit cleanly first (once for a nested sub-shell, once for the
+        // outer one). Replies are handled by the normal event loop: no blocking waits.
+        m_w3->appendStatus("Stopping shell — sending exit sequence…");
+        m_stopStage     = StopStage::Shell;
+        m_shellQuitPass = 0;
+        sendShellQuit();
+        m_stopTimer->start(800);
+        return;
+    }
+    beginGracefulStop();
+}
+
+void MainWindow::onStopTimer()
+{
+    if (m_process->state() != QProcess::Running) {
+        m_stopStage = StopStage::Idle; // finished (or never started): nothing left to do
+        return;
+    }
+    switch (m_stopStage) {
+    case StopStage::Shell:
+        if (!m_terminalMode) {
+            // GUI:SHELL_EXIT arrived: the interpreter resumed its main script.
+            m_stopStage = StopStage::Idle;
+            m_w3->appendStatus("Shell closed — the script continues. Press STOP again to stop it.");
+            setStatus("Shell closed — press STOP again to stop the script");
+            return;
+        }
+        if (m_shellQuitPass < 2) {
+            sendShellQuit();
+            m_stopTimer->start(800);
+            return;
+        }
+        beginGracefulStop(); // the shell refused to exit
+        return;
+    case StopStage::Graceful:
+        m_stopElapsedMs += 100;
+        if (m_stopElapsedMs >= 5000) {
+            // Unconditional safety net: SIGKILL is unambiguous (SIGTERM is reported as a crash).
+            m_stopStage = StopStage::Idle;
+            m_process->kill();
+            return;
+        }
+        m_stopTimer->start(100);
+        return;
+    case StopStage::Idle:
+        return;
+    }
+}
+
+void MainWindow::terminateProcessBlocking()
 {
     if (m_process->state() == QProcess::NotRunning) {
         return;
@@ -2421,16 +2542,23 @@ void MainWindow::onReloadAll()
         }
     }
 
+    int reloaded = 0;
     for (auto *v : viewers) {
-        v->loadScript(v->currentFile());
+        if (!QFileInfo(v->currentFile()).isReadable()) {
+            m_w3->appendStatus(QString("Not reloaded (missing or unreadable): %1").arg(v->currentFile()));
+            continue; // keep the editor content rather than wiping it
+        }
+        if (v->loadScript(v->currentFile())) {
+            ++reloaded;
+        }
         updateTabModifiedState(v); // no-op for m_w2 (it isn't a tab widget)
     }
 
     // Refresh tab label colours (modified/running/clean) after the reload
     onCurrentTabChanged(m_tabWidget->currentIndex());
 
-    m_w3->appendStatus(QString("Reloaded %1 file(s) from disk").arg(viewers.size()));
-    setStatus(QString("Reloaded %1 file(s)").arg(viewers.size()));
+    m_w3->appendStatus(QString("Reloaded %1 file(s) from disk").arg(reloaded));
+    setStatus(QString("Reloaded %1 file(s)").arg(reloaded));
 }
 
 void MainWindow::setRunning(bool bOn)
@@ -2610,8 +2738,30 @@ void MainWindow::onViewerSaved(const QString &filePath)
 }
 
 /** Runs the setup script, asking for a sudo/admin password if needed. */
+// Runs a blocking helper (sudo probes can take several seconds, e.g. on a slow
+// hostname lookup) on a worker thread while the GUI thread keeps processing
+// events, so the window never freezes. Input is excluded while waiting; the
+// caller is protected from re-entry by m_setupBusy (and closeEvent refuses to
+// close while it is set).
+template <class F>
+static auto runOffThread(F fn) -> decltype(fn())
+{
+    decltype(fn()) result{};
+    QThread *th = QThread::create([&] { result = fn(); });
+    QEventLoop loop;
+    QObject::connect(th, &QThread::finished, &loop, &QEventLoop::quit);
+    th->start();
+    loop.exec(QEventLoop::ExcludeUserInputEvents);
+    th->wait();
+    delete th;
+    return result;
+}
+
 void MainWindow::runSetupScript()
 {
+    if (m_setupBusy) {
+        return; // a credential check is still in flight
+    }
     const QString path = m_setupPath;
     if (path.isEmpty() || !QFileInfo::exists(path)) {
         m_w3->appendStatus(QString("%1 not found").arg(SetupRunner::setupFileName()));
@@ -2659,7 +2809,16 @@ void MainWindow::runSetupScript()
     // Otherwise the script is simply executed.
     QString user;
     QString password;
-    if (SetupRunner::needsElevation(path) && !SetupRunner::isElevatedNow()) {
+    bool bElevated = true;
+    if (SetupRunner::needsElevation(path)) {
+        m_setupBusy = true;
+        setStatus("Checking administrator rights …");
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        bElevated = runOffThread([] { return SetupRunner::isElevatedNow(); });
+        QApplication::restoreOverrideCursor();
+        m_setupBusy = false;
+    }
+    if (!bElevated) {
         QString errorText;
         for (;;) {
             const SetupAuth res = askSetupCredentials(this, name, errorText, user, password);
@@ -2673,9 +2832,12 @@ void MainWindow::runSetupScript()
                 break;
             }
             QString verifyError;
+            m_setupBusy = true;
+            setStatus("Verifying password …");
             QApplication::setOverrideCursor(Qt::WaitCursor);
-            const bool bOk = SetupRunner::verifyPassword(password, &verifyError);
+            const bool bOk = runOffThread([&] { return SetupRunner::verifyPassword(password, &verifyError); });
             QApplication::restoreOverrideCursor();
+            m_setupBusy = false;
             if (bOk) {
                 break;
             }
@@ -2810,6 +2972,10 @@ void MainWindow::dropEvent(QDropEvent *pEv)
 // ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::closeEvent(QCloseEvent *pEv)
 {
+    if (m_setupBusy) {
+        pEv->ignore(); // a sudo check is running on a worker thread: finish it first
+        return;
+    }
     if (m_running) {
         const auto ans = QMessageBox::question(
             this, "Interpreter running",
@@ -2819,7 +2985,9 @@ void MainWindow::closeEvent(QCloseEvent *pEv)
             pEv->ignore();
             return;
         }
-        terminateProcess();
+        m_stopTimer->stop();
+        m_stopStage = StopStage::Idle;
+        terminateProcessBlocking();
     }
 
     if (m_setupRunner && m_setupRunner->isRunning()) {
@@ -2872,26 +3040,22 @@ void MainWindow::closeEvent(QCloseEvent *pEv)
                 pEv->ignore();
                 return;
             }
-            if (ans == QMessageBox::SaveAll) {
-                saveAllTabs();
+            if (ans == QMessageBox::SaveAll && !saveAllTabs()) {
+                pEv->ignore(); // a save failed or was cancelled: never quit with unsaved work
+                return;
             }
             break;
         }
     }
 
-    // Persist all open tab paths and active tab index
-    QStringList paths;
-    for (int i = 0; i < m_tabWidget->count(); ++i) {
-        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
-        if (v && !v->currentFile().isEmpty()) {
-            paths << v->currentFile();
-        }
+    // Flush a pending (debounced) splitter save, then persist the session.
+    if (m_splitterSaveTimer && m_splitterSaveTimer->isActive()) {
+        m_splitterSaveTimer->stop();
+        saveSplitterState();
     }
-
+    saveSession();
     QSettings cfg;
     cfg.setValue("window/geometry", saveGeometry());
-    cfg.setValue("session/tabPaths", paths);
-    cfg.setValue("session/activeTab", m_tabWidget->currentIndex());
     cfg.setValue("session/fontSize", m_fontSize);
 
     pEv->accept();
@@ -2921,27 +3085,66 @@ void MainWindow::saveCurrentTab()
         return;
     }
     if (viewer->save()) {
-        updateTabModifiedState(viewer);
+        updateTabModifiedState(viewer); // also refreshes label/tooltip after "Save As"
+        syncPathEdit(m_tabWidget->currentIndex());
         setStatus(QString("Saved: %1").arg(QFileInfo(viewer->currentFile()).fileName()));
-        refreshProjectButtons(); // "save as" may have moved the script to another folder
     }
 }
 
-void MainWindow::saveAllTabs()
+void MainWindow::saveSplitterState()
+{
+    if (!m_hSplit || !m_vSplit) {
+        return;
+    }
+    QSettings s;
+    s.setValue("window/hSplit", m_hSplit->saveState());
+    s.setValue("window/vSplit", m_vSplit->saveState());
+    if (m_terminalMode) {
+        s.setValue("window/logShellSplit", m_logShellSplit->saveState());
+    }
+}
+
+bool MainWindow::saveAllTabs()
 {
     int saved = 0;
+    bool ok   = true;
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
         if (v && v->isModified()) {
             if (v->save()) {
                 updateTabModifiedState(v);
                 ++saved;
+            } else {
+                ok = false;
             }
         }
     }
-    setStatus(saved > 0
-                  ? QString("Saved %1 file(s)").arg(saved)
-                  : "All files already saved");
+    syncPathEdit(m_tabWidget->currentIndex());
+    setStatus(!ok          ? QString("Some files could not be saved")
+              : saved > 0 ? QString("Saved %1 file(s)").arg(saved)
+                          : QString("All files already saved"));
+    return ok;
+}
+
+// Persists open files and the active tab. The active index is relative to the
+// saved list (untitled tabs have no path and are not saved), so it stays valid on restore.
+void MainWindow::saveSession()
+{
+    QStringList paths;
+    int active = 0;
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (!v || v->currentFile().isEmpty()) {
+            continue;
+        }
+        if (i <= m_tabWidget->currentIndex()) {
+            active = static_cast<int>(paths.size());
+        }
+        paths << v->currentFile();
+    }
+    QSettings cfg;
+    cfg.setValue("session/tabPaths", paths);
+    cfg.setValue("session/activeTab", active);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2960,11 +3163,11 @@ void MainWindow::updateTabModifiedState(ScriptViewer *pViewer)
 
         const bool mod = pViewer->isModified();
 
-        // Build clean label (strip any existing prefix)
-        QString label  = m_tabWidget->tabText(i);
-        if (label.startsWith("● ")) {
-            label = label.mid(2);
-        }
+        // Label always derives from the viewer's file, so Save As renames the tab too.
+        QString label = pViewer->currentFile().isEmpty()
+                            ? QString("untitled")
+                            : QFileInfo(pViewer->currentFile()).fileName().replace('&', "&&");
+        m_tabWidget->setTabToolTip(i, pViewer->currentFile().isEmpty() ? QString("(empty)") : pViewer->currentFile());
 
         if (mod) {
             m_tabWidget->setTabText(i, "● " + label);
@@ -2972,7 +3175,7 @@ void MainWindow::updateTabModifiedState(ScriptViewer *pViewer)
         } else {
             m_tabWidget->setTabText(i, label);
             // Running tab gets blue, clean tabs get green
-            const QColor cleanColor = (i == m_runningTab)
+            const QColor cleanColor = (i == runningTabIndex())
                                           ? QColor("#4a9eff")  // blue  = running
                                           : QColor("#c8d0e0"); // light blue-gray = clean/saved
             m_tabWidget->tabBar()->setTabTextColor(i, cleanColor);
@@ -3013,6 +3216,10 @@ void MainWindow::onCommScriptRequested(const QString &scriptName)
         return;
     }
 
+    if (m_w2->isModified()) {
+        setStatus("Comm script preview skipped: the comm editor has unsaved changes");
+        return;
+    }
     m_w2->loadScript(resolved);
     m_w3->appendStatus(
         QString("Preview: %1").arg(QFileInfo(resolved).fileName()));

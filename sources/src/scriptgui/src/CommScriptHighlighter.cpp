@@ -30,8 +30,6 @@ static constexpr auto C_PRINT      = "#a5b4fc"; // periwinkle — @ print direct
 CommScriptHighlighter::CommScriptHighlighter(QTextDocument *pParent)
     : ScriptHighlighterBase(pParent)
 {
-    using RE = QRegularExpression;
-
     // ── 1. Print message content  @ MESSAGE  — base coat ─────────────────
     //  Colours the whole message body periwinkle + italic (dimmer than the
     //  bold '@' prefix below - same visual relationship as m_commentFmt vs

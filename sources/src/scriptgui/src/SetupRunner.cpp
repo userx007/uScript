@@ -21,6 +21,18 @@
 #include <unistd.h>
 #endif
 
+#ifdef Q_OS_UNIX
+// Signals the child's process group.  Never signals with pid <= 1: kill(0, …)
+// would hit the GUI's own group and kill(-1, …) every process we may signal.
+static void killGroup(const QProcess *pProc, int iSig)
+{
+    const qint64 pid = pProc->processId();
+    if (pid > 1) {
+        ::kill(-static_cast<pid_t>(pid), iSig);
+    }
+}
+#endif
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Static helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,6 +122,9 @@ bool SetupRunner::isElevatedNow()
     }
     QProcess p;
     p.setProcessChannelMode(QProcess::MergedChannels);
+    // Same conditions as the real run (own session, no tty): a sudo ticket cached
+    // for the user's terminal must not make this check say "no password needed".
+    p.setChildProcessModifier([] { ::setsid(); });
     p.start(QStringLiteral("sudo"), {QStringLiteral("-n"), QStringLiteral("true")});
     if (!p.waitForStarted(3000)) {
         return true; // no sudo installed: a password prompt would be pointless
@@ -194,7 +209,7 @@ SetupRunner::SetupRunner(QObject *pParent)
     connect(m_killTimer, &QTimer::timeout, this, [this] {
 #ifdef Q_OS_UNIX
         if (isRunning()) {
-            ::kill(-static_cast<pid_t>(m_proc->processId()), SIGKILL);
+            killGroup(m_proc, SIGKILL);
         }
 #else
         m_proc->kill();
@@ -207,7 +222,7 @@ SetupRunner::~SetupRunner()
     if (isRunning()) {
         disconnect(m_proc, nullptr, this, nullptr);
 #ifdef Q_OS_UNIX
-        ::kill(-static_cast<pid_t>(m_proc->processId()), SIGKILL);
+        killGroup(m_proc, SIGKILL);
 #else
         m_proc->kill();
 #endif
@@ -227,7 +242,7 @@ void SetupRunner::stop()
         return;
     }
 #ifdef Q_OS_UNIX
-    ::kill(-static_cast<pid_t>(m_proc->processId()), SIGTERM);
+    killGroup(m_proc, SIGTERM);
     m_killTimer->start(3000);
 #else
     m_proc->kill();
@@ -282,12 +297,25 @@ void SetupRunner::startPosix(const QString &scriptPath, const QString &password)
             emit finished(-1, true);
             return;
         }
-        helper.write("#!/bin/sh\nprintf '%s\\n' \"$SCRIPTGUI_SUDO_PW\"\n");
+        // The password is NOT put in the environment (every child process would inherit it
+        // and `env`, crash reports or `set -x` could expose it). It lives in a 0600 file inside
+        // this private 0700 folder, is read only by this helper, and is removed with the folder.
+        helper.write("#!/bin/sh\nexec cat \"$(dirname \"$0\")/pw\"\n");
         helper.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
         helper.close();
 
+        QFile pwFile(m_askpassDir->filePath(QStringLiteral("pw")));
+        if (!pwFile.open(QIODevice::WriteOnly) ||
+            !pwFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner) || // before any content is written
+            pwFile.write(password.toUtf8() + '\n') < 0) {
+            m_askpassDir.reset();
+            emit outputLine(QStringLiteral("Could not store the sudo credentials."), true);
+            emit finished(-1, true);
+            return;
+        }
+        pwFile.close();
+
         env.insert(QStringLiteral("SUDO_ASKPASS"), helper.fileName());
-        env.insert(QStringLiteral("SCRIPTGUI_SUDO_PW"), password);
 
         // `sudo` becomes an exported function → always -A (askpass), even in
         // sub-shells, pipelines and when started from a terminal.

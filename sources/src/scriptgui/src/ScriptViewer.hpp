@@ -126,6 +126,7 @@ class CodeEditor : public QPlainTextEdit
 
     private:
         void highlightOccurrences(const QString &word); // populate m_wordHighlights
+        void emitIncludeForCursorLine();                // INCLUDE "file": opened by mouse click only
 
         LineNumberArea *m_lineNumberArea;
         int m_highlightedLine = 0;
@@ -157,7 +158,8 @@ class ScriptViewer : public QFrame
         explicit ScriptViewer(QWidget *pParent = nullptr);
 
         // ── Loading ──────────────────────────────────────────────────────────
-        void loadScript(const QString &filePath);
+        /** Loads @p filePath; returns false (editor cleared, no file bound) when it cannot be read. */
+        bool loadScript(const QString &filePath);
         /** Replaces the editor content and resets modification and highlights. */
         void loadText(const QString &text);
         /** Clears the editor and the current file association. */
@@ -253,5 +255,9 @@ class ScriptViewer : public QFrame
 
         CodeEditor *m_editor;
         QString m_currentFile;
+        // Original on-disk format, preserved on save so editing never rewrites it.
+        bool m_crlf   = false; // file used CRLF line endings
+        bool m_latin1 = false; // file was not valid UTF-8: treated (and written back) as Latin-1
+        bool m_bom    = false; // file started with a UTF-8 BOM
         int m_currentLine = 0;
 };

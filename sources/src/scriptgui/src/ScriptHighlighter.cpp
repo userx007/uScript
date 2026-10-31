@@ -219,7 +219,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
 
     // ── 5. Control keywords ───────────────────────────────────────────────
     //  All control-flow keywords share pink (same as ?= / [= operators).
-    for (const QString &kw : {
+    for (const char *kw : {
              "LOAD_PLUGIN", "IF", "GOTO", "REPEAT", "END_REPEAT",
              "UNTIL", "BREAK", "CONTINUE"}) {
         addRule(QString(R"(\b%1\b)").arg(kw), fmt(C_KEYWORD, true));
@@ -437,7 +437,8 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
     //  field, e.g. matching "2:5" inside "2:5:3". Two zero-width
     //  assertions rule that out without needing to know which keyword
     //  preceded the field (this rule, like 6c, doesn't inspect context):
-    //    (?<!:\s*)— the match may not START right after a ':' (optionally
+    //    (?<!:)(?<!:[ \t]) — (PCRE2 lookbehind must be fixed-length, so the
+    //               optional whitespace is limited to one blank) the match may not START right after a ':' (optionally
     //               with whitespace in between, matching 6c's own leniency
     //               around ':') — rules out being the trailing two tokens
     //               of a 3-token field, e.g. the "5:3" inside "2:5:3"
@@ -455,7 +456,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
         const QString numTok   = QString(SCRIPT_RX_NUMERIC_TOKEN);
         const QString macroTok = QString(SCRIPT_RX_MACRO_REF);
         const QString tok      = QString(R"((%1)|(%2))").arg(numTok, macroTok);
-        const RE re(QString(R"((?<!:\s*)%1\s*(:)\s*%1(?!\s*:))").arg(tok));
+        const RE re(QString(R"((?<!:)(?<!:[ \t])%1\s*(:)\s*%1(?!\s*:))").arg(tok));
         // Groups: 1,2 = bit_offset (literal, macro) · 3 = ':' · 4,5 = value_size
         // (literal, macro).
         for (int g : {1, 4}) {
@@ -487,7 +488,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
     //  MATH/FORMAT — same "native evaluator, no plugin required" family
     //  (see uScriptDataTypes.hpp's StreamStatement/StreamValStatement/
     //  StreamValArrayStatement doc comments).
-    for (const QString &fn : {"PRINT", "DELAY", "FORMAT", "MATH", "EVAL",
+    for (const char *fn : {"PRINT", "DELAY", "FORMAT", "MATH", "EVAL",
                               "BITSTREAM", "BYTESTREAM",
                               "BITSTREAMVAL", "BYTESTREAMVAL",
                               "GENERATOR", "KILL"}) {

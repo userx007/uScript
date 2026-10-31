@@ -36,6 +36,10 @@ class LogEdit : public QPlainTextEdit
         // Recalculate gutter width and repaint (call after font changes).
         void refreshGutter();
 
+        // Number of lines already dropped from the top by the block cap; the gutter
+        // keeps showing true line numbers instead of restarting at 1.
+        void setLineOffset(int iDropped);
+
         // Gutter geometry/paint – called by LogLineNumberArea
         int lineNumberAreaWidth() const;
         /** Paints the line-number gutter. */
@@ -60,6 +64,7 @@ class LogEdit : public QPlainTextEdit
         void clearWordHighlights();
 
         LogLineNumberArea *m_lineNumberArea;
+        int m_lineOffset = 0;
         QString m_highlightedWord; // currently highlighted word (empty = none)
 };
 
@@ -143,6 +148,10 @@ class LogViewer : public QFrame
 
         // ── batching (see beginBatch()/endBatch()) ──────────────────────────
         int m_batchDepth             = 0;
+        int m_dropped                = 0; // lines pushed out by the 200000-line cap
+        int m_prevBlockCount         = 0;
+        void noteBlockAppended();    // tracks cap-evictions after every inserted line
+        void updateCountLabel();
         bool m_batchNeedsLabelUpdate = false;
         bool m_batchNeedsScroll      = false;
 

@@ -12,6 +12,8 @@
 #include <QComboBox>
 #include <QEvent>
 #include <QFile>
+#include <QFileInfo>
+#include <QSaveFile>
 #include <QFileDialog>
 #include <QFont>
 #include <QFontMetrics>
@@ -747,19 +749,11 @@ void CommDumpView::saveToFile(bool bFilteredOnly)
     // yet."
     flushPending();
 
-    const QString path = QFileDialog::getSaveFileName(
-        this, "Save Comm Dump Trace", QString(), "Comm Dump Trace (*.json)");
-    if (path.isEmpty()) {
-        return;
-    }
-
     QList<int> rows;
     if (bFilteredOnly) {
-        // Always filters the RAW record log, regardless of whether
-        // Collapsed view is currently on — "Save filtered" means "every
-        // raw record matching the current direction/plugin filters," not
-        // "whatever aggregate rows happen to be visible right now." (Save
-        // always exports full raw history — see the class comment.)
+        // Always filters the RAW record log, regardless of whether Collapsed view is
+        // on. An empty result must NOT fall through: toJsonArray() treats an empty
+        // list as "export everything".
         const int rawCount = m_model->rawRecordCount();
         for (int row = 0; row < rawCount; ++row) {
             const CommDumpModel::Record *rec = m_model->rawRecordAt(row);
@@ -767,6 +761,19 @@ void CommDumpView::saveToFile(bool bFilteredOnly)
                 rows << row;
             }
         }
+        if (rows.isEmpty()) {
+            QMessageBox::information(this, "Save filtered records", "No record matches the current filters.");
+            return;
+        }
+    }
+
+    QString path = QFileDialog::getSaveFileName(
+        this, "Save Comm Dump Trace", QString(), "Comm Dump Trace (*.json)");
+    if (path.isEmpty()) {
+        return;
+    }
+    if (QFileInfo(path).suffix().isEmpty()) {
+        path += QStringLiteral(".json"); // the Load dialog only lists *.json
     }
 
     // Records always carry raw absolute microsecond timestamps (see
@@ -785,6 +792,7 @@ void CommDumpView::saveToFile(bool bFilteredOnly)
         root["timeFormat"] = QStringLiteral("deltaPrevious");
         break;
     case CommDumpModel::TimeSinceCaptureStart:
+    case CommDumpModel::TimeFormatCount: // sentinel, never a real mode
         root["timeFormat"] = QStringLiteral("sinceCaptureStart");
         break;
     }
@@ -793,12 +801,11 @@ void CommDumpView::saveToFile(bool bFilteredOnly)
     root["records"]            = m_model->toJsonArray(rows);
 
     const QJsonDocument doc(root);
-    QFile f(path);
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        QMessageBox::warning(this, "Save failed", "Could not write to:\n" + path);
-        return;
+    QSaveFile f(path); // atomic: a failed/short write never leaves a truncated trace
+    const QByteArray bytes = doc.toJson(QJsonDocument::Compact);
+    if (!f.open(QIODevice::WriteOnly) || f.write(bytes) != bytes.size() || !f.commit()) {
+        QMessageBox::warning(this, "Save failed", "Could not write to:\n" + path + "\n\n" + f.errorString());
     }
-    f.write(doc.toJson(QJsonDocument::Compact));
 }
 
 void CommDumpView::onLoadTriggered()
@@ -885,6 +892,7 @@ void CommDumpView::onLoadTriggered()
     // freshly loaded rows, now that the plugin menu is current.
     rebuildRowViewStateAfterReset();
     updateCountLabel();
+    m_saveBtn->setEnabled(m_model->rawRecordCount() > 0); // a loaded trace can be re-exported
 
     updateFullDumpFontSize();
 

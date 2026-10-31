@@ -221,7 +221,21 @@ LogEdit::LogEdit(QWidget *pParent)
 // Fixed 5-digit field – matches CodeEditor / ShellTerminal gutter width.
 int LogEdit::lineNumberAreaWidth() const
 {
-    return 6 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * 5 + 18;
+    const int digits = qMax(5, QString::number(blockCount() + m_lineOffset).size());
+    return 6 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * digits + 18;
+}
+
+void LogEdit::setLineOffset(int iDropped)
+{
+    if (iDropped == m_lineOffset) {
+        return;
+    }
+    const bool widthChanges = QString::number(blockCount() + iDropped).size() != QString::number(blockCount() + m_lineOffset).size();
+    m_lineOffset            = iDropped;
+    if (widthChanges) {
+        updateLineNumberAreaWidth(0);
+    }
+    m_lineNumberArea->update();
 }
 
 void LogEdit::refreshGutter()
@@ -286,7 +300,7 @@ void LogEdit::lineNumberAreaPaintEvent(QPaintEvent *pEv)
 
     while (block.isValid() && top <= pEv->rect().bottom()) {
         if (block.isVisible() && bottom >= pEv->rect().top()) {
-            const QString num = QString::number(blockNum + 1);
+            const QString num = QString::number(blockNum + 1 + m_lineOffset);
             // Right-align, 4 px padding before separator
             p.drawText(0, top,
                        m_lineNumberArea->width() - 4 - 1, lh,
@@ -497,7 +511,7 @@ void LogViewer::endBatch()
     }
 
     if (m_batchNeedsLabelUpdate) {
-        m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
+        updateCountLabel();
     }
     if (m_batchNeedsScroll && m_autoScroll) {
         m_logEdit->verticalScrollBar()->setValue(
@@ -515,12 +529,33 @@ void LogViewer::refreshCountAndScroll()
     // Read blockCount() AFTER insertion, not before — otherwise the label
     // always shows the count as of the previous line and permanently lags
     // by one.
-    m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
+    updateCountLabel();
 
     if (m_autoScroll) {
         m_logEdit->verticalScrollBar()->setValue(
             m_logEdit->verticalScrollBar()->maximum());
     }
+}
+
+void LogViewer::updateCountLabel()
+{
+    QString text = QString("%1 lines").arg(m_logEdit->document()->blockCount());
+    if (m_dropped > 0) {
+        text += QString(" (%1 older dropped)").arg(m_dropped);
+    }
+    m_countLabel->setText(text);
+}
+
+// The document keeps at most 200000 blocks: once full, every appended line evicts the
+// oldest one. Count those evictions so numbering and the saved log stay truthful.
+void LogViewer::noteBlockAppended()
+{
+    const int bc = m_logEdit->document()->blockCount();
+    if (m_prevBlockCount >= m_logEdit->document()->maximumBlockCount() && bc >= m_prevBlockCount) {
+        ++m_dropped;
+        m_logEdit->setLineOffset(m_dropped);
+    }
+    m_prevBlockCount = bc;
 }
 
 void LogViewer::appendLine(const QString &line)
@@ -547,6 +582,7 @@ void LogViewer::appendLine(const QString &line)
     for (const Segment &s : segments) {
         cursor.insertText(s.text, s.fmt);
     }
+    noteBlockAppended();
 
     if (m_batchDepth > 0) {
         m_batchNeedsLabelUpdate = true;
@@ -568,6 +604,7 @@ void LogViewer::appendStatus(const QString &msg)
 
     QTextCursor cursor = cursorAtNewLine(m_logEdit->document());
     cursor.insertText(QString("── %1  %2 ──").arg(ts, msg), fmt);
+    noteBlockAppended();
 
     if (m_batchDepth > 0) {
         m_batchNeedsScroll = true; // status lines aren't counted in the "N lines" label
@@ -582,6 +619,9 @@ void LogViewer::appendStatus(const QString &msg)
 void LogViewer::clear()
 {
     m_logEdit->clear();
+    m_dropped        = 0;
+    m_prevBlockCount = 0;
+    m_logEdit->setLineOffset(0);
     m_savedClean = true;
     m_saveBtn->setEnabled(false);
     m_savedLabel->setText("");
@@ -619,6 +659,11 @@ void LogViewer::saveLog()
     QSaveFile f(filePath);
     if (f.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&f);
+        if (m_dropped > 0) {
+            out << QString("# NOTE: the first %1 lines of this log were dropped (the viewer keeps the last %2)\n")
+                       .arg(m_dropped)
+                       .arg(m_logEdit->document()->maximumBlockCount());
+        }
         out << m_logEdit->toPlainText() << "\n";
         if (f.commit()) {
             m_savedClean = true;
