@@ -804,7 +804,18 @@ QFrame *MainWindow::buildStatusBar()
     m_statusRight->setObjectName("statusRight");
     m_statusRight->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
+    // Zoom indicator / reset button, placed just left of the clock
+    m_zoomBtn = new QPushButton(bar);
+    m_zoomBtn->setObjectName("statusZoomBtn");
+    m_zoomBtn->setFlat(true);
+    m_zoomBtn->setCursor(Qt::PointingHandCursor);
+    m_zoomBtn->setFocusPolicy(Qt::NoFocus);
+    m_zoomBtn->setToolTip("Click to reset zoom to 100% (Ctrl+0)\nCtrl++ / Ctrl+- to zoom");
+    connect(m_zoomBtn, &QPushButton::clicked, this, [this] { adjustFontSize(0); });
+    updateZoomButton();
+
     lay->addWidget(m_statusText, 1);
+    lay->addWidget(m_zoomBtn, 0);
     lay->addWidget(m_statusRight, 0);
     return bar;
 }
@@ -2715,6 +2726,16 @@ void MainWindow::applyFontSize()
         m_wCommDump->setDumpFont(monoFont);
     }
     m_w4->setTerminalFont(monoFont);
+    updateZoomButton();
+}
+
+void MainWindow::updateZoomButton()
+{
+    if (!m_zoomBtn) {
+        return;
+    }
+    const int pct = qRound(100.0 * m_fontSize / k_fontDefault);
+    m_zoomBtn->setText(QString("Zoom %1%").arg(pct));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

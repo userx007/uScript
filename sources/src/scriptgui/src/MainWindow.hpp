@@ -188,6 +188,8 @@ class MainWindow : public QMainWindow
         void adjustFontSize(int iDelta);
         /** Applies the selected font size to all viewers and terminals. */
         void applyFontSize();
+        /** Refreshes the zoom button label (e.g. "Zoom 117%"). */
+        void updateZoomButton();
 
         // ── UI elements ────────────────────────────────────────────────────────
         QLineEdit *m_scriptPathEdit;
@@ -225,6 +227,7 @@ class MainWindow : public QMainWindow
 
         QLabel *m_statusText;
         QLabel *m_statusRight;
+        QPushButton *m_zoomBtn = nullptr; // status bar: shows zoom %, click resets to 100%
 
         // ── Process ────────────────────────────────────────────────────────────
         QProcess *m_process;

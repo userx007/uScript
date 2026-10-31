@@ -240,6 +240,23 @@ QLabel#statusText {
     padding-left: 8px;
 }
 
+QPushButton#statusZoomBtn {
+    color: #E5F2C9;
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    padding: 0 10px;
+    min-height: 24px;
+    max-height: 24px;
+}
+QPushButton#statusZoomBtn:hover {
+    background-color: #1c212b;
+    color: #ffffff;
+}
+QPushButton#statusZoomBtn:pressed {
+    background-color: #252a35;
+}
+
 QLabel#statusRight {
     color: #E5F2C9;
     font-size: 13px;
