@@ -332,7 +332,7 @@ argument string (everything that would follow `DDS.CMD` on a script line —
 **Scenario:** replay a recorded sequence of sensor readings for a soak
 test, with a small delay between each to mimic real device timing.
 
-`readings.txt` (resolved under the plugin's `ARTEFACTS_PATH`):
+`readings.comm` (resolved under the plugin's `ARTEFACTS_PATH`):
 ```
 > PUBLISH sensors/temp/reading 20.1
 > PUBLISH sensors/temp/reading 20.3
@@ -341,7 +341,7 @@ test, with a small delay between each to mimic real device timing.
 
 ```
 DDS.CONFIG d=0
-DDS.SCRIPT readings.txt 200
+DDS.SCRIPT readings.comm 200
 ```
 
 ---
@@ -582,9 +582,9 @@ DDS:1.CONFIG d=0 pid=1 n=loadgen_1
 DDS:2.CONFIG d=0 pid=2 n=loadgen_2
 DDS:3.CONFIG d=0 pid=3 n=loadgen_3
 
-DDS:1.SCRIPT batch_a.txt 10 &
-DDS:2.SCRIPT batch_b.txt 10 &
-DDS:3.SCRIPT batch_c.txt 10 &
+DDS:1.SCRIPT batch_a.comm 10 &
+DDS:2.SCRIPT batch_b.comm 10 &
+DDS:3.SCRIPT batch_c.comm 10 &
 ```
 
 Each `SCRIPT ... &` line dispatches its whole batch on its own background

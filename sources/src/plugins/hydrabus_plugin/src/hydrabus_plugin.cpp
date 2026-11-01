@@ -186,7 +186,7 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string &strArgs, std::stop_token
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.SPI script read_flash.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.SPI script read_flash.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  aux : control AUX GPIO pins (shared across all protocols)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : pin_idx [in|out|pp] [0|1]   (pin_idx = 0-3)"));
@@ -244,7 +244,7 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string &strArgs, std::stop_token
     LOG_PRINT(LOG_EMPTY, LOG_STRING("           HYDRABUS.I2C stretch 0      - disable clock stretching"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.I2C script eeprom_test.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.I2C script eeprom_test.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  aux : control AUX GPIO pins (see SPI aux for full usage)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.I2C aux 0 out 0    - drive AUX0 low"));
@@ -280,7 +280,7 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string &strArgs, std::stop_token
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : received bytes printed as hex dump"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.UART script uart_init.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.UART script uart_init.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  aux : control AUX GPIO pins (see SPI aux for full usage)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.UART aux 3 out 1"));

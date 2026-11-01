@@ -127,7 +127,10 @@ class MainWindow : public QMainWindow
         QFrame *buildStatusBar();
 
         // ── Tab helpers ────────────────────────────────────────────────────────
-        ScriptViewer *addTab(const QString &filePath = {}); // empty path = blank tab
+        /** Opens @p filePath in a new tab; empty path = blank tab. Returns nullptr (and reports
+         *  why in the log) when the file type is not allowed or the file cannot be read. */
+        ScriptViewer *addTab(const QString &filePath = {});
+        void reportRejectedFile(const QString &filePath, const QString &reason);
         /** Returns the viewer of the current tab. */
         ScriptViewer *currentViewer() const;
         /** Returns the viewer of the tab whose script is running, or nullptr. */
@@ -217,8 +220,8 @@ class MainWindow : public QMainWindow
         QPushButton *m_reloadBtn    = nullptr; // reloads every open script/INI file from disk
         QPushButton *m_resetBtn     = nullptr; // clears error bars without clearing content
         QPushButton *m_configBtn    = nullptr; // "Open" / "Create" config.ini next to the active script
-        QPushButton *m_setupOpenBtn = nullptr; // "Open" / "Create" setup.sh | setup.bat
-        QPushButton *m_setupRunBtn  = nullptr; // "Run" setup.sh | setup.bat
+        QPushButton *m_setupOpenBtn = nullptr; // "Open" / "Create" setup.sh | setup.cmd
+        QPushButton *m_setupRunBtn  = nullptr; // "Run" setup.sh | setup.cmd
         SetupRunner *m_setupRunner  = nullptr;
         QString m_setupPath;          // setup script next to the active script; empty = none
         QString m_configPath;         // config.ini next to the active script; empty = none

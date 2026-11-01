@@ -110,7 +110,7 @@ bool SLCANPlugin::m_SLCAN_INFO(const std::string &strArgs, std::stop_token st) c
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [delay_ms]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.SCRIPT script.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
@@ -296,8 +296,8 @@ bool SLCANPlugin::m_SLCAN_CMD(const std::string &strArgs, std::stop_token st) co
  *       failing line, or immediately if a stop is requested via the stop_token.
  *
  * \note Usage example:
- *       SLCAN.SCRIPT obd_sequence.txt
- *       SLCAN.SCRIPT uds_session.txt 10
+ *       SLCAN.SCRIPT obd_sequence.comm
+ *       SLCAN.SCRIPT uds_session.comm 10
  *
  * \param[in] args  filename [delay_ms]
  *

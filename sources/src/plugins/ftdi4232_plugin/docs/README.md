@@ -462,8 +462,8 @@ FT4232.SPI script <filename>
 ```
 
 ```
-FT4232.SPI script flash_read_id.txt
-FT4232.SPI script read_flash.txt
+FT4232.SPI script flash_read_id.comm
+FT4232.SPI script read_flash.comm
 ```
 
 ---
@@ -633,8 +633,8 @@ FT4232.I2C script <filename>
 ```
 
 ```
-FT4232.I2C script eeprom_test.txt
-FT4232.I2C script sensor_init.txt
+FT4232.I2C script eeprom_test.comm
+FT4232.I2C script sensor_init.comm
 ```
 
 ---
@@ -916,8 +916,8 @@ FT4232.UART script <filename>
 ```
 
 ```
-FT4232.UART script comms_sequence.txt
-FT4232.UART script modem_init.txt
+FT4232.UART script comms_sequence.comm
+FT4232.UART script modem_init.comm
 ```
 
 ---
@@ -995,9 +995,9 @@ FT4232.I2C  open channel=A addr=0x50 clock=400000
 FT4232.GPIO open channel=B lowdir=0xFF
 FT4232.UART open channel=C baud=115200
 
-FT4232.SPI  script flash_read_id.txt
-FT4232.I2C  script eeprom_test.txt
-FT4232.UART script comms_sequence.txt
+FT4232.SPI  script flash_read_id.comm
+FT4232.I2C  script eeprom_test.comm
+FT4232.UART script comms_sequence.comm
 
 FT4232.SPI  close
 FT4232.I2C  close

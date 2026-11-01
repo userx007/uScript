@@ -128,7 +128,7 @@ CP2112.I2C write 01 0A
 
 ```
 CP2112.I2C open addr=0x20 clock=100000
-CP2112.I2C script pca9554_init.txt
+CP2112.I2C script pca9554_init.comm
 ```
 
 The script file sits in `ARTEFACTS_PATH` and contains one command per line (same `wrrd`/`write`/`read` syntax). Timing between commands is controlled by `SCRIPT_DELAY` (INI).

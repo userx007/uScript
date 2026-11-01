@@ -176,7 +176,7 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string &strArgs, std::stop_token st)
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (SPI must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT4232.SPI script read_flash.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT4232.SPI script read_flash.comm"));
 
     // ── I2C ───────────────────────────────────────────────────────────────
     LOG_SEP();
@@ -225,7 +225,7 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string &strArgs, std::stop_token st)
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (I2C must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT4232.I2C script eeprom_test.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT4232.I2C script eeprom_test.comm"));
 
     // ── GPIO ──────────────────────────────────────────────────────────────
     LOG_SEP();
@@ -320,7 +320,7 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string &strArgs, std::stop_token st)
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (UART must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT4232.UART script comms_sequence.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT4232.UART script comms_sequence.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override one or more parameters at runtime (see inc/private/"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         *_setup.hpp for the full key list)"));

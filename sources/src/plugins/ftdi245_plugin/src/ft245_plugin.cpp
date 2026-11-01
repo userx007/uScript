@@ -230,7 +230,7 @@ bool FT245Plugin::m_FT245_INFO(const std::string &strArgs, std::stop_token st) c
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a CommScript from ARTEFACTS_PATH (FIFO must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT245.FIFO script comm_test.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT245.FIFO script comm_test.comm"));
 
     // ── GPIO ──────────────────────────────────────────────────────────────
     LOG_SEP();

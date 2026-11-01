@@ -96,7 +96,7 @@ struct PluginDataSet;
  *
  *   # FT245R (async only)
  *   FT245.FIFO open variant=R
- *   FT245.FIFO script comm_test.txt
+ *   FT245.FIFO script comm_test.comm
  *
  *   # GPIO bit-bang
  *   FT245.GPIO open variant=BM dir=0xFF val=0x00

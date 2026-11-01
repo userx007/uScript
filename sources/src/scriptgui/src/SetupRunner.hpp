@@ -9,7 +9,7 @@ class QTemporaryDir;
 class QTimer;
 
 /**
- * @brief Locates and runs the per-project "setup" script (setup.sh / setup.bat).
+ * @brief Locates and runs the per-project "setup" script (setup.sh / setup.cmd).
  *
  * The class has no GUI dependency: MainWindow owns the SETUP button and the
  * password dialog, SetupRunner only knows how to
@@ -27,7 +27,7 @@ class QTimer;
  *   password the script is simply executed.
  *
  * ── Windows ─────────────────────────────────────────────────────────────────
- *   Without credentials: `cmd /d /c setup.bat`.
+ *   Without credentials: `cmd /d /c setup.cmd`.
  *   With credentials: PowerShell Start-Process -Credential (secondary logon),
  *   output captured through redirect files that are tailed while it runs.
  */
@@ -38,10 +38,11 @@ class SetupRunner : public QObject
         explicit SetupRunner(QObject *pParent = nullptr);
         ~SetupRunner() override;
 
-        // "setup.sh" on Linux/macOS, "setup.bat" on Windows.
+        // "setup.sh" on Linux/macOS, "setup.cmd" on Windows.
         static QString setupFileName();
 
-        // True for setup.sh / setup.bat (any platform).  Such files are shell
+        // True for this platform's setup script (Linux: setup.sh; Windows: setup.cmd, or a
+        // legacy setup.bat).  Such files are shell
         // scripts, not µScripts: no µScript highlighting, never sent to RUN.
         static bool isSetupFileName(const QString &filePath);
 

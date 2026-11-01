@@ -479,9 +479,9 @@ BUSPIRATE.SPI script <filename>
 ```
 
 ```
-BUSPIRATE.SPI script read_flash.txt
-BUSPIRATE.SPI script erase_chip.txt
-BUSPIRATE.SPI script program_sector.txt
+BUSPIRATE.SPI script read_flash.comm
+BUSPIRATE.SPI script erase_chip.comm
+BUSPIRATE.SPI script program_sector.comm
 ```
 
 ---
@@ -708,8 +708,8 @@ BUSPIRATE.I2C script <filename>
 ```
 
 ```
-BUSPIRATE.I2C script eeprom_test.txt
-BUSPIRATE.I2C script sensor_init.txt
+BUSPIRATE.I2C script eeprom_test.comm
+BUSPIRATE.I2C script sensor_init.comm
 ```
 
 ---
@@ -899,8 +899,8 @@ BUSPIRATE.UART script <filename>
 ```
 
 ```
-BUSPIRATE.UART script modem_init.txt
-BUSPIRATE.UART script at_commands.txt
+BUSPIRATE.UART script modem_init.comm
+BUSPIRATE.UART script at_commands.comm
 ```
 
 ---
@@ -1044,8 +1044,8 @@ BUSPIRATE.ONEWIRE script <filename>
 ```
 
 ```
-BUSPIRATE.ONEWIRE script ds18b20_read.txt
-BUSPIRATE.ONEWIRE script rom_scan.txt
+BUSPIRATE.ONEWIRE script ds18b20_read.comm
+BUSPIRATE.ONEWIRE script rom_scan.comm
 ```
 
 ---
@@ -1301,8 +1301,8 @@ BUSPIRATE.RAWWIRE script <filename>
 ```
 
 ```
-BUSPIRATE.RAWWIRE script pic_erase.txt
-BUSPIRATE.RAWWIRE script prog_sequence.txt
+BUSPIRATE.RAWWIRE script pic_erase.comm
+BUSPIRATE.RAWWIRE script prog_sequence.comm
 ```
 
 ---
@@ -1314,11 +1314,11 @@ Script files are plain text files stored under `ARTEFACTS_PATH`. They are execut
 Each protocol module supports a `script` sub-command:
 
 ```
-BUSPIRATE.SPI script my_test.txt
-BUSPIRATE.I2C script sensor_probe.txt
-BUSPIRATE.UART script at_modem.txt
-BUSPIRATE.ONEWIRE script ds18b20_full_read.txt
-BUSPIRATE.RAWWIRE script pic_program.txt
+BUSPIRATE.SPI script my_test.comm
+BUSPIRATE.I2C script sensor_probe.comm
+BUSPIRATE.UART script at_modem.comm
+BUSPIRATE.ONEWIRE script ds18b20_full_read.comm
+BUSPIRATE.RAWWIRE script pic_program.comm
 ```
 
 ---

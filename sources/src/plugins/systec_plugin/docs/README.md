@@ -48,7 +48,7 @@ SYSTEC.CONFIG i=can0 x=0x123 r=2000 w=2000 s=8
 SYSTEC.FILTER 0x100:0x7FF,0x200:0x7FF
 SYSTEC.HWCTRL status_timeout=1500
 SYSTEC.CMD > H"AABBCCDD" | H"06"
-SYSTEC.SCRIPT obd_sequence.txt
+SYSTEC.SCRIPT obd_sequence.comm
 ```
 
 ---
@@ -288,10 +288,10 @@ SYSTEC.SCRIPT <filename> [<delay>]
 
 ```
 # Run an OBD-II diagnostic sequence with no delay
-SYSTEC.SCRIPT obd_pids.txt
+SYSTEC.SCRIPT obd_pids.comm
 
 # Run a UDS session script with 10 ms between each frame
-SYSTEC.SCRIPT uds_session.txt 10
+SYSTEC.SCRIPT uds_session.comm 10
 ```
 
 ---
@@ -357,7 +357,7 @@ SYSTEC.CMD < H"00000000"
 
 Plain text files under `ARTEFACTS_PATH`, one CMD expression per line.
 
-**Example script (`uds_session.txt`):**
+**Example script (`uds_session.comm`):**
 ```
 > H"0210030000000000" | H"5003"
 > H"022703" | H"6727"
@@ -367,8 +367,8 @@ Plain text files under `ARTEFACTS_PATH`, one CMD expression per line.
 
 Run it with:
 ```
-SYSTEC.SCRIPT uds_session.txt
-SYSTEC.SCRIPT uds_session.txt 10
+SYSTEC.SCRIPT uds_session.comm
+SYSTEC.SCRIPT uds_session.comm 10
 ```
 
 ---

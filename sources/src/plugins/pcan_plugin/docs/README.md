@@ -118,8 +118,8 @@ Payload must be ≤ 8 bytes (classic CAN) or ≤ 64 bytes (CAN FD).
 Execute a multi-command script file. The channel is opened once for the entire script.
 
 ```
-PCAN.SCRIPT scriptfile.txt
-PCAN.SCRIPT scriptfile.txt 10          ← 10 ms delay between commands
+PCAN.SCRIPT scriptfile.comm
+PCAN.SCRIPT scriptfile.comm 10          ← 10 ms delay between commands
 ```
 
 Script syntax is the same as for `KCAN.SCRIPT` and `SLCAN.SCRIPT`.

@@ -477,8 +477,8 @@ FT2232.SPI script <filename>
 ```
 
 ```
-FT2232.SPI script flash_read_id.txt
-FT2232.SPI script read_flash.txt
+FT2232.SPI script flash_read_id.comm
+FT2232.SPI script read_flash.comm
 ```
 
 ---
@@ -649,8 +649,8 @@ FT2232.I2C script <filename>
 ```
 
 ```
-FT2232.I2C script eeprom_test.txt
-FT2232.I2C script sensor_init.txt
+FT2232.I2C script eeprom_test.comm
+FT2232.I2C script sensor_init.comm
 ```
 
 ---
@@ -937,8 +937,8 @@ FT2232.UART script <filename>
 ```
 
 ```
-FT2232.UART script uart_test.txt
-FT2232.UART script modem_init.txt
+FT2232.UART script uart_test.comm
+FT2232.UART script modem_init.comm
 ```
 
 ---
@@ -1013,15 +1013,15 @@ The corresponding interface must be open before calling `script`. The plugin pas
 ```
 # FT2232H — SPI on channel A, I2C on channel B simultaneously
 FT2232.SPI open variant=H clock=10000000 channel=A
-FT2232.SPI script flash_read_id.txt
+FT2232.SPI script flash_read_id.comm
 
 FT2232.I2C open variant=H addr=0x50 clock=400000 channel=B
-FT2232.I2C script eeprom_test.txt
+FT2232.I2C script eeprom_test.comm
 
 # FT2232D — SPI on channel A, UART on channel B
 FT2232.SPI open variant=D clock=1000000 channel=A
 FT2232.UART open variant=D baud=115200
-FT2232.UART script uart_test.txt
+FT2232.UART script uart_test.comm
 ```
 
 ---

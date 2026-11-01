@@ -108,7 +108,7 @@ line ?= PROFIBUS.CMD < &             // background monitor thread
 Runs a file of `PROFIBUS.CMD`-style lines over the same persistent session:
 
 ```
-PROFIBUS.SCRIPT script.txt
+PROFIBUS.SCRIPT script.comm
 ```
 
 ## Worked example

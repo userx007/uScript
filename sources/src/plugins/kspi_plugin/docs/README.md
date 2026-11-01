@@ -46,7 +46,7 @@ For example:
 SPI.CONFIG d=/dev/spidev0.0 m=0 z=1000000 b=8 r=2000 w=2000 s=256
 SPI.CMD > H"0102030405" | H"0000000000"
 SPI.CMD < "Ready" | "Go!"
-SPI.SCRIPT flash_init.txt
+SPI.SCRIPT flash_init.comm
 ```
 
 ---
@@ -157,7 +157,7 @@ SPI         |   Args : [d=device] [m=mode] [z=speed_hz] [b=bits_per_word] [r=rea
 SPI         |   Usage: SPI.CONFIG d=/dev/spidev0.0 m=0 z=1000000 b=8 r=2000 w=2000 s=256
 SPI         | SCRIPT : send commands from a script file
 SPI         |   Args : script
-SPI         |   Usage: SPI.SCRIPT script.txt
+SPI         |   Usage: SPI.SCRIPT script.comm
 SPI         | CMD    : send, receive or both
 SPI         |   Args : direction message
 SPI         |   Usage: SPI.CMD > H"AABBCCDD" | H"00000000"
@@ -239,13 +239,13 @@ SPI.SCRIPT <filename> [<delay>]
 
 ```
 # Run a flash initialisation sequence with no delay
-SPI.SCRIPT flash_init.txt
+SPI.SCRIPT flash_init.comm
 
 # Run a register write sequence with 10 ms between each command
-SPI.SCRIPT reg_write.txt 10
+SPI.SCRIPT reg_write.comm 10
 
 # Run a firmware update script with a 100 ms delay
-SPI.SCRIPT fw_update.txt 100
+SPI.SCRIPT fw_update.comm 100
 ```
 
 ---
@@ -316,7 +316,7 @@ SPI.CMD < F"capture.bin, 64"
 
 Plain text files under `ARTEFACTS_PATH`, one CMD expression per line.
 
-**Example script (`flash_init.txt`):**
+**Example script (`flash_init.comm`):**
 ```
 > H"06"
 > H"01" | H"00"
@@ -327,8 +327,8 @@ Plain text files under `ARTEFACTS_PATH`, one CMD expression per line.
 
 Run it with:
 ```
-SPI.SCRIPT flash_init.txt
-SPI.SCRIPT flash_init.txt 10
+SPI.SCRIPT flash_init.comm
+SPI.SCRIPT flash_init.comm 10
 ```
 
 ---

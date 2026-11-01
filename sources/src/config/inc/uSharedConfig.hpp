@@ -2,8 +2,17 @@
 #define USHARED_CONFIG_HPP
 
 // configuration
-#define SCRIPT_DEFAULT                  "script.txt"
+#define SCRIPT_DEFAULT                  "script.main"
 #define SCRIPT_INI_CONFIG               "config.ini"
+
+// file extensions (see uSharedScriptExt.hpp for the helpers that use them)
+#define SCRIPT_EXT_MAIN                 ".main" // scripts run by the interpreter; the only INCLUDE target
+#define SCRIPT_EXT_COMM                 ".comm" // communication scripts run by plugins
+#define SCRIPT_EXT_INI                  ".ini"
+#define SCRIPT_EXT_SH                   ".sh"
+#define SCRIPT_EXT_CMD                  ".cmd"
+#define SCRIPT_EXT_BAT                  ".bat"
+#define SCRIPT_EXT_PS1                  ".ps1"  // PowerShell
 
 // comments
 #define SCRIPT_LINE_COMMENT             '#'
@@ -11,7 +20,7 @@
 #define SCRIPT_END_BLOCK_COMMENT        "!--"
 
 // include directive (handled by ScriptReader before the IR stage)
-// Format:   INCLUDE "relative/or/absolute/path"
+// Format:   INCLUDE "relative/or/absolute/path.main"   (only .main files may be included)
 // The path is resolved relative to the directory of the file that contains
 // the directive. Circular / duplicate includes are detected and rejected.
 // This constant is defined here so the GUI highlighter (ScriptHighlighter)

@@ -90,7 +90,7 @@ bool KI2CPlugin::m_KI2C_INFO(const std::string &strArgs, std::stop_token st) con
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KI2C.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KI2C.SCRIPT script.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
@@ -180,8 +180,8 @@ bool KI2CPlugin::m_KI2C_CMD(const std::string &strArgs, std::stop_token st) cons
  * \brief SCRIPT command implementation; execute a multi-command script file over KI2C.
  *
  * \note Usage example:
- *       KI2C.SCRIPT init_sequence.txt
- *       KI2C.SCRIPT sensor_poll.txt 100
+ *       KI2C.SCRIPT init_sequence.comm
+ *       KI2C.SCRIPT sensor_poll.comm 100
  *
  * \param[in] args  filename [delay_ms]
  *

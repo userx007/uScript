@@ -191,7 +191,7 @@ bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string &strArgs, std::stop_token
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : run several PROFIBUS.CMD-style lines from a file over the same session"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : PROFIBUS.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : PROFIBUS.SCRIPT script.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("[PROFIBUS]"));

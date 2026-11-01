@@ -11,6 +11,7 @@
 #include "uLogger.hpp"
 #include "uScriptReader.hpp"
 #include "uSharedConfig.hpp"
+#include "uSharedScriptExt.hpp"
 #include "uTimer.hpp"
 
 #include <memory>
@@ -65,6 +66,14 @@ class CommScriptClient
         /** Dry run (@p bRealExec false): reads and validates the script without device I/O. Real run: executes it. */
         bool execute(bool bRealExec)
         {
+            // Comm scripts are identified by their extension; anything else (.txt, .main, ...) is refused.
+            if (!scriptext::isCommScript(m_strScriptPathName)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("A comm script must have the " SCRIPT_EXT_COMM " extension:");
+                          LOG_STRING(m_strScriptPathName));
+                return false;
+            }
+
             static const char *pstrCtx = "COMM script";
             utime::Timer timer(pstrCtx);
 

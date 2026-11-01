@@ -117,7 +117,7 @@ bool CandlelightPlugin::m_CANDLELIGHT_INFO(const std::string &strArgs, std::stop
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [delay_ms]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : CANDLELIGHT.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : CANDLELIGHT.SCRIPT script.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
@@ -300,8 +300,8 @@ bool CandlelightPlugin::m_CANDLELIGHT_CMD(const std::string &strArgs, std::stop_
  *       failing line, or immediately if a stop is requested via the stop_token.
  *
  * \note Usage example:
- *       CANDLELIGHT.SCRIPT obd_sequence.txt
- *       CANDLELIGHT.SCRIPT uds_session.txt 10
+ *       CANDLELIGHT.SCRIPT obd_sequence.comm
+ *       CANDLELIGHT.SCRIPT uds_session.comm 10
  *
  * \param[in] args  filename [delay_ms]
  *

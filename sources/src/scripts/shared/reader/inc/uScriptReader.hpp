@@ -5,6 +5,7 @@
 #include "uLogger.hpp"
 #include "uScriptDataTypes.hpp"
 #include "uSharedConfig.hpp"
+#include "uSharedScriptExt.hpp"
 #include "uString.hpp"
 
 #include <filesystem>
@@ -46,6 +47,8 @@
  *     file and processed recursively through the same reader (so comments,
  *     block-comments, line continuation and nested INCLUDEs all work).
  *     Circular or duplicate includes are detected and reported as errors.
+ *     Only .main files may be included (see uSharedScriptExt.hpp); any other
+ *     extension is rejected with an error.
  *     Included content is prepended ahead of the host file's own lines so
  *     constants declared in an included file are available before the host
  *     script's body is parsed, regardless of where the INCLUDE line sits.
@@ -258,6 +261,13 @@ class ScriptReader : public IScriptReader
                 // INCLUDE "path" — resolve and recurse
                 std::string strIncludeTarget;
                 if (matchIncludeDirective(strContent, strIncludeTarget)) {
+                    // Only .main files may be included (comm scripts, .txt, ... are rejected).
+                    if (!scriptext::isMainScript(strIncludeTarget)) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("INCLUDE supports only " SCRIPT_EXT_MAIN " files, got:");
+                                  LOG_STRING(strIncludeTarget));
+                        return false;
+                    }
                     const std::string strResolved =
                         resolveIncludePath(strPathName, strIncludeTarget);
 

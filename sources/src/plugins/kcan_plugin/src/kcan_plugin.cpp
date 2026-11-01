@@ -164,7 +164,7 @@ bool KCANPlugin::m_KCAN_INFO(const std::string &strArgs, std::stop_token st) con
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.SCRIPT script.txt", m_strInstanceName)));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(withInstance("Usage  : KCAN.SCRIPT script.comm", m_strInstanceName)));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
@@ -360,8 +360,8 @@ bool KCANPlugin::m_KCAN_CMD(const std::string &strArgs, std::stop_token st) cons
  *       Filters stored in m_vFilters are applied immediately after open.
  *
  * \note Usage example:
- *       KCAN.SCRIPT obd_sequence.txt
- *       KCAN.SCRIPT uds_session.txt 10
+ *       KCAN.SCRIPT obd_sequence.comm
+ *       KCAN.SCRIPT uds_session.comm 10
  *
  * \param[in] args  filename [delay_ms]
  *

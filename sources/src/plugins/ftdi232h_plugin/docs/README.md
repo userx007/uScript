@@ -427,8 +427,8 @@ FT232H.SPI script <filename>
 ```
 
 ```
-FT232H.SPI script flash_read_id.txt
-FT232H.SPI script spi_test_sequence.txt
+FT232H.SPI script flash_read_id.comm
+FT232H.SPI script spi_test_sequence.comm
 ```
 
 ---
@@ -599,8 +599,8 @@ FT232H.I2C script <filename>
 ```
 
 ```
-FT232H.I2C script eeprom_dump.txt
-FT232H.I2C script sensor_init.txt
+FT232H.I2C script eeprom_dump.comm
+FT232H.I2C script sensor_init.comm
 ```
 
 ---
@@ -869,8 +869,8 @@ FT232H.UART script <filename>
 ```
 
 ```
-FT232H.UART script uart_handshake.txt
-FT232H.UART script modem_init.txt
+FT232H.UART script uart_handshake.comm
+FT232H.UART script modem_init.comm
 ```
 
 ---
@@ -945,13 +945,13 @@ Script files are plain text files located under `ARTEFACTS_PATH`. They are execu
 
 ```
 FT232H.SPI open clock=10000000
-FT232H.SPI script flash_read_id.txt
+FT232H.SPI script flash_read_id.comm
 
 FT232H.I2C open speed=400kHz addr=0x50
-FT232H.I2C script eeprom_dump.txt
+FT232H.I2C script eeprom_dump.comm
 
 FT232H.UART open baud=115200
-FT232H.UART script serial_handshake.txt
+FT232H.UART script serial_handshake.comm
 ```
 
 ---

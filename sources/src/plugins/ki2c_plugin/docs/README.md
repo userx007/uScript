@@ -46,7 +46,7 @@ For example:
 I2C.CONFIG d=/dev/i2c-1 a=0x48 r=2000 w=2000 s=256
 I2C.CMD > H"012345" | H"06"
 I2C.CMD < "Ready" | "Go!"
-I2C.SCRIPT sensor_init.txt
+I2C.SCRIPT sensor_init.comm
 ```
 
 ---
@@ -157,7 +157,7 @@ I2C         |   Args : [d=device] [a=address] [r=read_tout] [w=write_tout] [s=re
 I2C         |   Usage: I2C.CONFIG d=/dev/i2c-1 a=0x48 r=2000 w=2000 s=256
 I2C         | SCRIPT : send commands from a script file
 I2C         |   Args : script
-I2C         |   Usage: I2C.SCRIPT script.txt
+I2C         |   Usage: I2C.SCRIPT script.comm
 I2C         | CMD    : send, receive or both
 I2C         |   Args : direction message
 I2C         |   Usage: I2C.CMD > H"AABBCCDD" | ok
@@ -237,13 +237,13 @@ I2C.SCRIPT <filename> [<delay>]
 
 ```
 # Run a sensor initialisation sequence with no delay
-I2C.SCRIPT sensor_init.txt
+I2C.SCRIPT sensor_init.comm
 
 # Run a polling loop with 50 ms between each command
-I2C.SCRIPT poll_registers.txt 50
+I2C.SCRIPT poll_registers.comm 50
 
 # Run a firmware-update sequence with a 200 ms delay
-I2C.SCRIPT fw_update.txt 200
+I2C.SCRIPT fw_update.comm 200
 ```
 
 ---
@@ -320,7 +320,7 @@ I2C.CMD < F"capture.bin, 32"
 
 Script files are plain text files stored under `ARTEFACTS_PATH`. Each non-empty line contains one CMD expression using the same syntax as the `CMD` command argument. Lines are executed sequentially by `CommScriptClient`. The optional `delay` argument to `SCRIPT` inserts a pause between each line.
 
-**Example script (`sensor_init.txt`):**
+**Example script (`sensor_init.comm`):**
 ```
 > H"01" | H"0000"
 > H"02" | H"0000"
@@ -331,8 +331,8 @@ Script files are plain text files stored under `ARTEFACTS_PATH`. Each non-empty 
 
 Run it with:
 ```
-I2C.SCRIPT sensor_init.txt
-I2C.SCRIPT sensor_init.txt 50
+I2C.SCRIPT sensor_init.comm
+I2C.SCRIPT sensor_init.comm 50
 ```
 
 ---

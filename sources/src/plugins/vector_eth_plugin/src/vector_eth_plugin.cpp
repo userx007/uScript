@@ -116,7 +116,7 @@ bool VectorEthPlugin::m_VECTOR_ETH_INFO(const std::string &strArgs, std::stop_to
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [delay_ms]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : VECTOR_ETH.SCRIPT eth_sequence.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : VECTOR_ETH.SCRIPT eth_sequence.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));

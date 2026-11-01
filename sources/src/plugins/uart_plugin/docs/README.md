@@ -46,7 +46,7 @@ For example:
 UART.CONFIG p=/dev/ttyUSB0 b=115200 r=2000 w=2000 s=1024
 UART.CMD > "AT\r\n" | "OK"
 UART.CMD < "Please send!" | Sending...
-UART.SCRIPT handshake.txt
+UART.SCRIPT handshake.comm
 ```
 
 ---
@@ -157,7 +157,7 @@ UART_PLUGIN|   Args : [p=port] [b=baudrate] [r=read_tout] [w=write_tout] [s=recv
 UART_PLUGIN|   Usage: UART.CONFIG p=COM2 b=115200 r=2000 w=2000 s=1024
 UART_PLUGIN| SCRIPT : send commands from a file
 UART_PLUGIN|   Args : script
-UART_PLUGIN|   Usage: UART.SCRIPT script.txt
+UART_PLUGIN|   Usage: UART.SCRIPT script.comm
 UART_PLUGIN| CMD    : send, receive or both
 UART_PLUGIN|   Args : direction message
 UART_PLUGIN|   Usage: UART.CMD > H"AABBCCDD" | ok
@@ -237,13 +237,13 @@ UART.SCRIPT <filename> [<delay>]
 
 ```
 # Run a script with no delay between commands
-UART.SCRIPT handshake.txt
+UART.SCRIPT handshake.comm
 
 # Run a script with a 100 ms delay between each command
-UART.SCRIPT modem_init.txt 100
+UART.SCRIPT modem_init.comm 100
 
 # Run a longer initialization sequence with a 500 ms delay
-UART.SCRIPT firmware_update.txt 500
+UART.SCRIPT firmware_update.comm 500
 ```
 
 ---
@@ -325,7 +325,7 @@ UART.CMD < F"capture.bin, 1024"
 
 Script files are plain text files stored under `ARTEFACTS_PATH`. Each non-empty line contains one CMD expression using the same syntax as the `CMD` command argument. Lines are executed sequentially by `CommScriptClient`. The optional `delay` argument to `SCRIPT` inserts a pause between each line.
 
-**Example script (`handshake.txt`):**
+**Example script (`handshake.comm`):**
 ```
 > "AT\r\n" | "OK\r\n"
 > "AT+GMR\r\n" | "version"
@@ -335,8 +335,8 @@ Script files are plain text files stored under `ARTEFACTS_PATH`. Each non-empty 
 
 Run it with:
 ```
-UART.SCRIPT handshake.txt
-UART.SCRIPT handshake.txt 50
+UART.SCRIPT handshake.comm
+UART.SCRIPT handshake.comm 50
 ```
 
 ---

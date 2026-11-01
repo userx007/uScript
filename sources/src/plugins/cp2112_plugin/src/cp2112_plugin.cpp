@@ -142,7 +142,7 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string &strArgs, std::stop_token st)
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (I2C must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CP2112.I2C script eeprom_test.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CP2112.I2C script eeprom_test.comm"));
 
     // ── GPIO ──────────────────────────────────────────────────────────────
     LOG_SEP();

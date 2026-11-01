@@ -141,7 +141,7 @@ bool MqttPlugin::m_MQTT_INFO(const std::string &strArgs, std::stop_token st) con
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : run several MQTT.CMD-style lines from a file over the same session"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.SCRIPT script.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : periodic publish/ping, same driver session as CMD"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : \"time1:val1, time2:val2, ...\" — each val is a full MQTT.CMD-style '> ...' argument"));

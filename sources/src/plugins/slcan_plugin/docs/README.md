@@ -48,7 +48,7 @@ For example:
 SLCAN.CONFIG i=/dev/ttyACM0 p=115200 b=6 x=0x123 r=2000 w=2000 s=64
 SLCAN.FILTER 0x100:0x7FF,0x18DAF100:0x1FFFFFFF
 SLCAN.CMD > H"AABBCCDD" | H"06"
-SLCAN.SCRIPT obd_sequence.txt
+SLCAN.SCRIPT obd_sequence.comm
 ```
 
 ---
@@ -293,13 +293,13 @@ SLCAN.SCRIPT <filename> [<delay_ms>]
 
 ```
 # Run an OBD-II diagnostic sequence with no delay
-SLCAN.SCRIPT obd_pids.txt
+SLCAN.SCRIPT obd_pids.comm
 
 # Run a UDS session script with 10 ms between each frame
-SLCAN.SCRIPT uds_session.txt 10
+SLCAN.SCRIPT uds_session.comm 10
 
 # Run a firmware update sequence with a 50 ms delay
-SLCAN.SCRIPT fw_update.txt 50
+SLCAN.SCRIPT fw_update.comm 50
 ```
 
 ---
@@ -373,7 +373,7 @@ SLCAN.CMD < H"00000000"
 
 Plain text files under `ARTEFACTS_PATH`, one CMD expression per line. Blank lines and lines beginning with `#` are skipped. The file is loaded and validated in a dry-run pass by `CommScriptClient` before execution begins, so syntax errors are caught before any I/O takes place.
 
-**Example script (`uds_session.txt`):**
+**Example script (`uds_session.comm`):**
 ```
 # Start diagnostic session, extended
 > H"0210030000000000" | H"5003"
@@ -385,8 +385,8 @@ Plain text files under `ARTEFACTS_PATH`, one CMD expression per line. Blank line
 
 Run it with:
 ```
-SLCAN.SCRIPT uds_session.txt
-SLCAN.SCRIPT uds_session.txt 10
+SLCAN.SCRIPT uds_session.comm
+SLCAN.SCRIPT uds_session.comm 10
 ```
 
 ---

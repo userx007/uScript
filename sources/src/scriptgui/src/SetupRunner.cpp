@@ -39,7 +39,7 @@ static void killGroup(const QProcess *pProc, int iSig)
 QString SetupRunner::setupFileName()
 {
 #ifdef Q_OS_WIN
-    return QStringLiteral("setup.bat");
+    return QStringLiteral("setup.cmd");
 #else
     return QStringLiteral("setup.sh");
 #endif
@@ -48,8 +48,13 @@ QString SetupRunner::setupFileName()
 bool SetupRunner::isSetupFileName(const QString &filePath)
 {
     const QString n = QFileInfo(filePath).fileName();
-    return n.compare(QLatin1String("setup.sh"), Qt::CaseInsensitive) == 0 ||
+#ifdef Q_OS_WIN
+    // setup.cmd is the name used for new scripts; an existing setup.bat keeps working (cmd runs both).
+    return n.compare(QLatin1String("setup.cmd"), Qt::CaseInsensitive) == 0 ||
            n.compare(QLatin1String("setup.bat"), Qt::CaseInsensitive) == 0;
+#else
+    return n.compare(QLatin1String("setup.sh"), Qt::CaseInsensitive) == 0;
+#endif
 }
 
 QString SetupRunner::findSetupScript(const QString &anyFileInFolder)
@@ -57,8 +62,18 @@ QString SetupRunner::findSetupScript(const QString &anyFileInFolder)
     if (anyFileInFolder.isEmpty()) {
         return {};
     }
-    const QFileInfo candidate(QFileInfo(anyFileInFolder).absoluteDir().filePath(setupFileName()));
-    return candidate.isFile() ? candidate.absoluteFilePath() : QString();
+    const QDir dir = QFileInfo(anyFileInFolder).absoluteDir();
+    QStringList names{setupFileName()};
+#ifdef Q_OS_WIN
+    names << QStringLiteral("setup.bat"); // legacy name
+#endif
+    for (const QString &n : std::as_const(names)) {
+        const QFileInfo candidate(dir.filePath(n));
+        if (candidate.isFile()) {
+            return candidate.absoluteFilePath();
+        }
+    }
+    return {};
 }
 
 bool SetupRunner::needsElevation(const QString &scriptPath)

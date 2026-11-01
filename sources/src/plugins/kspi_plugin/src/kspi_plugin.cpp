@@ -90,7 +90,7 @@ bool KSPIPlugin::m_KSPI_INFO(const std::string &strArgs, std::stop_token st) con
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KSPI.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KSPI.SCRIPT script.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
@@ -188,8 +188,8 @@ bool KSPIPlugin::m_KSPI_CMD(const std::string &strArgs, std::stop_token st) cons
  * \brief SCRIPT command implementation; execute a multi-command script file over KSPI.
  *
  * \note Usage example:
- *       KSPI.SCRIPT init_sequence.txt
- *       KSPI.SCRIPT flash_write.txt 100
+ *       KSPI.SCRIPT init_sequence.comm
+ *       KSPI.SCRIPT flash_write.comm 100
  *
  * \param[in] args  filename [delay_ms]
  *

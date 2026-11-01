@@ -196,7 +196,7 @@ bool BuspiratePlugin::m_Buspirate_INFO(const std::string &strArgs, std::stop_tok
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.SPI script read_flash.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.SPI script read_flash.comm"));
 
     // ── I2C ───────────────────────────────────────────────────────────────
     LOG_SEP();
@@ -252,7 +252,7 @@ bool BuspiratePlugin::m_Buspirate_INFO(const std::string &strArgs, std::stop_tok
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.I2C mode         - device responds I2C1"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.I2C script eeprom_test.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.I2C script eeprom_test.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  scan : Scans every valid 7-bit I2C address and reports the ones responding with ACK."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.I2C scan"));
@@ -296,7 +296,7 @@ bool BuspiratePlugin::m_Buspirate_INFO(const std::string &strArgs, std::stop_tok
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.UART per wxyz    - same format as SPI per"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.UART script uart_init.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.UART script uart_init.comm"));
 
     // ── ONEWIRE ───────────────────────────────────────────────────────────
     LOG_SEP();
@@ -328,7 +328,7 @@ bool BuspiratePlugin::m_Buspirate_INFO(const std::string &strArgs, std::stop_tok
     LOG_PRINT(LOG_EMPTY, LOG_STRING("           BUSPIRATE.ONEWIRE cfg ?     - print current cfg byte"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.ONEWIRE script ds18b20_read.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.ONEWIRE script ds18b20_read.comm"));
 
     // ── RAWWIRE ───────────────────────────────────────────────────────────
     LOG_SEP();
@@ -388,7 +388,7 @@ bool BuspiratePlugin::m_Buspirate_INFO(const std::string &strArgs, std::stop_tok
     LOG_PRINT(LOG_EMPTY, LOG_STRING("           BUSPIRATE.RAWWIRE pic write:048000  - write cmd+instruction to PIC"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.RAWWIRE script prog_sequence.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.RAWWIRE script prog_sequence.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override one or more parameters at runtime (see inc/private/"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         *_setup.hpp for the full key list)"));

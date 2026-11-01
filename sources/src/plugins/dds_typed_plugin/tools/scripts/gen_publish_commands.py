@@ -17,7 +17,7 @@ generator itself uses), rather than re-deriving that from C text.
 Usage:
     python3 gen_publish_commands.py --family Alarms
     python3 gen_publish_commands.py --family Alarms --topic Alarm_Category
-    python3 gen_publish_commands.py --family Alarms --format script -o alarms_publish.txt
+    python3 gen_publish_commands.py --family Alarms --format script -o alarms_publish.comm
 """
 import argparse
 import os

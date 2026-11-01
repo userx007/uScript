@@ -1,6 +1,7 @@
 #include "MainWindow.hpp"
 
 #include "AppStyle.hpp"
+#include "FileTypes.hpp"
 #include "CommDumpView.hpp"
 #include "ICommDumpProtocol.hpp"
 #include "LogViewer.hpp"
@@ -315,7 +316,7 @@ MainWindow::MainWindow(QWidget *pParent)
     const int activeTab        = cfg.value("session/activeTab", 0).toInt();
     for (const QString &p : tabPaths) {
         if (QFileInfo::exists(p)) {
-            addTab(p);
+            addTab(p); // refuses (and reports) files with an unsupported extension, e.g. an old .txt session
         }
     }
     if (m_tabWidget->count() == 0) {
@@ -327,7 +328,7 @@ MainWindow::MainWindow(QWidget *pParent)
     syncPathEdit(clampedTab);
     refreshProjectButtons();
 
-    // setup.sh / setup.bat may be created or deleted while the app is in the
+    // setup.sh / setup.cmd may be created or deleted while the app is in the
     // background: re-check whenever the window comes back to the foreground.
     connect(qApp, &QGuiApplication::applicationStateChanged, this, [this](Qt::ApplicationState st) {
         if (st == Qt::ApplicationActive) {
@@ -411,7 +412,7 @@ QFrame *MainWindow::buildToolbar()
     scriptLabel->setObjectName("toolbarLabel");
 
     m_scriptPathEdit = new QLineEdit(bar);
-    m_scriptPathEdit->setPlaceholderText("path/to/script.txt  — Enter to load, drag-and-drop accepted…");
+    m_scriptPathEdit->setPlaceholderText("path/to/script.main  — Enter to load, drag-and-drop accepted…");
     m_scriptPathEdit->setToolTip("Active tab's script path — press Enter to load\n"
                                  "Click to switch to this file's tab");
     m_scriptPathEdit->installEventFilter(this);
@@ -439,7 +440,7 @@ QFrame *MainWindow::buildToolbar()
     m_configBtn->setEnabled(false);
     connect(m_configBtn, &QPushButton::clicked, this, &MainWindow::onConfigButton);
 
-    // Setup: [Open|Create] [Run]  — setup.sh / setup.bat next to the active script
+    // Setup: [Open|Create] [Run]  — setup.sh / setup.cmd next to the active script
     auto *setupLabel = new QLabel("| setup.sh", bar);
     setupLabel->setObjectName("toolbarLabel");
 
@@ -671,7 +672,7 @@ QWidget *MainWindow::buildCentralWidget()
         cbLay->addWidget(commSaveBtn);
         cbLay->addWidget(commClearBtn);
 
-        m_w2 = new ScriptViewer(commWrapper);
+        m_w2 = new ScriptViewer(commWrapper, ScriptViewer::Kind::Comm);
         m_w2->enableCommHighlighting(true);
         connect(m_w2, &ScriptViewer::infoChanged,
                 m_commScriptNameLabel, &QLabel::setText);
@@ -852,8 +853,19 @@ QFrame *MainWindow::buildStatusBar()
 // ─────────────────────────────────────────────────────────────────────────────
 //  Tab helpers
 // ─────────────────────────────────────────────────────────────────────────────
+/** Reports why @p filePath cannot be opened in the main editor. */
+void MainWindow::reportRejectedFile(const QString &filePath, const QString &reason)
+{
+    m_w3->appendStatus(QString("Not opened: %1 — %2").arg(QFileInfo(filePath).fileName(), reason));
+    setStatus(QString("Not opened: %1").arg(reason));
+}
+
 ScriptViewer *MainWindow::addTab(const QString &filePath)
 {
+    if (!filePath.isEmpty() && !FileTypes::isMainEditorFile(filePath)) {
+        reportRejectedFile(filePath, QString("unsupported file type (only %1 files can be opened)").arg(FileTypes::mainEditorList()));
+        return nullptr;
+    }
     auto *viewer = new ScriptViewer(m_tabWidget);
     viewer->setEditorFont(buildEditorFont(m_fontSize));
 
@@ -861,7 +873,9 @@ ScriptViewer *MainWindow::addTab(const QString &filePath)
     if (!filePath.isEmpty()) {
         bLoaded = viewer->loadScript(filePath);
         if (!bLoaded) {
-            m_w3->appendStatus(QString("Could not open: %1").arg(filePath));
+            reportRejectedFile(filePath, viewer->lastError());
+            delete viewer; // never leave an empty "untitled" tab behind for a file that failed to open
+            return nullptr;
         }
     }
     const QString tabLabel = viewer->currentFile().isEmpty()
@@ -916,8 +930,7 @@ void MainWindow::loadIntoTab(int iIndex, const QString &filePath)
     }
 
     if (!viewer->loadScript(filePath)) {
-        m_w3->appendStatus(QString("Could not open: %1").arg(filePath));
-        setStatus("Could not open file");
+        reportRejectedFile(filePath, viewer->lastError());
         return;
     }
     const QString name = QFileInfo(filePath).fileName();
@@ -932,6 +945,10 @@ void MainWindow::loadIntoTab(int iIndex, const QString &filePath)
 
 void MainWindow::loadIntoCurrentTab(const QString &filePath)
 {
+    if (!FileTypes::isMainEditorFile(filePath)) {
+        reportRejectedFile(filePath, QString("unsupported file type (only %1 files can be opened)").arg(FileTypes::mainEditorList()));
+        return;
+    }
     // Reuse current tab if it's empty, otherwise open a new one
     const int cur = m_tabWidget->currentIndex();
     auto *viewer  = currentViewer();
@@ -957,9 +974,9 @@ void MainWindow::syncPathEdit(int iTabIndex)
     // Only update the script field when the active tab holds a script.
     // When an .ini tab is active the script field must keep the last script
     // path so clicking it still navigates back to the correct script tab.
-    // setup.sh / setup.bat tabs are shell scripts, not µScripts: like .ini tabs
+    // setup.sh / setup.cmd tabs are shell scripts, not µScripts: like .ini tabs
     // they must not replace the script path that RUN will execute.
-    const bool bEditorOnly = viewer->isIniFile() || SetupRunner::isSetupFileName(viewer->currentFile());
+    const bool bEditorOnly = !viewer->currentFile().isEmpty() && !FileTypes::isMain(viewer->currentFile());
     if (!bEditorOnly) {
         m_scriptPathEdit->setText(viewer->currentFile());
         m_w3->setScriptPath(viewer->currentFile());
@@ -972,17 +989,10 @@ void MainWindow::syncPathEdit(int iTabIndex)
 //  Tab context menu / duplicate
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** True for a tab holding a µScript: not config.ini, not a setup/shell script (.sh/.bat). */
+/** True for a tab holding a µScript (.main): not config.ini, not a shell script (.sh / .bat / .cmd / .ps1). */
 static bool isDuplicableScript(const ScriptViewer *viewer)
 {
-    if (!viewer || viewer->currentFile().isEmpty()) {
-        return false;
-    }
-    const QString f = viewer->currentFile();
-    return !viewer->isIniFile() &&
-           !SetupRunner::isSetupFileName(f) &&
-           !f.endsWith(QLatin1String(".sh"), Qt::CaseInsensitive) &&
-           !f.endsWith(QLatin1String(".bat"), Qt::CaseInsensitive);
+    return viewer && !viewer->currentFile().isEmpty() && FileTypes::isMain(viewer->currentFile());
 }
 
 void MainWindow::onTabContextMenu(const QPoint &pos)
@@ -1041,6 +1051,8 @@ void MainWindow::duplicateTab(int iIndex)
             err = "Enter a file name.";
         } else if (name.contains(QLatin1Char('/')) || name.contains(QLatin1Char('\\'))) {
             err = "The name must not contain a path.";
+        } else if (!FileTypes::isMain(name)) {
+            err = "The name must end with .main";
         } else if (name == oName) {
             err = "The name must differ from the original.";
         } else if (QFileInfo::exists(dir.filePath(name))) {
@@ -1162,7 +1174,7 @@ void MainWindow::onBrowse()
     const QString f     = QFileDialog::getOpenFileName(
         this, "Select Script",
         start,
-        "Script files (*.txt *.scr *.script);;All files (*)");
+        FileTypes::mainEditorFilter());
 
     if (!f.isEmpty()) {
         loadIntoCurrentTab(f);
@@ -1186,14 +1198,14 @@ void MainWindow::onStartStop()
         m_w3->appendStatus(QString("Script not found: %1").arg(scriptPath));
         return;
     }
-    if (viewer->isIniFile()) {
-        m_w3->appendStatus(QString("'%1' is a configuration file — can't be executed.")
-                               .arg(QFileInfo(scriptPath).fileName()));
-        return;
-    }
-    if (SetupRunner::isSetupFileName(scriptPath)) {
-        m_w3->appendStatus(QString("'%1' is a shell script — use the Invoke button to execute it.")
-                               .arg(QFileInfo(scriptPath).fileName()));
+    if (!FileTypes::isMain(scriptPath)) {
+        // Only .main scripts are run by the interpreter.
+        const QString n = QFileInfo(scriptPath).fileName();
+        m_w3->appendStatus(FileTypes::isIni(scriptPath)
+                               ? QString("'%1' is a configuration file — can't be executed.").arg(n)
+                           : FileTypes::isShell(scriptPath)
+                               ? QString("'%1' is a shell script — only .main scripts can be run (the setup script has its own Run button).").arg(n)
+                               : QString("'%1' can't be run — only .main scripts are executed.").arg(n));
         return;
     }
 
@@ -1807,7 +1819,10 @@ void MainWindow::dispatchLine(const QString &raw)
         if (currentCanon != loadCanon || currentCanon.isEmpty()) {
             // Only display the comm script when it is not running in a thread.
             if (!isThreadedCommFile(loadPath)) {
-                m_w2->loadScript(loadPath);
+                if (!m_w2->loadScript(loadPath)) {
+                    m_w3->appendStatus(QString("Comm script not shown: %1 — %2").arg(QFileInfo(loadPath).fileName(), m_w2->lastError()));
+                    return;
+                }
                 // Do NOT call processEvents() here — it re-enters onProcessOutput()
                 // via the still-pending readyReadStandardOutput signal, corrupting
                 // m_lineBuf mid-loop (the root cause of GUI: tokens being printed
@@ -2090,7 +2105,7 @@ bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *pViewer, int iLineNo)
 //  absolute path usable by the GUI process.
 //
 //  The interpreter emits the path exactly as it was given in the main script
-//  (e.g. "comm/my_script.txt").  That path is relative to the interpreter's
+//  (e.g. "comm/my_script.comm").  That path is relative to the interpreter's
 //  working directory, which is the directory containing the main script file.
 //  The GUI resolves it the same way autoLoadCommScriptForLine() does, using
 //  the running tab's script directory as the base.
@@ -2139,9 +2154,14 @@ void MainWindow::loadCommTabForThread(int iTid, const QString &rawPath)
                                  ? resolved
                                  : rawPath;
 
+    if (!FileTypes::isComm(loadPath)) {
+        m_w3->appendStatus(QString("Comm script not shown: %1 — only .comm files are comm scripts").arg(QFileInfo(loadPath).fileName()));
+        return;
+    }
+
     auto it                = m_commThreadTabs.find(iTid);
     if (it == m_commThreadTabs.end()) {
-        auto *v = new ScriptViewer(m_commTabs);
+        auto *v = new ScriptViewer(m_commTabs, ScriptViewer::Kind::Comm);
         v->enableCommHighlighting(true);
         v->setReadOnly(true);
 
@@ -2713,7 +2733,7 @@ void MainWindow::onSetupOpenButton()
         path = QFileInfo(script).absoluteDir().filePath(SetupRunner::setupFileName());
         if (!QFileInfo::exists(path)) {
 #ifdef Q_OS_WIN
-            const QByteArray tmpl = "@echo off\r\n";
+            const QByteArray tmpl = "@echo off\r\n"; // setup.cmd
 #else
             const QByteArray tmpl = "#!/bin/bash\n";
 #endif
@@ -2931,7 +2951,8 @@ void MainWindow::dragEnterEvent(QDragEnterEvent *pEv)
 {
     if (pEv->mimeData()->hasUrls()) {
         for (const QUrl &url : pEv->mimeData()->urls()) {
-            if (url.isLocalFile()) {
+            // Only offer the drop when at least one file could actually be opened.
+            if (url.isLocalFile() && FileTypes::isMainEditorFile(url.toLocalFile())) {
                 pEv->acceptProposedAction();
                 return;
             }
@@ -2953,6 +2974,10 @@ void MainWindow::dropEvent(QDropEvent *pEv)
             continue;
         }
         const QString path = url.toLocalFile();
+        if (!FileTypes::isMainEditorFile(path)) {
+            reportRejectedFile(path, QString("unsupported file type (only %1 files can be opened)").arg(FileTypes::mainEditorList()));
+            continue;
+        }
         if (accepted) {
             addTab(path); // multiple files → each gets its own tab
         } else {
@@ -3203,6 +3228,12 @@ void MainWindow::onCommScriptRequested(const QString &scriptName)
 
     const QString resolved = QDir(baseDir).filePath(scriptName);
 
+    // The comm view shows .comm files only; anything else is not a comm script.
+    if (!FileTypes::isComm(resolved)) {
+        setStatus(QString("Not a comm script: %1 (comm scripts must be .comm files)").arg(QFileInfo(scriptName).fileName()));
+        return;
+    }
+
     if (!QFileInfo::exists(resolved)) {
         m_w3->appendStatus(
             QString("Comm script not found: %1").arg(resolved));
@@ -3220,7 +3251,10 @@ void MainWindow::onCommScriptRequested(const QString &scriptName)
         setStatus("Comm script preview skipped: the comm editor has unsaved changes");
         return;
     }
-    m_w2->loadScript(resolved);
+    if (!m_w2->loadScript(resolved)) {
+        m_w3->appendStatus(QString("Preview failed: %1 — %2").arg(QFileInfo(resolved).fileName(), m_w2->lastError()));
+        return;
+    }
     m_w3->appendStatus(
         QString("Preview: %1").arg(QFileInfo(resolved).fileName()));
 }
@@ -3230,6 +3264,13 @@ void MainWindow::onIncludeFileRequested(const QString &resolvedPath)
 {
     // Don't interfere while the interpreter is running.
     if (m_running) {
+        return;
+    }
+
+    // INCLUDE accepts .main files only (the interpreter rejects anything else too).
+    if (!FileTypes::isMain(resolvedPath)) {
+        m_w3->appendStatus(QString("INCLUDE supports only .main files, got: %1").arg(QFileInfo(resolvedPath).fileName()));
+        setStatus("INCLUDE supports only .main files");
         return;
     }
 

@@ -177,13 +177,13 @@ KCAN.SCRIPT <filename> [<delay>]
 
 ```
 # Run an OBD-II diagnostic sequence with no delay
-KCAN.SCRIPT obd_pids.txt
+KCAN.SCRIPT obd_pids.comm
 
 # Run a UDS session script with 10 ms between each frame
-KCAN.SCRIPT uds_session.txt 10
+KCAN.SCRIPT uds_session.comm 10
 
 # Run a firmware update sequence with a 50 ms delay
-KCAN.SCRIPT fw_update.txt 50
+KCAN.SCRIPT fw_update.comm 50
 ```
 
 ---
@@ -254,7 +254,7 @@ KCAN.CMD < H"00000000"
 
 Plain text files under `ARTEFACTS_PATH`, one CMD expression per line.
 
-**Example script (`uds_session.txt`):**
+**Example script (`uds_session.comm`):**
 ```
 > H"0210030000000000" | H"5003"
 > H"022703" | H"6727"
@@ -265,8 +265,8 @@ Plain text files under `ARTEFACTS_PATH`, one CMD expression per line.
 
 Run it with:
 ```
-KCAN.SCRIPT uds_session.txt
-KCAN.SCRIPT uds_session.txt 10
+KCAN.SCRIPT uds_session.comm
+KCAN.SCRIPT uds_session.comm 10
 ```
 
 ---

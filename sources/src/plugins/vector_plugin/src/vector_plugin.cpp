@@ -123,8 +123,8 @@ bool VectorPlugin::m_VECTOR_INFO(const std::string &strArgs, std::stop_token st)
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [delay_ms]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : VECTOR.SCRIPT obd_sequence.txt"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         VECTOR.SCRIPT uds_session.txt 10"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : VECTOR.SCRIPT obd_sequence.comm"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         VECTOR.SCRIPT uds_session.comm 10"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
@@ -316,8 +316,8 @@ bool VectorPlugin::m_VECTOR_CMD(const std::string &strArgs, std::stop_token st) 
  * \note The Vector channel is opened once for the lifetime of the script and closed on return.
  *
  * \note Usage example:
- *       VECTOR.SCRIPT obd_sequence.txt
- *       VECTOR.SCRIPT uds_session.txt 10
+ *       VECTOR.SCRIPT obd_sequence.comm
+ *       VECTOR.SCRIPT uds_session.comm 10
  *
  * \param[in] args  filename [delay_ms]
  *

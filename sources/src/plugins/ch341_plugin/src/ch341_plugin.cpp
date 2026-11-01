@@ -90,7 +90,7 @@ bool CH341Plugin::m_CH341_INFO(const std::string &strArgs, std::stop_token st) c
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : script"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: CH341.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: CH341.SCRIPT script.comm"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD  : send, receive or both"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : direction message"));

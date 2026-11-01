@@ -119,10 +119,10 @@ exec "$DIR/ScriptFrontend" "$@"
 │
 ├── scripts
 │    └── uart
-│        ├── script.txt
-│        ├── uartscript1.txt
-│        ├── uartscript2.txt
-│        ├── uartscript.txt
+│        ├── script.main
+│        ├── uartscript1.comm
+│        ├── uartscript2.comm
+│        ├── uartscript.comm
 │        └── config.ini
 │
 │
@@ -131,7 +131,56 @@ exec "$DIR/ScriptFrontend" "$@"
 ├── ScriptFrontend
 └── uscript
 
-# Config and Setup buttons (config.ini, setup.sh / setup.bat)
+# File types
+
+Each kind of file has its own extension; the GUI and the interpreter enforce it the same way
+(one shared rule set, `config/inc/uSharedScriptExt.hpp`).
+
+| Extension | Used for | Where it can be opened |
+|---|---|---|
+| `.main` | scripts run directly by the interpreter (`uscript -s script.main`); the **only** kind an `INCLUDE "file.main"` may reference | main editor tabs; the only kind RUN accepts |
+| `.comm` | communication scripts run by plugins (`UART.SCRIPT uart.comm`, `PLUGIN.CMD script x.comm`) | comm view only |
+| `.ini` | interpreter configuration (`config.ini`) | main editor tabs (not runnable) |
+| `.sh` (Linux/macOS only) | helper shell scripts, e.g. `setup.sh` | main editor tabs (not runnable as a µScript) |
+| `.bat` `.cmd` `.ps1` (Windows only) | helper scripts: batch / command / PowerShell, e.g. `setup.cmd` | main editor tabs (not runnable as a µScript) |
+
+Shell scripts are platform specific: a `.sh` is not opened on Windows, and `.bat` / `.cmd` / `.ps1` are
+not opened on Linux/macOS. Anything else (`.txt`, `.scr`, `.script`, no extension, ...) is refused on every
+platform, with the reason written to the log:
+
+* **Open / Browse, drag-and-drop, the SCRIPT path field, session restore** – the open dialog lists only
+  `*.main *.ini *.sh` (Linux) or `*.main *.ini *.bat *.cmd *.ps1` (Windows), with no "All files"; other
+  dropped files are skipped and reported.
+* **Save As** – the dialog filter matches the viewer (main editor as above, comm view `*.comm`); a name
+  without extension gets `.main` / `.comm` appended; a wrong extension is refused.
+* **Duplicate script** – the copy must also end in `.main`.
+* **Clicking a `PLUGIN.SCRIPT file` line** previews the file in the comm view only if it is a `.comm` file;
+  **clicking an `INCLUDE "file"` line** opens it only if it is a `.main` file.
+* **Interpreter** – `uscript` refuses a main script that is not `.main`; every plugin's comm-script loader
+  refuses a file that is not `.comm`; an `INCLUDE` of anything but `.main` is an error
+  (`INCLUDE supports only .main files`). Note: this also means a `.comm` script cannot `INCLUDE` a
+  `.comm` file. The default script name is now `script.main`.
+
+## Migrating older projects
+
+Older versions accepted any extension (typically `.txt`). To convert a project folder:
+
+```
+python3 tools/migrate_script_extensions.py  <folder> [<folder> ...]           # dry run: shows the plan
+python3 tools/migrate_script_extensions.py  --apply [--git]  <folder> ...     # renames + rewrites references
+```
+
+Files are classified by how they are used: the target of `INCLUDE "..."` becomes `.main`, the target of
+`PLUGIN.SCRIPT <file>` / `PLUGIN.CMD script <file>` becomes `.comm`, a file with `LOAD_PLUGIN` (or one that
+references other scripts) becomes `.main`. References inside scripts are rewritten, existing files are never
+overwritten, and `setup.bat` becomes `setup.cmd` (a `setup.bat` still works if you keep it). Files whose role cannot be determined (not referenced, no
+`LOAD_PLUGIN`) and files used both ways are listed for manual handling instead of being guessed.
+Saved GUI sessions that still list `.txt` files simply skip them (the log says which).
+
+# Config and Setup buttons (config.ini, setup.sh / setup.cmd)
+
+The setup script is run by `bash` (Linux) or `cmd.exe` (Windows), so `setup.ps1` can be edited like any
+other `.ps1` but is not run by the Setup **Run** button.
 
 The toolbar shows `Config: [Open|Create]   Setup: [Open|Create] [Run]`. They always refer to
 the folder of the active script (the one RUN executes; ini / setup tabs do not change it) and are
@@ -140,7 +189,8 @@ re-evaluated on every tab switch, load, save and when the window regains focus.
 * **Config** – `Open` when `config.ini` exists next to the script (opens it in a tab), otherwise
   `Create` (creates an empty `config.ini` and opens it). If the file exists it is passed to the
   interpreter as `-c`; otherwise no `-c` is passed.
-* **Setup Open/Create** – `Open` when `setup.sh` (Linux) / `setup.bat` (Windows) exists next to the
+* **Setup Open/Create** – `Open` when `setup.sh` (Linux) / `setup.cmd` (Windows; an existing `setup.bat`
+  is found too) exists next to the
   script, otherwise `Create` (creates it and opens it for editing). It is shown as plain text and
   **RUN** refuses to feed it to the interpreter.
 * **Setup Run** – enabled when the setup script exists. A script just created with `Create` keeps
@@ -150,7 +200,7 @@ re-evaluated on every tab switch, load, save and when the window regains focus.
 
 ## Elevated rights
 
-| | Linux (`setup.sh`) | Windows (`setup.bat`) |
+| | Linux (`setup.sh`) | Windows (`setup.cmd`) |
 |---|---|---|
 | Detection | a `sudo` command outside comment lines | well-known admin-only commands (`net start`, `sc config`, `netsh`, `reg add HKLM`, `schtasks`, `choco`, ...) |
 | Not needed / already root-admin / passwordless sudo | runs directly, **no dialog** | runs directly, **no dialog** |

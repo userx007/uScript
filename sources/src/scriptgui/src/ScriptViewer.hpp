@@ -71,6 +71,12 @@ class CodeEditor : public QPlainTextEdit
             return m_highlighter != nullptr;
         }
 
+        /** Returns whether the comm-script highlighter is active. */
+        bool hasCommHighlighter() const
+        {
+            return m_commHighlighter != nullptr;
+        }
+
         /** Returns whether the INI highlighter is active. */
         bool hasIniHighlighter() const
         {
@@ -155,7 +161,22 @@ class ScriptViewer : public QFrame
 {
         Q_OBJECT
     public:
-        explicit ScriptViewer(QWidget *pParent = nullptr);
+        /** Role of a viewer: decides which files it accepts (see FileTypes.hpp). */
+        enum class Kind {
+            Main, ///< main editor tabs: .main .ini .sh .cmd
+            Comm  ///< comm-script view: .comm only
+        };
+
+        explicit ScriptViewer(QWidget *pParent = nullptr, Kind kind = Kind::Main);
+
+        Kind kind() const { return m_kind; }
+        /** True if @p filePath has an extension this viewer may open / save to. */
+        bool acceptsFile(const QString &filePath) const;
+        /** Why the last loadScript() failed (empty after a success). */
+        QString lastError() const { return m_lastError; }
+        /** Save-dialog helper: appends the default extension when none was typed; returns an
+         *  empty string (and sets @p pError) when the extension is not allowed for this viewer. */
+        QString normalizeSavePath(const QString &path, QString *pError = nullptr) const;
 
         // ── Loading ──────────────────────────────────────────────────────────
         /** Loads @p filePath; returns false (editor cleared, no file bound) when it cannot be read. */
@@ -255,6 +276,8 @@ class ScriptViewer : public QFrame
 
         CodeEditor *m_editor;
         QString m_currentFile;
+        Kind m_kind = Kind::Main;
+        QString m_lastError;
         // Original on-disk format, preserved on save so editing never rewrites it.
         bool m_crlf   = false; // file used CRLF line endings
         bool m_latin1 = false; // file was not valid UTF-8: treated (and written back) as Latin-1

@@ -37,12 +37,12 @@ find . -maxdepth 1 -name "*_PSM.idl" -type f -print0 | while IFS= read -r -d '' 
     echo "Processing: $filename -> Prefix: $prefix"
 
     # Command 1: Generate family-specific output
-    echo "  Running: python3 $PYTHON_SCRIPT --family $prefix -o ${prefix}.txt"
-    python3 "$PYTHON_SCRIPT" --family "$prefix" -o "${prefix}.txt"
+    echo "  Running: python3 $PYTHON_SCRIPT --family $prefix -o ${prefix}.comm"
+    python3 "$PYTHON_SCRIPT" --family "$prefix" -o "${prefix}.comm"
 
     # Command 2: Generate script-format output
-    echo "  Running: python3 $PYTHON_SCRIPT --family $prefix --format script -o script_${prefix}.txt"
-    python3 "$PYTHON_SCRIPT" --family "$prefix" --format script -o "script_${prefix}.txt"
+    echo "  Running: python3 $PYTHON_SCRIPT --family $prefix --format script -o script_${prefix}.comm"
+    python3 "$PYTHON_SCRIPT" --family "$prefix" --format script -o "script_${prefix}.comm"
 
     echo "  Done."
 done

@@ -67,7 +67,7 @@ FT245.FIFO close
 
 # FT245R async FIFO
 FT245.FIFO open variant=R
-FT245.FIFO script comm_test.txt
+FT245.FIFO script comm_test.comm
 FT245.FIFO close
 
 # GPIO bit-bang (mutually exclusive with FIFO — close FIFO first)
@@ -468,8 +468,8 @@ FT245.FIFO script <filename>
 ```
 
 ```
-FT245.FIFO script comm_test.txt
-FT245.FIFO script bulk_transfer.txt
+FT245.FIFO script comm_test.comm
+FT245.FIFO script bulk_transfer.comm
 ```
 
 ---
@@ -679,7 +679,7 @@ The FIFO interface must be open before calling `script`. The `SCRIPT_DELAY` INI 
 ```
 # Typical FIFO script usage
 FT245.FIFO open variant=BM mode=async
-FT245.FIFO script comm_test.txt
+FT245.FIFO script comm_test.comm
 FT245.FIFO close
 ```
 

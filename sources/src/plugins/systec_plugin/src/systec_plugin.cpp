@@ -215,7 +215,7 @@ bool SYSTECPlugin::m_SYSTEC_INFO(const std::string &strArgs, std::stop_token st)
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SYSTEC.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SYSTEC.SCRIPT script.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
@@ -621,8 +621,8 @@ bool SYSTECPlugin::m_SYSTEC_CMD(const std::string &strArgs, std::stop_token st) 
  *       Filters stored in m_vFilters are applied immediately after open.
  *
  * \note Usage example:
- *       SYSTEC.SCRIPT obd_sequence.txt
- *       SYSTEC.SCRIPT uds_session.txt 10
+ *       SYSTEC.SCRIPT obd_sequence.comm
+ *       SYSTEC.SCRIPT uds_session.comm 10
  *
  * \param[in] args  filename [delay_ms]
  *

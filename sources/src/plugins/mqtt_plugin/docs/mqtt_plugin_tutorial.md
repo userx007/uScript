@@ -187,7 +187,7 @@ LOG.PRINT Broker did not respond to PING — aborting
 GOTO done
 
 LABEL broker_alive
-MQTT.SCRIPT critical_publishes.txt
+MQTT.SCRIPT critical_publishes.comm
 LABEL done
 ```
 
@@ -289,7 +289,7 @@ argument string (everything that would follow `MQTT.CMD` on a script line —
 **Scenario:** replay a recorded sequence of sensor readings for a soak
 test, with a small delay between each to mimic real device timing.
 
-`readings.txt` (resolved under the plugin's `ARTEFACTS_PATH`):
+`readings.comm` (resolved under the plugin's `ARTEFACTS_PATH`):
 ```
 > PUBLISH 20.1 sensors/temp/reading
 > PUBLISH 20.3 sensors/temp/reading
@@ -298,7 +298,7 @@ test, with a small delay between each to mimic real device timing.
 
 ```
 MQTT.CONFIG h=broker.local q=1
-MQTT.SCRIPT readings.txt 200
+MQTT.SCRIPT readings.comm 200
 ```
 
 ---
@@ -483,9 +483,9 @@ MQTT:1.CONFIG h=broker.local id=loadgen_1
 MQTT:2.CONFIG h=broker.local id=loadgen_2
 MQTT:3.CONFIG h=broker.local id=loadgen_3
 
-MQTT:1.SCRIPT batch_a.txt 10 &
-MQTT:2.SCRIPT batch_b.txt 10 &
-MQTT:3.SCRIPT batch_c.txt 10 &
+MQTT:1.SCRIPT batch_a.comm 10 &
+MQTT:2.SCRIPT batch_b.comm 10 &
+MQTT:3.SCRIPT batch_c.comm 10 &
 ```
 
 Each `SCRIPT ... &` line dispatches its whole batch on its own background

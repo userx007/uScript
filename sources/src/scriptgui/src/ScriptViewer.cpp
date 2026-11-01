@@ -1,4 +1,5 @@
 #include "ScriptViewer.hpp"
+#include "FileTypes.hpp"
 
 #include "CommScriptHighlighter.hpp"
 #include "IniHighlighter.hpp"
@@ -555,13 +556,13 @@ void CodeEditor::checkCurrentLineForCommScript()
     }
 
     // ── Pattern 2: PLUGIN.SCRIPT <filename>   — "SCRIPT" must be uppercase
-    //   e.g.  CP2112.SCRIPT cp2112_i2c.txt   or   UART:1.SCRIPT uart.txt
+    //   e.g.  CP2112.SCRIPT cp2112_i2c.comm   or   UART:1.SCRIPT uart.comm
     static const QRegularExpression scriptCmd(
         QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.SCRIPT\\s+(\\S+)") // case-sensitive (no flag)
     );
 
     // ── Pattern 3: PLUGIN.COMMAND script <filename>  — "script" must be lowercase
-    //   e.g.  BUSPIRATE.I2C script ssd_1306bp.txt   or   UART:1.I2C script f.txt
+    //   e.g.  BUSPIRATE.I2C script ssd_1306bp.comm   or   UART:1.I2C script f.comm
     static const QRegularExpression scriptArg(
         QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.(" SCRIPT_RX_UPPER_IDENT ")\\s+script\\s+(\\S+)") // case-sensitive
     );
@@ -744,8 +745,9 @@ void CodeEditor::keyPressEvent(QKeyEvent *pEv)
 // ─────────────────────────────────────────────────────────────────────────────
 //  ScriptViewer
 // ─────────────────────────────────────────────────────────────────────────────
-ScriptViewer::ScriptViewer(QWidget *pParent)
+ScriptViewer::ScriptViewer(QWidget *pParent, Kind kind)
     : QFrame(pParent)
+    , m_kind(kind)
 {
     setObjectName("panelFrame");
     setFrameShape(QFrame::NoFrame);
@@ -755,6 +757,9 @@ ScriptViewer::ScriptViewer(QWidget *pParent)
     root->setSpacing(0);
 
     m_editor = new CodeEditor(this);
+    if (m_kind == Kind::Comm) {
+        m_editor->setCommHighlighting(true);
+    }
 
     // Forward document modification signal
     connect(m_editor->document(), &QTextDocument::modificationChanged,
@@ -945,13 +950,48 @@ void ScriptViewer::replaceAll()
 }
 
 // ── Loading ────────────────────────────────────────────────────────────────
+bool ScriptViewer::acceptsFile(const QString &filePath) const
+{
+    return m_kind == Kind::Comm ? FileTypes::isComm(filePath) : FileTypes::isMainEditorFile(filePath);
+}
+
+QString ScriptViewer::normalizeSavePath(const QString &path, QString *pError) const
+{
+    if (path.isEmpty()) {
+        return {};
+    }
+    if (QFileInfo(path).suffix().isEmpty()) {
+        // No extension typed: the viewer's primary one is appended (".main" / ".comm").
+        return path + (m_kind == Kind::Comm ? QStringLiteral(".comm") : QStringLiteral(".main"));
+    }
+    if (!acceptsFile(path)) {
+        if (pError) {
+            *pError = m_kind == Kind::Comm
+                          ? QStringLiteral("Comm scripts must have the .comm extension.")
+                          : QStringLiteral("Files here must have one of these extensions: %1.").arg(FileTypes::mainEditorList());
+        }
+        return {};
+    }
+    return path;
+}
+
 bool ScriptViewer::loadScript(const QString &filePath)
 {
+    m_lastError.clear();
+    // Central guard for every caller (open dialog, drop, session restore, INCLUDE click,
+    // LOAD_COMM from the interpreter, ...): refused before anything is touched.
+    if (!acceptsFile(filePath)) {
+        m_lastError = m_kind == Kind::Comm
+                          ? QStringLiteral("not a comm script (the comm view opens only .comm files)")
+                          : QStringLiteral("unsupported file type (the main editor opens only %1 files)").arg(FileTypes::mainEditorList());
+        return false;
+    }
+
     // Read raw bytes first: a file that cannot be read must never be bound to
     // this viewer (a later Save would overwrite the real file with a placeholder).
     QFile f(filePath);
     if (!f.open(QIODevice::ReadOnly)) {
-        clear();
+        m_lastError = f.errorString(); // current content and file binding stay untouched
         return false;
     }
     QByteArray raw = f.readAll();
@@ -975,18 +1015,20 @@ bool ScriptViewer::loadScript(const QString &filePath)
         text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
     }
 
-    // ── swap highlighter only when the file type changes ─────────────────
-    if (SetupRunner::isSetupFileName(filePath)) {
-        m_editor->setHighlighting(false);
-    } else if (filePath.endsWith(".ini", Qt::CaseInsensitive)) {
+    // ── highlighter follows the role / file type (swapped only when it changes) ──
+    if (m_kind == Kind::Comm) {
+        if (!m_editor->hasCommHighlighter()) {
+            m_editor->setCommHighlighting(true);
+        }
+    } else if (FileTypes::isShell(filePath)) {
+        m_editor->setHighlighting(false); // shell script: plain text, not µScript
+    } else if (FileTypes::isIni(filePath)) {
         if (!m_editor->hasIniHighlighter()) {
             m_editor->setIniHighlighting(true);
         }
-    } else {
-        if (!m_editor->hasScriptHighlighter()) {
-            m_editor->setIniHighlighting(false);
-            m_editor->setHighlighting(true);
-        }
+    } else if (!m_editor->hasScriptHighlighter()) {
+        m_editor->setIniHighlighting(false);
+        m_editor->setHighlighting(true);
     }
 
     m_editor->setPlainText(text);
@@ -1147,21 +1189,32 @@ bool ScriptViewer::save()
 /** Asks for a file name and saves to it. */
 bool ScriptViewer::saveAs()
 {
-    const QString start = m_currentFile.isEmpty()
-                              ? QDir::homePath()
-                              : QFileInfo(m_currentFile).absolutePath();
-    const QString path  = QFileDialog::getSaveFileName(
-        this, "Save Script As", start,
-        "Script files (*.txt *.scr *.script);;All files (*)");
-    if (path.isEmpty()) {
-        return false;
+    QString start = m_currentFile.isEmpty() ? QDir::homePath() : QFileInfo(m_currentFile).absolutePath();
+    const QString filter = m_kind == Kind::Comm ? FileTypes::commFilter() : FileTypes::mainEditorFilter();
+    for (;;) {
+        const QString typed = QFileDialog::getSaveFileName(
+            this, m_kind == Kind::Comm ? "Save Comm Script As" : "Save Script As", start, filter);
+        if (typed.isEmpty()) {
+            return false;
+        }
+        QString err;
+        const QString path = normalizeSavePath(typed, &err);
+        if (path.isEmpty()) {
+            QMessageBox::warning(this, "Unsupported file name", err);
+            start = typed; // let the user correct the name
+            continue;
+        }
+        if (path != typed && QFileInfo::exists(path) &&
+            QMessageBox::question(this, "Overwrite?", QString("%1 already exists. Overwrite it?").arg(path)) != QMessageBox::Yes) {
+            continue; // the extension we appended made the name collide with an existing file
+        }
+        if (!writeFile(path)) {
+            return false;
+        }
+        m_currentFile = path;
+        updateInfo();
+        return true;
     }
-    if (!writeFile(path)) {
-        return false;
-    }
-    m_currentFile = path;
-    updateInfo();
-    return true;
 }
 
 bool ScriptViewer::writeFile(const QString &path)

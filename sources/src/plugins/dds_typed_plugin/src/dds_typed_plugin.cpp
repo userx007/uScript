@@ -227,7 +227,7 @@ bool DdsTypedPlugin::m_DDS_TYPED_INFO(const std::string &strArgs, std::stop_toke
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : run several DDS_TYPED.CMD-style lines from a file over the same participant"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DDS_TYPED.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DDS_TYPED.SCRIPT script.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : periodic publish, same participant as CMD"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : \"time1:val1, time2:val2, ...\" — each val is a full DDS_TYPED.CMD-style '> ...' argument"));

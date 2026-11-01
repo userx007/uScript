@@ -380,10 +380,10 @@ Each non-empty, non-`#`-comment line in the file is exactly one
 `DDS_TYPED.CMD` argument string, resolved under the plugin's
 `ARTEFACTS_PATH` — same convention as `DDS.SCRIPT`.
 
-**Scenario:** a `publish_batch.txt` containing several `> PUBLISH` lines:
+**Scenario:** a `publish_batch.comm` containing several `> PUBLISH` lines:
 
 ```
-# publish_batch.txt
+# publish_batch.comm
 > PUBLISH vehicle/state id=1,label=truck-01,speed=10.0
 > PUBLISH vehicle/state id=2,label=truck-02,speed=15.5
 > PUBLISH vehicle/state id=3,label=truck-03,speed=22.0
@@ -391,7 +391,7 @@ Each non-empty, non-`#`-comment line in the file is exactly one
 
 ```
 DDS_TYPED.CONFIG d=90 pp=./libcustomer1_types.so
-DDS_TYPED.SCRIPT publish_batch.txt 200
+DDS_TYPED.SCRIPT publish_batch.comm 200
 ```
 
 ---

@@ -452,10 +452,10 @@ CP2112.I2C script <filename>
 
 ```
 CP2112.I2C open addr=0x50 clock=100000
-CP2112.I2C script eeprom_test.txt
+CP2112.I2C script eeprom_test.comm
 
 CP2112.I2C open addr=0x48 clock=400000
-CP2112.I2C script tmp102_read.txt
+CP2112.I2C script tmp102_read.comm
 ```
 
 ---
@@ -734,13 +734,13 @@ Script files are plain text files stored under `ARTEFACTS_PATH`. They are execut
 
 ```
 CP2112.I2C open addr=0x50 clock=100000
-CP2112.I2C script eeprom_dump.txt
+CP2112.I2C script eeprom_dump.comm
 
 CP2112.I2C open addr=0x68 clock=100000
-CP2112.I2C script rtc_read.txt
+CP2112.I2C script rtc_read.comm
 
 CP2112.I2C open addr=0x48 clock=400000
-CP2112.I2C script sensor_calibrate.txt
+CP2112.I2C script sensor_calibrate.comm
 ```
 
 ---

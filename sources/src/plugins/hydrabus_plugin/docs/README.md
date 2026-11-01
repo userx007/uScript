@@ -433,8 +433,8 @@ HYDRABUS.SPI script <filename>
 ```
 
 ```
-HYDRABUS.SPI script read_flash.txt
-HYDRABUS.SPI script erase_chip.txt
+HYDRABUS.SPI script read_flash.comm
+HYDRABUS.SPI script erase_chip.comm
 ```
 
 ---
@@ -637,8 +637,8 @@ HYDRABUS.I2C script <filename>
 ```
 
 ```
-HYDRABUS.I2C script eeprom_test.txt
-HYDRABUS.I2C script sensor_init.txt
+HYDRABUS.I2C script eeprom_test.comm
+HYDRABUS.I2C script sensor_init.comm
 ```
 
 ---
@@ -762,8 +762,8 @@ HYDRABUS.UART script <filename>
 ```
 
 ```
-HYDRABUS.UART script modem_init.txt
-HYDRABUS.UART script at_commands.txt
+HYDRABUS.UART script modem_init.comm
+HYDRABUS.UART script at_commands.comm
 ```
 
 ---
@@ -1640,9 +1640,9 @@ Script files are plain text files stored under `ARTEFACTS_PATH`. They are execut
 The following protocol modules support a `script` sub-command:
 
 ```
-HYDRABUS.SPI    script read_flash.txt
-HYDRABUS.I2C    script sensor_probe.txt
-HYDRABUS.UART   script at_modem.txt
+HYDRABUS.SPI    script read_flash.comm
+HYDRABUS.I2C    script sensor_probe.comm
+HYDRABUS.UART   script at_modem.comm
 ```
 
 ---

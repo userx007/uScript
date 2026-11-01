@@ -105,8 +105,8 @@ bool DSPKi2cPlugin::m_DSPKI2C_INFO(const std::string &strArgs, std::stop_token s
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script [|delay]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DSPKI2C.SCRIPT script.txt"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DSPKI2C.SCRIPT i2c_seq.txt |50"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DSPKI2C.SCRIPT script.comm"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DSPKI2C.SCRIPT i2c_seq.comm |50"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
@@ -272,8 +272,8 @@ bool DSPKi2cPlugin::m_DSPKI2C_CMD(const std::string &strArgs, std::stop_token st
  * \brief SCRIPT command implementation; executes a file containing CMD lines.
  *
  * \note Usage examples:
- *       DSPKI2C.SCRIPT i2c_seq.txt
- *       DSPKI2C.SCRIPT i2c_seq.txt |50
+ *       DSPKI2C.SCRIPT i2c_seq.comm
+ *       DSPKI2C.SCRIPT i2c_seq.comm |50
  *
  * \param[in] args  scriptpathname [|delay_ms]
  *

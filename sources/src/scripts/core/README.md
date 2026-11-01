@@ -56,7 +56,7 @@ The **Core Script** system is a plugin-driven, sequential command interpreter de
 ### Data Flow
 
 ```
- Script file (.script)
+ Script file (.main)
         │
         ▼
   ScriptReader::readScript()

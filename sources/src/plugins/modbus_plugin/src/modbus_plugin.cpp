@@ -123,7 +123,7 @@ bool ModbusPlugin::m_MODBUS_INFO(const std::string &strArgs, std::stop_token st)
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : run several MODBUS.CMD-style lines from a file over the same connection"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MODBUS.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MODBUS.SCRIPT script.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("[MODBUS]"));

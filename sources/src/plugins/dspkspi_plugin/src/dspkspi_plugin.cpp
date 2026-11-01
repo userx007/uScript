@@ -96,7 +96,7 @@ bool DSPKSPIPlugin::m_DSPKSPI_INFO(const std::string &strArgs, std::stop_token s
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : script"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: DSPKSPI.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: DSPKSPI.SCRIPT script.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD  : send, receive or both (full-duplex SPI)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : direction message"));

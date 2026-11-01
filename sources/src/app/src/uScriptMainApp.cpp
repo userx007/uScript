@@ -5,6 +5,7 @@
 #include "uLogger.hpp"
 #include "uScriptClient.hpp"
 #include "uSharedConfig.hpp"
+#include "uSharedScriptExt.hpp"
 #include "uTimer.hpp"
 
 #include <cstdlib>
@@ -85,6 +86,13 @@ int main(int iArgc, char const *argv[])
         std::string scriptPathName = cli.get_or("script", SCRIPT_DEFAULT);
         std::string iniPathName    = cli.get_or("inicfg", SCRIPT_INI_CONFIG);
         std::string logLevelArg    = cli.get_or("loglevel", "");
+
+        if (!scriptext::isMainScript(scriptPathName)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("The script must have the " SCRIPT_EXT_MAIN " extension:");
+                      LOG_STRING(scriptPathName));
+            break;
+        }
 
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Script: ["); LOG_STRING(scriptPathName); LOG_STRING("]"));
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Config: ["); LOG_STRING(iniPathName); LOG_STRING("]"));

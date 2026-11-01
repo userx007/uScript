@@ -269,7 +269,7 @@ bool CH347Plugin::m_CH347_INFO(const std::string &strArgs, std::stop_token st) c
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (SPI must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI script read_flash.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI script read_flash.comm"));
 
     // ── I2C ───────────────────────────────────────────────────────────────
     LOG_SEP();
@@ -324,7 +324,7 @@ bool CH347Plugin::m_CH347_INFO(const std::string &strArgs, std::stop_token st) c
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (I2C must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C script eeprom_test.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C script eeprom_test.comm"));
 
     // ── GPIO ──────────────────────────────────────────────────────────────
     LOG_SEP();
@@ -412,7 +412,7 @@ bool CH347Plugin::m_CH347_INFO(const std::string &strArgs, std::stop_token st) c
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (JTAG must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG script jtag_prog.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG script jtag_prog.comm"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override one or more parameters at runtime (see inc/private/"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         *_setup.hpp for the full key list)"));

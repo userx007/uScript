@@ -475,9 +475,9 @@ CH347.SPI script <filename>
 ```
 
 ```
-CH347.SPI script read_flash.txt
-CH347.SPI script erase_chip.txt
-CH347.SPI script program_sector.txt
+CH347.SPI script read_flash.comm
+CH347.SPI script erase_chip.comm
+CH347.SPI script program_sector.comm
 ```
 
 ---
@@ -712,8 +712,8 @@ CH347.I2C script <filename>
 ```
 
 ```
-CH347.I2C script sensor_init.txt
-CH347.I2C script eeprom_test.txt
+CH347.I2C script sensor_init.comm
+CH347.I2C script eeprom_test.comm
 ```
 
 ---
@@ -1075,9 +1075,9 @@ CH347.JTAG script <filename>
 ```
 
 ```
-CH347.JTAG script jtag_identify.txt
-CH347.JTAG script boundary_scan.txt
-CH347.JTAG script jtag_prog.txt
+CH347.JTAG script jtag_identify.comm
+CH347.JTAG script boundary_scan.comm
+CH347.JTAG script jtag_prog.comm
 ```
 
 ---
@@ -1125,13 +1125,13 @@ Script files are plain text files located under `ARTEFACTS_PATH`. They are execu
 
 ```
 CH347.SPI open clock=15000000
-CH347.SPI script flash_read_id.txt
+CH347.SPI script flash_read_id.comm
 
 CH347.I2C open speed=400kHz addr=0x50
-CH347.I2C script eeprom_dump.txt
+CH347.I2C script eeprom_dump.comm
 
 CH347.JTAG open rate=2
-CH347.JTAG script boundary_scan.txt
+CH347.JTAG script boundary_scan.comm
 ```
 
 ---

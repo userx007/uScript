@@ -67,7 +67,7 @@ Unlike the Core Script system, Comm scripts have **no plugin machinery**, no `IF
 ### Data Flow
 
 ```
- Comm script file (.txt)
+ Comm script file (.comm)
         │
         ▼
   ScriptReader::readScript()           ← shared with Core Script
