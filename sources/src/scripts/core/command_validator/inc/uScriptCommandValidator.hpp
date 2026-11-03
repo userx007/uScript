@@ -105,6 +105,18 @@ class ScriptCommandValidator : public IScriptCommandValidator<Token>
                     break;
                 }
 
+                // YIELDGEN / "$gen.NEXT": same ordering rationale as GENERATOR above
+                // (they must beat the VAR_MACRO_INIT catch-all).
+                if (true == usyntax::m_isYieldGenStmt(strCommand)) {
+                    eToken = Token::YIELDGEN_STMT;
+                    break;
+                }
+
+                if (true == usyntax::m_isYieldNextStmt(strCommand)) {
+                    eToken = Token::YIELDNEXT_STMT;
+                    break;
+                }
+
                 // Same ordering rationale as FORMAT/MATH above: after VARIABLE_MACRO
                 // and REPEAT (so their own forms of "identifier ?=..." win first),
                 // and distinct from FORMAT/MATH's own keyword-RHS shapes.

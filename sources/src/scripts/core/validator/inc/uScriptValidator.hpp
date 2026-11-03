@@ -72,7 +72,11 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_HandlePrint(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleDelay(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleBreakpoint(const ScriptRawLine &sRawLine) noexcept;
-        bool m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexcept;
+        // Compiles both "name ?= GENERATOR <count> <unit> ..." (bYield == false) and the
+        // pull-driven "name ?= YIELDGEN ..." (bYield == true, no <count> <unit>, no thread) -
+        // everything after the interval is the same grammar and the same semantic rules.
+        bool m_HandleGeneratorStmt(const ScriptRawLine &sRawLine, bool bYield = false) noexcept;
+        bool m_HandleYieldNext(const ScriptRawLine &sRawLine) noexcept;
         bool m_HandleKill(const ScriptRawLine &sRawLine) noexcept;
 
         /** Handles the statements that other statements depend on (macros, plugin loads) in a first pass. */
@@ -108,6 +112,13 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         // check it does not simulate IF/GOTO flow. Runs after
         // m_validateScriptStatements() so the full command list already exists.
         bool m_validateKillTargets() noexcept;
+
+        // Walks the compiled command list in source (textual) order and enforces the
+        // YIELDGEN ".NEXT" accessor's two rules: "dest ?= $name.NEXT" must name the
+        // destination of a YIELDGEN on an earlier line, and "$name.NEXT" is rejected
+        // everywhere else (PRINT, conditions, MATH, plugin params, ...) because it
+        // advances state and is only defined as the whole RHS of its own statement.
+        bool m_validateYieldNextUsage() noexcept;
 
         /** Logs the collected plugins, macros and commands. */
         bool m_ListStatements() noexcept;

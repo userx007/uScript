@@ -25,7 +25,7 @@ class QTextDocument;
 //   red         #ff5555  — .COMMAND  ·  BREAKPOINT
 //   periwinkle  #a5b4fc  — native functions (PRINT DELAY FORMAT MATH EVAL
 //                          BITSTREAM BYTESTREAM BITSTREAMVAL BYTESTREAMVAL
-//                          GENERATOR KILL)
+//                          GENERATOR YIELDGEN KILL)
 //                          · HEX / REVERSE_BIT / REVERSE_BYTE / GENERATOR's
 //                          own waveform post-processor keywords
 //   purple      #bd93f9  — label names
@@ -197,6 +197,29 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
         Rule rKw;
         rKw.pattern      = RE(pat);
         rKw.format       = fmt(C_HEX_WIDTH);
+        rKw.captureGroup = 2;
+        m_rules.append(rKw);
+    }
+
+    // ── 4b'. YIELDGEN accessor  $NAME.NEXT  ───────────────────────────────
+    //  "dest ?= $NAME.NEXT" pulls the next sample out of a YIELDGEN macro
+    //  (see usyntax::m_isYieldNextStmt / ScriptValidator::m_validateYieldNextUsage()
+    //  — NAME must be the destination of an earlier YIELDGEN, and NEXT is only
+    //  valid as the whole right-hand side). Mirrors the SIZE rule above: NEXT is a
+    //  fixed, case-sensitive reserved word, so it gets the native-function
+    //  colour, and NAME the cyan every other volatile-macro name uses. Same
+    //  ordering constraint as SIZE: after step 4 (PLUGIN.COMMAND), whose pattern
+    //  would otherwise repaint an upper-case $GEN.NEXT as PLUGIN/COMMAND.
+    {
+        const QString pat = R"(\$([A-Za-z_][A-Za-z0-9_]*)\.(NEXT)(?![A-Za-z0-9_]))";
+        Rule rNm;
+        rNm.pattern      = RE(pat);
+        rNm.format       = fmt(C_VAR_NAME);
+        rNm.captureGroup = 1;
+        m_rules.append(rNm);
+        Rule rKw;
+        rKw.pattern      = RE(pat);
+        rKw.format       = fmt(C_FUNC, true);
         rKw.captureGroup = 2;
         m_rules.append(rKw);
     }
@@ -491,7 +514,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *pParent)
     for (const char *fn : {"PRINT", "DELAY", "FORMAT", "MATH", "EVAL",
                               "BITSTREAM", "BYTESTREAM",
                               "BITSTREAMVAL", "BYTESTREAMVAL",
-                              "GENERATOR", "KILL"}) {
+                              "GENERATOR", "YIELDGEN", "KILL"}) {
         addRule(QString(R"(\b%1\b)").arg(fn), fmt(C_FUNC, true));
     }
 

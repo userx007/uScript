@@ -22,6 +22,7 @@
     - [8.8 BITSTREAMVAL / BYTESTREAMVAL — Array Form](#88-bitstreamval--bytestreamval--array-form)
     - [8.9 GENERATOR](#89-generator)
     - [8.10 KILL](#810-kill)
+    - [8.11 YIELDGEN / NEXT](#811-yieldgen--next)
 9. [Conditional Flow — IF / GOTO / LABEL](#9-conditional-flow)
 10. [EVAL Expression Evaluator](#10-eval-expression-evaluator)
 11. [Loops — REPEAT / END_REPEAT](#11-loops)
@@ -1127,6 +1128,56 @@ KILL  never_started           # not launched with '&' or GENERATOR on an earlier
 
 ---
 
+### 8.11 YIELDGEN / NEXT
+
+```
+<n>     ?=  YIELDGEN  <begin>:<end>:<step>[:<k>]  |  <WAVEFORM>  [| <ENCODING>]
+<n>     ?=  YIELDGEN  <e1>,<e2>,...               |  <WAVEFORM>  [| <ENCODING>]
+<n>     ?=  YIELDGEN  $<array>                    |  <WAVEFORM>  [| <ENCODING>]
+<dest>  ?=  $<n>.NEXT
+```
+
+The **pull-driven** sibling of [`GENERATOR`](#89-generator): the same data sources, waveforms
+and encodings, but no `<count> <unit>` interval and **no background thread**. A sample is
+computed only when the script executes `dest ?= $n.NEXT`; the generator then stays parked at
+that position until the next `NEXT`.
+
+- **Same rules as `GENERATOR`.** The source, `WAVEFORM` and `ENCODING` fields have exactly the
+  meaning and validation rules described in [8.9](#89-generator) (e.g. `k` only with `EXP`/`LOG`,
+  arrays only with `LINEAR`/`SAWTOOTH`/`TRIANGLE`/`RANDOM`, `SQUARE` step a positive integer).
+- **First value.** The first `NEXT` returns the first value of the sequence: `<begin>`, or array
+  element 0. (A `GENERATOR` thread's first tick is one step in.) `SINE` starts at its phase-0
+  value, i.e. the midpoint of the range. After that every `NEXT` advances one step; `SAWTOOTH`
+  wraps and `TRIANGLE` ping-pongs as for `GENERATOR`.
+- **`SQUARE`.** `<step>` is the number of consecutive `NEXT` calls that return each level.
+- **`$n` is the current value.** The `YIELDGEN` statement creates `$n` empty; every `NEXT` stores
+  the sample in `<dest>` **and** in `$n`, so `$n` reads the last value without advancing.
+- **Restart semantics.** Executing the `YIELDGEN` statement again restarts the sequence. Declare
+  it outside loops, or each iteration restarts it. A `GENERATOR` for the same name replaces it.
+- **`.NEXT` is a statement, not an expression.** It is valid only as the entire right-hand side of
+  `dest ?= $n.NEXT`, and only when `n` is the destination of a `YIELDGEN` on an **earlier line**.
+  Embedding it in `PRINT`, `MATH`, conditions, plugin parameters, etc. (even `$n.NEXT + 1`) is a
+  validation error: it advances state, so it must run exactly once per statement execution.
+- **No `KILL`.** Nothing runs behind a `YIELDGEN`; `KILL n` is a validation error.
+- **Run-time failure.** `NEXT` fails the script if the `YIELDGEN` line was never executed (e.g.
+  jumped over by a `GOTO`).
+- **Reserved word.** `YIELDGEN` right after `?=` is always parsed as this statement, so a malformed
+  one is reported as such instead of becoming a string macro.
+- Not available in the interactive shell (same as `GENERATOR`).
+
+```
+lvl  ?=  YIELDGEN  0:100:5  |  TRIANGLE  |  HEX_16_LE
+i    ?=  REPEAT  loop  0, 5
+v    ?=  $lvl.NEXT              # 0000, 0500, 0A00, ... ping-pongs 0..100
+PRINT  step $i -> $v (current $lvl)
+END_REPEAT  loop
+
+pick ?=  YIELDGEN  $LIST  |  RANDOM        # shuffled walk over a declared array
+x    ?=  $pick.NEXT
+```
+
+---
+
 ## 9. Conditional Flow
 
 ### `GOTO` — unconditional jump
@@ -1765,6 +1816,11 @@ left unexpanded by the interpreter and resolved by the `CYCLIC` implementation i
 | `GENERATOR` `HEX_8` with an endianness suffix, or a wider `HEX_n` without one | Error |
 | `GENERATOR` destination name conflicts with a constant macro | Error |
 | `GENERATOR` `$macro` bound/`SQUARE` step does not resolve to a valid number | Error — fails at runtime |
+| `YIELDGEN` statement is malformed (e.g. a `<count> <unit>` interval left in, missing waveform); all other `GENERATOR` source/waveform/encoding rules apply to it too | Error |
+| `dest ?= $n.NEXT` where `n` is not the destination of an earlier `YIELDGEN` | Error |
+| `$n.NEXT` anywhere other than as the whole right-hand side of `dest ?= $n.NEXT` | Error |
+| `KILL` target is a `YIELDGEN` destination (no thread to kill) | Error |
+| `NEXT` on a `YIELDGEN` whose line was never executed | Error — fails at runtime |
 | Second threaded (`&`) command launched on a plugin instance that already has a live thread | Error — fails at runtime |
 | Nested block comment | Error |
 | `EVAL` expression has trailing tokens after the final atom/type hint (anything that isn't `&&`/`||`) | Error — evaluation fails at runtime |

@@ -71,6 +71,8 @@ enum class Token
     BYTESTREAMVAL_ARRAY_STMT, // name [= hex_source | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
     GENERATOR_STMT,           // name ?= GENERATOR <count> <unit> min:max:step[:k] | WAVEFORM [| ENCODING]
     KILL_STMT,                // [result ?=] KILL name [name ...]  — stops the thread/generator behind each volatile macro
+    YIELDGEN_STMT,            // name ?= YIELDGEN min:max:step[:k] | WAVEFORM [| ENCODING]   (pull-driven generator, no thread)
+    YIELDNEXT_STMT,           // dest ?= $name.NEXT                                           (pulls the next YIELDGEN sample)
     INVALID
 };
 
@@ -559,6 +561,59 @@ struct GeneratorStatement
         HexOutputFormat eHexFormat  = HexOutputFormat::NONE;
 };
 
+// name ?= YIELDGEN <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
+// name ?= YIELDGEN <elem1>,<elem2>,...        | WAVEFORM [| ENCODING]
+// name ?= YIELDGEN $arrayName                 | WAVEFORM [| ENCODING]
+//
+// Pull-driven sibling of GENERATOR. It takes exactly the same data source
+// (range / inline array / $arrayName), WAVEFORM and ENCODING fields with exactly
+// the same meaning and validation rules - which is why it derives from
+// GeneratorStatement and is compiled by the same validator handler - but:
+//
+//   - there is no "<count> <unit>" interval and NO background thread
+//     (uIntervalUs is always 0 and never read);
+//   - a sample is computed only when the script executes "dest ?= $name.NEXT"
+//     (see YieldNextStatement), and the generator then stays parked at that
+//     position until the next NEXT.
+//
+// The statement itself only (re)creates the generator state: begin/end/step/k
+// (or the array elements) are resolved once, here, exactly like GENERATOR
+// resolves them at launch, and the sequence restarts from its first value. So
+// declare it OUTSIDE a loop, or every iteration will restart the sequence.
+//
+// The first NEXT returns the FIRST value of the sequence (<begin>, or array
+// element 0) - unlike GENERATOR, whose thread emits its first tick one step in.
+// From then on every NEXT advances by one step of the waveform; SAWTOOTH and
+// TRIANGLE wrap/ping-pong exactly as for GENERATOR, and SQUARE's "step" is the
+// number of consecutive NEXT calls that return each level.
+//
+// The macro <name> itself is created empty by this statement and afterwards
+// always holds the value most recently returned by NEXT, so "$name" reads "the
+// current value" without advancing anything. It is a volatile macro (written
+// through ScriptInterpreter::m_setRuntimeVarMacro()), but nothing runs behind it:
+// KILL does not apply (rejected at validation time) and there is nothing to stop.
+struct YieldGenStatement : GeneratorStatement
+{
+};
+
+// dest ?= $name.NEXT
+//
+// Advances the YIELDGEN macro <name> by one sample and stores the rendered
+// sample (decimal, or HEX per the YIELDGEN's own ENCODING) in <dest>; <name>
+// itself is updated to the same value.
+//
+// ".NEXT" is only valid as the complete right-hand side of this statement and
+// only on the destination of a YIELDGEN declared earlier in the script
+// (ScriptValidator::m_validateYieldNextUsage()): "$gen.NEXT" embedded in a
+// PRINT/condition/MATH/... template, or applied to any other macro, is rejected
+// at validation time. At run time NEXT on a name that has no live YIELDGEN
+// state (its YIELDGEN line was skipped by a GOTO, say) fails the script.
+struct YieldNextStatement
+{
+        std::string strDestName; // macro receiving the sample (identifier)
+        std::string strGenName;  // the YIELDGEN macro to advance (identifier)
+};
+
 // [result ?=] KILL <name>
 //
 // Stops whatever is keeping the VOLATILE macro <name> alive, and waits for it
@@ -921,7 +976,8 @@ using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        VarMacroInit, FormatStatement, DelayStatement,
                                        MathStatement, BreakpointStatement, StreamStatement,
                                        StreamValStatement, StreamValArrayStatement,
-                                       GeneratorStatement, KillStatement>;
+                                       GeneratorStatement, KillStatement,
+                                       YieldGenStatement, YieldNextStatement>;
 
 struct ScriptLine
 {
@@ -1053,6 +1109,14 @@ inline const std::string &getTokenTypeName(Token type)
     }
     case Token::KILL_STMT: {
         static const std::string name = "KILL";
+        return name;
+    }
+    case Token::YIELDGEN_STMT: {
+        static const std::string name = "YIELDGEN";
+        return name;
+    }
+    case Token::YIELDNEXT_STMT: {
+        static const std::string name = "YIELDNEXT";
         return name;
     }
     case Token::INVALID: {

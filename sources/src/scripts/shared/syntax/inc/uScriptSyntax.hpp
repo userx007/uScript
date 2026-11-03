@@ -317,6 +317,54 @@ namespace usyntax
         return std::regex_match(strExpression, pattern);
     }
 
+    // validate a YIELDGEN statement — the pull-driven sibling of GENERATOR:
+    //   name ?= YIELDGEN <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
+    //   name ?= YIELDGEN <elem1>,<elem2>,...        | WAVEFORM [| ENCODING]
+    //   name ?= YIELDGEN $arrayName                 | WAVEFORM [| ENCODING]
+    //
+    // Identical to GENERATOR except that there is NO "<count> <unit>" tick interval and
+    // NO background thread: the next sample is computed only when the script asks for
+    // it with "dest ?= $name.NEXT" (see m_isYieldNextStmt below). Range/array/waveform/
+    // encoding fields and all of their semantic rules are exactly GENERATOR's (they are
+    // checked by the same validator code, ScriptValidator::m_HandleGeneratorStmt()).
+    //
+    // Examples:
+    //   gen ?= YIELDGEN 0:100:5 | TRIANGLE | HEX_16_LE
+    //   idx ?= YIELDGEN 1,7,$x,$y | SAWTOOTH
+    //   arr ?= YIELDGEN $array    | RANDOM
+    //
+    // Like KILL, this pattern is deliberately LENIENT: it recognises the statement by its
+    // keyword only ("name ?= YIELDGEN" followed by whitespace or nothing). The strict shape
+    // is enforced by ScriptValidator::m_HandleGeneratorStmt(), which then reports what is
+    // actually wrong (e.g. a GENERATOR-style "<count> <unit>" left in, a missing waveform).
+    // A strict pattern would let such a typo fall through to the VAR_MACRO_INIT catch-all
+    // and be silently accepted as a plain string initialisation. The price is that
+    // YIELDGEN is a reserved keyword on the right-hand side of "?=".
+    inline bool m_isYieldGenStmt(const std::string &strExpression)
+    {
+        static const std::regex pattern(
+            "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*YIELDGEN(?:\\s.*)?$");
+        return std::regex_match(strExpression, pattern);
+    }
+
+    // validate "dest ?= $gen.NEXT" — pulls the next sample out of the YIELDGEN macro <gen>
+    // and stores it in <dest>. This is the ONLY place ".NEXT" is accepted: it must be the
+    // whole right-hand side (no inline "$gen.NEXT" inside PRINT / conditions / MATH ...,
+    // which would make the number of advances depend on how often a template happens to be
+    // expanded). That, and "<gen> really is a YIELDGEN destination", are checked by
+    // ScriptValidator::m_validateYieldNextUsage().
+    //
+    // Must be classified before the VAR_MACRO_INIT catch-all.
+    //
+    // Example:
+    //   val ?= $gen.NEXT
+    inline bool m_isYieldNextStmt(const std::string &strExpression)
+    {
+        static const std::regex pattern(
+            "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*\\$" SCRIPT_RX_IDENT "\\.NEXT\\s*$");
+        return std::regex_match(strExpression, pattern);
+    }
+
     // validate "[<result> ?=] KILL <name> [<name2> ...]" — stops whatever keeps each VOLATILE
     // macro <name>, <name2>, ... alive: the background thread of a threaded variable-capture
     // command ("<name> ?= PLUGIN.CMD args &", e.g. "<name> ?= UART.CYCLIC ... &")

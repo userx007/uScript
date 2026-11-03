@@ -268,6 +268,92 @@ namespace
 } // anonymous namespace
 
 /*-------------------------------------------------------------------------------
+  YieldGenState — everything one YIELDGEN macro needs between two NEXTs.
+
+  Reuses GENERATOR's waveform functions unchanged (nextGeneratorSample /
+  nextGeneratorArraySample), which advance THEN return, i.e. a GENERATOR thread's
+  first emitted value is one step in. YIELDGEN must instead hand out the first
+  value of the sequence on the first NEXT, so the state is seeded ONE STEP BEHIND
+  the start; the first call then lands exactly on it, and every later call is
+  plain GENERATOR behaviour:
+
+    SAWTOOTH  current = begin - signedStep            -> first = begin
+    TRIANGLE  current = begin - step*direction        -> first = begin
+    SQUARE    current = end, ticksAtLevel = step - 1  -> first = begin, each level
+                                                         then lasts `step` NEXTs
+    SINE      phaseDeg = -step                        -> first = value at phase 0
+                                                         (the midpoint, rising)
+    EXP / LOG t = -step/(end-begin)                   -> first = begin (t = 0)
+    RANDOM    stateless                               -> every NEXT is a fresh draw
+    array     index/shuffle state already emits-then-advances -> first = element 0
+-------------------------------------------------------------------------------*/
+
+struct ScriptInterpreter::YieldGenState
+{
+        GeneratorWaveform eWaveform = GeneratorWaveform::SAWTOOTH;
+        HexOutputFormat eHexFormat  = HexOutputFormat::NONE;
+        bool bIsArraySource         = false;
+        std::vector<double> vValues; // array source only
+        double dBegin = 0.0, dEnd = 0.0, dStep = 0.0, dK = 0.0;
+        GeneratorSampleState sample;
+
+        // Seeds the state from a resolved range exactly as a GENERATOR launch would
+        // (signed step for SAWTOOTH, magnitude for the rest), then rewinds one step.
+        void seed(GeneratorWaveform eWave, HexOutputFormat eHex, bool bArray,
+                  const std::vector<double> &vArr, double dB, double dE, double dS, double dKk)
+        {
+            eWaveform     = eWave;
+            eHexFormat    = eHex;
+            bIsArraySource = bArray;
+            vValues       = vArr;
+            dBegin        = dB;
+            dEnd          = dE;
+            dK            = dKk;
+            sample        = GeneratorSampleState{};
+
+            if (bIsArraySource) {
+                return; // arrIndex = 0, arrDirection = 1: first NEXT yields element 0
+            }
+
+            const int iDir        = (dEnd >= dBegin) ? 1 : -1;
+            const double dStepMag = std::fabs(dS);
+            dStep                 = (eWaveform == GeneratorWaveform::SAWTOOTH) ? (dStepMag * iDir) : dStepMag;
+            sample.direction      = iDir;
+
+            switch (eWaveform) {
+            case GeneratorWaveform::SAWTOOTH:
+                sample.current = dBegin - dStep;
+                break;
+            case GeneratorWaveform::TRIANGLE:
+                sample.current = dBegin - dStep * iDir;
+                break;
+            case GeneratorWaveform::SQUARE:
+                sample.current      = dEnd; // != begin, so the first step toggles onto begin
+                sample.ticksAtLevel = static_cast<uint64_t>(dStep) - 1;
+                break;
+            case GeneratorWaveform::SINE:
+                sample.phaseDeg = -dStep;
+                break;
+            case GeneratorWaveform::EXP:
+            case GeneratorWaveform::LOG:
+                sample.current = -dStep / (dEnd - dBegin);
+                break;
+            case GeneratorWaveform::RANDOM:
+                break;
+            }
+        }
+
+        // Advances one sample and returns it rendered (decimal or HEX, per the statement).
+        std::string next()
+        {
+            const double dSample = bIsArraySource
+                                       ? nextGeneratorArraySample(eWaveform, vValues, sample)
+                                       : nextGeneratorSample(eWaveform, dBegin, dEnd, dStep, dK, sample);
+            return renderGeneratorValue(dSample, eHexFormat);
+        }
+};
+
+/*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
@@ -329,6 +415,11 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType &sScriptEntries, bool 
     if (bRealExec) {
         m_joinAllThreads();
         m_stopAllGenerators();
+        {
+            // YIELDGEN has no thread to stop; its state just must not leak into the next run.
+            std::lock_guard<std::mutex> lock(m_yieldGenMutex);
+            m_yieldGens.clear();
+        }
     }
 
     LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Script execution"); LOG_STRING(bRetVal ? "ok" : "failed"));
@@ -3281,6 +3372,13 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
 
                 m_stopNamedGenerator(command.strName);
+                {
+                    // One name, one source: a thread-backed GENERATOR takes over a name
+                    // that was a YIELDGEN, so a later "$name.NEXT" fails loudly instead
+                    // of advancing a stale pull-driven state next to the thread.
+                    std::lock_guard<std::mutex> lock(m_yieldGenMutex);
+                    m_yieldGens.erase(command.strName);
+                }
 
                 {
                     ResolvedGeneratorRange range;
@@ -3368,6 +3466,85 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                     std::lock_guard<std::mutex> lock(m_generatorMutex);
                     m_generatorThreads.emplace(command.strName, GeneratorThreadEntry{std::move(t), doneFlag});
                 }
+            }
+
+            /*-----------------------------------------------------------------
+                name ?= YIELDGEN begin:end:step[:k] | WAVEFORM [| ENCODING]
+                name ?= YIELDGEN elem1,elem2,...    | WAVEFORM [| ENCODING]
+
+                Pull-driven GENERATOR: no thread, no tick. Resolves begin/end/step/k
+                (or the array elements) once, right here, exactly like a GENERATOR
+                launch, and (re)creates the parked state under `command.strName` —
+                so re-executing the statement restarts the sequence. The macro itself
+                is created empty; "dest ?= $name.NEXT" (below) fills it. Any
+                thread-backed GENERATOR that held the same name is stopped first, so
+                one name never has two writers. See YieldGenStatement.
+            -----------------------------------------------------------------*/
+
+        } else if constexpr (std::is_same_v<T, YieldGenStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+
+                ResolvedGeneratorRange range;
+                if (!m_resolveGeneratorRange(command, range)) {
+                    bRetVal = false;
+                    return;
+                }
+
+                m_stopNamedGenerator(command.strName);
+
+                auto pState = std::make_shared<YieldGenState>();
+                pState->seed(command.eWaveform, command.eHexFormat, range.bIsArraySource,
+                             range.vArrayValues, range.dBegin, range.dEnd, range.dStep, range.dK);
+                {
+                    std::lock_guard<std::mutex> lock(m_yieldGenMutex);
+                    m_yieldGens[command.strName] = std::move(pState);
+                }
+
+                m_setRuntimeVarMacro(command.strName, std::string{});
+
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("YIELDGEN [");  LOG_STRING(command.strName);
+                          LOG_STRING("] armed, waveform=[");  LOG_STRING(getGeneratorWaveformName(command.eWaveform));
+                          LOG_STRING("]"));
+            }
+
+            /*-----------------------------------------------------------------
+                dest ?= $name.NEXT
+
+                Advances the YIELDGEN named `name` by exactly one sample (this runs
+                once per execution of the statement — that is why ".NEXT" is only
+                legal as a whole statement, see m_validateYieldNextUsage()) and
+                stores the rendered sample in <dest>; <name> itself is updated to
+                the same value, so "$name" reads the current value without
+                advancing. Fails the script if no YIELDGEN state exists under that
+                name at run time (its line was jumped over, or a GENERATOR replaced
+                it).
+            -----------------------------------------------------------------*/
+
+        } else if constexpr (std::is_same_v<T, YieldNextStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+
+                std::string strValue;
+                {
+                    std::lock_guard<std::mutex> lock(m_yieldGenMutex);
+                    const auto it = m_yieldGens.find(command.strGenName);
+                    if (it == m_yieldGens.end()) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("NEXT [$"); LOG_STRING(command.strGenName);
+                                  LOG_STRING(".NEXT]: no active YIELDGEN under that name - its 'YIELDGEN' line has not been executed"));
+                        bRetVal = false;
+                        return;
+                    }
+                    strValue = it->second->next();
+                }
+
+                m_setRuntimeVarMacro(command.strGenName, strValue);
+                m_setRuntimeVarMacro(command.strDestName, strValue);
+
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("NEXT [$"); LOG_STRING(command.strGenName);
+                          LOG_STRING("] -> ["); LOG_STRING(command.strDestName);
+                          LOG_STRING("]=["); LOG_STRING(strValue); LOG_STRING("]"));
             }
 
             /*-----------------------------------------------------------------

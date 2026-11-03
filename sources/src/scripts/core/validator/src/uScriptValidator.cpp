@@ -74,6 +74,10 @@ bool ScriptValidator::validateScript(std::vector<ScriptRawLine> &vRawLines, Scri
             break;
         }
 
+        if (false == m_validateYieldNextUsage()) {
+            break;
+        }
+
         if (false == m_validateConditions()) {
             break;
         }
@@ -204,7 +208,7 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
                 }
             } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
                 checkField(command.strLabelTpl, scriptLine.iLineNumber);
-            } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
+            } else if constexpr (std::is_same_v<T, GeneratorStatement> || std::is_same_v<T, YieldGenStatement>) {
                 if (command.bIsArraySource) {
                     for (const auto &elem : command.vArrayValues) {
                         checkField(elem.strExpr, scriptLine.iLineNumber);
@@ -634,6 +638,12 @@ bool ScriptValidator::m_preprocessScriptStatements(const ScriptRawLine &sRawLine
     } break;
     case Token::KILL_STMT: {
         bRetVal = m_HandleKill(sRawLine);
+    } break;
+    case Token::YIELDGEN_STMT: {
+        bRetVal = m_HandleGeneratorStmt(sRawLine, true);
+    } break;
+    case Token::YIELDNEXT_STMT: {
+        bRetVal = m_HandleYieldNext(sRawLine);
     } break;
     default: {
         auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
@@ -1997,16 +2007,17 @@ bool ScriptValidator::m_HandleBreakpoint(const ScriptRawLine &sRawLine) noexcept
   REPEAT/BITSTREAM/MATH each keeping their own small field-building helper.
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexcept
+bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine, bool bYield) noexcept
 {
     auto lineNr                      = ustring::fmtLineNr(sRawLine.iLineNumber);
+    const std::string strKw          = bYield ? "YIELDGEN" : "GENERATOR"; // statement keyword, for messages and RHS stripping
 
     // ── 1. Split at first '?=' ─────────────────────────────────────────────
     static const std::string kAssign = "?=";
     const auto assignPos             = sRawLine.strContent.find(kAssign);
     if (assignPos == std::string::npos) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("GENERATOR: missing '?='"));
+                  LOG_STRING(strKw + ": missing '?='"));
         return false;
     }
 
@@ -2016,7 +2027,7 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
         const size_t ne = strName.find_last_not_of(" \t");
         if (ns == std::string::npos) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                      LOG_STRING("GENERATOR: missing destination macro name"));
+                      LOG_STRING(strKw + ": missing destination macro name"));
             return false;
         }
         strName = strName.substr(ns, ne - ns + 1);
@@ -2028,8 +2039,7 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
         const size_t rs = strRhs.find_first_not_of(" \t");
         strRhs          = (rs == std::string::npos) ? "" : strRhs.substr(rs);
     }
-    static const std::string kKeyword = "GENERATOR";
-    strRhs                            = strRhs.substr(kKeyword.size());
+    strRhs                            = strRhs.substr(strKw.size());
     {
         const size_t rs = strRhs.find_first_not_of(" \t");
         strRhs          = (rs == std::string::npos) ? "" : strRhs.substr(rs);
@@ -2050,56 +2060,63 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
     static const std::string fieldCap  = "(" + tok + ")";
     static const std::string rangeBody = fieldCap + "\\s*:\\s*" + fieldCap + "\\s*:\\s*" + fieldCap + "(?:\\s*:\\s*" + fieldCap + ")?";
     static const std::string arrayBody = "(" + tok + "(?:\\s*,\\s*" + tok + ")*)";
-    static const std::regex reBody(
-        "^([1-9][0-9]*)\\s+" SCRIPT_RX_TIME_UNITS "\\s+"
-        "(?:" +
-        rangeBody + "|" + arrayBody + ")"
-                                      "\\s*\\|\\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)"
-                                      "(?:\\s*\\|\\s*(HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?))?"
-                                      "\\s*$");
+    // GENERATOR has a leading "<count> <unit> " interval; YIELDGEN (pull-driven, no
+    // thread, no tick) does not. Everything after it is shared, so the two regexes only
+    // differ by that prefix — which also shifts the capture-group numbers by two (iGrp).
+    static const std::string kBodyRest =
+        "(?:" + rangeBody + "|" + arrayBody + ")"
+        "\\s*\\|\\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)"
+        "(?:\\s*\\|\\s*(HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?))?"
+        "\\s*$";
+    static const std::regex reBodyGenerator("^([1-9][0-9]*)\\s+" SCRIPT_RX_TIME_UNITS "\\s+" + kBodyRest);
+    static const std::regex reBodyYield("^" + kBodyRest);
+    const std::regex &reBody = bYield ? reBodyYield : reBodyGenerator;
+    const int iGrp           = bYield ? -2 : 0; // capture-group shift: YIELDGEN has no count/unit groups
 
     std::smatch match;
     if (!std::regex_match(strRhs, match, reBody)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("GENERATOR: malformed statement:"); LOG_STRING(strRhs));
+                  LOG_STRING(strKw + ": malformed statement:"); LOG_STRING(strRhs));
         return false;
     }
 
-    const std::string strCount     = match[1].str();
-    const std::string strUnit      = match[2].str();
-    const bool bIsRangeForm        = match[3].matched; // range form matched -> begin/end/step[/k] groups are populated
-    const std::string strBegin     = bIsRangeForm ? match[3].str() : "";
-    const std::string strEnd       = bIsRangeForm ? match[4].str() : "";
-    const std::string strStep      = bIsRangeForm ? match[5].str() : "";
-    const bool bHasKField          = bIsRangeForm && match[6].matched;
-    const std::string strK         = bHasKField ? match[6].str() : "";
-    const std::string strArrayList = bIsRangeForm ? "" : match[7].str();
+    const std::string strCount     = bYield ? "" : match[1].str();
+    const std::string strUnit      = bYield ? "" : match[2].str();
+    const bool bIsRangeForm        = match[3 + iGrp].matched; // range form matched -> begin/end/step[/k] groups are populated
+    const std::string strBegin     = bIsRangeForm ? match[3 + iGrp].str() : "";
+    const std::string strEnd       = bIsRangeForm ? match[4 + iGrp].str() : "";
+    const std::string strStep      = bIsRangeForm ? match[5 + iGrp].str() : "";
+    const bool bHasKField          = bIsRangeForm && match[6 + iGrp].matched;
+    const std::string strK         = bHasKField ? match[6 + iGrp].str() : "";
+    const std::string strArrayList = bIsRangeForm ? "" : match[7 + iGrp].str();
     const bool bIsArraySource      = !bIsRangeForm;
-    const std::string strWaveform  = match[8].str();
-    const bool bHasEnc             = match[9].matched;
-    const std::string strEnc       = bHasEnc ? match[9].str() : "";
+    const std::string strWaveform  = match[8 + iGrp].str();
+    const bool bHasEnc             = match[9 + iGrp].matched;
+    const std::string strEnc       = bHasEnc ? match[9 + iGrp].str() : "";
 
     // ── 5. Interval: <count> <unit> -> microseconds (DELAY's own conversion) ─
     uint64_t uIntervalUs           = 0;
-    try {
-        const unsigned long long ullCount = std::stoull(strCount);
-        if (ullCount == 0) {
+    if (!bYield) { // YIELDGEN has no tick interval (uIntervalUs stays 0)
+        try {
+            const unsigned long long ullCount = std::stoull(strCount);
+            if (ullCount == 0) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING(strKw + ": interval count must be >= 1"));
+                return false;
+            }
+            if (strUnit == "us") {
+                uIntervalUs = ullCount;
+            } else if (strUnit == "ms") {
+                uIntervalUs = ullCount * 1000ULL;
+            } else /* "sec" */
+            {
+                uIntervalUs = ullCount * 1000000ULL;
+            }
+        } catch (...) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                      LOG_STRING("GENERATOR: interval count must be >= 1"));
+                      LOG_STRING(strKw + ": invalid interval count:"); LOG_STRING(strCount));
             return false;
         }
-        if (strUnit == "us") {
-            uIntervalUs = ullCount;
-        } else if (strUnit == "ms") {
-            uIntervalUs = ullCount * 1000ULL;
-        } else /* "sec" */
-        {
-            uIntervalUs = ullCount * 1000000ULL;
-        }
-    } catch (...) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("GENERATOR: invalid interval count:"); LOG_STRING(strCount));
-        return false;
     }
 
     // ── 6a. begin/end/step/k -> RepeatRangeValue (literal resolved now, $macro deferred) ─
@@ -2118,7 +2135,7 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
         bool bIsInt     = true;
         if (!parseRepeatNumber(strTok, bIsInt, llVal, dVal)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                      LOG_STRING("GENERATOR: invalid numeric literal:"); LOG_STRING(strTok));
+                      LOG_STRING(strKw + ": invalid numeric literal:"); LOG_STRING(strTok));
             bOk = false;
             return val;
         }
@@ -2215,7 +2232,7 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
                                        eWaveform == GeneratorWaveform::RANDOM);
         if (!bAllowedForArray) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                      LOG_STRING("GENERATOR: an array data source only supports SAWTOOTH/LINEAR, TRIANGLE or RANDOM, not");
+                      LOG_STRING(strKw + ": an array data source only supports SAWTOOTH/LINEAR, TRIANGLE or RANDOM, not");
                       LOG_STRING(getGeneratorWaveformName(eWaveform)));
             return false;
         }
@@ -2224,7 +2241,7 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
     // ── 8. k field: only allowed for EXP/LOG (decision: reject otherwise) ──
     if (bHasKField && !bIsExpOrLog) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("GENERATOR: the 4th range field (k) is only valid for EXP/LOG, not");
+                  LOG_STRING(strKw + ": the 4th range field (k) is only valid for EXP/LOG, not");
                   LOG_STRING(getGeneratorWaveformName(eWaveform)));
         return false;
     }
@@ -2254,7 +2271,7 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
     if (eWaveform == GeneratorWaveform::SQUARE && !rangeStep.bIsMacro) {
         if (!rangeStep.bIsInteger || rangeStep.llValue <= 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                      LOG_STRING("GENERATOR: SQUARE's step must be a positive integer (ticks to hold each level):");
+                      LOG_STRING(strKw + ": SQUARE's step must be a positive integer (ticks to hold each level):");
                       LOG_STRING(strStep));
             return false;
         }
@@ -2274,13 +2291,13 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
         if (strWidth == "8") {
             if (!strEndian.empty()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                          LOG_STRING("GENERATOR: HEX_8 does not take an endianness suffix (single byte has none)"));
+                          LOG_STRING(strKw + ": HEX_8 does not take an endianness suffix (single byte has none)"));
                 return false;
             }
             eHexFormat = HexOutputFormat::HEX_8;
         } else if (strEndian.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                      LOG_STRING("GENERATOR: HEX_"); LOG_STRING(strWidth);
+                      LOG_STRING(strKw + ": HEX_"); LOG_STRING(strWidth);
                       LOG_STRING(" requires an endianness suffix (_LE or _BE)"));
             return false;
         } else {
@@ -2304,12 +2321,12 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
     // ── 11. Constant-macro name collision (same rule MATH enforces) ────────
     if (m_sScriptEntries->mapMacros.count(strName)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("GENERATOR ["); LOG_STRING(strName);
+                  LOG_STRING(strKw + " ["); LOG_STRING(strName);
                   LOG_STRING("]: name already used as a constant macro (:=)"));
         return false;
     }
 
-    // ── 12. Emit IR node ─────────────────────────────────────────────────
+    // ── 12. Emit IR node (YIELDGEN reuses GeneratorStatement's fields; uIntervalUs stays 0) ─
     GeneratorStatement stmt;
     stmt.strName        = strName;
     stmt.uIntervalUs    = uIntervalUs;
@@ -2323,11 +2340,17 @@ bool ScriptValidator::m_HandleGeneratorStmt(const ScriptRawLine &sRawLine) noexc
     stmt.eWaveform      = eWaveform;
     stmt.eHexFormat     = eHexFormat;
 
-    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, stmt});
+    if (bYield) {
+        YieldGenStatement yStmt;
+        static_cast<GeneratorStatement &>(yStmt) = stmt;
+        m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, std::move(yStmt)});
+    } else {
+        m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, stmt});
+    }
 
     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-              LOG_STRING("GENERATOR ["); LOG_STRING(strName);
-              LOG_STRING("] every"); LOG_STRING(std::to_string(uIntervalUs)); LOG_STRING("us");
+              LOG_STRING(strKw + " ["); LOG_STRING(strName);
+              LOG_STRING(bYield ? "] on demand" : "] every"); LOG_STRING(bYield ? std::string() : std::to_string(uIntervalUs)); LOG_STRING(bYield ? "" : "us");
               LOG_STRING(bIsArraySource ? "array=[" : "range=[");
               LOG_STRING(bIsArraySource ? (std::to_string(vArrayValues.size()) + " elements") : (strBegin + ":" + strEnd + ":" + strStep));
               LOG_STRING("] waveform=["); LOG_STRING(getGeneratorWaveformName(eWaveform));
@@ -2375,6 +2398,187 @@ bool ScriptValidator::m_HandleKill(const ScriptRawLine &rawLine) noexcept
 } // m_HandleKill()
 
 /*-------------------------------------------------------------------------------
+  YIELDNEXT_STMT handler:   dest ?= $gen.NEXT
+
+  m_isYieldNextStmt() has already confirmed the lexical shape; this only splits
+  out the two identifiers and emits the IR node. Whether <gen> really is the
+  destination of an earlier YIELDGEN is a script-wide check, see
+  m_validateYieldNextUsage().
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleYieldNext(const ScriptRawLine &sRawLine) noexcept
+{
+    auto lineNr = ustring::fmtLineNr(sRawLine.iLineNumber);
+
+    static const std::regex reNext(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\?=\s*\$([A-Za-z_][A-Za-z0-9_]*)\.NEXT\s*$)");
+    std::smatch match;
+    if (!std::regex_match(sRawLine.strContent, match, reNext)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("NEXT: malformed statement, expected 'name ?= $generator.NEXT'"));
+        return false;
+    }
+
+    YieldNextStatement stmt;
+    stmt.strDestName = match[1].str();
+    stmt.strGenName  = match[2].str();
+
+    // The destination is an ordinary "?=" variable macro: same constant-macro
+    // collision rule GENERATOR/MATH enforce for theirs.
+    if (m_sScriptEntries->mapMacros.count(stmt.strDestName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("NEXT [");  LOG_STRING(stmt.strDestName);
+                  LOG_STRING("]: name already used as a constant macro (:=)"));
+        return false;
+    }
+
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, stmt});
+
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+              LOG_STRING("NEXT ["); LOG_STRING(stmt.strGenName);
+              LOG_STRING("] -> ["); LOG_STRING(stmt.strDestName); LOG_STRING("]"));
+
+    return true;
+
+} // m_HandleYieldNext()
+
+/*-------------------------------------------------------------------------------
+  Static check for YIELDGEN's ".NEXT" accessor. Walks the compiled command list
+  in source (textual) order and fails validation when
+
+    1. "dest ?= $name.NEXT" names a macro that is not the destination of a
+       YIELDGEN on an EARLIER line (a typo, a plain macro, an array, a GENERATOR
+       or threaded-command result, a forward reference ...), or
+
+    2. "$name.NEXT" appears anywhere else - inside a PRINT / condition / MATH /
+       FORMAT / plugin-parameter / REPEAT-bound / ... template. ".NEXT" advances
+       state, so it is only allowed as the entire right-hand side of the
+       dedicated statement, where it runs exactly once per execution; embedded
+       in a template it would run once per macro-expansion pass instead.
+
+  Like m_validateKillTargets() this is a textual-order check: it does not
+  simulate IF/GOTO flow, so a YIELDGEN line that is jumped over is caught at run
+  time instead (NEXT then fails the script with a clear message).
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_validateYieldNextUsage() noexcept
+{
+    bool bRetVal = true;
+    std::unordered_set<std::string> setYieldGen; // YIELDGEN destinations seen so far
+
+    static const std::regex nextPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*)\.NEXT(?![A-Za-z0-9_]))");
+
+    // Rejects every "$name.NEXT" still present in a raw $macro template.
+    auto checkField = [&](const std::string &strField, int iLineNumber) {
+        auto itMatch = std::sregex_iterator(strField.begin(), strField.end(), nextPattern);
+        auto itEnd   = std::sregex_iterator();
+
+        for (; itMatch != itEnd; ++itMatch) {
+            auto lineNr = ustring::fmtLineNr(iLineNumber);
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("NEXT [$"); LOG_STRING((*itMatch)[1].str());
+                      LOG_STRING(".NEXT]: only valid as the whole right-hand side of 'name ?= $generator.NEXT'"));
+            gui_notify_error_main(iLineNumber);
+            bRetVal = false;
+        }
+    };
+
+    for (const auto &scriptLine : m_sScriptEntries->vCommands) {
+        std::visit([&](const auto &command) {
+            using T     = std::decay_t<decltype(command)>;
+            auto lineNr = ustring::fmtLineNr(scriptLine.iLineNumber);
+
+            if constexpr (std::is_same_v<T, YieldGenStatement>) {
+                // Its own fields can reference other macros, but never via .NEXT.
+                if (command.bIsArraySource) {
+                    for (const auto &elem : command.vArrayValues) {
+                        checkField(elem.strExpr, scriptLine.iLineNumber);
+                    }
+                } else {
+                    checkField(command.begin.strExpr, scriptLine.iLineNumber);
+                    checkField(command.end.strExpr, scriptLine.iLineNumber);
+                    checkField(command.step.strExpr, scriptLine.iLineNumber);
+                }
+                if (command.bHasK) {
+                    checkField(command.k.strExpr, scriptLine.iLineNumber);
+                }
+                setYieldGen.insert(command.strName);
+            } else if constexpr (std::is_same_v<T, YieldNextStatement>) {
+                if (setYieldGen.find(command.strGenName) == setYieldGen.end()) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("NEXT [$"); LOG_STRING(command.strGenName);
+                              LOG_STRING(".NEXT]: not a volatile macro returned by a YIELDGEN - expected '");
+                              LOG_STRING(command.strGenName);
+                              LOG_STRING(" ?= YIELDGEN ...' on an earlier line"));
+                    gui_notify_error_main(scriptLine.iLineNumber);
+                    bRetVal = false;
+                }
+            } else if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
+                checkField(command.strParams, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, Condition>) {
+                checkField(command.strCondition, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, RepeatTimes>) {
+                checkField(command.begin.strExpr, scriptLine.iLineNumber);
+                checkField(command.end.strExpr, scriptLine.iLineNumber);
+                checkField(command.step.strExpr, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, RepeatUntil>) {
+                checkField(command.strCondition, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, PrintStatement>) {
+                checkField(command.strText, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, VarMacroInit>) {
+                checkField(command.strValueTpl, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, FormatStatement>) {
+                checkField(command.strInputTpl, scriptLine.iLineNumber);
+                checkField(command.strFormatTpl, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, MathStatement>) {
+                checkField(command.strExprTpl, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, StreamStatement>) {
+                for (const auto &field : command.vFields) {
+                    checkField(field.strOffsetTpl, scriptLine.iLineNumber);
+                    checkField(field.strLengthTpl, scriptLine.iLineNumber);
+                    checkField(field.strValueTpl, scriptLine.iLineNumber);
+                }
+            } else if constexpr (std::is_same_v<T, StreamValStatement>) {
+                checkField(command.strSourceTpl, scriptLine.iLineNumber);
+                checkField(command.strByteOffsetTpl, scriptLine.iLineNumber);
+                checkField(command.strBitOffsetTpl, scriptLine.iLineNumber);
+                checkField(command.strValueSizeTpl, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, StreamValArrayStatement>) {
+                checkField(command.strSourceTpl, scriptLine.iLineNumber);
+                for (const auto &field : command.vFields) {
+                    checkField(field.strByteOffsetTpl, scriptLine.iLineNumber);
+                    checkField(field.strBitOffsetTpl, scriptLine.iLineNumber);
+                    checkField(field.strValueSizeTpl, scriptLine.iLineNumber);
+                }
+            } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
+                checkField(command.strLabelTpl, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
+                if (command.bIsArraySource) {
+                    for (const auto &elem : command.vArrayValues) {
+                        checkField(elem.strExpr, scriptLine.iLineNumber);
+                    }
+                } else {
+                    checkField(command.begin.strExpr, scriptLine.iLineNumber);
+                    checkField(command.end.strExpr, scriptLine.iLineNumber);
+                    checkField(command.step.strExpr, scriptLine.iLineNumber);
+                }
+                if (command.bHasK) {
+                    checkField(command.k.strExpr, scriptLine.iLineNumber);
+                }
+            }
+            // Label, RepeatEnd, LoopBreak, LoopContinue, KillStatement carry only
+            // plain identifiers or nothing at all (no $macro templates).
+        },
+                   scriptLine.command);
+    }
+
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR;
+              LOG_STRING("YIELDGEN NEXT usage validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
+
+    return bRetVal;
+
+} // m_validateYieldNextUsage()
+
+/*-------------------------------------------------------------------------------
   Static check for KILL: every target name (of every KILL, however many it lists) must be a volatile macro that has a
   thread/generator running behind it, i.e. the destination of
 
@@ -2390,6 +2594,7 @@ bool ScriptValidator::m_validateKillTargets() noexcept
 {
     bool bRetVal = true;
     std::unordered_set<std::string> setKillable;                       // threaded capture / GENERATOR destinations
+    std::unordered_set<std::string> setYieldGen;                       // YIELDGEN destinations (no thread behind them)
     std::unordered_map<std::string, std::string> mapSequentialCapture; // name -> "PLUGIN.CMD" that already finished
 
     for (const auto &scriptLine : m_sScriptEntries->vCommands) {
@@ -2406,6 +2611,8 @@ bool ScriptValidator::m_validateKillTargets() noexcept
                 }
             } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
                 setKillable.insert(command.strName);
+            } else if constexpr (std::is_same_v<T, YieldGenStatement>) {
+                setYieldGen.insert(command.strName);
             } else if constexpr (std::is_same_v<T, KillStatement>) {
                 // Every listed name is checked (and every bad one reported), so a
                 // script author sees all the problems of a statement in one run.
@@ -2416,7 +2623,11 @@ bool ScriptValidator::m_validateKillTargets() noexcept
                     }
                     bThisLineBad = true;
                     const auto itSeq = mapSequentialCapture.find(strTarget);
-                    if (itSeq != mapSequentialCapture.end()) {
+                    if (setYieldGen.find(strTarget) != setYieldGen.end()) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("KILL ["); LOG_STRING(strTarget);
+                                  LOG_STRING("]: it is returned by a YIELDGEN, which is pull-driven and has no thread - nothing to kill"));
+                    } else if (itSeq != mapSequentialCapture.end()) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                                   LOG_STRING("KILL ["); LOG_STRING(strTarget);
                                   LOG_STRING("]: it is returned by"); LOG_STRING(itSeq->second);
@@ -2550,6 +2761,30 @@ bool ScriptValidator::m_ListStatements() noexcept
                                   LOG_STRING("["); LOG_STRING(oss.str()); LOG_STRING("] hex=[");
                                   LOG_STRING(getHexFormatName(item.eHexFormat)); LOG_STRING("]"));
                     }
+                } else if constexpr (std::is_same_v<T, YieldGenStatement>) {
+                    {
+                        std::ostringstream oss;
+                        if (item.bIsArraySource) {
+                            for (size_t k = 0; k < item.vArrayValues.size(); ++k) {
+                                if (k > 0) {
+                                    oss << ",";
+                                }
+                                oss << item.vArrayValues[k].strExpr;
+                            }
+                        } else {
+                            oss << item.begin.strExpr << ":" << item.end.strExpr << ":" << item.step.strExpr;
+                            if (item.bHasK) {
+                                oss << ":" << item.k.strExpr;
+                            }
+                        }
+                        oss << " | " << getGeneratorWaveformName(item.eWaveform);
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  YIELDGEN:"); LOG_STRING(item.strName);
+                                  LOG_STRING("on demand [");  LOG_STRING(oss.str()); LOG_STRING("] hex=[");
+                                  LOG_STRING(getHexFormatName(item.eHexFormat)); LOG_STRING("]"));
+                    }
+                } else if constexpr (std::is_same_v<T, YieldNextStatement>) {
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("      NEXT:"); LOG_STRING(item.strDestName);
+                              LOG_STRING("<- $"); LOG_STRING(item.strGenName); LOG_STRING(".NEXT"));
                 } else if constexpr (std::is_same_v<T, KillStatement>) {
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("      KILL:"); LOG_STRING(std::to_string(item.vTargetNames.size())); LOG_STRING("target(s), first="); LOG_STRING(item.vTargetNames.front());
                               LOG_STRING("result=["); LOG_STRING(item.strResultName.empty() ? "<none>" : item.strResultName); LOG_STRING("]"));

@@ -410,6 +410,20 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
         std::unordered_map<std::string, GeneratorThreadEntry> m_generatorThreads; // key = destination macro name
         std::mutex m_generatorMutex;
 
+        // -------------------------------------------------------------------------
+        // YIELDGEN state — the pull-driven sibling of the GENERATOR threads above.
+        // Nothing runs in the background: each "name ?= YIELDGEN ..." statement just
+        // (re)creates one YieldGenState (resolved range/array + waveform state, seeded
+        // so that the FIRST "$name.NEXT" returns the first value of the sequence),
+        // and every executed "dest ?= $name.NEXT" advances it by exactly one sample.
+        // Keyed by the YIELDGEN's destination macro name. The type is defined in
+        // uScriptInterpreter.cpp (it embeds the file-local waveform state).
+        // Dropped at the end of the script run, see interpretScript().
+        // -------------------------------------------------------------------------
+        struct YieldGenState;
+        std::unordered_map<std::string, std::shared_ptr<YieldGenState>> m_yieldGens;
+        std::mutex m_yieldGenMutex;
+
         // members initialized in the initialization list
         IniCfgLoader m_IniCfgLoader;
         std::string m_strScriptDir; // directory of the main script — default for ARTEFACTS_PATH
