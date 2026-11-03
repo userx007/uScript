@@ -261,6 +261,7 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
         // -------------------------------------------------------------------------
         void m_setRuntimeVarMacro(const std::string &strName, std::string strValue);
         // Returns {true, value} if found, {false, {}} otherwise.
+        bool m_appendRuntimeVarMacro(const std::string &strName, std::string &strDst);
         std::pair<bool, std::string> m_getRuntimeVarMacro(const std::string &strName);
         mutable std::mutex m_runtimeVarMutex;
 

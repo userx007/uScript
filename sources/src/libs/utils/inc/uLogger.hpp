@@ -279,6 +279,7 @@ struct LogBuffer
                 char buffer[BUFFER_SIZE]{};
                 size_t size           = 0;
                 LogLevel currentLevel = LOG_INFO;
+                bool discard          = false; // level below both thresholds: append()/print() are no-ops
         };
 
         // Returns the calling thread's private slot (created on first access).
@@ -297,6 +298,7 @@ struct LogBuffer
             s.size         = 0;
             s.buffer[0]    = '\0';
             s.currentLevel = LOG_INFO;
+            s.discard      = false;
         }
 
         /**
@@ -317,7 +319,7 @@ struct LogBuffer
         size_t appendSafe(const char *pstrFormat, Args &&...args) noexcept
         {
             auto &s = slot();
-            if (s.size >= BUFFER_SIZE) {
+            if (s.discard || s.size >= BUFFER_SIZE) {
                 return 0;
             }
 
@@ -375,7 +377,7 @@ struct LogBuffer
         void append(std::string_view text_view) noexcept
         {
             auto &s = slot();
-            if (text_view.empty() || s.size + 2 >= BUFFER_SIZE) {
+            if (s.discard || text_view.empty() || s.size + 2 >= BUFFER_SIZE) {
                 return;
             }
 
@@ -623,7 +625,7 @@ struct LogBuffer
                 return;
             }
 
-            if (s.size == 0) {
+            if (s.size == 0 || s.discard) {
                 reset();
                 return;
             }
@@ -680,7 +682,12 @@ struct LogBuffer
          */
         void setLevel(LogLevel eLevel) noexcept
         {
-            slot().currentLevel = eLevel;
+            auto &s        = slot();
+            s.currentLevel = eLevel;
+            s.discard      = (eLevel != LOG_EMPTY) &&
+                        (eLevel < consoleThreshold.load(std::memory_order_relaxed)) &&
+                        !(fileLoggingEnabled.load(std::memory_order_relaxed) &&
+                          eLevel >= fileThreshold.load(std::memory_order_relaxed));
         }
 
         /**

@@ -567,6 +567,17 @@ void ScriptInterpreter::m_setRuntimeVarMacro(const std::string &strName, std::st
     uvolatile::VolatileMacroStore::instance().set(strName, std::move(strValue));
 } /* m_setRuntimeVarMacro() */
 
+bool ScriptInterpreter::m_appendRuntimeVarMacro(const std::string &strName, std::string &strDst)
+{
+    std::lock_guard<std::mutex> lock(m_runtimeVarMutex);
+    auto it = m_RuntimeVarMacros.find(strName);
+    if (it == m_RuntimeVarMacros.end()) {
+        return false;
+    }
+    strDst.append(it->second); // appended under the lock: no intermediate std::string copy
+    return true;
+}
+
 std::pair<bool, std::string> ScriptInterpreter::m_getRuntimeVarMacro(const std::string &strName)
 {
     std::lock_guard<std::mutex> lock(m_runtimeVarMutex);
@@ -1384,11 +1395,10 @@ bool ScriptInterpreter::executeCmd(const std::string &strCommand)
 
 bool ScriptInterpreter::m_evaluateCondition(const std::string &strCondition, bool &bResult) noexcept
 {
-    std::string strExpr = strCondition;
-    ustring::stripPrefix(strExpr, kEvalPrefix);
-
-    if (strExpr.size() < strCondition.size()) {
+    if (strCondition.size() >= kEvalPrefix.size() &&
+        strCondition.compare(0, kEvalPrefix.size(), kEvalPrefix.data(), kEvalPrefix.size()) == 0) {
         // Prefix was present — delegate to the typed evaluator.
+        const std::string strExpr = strCondition.substr(kEvalPrefix.size());
         LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("EVAL expression:"); LOG_STRING(strExpr));
         return m_evalExprEvaluator.evaluate(strExpr, bResult);
     }
@@ -1711,189 +1721,176 @@ bool ScriptInterpreter::m_enablePlugins() noexcept
  * Traverse the command list in reverse to resolve macros using their most recently assigned values.
 -------------------------------------------------------------------------------*/
 
+namespace
+{
+    inline bool isIdStart(char c) noexcept { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'; }
+    inline bool isIdChar(char c) noexcept { return isIdStart(c) || (c >= '0' && c <= '9'); }
+    inline bool isDigit(char c) noexcept { return c >= '0' && c <= '9'; }
+
+    // One "$NAME[.suffix]" reference. Hand-written equivalent of the former std::regex
+    //   \$([A-Za-z_][A-Za-z0-9_]*)(?:\.(?:\$([A-Za-z_][A-Za-z0-9_]*)|(SIZE)(?![A-Za-z0-9_])|([0-9]+)(?![A-Za-z0-9_])))?
+    // with the same alternative order and the same lookaheads (a suffix that fails its
+    // lookahead simply isn't part of the match, leaving the bare "$NAME").
+    struct MacroRef
+    {
+            enum class Kind { BARE, SIZE, VAR_INDEX, CONST_INDEX };
+            size_t begin = 0, end = 0; // [begin, end) of the whole reference, '$' included
+            std::string_view name;
+            std::string_view sub; // index macro name (VAR_INDEX) or digits (CONST_INDEX)
+            Kind kind = Kind::BARE;
+    };
+
+    bool findMacroRef(const std::string &s, size_t from, MacroRef &out) noexcept
+    {
+        const size_t n = s.size();
+        for (size_t i = s.find('$', from); i != std::string::npos; i = s.find('$', i + 1)) {
+            if (i + 1 >= n || !isIdStart(s[i + 1])) {
+                continue;
+            }
+            size_t p = i + 2;
+            while (p < n && isIdChar(s[p])) {
+                ++p;
+            }
+            out.begin = i;
+            out.name  = std::string_view(s).substr(i + 1, p - (i + 1));
+            out.kind  = MacroRef::Kind::BARE;
+            out.sub   = {};
+            out.end   = p;
+
+            if (p < n && s[p] == '.' && p + 1 < n) {
+                const size_t q = p + 1;
+                if (s[q] == '$' && q + 1 < n && isIdStart(s[q + 1])) {
+                    size_t r = q + 2;
+                    while (r < n && isIdChar(s[r])) {
+                        ++r;
+                    }
+                    out.kind = MacroRef::Kind::VAR_INDEX;
+                    out.sub  = std::string_view(s).substr(q + 1, r - (q + 1));
+                    out.end  = r;
+                } else if (s.compare(q, 4, "SIZE") == 0 && !(q + 4 < n && isIdChar(s[q + 4]))) {
+                    out.kind = MacroRef::Kind::SIZE;
+                    out.end  = q + 4;
+                } else if (isDigit(s[q])) {
+                    size_t r = q + 1;
+                    while (r < n && isDigit(s[r])) {
+                        ++r;
+                    }
+                    if (!(r < n && isIdChar(s[r]))) {
+                        out.kind = MacroRef::Kind::CONST_INDEX;
+                        out.sub  = std::string_view(s).substr(q, r - q);
+                        out.end  = r;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+} // namespace
+
 bool ScriptInterpreter::m_replaceVariableMacros(std::string &strInput, bool bDeferRuntimeVarMacros)
 {
-    /*
-    Extended pattern — four forms:
-       $NAME.$indexmacro  → array element access, variable index   (groups 1=NAME  2=indexmacro)
-       $NAME.N            → array element access, constant index   (groups 1=NAME  4=N)
-       $NAME.SIZE         → array size access                      (groups 1=NAME  3="SIZE")
-       $NAME              → regular macro lookup   (group  1=NAME, groups 2/3/4 empty)
+    // Fast path: nothing to expand (most PRINT texts, many plugin parameter strings).
+    if (strInput.find('$') == std::string::npos) {
+        return true;
+    }
 
-     The \.\$ in the optional suffix means a literal dot followed by a literal
-     dollar sign, ensuring that $NAME.$indexmacro is consumed as a single match
-     rather than two consecutive matches. SIZE is matched as a literal
-     keyword (case-sensitive, upper-case) alongside the $indexmacro alternative
-     so that $NAME.SIZE is likewise consumed as a single match. The constant
-     index alternative (group 4) is a plain run of decimal digits, guarded by
-     the same kind of negative lookahead as SIZE so that "$NAME.12abc" is not
-     mis-consumed as index "12abc".
-
-     Returns false only when a CONSTANT array index (the $NAME.N form) is out
-     of range: that is a script-authoring error the author could have caught
-     before running (unlike a variable index, whose value is only known at
-     runtime), so it is fatal — logged and execution is aborted. A variable
-     index that is out of range remains non-fatal: it is logged and the
-     macro reference is left unexpanded so execution can continue.
-    */
-
-    static const std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*)(?:\.(?:\$([A-Za-z_][A-Za-z0-9_]*)|(SIZE)(?![A-Za-z0-9_])|([0-9]+)(?![A-Za-z0-9_])))?)");
-    std::smatch match;
-
-    /* Helper: resolve a single bare macro name through all scope tiers.
-      Returns the resolved string, or an empty optional if not found. */
-
-    auto resolveName = [&](const std::string &name) -> std::pair<bool, std::string> {
-        // Loop-scoped macros — innermost first
-        for (auto scopeIt = m_loopStateStack.rbegin();
-             scopeIt != m_loopStateStack.rend(); ++scopeIt) {
+    // Resolve a bare macro name through all scope tiers (loop scopes innermost-first,
+    // runtime "?=" map, shell macros), APPENDING the value to dst. Returns false when
+    // the name is unknown (dst untouched).
+    auto resolveInto = [&](const std::string &name, std::string &dst) -> bool {
+        for (auto scopeIt = m_loopStateStack.rbegin(); scopeIt != m_loopStateStack.rend(); ++scopeIt) {
             auto loopIt = scopeIt->mapLoopMacros.find(name);
             if (loopIt != scopeIt->mapLoopMacros.end()) {
-                return {true, loopIt->second};
+                dst.append(loopIt->second);
+                return true;
             }
         }
-
-        // Script-level variable macros — O(1) runtime map.
-        // Holds the value that was most recently EXECUTED, not the value that
-        // appears last in the IR.  This is correct when the same name is used
-        // on both sides of an assignment (e.g. score ?= CORE.MATH $score + 10).
-        // Goes through m_getRuntimeVarMacro() because a threaded "VAL ?=
-        // PLUGIN.CMD args &" background thread may be updating this same map
-        // concurrently - see m_runtimeVarMutex.
-        //
-        // Skipped entirely when bDeferRuntimeVarMacros is set: the caller (a
-        // *.CYCLIC dispatch, see m_executeCommand()) wants this tier's "$NAME"
-        // references left as literal text instead of substituted here, so that
-        // ucmdexec::generic_send_cyclic() can re-resolve them itself from
-        // uvolatile::VolatileMacroStore - once up front (cached mode) or fresh
-        // on every tick (un-cached mode). Falling through leaves `found` false
-        // below, which appends match[0] (the untouched "$NAME") to the result -
-        // exactly the same "leave unexpanded" path already used for a name that
-        // simply isn't resolvable yet.
-        if (!bDeferRuntimeVarMacros) {
-            auto [bFound, strValue] = m_getRuntimeVarMacro(name);
-            if (bFound) {
-                return {true, std::move(strValue)};
-            }
+        // Skipped when deferring (*.CYCLIC dispatch): see the flag's doc comment.
+        if (!bDeferRuntimeVarMacros && m_appendRuntimeVarMacro(name, dst)) {
+            return true;
         }
-
-        // Shell macros
-        {
-            auto shellIt = m_ShellVarMacros.find(name);
-            if (shellIt != m_ShellVarMacros.end()) {
-                return {true, shellIt->second};
-            }
+        auto shellIt = m_ShellVarMacros.find(name);
+        if (shellIt != m_ShellVarMacros.end()) {
+            dst.append(shellIt->second);
+            return true;
         }
-        return {false, {}};
+        return false;
     };
+
+    auto logRange = [&](const char *what, const std::string &macroName, const std::string &idx, size_t sz) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("Array ["); LOG_STRING(macroName);
+                  LOG_STRING(what); LOG_STRING(idx);
+                  LOG_STRING("out of range (size="); LOG_STRING(std::to_string(sz)); LOG_STRING(")"));
+    };
+
+    std::string result;
+    std::string strIdxVal; // scratch for $arr.$idx
 
     bool replaced = true;
     while (replaced) {
         replaced = false;
-        std::string result;
-        result.reserve(strInput.size());
-        std::string::const_iterator searchStart = strInput.cbegin();
+        result.clear();
+        result.reserve(strInput.size() + 16);
 
-        while (std::regex_search(searchStart, strInput.cend(), match, macroPattern)) {
-            result.append(match.prefix());
+        size_t pos = 0;
+        MacroRef ref;
+        while (findMacroRef(strInput, pos, ref)) {
+            result.append(strInput, pos, ref.begin - pos);
+            const std::string macroName(ref.name);
+            bool found = false;
 
-            const std::string macroName  = match[1].str();
-            const bool hasIndex          = match[2].matched;
-            const bool hasSize           = match[3].matched;
-            const bool hasConstIndex     = match[4].matched;
-            const std::string indexName  = hasIndex ? match[2].str() : "";
-            const std::string constIndex = hasConstIndex ? match[4].str() : "";
+            const auto arrIt  = m_sScriptEntries->mapArrayMacros.find(macroName);
+            const bool bArray = arrIt != m_sScriptEntries->mapArrayMacros.end();
 
-            bool found                   = false;
-
-            if (hasSize) {
-                // Array size access: $macroName.SIZE ----
-                auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
-                if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
+            switch (ref.kind) {
+            case MacroRef::Kind::SIZE:
+                if (bArray) {
                     result.append(std::to_string(arrIt->second.size()));
-                    found    = true;
-                    replaced = true;
-                } else {
-                    // macroName is NOT an array — resolve it as a regular macro and
-                    // re-emit the .SIZE suffix literally so it is not silently dropped.
-                    auto [nameFound, nameVal] = resolveName(macroName);
-                    if (nameFound) {
-                        result.append(nameVal);
-                        result.append(".SIZE");
-                        found    = true;
-                        replaced = true;
-                    }
-                    // else: leave the full $name.SIZE unexpanded
+                    found = true;
+                } else if (resolveInto(macroName, result)) { // not an array: keep the suffix literally
+                    result.append(".SIZE");
+                    found = true;
                 }
-            } else if (hasIndex) {
-                // Array element access: $macroName.$indexName ----
-                auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
-                if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
+                break;
 
-                    // Resolve the index macro to a numeric string
-                    auto [idxFound, idxVal] = resolveName(indexName);
-
-                    if (idxFound) {
+            case MacroRef::Kind::VAR_INDEX:
+                if (bArray) {
+                    strIdxVal.clear();
+                    if (resolveInto(std::string(ref.sub), strIdxVal)) {
                         try {
-                            size_t idx = static_cast<size_t>(std::stoull(idxVal));
+                            const size_t idx = static_cast<size_t>(std::stoull(strIdxVal));
                             if (idx < arrIt->second.size()) {
                                 result.append(arrIt->second[idx]);
-                                found    = true;
-                                replaced = true;
+                                found = true;
                             } else {
-                                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                          LOG_STRING("Array ["); LOG_STRING(macroName);
-                                          LOG_STRING("] index"); LOG_STRING(idxVal);
-                                          LOG_STRING("out of range (size=");
-                                          LOG_STRING(std::to_string(arrIt->second.size())); LOG_STRING(")"));
-                                // Leave unexpanded — do not crash
+                                logRange("] index", macroName, strIdxVal, arrIt->second.size()); // non-fatal
                             }
                         } catch (...) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR;
                                       LOG_STRING("Array ["); LOG_STRING(macroName);
-                                      LOG_STRING("] non-numeric index:"); LOG_STRING(idxVal));
-                            // Leave unexpanded
+                                      LOG_STRING("] non-numeric index:"); LOG_STRING(strIdxVal));
                         }
                     }
-                    // Index macro not yet resolved — leave unexpanded, next pass will retry
-                } else {
-
-                    // macroName is NOT an array — resolve it as a regular macro and
-                    // re-emit the .$indexName suffix literally so it is not silently dropped.
-                    auto [nameFound, nameVal] = resolveName(macroName);
-                    if (nameFound) {
-                        result.append(nameVal);
-                        result.append(".$");
-                        result.append(indexName);
-                        found    = true;
-                        replaced = true;
-                    }
-                    // else: leave the full $name.$index unexpanded
+                } else if (resolveInto(macroName, result)) {
+                    result.append(".$");
+                    result.append(ref.sub);
+                    found = true;
                 }
-            } else if (hasConstIndex) {
-                // Array element access, CONSTANT index: $macroName.N ----
-                auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
-                if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
+                break;
 
-                    // constIndex is guaranteed all-digits by the regex, but a
-                    // huge literal (more digits than size_t can hold) can still
-                    // make stoull throw — treated the same as out-of-range.
+            case MacroRef::Kind::CONST_INDEX:
+                if (bArray) {
+                    const std::string constIndex(ref.sub);
                     try {
-                        size_t idx = static_cast<size_t>(std::stoull(constIndex));
+                        const size_t idx = static_cast<size_t>(std::stoull(constIndex));
                         if (idx < arrIt->second.size()) {
                             result.append(arrIt->second[idx]);
-                            found    = true;
-                            replaced = true;
+                            found = true;
                         } else {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                      LOG_STRING("Array ["); LOG_STRING(macroName);
-                                      LOG_STRING("] constant index"); LOG_STRING(constIndex);
-                                      LOG_STRING("out of range (size=");
-                                      LOG_STRING(std::to_string(arrIt->second.size())); LOG_STRING(")"));
-                            // Fatal: a constant index is known at script-authoring
-                            // time, so an out-of-range one is a script error —
-                            // stop execution rather than silently continuing.
-                            return false;
+                            logRange("] constant index", macroName, constIndex, arrIt->second.size());
+                            return false; // fatal: known at authoring time
                         }
                     } catch (...) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -1901,34 +1898,15 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string &strInput, bool bDef
                                   LOG_STRING("] invalid constant index:"); LOG_STRING(constIndex));
                         return false;
                     }
-                } else {
-
-                    // macroName is NOT an array — resolve it as a regular macro and
-                    // re-emit the .N suffix literally so it is not silently dropped.
-                    auto [nameFound, nameVal] = resolveName(macroName);
-                    if (nameFound) {
-                        result.append(nameVal);
-                        result.append(".");
-                        result.append(constIndex);
-                        found    = true;
-                        replaced = true;
-                    }
-                    // else: leave the full $name.N unexpanded
+                } else if (resolveInto(macroName, result)) {
+                    result.push_back('.');
+                    result.append(ref.sub);
+                    found = true;
                 }
-            } else {
-                // Regular macro lookup — bare $macroName, no .SIZE / .$index / .N suffix.
-                //
-                // If macroName is a declared ARRAY_MACRO, expand the whole array in one
-                // shot into its CYCLIC-grammar form: elements were stored (see
-                // uScriptValidator's ARRAY_MACRO handler) exactly as they appeared between
-                // the commas of "NAME [= elem1, elem2, ...", so re-joining them with ", "
-                // reproduces that same comma-separated list — which is precisely what
-                // ucmdexec::parseCyclicArray() (see uCommandExec.hpp) expects for a
-                // "PLUGIN.CYCLIC $array [&]" call. Element-wise access ($name.$idx /
-                // .SIZE / .N, handled above) still works exactly as before; this is only
-                // reached when the array's bare name appears with no such suffix.
-                auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
-                if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
+                break;
+
+            case MacroRef::Kind::BARE:
+                if (bArray) { // whole array in CYCLIC grammar: "e1, e2, ..."
                     const auto &vElements = arrIt->second;
                     for (size_t i = 0; i < vElements.size(); ++i) {
                         if (i > 0) {
@@ -1936,25 +1914,27 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string &strInput, bool bDef
                         }
                         result.append(vElements[i]);
                     }
-                    found    = true;
-                    replaced = true;
+                    found = true;
                 } else {
-                    auto [nameFound, nameVal] = resolveName(macroName);
-                    if (nameFound) {
-                        result.append(nameVal);
-                        found    = true;
-                        replaced = true;
-                    }
+                    found = resolveInto(macroName, result);
                 }
+                break;
             }
 
-            if (!found) {
-                result.append(match[0]); // leave unexpanded
+            if (found) {
+                replaced = true;
+            } else {
+                result.append(strInput, ref.begin, ref.end - ref.begin); // leave unexpanded
             }
-            searchStart = match.suffix().first;
+            pos = ref.end;
         }
-        result.append(searchStart, strInput.cend());
-        strInput = result;
+        result.append(strInput, pos, std::string::npos);
+        strInput.swap(result);
+
+        // A pass that produced no '$' cannot expand anything further.
+        if (strInput.find('$') == std::string::npos) {
+            break;
+        }
     }
 
     return true;
@@ -2289,11 +2269,35 @@ void ScriptInterpreter::m_stopAllGenerators() noexcept
   caller's unconditional ++iIndex lands at the correct body-start address.
 -------------------------------------------------------------------------------*/
 
+namespace
+{
+    // "NNNN:" prefix formatted only if a log line actually asks for it (data()): the
+    // happy path of most statements never touches it, so no snprintf per command.
+    class LazyLineNr
+    {
+        public:
+            explicit LazyLineNr(int iN) noexcept : m_iN(iN) {}
+            const char *data() const noexcept
+            {
+                if (!m_bDone) {
+                    std::snprintf(m_buf, sizeof(m_buf), "%04d:", m_iN);
+                    m_bDone = true;
+                }
+                return m_buf;
+            }
+
+        private:
+            int m_iN;
+            mutable bool m_bDone = false;
+            mutable char m_buf[16];
+    };
+} // namespace
+
 bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size_t &iIndex) noexcept
 {
     bool bRetVal          = true;
     bool bIsPluginCommand = false;
-    auto lineNr           = ustring::fmtLineNr(sData.iLineNumber);
+    LazyLineNr lineNr(sData.iLineNumber);
     const int lineNo      = sData.iLineNumber; // captured by value into the visit lambda below
 
     // Notify the GUI front-end which main-script line is about to execute.
@@ -2945,9 +2949,8 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
 
                 // If the expanded value starts with "EVAL " delegate to the
                 // unified condition evaluator and store "TRUE" or "FALSE".
-                std::string strEvalCheck = strExpanded;
-                ustring::stripPrefix(strEvalCheck, kEvalPrefix);
-                if (strEvalCheck.size() < strExpanded.size()) {
+                if (strExpanded.size() >= kEvalPrefix.size() &&
+                    strExpanded.compare(0, kEvalPrefix.size(), kEvalPrefix.data(), kEvalPrefix.size()) == 0) {
                     bool bEvalResult = false;
                     if (m_evaluateCondition(strExpanded, bEvalResult)) {
                         strExpanded = bEvalResult ? "TRUE" : "FALSE";
@@ -2966,11 +2969,11 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                     }
                 }
 
-                m_setRuntimeVarMacro(command.strName, strExpanded);
                 LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING("VAR_INIT ["); LOG_STRING(command.strName);
                           LOG_STRING("]->[");
                           LOG_STRING(strExpanded); LOG_STRING("]"));
+                m_setRuntimeVarMacro(command.strName, std::move(strExpanded));
             }
 
             /*-----------------------------------------------------------------
@@ -3137,9 +3140,9 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                 // print cleanly (5, not 5.000000) and precision is preserved.
                 std::string strResult;
                 {
-                    std::ostringstream oss;
-                    oss << std::defaultfloat << std::setprecision(15) << dResult;
-                    strResult = oss.str();
+                    char buf[40]; // "%.15g" == defaultfloat + setprecision(15)
+                    const int n = std::snprintf(buf, sizeof(buf), "%.15g", dResult);
+                    strResult.assign(buf, n > 0 ? static_cast<size_t>(n) : 0);
                 }
 
                 // | HEX post-processor: convert the result to a fixed-width hex string.
