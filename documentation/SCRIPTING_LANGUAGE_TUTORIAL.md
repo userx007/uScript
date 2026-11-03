@@ -27,7 +27,7 @@
 | [Step 17](#step-17--bitstream--bytestream) | BITSTREAM / BYTESTREAM — bit-packed frames |
 | [Step 18](#step-18--bitstreamval--bytestreamval) | BITSTREAMVAL / BYTESTREAMVAL — read fields back out |
 | [Step 19](#step-19--bitstreamval--bytestreamval-array-form) | BITSTREAMVAL / BYTESTREAMVAL array form — read several fields at once |
-| [Step 20](#step-20--generator) | GENERATOR — a background signal generator |
+| [Step 20](#step-20--generator) | GENERATOR — a background signal generator (and its pull-driven sibling YIELDGEN) |
 | [Step 21](#step-21--kill) | KILL — stop a background command or generator |
 | [Step 22](#step-22--include) | INCLUDE — split a script into several files |
 | [Final](#comprehensive-example) | Comprehensive example |
@@ -1383,6 +1383,69 @@ A generator keeps running until the script ends — or until you stop it with `K
 **Things that abort the script:** an interval of 0, a non-numeric range value, a 4th field
 on anything other than `EXP`/`LOG`, `SINE`/`SQUARE`/`EXP`/`LOG` with a list or array source, a `SQUARE` step
 that is not a positive whole number, or a destination name that is already a constant macro.
+
+### YIELDGEN — a generator that moves only when you ask
+
+A `GENERATOR` ticks on its own clock, whether or not the script looks at it. Sometimes you want
+the opposite: *the script* decides when the next value is produced — one value per loop
+iteration, one per received frame, one per test case. That is `YIELDGEN`. It takes the same
+range / list / `$array`, `WAVEFORM` and `HEX…` fields as `GENERATOR`, but **no interval**, and it
+starts **no thread**:
+
+```
+name  ?=  YIELDGEN  <begin>:<end>:<step>  |  <WAVEFORM>  [| <ENCODING>]
+dest  ?=  $name.NEXT
+```
+
+```
+# step_20_yieldgen.script
+level  ?=  YIELDGEN  0:100:25  |  TRIANGLE
+
+i  ?=  REPEAT  loop  0, 7
+    v  ?=  $level.NEXT
+    PRINT  call $i -> $v
+END_REPEAT  loop
+```
+
+```
+call 0 -> 0
+call 1 -> 25
+call 2 -> 50
+call 3 -> 75
+call 4 -> 100
+call 5 -> 75
+call 6 -> 50
+```
+
+How it differs from `GENERATOR`, and what to remember:
+
+- **Nothing happens between `NEXT`s.** The generator waits at its current position. Pause the
+  script for an hour and the next `NEXT` still returns the very next value.
+- **The first `NEXT` gives the first value** (`0` above, or element 0 of a list). A `GENERATOR`'s
+  first tick is already one step in. (`SINE` starts at its phase-0 value — the middle of the range.)
+- **`$level` is the current value.** Every `NEXT` stores the sample in `v` *and* in `$level`, so
+  `$level` lets you re-read the last value without advancing. Before the first `NEXT` it is empty.
+- **`SQUARE`:** the step is how many `NEXT` calls each level lasts; `0:1:2 | SQUARE` gives
+  `0, 0, 1, 1, 0, 0 …`.
+- **Declare it outside the loop.** Running the `YIELDGEN` line again restarts the sequence, so a
+  declaration inside a loop would return the first value every time.
+- **`.NEXT` is a statement of its own.** Write `v ?= $level.NEXT` and then use `$v`. You cannot
+  write `PRINT $level.NEXT` or `x ?= $level.NEXT + 1`, because `NEXT` changes state and must run
+  exactly once; the validator rejects those, and also `.NEXT` on any macro that is not a
+  `YIELDGEN`, or one declared only *later* in the script.
+- **No `KILL`.** There is no thread to stop, so `KILL level` is a validation error.
+
+```
+# A hex payload that counts up one byte per frame, wrapping at 255
+ctr  ?=  YIELDGEN  0:255:1  |  SAWTOOTH  |  HEX_8
+f    ?=  REPEAT  frames  0, 3
+    b  ?=  $ctr.NEXT
+    PRINT  frame $f payload $b          # 00, 01, 02
+END_REPEAT  frames
+```
+
+At run time `NEXT` aborts the script if the `YIELDGEN` line was never executed (for example it was
+jumped over with `GOTO`).
 
 ---
 

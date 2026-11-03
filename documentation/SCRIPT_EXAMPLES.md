@@ -166,6 +166,56 @@ END_REPEAT  sweep
 
 ---
 
+## Core Script — `YIELDGEN` and `NEXT`
+
+The pull-driven sibling of `GENERATOR`: same sources, waveforms and encodings, but no interval
+and no thread. A sample is computed only when the script runs `dest ?= $name.NEXT`.
+
+```
+# Declare once, OUTSIDE any loop (re-running the line restarts the sequence)
+lvl   ?=  YIELDGEN  0:100:25   |  TRIANGLE  |  HEX_16_LE
+ramp  ?=  YIELDGEN  0:10:4     |  SAWTOOTH                  # 0, 4, 8, 0, 4, 8 ...
+down  ?=  YIELDGEN  10:0:4     |  SAWTOOTH                  # reverse range: 10, 6, 2, 10 ...
+gpio  ?=  YIELDGEN  0:1:2      |  SQUARE                    # step = NEXTs per level: 0,0,1,1,0,0
+ang   ?=  YIELDGEN  0:100:90   |  SINE                      # 50, 100, 50, 0, 50 ... (starts at phase 0)
+dice  ?=  YIELDGEN  1,2,3,4,5,6 |  RANDOM                   # shuffled: each element once per round
+
+i  ?=  REPEAT  loop  0, 6
+    a  ?=  $ramp.NEXT
+    b  ?=  $lvl.NEXT
+    PRINT  i=$i ramp=$a level=$b current=$lvl               # $lvl re-reads the last value
+END_REPEAT  loop
+```
+
+Typical use — one value per loop iteration, e.g. a rolling test value:
+
+```
+LIST  [=  10,20,30
+seq   ?=  YIELDGEN  $LIST  |  SAWTOOTH       # array macro source (numeric elements), in order, wrapping
+n     ?=  REPEAT  tx  0, 5
+    b  ?=  $seq.NEXT
+    PRINT  frame $n value $b                  # 10 20 30 10 20
+END_REPEAT  tx
+```
+
+### Things `YIELDGEN` / `NEXT` reject
+
+```
+g  ?=  YIELDGEN  10 ms  0:10:1 | SAWTOOTH     # GENERATOR-style interval is not allowed
+x  ?=  $nogen.NEXT                            # not the destination of an earlier YIELDGEN
+x  ?=  $g.NEXT                                # ... or declared only on a LATER line
+PRINT  v=$g.NEXT                              # .NEXT is only valid as the whole RHS of 'dest ?= $g.NEXT'
+y  ?=  $g.NEXT + 1                            # ditto
+m  ?=  5
+x  ?=  $m.NEXT                                # m is a plain macro
+KILL  g                                       # no thread behind a YIELDGEN, nothing to kill
+```
+
+`NEXT` also aborts the script at run time if its `YIELDGEN` line was never executed (jumped
+over by a `GOTO`).
+
+---
+
 ## Core Script — `KILL`
 
 ### Stopping a background command or generator
@@ -209,6 +259,7 @@ KILL                          # missing target
 ok  ?=  KILL  UART.CYCLIC     # a command, not a volatile macro
 KILL  UART:2.CMD              # ditto, instanced
 KILL  never_started           # never launched with '&' or GENERATOR on an earlier line
+KILL  gen_pull                # destination of an earlier 'gen_pull ?= YIELDGEN ...': no thread to kill
 
 # launched WITHOUT '&' — already finished, nothing to kill
 val  ?=  UART.CMD  <

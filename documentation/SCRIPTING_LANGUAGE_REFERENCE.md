@@ -1040,6 +1040,9 @@ exactly two things can be killed:
 | `name  ?=  PLUGIN.COMMAND  args  &` | A **threaded capture**: the trailing ` &` launches the command in its own thread, which re-dispatches it in a loop and refreshes `$name` after every successful iteration (e.g. `retval ?= UART.CYCLIC 100:> H'AABBCCDD' &`; see [`CYCLIC`](#cyclic)) |
 | `name  ?=  GENERATOR  …` | A native [**generator**](#89-generator) thread that writes a new sample into `$name` on every tick |
 
+(A [`YIELDGEN`](#811-yieldgen--next) is deliberately **not** in this table: it has no thread, so
+`KILL` on its name is a validation error.)
+
 **The target is always the macro name — never the command.** To be able to
 kill a background command, launch it with a capture destination and hand that
 same name to `KILL`:
@@ -1738,7 +1741,10 @@ by the runtime resolver.
 
 A macro written by a background thread — the destination of a threaded
 `name ?= PLUGIN.CMD … &` or of a [`GENERATOR`](#89-generator) — lives in tier 2
-(script-level variable macros) like any other `?=` result. Reads and writes are
+(script-level variable macros) like any other `?=` result. The destination of a
+[`YIELDGEN`](#811-yieldgen--next) is also tier 2 and also written through the volatile-macro
+store, but nothing runs behind it: it changes only when the script executes `$name.NEXT`, so it
+is not a background-written macro in the thread sense (and `KILL` does not apply to it). Reads and writes are
 synchronised, so `$name` can be used from the main script while the thread keeps
 updating it; each expansion sees the value written most recently. The one
 exception is a `*.CYCLIC` dispatch: its `$volatile` references are intentionally

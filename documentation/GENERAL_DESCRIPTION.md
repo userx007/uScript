@@ -264,6 +264,7 @@ The **Core Script Interpreter** is the main automation engine. It reads a text s
 | Bit/byte extraction (array) | `name [= hex_source \| BITSTREAMVAL bit_off1:size1 ...` / `BYTESTREAMVAL byte_off1:bit_off1:size1 ...` | Same as above, but read one-or-more fields in a single statement into an array macro |
 | Breakpoint | `BREAKPOINT [label]` | Pause and wait for operator input |
 | Generator | `name ?= GENERATOR count unit begin:end:step[:k] \| WAVEFORM [\| HEX…]` (or an element list / `$array` instead of the range) | Start a background signal generator (`SAWTOOTH`/`LINEAR`, `TRIANGLE`, `SINE`, `SQUARE`, `EXP`, `LOG`, `RANDOM`) that writes a new value into `$name` every tick; re-running it for the same name restarts it |
+| Yield generator | `name ?= YIELDGEN begin:end:step[:k] \| WAVEFORM [\| HEX…]` (or an element list / `$array` instead of the range), then `dest ?= $name.NEXT` | Pull-driven sibling of `GENERATOR`: same sources, waveforms and encodings, but no interval and no thread. Each `$name.NEXT` computes exactly one sample (the first one is the first value of the sequence), stores it in `dest` and in `$name`, and parks there until the next `NEXT`. `.NEXT` is valid only as the whole right-hand side of that statement and only on a `YIELDGEN` destination declared earlier; re-running the `YIELDGEN` line restarts the sequence; `KILL` does not apply |
 | Kill | `KILL name` / `result ?= KILL name` | Stop the background thread or generator that keeps the volatile macro `name` alive (`name ?= PLUGIN.CMD args &` or `name ?= GENERATOR …`); `result` receives the number of threads stopped. The only way to stop one early — there is no `GENERATOR STOP` / `STOP ALL` |
 
 See [`SCRIPTING_LANGUAGE_REFERENCE.md`](SCRIPTING_LANGUAGE_REFERENCE.md) for the complete, authoritative syntax of every native statement, macro form, and validation rule.
@@ -554,6 +555,7 @@ The validator performs full static analysis including: GOTO/LABEL forward-only c
 - A **`SkipReason` enum** (`NONE`, `GOTO`, `CONTINUE_LOOP`, `BREAK_LOOP`) alongside `m_strSkipUntilLabel` to distinguish which node type should clear the active skip, preventing GOTO labels from accidentally clearing a BREAK skip and vice versa.
 - A **runtime variable-macro map** (`unordered_map<string, string>`) holding the most recently *executed* value of every `?=` macro. It is guarded by a mutex because background threads (threaded captures, `GENERATOR`) write to it concurrently with the main thread.
 - **Background-thread tables** — `std::jthread`s for `&` commands (one per plugin instance) and for generators (one per destination name, restart-on-collision), stopped by `KILL` or joined automatically at the end of the script.
+- A **`YIELDGEN` state table** (`unordered_map<string, shared_ptr<YieldGenState>>`, one entry per destination name, mutex-guarded). There is no thread: each entry holds the resolved range or array plus the waveform state, seeded one step behind the start so the first `NEXT` returns the first value, and it is advanced only by an executed `$name.NEXT`. The waveform maths is the same code `GENERATOR` uses. Entries are created (or replaced) by the `YIELDGEN` statement, dropped if a `GENERATOR` takes over the name, and cleared when the script run ends. Dry-run passes never create or advance them.
 - A **loop-anchored `DELAY` schedule** per `REPEAT`, so `DELAY` inside a loop compensates for the time spent elsewhere in the iteration (no cumulative drift).
 - An **O(1) plugin command set index** (`unordered_map<string, unordered_set<string>>`) built once in `m_crossCheckCommands`.
 
@@ -591,7 +593,9 @@ The interpreter also exposes a **shell interface** (`IScriptInterpreterShell`) e
 | `MATH` `\| HEX…` suffix invalid (unsupported form, `HEX_8` with endianness, wider width without `_LE`/`_BE`) | Error |
 | `GENERATOR` malformed, zero interval, bad numeric literal, `k` with a waveform other than `EXP`/`LOG`, array source with `SINE`/`SQUARE`/`EXP`/`LOG`, non-positive-integer `SQUARE` step, bad `HEX` encoding, or destination equal to a constant macro | Error |
 | Second `&` command on a plugin instance that already has a live thread | Error (at run time) |
-| `KILL` target is missing, is not a plain macro name (e.g. `KILL UART.CYCLIC`), or is not the destination of an earlier `name ?= PLUGIN.CMD … &` / `name ?= GENERATOR …` | Error |
+| `YIELDGEN` malformed (e.g. a `<count> <unit>` interval left in, no waveform) — plus every `GENERATOR` source/waveform/encoding rule above except the interval one | Error |
+| `dest ?= $name.NEXT` where `name` is not the destination of an earlier `YIELDGEN`, or `$name.NEXT` used anywhere other than as the whole right-hand side of that statement (`PRINT`, `MATH`, conditions, plugin parameters, `$name.NEXT + 1`, …) | Error |
+| `KILL` target is missing, is not a plain macro name (e.g. `KILL UART.CYCLIC`), or is not the destination of an earlier `name ?= PLUGIN.CMD … &` / `name ?= GENERATOR …` (a `YIELDGEN` destination is rejected with its own message: no thread to kill) | Error |
 
 📄 **Full documentation:** [README.md](sources/src/scripts/core/README.md)
 
@@ -786,7 +790,7 @@ Plugins whose transport has no `CMD`/`SCRIPT`/`CYCLIC` (the multi-protocol adapt
 
 > **Note:** `PRINT`, `DELAY`, `MESSAGE`/`PRINT`, `BREAKPOINT`, `FORMAT`, `MATH`,
 > `BITSTREAM`/`BYTESTREAM`, `BITSTREAMVAL`/`BYTESTREAMVAL` (including their
-> array forms), `GENERATOR`, `EVAL`, and `KILL` are **native language statements**
+> array forms), `GENERATOR`, `YIELDGEN`/`NEXT`, `EVAL`, and `KILL` are **native language statements**
 > handled directly by the interpreter — there is no `CORE` plugin to load for
 > them, and no `LOAD_PLUGIN` line is needed. See
 > [`SCRIPTING_LANGUAGE_REFERENCE.md`](SCRIPTING_LANGUAGE_REFERENCE.md) for
