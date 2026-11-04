@@ -2,7 +2,7 @@
 #define U_VOLATILE_MACRO_STORE_HPP
 
 #include <mutex>
-#include <regex>
+#include <string_view>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -110,14 +110,79 @@ namespace uvolatile
                 return {false, {}};
             }
 
+            /** \brief Substitute every bare $NAME in strInOut that is a known volatile macro, taking
+             *        the store's lock ONCE for the whole string (not once per reference).
+             * \return true if at least one reference was substituted; strInOut is untouched otherwise. */
+            bool resolve(std::string &strInOut) const
+            {
+                // Fast path: no '$' at all (typical for literal CYCLIC entries) - no lock, no scan.
+                size_t iDollar = strInOut.find('$');
+                if (iDollar == std::string::npos) {
+                    return false;
+                }
+
+                auto isIdStart = [](char c) {
+                    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_';
+                };
+                auto isIdChar = [&](char c) { return isIdStart(c) || (c >= '0' && c <= '9'); };
+
+                bool bAnyReplaced = false;
+                std::string strResult;
+                size_t iCopied = 0; // strInOut[0, iCopied) already handled
+
+                {
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    for (; iDollar != std::string::npos; iDollar = strInOut.find('$', iDollar + 1)) {
+                        if (iDollar + 1 >= strInOut.size() || !isIdStart(strInOut[iDollar + 1])) {
+                            continue; // lone '$' or "$1": not a macro reference
+                        }
+                        size_t iEnd = iDollar + 2;
+                        while (iEnd < strInOut.size() && isIdChar(strInOut[iEnd])) {
+                            ++iEnd;
+                        }
+
+                        const auto it = m_map.find(std::string_view(strInOut).substr(iDollar + 1, iEnd - iDollar - 1));
+                        if (it == m_map.end()) {
+                            iDollar = iEnd - 1; // unknown here: leave "$NAME" unexpanded (copied later as-is)
+                            continue;
+                        }
+
+                        if (!bAnyReplaced) {
+                            strResult.reserve(strInOut.size() + it->second.size());
+                        }
+                        strResult.append(strInOut, iCopied, iDollar - iCopied);
+                        strResult.append(it->second);
+                        iCopied      = iEnd;
+                        iDollar      = iEnd - 1;
+                        bAnyReplaced = true;
+                    }
+                }
+
+                if (bAnyReplaced) {
+                    strResult.append(strInOut, iCopied, std::string::npos);
+                    strInOut = std::move(strResult);
+                }
+                return bAnyReplaced;
+            }
+
             VolatileMacroStore(const VolatileMacroStore &)            = delete;
             VolatileMacroStore &operator=(const VolatileMacroStore &) = delete;
 
         private:
             VolatileMacroStore() = default;
 
+            // Transparent hash/equality: lookups by std::string_view build no temporary key string.
+            struct TransparentHash
+            {
+                    using is_transparent = void;
+                    size_t operator()(std::string_view sv) const noexcept
+                    {
+                        return std::hash<std::string_view>{}(sv);
+                    }
+            };
+
             mutable std::mutex m_mutex;
-            std::unordered_map<std::string, std::string> m_map;
+            std::unordered_map<std::string, std::string, TransparentHash, std::equal_to<>> m_map;
     };
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -142,35 +207,9 @@ namespace uvolatile
     /*--------------------------------------------------------------------------------------------------------*/
     inline bool resolveVolatileMacros(std::string &strInOut)
     {
-        static const std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*))");
-
-        bool bAnyReplaced = false;
-        std::string strResult;
-        strResult.reserve(strInOut.size());
-
-        auto searchStart = strInOut.cbegin();
-        std::smatch match;
-
-        while (std::regex_search(searchStart, strInOut.cend(), match, macroPattern)) {
-            strResult.append(searchStart, match[0].first);
-
-            auto [bFound, strValue] = VolatileMacroStore::instance().get(match[1].str());
-            if (bFound) {
-                strResult.append(strValue);
-                bAnyReplaced = true;
-            } else {
-                strResult.append(match[0].first, match[0].second); // leave "$NAME" unexpanded
-            }
-
-            searchStart = match.suffix().first;
-        }
-
-        if (bAnyReplaced) {
-            strResult.append(searchStart, strInOut.cend());
-            strInOut = std::move(strResult);
-        }
-
-        return bAnyReplaced;
+        // Same grammar as before (bare "$NAME": [A-Za-z_][A-Za-z0-9_]*), now a hand-written scan
+        // with a no-'$' fast path and a single lock acquisition per call: see VolatileMacroStore::resolve().
+        return VolatileMacroStore::instance().resolve(strInOut);
     }
 
 } // namespace uvolatile

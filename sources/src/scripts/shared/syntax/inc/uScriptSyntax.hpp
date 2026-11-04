@@ -5,15 +5,33 @@
 
 #include <regex>
 #include <string>
+#include <string_view>
 
 namespace usyntax
 {
+    // Cheap literal pre-filters for the predicates below. Every statement pattern here REQUIRES a
+    // given literal (keyword or operator, matched case-sensitively), so when the literal is absent
+    // the regex cannot match and running it is wasted work. Validation classifies each source line
+    // by trying these predicates in order (about 20 regex_match calls for a plain "x ?= ..." line);
+    // the pre-filters make almost all of those calls a single find()/compare().
+    inline bool m_has(const std::string &s, std::string_view lit) noexcept
+    {
+        return s.find(lit) != std::string::npos;
+    }
+    inline bool m_startsWith(const std::string &s, std::string_view lit) noexcept
+    {
+        return s.size() >= lit.size() && s.compare(0, lit.size(), lit) == 0;
+    }
+
 
     // validate a load plugin expression
     // Supports plain names (UART) and instanced names (UART:1, UART:2, …).
     // The instance suffix :N is a positive integer with no leading zeros.
     inline bool m_isLoadPlugin(const std::string &strExpression)
     {
+        if (!m_startsWith(strExpression, "LOAD_PLUGIN")) {
+            return false;
+        }
         static const std::regex pattern(
             "^LOAD_PLUGIN\\s+" SCRIPT_RX_PLUGIN_TYPE_NAME SCRIPT_RX_INSTANCE_SUFFIX
             "\\s*(\\s+(<=|<|>=|>|==)\\s+" SCRIPT_RX_LOAD_PLUGIN_VERSION ")?$");
@@ -23,6 +41,9 @@ namespace usyntax
     // validate a constant macro expression
     inline bool m_isConstantMacro(const std::string &strExpression)
     {
+        if (!m_has(strExpression, ":=")) {
+            return false;
+        }
         static const std::regex pattern("^" SCRIPT_RX_IDENT "\\s*:=\\s*\\S.*$");
         return std::regex_match(strExpression, pattern);
     }
@@ -31,6 +52,9 @@ namespace usyntax
     // At least one element (non-empty content after [=) is required.
     inline bool m_isArrayMacro(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "[=")) {
+            return false;
+        }
         static const std::regex pattern("^" SCRIPT_RX_IDENT "\\s*\\[=\\s*\\S.*$");
         return std::regex_match(strExpression, pattern);
     }
@@ -39,6 +63,9 @@ namespace usyntax
     // Supports plain plugin names and instanced names (UART:1.READ).
     inline bool m_isVariableMacro(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "?=")) {
+            return false;
+        }
         static const std::regex pattern(
             "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX
             "\\.(" SCRIPT_RX_UPPER_IDENT ").*$");
@@ -51,6 +78,9 @@ namespace usyntax
     // (bare "name ?=") which initialises the macro to an empty string.
     inline bool m_isVarMacroInit(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "?=")) {
+            return false;
+        }
         static const std::regex pattern("^" SCRIPT_RX_IDENT "\\s*\\?=(\\s.*)?$");
         return std::regex_match(strExpression, pattern);
     }
@@ -69,6 +99,9 @@ namespace usyntax
     //   out ?= FORMAT $words | %2 %1 %0
     inline bool m_isFormatStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "FORMAT")) {
+            return false;
+        }
         // name ?= FORMAT <something> | <something>
         // Both sides of | must have at least one non-ws character.
         static const std::regex pattern(
@@ -92,6 +125,9 @@ namespace usyntax
     //   result ?= MATH ($a + $b) / 2
     inline bool m_isMathStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "MATH")) {
+            return false;
+        }
         static const std::regex pattern(
             "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*MATH\\s+\\S.*$");
         return std::regex_match(strExpression, pattern);
@@ -119,6 +155,9 @@ namespace usyntax
     //   cfg ?= BYTESTREAM 0:8:0xAA 1:4:3 | REVERSE_BYTE
     inline bool m_isBitstreamStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "BITSTREAM")) {
+            return false;
+        }
         static const std::string tok =
             std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
         static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
@@ -131,6 +170,9 @@ namespace usyntax
     /** Returns whether the expression is a BYTESTREAM statement. */
     inline bool m_isBytestreamStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "BYTESTREAM")) {
+            return false;
+        }
         static const std::string tok =
             std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
         static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
@@ -172,6 +214,9 @@ namespace usyntax
     //   v ?= $frame | BYTESTREAMVAL 2:5:3
     inline bool m_isBitstreamValStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "BITSTREAMVAL")) {
+            return false;
+        }
         static const std::string tok =
             std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
         static const std::string field = tok + "\\s*:\\s*" + tok;
@@ -183,6 +228,9 @@ namespace usyntax
     /** Returns whether the expression is a BYTESTREAMVAL statement. */
     inline bool m_isBytestreamValStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "BYTESTREAMVAL")) {
+            return false;
+        }
         static const std::string tok =
             std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
         static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
@@ -220,6 +268,9 @@ namespace usyntax
     //   v [= $frame | BYTESTREAMVAL 0:7:8 1:7:8 2:7:8
     inline bool m_isBitstreamValArrayStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "BITSTREAMVAL")) {
+            return false;
+        }
         static const std::string tok =
             std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
         static const std::string field = tok + "\\s*:\\s*" + tok;
@@ -232,6 +283,9 @@ namespace usyntax
     /** Returns whether the expression is a BYTESTREAMVAL array statement. */
     inline bool m_isBytestreamValArrayStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "BYTESTREAMVAL")) {
+            return false;
+        }
         static const std::string tok =
             std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
         static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
@@ -304,6 +358,9 @@ namespace usyntax
     //   arr   ?= GENERATOR 200 ms $array        | RANDOM             (array [= 1,7,9,$x,$y)
     inline bool m_isGeneratorStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "GENERATOR")) {
+            return false;
+        }
         static const std::string tok       = std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
         static const std::string range     = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok + "(?:\\s*:\\s*" + tok + ")?";
         static const std::string arrayList = tok + "(?:\\s*,\\s*" + tok + ")*";
@@ -342,6 +399,9 @@ namespace usyntax
     // YIELDGEN is a reserved keyword on the right-hand side of "?=".
     inline bool m_isYieldGenStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "YIELDGEN")) {
+            return false;
+        }
         static const std::regex pattern(
             "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*YIELDGEN(?:\\s.*)?$");
         return std::regex_match(strExpression, pattern);
@@ -360,6 +420,9 @@ namespace usyntax
     //   val ?= $gen.NEXT
     inline bool m_isYieldNextStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, ".NEXT")) {
+            return false;
+        }
         static const std::regex pattern(
             "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*\\$" SCRIPT_RX_IDENT "\\.NEXT\\s*$");
         return std::regex_match(strExpression, pattern);
@@ -394,6 +457,9 @@ namespace usyntax
     //   ok ?= KILL retval ctr level
     inline bool m_isKillStmt(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "KILL")) {
+            return false;
+        }
         static const std::regex pattern(
             "^(?:" SCRIPT_RX_IDENT "\\s*\\?=\\s*)?KILL(?:\\s.*)?$");
         return std::regex_match(strExpression, pattern);
@@ -403,6 +469,9 @@ namespace usyntax
     // Supports plain plugin names (UART.SCRIPT) and instanced names (UART:1.SCRIPT).
     inline bool m_isCommand(const std::string &strExpression)
     {
+        if (!m_has(strExpression, ".")) {
+            return false;
+        }
         static const std::regex pattern(
             "^" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.(" SCRIPT_RX_UPPER_IDENT ")\\s*.*$");
         return std::regex_match(strExpression, pattern);
@@ -411,6 +480,9 @@ namespace usyntax
     // validate "IF .. GOTO .." or "GOTO .." conditions
     inline bool m_isIfGoToCondition(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "GOTO")) {
+            return false;
+        }
         static const std::regex pattern("^(?:IF\\s+\\S(?:.*\\S)?\\s+)?GOTO\\s+" SCRIPT_RX_IDENT "$");
         return std::regex_match(strExpression, pattern);
     }
@@ -418,6 +490,9 @@ namespace usyntax
     // validate LABEL
     inline bool m_isLabel(const std::string &strExpression)
     {
+        if (!m_startsWith(strExpression, "LABEL")) {
+            return false;
+        }
         static const std::regex pattern("^LABEL\\s+" SCRIPT_RX_IDENT "$");
         return std::regex_match(strExpression, pattern);
     }
@@ -451,6 +526,9 @@ namespace usyntax
     // this pattern only enforces the lexical shape (1 to 3 comma-separated tokens).
     inline bool m_isRepeat(const std::string &strExpression)
     {
+        if (!m_has(strExpression, "REPEAT")) {
+            return false;
+        }
         // Number-or-macro token shared by <begin>/<end>/<step>.
         static const std::string strNumTok =
             std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
@@ -468,6 +546,9 @@ namespace usyntax
     // validate END_REPEAT <label>
     inline bool m_isEndRepeat(const std::string &strExpression)
     {
+        if (!m_startsWith(strExpression, "END_REPEAT")) {
+            return false;
+        }
         static const std::regex pattern("^END_REPEAT\\s+" SCRIPT_RX_IDENT "$");
         return std::regex_match(strExpression, pattern);
     }
@@ -475,6 +556,9 @@ namespace usyntax
     // validate BREAK <loop-label>
     inline bool m_isBreak(const std::string &strExpression)
     {
+        if (!m_startsWith(strExpression, "BREAK")) {
+            return false;
+        }
         static const std::regex pattern("^BREAK\\s+" SCRIPT_RX_IDENT "$");
         return std::regex_match(strExpression, pattern);
     }
@@ -482,6 +566,9 @@ namespace usyntax
     // validate CONTINUE <loop-label>
     inline bool m_isContinue(const std::string &strExpression)
     {
+        if (!m_startsWith(strExpression, "CONTINUE")) {
+            return false;
+        }
         static const std::regex pattern("^CONTINUE\\s+" SCRIPT_RX_IDENT "$");
         return std::regex_match(strExpression, pattern);
     }
@@ -489,6 +576,9 @@ namespace usyntax
     // validate PRINT [text]
     inline bool m_isPrint(const std::string &strExpression)
     {
+        if (!m_startsWith(strExpression, "PRINT")) {
+            return false;
+        }
         static const std::regex pattern(R"(^PRINT(\s.*)?$)");
         return std::regex_match(strExpression, pattern);
     }
@@ -498,6 +588,9 @@ namespace usyntax
     // <unit>  : us | ms | sec   (case-sensitive)
     inline bool m_isDelay(const std::string &strExpression)
     {
+        if (!m_startsWith(strExpression, "DELAY")) {
+            return false;
+        }
         static const std::regex pattern("^DELAY\\s+[1-9][0-9]*\\s+" SCRIPT_RX_TIME_UNITS "$");
         return std::regex_match(strExpression, pattern);
     }
@@ -507,6 +600,9 @@ namespace usyntax
     // as a label.  The label may contain $macros — expanded at runtime.
     inline bool m_isBreakpoint(const std::string &strExpression)
     {
+        if (!m_startsWith(strExpression, "BREAKPOINT")) {
+            return false;
+        }
         static const std::regex pattern(R"(^BREAKPOINT(\s.*)?$)");
         return std::regex_match(strExpression, pattern);
     }

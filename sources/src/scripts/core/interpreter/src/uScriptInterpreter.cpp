@@ -28,6 +28,8 @@
 #include <numeric>
 #include <optional>
 #include <random>
+#include <chrono>
+#include <cstdio>
 #include <regex>
 #include <set>
 #include <sstream>
@@ -246,9 +248,11 @@ namespace
     std::string renderGeneratorValue(double dResult, HexOutputFormat eHexFormat)
     {
         if (eHexFormat == HexOutputFormat::NONE) {
-            std::ostringstream oss;
-            oss << std::defaultfloat << std::setprecision(15) << dResult;
-            return oss.str();
+            // "%.15g" == defaultfloat + setprecision(15), without constructing an ostringstream
+            // (and its locale) on every tick / every NEXT.
+            char buf[40];
+            const int n = std::snprintf(buf, sizeof(buf), "%.15g", dResult);
+            return std::string(buf, n > 0 ? static_cast<size_t>(n) : 0);
         }
 
         const hexutils::Endianness eEndian = isHexFormatBigEndian(eHexFormat)
@@ -3415,13 +3419,25 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                 std::mutex cvMutex;
                                 std::condition_variable_any cv;
 
+                                // Absolute deadlines: tick N fires at start + N*interval, so the time spent
+                                // computing/publishing a sample does not accumulate as drift. If a tick
+                                // overruns (scheduler hiccup, huge interval jitter) the schedule is
+                                // re-anchored to "now" instead of firing a catch-up burst.
+                                const auto interval = std::chrono::microseconds(uIntervalUs);
+                                auto deadline       = std::chrono::steady_clock::now();
+
                                 while (!st.stop_requested()) {
                                     const double dSample = nextGeneratorArraySample(eWaveform, vValues, state);
                                     m_setRuntimeVarMacro(strName, renderGeneratorValue(dSample, eHexFormat));
 
+                                    deadline += interval;
+                                    const auto now = std::chrono::steady_clock::now();
+                                    if (deadline < now) {
+                                        deadline = now;
+                                    }
+
                                     std::unique_lock<std::mutex> lk(cvMutex);
-                                    cv.wait_for(lk, st, std::chrono::microseconds(uIntervalUs),
-                                                [&st] { return st.stop_requested(); });
+                                    cv.wait_until(lk, st, deadline, [&st] { return st.stop_requested(); });
                                 }
 
                                 doneFlag->store(true, std::memory_order_release);
@@ -3453,13 +3469,25 @@ bool ScriptInterpreter::m_executeCommand(ScriptLine &sData, bool bRealExec, size
                                 std::mutex cvMutex;
                                 std::condition_variable_any cv;
 
+                                // Absolute deadlines: tick N fires at start + N*interval, so the time spent
+                                // computing/publishing a sample does not accumulate as drift. If a tick
+                                // overruns (scheduler hiccup, huge interval jitter) the schedule is
+                                // re-anchored to "now" instead of firing a catch-up burst.
+                                const auto interval = std::chrono::microseconds(uIntervalUs);
+                                auto deadline       = std::chrono::steady_clock::now();
+
                                 while (!st.stop_requested()) {
                                     const double dSample = nextGeneratorSample(eWaveform, dBegin, dEnd, dStep, dK, state);
                                     m_setRuntimeVarMacro(strName, renderGeneratorValue(dSample, eHexFormat));
 
+                                    deadline += interval;
+                                    const auto now = std::chrono::steady_clock::now();
+                                    if (deadline < now) {
+                                        deadline = now;
+                                    }
+
                                     std::unique_lock<std::mutex> lk(cvMutex);
-                                    cv.wait_for(lk, st, std::chrono::microseconds(uIntervalUs),
-                                                [&st] { return st.stop_requested(); });
+                                    cv.wait_until(lk, st, deadline, [&st] { return st.stop_requested(); });
                                 }
 
                                 doneFlag->store(true, std::memory_order_release);

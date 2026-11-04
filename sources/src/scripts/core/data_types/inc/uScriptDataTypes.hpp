@@ -4,6 +4,7 @@
 
 #include <cctype>
 #include <sstream>
+#include <cstdio>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -247,10 +248,11 @@ inline bool parseRepeatNumber(const std::string &strTok, bool &bIsInteger,
 // reasonable) float format, so integral doubles print as "3" not "3.000000".
 inline std::string formatRepeatDouble(double dValue) noexcept
 {
-    std::ostringstream oss;
-    oss.precision(15);
-    oss << dValue;
-    return oss.str();
+    // "%.15g" is exactly what ostream's default floatfield with precision(15) produces,
+    // without constructing an ostringstream (and its locale) once per loop iteration.
+    char buf[40];
+    const int n = std::snprintf(buf, sizeof(buf), "%.15g", dValue);
+    return std::string(buf, n > 0 ? static_cast<size_t>(n) : 0);
 }
 
 // Repeat until <condition> becomes true (do-while semantics: body always runs at least once).

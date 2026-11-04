@@ -60,6 +60,12 @@ bool ScriptValidator::validateScript(std::vector<ScriptRawLine> &vRawLines, Scri
 
     m_sScriptEntries = &sScriptEntries;
 
+    // At most one IR node per source line (constant/array macros, labels' companions etc. only
+    // make it fewer). ScriptLine is large (~330 bytes, sized by its biggest statement), so
+    // letting vCommands grow by repeated reallocation costs several full moves of every element
+    // and a transient peak of old + new buffer; one up-front reservation avoids both.
+    m_sScriptEntries->vCommands.reserve(m_sScriptEntries->vCommands.size() + vRawLines.size());
+
     do {
 
         if (false == m_validateScriptStatements(vRawLines)) {

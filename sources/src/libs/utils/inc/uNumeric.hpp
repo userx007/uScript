@@ -396,6 +396,62 @@ namespace numeric
             return false;
         }
 
+        // Fast path. For the plain decimal grammar  [+-]? ( d+ [. d*] | . d+ ) ( [eE] [+-]? d+ )?
+        // (everything istringstream accepts for a floating point value in the "C" locale, nothing
+        // more) std::from_chars yields the same correctly rounded value without building an
+        // istringstream - and its locale - per conversion. Anything else (inf/nan, hex, garbage,
+        // trailing characters) and any range error (overflow, underflow) falls through to the
+        // original istringstream path below, so accept/reject decisions and error logs are
+        // unchanged by construction.
+        {
+            const char *first = trimmed.data();
+            const char *last  = first + trimmed.size();
+            const char *p     = first;
+            if (*p == '+' || *p == '-') {
+                ++p;
+            }
+            const char *digitsBegin = p;
+            while (p < last && *p >= '0' && *p <= '9') {
+                ++p;
+            }
+            size_t nIntDigits = static_cast<size_t>(p - digitsBegin), nFracDigits = 0;
+            if (p < last && *p == '.') {
+                ++p;
+                const char *fracBegin = p;
+                while (p < last && *p >= '0' && *p <= '9') {
+                    ++p;
+                }
+                nFracDigits = static_cast<size_t>(p - fracBegin);
+            }
+            bool bGrammarOk = (nIntDigits > 0) || (nFracDigits > 0);
+            if (bGrammarOk && p < last && (*p == 'e' || *p == 'E')) {
+                ++p;
+                if (p < last && (*p == '+' || *p == '-')) {
+                    ++p;
+                }
+                const char *expBegin = p;
+                while (p < last && *p >= '0' && *p <= '9') {
+                    ++p;
+                }
+                bGrammarOk = (p > expBegin);
+            }
+            if (bGrammarOk && p == last) {
+                // from_chars does not accept a leading '+': skip it (the grammar guarantees a digit or '.' follows).
+                const char *num = (*first == '+') ? first + 1 : first;
+                T value{};
+                const auto res = std::from_chars(num, last, value);
+                if (res.ec == std::errc{} && res.ptr == last) {
+                    output = value; // assigned before the zero check, exactly like the istringstream path
+                    if (bFailOnZero && output == T{0}) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Result is zero, which is not allowed:"); LOG_STRING(std::string(trimmed)));
+                        return false;
+                    }
+                    return true;
+                }
+                // range error (or any surprise): take the original path
+            }
+        }
+
         // Need to create a string for istringstream
         std::string str(trimmed);
         std::istringstream iss(str);

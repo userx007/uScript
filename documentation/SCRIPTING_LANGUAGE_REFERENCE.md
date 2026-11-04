@@ -998,6 +998,11 @@ so `$n` is usable anywhere a macro is (`PRINT`, `IF`, `MATH`, plugin parameters,
   already running under that name, then starts a new one from the beginning. Re-issuing it with
   different parameters (for example inside a loop) therefore needs no `KILL`.
 - The destination name must not be a constant macro (`:=`).
+- **Timing.** Ticks are scheduled against absolute deadlines (tick *N* fires at launch + *N* × interval), so the
+  time spent computing and publishing a sample does not accumulate as drift. If a tick is delayed (e.g. by the OS
+  scheduler) the schedule re-anchors to the current time instead of firing a burst of catch-up ticks. Very small
+  intervals (a few microseconds) are accepted but make the generator thread effectively spin; prefer `ms`
+  intervals unless you really need sub-millisecond updates.
 
 ```
 ctr    ?=  GENERATOR  100 ms  0:255:1       |  SAWTOOTH  |  HEX_8         # ramp, as 1-byte hex

@@ -404,7 +404,7 @@ namespace ucmdexec
         // before: nothing here changes for a val that never uses quoting.
         std::vector<std::string> vGroups = ustring::tokenizeRespectingQuotes(strArray, ',');
 
-        for (auto i : vGroups) {
+        for (const auto &i : vGroups) { // by reference: no string copy per group
             LOG_PRINT(LOG_DEBUG, LOG_STRING(i));
         }
 
@@ -710,6 +710,13 @@ namespace ucmdexec
                 // the single long-lived `interpreter` above, just without a result cache behind it.
                 CommScriptCommandValidator uncachedValidator;
 
+                // The tick-to-tick sleep primitives live outside the loop: a condition_variable_any
+                // heap-allocates its internal mutex on construction, so building one per tick was a
+                // malloc/free pair on every send. wait_until() releases and re-takes lkWait itself.
+                std::mutex mtxWait;
+                std::condition_variable_any cvWait;
+                std::unique_lock<std::mutex> lkWait(mtxWait);
+
                 for (uint64_t u64TickIdx = 0;; ++u64TickIdx) {
                     const uint64_t u64Elapsed = u64TickIdx * u64Tick;
 
@@ -793,12 +800,7 @@ namespace ucmdexec
                     // otherwise make KILL block for up to 10 s). condition_variable_any's
                     // stop_token overload wakes the instant stop is requested, and behaves
                     // like sleep_until() when the token can never be stopped (sequential call).
-                    {
-                        std::mutex mtxWait;
-                        std::condition_variable_any cvWait;
-                        std::unique_lock<std::mutex> lkWait(mtxWait);
-                        cvWait.wait_until(lkWait, st, tpNextTick, [] { return false; });
-                    }
+                    cvWait.wait_until(lkWait, st, tpNextTick, [] { return false; });
 
                     if (bThreaded && st.stop_requested()) {
                         break; // stopped while waiting: do not send one more tick

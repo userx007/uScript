@@ -10,6 +10,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <algorithm>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -89,6 +90,28 @@ class ScriptReader : public IScriptReader
                 return inc.string();
             }
             return (std::filesystem::path(strIncludingFile).parent_path() / inc).string();
+        }
+
+        /**
+         * Removes a trailing inline "# comment" from a source line. Equivalent to the former
+         * splitAtFirst() pair dance, including its one quirk, which is preserved on purpose:
+         * a '#' followed by nothing but whitespace is NOT treated as a comment, so the line is
+         * returned unchanged. Takes the line by value-move: the common no-comment case returns
+         * the very same buffer (no copy at all), the comment case allocates only the kept prefix.
+         */
+        static std::string stripInlineComment(std::string &&strLine)
+        {
+            const size_t pos = strLine.find(SCRIPT_LINE_COMMENT);
+            if (pos == std::string::npos) {
+                return std::move(strLine);
+            }
+            // Anything but whitespace after the '#'? (same is_space as ustring::trim, no temporary string)
+            const auto itAfter = std::find_if_not(strLine.begin() + static_cast<std::ptrdiff_t>(pos) + 1,
+                                                  strLine.end(), ustring::is_space);
+            if (itAfter == strLine.end()) {
+                return std::move(strLine); // bare trailing '#': kept verbatim (historical behaviour)
+            }
+            return ustring::trim(std::string_view(strLine).substr(0, pos));
         }
 
         // -------------------------------------------------------------------------
@@ -229,11 +252,7 @@ class ScriptReader : public IScriptReader
                 }
 
                 // Strip trailing inline comment
-                std::pair<std::string, std::string> strSplitLine;
-                ustring::splitAtFirst(strLine, SCRIPT_LINE_COMMENT, strSplitLine);
-                std::string strContent = (!strSplitLine.second.empty())
-                                             ? strSplitLine.first
-                                             : strLine;
+                std::string strContent = stripInlineComment(std::move(strLine));
 
                 // Line continuation: trailing backslash joins the next line(s)
                 ustring::trimInPlace(strContent);
@@ -248,11 +267,7 @@ class ScriptReader : public IScriptReader
                     ++iLineNumber;
                     ustring::trimInPlace(strNextLine);
 
-                    std::pair<std::string, std::string> strNextSplit;
-                    ustring::splitAtFirst(strNextLine, SCRIPT_LINE_COMMENT, strNextSplit);
-                    std::string strNextContent = (!strNextSplit.second.empty())
-                                                     ? strNextSplit.first
-                                                     : strNextLine;
+                    std::string strNextContent = stripInlineComment(std::move(strNextLine));
                     ustring::trimInPlace(strNextContent);
                     strContent += strNextContent;
                     ustring::trimInPlace(strContent);
@@ -279,19 +294,27 @@ class ScriptReader : public IScriptReader
                         return false;
                     }
                     vIncludedLines.insert(vIncludedLines.end(),
-                                          vNested.begin(), vNested.end());
+                                          std::make_move_iterator(vNested.begin()),
+                                          std::make_move_iterator(vNested.end()));
                     continue;
                 }
 
-                vOwnLines.push_back({iLineNumber, strContent});
+                vOwnLines.push_back({iLineNumber, std::move(strContent)});
 
             } // while getline
 
             // Included content precedes this file's own content
-            vRawLines.insert(vRawLines.end(), vIncludedLines.begin(), vIncludedLines.end());
-            vRawLines.insert(vRawLines.end(), vOwnLines.begin(), vOwnLines.end());
+            vRawLines.reserve(vRawLines.size() + vIncludedLines.size() + vOwnLines.size());
+            vRawLines.insert(vRawLines.end(),
+                             std::make_move_iterator(vIncludedLines.begin()),
+                             std::make_move_iterator(vIncludedLines.end()));
+            vRawLines.insert(vRawLines.end(),
+                             std::make_move_iterator(vOwnLines.begin()),
+                             std::make_move_iterator(vOwnLines.end()));
 
-            if (!vRawLines.empty()) {
+            // The per-line dump below formats a line number per line: skip all of it unless
+            // WERBOSE output is actually wanted.
+            if (!vRawLines.empty() && log_local.load()->isEnabled(LOG_WERBOSE)) {
                 for (const auto &rawLine : vRawLines) {
                     auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
                     LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
