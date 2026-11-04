@@ -85,11 +85,13 @@ namespace ukmp
      * \param[in] viLps              the KMP failure table for token (see build_kmp_table)
      * \param[in] u32Timeout         per-read timeout forwarded to readFn
      * \param[in] bReturnOnTimeout   if true, a timed-out read returns Status::READ_TIMEOUT instead of Status::READ_ERROR
-     * \param[in] useBuffer          if true, every byte read is also copied into an internal ring buffer
-     *                                (kept only for behavioural parity with the original per-driver code -
-     *                                 none of the original implementations ever read this buffer back either)
+     * \param[in] useBuffer          accepted for source compatibility and IGNORED. It used to make every byte read
+     *                                also be copied into an internal ring buffer, kept only for behavioural parity
+     *                                with the original per-driver code - none of those implementations (nor this
+     *                                one) ever read that buffer back, so it cost a ring allocation and a modulo
+     *                                store per received byte for nothing observable.
      * \param[in] szChunkBufferSize  size of the scratch buffer passed to readFn per call (1 for byte-oriented drivers)
-     * \param[in] szRingBufferSize   size of the internal ring buffer used when useBuffer is true
+     * \param[in] szRingBufferSize   accepted for source compatibility and IGNORED (see useBuffer)
      *
      * \return Status::SUCCESS once token is fully matched, Status::READ_TIMEOUT / Status::READ_ERROR on read failure
      */
@@ -100,21 +102,18 @@ namespace ukmp
                           const std::vector<int> &vViLps,
                           uint32_t u32Timeout,
                           bool bReturnOnTimeout,
-                          bool bUseBuffer,
+                          [[maybe_unused]] bool bUseBuffer,
                           size_t szChunkBufferSize,
-                          size_t szRingBufferSize)
+                          [[maybe_unused]] size_t szRingBufferSize)
         -> std::invoke_result_t<ReaderFn, uint32_t, std::span<uint8_t>, size_t &>
     {
         using Status = std::invoke_result_t<ReaderFn, uint32_t, std::span<uint8_t>, size_t &>;
 
         // Uninitialized scratch: readFn() only reports szBytesRead valid bytes and only those are
-        // ever read back, and ring is write-only. A std::vector would zero-fill both on every call
-        // (64 KB each for UDP) for nothing.
+        // ever read back. A std::vector would zero-fill it on every call (64 KB for UDP) for nothing.
         const size_t szChunk = szChunkBufferSize > 0 ? szChunkBufferSize : 1;
         auto chunk           = std::make_unique_for_overwrite<uint8_t[]>(szChunk);
-        auto ring            = std::make_unique_for_overwrite<uint8_t[]>(bUseBuffer ? szRingBufferSize : 0);
-        uint32_t u32Matched   = 0;
-        uint32_t u32BufferPos = 0;
+        uint32_t u32Matched  = 0;
 
         while (true) {
             size_t szBytesRead      = 0;
@@ -128,10 +127,6 @@ namespace ukmp
 
             for (size_t byteIdx = 0; byteIdx < szBytesRead; ++byteIdx) {
                 const uint8_t cByte = chunk[byteIdx];
-
-                if (bUseBuffer) {
-                    ring[u32BufferPos++ % szRingBufferSize] = cByte;
-                }
 
                 while (u32Matched > 0 && cByte != token[u32Matched]) {
                     u32Matched = static_cast<uint32_t>(vViLps[u32Matched - 1]);
