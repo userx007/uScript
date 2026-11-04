@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stop_token>
 #include <string_view>
+#include <memory>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -197,8 +198,10 @@ UDP::Status UDP::timeout_read_until(uint32_t u32ReadTimeout,
     szBytesRead         = 0;
     UDP::Status eResult = Status::RETVAL_NOT_SET;
 
-    // Scratch buffer for one datagram at a time.
-    std::vector<uint8_t> datagram(UDP_MAX_DGRAM_LEN);
+    // Scratch buffer for one datagram at a time. Uninitialized on purpose: timeout_read() reports how
+    // many bytes it received and only those are read back; a zero-filled std::vector would memset
+    // 64 KB on every call.
+    auto datagram = std::make_unique_for_overwrite<uint8_t[]>(UDP_MAX_DGRAM_LEN);
 
     while (eResult == Status::RETVAL_NOT_SET) {
         const size_t bytesRemaining = buffer.size() - szBytesRead - 1; // reserve for '\0'
@@ -210,7 +213,7 @@ UDP::Status UDP::timeout_read_until(uint32_t u32ReadTimeout,
         size_t datagramBytes = 0;
         const UDP::Status readResult =
             timeout_read(u32ReadTimeout,
-                         std::span<uint8_t>(datagram.data(), datagram.size()),
+                         std::span<uint8_t>(datagram.get(), UDP_MAX_DGRAM_LEN),
                          datagramBytes, stop_tok);
 
         if (readResult == Status::SUCCESS && datagramBytes > 0) {

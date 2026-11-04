@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <span>
 #include <type_traits>
+#include <memory>
 #include <vector>
 
 /**
@@ -106,14 +107,18 @@ namespace ukmp
     {
         using Status = std::invoke_result_t<ReaderFn, uint32_t, std::span<uint8_t>, size_t &>;
 
-        std::vector<uint8_t> chunk(szChunkBufferSize > 0 ? szChunkBufferSize : 1);
-        std::vector<uint8_t> ring(bUseBuffer ? szRingBufferSize : 0);
+        // Uninitialized scratch: readFn() only reports szBytesRead valid bytes and only those are
+        // ever read back, and ring is write-only. A std::vector would zero-fill both on every call
+        // (64 KB each for UDP) for nothing.
+        const size_t szChunk = szChunkBufferSize > 0 ? szChunkBufferSize : 1;
+        auto chunk           = std::make_unique_for_overwrite<uint8_t[]>(szChunk);
+        auto ring            = std::make_unique_for_overwrite<uint8_t[]>(bUseBuffer ? szRingBufferSize : 0);
         uint32_t u32Matched   = 0;
         uint32_t u32BufferPos = 0;
 
         while (true) {
             size_t szBytesRead      = 0;
-            const Status readResult = readFn(u32Timeout, std::span<uint8_t>(chunk.data(), chunk.size()), szBytesRead);
+            const Status readResult = readFn(u32Timeout, std::span<uint8_t>(chunk.get(), szChunk), szBytesRead);
 
             if (readResult != Status::SUCCESS || szBytesRead == 0) {
                 return (readResult == Status::READ_TIMEOUT && bReturnOnTimeout)
