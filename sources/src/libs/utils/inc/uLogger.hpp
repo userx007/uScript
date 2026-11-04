@@ -680,6 +680,17 @@ struct LogBuffer
          * @brief Sets the current log level.
          * @param level The log level to set.
          */
+        /** @brief true if a message of this level would reach the console or the log file.
+         *         LOG_PRINT() uses it to skip building the message (and evaluating its arguments)
+         *         altogether when nothing would be printed. LOG_EMPTY is always enabled. */
+        [[nodiscard]] bool isEnabled(LogLevel eLevel) const noexcept
+        {
+            return (eLevel == LOG_EMPTY) ||
+                   (eLevel >= consoleThreshold.load(std::memory_order_relaxed)) ||
+                   (fileLoggingEnabled.load(std::memory_order_relaxed) &&
+                    eLevel >= fileThreshold.load(std::memory_order_relaxed));
+        }
+
         void setLevel(LogLevel eLevel) noexcept
         {
             auto &s        = slot();
@@ -928,9 +939,11 @@ inline void log_separator(const char *pstrColor = "\033[95m") noexcept
          * setLogger() is a startup-only event and the atomic      \
          * load is cheap.                                       */ \
         auto _log_snap_ = log_local.load();                        \
-        _log_snap_->setLevel(SEVERITY);                            \
-        __VA_ARGS__                                                \
-        _log_snap_->print();                                       \
+        if (_log_snap_->isEnabled(SEVERITY)) {                     \
+            _log_snap_->setLevel(SEVERITY);                        \
+            __VA_ARGS__                                            \
+            _log_snap_->print();                                   \
+        }                                                          \
     } while (0)
 
 /**
